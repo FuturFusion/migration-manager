@@ -8,12 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/nbdcopy"
+	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/nbdkit"
+	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/progress"
+	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/target"
+	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/vmware"
 	log "github.com/sirupsen/logrus"
-	"github.com/vexxhost/migratekit/internal/nbdcopy"
-	"github.com/vexxhost/migratekit/internal/nbdkit"
-	"github.com/vexxhost/migratekit/internal/progress"
-	"github.com/vexxhost/migratekit/internal/target"
-	"github.com/vexxhost/migratekit/internal/vmware"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/mo"
@@ -52,7 +52,7 @@ func NewNbdkitServers(vddk *VddkConfig, vm *object.VirtualMachine) *NbdkitServer
 }
 
 func (s *NbdkitServers) createSnapshot(ctx context.Context) error {
-	task, err := s.VirtualMachine.CreateSnapshot(ctx, "migratekit", "Ephemeral snapshot for MigrateKit", false, false)
+	task, err := s.VirtualMachine.CreateSnapshot(ctx, "incusMigration", "Ephemeral snapshot for Incus migration", false, false)
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	}()
 
 	for index, server := range s.Servers {
-		t, err := target.NewOpenStack(ctx, s.VirtualMachine, server.Disk)
+		t, err := target.NewIncus(s.VirtualMachine, server.Disk)
 		if err != nil {
 			return err
 		}

@@ -3,7 +3,7 @@ package target
 import (
 	"context"
 
-	"github.com/vexxhost/migratekit/internal/vmware"
+	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/vmware"
 	"github.com/vmware/govmomi/vim25/types"
 )
 
