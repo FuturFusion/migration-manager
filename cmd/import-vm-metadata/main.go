@@ -153,9 +153,9 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if slices.Contains(incusVms, p.Summary.Config.Name) {
+		if slices.Contains(incusVms, vm.Name()) {
 			if !c.autoImport {
-				ok, err := asker.AskBool("VM '" + p.Summary.Config.Name + "' already exists in Incus. Delete and re-create? [default=yes]: ", "yes")
+				ok, err := asker.AskBool("VM '" + vm.Name() + "' already exists in Incus. Delete and re-create? [default=yes]: ", "yes")
 				if err != nil {
 					fmt.Printf("Got an error, moving to next VM: %q", err)
 					continue
@@ -165,9 +165,9 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 					continue
 				}
 
-				err = incusClient.DeleteVM(p.Summary.Config.Name)
+				err = incusClient.DeleteVM(vm.Name())
 				if err != nil {
-					fmt.Printf("Error deleting existing VM '%s': %q", p.Summary.Config.Name, err)
+					fmt.Printf("Error deleting existing VM '%s': %q", vm.Name(), err)
 				}
 			}
 		}

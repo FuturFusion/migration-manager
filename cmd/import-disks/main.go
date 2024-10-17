@@ -4,15 +4,18 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/common"
+	"github.com/FuturFusion/migration-manager/util/incus"
 	"github.com/FuturFusion/migration-manager/util/vmware"
 )
 
 type appFlags struct {
 	common.CmdGlobalFlags
+	common.CmdIncusFlags
 	common.CmdVMwareFlags
 
 	cutover bool
@@ -61,6 +64,7 @@ func (c *appFlags) Command() *cobra.Command {
 	cmd.RunE = c.Run
 
 	c.CmdGlobalFlags.AddFlags(cmd)
+	c.CmdIncusFlags.AddFlags(cmd)
 	c.CmdVMwareFlags.AddFlags(cmd)
 	cmd.Flags().BoolVar(&c.cutover, "cutover", false, "Shutdown VMware VMs, perform a final data transfer and start Incus VMs")
 
@@ -76,8 +80,20 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Connect to Incus.
+	incusClient, err := incus.NewIncusClient(ctx, c.IncusRemoteName)
+	if err != nil {
+		return err
+	}
+
 	// Get a list of all VMs.
-	vms, err := vmwareClient.GetVMs()
+	vmwareVms, err := vmwareClient.GetVMs()
+	if err != nil {
+		return err
+	}
+
+	// Get a list of all Incus VMs.
+	incusVms, err := incusClient.GetVMNames()
 	if err != nil {
 		return err
 	}
@@ -87,9 +103,12 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	// TODO filter/check for matching VMs in Incus?
+	for _, vm := range vmwareVms {
+		if !slices.Contains(incusVms, vm.Name()) {
+			fmt.Printf("VMware VM '%s' hasn't yet been imported into Incus; skipping disk migration.\n", vm.Name())
+			continue
+		}
 
-	for _, vm := range vms {
 		fmt.Printf("Importing disks attached to VM %q...\n", vm.Name())
 
 		err := vmwareClient.DeleteVMSnapshot(vm, "incusMigration")
