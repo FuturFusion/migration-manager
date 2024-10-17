@@ -106,7 +106,7 @@ func (c *VMwareClient) GetVMDisks(vm *object.VirtualMachine) []*types.VirtualDis
 	return ret
 }
 
-func (c *VMwareClient) ImportDisks(vm *object.VirtualMachine) error {
+func (c *VMwareClient) ExportDisks(vm *object.VirtualMachine) error {
 	for _, disk := range c.GetVMDisks(vm) {
 		_, err := vmware.GetChangeID(disk)
 		if err != nil {

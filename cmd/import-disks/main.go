@@ -58,17 +58,19 @@ func (c *appFlags) Command() *cobra.Command {
 func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 	ctx := context.TODO()
 
-	// Connect to VMware endpoint
+	// Connect to VMware endpoint.
 	vmwareClient, err := vmware.NewVMwareClient(ctx, c.VmwareEndpoint, c.VmwareInsecure, c.VmwareUsername, c.VmwarePassword)
 	if err != nil {
 		return err
 	}
 
-	// Get a list of all VMs
+	// Get a list of all VMs.
 	vms, err := vmwareClient.GetVMs()
 	if err != nil {
 		return err
 	}
+
+	// TODO filter/check for matching VMs in Incus?
 
 	for _, vm := range vms {
 		fmt.Printf("Importing disks attached to VM %q...\n", vm.Name())
@@ -78,10 +80,12 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		err = vmwareClient.ImportDisks(vm)
+		err = vmwareClient.ExportDisks(vm)
 		if err != nil {
 			fmt.Printf("  ERROR: Failed to import disk(s): %q\n", err)
 		}
+
+		// TODO sync freshly imported disk images into Incus
 	}
 
 	return nil
