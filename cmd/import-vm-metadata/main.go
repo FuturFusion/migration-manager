@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
@@ -18,6 +19,10 @@ type appFlags struct {
 	common.CmdGlobalFlags
 	common.CmdIncusFlags
 	common.CmdVMwareFlags
+
+	autoImport     bool
+	excludeVmRegex string
+	includeVmRegex string
 }
 
 func main() {
@@ -51,6 +56,15 @@ func (c *appFlags) Command() *cobra.Command {
   skeleton VM instance in Incus, copying various configuration from the
   existing VM. You must separately import the backing storage for the VM
   via the `+"`import-disks`"+` command.
+
+  You may optionally specify regular expressions to include or exclude
+  VMs from the import process, based on the VM's inventory path.
+
+  By default confirmation will be asked before importing each VM, as well
+  as before deleting an existing Incus VM that conflicts with one that is
+  to be imported from VMware. A command line option exists to automate
+  this, but use with caution as it may cause destructive actions by
+  deleting Incus VMs automatically.
 `
 
 	cmd.RunE = c.Run
@@ -58,6 +72,9 @@ func (c *appFlags) Command() *cobra.Command {
 	c.CmdGlobalFlags.AddFlags(cmd)
 	c.CmdIncusFlags.AddFlags(cmd)
 	c.CmdVMwareFlags.AddFlags(cmd)
+	cmd.Flags().BoolVar(&c.autoImport, "auto-import", false, "Automatically import VMs; may automatically DELETE existing Incus VMs")
+	cmd.Flags().StringVar(&c.excludeVmRegex, "exclude-vm-regex", "", "Regular expression to specify which VMs to exclude from import")
+	cmd.Flags().StringVar(&c.includeVmRegex, "include-vm-regex", "", "Regular expression to specify which VMs to import")
 
 	return cmd
 }
@@ -104,7 +121,19 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	excludeRegex := regexp.MustCompile(c.excludeVmRegex)
+	includeRegex := regexp.MustCompile(c.includeVmRegex)
 	for _, vm := range vms {
+		if c.excludeVmRegex != "" && excludeRegex.Match([]byte(vm.InventoryPath)) {
+			fmt.Printf("VMware VM '%s' skipped by exclusion pattern.\n\n\n", vm)
+			continue
+		}
+
+		if c.includeVmRegex != "" && !includeRegex.Match([]byte(vm.InventoryPath)) {
+			fmt.Printf("VMware VM '%s' skipped by inclusion pattern.\n\n\n", vm)
+			continue
+		}
+
 		fmt.Printf("Inspecting VMware VM '%s'...\n", vm)
 
 		p, err := vmwareClient.GetVMProperties(vm)
