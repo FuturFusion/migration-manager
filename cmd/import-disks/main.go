@@ -12,9 +12,9 @@ import (
 	"github.com/FuturFusion/migration-manager/cmd/common"
 	"github.com/FuturFusion/migration-manager/util/vmware"
 
-	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/nbdkit"
-	vmwareInternal "github.com/FuturFusion/migration-manager/cmd/import-disks/internal/vmware"
-	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/vmware_nbdkit"
+	"github.com/FuturFusion/migration-manager/util/migratekit/nbdkit"
+	vmwareInternal "github.com/FuturFusion/migration-manager/util/migratekit/vmware"
+	"github.com/FuturFusion/migration-manager/util/migratekit/vmware_nbdkit"
 )
 
 type appFlags struct {

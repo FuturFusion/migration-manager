@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/progress"
+	"github.com/FuturFusion/migration-manager/util/migratekit/progress"
 	log "github.com/sirupsen/logrus"
 )
 

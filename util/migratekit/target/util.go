@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/vmware"
+	"github.com/FuturFusion/migration-manager/util/migratekit/vmware"
 	"github.com/gosimple/slug"
 	log "github.com/sirupsen/logrus"
 	"github.com/vmware/govmomi/object"

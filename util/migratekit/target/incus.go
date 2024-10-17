@@ -6,7 +6,7 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/FuturFusion/migration-manager/cmd/import-disks/internal/vmware"
+	"github.com/FuturFusion/migration-manager/util/migratekit/vmware"
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/types"
