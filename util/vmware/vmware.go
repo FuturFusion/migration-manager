@@ -13,6 +13,7 @@ import (
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
 
+	"github.com/FuturFusion/migration-manager/util"
 	"github.com/FuturFusion/migration-manager/util/migratekit/nbdkit"
 	"github.com/FuturFusion/migration-manager/util/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/util/migratekit/vmware_nbdkit"
@@ -69,6 +70,11 @@ func NewVMwareClient(ctx context.Context, vmwareEndpoint string, vmwareInsecure 
 	}, nil
 }
 
+func (c *VMwareClient) GetNetworks() ([]object.NetworkReference, error) {
+	finder := find.NewFinder(c.client)
+	return finder.NetworkList(c.ctx, "/...")
+}
+
 func (c *VMwareClient) GetVMs() ([]*object.VirtualMachine, error) {
 	finder := find.NewFinder(c.client)
 	return finder.VirtualMachineList(c.ctx, "/...")
@@ -87,11 +93,16 @@ func (c *VMwareClient) DeleteVMSnapshot(vm *object.VirtualMachine, snapshotName 
 	return nil
 }
 
+func (c *VMwareClient) GetVMProperties(vm *object.VirtualMachine) (mo.VirtualMachine, error) {
+	var v mo.VirtualMachine
+	err := vm.Properties(c.ctx, vm.Reference(), []string{}, &v)
+	return v, err
+}
+
 func (c *VMwareClient) GetVMDisks(vm *object.VirtualMachine) []*types.VirtualDisk {
 	ret := []*types.VirtualDisk{}
 
-	var v mo.VirtualMachine
-	err := vm.Properties(c.ctx, vm.Reference(), []string{"config.hardware"}, &v)
+	v, err := c.GetVMProperties(vm)
 	if err != nil {
 		return ret
 	}
@@ -123,4 +134,39 @@ func (c *VMwareClient) ExportDisks(vm *object.VirtualMachine) error {
 	}
 
 	return nil
+}
+
+func (c *VMwareClient) GetVMDiskInfo(vm mo.VirtualMachine) []string {
+	ret := []string{}
+
+	devices := object.VirtualDeviceList(vm.Config.Hardware.Device)
+	for _, device := range devices {
+		switch md := device.(type) {
+		// TODO handle VirtualCdrom?
+		case *types.VirtualDisk:
+			b, ok := md.Backing.(types.BaseVirtualDeviceFileBackingInfo)
+			if ok {
+				ret = append(ret, b.GetVirtualDeviceFileBackingInfo().FileName)
+			}
+		}
+	}
+
+	return ret
+}
+
+func (c *VMwareClient) GetVMNetworkInfo(vm mo.VirtualMachine) []util.NICInfo {
+	ret := []util.NICInfo{}
+
+	devices := object.VirtualDeviceList(vm.Config.Hardware.Device)
+	for _, device := range devices {
+		switch md := device.(type) {
+		case types.BaseVirtualEthernetCard:
+			b, ok := md.GetVirtualEthernetCard().VirtualDevice.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
+			if ok {
+				ret = append(ret, util.NICInfo{Network: b.Network.Value, Hwaddr: md.GetVirtualEthernetCard().MacAddress})
+			}
+		}
+	}
+
+	return ret
 }
