@@ -14,6 +14,8 @@ import (
 type appFlags struct {
 	common.CmdGlobalFlags
 	common.CmdVMwareFlags
+
+	cutover bool
 }
 
 func main() {
@@ -43,14 +45,24 @@ func (c *appFlags) Command() *cobra.Command {
 	cmd.Long = `Description:
   Import VMware VM disks into Incus
 
-  This tool imports VM disks from VMware into Incus. It supports importing
-  incremental disk changes if Changed Block Tracking is enabled.
+  This tool imports VM disks from VMware into Incus. Prior to importing any
+  disks, you must first run the `+"`import-vm-metadata`"+` utility to
+  populate VM metadata in Incus.
+
+  By default, the state of VMs running in VMware will be unchanged. A
+  snapshot of the disk(s) will be created, then transferred via this tool.
+  If possible, incremental copies are used to speed up the process.
+
+  When you are ready to cut over to Incus, pass the `+"`--cutover`"+` flag
+  which will shutdown the VMware VMs, do a final data transfer and then
+  start the VMs in Incus.
 `
 
 	cmd.RunE = c.Run
 
 	c.CmdGlobalFlags.AddFlags(cmd)
 	c.CmdVMwareFlags.AddFlags(cmd)
+	cmd.Flags().BoolVar(&c.cutover, "cutover", false, "Shutdown VMware VMs, perform a final data transfer and start Incus VMs")
 
 	return cmd
 }
@@ -68,6 +80,11 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 	vms, err := vmwareClient.GetVMs()
 	if err != nil {
 		return err
+	}
+
+	if c.cutover {
+		fmt.Printf("cut over not currently supported!\n")
+		return nil
 	}
 
 	// TODO filter/check for matching VMs in Incus?
