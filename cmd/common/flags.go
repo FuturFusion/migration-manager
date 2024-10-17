@@ -4,13 +4,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Flags used by all applications
+// Flags used by all applications.
 type CmdGlobalFlags struct {
 	FlagVersion bool
 	FlagHelp    bool
 }
 
-// Common flags used when connecting to a VMware endpoint
+// Common flags used when connecting to an Incus server.
+type CmdIncusFlags struct {
+	IncusRemoteName string
+}
+
+// Common flags used when connecting to a VMware endpoint.
 type CmdVMwareFlags struct {
 	VmwareEndpoint string
 	VmwareInsecure bool
@@ -21,6 +26,10 @@ type CmdVMwareFlags struct {
 func (c *CmdGlobalFlags) AddFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&c.FlagVersion, "version", false, "Print version number")
 	cmd.Flags().BoolVarP(&c.FlagHelp, "help", "h", false, "Print help")
+}
+
+func (c *CmdIncusFlags) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&c.IncusRemoteName, "incus-remote-name", "", "Incus remote name; if empty, will attempt to connect via local Unix socket")
 }
 
 func (c *CmdVMwareFlags) AddFlags(cmd *cobra.Command) {
