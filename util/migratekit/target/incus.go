@@ -33,7 +33,13 @@ func (t *IncusTarget) Connect(ctx context.Context) error {
 }
 
 func (t *IncusTarget) GetPath(ctx context.Context) (string, error) {
-	return "/tmp/vmware-incus-migration/root.img", nil
+	path := "/tmp/migration-manager/" + t.VirtualMachine.Name()
+	err := os.MkdirAll(path, 0700)
+	if err != nil {
+		return "", err
+	}
+
+	return path + "/root.img", nil
 }
 
 func (t *IncusTarget) Disconnect(ctx context.Context) error {
