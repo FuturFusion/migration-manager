@@ -82,11 +82,6 @@ func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, nics []util
 		return err
 	}
 
-	/*err = transferRootfs(ctx, server, op, "/tmp/migration-manager/" + instanceArgs.Name, "", instanceArgs.Type)
-	if err != nil {
-		return err
-	}*/
-
 	err = op.Wait() // Fails due to missing rootfs logic
 	if err != nil {
 		return err

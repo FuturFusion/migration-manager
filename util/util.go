@@ -33,8 +33,7 @@ func ConvertVMwareMetadataToIncus(vm mo.VirtualMachine) api.InstancesPost {
 	ret := api.InstancesPost{
 		Name: vm.Summary.Config.Name,
                 Source: api.InstanceSource{
-                        Type: "migration",
-                        Mode: "push",
+                        Type: "none",
                 },
 		Type: api.InstanceTypeVM,
         }
