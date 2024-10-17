@@ -2,13 +2,16 @@ package vmware
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/session/cache"
 	"github.com/vmware/govmomi/vim25"
+	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
+	"github.com/vmware/govmomi/vim25/types"
 
 	"github.com/FuturFusion/migration-manager/util/migratekit/nbdkit"
 	"github.com/FuturFusion/migration-manager/util/migratekit/vmware"
@@ -84,7 +87,35 @@ func (c *VMwareClient) DeleteVMSnapshot(vm *object.VirtualMachine, snapshotName 
 	return nil
 }
 
+func (c *VMwareClient) GetVMDisks(vm *object.VirtualMachine) []*types.VirtualDisk {
+	ret := []*types.VirtualDisk{}
+
+	var v mo.VirtualMachine
+	err := vm.Properties(c.ctx, vm.Reference(), []string{"config.hardware"}, &v)
+	if err != nil {
+		return ret
+	}
+
+	for _, device := range v.Config.Hardware.Device {
+		switch disk := device.(type) {
+		case *types.VirtualDisk:
+			ret = append(ret, disk)
+		}
+	}
+
+	return ret
+}
+
 func (c *VMwareClient) ImportDisks(vm *object.VirtualMachine) error {
+	for _, disk := range c.GetVMDisks(vm) {
+		_, err := vmware.GetChangeID(disk)
+		if err != nil {
+			// TODO handle non-incremental import for disks without CBT enabled
+			fmt.Printf("  ERROR: Unable to get ChangeID: %q\n", err)
+			return nil
+		}
+	}
+
 	servers := vmware_nbdkit.NewNbdkitServers(c.vddkConfig, vm)
 	err := servers.MigrationCycle(c.ctx, false)
 	if err != nil {

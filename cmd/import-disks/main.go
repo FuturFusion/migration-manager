@@ -80,7 +80,7 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 
 		err = vmwareClient.ImportDisks(vm)
 		if err != nil {
-			return err
+			fmt.Printf("  ERROR: Failed to import disk(s): %q\n", err)
 		}
 	}
 
