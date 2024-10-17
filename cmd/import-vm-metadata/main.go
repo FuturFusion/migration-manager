@@ -105,13 +105,13 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, vm := range vms {
+		fmt.Printf("Inspecting VMware VM '%s'...\n", vm)
+
 		p, err := vmwareClient.GetVMProperties(vm)
 		if err != nil {
-			fmt.Printf("  WARNING -- Unable to get VM properties: %q\n", err)
+			fmt.Printf("  WARNING -- Unable to get VM properties: %q\n\n\n", err)
 			continue
 		}
-
-		fmt.Printf("Inspecting VMware VM '%s'...\n", vm)
 
 		ctkEnabled := false
 		if p.Config != nil && p.Config.ExtraConfig != nil {
