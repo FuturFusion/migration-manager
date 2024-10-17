@@ -1,16 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/common"
 	internalUtil "github.com/FuturFusion/migration-manager/util"
+	"github.com/FuturFusion/migration-manager/util/ask"
 	"github.com/FuturFusion/migration-manager/util/incus"
 	"github.com/FuturFusion/migration-manager/util/vmware"
 )
@@ -80,6 +83,8 @@ func (c *appFlags) Command() *cobra.Command {
 }
 
 func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
+	asker := ask.NewAsker(bufio.NewReader(os.Stdin))
+
 	ctx := context.TODO()
 
 	// Connect to VMware endpoint.
@@ -116,14 +121,20 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 
 
 	// Get a list of all VMware VMs.
-	vms, err := vmwareClient.GetVMs()
+	vmwareVms, err := vmwareClient.GetVMs()
+	if err != nil {
+		return err
+	}
+
+	// Get a list of all Incus VMs.
+	incusVms, err := incusClient.GetVMNames()
 	if err != nil {
 		return err
 	}
 
 	excludeRegex := regexp.MustCompile(c.excludeVmRegex)
 	includeRegex := regexp.MustCompile(c.includeVmRegex)
-	for _, vm := range vms {
+	for _, vm := range vmwareVms {
 		if c.excludeVmRegex != "" && excludeRegex.Match([]byte(vm.InventoryPath)) {
 			fmt.Printf("VMware VM '%s' skipped by exclusion pattern.\n\n\n", vm)
 			continue
@@ -140,6 +151,25 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			fmt.Printf("  WARNING -- Unable to get VM properties: %q\n\n\n", err)
 			continue
+		}
+
+		if slices.Contains(incusVms, p.Summary.Config.Name) {
+			if !c.autoImport {
+				ok, err := asker.AskBool("VM '" + p.Summary.Config.Name + "' already exists in Incus. Delete and re-create? [default=yes]: ", "yes")
+				if err != nil {
+					fmt.Printf("Got an error, moving to next VM: %q", err)
+					continue
+				}
+
+				if !ok {
+					continue
+				}
+
+				err = incusClient.DeleteVM(p.Summary.Config.Name)
+				if err != nil {
+					fmt.Printf("Error deleting existing VM '%s': %q", p.Summary.Config.Name, err)
+				}
+			}
 		}
 
 		ctkEnabled := false

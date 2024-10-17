@@ -92,3 +92,26 @@ func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, nics []util
 
 	return nil
 }
+
+func (c *IncusClient) GetVMNames() ([]string, error) {
+	ret := []string{}
+	instances, err := c.client.GetInstances(api.InstanceTypeVM)
+	if err != nil {
+		return ret, err
+	}
+
+	for _, instance := range instances {
+		ret = append(ret, instance.Name)
+	}
+
+	return ret, nil
+}
+
+func (c *IncusClient) DeleteVM(vm string) error {
+	op, err := c.client.DeleteInstance(vm)
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
+}
