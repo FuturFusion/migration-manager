@@ -9,11 +9,16 @@ import (
 	"github.com/vmware/govmomi/session/cache"
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/soap"
+
+	"github.com/FuturFusion/migration-manager/util/migratekit/nbdkit"
+	"github.com/FuturFusion/migration-manager/util/migratekit/vmware"
+	"github.com/FuturFusion/migration-manager/util/migratekit/vmware_nbdkit"
 )
 
 type VMwareClient struct {
-	client *vim25.Client
-	ctx    context.Context
+	client     *vim25.Client
+	ctx        context.Context
+	vddkConfig *vmware_nbdkit.VddkConfig
 }
 
 func NewVMwareClient(ctx context.Context, vmwareEndpoint string, vmwareInsecure bool, vmwareUsername string, vmwarePassword string) (*VMwareClient, error) {
@@ -35,9 +40,29 @@ func NewVMwareClient(ctx context.Context, vmwareEndpoint string, vmwareInsecure 
 		return nil, err
 	}
 
+	endpointUrl := &url.URL{
+		Scheme: "https",
+		Host:   vmwareEndpoint,
+		User:   url.UserPassword(vmwareUsername, vmwarePassword),
+		Path:   "sdk",
+	}
+
+	thumbprint, err := vmware.GetEndpointThumbprint(endpointUrl)
+	if err != nil {
+		return nil, err
+	}
+
+	vddkConfig := &vmware_nbdkit.VddkConfig {
+		Debug:       false,
+		Endpoint:    endpointUrl,
+		Thumbprint:  thumbprint,
+		Compression: nbdkit.CompressionMethod("none"),
+	}
+
 	return &VMwareClient{
-		client: c,
-		ctx:    ctx,
+		client:     c,
+		ctx:        ctx,
+		vddkConfig: vddkConfig,
 	}, nil
 }
 
@@ -54,6 +79,16 @@ func (c *VMwareClient) DeleteVMSnapshot(vm *object.VirtualMachine, snapshotName 
 		if err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (c *VMwareClient) ImportDisks(vm *object.VirtualMachine) error {
+	servers := vmware_nbdkit.NewNbdkitServers(c.vddkConfig, vm)
+	err := servers.MigrationCycle(c.ctx, false)
+	if err != nil {
+		return err
 	}
 
 	return nil
