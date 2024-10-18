@@ -136,8 +136,8 @@ func (c *VMwareClient) ExportDisks(vm *object.VirtualMachine) error {
 	return nil
 }
 
-func (c *VMwareClient) GetVMDiskInfo(vm mo.VirtualMachine) []string {
-	ret := []string{}
+func GetVMDiskInfo(vm mo.VirtualMachine) []util.DiskInfo {
+	ret := []util.DiskInfo{}
 
 	devices := object.VirtualDeviceList(vm.Config.Hardware.Device)
 	for _, device := range devices {
@@ -146,7 +146,7 @@ func (c *VMwareClient) GetVMDiskInfo(vm mo.VirtualMachine) []string {
 		case *types.VirtualDisk:
 			b, ok := md.Backing.(types.BaseVirtualDeviceFileBackingInfo)
 			if ok {
-				ret = append(ret, b.GetVirtualDeviceFileBackingInfo().FileName)
+				ret = append(ret, util.DiskInfo{Name: b.GetVirtualDeviceFileBackingInfo().FileName, Size: md.CapacityInBytes})
 			}
 		}
 	}
@@ -154,7 +154,7 @@ func (c *VMwareClient) GetVMDiskInfo(vm mo.VirtualMachine) []string {
 	return ret
 }
 
-func (c *VMwareClient) GetVMNetworkInfo(vm mo.VirtualMachine) []util.NICInfo {
+func GetVMNetworkInfo(vm mo.VirtualMachine) []util.NICInfo {
 	ret := []util.NICInfo{}
 
 	devices := object.VirtualDeviceList(vm.Config.Hardware.Device)

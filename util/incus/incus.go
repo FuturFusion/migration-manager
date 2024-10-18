@@ -11,7 +11,6 @@ import (
 	"github.com/lxc/incus/v6/shared/cliconfig"
 
 	"github.com/FuturFusion/migration-manager/util"
-	"github.com/FuturFusion/migration-manager/util/progress"
 	"github.com/FuturFusion/migration-manager/util/revert"
 )
 
@@ -56,11 +55,53 @@ func connectRemote(remoteName string) (incus.InstanceServer, error) {
 	return incusConfig.GetInstanceServer(remoteName)
 }
 
-func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, nics []util.NICInfo) error {
+func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, disks []util.DiskInfo, nics []util.NICInfo) error {
         revert := revert.New()
         defer revert.Fail()
 
-        // Create the instance
+	// Fetch default profile to get proper root device definition.
+	profile, _, err := c.client.GetProfile("default")
+	if err != nil && len(disks) != 0 {
+		return err
+	}
+
+	instanceArgs.Devices = make(map[string]map[string]string)
+
+	// Get the existing root device, if it exists.
+	defaultRoot, exists := profile.Devices["root"]
+	if !exists {
+		defaultRoot = map[string]string{
+			"path": "/",
+			"pool": "default",
+			"type": "disk",
+		}
+	}
+
+	// Add empty disk(s) from VM definition that will be synced later.
+	for i, disk := range disks {
+		fmt.Printf("    Adding disk with capacity %0.2fGiB from source '%s'\n", float32(disk.Size)/1024/1024/1024, disk.Name)
+		diskKey := "root"
+		if i != 0 {
+			diskKey = "disk" + string(i)
+		}
+
+		instanceArgs.Devices[diskKey] = make(map[string]string)
+		for k, v := range defaultRoot {
+			instanceArgs.Devices[diskKey][k] = v
+		}
+		instanceArgs.Devices[diskKey]["size"] = fmt.Sprintf("%dB", disk.Size)
+
+		if i != 0 {
+			instanceArgs.Devices[diskKey]["path"] = diskKey
+		}
+	}
+
+	for _, nic := range nics {
+		// FIXME actually add to instance
+		fmt.Printf("    Adding NIC for network %q with MAC %s\n", nic.Network, nic.Hwaddr)
+	}
+
+        // Create the instance.
         op, err := c.client.CreateInstance(instanceArgs)
         if err != nil {
                 return err
@@ -70,24 +111,11 @@ func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, nics []util
 		_, _ = c.client.DeleteInstance(instanceArgs.Name)
         })
 
-	for _, nic := range nics {
-		// FIXME actually add to instance
-		fmt.Printf("    Adding NIC for network %q with MAC %s\n", nic.Network, nic.Hwaddr)
-	}
-
-	prog := progress.ProgressRenderer{Format: "Transferring instance: %s"}
-	_, err = op.AddHandler(prog.UpdateOp)
-	if err != nil {
-		prog.Done("")
-		return err
-	}
-
-	err = op.Wait() // Fails due to missing rootfs logic
+	err = op.Wait()
 	if err != nil {
 		return err
 	}
 
-	prog.Done(fmt.Sprintf("Instance %s successfully created", instanceArgs.Name))
 	revert.Success()
 
 	return nil

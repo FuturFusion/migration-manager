@@ -188,16 +188,14 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 
 		incusInstanceArgs := internalUtil.ConvertVMwareMetadataToIncus(p)
 
-		disks := vmwareClient.GetVMDiskInfo(p)
-		nics := vmwareClient.GetVMNetworkInfo(p)
+		disks := vmware.GetVMDiskInfo(p)
+		nics := vmware.GetVMNetworkInfo(p)
 
 		fmt.Printf("  UUID: %s\n", p.Summary.Config.InstanceUuid)
 		fmt.Printf("  Memory: %d MB\n", p.Summary.Config.MemorySizeMB)
 		fmt.Printf("  CPU: %d\n", p.Summary.Config.NumCpu)
-		fmt.Printf("  Disks: %q\n", disks)
-		fmt.Printf("  NICs: %q\n", nics)
 
-		err = incusClient.CreateInstance(incusInstanceArgs, nics)
+		err = incusClient.CreateInstance(incusInstanceArgs, disks, nics)
 		if err != nil {
 			fmt.Printf("  FAILED to import VM metadata into Incus: %q\n", err)
 		}
