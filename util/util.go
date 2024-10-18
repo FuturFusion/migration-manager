@@ -3,10 +3,16 @@ package util
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/vmware/govmomi/vim25/mo"
 )
+
+type DiskInfo struct {
+	Name string
+	Size int64
+}
 
 type NICInfo struct {
 	Network string
@@ -44,15 +50,27 @@ func ConvertVMwareMetadataToIncus(vm mo.VirtualMachine) api.InstancesPost {
 		} else {
 			ret.Architecture = "i686"
 		}
+	} else if guestInfo["architecture"] == "Arm" {
+		if guestInfo["bits"] == "64" {
+			ret.Architecture = "aarch64"
+		} else {
+			ret.Architecture = "armv8l"
+		}
 	} else {
-		// FIXME handle arm
 		fmt.Printf("    WARNING -- defaulting architecture to x86_64 (got %s/%s)\n", guestInfo["architecture"], guestInfo["bits"])
 		ret.Architecture = "x86_64"
         }
 
         ret.Config = make(map[string]string)
+        ret.Config["image.architecture"] = ret.Architecture
+        ret.Config["image.description"] = "Auto-imported from VMware"
+        ret.Config["image.os"] = strings.TrimSuffix(vm.Summary.Config.GuestId, "Guest")
+        ret.Config["image.release"] = vm.Summary.Config.GuestFullName
+
         ret.Config["limits.cpu"] = fmt.Sprintf("%d", vm.Summary.Config.NumCpu)
         ret.Config["limits.memory"] = fmt.Sprintf("%dMiB", vm.Summary.Config.MemorySizeMB)
+
+	ret.Description = ret.Config["image.description"]
 
 	// FIXME handle secure boot config
 
