@@ -143,3 +143,11 @@ func (c *IncusClient) DeleteVM(vm string) error {
 
 	return op.Wait()
 }
+
+func (c *IncusClient) ImportVMDiskIMage(vm string) error {
+	imgPath := "/tmp/migration-manager/" + vm + "/root.img"
+
+	fmt.Printf("Importing image %s to Incus...\n", imgPath)
+
+	return nil
+}

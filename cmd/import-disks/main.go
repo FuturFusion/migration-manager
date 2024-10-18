@@ -6,6 +6,7 @@ import (
 	"os"
 	"slices"
 
+	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/common"
@@ -72,6 +73,14 @@ func (c *appFlags) Command() *cobra.Command {
 }
 
 func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
+	if os.Geteuid() != 0 {
+		return fmt.Errorf("This tool must be run as root")
+	}
+
+	if !util.PathExists("/dev/incus/") {
+		return fmt.Errorf("This tool is designed to be run within an Incus VM")
+	}
+
 	ctx := context.TODO()
 
 	// Connect to VMware endpoint.
@@ -109,7 +118,7 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		fmt.Printf("Importing disks attached to VM %q...\n", vm.Name())
+		fmt.Printf("Exporting disks attached to VM %q...\n", vm.Name())
 
 		err := vmwareClient.DeleteVMSnapshot(vm, "incusMigration")
 		if err != nil {
@@ -118,10 +127,13 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 
 		err = vmwareClient.ExportDisks(vm)
 		if err != nil {
-			fmt.Printf("  ERROR: Failed to import disk(s): %q\n", err)
+			fmt.Printf("  ERROR: Failed to export disk(s) from VMware: %q\n", err)
 		}
 
-		// TODO sync freshly imported disk images into Incus
+		err = incusClient.ImportVMDiskIMage(vm.Name())
+		if err != nil {
+			fmt.Printf("  ERROR: Failed to import disk(s) to Incus: %q\n", err)
+		}
 	}
 
 	return nil
