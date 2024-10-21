@@ -23,9 +23,11 @@ type appFlags struct {
 	common.CmdIncusFlags
 	common.CmdVMwareFlags
 
-	autoImport     bool
-	excludeVmRegex string
-	includeVmRegex string
+	autoImport        bool
+	bootableISOPool   string
+	bootableISOSource string
+	excludeVmRegex    string
+	includeVmRegex    string
 }
 
 func main() {
@@ -78,6 +80,8 @@ func (c *appFlags) Command() *cobra.Command {
 	cmd.Flags().BoolVar(&c.autoImport, "auto-import", false, "Automatically import VMs; may automatically DELETE existing Incus VMs")
 	cmd.Flags().StringVar(&c.excludeVmRegex, "exclude-vm-regex", "", "Regular expression to specify which VMs to exclude from import")
 	cmd.Flags().StringVar(&c.includeVmRegex, "include-vm-regex", "", "Regular expression to specify which VMs to import")
+	cmd.Flags().StringVar(&c.bootableISOPool, "bootable-iso-pool", "iscsi", "Incus storage pool for the bootable migration ISO image")
+	cmd.Flags().StringVar(&c.bootableISOSource, "bootable-iso-source", "migration-manager-minimal-boot.iso", "Incus source for the bootable migration ISO image")
 
 	return cmd
 }
@@ -94,7 +98,7 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Connect to Incus.
-	incusClient, err := incus.NewIncusClient(ctx, c.IncusRemoteName)
+	incusClient, err := incus.NewIncusClient(ctx, c.IncusRemoteName, c.bootableISOPool, c.bootableISOSource)
 	if err != nil {
 		return err
 	}

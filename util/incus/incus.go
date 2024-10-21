@@ -15,11 +15,13 @@ import (
 )
 
 type IncusClient struct {
-	client incus.InstanceServer
-	ctx    context.Context
+	bootableISOPool   string
+	bootableISOSource string
+	client            incus.InstanceServer
+	ctx               context.Context
 }
 
-func NewIncusClient(ctx context.Context, incusRemoteName string) (*IncusClient, error) {
+func NewIncusClient(ctx context.Context, incusRemoteName string, bootableISOPool string, bootableISOSource string) (*IncusClient, error) {
 	var incusServer incus.InstanceServer
 	var err error
 
@@ -34,8 +36,10 @@ func NewIncusClient(ctx context.Context, incusRemoteName string) (*IncusClient, 
 	}
 
 	return &IncusClient{
-		client: incusServer,
-		ctx:    ctx,
+		bootableISOPool:   bootableISOPool,
+		bootableISOSource: bootableISOSource,
+		client:            incusServer,
+		ctx:               ctx,
 	}, nil
 }
 
@@ -94,6 +98,14 @@ func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, disks []uti
 		if i != 0 {
 			instanceArgs.Devices[diskKey]["path"] = diskKey
 		}
+	}
+
+	// Attach bootable ISO to run migration of this VM
+	instanceArgs.Devices["migration-iso"] = map[string]string{
+		"type": "disk",
+		"pool": c.bootableISOPool,
+		"source": c.bootableISOSource,
+		"boot.priority": "10",
 	}
 
 	for _, nic := range nics {
