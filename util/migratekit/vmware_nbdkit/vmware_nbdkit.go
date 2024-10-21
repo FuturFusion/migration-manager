@@ -185,7 +185,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	}()
 
 	for index, server := range s.Servers {
-		t, err := target.NewIncus(s.VirtualMachine, server.Disk)
+		t, err := target.NewDiskTarget(s.VirtualMachine, server.Disk)
 		if err != nil {
 			return err
 		}

@@ -4,22 +4,20 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"slices"
 
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/common"
-	"github.com/FuturFusion/migration-manager/util/incus"
 	"github.com/FuturFusion/migration-manager/util/vmware"
 )
 
 type appFlags struct {
 	common.CmdGlobalFlags
-	common.CmdIncusFlags
 	common.CmdVMwareFlags
 
 	cutover bool
+	vmName  string
 }
 
 func main() {
@@ -65,9 +63,10 @@ func (c *appFlags) Command() *cobra.Command {
 	cmd.RunE = c.Run
 
 	c.CmdGlobalFlags.AddFlags(cmd)
-	c.CmdIncusFlags.AddFlags(cmd)
 	c.CmdVMwareFlags.AddFlags(cmd)
 	cmd.Flags().BoolVar(&c.cutover, "cutover", false, "Shutdown VMware VMs, perform a final data transfer and start Incus VMs")
+	cmd.Flags().StringVar(&c.vmName, "vm-name", "", "VM name from which to import disk (required)")
+	cmd.MarkFlagRequired("vm-name")
 
 	return cmd
 }
@@ -77,7 +76,7 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("This tool must be run as root")
 	}
 
-	if !util.PathExists("/dev/incus/") {
+	if !util.PathExists("/dev/virtio-ports/org.linuxcontainers.incus") {
 		return fmt.Errorf("This tool is designed to be run within an Incus VM")
 	}
 
@@ -89,20 +88,8 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Connect to Incus.
-	incusClient, err := incus.NewIncusClient(ctx, c.IncusRemoteName)
-	if err != nil {
-		return err
-	}
-
 	// Get a list of all VMs.
 	vmwareVms, err := vmwareClient.GetVMs()
-	if err != nil {
-		return err
-	}
-
-	// Get a list of all Incus VMs.
-	incusVms, err := incusClient.GetVMNames()
 	if err != nil {
 		return err
 	}
@@ -113,8 +100,7 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, vm := range vmwareVms {
-		if !slices.Contains(incusVms, vm.Name()) {
-			fmt.Printf("VMware VM '%s' hasn't yet been imported into Incus; skipping disk migration.\n", vm.Name())
+		if vm.Name() != c.vmName {
 			continue
 		}
 
@@ -127,12 +113,7 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 
 		err = vmwareClient.ExportDisks(vm)
 		if err != nil {
-			fmt.Printf("  ERROR: Failed to export disk(s) from VMware: %q\n", err)
-		}
-
-		err = incusClient.ImportVMDiskIMage(vm.Name())
-		if err != nil {
-			fmt.Printf("  ERROR: Failed to import disk(s) to Incus: %q\n", err)
+			return err
 		}
 	}
 
