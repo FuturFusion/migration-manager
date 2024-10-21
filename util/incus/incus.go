@@ -86,7 +86,7 @@ func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, disks []uti
 		fmt.Printf("    Adding disk with capacity %0.2fGiB from source '%s'\n", float32(disk.Size)/1024/1024/1024, disk.Name)
 		diskKey := "root"
 		if i != 0 {
-			diskKey = "disk" + string(i)
+			diskKey = fmt.Sprintf("disk%d", i)
 		}
 
 		instanceArgs.Devices[diskKey] = make(map[string]string)
@@ -108,9 +108,19 @@ func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, disks []uti
 		"boot.priority": "10",
 	}
 
-	for _, nic := range nics {
-		// FIXME actually add to instance
-		fmt.Printf("    Adding NIC for network %q with MAC %s\n", nic.Network, nic.Hwaddr)
+	// Add NIC(s) to the new instance.
+	for i, nic := range nics {
+		fmt.Printf("    Adding NIC#%d for network %q with MAC %s\n", i, nic.Network, nic.Hwaddr)
+		deviceName := fmt.Sprintf("eth%d", i)
+		for _, profileDevice := range profile.Devices {
+			if profileDevice["type"] == "nic" && profileDevice["network"] == nic.Network {
+				instanceArgs.Devices[deviceName] = make(map[string]string)
+				for k, v := range profileDevice {
+					instanceArgs.Devices[deviceName][k] = v
+				}
+				instanceArgs.Devices[deviceName]["hwaddr"] = nic.Hwaddr
+			}
+		}
 	}
 
         // Create the instance.
@@ -142,6 +152,20 @@ func (c *IncusClient) GetVMNames() ([]string, error) {
 
 	for _, instance := range instances {
 		ret = append(ret, instance.Name)
+	}
+
+	return ret, nil
+}
+
+func (c *IncusClient) GetNetworkNames() ([]string, error) {
+	ret := []string{}
+	networks, err := c.client.GetNetworks()
+	if err != nil {
+		return ret, err
+	}
+
+	for _, network := range networks {
+		ret = append(ret, network.Name)
 	}
 
 	return ret, nil

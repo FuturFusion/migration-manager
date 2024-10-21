@@ -154,7 +154,7 @@ func GetVMDiskInfo(vm mo.VirtualMachine) []util.DiskInfo {
 	return ret
 }
 
-func GetVMNetworkInfo(vm mo.VirtualMachine) []util.NICInfo {
+func GetVMNetworkInfo(vm mo.VirtualMachine, mapping map[string]string) []util.NICInfo {
 	ret := []util.NICInfo{}
 
 	devices := object.VirtualDeviceList(vm.Config.Hardware.Device)
@@ -163,7 +163,12 @@ func GetVMNetworkInfo(vm mo.VirtualMachine) []util.NICInfo {
 		case types.BaseVirtualEthernetCard:
 			b, ok := md.GetVirtualEthernetCard().VirtualDevice.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
 			if ok {
-				ret = append(ret, util.NICInfo{Network: b.Network.Value, Hwaddr: md.GetVirtualEthernetCard().MacAddress})
+				mappedValue, exists := mapping[b.Network.Value]
+				if exists {
+					ret = append(ret, util.NICInfo{Network: mappedValue, Hwaddr: md.GetVirtualEthernetCard().MacAddress})
+				} else {
+					fmt.Printf("  WARNING: No mapping defined for VMware network '%s', skipping...\n", b.Network.Value)
+				}
 			}
 		}
 	}

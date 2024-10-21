@@ -7,9 +7,11 @@ import (
 	"os"
 	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
+	"github.com/vmware/govmomi/object"
 
 	"github.com/FuturFusion/migration-manager/cmd/common"
 	internalUtil "github.com/FuturFusion/migration-manager/util"
@@ -28,6 +30,7 @@ type appFlags struct {
 	bootableISOSource string
 	excludeVmRegex    string
 	includeVmRegex    string
+	networkMapping    string
 }
 
 func main() {
@@ -78,10 +81,11 @@ func (c *appFlags) Command() *cobra.Command {
 	c.CmdIncusFlags.AddFlags(cmd)
 	c.CmdVMwareFlags.AddFlags(cmd)
 	cmd.Flags().BoolVar(&c.autoImport, "auto-import", false, "Automatically import VMs; may automatically DELETE existing Incus VMs")
-	cmd.Flags().StringVar(&c.excludeVmRegex, "exclude-vm-regex", "", "Regular expression to specify which VMs to exclude from import")
-	cmd.Flags().StringVar(&c.includeVmRegex, "include-vm-regex", "", "Regular expression to specify which VMs to import")
 	cmd.Flags().StringVar(&c.bootableISOPool, "bootable-iso-pool", "iscsi", "Incus storage pool for the bootable migration ISO image")
 	cmd.Flags().StringVar(&c.bootableISOSource, "bootable-iso-source", "migration-manager-minimal-boot.iso", "Incus source for the bootable migration ISO image")
+	cmd.Flags().StringVar(&c.excludeVmRegex, "exclude-vm-regex", "", "Regular expression to specify which VMs to exclude from import")
+	cmd.Flags().StringVar(&c.includeVmRegex, "include-vm-regex", "", "Regular expression to specify which VMs to import")
+	cmd.Flags().StringVar(&c.networkMapping, "network-mapping", "", "Comma separated list of vmware:incus network mappings")
 
 	return cmd
 }
@@ -103,26 +107,81 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	/*
+		Network mapping from VMware to Incus.
+	*/
 
-	// Loop through existing VMware networks.
-	networks, err := vmwareClient.GetNetworks()
+	// Get a list of all VMware networks.
+	vmwareNetworks, err := vmwareClient.GetNetworks()
 	if err != nil {
 		return err
 	}
 
-	for _, network := range networks {
-		fmt.Printf("Inspecting VMware Network '%s'...\n", network)
-/*
-		fmt.Printf("  Summary:\n")
-		fmt.Printf("    Network ID: %s\n", network.Summary.GetNetworkSummary().Network.Value)
-		fmt.Printf("    Name: %s\n", network.Summary.GetNetworkSummary().Name)
-		fmt.Printf("    Accessible: %d\n", network.Summary.GetNetworkSummary().Accessible)
-		fmt.Printf("  Hosts: %q\n", network.Host)
-		fmt.Printf("  VMs: %q\n", network.Vm)
-*/
+	// Get a list of all Incus networks.
+	incusNetworks, err := incusClient.GetNetworkNames()
+	if err != nil {
+		return err
 	}
-	fmt.Printf("\n\n\n")
 
+	networkMapping := make(map[string]string)
+
+	if c.networkMapping != "" {
+		for _, split := range strings.Split(c.networkMapping, ",") {
+			networks := strings.Split(split, ":")
+			if len(networks) != 2 {
+				continue
+			}
+
+			if !slices.ContainsFunc(vmwareNetworks, func(n object.NetworkReference) bool { return n.Reference().Value == networks[0] }) {
+				fmt.Printf("WARNING: '%s' is not a VMware network, skipping provided mapping.\n", networks[0])
+				continue
+			}
+
+			if !slices.Contains(incusNetworks, networks[1]) {
+				fmt.Printf("WARNING: '%s' is not an Incus network, skipping provided mapping.\n", networks[1])
+				continue
+			}
+
+			networkMapping[networks[0]] = networks[1]
+		}
+	} else {
+		fmt.Printf("The following networks exist in Incus:\n")
+		for _, network := range incusNetworks {
+			fmt.Printf("  %s\n", network)
+		}
+
+		fmt.Printf("Please specify a mapping (if any) for existing VMware networks:\n")
+		for _, network := range vmwareNetworks {
+			fmt.Printf("  VMware Network '%s'...\n", network)
+
+			selectedNetwork, err := asker.AskString("    Which Incus network should this be mapped to (empty to ignore)? ", "", func(answer string) error {
+				if answer == "" || slices.Contains(incusNetworks, answer) {
+					return nil
+				}
+
+				return fmt.Errorf("Please enter a valid Incus network name")
+			})
+
+			if err != nil {
+				fmt.Printf("Got an error, moving to next network: %q", err)
+				continue
+			}
+
+			if selectedNetwork != "" {
+				networkMapping[network.Reference().Value] = selectedNetwork
+			}
+		}
+	}
+
+	fmt.Printf("VMware -> Incus network mapping(s):\n")
+	for k, v := range networkMapping {
+		fmt.Printf("  %s -> %s\n", k, v)
+	}
+	fmt.Printf("\n\n")
+
+	/*
+		Import VMware VMs into Incus.
+	*/
 
 	// Get a list of all VMware VMs.
 	vmwareVms, err := vmwareClient.GetVMs()
@@ -153,7 +212,7 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 
 		p, err := vmwareClient.GetVMProperties(vm)
 		if err != nil {
-			fmt.Printf("  WARNING -- Unable to get VM properties: %q\n\n\n", err)
+			fmt.Printf("  WARNING: Unable to get VM properties: %q\n\n\n", err)
 			continue
 		}
 
@@ -187,13 +246,13 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		if !ctkEnabled {
-			fmt.Printf("  WARNING -- VM doesn't have Changed Block Tracking enabled, so we can't perform near-live migration.\n")
+			fmt.Printf("  WARNING: VM doesn't have Changed Block Tracking enabled, so we can't perform near-live migration.\n")
 		}
 
 		incusInstanceArgs := internalUtil.ConvertVMwareMetadataToIncus(p)
 
 		disks := vmware.GetVMDiskInfo(p)
-		nics := vmware.GetVMNetworkInfo(p)
+		nics := vmware.GetVMNetworkInfo(p, networkMapping)
 
 		fmt.Printf("  UUID: %s\n", p.Summary.Config.InstanceUuid)
 		fmt.Printf("  Memory: %d MB\n", p.Summary.Config.MemorySizeMB)
