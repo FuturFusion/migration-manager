@@ -62,17 +62,26 @@ func ConvertVMwareMetadataToIncus(vm mo.VirtualMachine) api.InstancesPost {
         }
 
         ret.Config = make(map[string]string)
+
+	// Set basic config fields.
         ret.Config["image.architecture"] = ret.Architecture
         ret.Config["image.description"] = "Auto-imported from VMware"
         ret.Config["image.os"] = strings.TrimSuffix(vm.Summary.Config.GuestId, "Guest")
         ret.Config["image.release"] = vm.Summary.Config.GuestFullName
 
+	// Apply CPU and memory limits
         ret.Config["limits.cpu"] = fmt.Sprintf("%d", vm.Summary.Config.NumCpu)
         ret.Config["limits.memory"] = fmt.Sprintf("%dMiB", vm.Summary.Config.MemorySizeMB)
 
-	ret.Description = ret.Config["image.description"]
+	// Handle VMs without UEFI and/or secure boot
+	if vm.Config.Firmware == "bios" {
+		ret.Config["security.csm"] = "true"
+		ret.Config["security.secureboot"] = "false"
+	} else if !*vm.Capability.SecureBootSupported {
+		ret.Config["security.secureboot"] = "false"
+	}
 
-	// FIXME handle secure boot config
+	ret.Description = ret.Config["image.description"]
 
 	return ret
 }
