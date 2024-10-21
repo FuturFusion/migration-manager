@@ -100,7 +100,7 @@ func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, disks []uti
 		}
 	}
 
-	// Attach bootable ISO to run migration of this VM
+	// Attach bootable ISO to run migration of this VM.
 	instanceArgs.Devices["migration-iso"] = map[string]string{
 		"type": "disk",
 		"pool": c.bootableISOPool,

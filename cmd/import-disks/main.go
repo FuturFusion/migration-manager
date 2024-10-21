@@ -16,7 +16,6 @@ type appFlags struct {
 	common.CmdGlobalFlags
 	common.CmdVMwareFlags
 
-	cutover bool
 	vmName  string
 }
 
@@ -43,28 +42,27 @@ func main() {
 func (c *appFlags) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "import-disks"
-	cmd.Short = "Import VMware VM disks into Incus"
+	cmd.Short = "Import VMware VM disks into an Incus VM"
 	cmd.Long = `Description:
-  Import VMware VM disks into Incus
+  Import VMware VM disks into an Incus VM
 
-  This tool imports VM disks from VMware into Incus. Prior to importing any
-  disks, you must first run the `+"`import-vm-metadata`"+` utility to
-  populate VM metadata in Incus.
+  This tool directly imports VM disks from VMware into an Incus VM. Prior to
+  using this tool, you must first run the `+"`import-vm-metadata`"+` utility
+  to populate VM metadata in Incus.
 
   By default, the state of VMs running in VMware will be unchanged. A
   snapshot of the disk(s) will be created, then transferred via this tool.
   If possible, incremental copies are used to speed up the process.
 
-  When you are ready to cut over to Incus, pass the `+"`--cutover`"+` flag
-  which will shutdown the VMware VMs, do a final data transfer and then
-  start the VMs in Incus.
+  In the current implementation, tracking of snapshot state will be lost if
+  the VM is restarted, resulting in a full disk copy being require when the
+  VM is powered on once more.
 `
 
 	cmd.RunE = c.Run
 
 	c.CmdGlobalFlags.AddFlags(cmd)
 	c.CmdVMwareFlags.AddFlags(cmd)
-	cmd.Flags().BoolVar(&c.cutover, "cutover", false, "Shutdown VMware VMs, perform a final data transfer and start Incus VMs")
 	cmd.Flags().StringVar(&c.vmName, "vm-name", "", "VM name from which to import disk (required)")
 	cmd.MarkFlagRequired("vm-name")
 
@@ -92,11 +90,6 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 	vmwareVms, err := vmwareClient.GetVMs()
 	if err != nil {
 		return err
-	}
-
-	if c.cutover {
-		fmt.Printf("cut over not currently supported!\n")
-		return nil
 	}
 
 	for _, vm := range vmwareVms {
