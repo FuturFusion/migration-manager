@@ -15,6 +15,12 @@ incus start $INCUS_VM_NAME
 until incus file push ~/import-disks $INCUS_VM_NAME/root/; do
 	sleep 1
 done
+
+# Ensure the VMware endpoint is reachable before we try to sync the disk.
+until incus exec $INCUS_VM_NAME -- ping -c 1 10.123.221.251 > /dev/null; do
+	sleep 1
+done
+
 incus exec $INCUS_VM_NAME -- /root/import-disks --vm-name $INCUS_VM_NAME --vmware-endpoint 10.123.221.251 --vmware-insecure --vmware-username vsphere.local\\mgibbens --vmware-password FFCloud@2024
 
 ## Finalize step: Stop the VM, detach migration ISO and start VM.
