@@ -118,18 +118,6 @@ func (c *VMwareClient) GetVMDisks(vm *object.VirtualMachine) []*types.VirtualDis
 }
 
 func (c *VMwareClient) ExportDisks(vm *object.VirtualMachine) error {
-	for _, disk := range c.GetVMDisks(vm) {
-		_, err := vmware.GetChangeID(disk)
-		if err != nil {
-			b, ok := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
-			if ok {
-				fmt.Printf("  WARNING: Changed Block Tracking not enabled for disk %q; will only be able to perform full-disk migration\n", b.GetVirtualDeviceFileBackingInfo().FileName)
-			} else {
-				return fmt.Errorf("Changed Block Tracking not enabled for disk, and unable to determine the disk name?")
-			}
-		}
-	}
-
 	servers := vmware_nbdkit.NewNbdkitServers(c.vddkConfig, vm)
 	err := servers.MigrationCycle(c.ctx, false)
 	if err != nil {

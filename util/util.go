@@ -57,7 +57,7 @@ func ConvertVMwareMetadataToIncus(vm mo.VirtualMachine) api.InstancesPost {
 			ret.Architecture = "armv8l"
 		}
 	} else {
-		fmt.Printf("    WARNING -- defaulting architecture to x86_64 (got %s/%s)\n", guestInfo["architecture"], guestInfo["bits"])
+		fmt.Printf("  WARNING: Defaulting architecture to x86_64 (got %s/%s)\n", guestInfo["architecture"], guestInfo["bits"])
 		ret.Architecture = "x86_64"
         }
 

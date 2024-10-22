@@ -9,14 +9,15 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/vim25/types"
 
 	"github.com/FuturFusion/migration-manager/cmd/common"
 	internalUtil "github.com/FuturFusion/migration-manager/util"
 	"github.com/FuturFusion/migration-manager/util/ask"
 	"github.com/FuturFusion/migration-manager/util/incus"
+	migratekitVmware "github.com/FuturFusion/migration-manager/util/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/util/vmware"
 )
 
@@ -235,18 +236,17 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		ctkEnabled := false
-		if p.Config != nil && p.Config.ExtraConfig != nil {
-			for _, v := range p.Config.ExtraConfig {
-				if v.GetOptionValue().Key == "ctkEnabled" {
-					ctkEnabled = util.IsTrue(v.GetOptionValue().Value.(string))
-					break
+		// Check if CBT is enabled for VM disk(s)
+		for _, disk := range vmwareClient.GetVMDisks(vm) {
+			_, err := migratekitVmware.GetChangeID(disk)
+			if err != nil {
+				b, ok := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
+				if ok {
+					fmt.Printf("  WARNING: Changed Block Tracking not enabled for disk %q; will only be able to perform full-disk migration\n", b.GetVirtualDeviceFileBackingInfo().FileName)
+				} else {
+					return fmt.Errorf("Changed Block Tracking not enabled for disk, and unable to determine the disk name?")
 				}
 			}
-		}
-
-		if !ctkEnabled {
-			fmt.Printf("  WARNING: VM doesn't have Changed Block Tracking enabled, so we can't perform near-live migration.\n")
 		}
 
 		incusInstanceArgs := internalUtil.ConvertVMwareMetadataToIncus(p)
