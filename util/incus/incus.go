@@ -123,6 +123,9 @@ func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, disks []uti
 		}
 	}
 
+	// Don't set any profiles by default.
+	instanceArgs.Profiles = []string{}
+
         // Create the instance.
         op, err := c.client.CreateInstance(instanceArgs)
         if err != nil {
