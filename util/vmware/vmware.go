@@ -121,9 +121,12 @@ func (c *VMwareClient) ExportDisks(vm *object.VirtualMachine) error {
 	for _, disk := range c.GetVMDisks(vm) {
 		_, err := vmware.GetChangeID(disk)
 		if err != nil {
-			// TODO handle non-incremental import for disks without CBT enabled
-			fmt.Printf("  ERROR: Unable to get ChangeID: %q\n", err)
-			return nil
+			b, ok := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
+			if ok {
+				fmt.Printf("  WARNING: Changed Block Tracking not enabled for disk %q; will only be able to perform full-disk migration\n", b.GetVirtualDeviceFileBackingInfo().FileName)
+			} else {
+				return fmt.Errorf("Changed Block Tracking not enabled for disk, and unable to determine the disk name?")
+			}
 		}
 	}
 
