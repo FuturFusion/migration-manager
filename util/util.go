@@ -92,5 +92,16 @@ func ConvertVMwareMetadataToIncus(vm mo.VirtualMachine) api.InstancesPost {
 
 	ret.Description = ret.Config["image.description"]
 
+	// Handle Windows-specific configuration.
+	if strings.Contains(ret.Config["image.os"], "windows") {
+		// Set some additional QEMU options.
+		ret.Config["raw.qemu"] = "-device intel-hda -device hda-duplex -audio spice"
+
+		// If image.os contains the string "Windows", then the incus-agent config drive won't be mapped.
+		// But we need that when running the initial migration logic from the ISO image. Reverse the string
+		// for now, and un-reverse it before finalizing the VM.
+		ret.Config["image.os"] = strings.Replace(ret.Config["image.os"], "windows", "swodniw", 1)
+	}
+
 	return ret
 }
