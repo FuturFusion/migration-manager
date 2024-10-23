@@ -69,8 +69,6 @@ func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, disks []uti
 		return err
 	}
 
-	instanceArgs.Devices = make(map[string]map[string]string)
-
 	// Get the existing root device, if it exists.
 	defaultRoot, exists := profile.Devices["root"]
 	if !exists {

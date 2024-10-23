@@ -62,6 +62,7 @@ func ConvertVMwareMetadataToIncus(vm mo.VirtualMachine) api.InstancesPost {
         }
 
         ret.Config = make(map[string]string)
+        ret.Devices = make(map[string]map[string]string)
 
 	// Set basic config fields.
         ret.Config["image.architecture"] = ret.Architecture
@@ -72,6 +73,14 @@ func ConvertVMwareMetadataToIncus(vm mo.VirtualMachine) api.InstancesPost {
 	// Apply CPU and memory limits.
         ret.Config["limits.cpu"] = fmt.Sprintf("%d", vm.Summary.Config.NumCpu)
         ret.Config["limits.memory"] = fmt.Sprintf("%dMiB", vm.Summary.Config.MemorySizeMB)
+
+	// Add TPM if needed.
+	if *vm.Capability.SecureBootSupported {
+		ret.Devices["vtpm"] = map[string]string{
+			"type": "tpm",
+			"path": "/dev/tpm0",
+		}
+	}
 
 	// Handle VMs without UEFI and/or secure boot.
 	if vm.Config.Firmware == "bios" {
