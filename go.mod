@@ -1,6 +1,6 @@
 module github.com/FuturFusion/migration-manager
 
-go 1.22.7
+go 1.23.2
 
 require (
 	github.com/gosimple/slug v1.14.0
@@ -10,6 +10,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/vmware/govmomi v0.44.1
+	golang.org/x/term v0.24.0
 	libguestfs.org/libnbd v1.20.0
 )
 
@@ -39,7 +40,6 @@ require (
 	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/term v0.24.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
