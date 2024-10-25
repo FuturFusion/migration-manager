@@ -9,9 +9,9 @@ import (
 	"github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/cliconfig"
+	"github.com/lxc/incus/v6/shared/revert"
 
 	"github.com/FuturFusion/migration-manager/util"
-	"github.com/FuturFusion/migration-manager/util/revert"
 )
 
 type IncusClient struct {

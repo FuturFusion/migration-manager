@@ -9,13 +9,13 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/lxc/incus/v6/shared/ask"
 	"github.com/spf13/cobra"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/types"
 
 	"github.com/FuturFusion/migration-manager/cmd/common"
 	internalUtil "github.com/FuturFusion/migration-manager/util"
-	"github.com/FuturFusion/migration-manager/util/ask"
 	"github.com/FuturFusion/migration-manager/util/incus"
 	migratekitVmware "github.com/FuturFusion/migration-manager/util/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/util/vmware"

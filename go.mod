@@ -5,7 +5,7 @@ go 1.23.2
 require (
 	github.com/gosimple/slug v1.14.0
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
-	github.com/lxc/incus/v6 v6.6.0
+	github.com/lxc/incus/v6 v6.6.1-0.20241025021808-819de904b3ae
 	github.com/schollz/progressbar/v3 v3.16.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
