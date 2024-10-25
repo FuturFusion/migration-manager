@@ -17,11 +17,13 @@ import (
 type IncusClient struct {
 	bootableISOPool   string
 	bootableISOSource string
+	incusProfile      string
+	incusProject      string
 	client            incus.InstanceServer
 	ctx               context.Context
 }
 
-func NewIncusClient(ctx context.Context, incusRemoteName string, bootableISOPool string, bootableISOSource string) (*IncusClient, error) {
+func NewIncusClient(ctx context.Context, incusRemoteName string, incusProject string, incusProfile string, bootableISOPool string, bootableISOSource string) (*IncusClient, error) {
 	var incusServer incus.InstanceServer
 	var err error
 
@@ -35,9 +37,20 @@ func NewIncusClient(ctx context.Context, incusRemoteName string, bootableISOPool
 		return nil, err
 	}
 
+	if incusProject != "" {
+		incusServer = incusServer.UseProject(incusProject)
+	} else {
+		info, err := incusServer.GetConnectionInfo()
+		if err == nil {
+			incusProject = info.Project
+		}
+	}
+
 	return &IncusClient{
 		bootableISOPool:   bootableISOPool,
 		bootableISOSource: bootableISOSource,
+		incusProfile:      incusProfile,
+		incusProject:      incusProject,
 		client:            incusServer,
 		ctx:               ctx,
 	}, nil
@@ -63,10 +76,10 @@ func (c *IncusClient) CreateInstance(instanceArgs api.InstancesPost, disks []uti
         revert := revert.New()
         defer revert.Fail()
 
-	// Fetch default profile to get proper root device definition.
-	profile, _, err := c.client.GetProfile("default")
-	if err != nil && len(disks) != 0 {
-		return err
+	// Fetch specified profile to get proper root device definition.
+	profile, _, err := c.client.GetProfile(c.incusProfile)
+	if err != nil {
+		return fmt.Errorf("Profile '%s' does not exist in project '%s'", c.incusProfile, c.incusProject)
 	}
 
 	// Get the existing root device, if it exists.

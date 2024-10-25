@@ -103,7 +103,7 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Connect to Incus.
-	incusClient, err := incus.NewIncusClient(ctx, c.IncusRemoteName, c.bootableISOPool, c.bootableISOSource)
+	incusClient, err := incus.NewIncusClient(ctx, c.IncusRemoteName, c.IncusProject, c.IncusProfile, c.bootableISOPool, c.bootableISOSource)
 	if err != nil {
 		return err
 	}

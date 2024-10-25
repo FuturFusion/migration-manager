@@ -12,6 +12,8 @@ type CmdGlobalFlags struct {
 
 // Common flags used when connecting to an Incus server.
 type CmdIncusFlags struct {
+	IncusProfile    string
+	IncusProject    string
 	IncusRemoteName string
 }
 
@@ -29,6 +31,8 @@ func (c *CmdGlobalFlags) AddFlags(cmd *cobra.Command) {
 }
 
 func (c *CmdIncusFlags) AddFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&c.IncusProfile, "incus-profile", "default", "Incus profile to use as the base for new VM")
+	cmd.Flags().StringVar(&c.IncusProject, "incus-project", "", "Incus project to import VMs into")
 	cmd.Flags().StringVar(&c.IncusRemoteName, "incus-remote-name", "", "Incus remote name; if empty, will attempt to connect via local Unix socket")
 }
 
