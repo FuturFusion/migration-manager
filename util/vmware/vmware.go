@@ -4,8 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os/exec"
+	"regexp"
+	"strings"
 
 	"github.com/vmware/govmomi/find"
+	"github.com/vmware/govmomi/guest/toolbox"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/session/cache"
 	"github.com/vmware/govmomi/vim25"
@@ -20,6 +24,7 @@ import (
 )
 
 type VMwareClient struct {
+	auth       *types.NamePasswordAuthentication
 	client     *vim25.Client
 	ctx        context.Context
 	vddkConfig *vmware_nbdkit.VddkConfig
@@ -125,6 +130,47 @@ func (c *VMwareClient) ExportDisks(vm *object.VirtualMachine) error {
 	}
 
 	return nil
+}
+
+func (c *VMwareClient) BitLockerEnabledForDrive(vm *object.VirtualMachine, drive string) (string, error) {
+	toolboxClient, err := toolbox.NewClient(c.ctx, c.client, vm.Reference(), c.auth)
+	if err != nil {
+		return "", err
+	}
+
+	if !strings.Contains(string(toolboxClient.GuestFamily), "windows") {
+		return "", fmt.Errorf("BitLocker is only applicable to Windows VMs")
+	}
+
+	var out strings.Builder
+	cmd := &exec.Cmd{
+		Path:   "manage-bde",
+		Args:   []string{"-status " + drive},
+		Stdout: &out,
+		Stderr: &out,
+	}
+
+	err = toolboxClient.Run(c.ctx, cmd)
+	if err != nil {
+		return "", err
+	}
+
+	unencryptedRegex := regexp.MustCompile(`Encryption Method:\s+None`)
+	enabledRegex := regexp.MustCompile(`Protection Status:\s+Protection On`)
+	tempDisabledRegex := regexp.MustCompile(`Protection Status:\s+Protection Off \(\d+ reboots left\)`)
+	disabledRegex := regexp.MustCompile(`Protection Status:\s+Protection Off`)
+
+	if unencryptedRegex.Match([]byte(out.String())) {
+		return "UNENCRYPTED", nil
+	} else if enabledRegex.Match([]byte(out.String())) {
+		return "ENABLED", nil
+	} else if tempDisabledRegex.Match([]byte(out.String())) {
+		return "TEMP_DISABLED", nil
+	} else if disabledRegex.Match([]byte(out.String())) {
+		return "DISABLED", nil
+	}
+
+	return "", fmt.Errorf("Unable to determine status of BitLocker")
 }
 
 func GetVMDiskInfo(vm mo.VirtualMachine) []util.DiskInfo {
