@@ -8,10 +8,11 @@ import (
 	"strings"
 
 	"github.com/flosch/pongo2/v4"
-	"github.com/spf13/cobra"
-
 	"github.com/lxc/distrobuilder/shared"
 	"github.com/lxc/distrobuilder/windows"
+	"github.com/spf13/cobra"
+
+	"github.com/FuturFusion/migration-manager/cmd/common"
 )
 
 type appFlags struct {
@@ -38,7 +39,7 @@ func main() {
 
 	// Version handling
 	app.SetVersionTemplate("{{.Version}}\n")
-	app.Version = "0.0.1"
+	app.Version = common.Version
 
 	// Run the main command and handle errors
 	err := app.Execute()
