@@ -24,6 +24,17 @@ $ incus exec DebianTest -- /root/postinst-scripts/debian.sh /dev/sda1
 $ ./postinst-scripts/finalize.sh
 ```
 
+Windows-specific notes
+----------------------
+
+By default, Windows sets up encrypted partitions. This default uses a "clear key" that is trivial to derive and then mount the BitLocker volume. After install, the administrator can enable further BitLocker encryption features, such as storing the key in a TPM or using a passphrase.
+
+If BitLocker has been enabled on a VM, one of two steps must be taken prior to beginning the final migration processes:
+
+* Run `Suspend-BitLocker -MountPoint "C:" -RebootCount 1` prior to final VM shutdown in VMware. The migration manager will then perform a final disk sync and be able to perform post-install configuration before starting the VM in Incus. Upon boot, Windows will automatically re-initialize a new TPM-based encryption key.
+
+* A BitLocker numeric recovery password can be provided. This will allow the migration manager to perform post-install configuration before starting the VM in Incus, **but** on first boot in Incus a user must connect to the VGA console and re-supply the recovery password before Windows will be able to boot and re-initialize a new TPM-based encryption key.
+
 TODO
 ====
 
@@ -36,8 +47,6 @@ TODO
 
 * Windows VMs:
   - Disks with BitLocker need to be decrypted before migration process can start
-    - "Default" encryption transparently handled via `dislocker`
-    - TODO: Detect if BitLocker is active prior to starting migration
-    - TODO: Take user-supplied BitLocker password and use to mount
+    - TODO: Automate detection of BitLocker in VM and run `Suspend-BitLocker -MountPoint "C:" -RebootCount 1` if needed just prior to final migration disk sync
   - viogpudo may have an issue when injected: https://github.com/virtio-win/kvm-guest-drivers-windows/issues/1102
     - Manually installing after the fact works just fine; ignoring for the moment
