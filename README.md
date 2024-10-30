@@ -24,6 +24,18 @@ $ incus exec DebianTest -- /root/postinst-scripts/debian.sh /dev/sda1
 $ ./postinst-scripts/finalize.sh
 ```
 
+Enabling incremental disk migration
+-----------------------------------
+
+Changed Block Tracking must be enabled for a VM to support incremental disk migrations. Without CBT, migration is still possible but downtime may be significantly greater as the entire disk must be transferred during the cutover period, rather than a small incremental update.
+
+Prior to migration, stop the VM and set the following configuration options:
+
+  * `ctkEnabled=TRUE`
+  * `scsix:x.ctkEnabled=TRUE` for each disk attached to the VM
+
+The VM must be powered on before CBT becomes fully enabled.
+
 Windows-specific notes
 ----------------------
 

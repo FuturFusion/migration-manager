@@ -12,12 +12,10 @@ import (
 	"github.com/lxc/incus/v6/shared/ask"
 	"github.com/spf13/cobra"
 	"github.com/vmware/govmomi/object"
-	"github.com/vmware/govmomi/vim25/types"
 
 	"github.com/FuturFusion/migration-manager/cmd/common"
 	internalUtil "github.com/FuturFusion/migration-manager/util"
 	"github.com/FuturFusion/migration-manager/util/incus"
-	migratekitVmware "github.com/FuturFusion/migration-manager/util/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/util/vmware"
 )
 
@@ -211,7 +209,7 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 
 		fmt.Printf("Inspecting VMware VM '%s'...\n", vm)
 
-		p, err := vmwareClient.GetVMProperties(vm)
+		vmProps, err := vmwareClient.GetVMProperties(vm)
 		if err != nil {
 			fmt.Printf("  WARNING: Unable to get VM properties: %q\n\n\n", err)
 			continue
@@ -237,21 +235,14 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		// Check if CBT is enabled for VM disk(s).
-		for _, disk := range vmwareClient.GetVMDisks(vm) {
-			_, err := migratekitVmware.GetChangeID(disk)
-			if err != nil {
-				b, ok := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
-				if ok {
-					fmt.Printf("  WARNING: Changed Block Tracking not enabled for disk %q; will only be able to perform full-disk migration\n", b.GetVirtualDeviceFileBackingInfo().FileName)
-				} else {
-					return fmt.Errorf("Changed Block Tracking not enabled for disk, and unable to determine the disk name?")
-				}
-			}
+		// TODO Also check any scsix:x.ctkEnabled options(s), but I don't see an easy way to reliably map a disk to its scsi device for a VM.
+		if !*vmProps.Config.ChangeTrackingEnabled {
+			fmt.Printf("  WARNING: Changed Block Tracking not enabled for VM '%s'; will only be able to perform full-disk migration. (Enable via the VM's `ctkEnabled` and `scsix:x.ctkEnabled` config options.)\n", vm.Name())
 		}
 
 		// If this appears to be a Windows VM, ask if BitLocker is enabled.
 		bitlockerRecoveryKey := ""
-		if strings.Contains(p.Summary.Config.GuestId, "windows") {
+		if strings.Contains(vmProps.Summary.Config.GuestId, "windows") {
 			bitlockerEnabled, err := asker.AskBool("Does this VM have BitLocker encryption enabled? [default=no]: ", "no")
 			if err != nil {
 				fmt.Printf("Got an error, moving to next VM: %q", err)
@@ -267,14 +258,14 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		incusInstanceArgs := internalUtil.ConvertVMwareMetadataToIncus(p)
+		incusInstanceArgs := internalUtil.ConvertVMwareMetadataToIncus(vmProps)
 
-		disks := vmware.GetVMDiskInfo(p)
-		nics := vmware.GetVMNetworkInfo(p, networkMapping)
+		disks := vmware.GetVMDiskInfo(vmProps)
+		nics := vmware.GetVMNetworkInfo(vmProps, networkMapping)
 
-		fmt.Printf("  UUID: %s\n", p.Summary.Config.InstanceUuid)
-		fmt.Printf("  Memory: %d MB\n", p.Summary.Config.MemorySizeMB)
-		fmt.Printf("  CPU: %d\n", p.Summary.Config.NumCpu)
+		fmt.Printf("  UUID: %s\n", vmProps.Summary.Config.InstanceUuid)
+		fmt.Printf("  Memory: %d MB\n", vmProps.Summary.Config.MemorySizeMB)
+		fmt.Printf("  CPU: %d\n", vmProps.Summary.Config.NumCpu)
 		if bitlockerRecoveryKey != "" {
 			fmt.Printf("  BitLocker recovery key: %s\n", bitlockerRecoveryKey)
 		}
