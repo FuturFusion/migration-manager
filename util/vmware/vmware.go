@@ -133,6 +133,10 @@ func (c *VMwareClient) ExportDisks(vm *object.VirtualMachine) error {
 }
 
 func (c *VMwareClient) BitLockerEnabledForDrive(vm *object.VirtualMachine, drive string) (string, error) {
+	if c.auth == nil {
+		return "", fmt.Errorf("No auth token configured for VMware tools")
+	}
+
 	toolboxClient, err := toolbox.NewClient(c.ctx, c.client, vm.Reference(), c.auth)
 	if err != nil {
 		return "", err

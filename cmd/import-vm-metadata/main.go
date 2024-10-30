@@ -241,22 +241,45 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		// If this appears to be a Windows VM, ask if BitLocker is enabled.
-		bitlockerRecoveryKey := ""
+		// TODO We'll handle BitLocker detection and temporary suspension as part of disk sync and reporting back to the migration manager.
+		/*bitlockerRecoveryKey := ""
 		if strings.Contains(vmProps.Summary.Config.GuestId, "windows") {
-			bitlockerEnabled, err := asker.AskBool("Does this VM have BitLocker encryption enabled? [default=no]: ", "no")
-			if err != nil {
-				fmt.Printf("Got an error, moving to next VM: %q", err)
-				continue
-			}
-
-			if bitlockerEnabled {
-				bitlockerRecoveryKey, err = asker.AskString("Please enter the BitLocker recovery key for this VM: ", "", nil)
+			if vmProps.Runtime.PowerState != "poweredOn" && !*vmProps.Runtime.Paused {
+				fmt.Printf("VM is not powered on and/or is paused; falling back to BitLocker prompt...\n")
+				bitlockerEnabled, err := asker.AskBool("Does this VM have BitLocker encryption enabled? [default=no]: ", "no")
 				if err != nil {
 					fmt.Printf("Got an error, moving to next VM: %q", err)
 					continue
 				}
+
+				if bitlockerEnabled {
+					bitlockerRecoveryKey, err = asker.AskString("Please enter the BitLocker recovery key for this VM: ", "", nil)
+					if err != nil {
+						fmt.Printf("Got an error, moving to next VM: %q", err)
+						continue
+					}
+				}
+			} else {
+				if vmProps.Guest != nil {
+					if vmProps.Guest.GuestState != "running" {
+						fmt.Printf("Guest state %s != running.\n", vmProps.Guest.GuestState)
+						continue
+					}
+
+					if !*vmProps.Guest.GuestOperationsReady {
+						fmt.Printf("Guest is not ready to run operations.\n")
+						continue
+					}
+				}
+
+				blStatus, err := vmwareClient.BitLockerEnabledForDrive(vm, "C:")
+				if err != nil {
+					fmt.Printf("ERROR: %s\n", err)
+					continue
+				}
+				fmt.Printf("BitLocker status: %s\n", blStatus)
 			}
-		}
+		}*/
 
 		incusInstanceArgs := internalUtil.ConvertVMwareMetadataToIncus(vmProps)
 
@@ -266,9 +289,6 @@ func (c *appFlags) Run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  UUID: %s\n", vmProps.Summary.Config.InstanceUuid)
 		fmt.Printf("  Memory: %d MB\n", vmProps.Summary.Config.MemorySizeMB)
 		fmt.Printf("  CPU: %d\n", vmProps.Summary.Config.NumCpu)
-		if bitlockerRecoveryKey != "" {
-			fmt.Printf("  BitLocker recovery key: %s\n", bitlockerRecoveryKey)
-		}
 
 		err = incusClient.CreateInstance(incusInstanceArgs, disks, nics)
 		if err != nil {
