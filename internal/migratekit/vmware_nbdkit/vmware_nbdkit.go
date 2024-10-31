@@ -53,7 +53,7 @@ func NewNbdkitServers(vddk *VddkConfig, vm *object.VirtualMachine) *NbdkitServer
 }
 
 func (s *NbdkitServers) createSnapshot(ctx context.Context) error {
-	task, err := s.VirtualMachine.CreateSnapshot(ctx, "migratekit", "Ephemeral snapshot for MigrateKit", false, false)
+	task, err := s.VirtualMachine.CreateSnapshot(ctx, "incusMigration", "Ephemeral snapshot for Incus migration", false, false)
 	if err != nil {
 		return err
 	}
@@ -186,7 +186,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	}()
 
 	for index, server := range s.Servers {
-		t, err := target.NewOpenStack(ctx, s.VirtualMachine, server.Disk)
+		t, err := target.NewDiskTarget(s.VirtualMachine, server.Disk)
 		if err != nil {
 			return err
 		}
