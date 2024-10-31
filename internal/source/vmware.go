@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/vmware/govmomi/find"
+	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/session/cache"
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/soap"
@@ -109,4 +111,48 @@ func (s *VMwareSource) Disconnect(ctx context.Context) error {
 	s.vddkConfig = nil
 	s.isConnected = false
 	return nil
+}
+
+func (s *VMwareSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
+	vm, err := s.getVM(ctx, vmName)
+	if err != nil {
+		return err
+	}
+
+	snapshotRef, _ := vm.FindSnapshot(ctx, snapshotName)
+	if snapshotRef != nil {
+		consolidate := true
+		_, err := vm.RemoveSnapshot(ctx, snapshotRef.Value, false, &consolidate)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *VMwareSource) ImportDisk(ctx context.Context, vmName string) error {
+	// TODO -- Handle more than one disk.
+	vm, err := s.getVM(ctx, vmName)
+	if err != nil {
+		return err
+	}
+
+	NbdkitServers := vmware_nbdkit.NewNbdkitServers(s.vddkConfig, vm)
+	err = NbdkitServers.MigrationCycle(ctx, false)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *VMwareSource) getVM(ctx context.Context, vmName string) (*object.VirtualMachine, error) {
+	finder := find.NewFinder(s.vimClient)
+	res, err := finder.VirtualMachineList(ctx, vmName)
+	if err != nil {
+		return nil, err
+	}
+
+	return res[0], nil
 }

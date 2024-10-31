@@ -10,5 +10,8 @@ type Source interface {
 	Disconnect(ctx context.Context) error
 	IsConnected() bool
 
+	DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error
+	ImportDisk(ctx context.Context, vmName string) error
+
 	GetName() string
 }

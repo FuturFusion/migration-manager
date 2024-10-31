@@ -28,6 +28,14 @@ func (s *CommonSource) IsConnected() bool {
 	return s.isConnected
 }
 
+func (s *CommonSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
+	return fmt.Errorf("Not implemented by CommonSource")
+}
+
+func (s *CommonSource) ImportDisk(ctx context.Context, vmName string) error {
+	return fmt.Errorf("Not implemented by CommonSource")
+}
+
 func (s *CommonSource) GetName() string {
 	return s.Name
 }

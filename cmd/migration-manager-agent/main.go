@@ -42,4 +42,17 @@ func main() {
 		fmt.Printf("ERROR: %s\n", err)
 		os.Exit(1)
 	}
+
+	// TODO -- This will eventually be in some sort of callback that triggers a disk import.
+	err = agentConfig.Source.DeleteVMSnapshot(ctx, agentConfig.VMName, internal.IncusSnapshotName)
+	if err != nil {
+		fmt.Printf("ERROR: %s\n", err)
+		os.Exit(1)
+	}
+
+	err = agentConfig.Source.ImportDisk(ctx, agentConfig.VMName)
+	if err != nil {
+		fmt.Printf("ERROR: %s\n", err)
+		os.Exit(1)
+	}
 }
