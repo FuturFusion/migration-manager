@@ -5,11 +5,23 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/lxc/incus/v6/shared/util"
+
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/agent"
 )
 
 func main() {
+	if os.Geteuid() != 0 {
+		fmt.Printf("This tool must be run as root\n")
+		os.Exit(1)
+	}
+
+	if !util.PathExists("/dev/virtio-ports/org.linuxcontainers.incus") {
+		fmt.Printf("This tool is designed to be run within an Incus VM\n")
+		os.Exit(1)
+	}
+
 	ctx := context.TODO()
 
 	fmt.Printf("This is migration-manager-agent v%s\n", internal.Version)
