@@ -15,6 +15,7 @@ import (
 	"github.com/vmware/govmomi/vim25/types"
 	"libguestfs.org/libnbd"
 
+	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdcopy"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/progress"
@@ -53,7 +54,7 @@ func NewNbdkitServers(vddk *VddkConfig, vm *object.VirtualMachine) *NbdkitServer
 }
 
 func (s *NbdkitServers) createSnapshot(ctx context.Context) error {
-	task, err := s.VirtualMachine.CreateSnapshot(ctx, "incusMigration", "Ephemeral snapshot for Incus migration", false, false)
+	task, err := s.VirtualMachine.CreateSnapshot(ctx, internal.IncusSnapshotName, "Ephemeral snapshot for Incus migration", false, false)
 	if err != nil {
 		return err
 	}
