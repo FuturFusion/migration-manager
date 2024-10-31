@@ -9,16 +9,17 @@ import (
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/vexxhost/migratekit/internal/nbdcopy"
-	"github.com/vexxhost/migratekit/internal/nbdkit"
-	"github.com/vexxhost/migratekit/internal/progress"
-	"github.com/vexxhost/migratekit/internal/target"
-	"github.com/vexxhost/migratekit/internal/vmware"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/types"
 	"libguestfs.org/libnbd"
+
+	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdcopy"
+	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
+	"github.com/FuturFusion/migration-manager/internal/migratekit/progress"
+	"github.com/FuturFusion/migration-manager/internal/migratekit/target"
+	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 )
 
 const MaxChunkSize = 64 * 1024 * 1024

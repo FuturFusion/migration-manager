@@ -8,7 +8,8 @@ import (
 	"strings"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/vexxhost/migratekit/internal/progress"
+
+	"github.com/FuturFusion/migration-manager/internal/migratekit/progress"
 )
 
 func Run(source, destination string, size int64, targetIsClean bool) error {

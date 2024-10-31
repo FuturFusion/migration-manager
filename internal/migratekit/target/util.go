@@ -7,9 +7,10 @@ import (
 
 	"github.com/gosimple/slug"
 	log "github.com/sirupsen/logrus"
-	"github.com/vexxhost/migratekit/internal/vmware"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/types"
+
+	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 )
 
 func DiskLabel(vm *object.VirtualMachine, disk *types.VirtualDisk) string {

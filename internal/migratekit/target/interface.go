@@ -3,8 +3,9 @@ package target
 import (
 	"context"
 
-	"github.com/vexxhost/migratekit/internal/vmware"
 	"github.com/vmware/govmomi/vim25/types"
+
+	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 )
 
 type Target interface {
