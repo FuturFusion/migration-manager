@@ -8,6 +8,10 @@ import (
 	"github.com/vmware/govmomi/session/cache"
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/soap"
+
+	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
+	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
+	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware_nbdkit"
 )
 
 // VMwareSource defines a VMware endpoint that the migration manager can connect to.
@@ -34,6 +38,7 @@ type VMwareSource struct {
 
 	vimClient  *vim25.Client
 	vimSession *cache.Session
+	vddkConfig *vmware_nbdkit.VddkConfig
 }
 
 // Returns a new VMwareSource ready for use.
@@ -73,6 +78,18 @@ func (s *VMwareSource) Connect(ctx context.Context) error {
 		return err
 	}
 
+	thumbprint, err := vmware.GetEndpointThumbprint(endpointURL)
+	if err != nil {
+		return err
+	}
+
+	s.vddkConfig = &vmware_nbdkit.VddkConfig {
+		Debug:       false,
+		Endpoint:    endpointURL,
+		Thumbprint:  thumbprint,
+		Compression: nbdkit.CompressionMethod("none"),
+	}
+
 	s.isConnected = true
 	return nil
 }
@@ -89,6 +106,7 @@ func (s *VMwareSource) Disconnect(ctx context.Context) error {
 
 	s.vimClient = nil
 	s.vimSession = nil
+	s.vddkConfig = nil
 	s.isConnected = false
 	return nil
 }
