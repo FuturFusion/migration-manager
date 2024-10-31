@@ -12,6 +12,10 @@ type AgentConfig struct {
 	// Example: 10.10.10.10
 	MigrationManagerEndpoint string `json:"migrationManagerEndpoint" yaml:"migrationManagerEndpoint"`
 
+	// The name of the VM that the agent is running in
+	// Example: DebianBookwormVM
+	VMName string `json:"vmname" yaml"vmname"`
+
 	// Source for the agent to import VM metadata and/or disk from
 	// Example: VMwareSource{...}
 	Source source.Source `json:"source" yaml:"source"`
