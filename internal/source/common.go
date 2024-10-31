@@ -27,3 +27,7 @@ func (s *CommonSource) Disconnect(ctx context.Context) error {
 func (s *CommonSource) IsConnected() bool {
 	return s.isConnected
 }
+
+func (s *CommonSource) GetName() string {
+	return s.Name
+}
