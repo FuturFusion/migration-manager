@@ -50,6 +50,14 @@ func main() {
 		fmt.Printf("ERROR: %s\n", err)
 		os.Exit(1)
 	}
+
+	if agentConfig.VMOperatingSystemName == "Windows" {
+		err := agent.WindowsInjectDrivers(ctx, "w11", "/dev/sda3", "/dev/sda4") // TODO -- values are hardcoded
+		if err != nil {
+			fmt.Printf("ERROR: %s\n", err)
+			os.Exit(1)
+		}
+	}
 }
 
 func importDisks(ctx context.Context, source source.Source, vmName string) error {
