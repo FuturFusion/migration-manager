@@ -15,10 +15,10 @@ var commonSource = &source.CommonSource{Name: "common_source"}
 var vmwareSourceA = source.NewVMwareSource("vmware_source", "endpoint_url", "user", "pass", false)
 var vmwareSourceB = source.NewVMwareSource("vmware_source2", "endpoint_ip", "another_user", "pass", true)
 var agentConfigs = []agent.AgentConfig{
-	agent.AgentConfig{MigrationManagerEndpoint: "mm.local", VMName: "DebianServer", Source: commonSource},
-	agent.AgentConfig{MigrationManagerEndpoint: "mm.local", VMName: "DebianServer", Source: vmwareSourceA},
-	agent.AgentConfig{MigrationManagerEndpoint: "mm.local", VMName: "UbuntuServer", Source: vmwareSourceB},
-	agent.AgentConfig{MigrationManagerEndpoint: "10.10.10.10", VMName: "WindowsServer", Source: vmwareSourceA},
+	agent.AgentConfig{MigrationManagerEndpoint: "mm.local", VMName: "DebianServer", VMOperatingSystemName: "Debian", VMOperatingSystemVersion: "12", Source: commonSource},
+	agent.AgentConfig{MigrationManagerEndpoint: "mm.local", VMName: "DebianServer", VMOperatingSystemName: "Debian", VMOperatingSystemVersion: "13", Source: vmwareSourceA},
+	agent.AgentConfig{MigrationManagerEndpoint: "mm.local", VMName: "UbuntuServer", VMOperatingSystemName: "Ubuntu", VMOperatingSystemVersion: "24.04", Source: vmwareSourceB},
+	agent.AgentConfig{MigrationManagerEndpoint: "10.10.10.10", VMName: "WindowsVM", VMOperatingSystemName: "Windows", VMOperatingSystemVersion: "11", Source: vmwareSourceA},
 }
 
 func TestToFromJson(t *testing.T) {

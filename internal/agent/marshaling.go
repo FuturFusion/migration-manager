@@ -130,7 +130,9 @@ func (a *AgentConfig) UnmarshalYAML(value *yaml.Node) error {
 
 	newAgentConfig := new(AgentConfig)
 	newAgentConfig.MigrationManagerEndpoint, _ = configVals["migrationManagerEndpoint"].(string)
-	newAgentConfig.VMName, _ = configVals["vmname"].(string)
+	newAgentConfig.VMName, _ = configVals["vmName"].(string)
+	newAgentConfig.VMOperatingSystemName, _ = configVals["vmOperatingSystemName"].(string)
+	newAgentConfig.VMOperatingSystemVersion, _ = configVals["vmOperatingSystemVersion"].(string)
 
 	if unmarshaledData["TYPE"] == "Common" {
 		s := &source.CommonSource{}

@@ -14,7 +14,15 @@ type AgentConfig struct {
 
 	// The name of the VM that the agent is running in
 	// Example: DebianBookwormVM
-	VMName string `json:"vmname" yaml"vmname"`
+	VMName string `json:"vmName" yaml:"vmName"`
+
+	// The name of operating system of the VM being migrated
+	// Example: Debian
+	VMOperatingSystemName string `json:"vmOperatingSystemName" yaml:"vmOperatingSystemName"`
+
+	// The version of operating system of the VM being migrated
+	// Example: 12
+	VMOperatingSystemVersion string `json:"vmOperatingSystemVersion" yaml:"vmOperatingSystemVersion"`
 
 	// Source for the agent to import VM metadata and/or disk from
 	// Example: VMwareSource{...}
