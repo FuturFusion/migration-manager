@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/agent"
+	"github.com/FuturFusion/migration-manager/internal/source"
 )
 
 func main() {
@@ -44,15 +45,18 @@ func main() {
 	}
 
 	// TODO -- This will eventually be in some sort of callback that triggers a disk import.
-	err = agentConfig.Source.DeleteVMSnapshot(ctx, agentConfig.VMName, internal.IncusSnapshotName)
+	err = importDisks(ctx, agentConfig.Source, agentConfig.VMName)
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err)
 		os.Exit(1)
+	}
+}
+
+func importDisks(ctx context.Context, source source.Source, vmName string) error {
+	err := source.DeleteVMSnapshot(ctx, vmName, internal.IncusSnapshotName)
+	if err != nil {
+		return err
 	}
 
-	err = agentConfig.Source.ImportDisk(ctx, agentConfig.VMName)
-	if err != nil {
-		fmt.Printf("ERROR: %s\n", err)
-		os.Exit(1)
-	}
+	return source.ImportDisks(ctx, vmName)
 }
