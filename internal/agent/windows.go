@@ -17,6 +17,14 @@ import (
 	"github.com/lxc/incus/v6/shared/util"
 )
 
+type BitLockerState int
+const (
+	BITLOCKERSTATE_UNENCRYPTED BitLockerState = iota
+	BITLOCKERSTATE_ENCRYPTED
+	BITLOCKERSTATE_CLEARKEY
+	BITLOCKERSTATE_UNKNOWN
+)
+
 const bitLockerMountPath string = "/mnt/dislocker/"
 const driversMountDevice string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
 const driversMountPath string = "/mnt/drivers/"
@@ -27,7 +35,7 @@ func init() {
 	_ = pongo2.RegisterFilter("toHex", toHex)
 }
 
-func WindowsDetectBitLockerStatus(partition string) (string, error) {
+func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
 	unencryptedRegex := regexp.MustCompile(`\[ERROR\] The signature of the volume \(.+\) doesn't match the BitLocker's ones \(-FVE-FS- or MSWIN4.1\). Abort.`)
 	bitLockerEnabledRegex := regexp.MustCompile(`\[INFO\] =====================\[ BitLocker information structure \]=====================`)
 	noClearKeyRegex := regexp.MustCompile(`\[INFO\] No clear key found.`)
@@ -35,20 +43,20 @@ func WindowsDetectBitLockerStatus(partition string) (string, error) {
 
 	stdout, err := subprocess.RunCommand("dislocker-metadata", "-V", partition)
 	if err != nil {
-		return "", err
+		return BITLOCKERSTATE_UNKNOWN, err
 	}
 
 	if unencryptedRegex.Match([]byte(stdout)) {
-		return "UNENCRYPTED", nil
+		return BITLOCKERSTATE_UNENCRYPTED, nil
 	} else if bitLockerEnabledRegex.Match([]byte(stdout)) {
 		if noClearKeyRegex.Match([]byte(stdout)) {
-			return "ENCRYPTED", nil
+			return BITLOCKERSTATE_ENCRYPTED, nil
 		} else if clearKeyRegex.Match([]byte(stdout)) {
-			return "CLEAR_KEY", nil
+			return BITLOCKERSTATE_CLEARKEY, nil
 		}
 	}
 
-	return "", fmt.Errorf("Failed to determine BitLocker status for %s", partition)
+	return BITLOCKERSTATE_UNKNOWN, fmt.Errorf("Failed to determine BitLocker status for %s", partition)
 }
 
 func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error {
@@ -85,13 +93,14 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	}
 
 	// Mount the main Windows partition.
-	if bitLockerStatus == "UNENCRYPTED" {
+	switch bitLockerStatus {
+	case BITLOCKERSTATE_UNENCRYPTED:
 		err = DoMount(mainPartition, windowsMainMountPath)
 		if err != nil {
 			return err
 		}
 		defer func() { _ = DoUnmount(windowsMainMountPath) }()
-	} else if bitLockerStatus == "CLEAR_KEY" {
+	case BITLOCKERSTATE_CLEARKEY:
 		err = WindowsOpenBitLockerPartition(mainPartition, "")
 		if err != nil {
 			return err
@@ -103,7 +112,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 			return err
 		}
 		defer func() { _ = DoUnmount(windowsMainMountPath) }()
-	} else {
+	default:
 		// TODO -- Handle passing in of a recovery key for mounting BitLocker partition.
 		return fmt.Errorf("BitLocker without a clear key detected; bailing out for now")
 	}
