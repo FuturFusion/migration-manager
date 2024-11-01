@@ -131,20 +131,14 @@ func (s *VMwareSource) DeleteVMSnapshot(ctx context.Context, vmName string, snap
 	return nil
 }
 
-func (s *VMwareSource) ImportDisk(ctx context.Context, vmName string) error {
-	// TODO -- Handle more than one disk.
+func (s *VMwareSource) ImportDisks(ctx context.Context, vmName string) error {
 	vm, err := s.getVM(ctx, vmName)
 	if err != nil {
 		return err
 	}
 
 	NbdkitServers := vmware_nbdkit.NewNbdkitServers(s.vddkConfig, vm)
-	err = NbdkitServers.MigrationCycle(ctx, false)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return NbdkitServers.MigrationCycle(ctx, false)
 }
 
 func (s *VMwareSource) getVM(ctx context.Context, vmName string) (*object.VirtualMachine, error) {

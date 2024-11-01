@@ -32,7 +32,7 @@ func (s *CommonSource) DeleteVMSnapshot(ctx context.Context, vmName string, snap
 	return fmt.Errorf("Not implemented by CommonSource")
 }
 
-func (s *CommonSource) ImportDisk(ctx context.Context, vmName string) error {
+func (s *CommonSource) ImportDisks(ctx context.Context, vmName string) error {
 	return fmt.Errorf("Not implemented by CommonSource")
 }
 
