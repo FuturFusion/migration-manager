@@ -15,12 +15,14 @@ import (
 type DiskTarget struct {
 	VirtualMachine *object.VirtualMachine
 	Disk           *types.VirtualDisk
+	DeviceTarget   string
 }
 
-func NewDiskTarget(vm *object.VirtualMachine, disk *types.VirtualDisk) (*DiskTarget, error) {
+func NewDiskTarget(vm *object.VirtualMachine, disk *types.VirtualDisk, deviceTarget string) (*DiskTarget, error) {
 	return &DiskTarget{
 		VirtualMachine: vm,
 		Disk:           disk,
+		DeviceTarget:   deviceTarget,
 	}, nil
 }
 
@@ -33,7 +35,7 @@ func (t *DiskTarget) Connect(ctx context.Context) error {
 }
 
 func (t *DiskTarget) GetPath(ctx context.Context) (string, error) {
-	return "/dev/sda", nil // FIXME hardcoded
+	return t.DeviceTarget, nil
 }
 
 func (t *DiskTarget) Disconnect(ctx context.Context) error {
@@ -41,6 +43,10 @@ func (t *DiskTarget) Disconnect(ctx context.Context) error {
 }
 
 func (t *DiskTarget) Exists(ctx context.Context) (bool, error) {
+	_, err := os.Stat(t.DeviceTarget)
+	if err != nil {
+		return false, err
+	}
 	return true, nil
 }
 

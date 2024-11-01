@@ -2,6 +2,7 @@ package vmware_nbdkit
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"os"
 	"os/exec"
@@ -187,7 +188,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	}()
 
 	for index, server := range s.Servers {
-		t, err := target.NewDiskTarget(s.VirtualMachine, server.Disk)
+		t, err := target.NewDiskTarget(s.VirtualMachine, server.Disk, fmt.Sprintf("/dev/sd%c", 'a' + index))
 		if err != nil {
 			return err
 		}
