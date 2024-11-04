@@ -12,12 +12,12 @@ import (
 // Implement the encoding/json Marshaler interface.
 func (a WorkerConfig) MarshalJSON() ([]byte, error) {
 	// Determine the source's type.
-	sourceType := ""
+	sourceType := source.SOURCETYPE_UNKNOWN
 	switch a.Source.(type) {
 	case *source.CommonSource:
-		sourceType = "Common"
+		sourceType = source.SOURCETYPE_COMMON
 	case *source.VMwareSource:
-		sourceType = "VMware"
+		sourceType = source.SOURCETYPE_VMWARE
 	default:
 		return nil, fmt.Errorf("Unsupported source type %T", a.Source)
 	}
@@ -25,7 +25,7 @@ func (a WorkerConfig) MarshalJSON() ([]byte, error) {
 	// Marshal into a json object.
 	type WorkerConfigWrapper WorkerConfig
 	return json.Marshal(&struct {
-		TYPE string `json:"TYPE"`
+		TYPE int `json:"TYPE"`
 		WorkerConfigWrapper
 	}{
 		TYPE: sourceType,
@@ -48,19 +48,19 @@ func (a *WorkerConfig) UnmarshalJSON(data []byte) error {
 
 	// Set a correct Source for the WorkerConfig based on the type.
 	newWorkerConfig := new(WorkerConfig)
-	switch unmarshaledData["TYPE"] {
-	case "Common":
+	switch unmarshaledData["TYPE"].(float64) {
+	case source.SOURCETYPE_COMMON:
 		newWorkerConfig.Source = &source.CommonSource{}
-	case "VMware":
+	case source.SOURCETYPE_VMWARE:
 		newWorkerConfig.Source = &source.VMwareSource{}
 	default:
-		return fmt.Errorf("Unsupported source type %s", unmarshaledData["TYPE"])
+		return fmt.Errorf("Unsupported source type %d", unmarshaledData["TYPE"])
 	}
 
 	// Unmarshal the json object into an WorkerConfig.
 	type WorkerConfigWrapper WorkerConfig
 	aux := &struct {
-		TYPE string `json:"TYPE"`
+		TYPE int `json:"TYPE"`
 		*WorkerConfigWrapper
 	}{
 		WorkerConfigWrapper: (*WorkerConfigWrapper)(newWorkerConfig),
@@ -77,12 +77,12 @@ func (a *WorkerConfig) UnmarshalJSON(data []byte) error {
 // Implement the gopkg.in/yaml.v3 Marshaler interface.
 func (a WorkerConfig) MarshalYAML() (interface{}, error) {
 	// Determine the source's type.
-	sourceType := ""
+	sourceType := source.SOURCETYPE_UNKNOWN
 	switch a.Source.(type) {
 	case *source.CommonSource:
-		sourceType = "Common"
+		sourceType = source.SOURCETYPE_COMMON
 	case *source.VMwareSource:
-		sourceType = "VMware"
+		sourceType = source.SOURCETYPE_VMWARE
 	default:
 		return nil, fmt.Errorf("Unsupported source type %T", a.Source)
 	}
@@ -90,7 +90,7 @@ func (a WorkerConfig) MarshalYAML() (interface{}, error) {
 	// Marshal into a yaml document.
 	type WorkerConfigWrapper WorkerConfig
 	val, err := yaml.Marshal(&struct {
-		TYPE string `yaml:"TYPE"`
+		TYPE int `yaml:"TYPE"`
 		WorkerConfigWrapper
 	}{
 		TYPE: sourceType,
@@ -134,12 +134,13 @@ func (a *WorkerConfig) UnmarshalYAML(value *yaml.Node) error {
 	newWorkerConfig.VMOperatingSystemName, _ = configVals["vmOperatingSystemName"].(string)
 	newWorkerConfig.VMOperatingSystemVersion, _ = configVals["vmOperatingSystemVersion"].(string)
 
-	if unmarshaledData["TYPE"] == "Common" {
+	switch unmarshaledData["TYPE"] {
+	case source.SOURCETYPE_COMMON:
 		s := &source.CommonSource{}
 		s.Name, _ = sourceVals["name"].(string)
 		s.DatabaseID, _ = sourceVals["databaseID"].(int)
 		newWorkerConfig.Source = s
-	} else if unmarshaledData["TYPE"] == "VMware" {
+	case source.SOURCETYPE_VMWARE:
 		commonVals, _ := sourceVals["commonsource"].(map[string]interface{})
 		s := &source.VMwareSource{}
 		s.Name, _ = commonVals["name"].(string)
@@ -149,8 +150,8 @@ func (a *WorkerConfig) UnmarshalYAML(value *yaml.Node) error {
 		s.Password, _ = sourceVals["password"].(string)
 		s.Insecure, _ = sourceVals["insecure"].(bool)
 		newWorkerConfig.Source = s
-	} else {
-		return fmt.Errorf("Unsupported source type %s", unmarshaledData["TYPE"])
+	default:
+		return fmt.Errorf("Unsupported source type %d", unmarshaledData["TYPE"])
 	}
 
 	*a = *newWorkerConfig

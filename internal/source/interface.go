@@ -4,6 +4,13 @@ import (
 	"context"
 )
 
+type SourceType int
+const (
+	SOURCETYPE_COMMON = iota
+	SOURCETYPE_VMWARE
+	SOURCETYPE_UNKNOWN
+)
+
 // Interface definition for all migration manager sources.
 type Source interface {
 	Connect(ctx context.Context) error
