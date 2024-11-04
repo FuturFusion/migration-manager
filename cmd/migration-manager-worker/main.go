@@ -8,8 +8,8 @@ import (
 	"github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal"
-	"github.com/FuturFusion/migration-manager/internal/agent"
 	"github.com/FuturFusion/migration-manager/internal/source"
+	"github.com/FuturFusion/migration-manager/internal/worker"
 )
 
 func main() {
@@ -25,40 +25,40 @@ func main() {
 
 	ctx := context.TODO()
 
-	fmt.Printf("This is migration-manager-agent v%s\n", internal.Version)
+	fmt.Printf("This is migration-manager-worker v%s\n", internal.Version)
 
 	// TODO -- Fetch this file from the config drive that's mounted into the VM
-	agentConfig, err := agent.AgentConfigFromYamlFile("./agent.yaml")
+	workerConfig, err := worker.WorkerConfigFromYamlFile("./worker.yaml")
 	if err != nil {
 		fmt.Printf("Failed to open config file: %s\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Config loaded, connecting to migration manager at %s\n", agentConfig.MigrationManagerEndpoint)
+	fmt.Printf("Config loaded, connecting to migration manager at %s\n", workerConfig.MigrationManagerEndpoint)
 	// TODO -- Actually reach out to migration manager and get instructions
 
-	fmt.Printf("Connecting to source %s\n", agentConfig.Source.GetName())
-	err = agentConfig.Source.Connect(ctx)
+	fmt.Printf("Connecting to source %s\n", workerConfig.Source.GetName())
+	err = workerConfig.Source.Connect(ctx)
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err)
 		os.Exit(1)
 	}
 
 	// TODO -- This will eventually be in some sort of callback that triggers a disk import.
-	err = importDisks(ctx, agentConfig.Source, agentConfig.VMName)
+	err = importDisks(ctx, workerConfig.Source, workerConfig.VMName)
 	if err != nil {
 		fmt.Printf("ERROR: %s\n", err)
 		os.Exit(1)
 	}
 
-	if agentConfig.VMOperatingSystemName == "Windows" {
-		err := agent.WindowsInjectDrivers(ctx, "w11", "/dev/sda3", "/dev/sda4") // TODO -- values are hardcoded
+	if workerConfig.VMOperatingSystemName == "Windows" {
+		err := worker.WindowsInjectDrivers(ctx, "w11", "/dev/sda3", "/dev/sda4") // TODO -- values are hardcoded
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			os.Exit(1)
 		}
-	} else if agentConfig.VMOperatingSystemName == "Debian" {
-		err := agent.LinuxDoPostMigrationConfig("Debian", "/dev/sda1") // TODO -- value is hardcoded
+	} else if workerConfig.VMOperatingSystemName == "Debian" {
+		err := worker.LinuxDoPostMigrationConfig("Debian", "/dev/sda1") // TODO -- value is hardcoded
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			os.Exit(1)

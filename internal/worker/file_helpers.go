@@ -1,4 +1,4 @@
-package agent
+package worker
 
 import (
 	"encoding/json"
@@ -7,9 +7,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Helper method to instantiate an AgentConfig from a json file.
-func AgentConfigFromJsonFile(filepath string) (AgentConfig, error) {
-	ret := AgentConfig{}
+// Helper method to instantiate an WorkerConfig from a json file.
+func WorkerConfigFromJsonFile(filepath string) (WorkerConfig, error) {
+	ret := WorkerConfig{}
 
 	contents, err := os.ReadFile(filepath)
 	if err != nil {
@@ -24,9 +24,9 @@ func AgentConfigFromJsonFile(filepath string) (AgentConfig, error) {
 	return ret, nil
 }
 
-// Helper method to instantiate an AgentConfig from a yaml file.
-func AgentConfigFromYamlFile(filepath string) (AgentConfig, error) {
-	ret := AgentConfig{}
+// Helper method to instantiate an WorkerConfig from a yaml file.
+func WorkerConfigFromYamlFile(filepath string) (WorkerConfig, error) {
+	ret := WorkerConfig{}
 
 	contents, err := os.ReadFile(filepath)
 	if err != nil {
@@ -41,8 +41,8 @@ func AgentConfigFromYamlFile(filepath string) (AgentConfig, error) {
 	return ret, nil
 }
 
-// Helper method to dump an AgentConfig to a json file.
-func AgentConfigToJsonFile(config AgentConfig, filepath string) error {
+// Helper method to dump an WorkerConfig to a json file.
+func WorkerConfigToJsonFile(config WorkerConfig, filepath string) error {
 	contents, err := json.Marshal(config)
 	if err != nil {
 		return err
@@ -56,8 +56,8 @@ func AgentConfigToJsonFile(config AgentConfig, filepath string) error {
 	return nil
 }
 
-// Helper method to dump an AgentConfig to a yaml file.
-func AgentConfigToYamlFile(config AgentConfig, filepath string) error {
+// Helper method to dump an WorkerConfig to a yaml file.
+func WorkerConfigToYamlFile(config WorkerConfig, filepath string) error {
 	contents, err := yaml.Marshal(config)
 	if err != nil {
 		return err

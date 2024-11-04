@@ -14,11 +14,11 @@ incus config device add $INCUS_VM_NAME drivers disk pool=iscsi source=virtio-win
 
 incus start $INCUS_VM_NAME
 # Keep trying until the agent starts up in the VM.
-until incus file push ./migration-manager-agent $INCUS_VM_NAME/root/ 2>/dev/null; do
+until incus file push ./migration-manager-worker $INCUS_VM_NAME/root/ 2>/dev/null; do
 	sleep 1
 done
 
-# TODO -- Mount agent.yaml into config share.
-incus file push ./agent.yaml $INCUS_VM_NAME/root/
+# TODO -- Mount worker.yaml into config share.
+incus file push ./worker.yaml $INCUS_VM_NAME/root/
 
 echo "Migration environment is running for VM $INCUS_VM_NAME."

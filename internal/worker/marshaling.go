@@ -1,4 +1,4 @@
-package agent
+package worker
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 )
 
 // Implement the encoding/json Marshaler interface.
-func (a AgentConfig) MarshalJSON() ([]byte, error) {
+func (a WorkerConfig) MarshalJSON() ([]byte, error) {
 	// Determine the source's type.
 	sourceType := ""
 	switch a.Source.(type) {
@@ -23,18 +23,18 @@ func (a AgentConfig) MarshalJSON() ([]byte, error) {
 	}
 
 	// Marshal into a json object.
-	type AgentConfigWrapper AgentConfig
+	type WorkerConfigWrapper WorkerConfig
 	return json.Marshal(&struct {
 		TYPE string `json:"TYPE"`
-		AgentConfigWrapper
+		WorkerConfigWrapper
 	}{
 		TYPE: sourceType,
-		AgentConfigWrapper: (AgentConfigWrapper)(a),
+		WorkerConfigWrapper: (WorkerConfigWrapper)(a),
 	})
 }
 
 // Implement the encoding/json Unmarshaler interface.
-func (a *AgentConfig) UnmarshalJSON(data []byte) error {
+func (a *WorkerConfig) UnmarshalJSON(data []byte) error {
 	// Unmarshal the data into a map so we can figure out what the source type is.
 	unmarshaledData := make(map[string]interface{})
 	err := json.Unmarshal(data, &unmarshaledData)
@@ -46,36 +46,36 @@ func (a *AgentConfig) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("TYPE field is not present")
 	}
 
-	// Set a correct Source for the AgentConfig based on the type.
-	newAgentConfig := new(AgentConfig)
+	// Set a correct Source for the WorkerConfig based on the type.
+	newWorkerConfig := new(WorkerConfig)
 	switch unmarshaledData["TYPE"] {
 	case "Common":
-		newAgentConfig.Source = &source.CommonSource{}
+		newWorkerConfig.Source = &source.CommonSource{}
 	case "VMware":
-		newAgentConfig.Source = &source.VMwareSource{}
+		newWorkerConfig.Source = &source.VMwareSource{}
 	default:
 		return fmt.Errorf("Unsupported source type %s", unmarshaledData["TYPE"])
 	}
 
-	// Unmarshal the json object into an AgentConfig.
-	type AgentConfigWrapper AgentConfig
+	// Unmarshal the json object into an WorkerConfig.
+	type WorkerConfigWrapper WorkerConfig
 	aux := &struct {
 		TYPE string `json:"TYPE"`
-		*AgentConfigWrapper
+		*WorkerConfigWrapper
 	}{
-		AgentConfigWrapper: (*AgentConfigWrapper)(newAgentConfig),
+		WorkerConfigWrapper: (*WorkerConfigWrapper)(newWorkerConfig),
 	}
 	err = json.Unmarshal(data, &aux)
 	if err != nil {
 		return err
 	}
 
-	*a = *newAgentConfig
+	*a = *newWorkerConfig
 	return nil
 }
 
 // Implement the gopkg.in/yaml.v3 Marshaler interface.
-func (a AgentConfig) MarshalYAML() (interface{}, error) {
+func (a WorkerConfig) MarshalYAML() (interface{}, error) {
 	// Determine the source's type.
 	sourceType := ""
 	switch a.Source.(type) {
@@ -88,13 +88,13 @@ func (a AgentConfig) MarshalYAML() (interface{}, error) {
 	}
 
 	// Marshal into a yaml document.
-	type AgentConfigWrapper AgentConfig
+	type WorkerConfigWrapper WorkerConfig
 	val, err := yaml.Marshal(&struct {
 		TYPE string `yaml:"TYPE"`
-		AgentConfigWrapper
+		WorkerConfigWrapper
 	}{
 		TYPE: sourceType,
-		AgentConfigWrapper: (AgentConfigWrapper)(a),
+		WorkerConfigWrapper: (WorkerConfigWrapper)(a),
 	})
 
 	if err != nil {
@@ -105,7 +105,7 @@ func (a AgentConfig) MarshalYAML() (interface{}, error) {
 }
 
 // Implement the gopkg.in/yaml.v3 Unmarshaler interface.
-func (a *AgentConfig) UnmarshalYAML(value *yaml.Node) error {
+func (a *WorkerConfig) UnmarshalYAML(value *yaml.Node) error {
 	// Unmarshal the data into a map so we can figure out what the source type is.
 	unmarshaledData := make(map[string]interface{})
 	err := yaml.Unmarshal([]byte(value.Value), &unmarshaledData)
@@ -118,9 +118,9 @@ func (a *AgentConfig) UnmarshalYAML(value *yaml.Node) error {
 	}
 
 	// Ugh, need to do this by hand manually...
-	configVals, ok := unmarshaledData["agentconfigwrapper"].(map[string]interface{})
+	configVals, ok := unmarshaledData["workerconfigwrapper"].(map[string]interface{})
 	if !ok {
-		return fmt.Errorf("Error extracting agentconfigwrapper")
+		return fmt.Errorf("Error extracting workerconfigwrapper")
 	}
 
 	sourceVals, ok := configVals["source"].(map[string]interface{})
@@ -128,16 +128,16 @@ func (a *AgentConfig) UnmarshalYAML(value *yaml.Node) error {
 		return fmt.Errorf("Error extracting source")
 	}
 
-	newAgentConfig := new(AgentConfig)
-	newAgentConfig.MigrationManagerEndpoint, _ = configVals["migrationManagerEndpoint"].(string)
-	newAgentConfig.VMName, _ = configVals["vmName"].(string)
-	newAgentConfig.VMOperatingSystemName, _ = configVals["vmOperatingSystemName"].(string)
-	newAgentConfig.VMOperatingSystemVersion, _ = configVals["vmOperatingSystemVersion"].(string)
+	newWorkerConfig := new(WorkerConfig)
+	newWorkerConfig.MigrationManagerEndpoint, _ = configVals["migrationManagerEndpoint"].(string)
+	newWorkerConfig.VMName, _ = configVals["vmName"].(string)
+	newWorkerConfig.VMOperatingSystemName, _ = configVals["vmOperatingSystemName"].(string)
+	newWorkerConfig.VMOperatingSystemVersion, _ = configVals["vmOperatingSystemVersion"].(string)
 
 	if unmarshaledData["TYPE"] == "Common" {
 		s := &source.CommonSource{}
 		s.Name, _ = sourceVals["name"].(string)
-		newAgentConfig.Source = s
+		newWorkerConfig.Source = s
 	} else if unmarshaledData["TYPE"] == "VMware" {
 		commonVals, _ := sourceVals["commonsource"].(map[string]interface{})
 		s := &source.VMwareSource{}
@@ -146,11 +146,11 @@ func (a *AgentConfig) UnmarshalYAML(value *yaml.Node) error {
 		s.Username, _ = sourceVals["username"].(string)
 		s.Password, _ = sourceVals["password"].(string)
 		s.Insecure, _ = sourceVals["insecure"].(bool)
-		newAgentConfig.Source = s
+		newWorkerConfig.Source = s
 	} else {
 		return fmt.Errorf("Unsupported source type %s", unmarshaledData["TYPE"])
 	}
 
-	*a = *newAgentConfig
+	*a = *newWorkerConfig
 	return nil
 }
