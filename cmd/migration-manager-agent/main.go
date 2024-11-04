@@ -57,6 +57,12 @@ func main() {
 			fmt.Printf("ERROR: %s\n", err)
 			os.Exit(1)
 		}
+	} else if agentConfig.VMOperatingSystemName == "Debian" {
+		err := agent.LinuxDoPostMigrationConfig("Debian", "/dev/sda1") // TODO -- value is hardcoded
+		if err != nil {
+			fmt.Printf("ERROR: %s\n", err)
+			os.Exit(1)
+		}
 	}
 }
 
