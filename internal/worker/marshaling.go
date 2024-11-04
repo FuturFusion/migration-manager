@@ -137,11 +137,13 @@ func (a *WorkerConfig) UnmarshalYAML(value *yaml.Node) error {
 	if unmarshaledData["TYPE"] == "Common" {
 		s := &source.CommonSource{}
 		s.Name, _ = sourceVals["name"].(string)
+		s.DatabaseID, _ = sourceVals["databaseID"].(int)
 		newWorkerConfig.Source = s
 	} else if unmarshaledData["TYPE"] == "VMware" {
 		commonVals, _ := sourceVals["commonsource"].(map[string]interface{})
 		s := &source.VMwareSource{}
 		s.Name, _ = commonVals["name"].(string)
+		s.DatabaseID, _ = commonVals["databaseID"].(int)
 		s.Endpoint, _ = sourceVals["endpoint"].(string)
 		s.Username, _ = sourceVals["username"].(string)
 		s.Password, _ = sourceVals["password"].(string)

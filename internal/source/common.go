@@ -13,6 +13,10 @@ type CommonSource struct {
 	// Example: MySource
 	Name string `json:"name" yaml:"name"`
 
+	// An opaque integer identifier for the source
+	// Example: 123
+	DatabaseID int `json:"databaseID" yaml:"databaseID"`
+
 	isConnected bool
 }
 
@@ -38,4 +42,12 @@ func (s *CommonSource) ImportDisks(ctx context.Context, vmName string) error {
 
 func (s *CommonSource) GetName() string {
 	return s.Name
+}
+
+func (s *CommonSource) GetDatabaseID() int {
+	return s.DatabaseID
+}
+
+func (s *CommonSource) SetDatabaseID(id int ) {
+	s.DatabaseID = id
 }

@@ -48,6 +48,7 @@ func NewVMwareSource(name string, endpoint string, username string, password str
 	return &VMwareSource{
 		CommonSource: CommonSource{
 			Name: name,
+			DatabaseID: -1,
 			isConnected: false,
 		},
 		Endpoint: endpoint,

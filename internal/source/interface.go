@@ -14,4 +14,6 @@ type Source interface {
 	ImportDisks(ctx context.Context, vmName string) error
 
 	GetName() string
+	GetDatabaseID() int
+	SetDatabaseID(id int)
 }
