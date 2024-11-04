@@ -9,7 +9,7 @@ import (
 	"github.com/lxc/incus/v6/shared/util"
 )
 
-func DoMount(device string, path string) error {
+func DoMount(device string, path string, options []string) error {
         if !util.PathExists(path) {
                 err := os.MkdirAll(path, 0755)
                 if err != nil {
@@ -17,7 +17,10 @@ func DoMount(device string, path string) error {
                 }
         }
 
-	_, err := subprocess.RunCommand("mount", device, path)
+	args := options
+	args = append(args, device)
+	args = append(args, path)
+	_, err := subprocess.RunCommand("mount", args...)
 	return err
 }
 

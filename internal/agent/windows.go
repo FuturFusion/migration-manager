@@ -80,7 +80,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	fmt.Printf("Preparing to inject Windows drivers into VM....\n")
 
 	// Mount the virtio drivers image.
-	err := DoMount(driversMountDevice, driversMountPath)
+	err := DoMount(driversMountDevice, driversMountPath, nil)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	// Mount the main Windows partition.
 	switch bitLockerStatus {
 	case BITLOCKERSTATE_UNENCRYPTED:
-		err = DoMount(mainPartition, windowsMainMountPath)
+		err = DoMount(mainPartition, windowsMainMountPath, nil)
 		if err != nil {
 			return err
 		}
@@ -107,7 +107,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 		}
 		defer func() { _ = DoUnmount(bitLockerMountPath) }()
 
-		err = DoMount(filepath.Join(bitLockerMountPath, "dislocker-file"), windowsMainMountPath)
+		err = DoMount(filepath.Join(bitLockerMountPath, "dislocker-file"), windowsMainMountPath, nil)
 		if err != nil {
 			return err
 		}
@@ -118,7 +118,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	}
 
 	// Mount the Windows recovery partition.
-	err = DoMount(recoveryPartition, windowsRecoveryMountPath)
+	err = DoMount(recoveryPartition, windowsRecoveryMountPath, nil)
 	if err != nil {
 		return err
 	}
