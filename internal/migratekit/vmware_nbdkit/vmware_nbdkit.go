@@ -314,7 +314,13 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 func (s *NbdkitServer) SyncToTarget(ctx context.Context, t target.Target, runV2V bool) error {
 	snapshotChangeId, err := vmware.GetChangeID(s.Disk)
 	if err != nil {
-		return err
+		// Rather than returning an error when CBT isn't enabled, just proceed with a dummy change ID.
+		// This will always force a full disk copy, which is OK for our use case.
+		snapshotChangeId = &vmware.ChangeID{
+			UUID:   "",
+			Number: "",
+			Value:  "",
+		}
 	}
 
 	needFullCopy, targetIsClean, err := target.NeedsFullCopy(ctx, t)
