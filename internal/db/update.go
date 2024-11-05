@@ -3,11 +3,22 @@
 package db
 
 import (
+	"context"
+	"database/sql"
+
 	"github.com/FuturFusion/migration-manager/internal/db/schema"
 )
 
 const freshSchema = `
-INSERT INTO schema (version, updated_at) VALUES (0, strftime("%s"))
+CREATE TABLE sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    type INTEGER NOT NULL,
+    config TEXT NOT NULL,
+    UNIQUE (name)
+);
+
+INSERT INTO schema (version, updated_at) VALUES (1, strftime("%s"))
 `
 
 // Schema for the local database.
@@ -38,4 +49,21 @@ func Schema() *schema.Schema {
    Only append to the updates list, never remove entries and never re-order them.
 */
 
-var updates = map[int]schema.Update{}
+var updates = map[int]schema.Update{
+	1:  updateFromV0,
+}
+
+func updateFromV0(ctx context.Context, tx *sql.Tx) error {
+	// v0..v1 the dawn of migration manager
+	stmt := `
+CREATE TABLE sources (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    type INTEGER NOT NULL,
+    config TEXT NOT NULL,
+    UNIQUE (name)
+);
+`
+	_, err := tx.Exec(stmt)
+	return err
+}
