@@ -145,10 +145,11 @@ func (a *WorkerConfig) UnmarshalYAML(value *yaml.Node) error {
 		s := &source.VMwareSource{}
 		s.Name, _ = commonVals["name"].(string)
 		s.DatabaseID, _ = commonVals["databaseID"].(int)
-		s.Endpoint, _ = sourceVals["endpoint"].(string)
-		s.Username, _ = sourceVals["username"].(string)
-		s.Password, _ = sourceVals["password"].(string)
-		s.Insecure, _ = sourceVals["insecure"].(bool)
+		specificVals, _ := sourceVals["vmwaresourcespecific"].(map[string]interface{})
+		s.Endpoint, _ = specificVals["endpoint"].(string)
+		s.Username, _ = specificVals["username"].(string)
+		s.Password, _ = specificVals["password"].(string)
+		s.Insecure, _ = specificVals["insecure"].(bool)
 		newWorkerConfig.Source = s
 	default:
 		return fmt.Errorf("Unsupported source type %d", unmarshaledData["TYPE"])

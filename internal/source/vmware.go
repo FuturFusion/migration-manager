@@ -16,12 +16,20 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware_nbdkit"
 )
 
-// VMwareSource defines a VMware endpoint that the migration manager can connect to.
+// VMwareSource composes the common and VMware-specific structs into a unified struct for common use.
 //
 // swagger:model
 type VMwareSource struct {
 	CommonSource
+	VMwareSourceSpecific
+}
 
+// VMwareSourceSpecific defines a VMware endpoint that the migration manager can connect to.
+//
+// It is defined as a separate struct to facilitate marshaling/unmarshaling of just the VMware-specific fields.
+//
+// swagger:model
+type VMwareSourceSpecific struct {
 	// Hostname or IP address of the source endpoint
 	// Example: vsphere.local
 	Endpoint string `json:"endpoint" yaml:"endpoint"`
@@ -51,10 +59,12 @@ func NewVMwareSource(name string, endpoint string, username string, password str
 			DatabaseID: -1,
 			isConnected: false,
 		},
-		Endpoint: endpoint,
-		Username: username,
-		Password: password,
-		Insecure: insecure,
+		VMwareSourceSpecific: VMwareSourceSpecific{
+			Endpoint: endpoint,
+			Username: username,
+			Password: password,
+			Insecure: insecure,
+		},
 	}
 }
 
