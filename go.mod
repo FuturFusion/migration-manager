@@ -1,6 +1,6 @@
 module github.com/FuturFusion/migration-manager
 
-go 1.23.2
+go 1.22.7
 
 require (
 	github.com/Rican7/retry v0.3.1
@@ -8,7 +8,7 @@ require (
 	github.com/gosimple/slug v1.14.0
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/lxc/distrobuilder v0.0.0-20241028190734-2c5ab324c05d
-	github.com/lxc/incus/v6 v6.6.1-0.20241031160917-ce4bcf7db791
+	github.com/lxc/incus/v6 v6.6.1-0.20241106204235-40d3bfa0b8cd
 	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/schollz/progressbar/v3 v3.17.0
 	github.com/sirupsen/logrus v1.9.3
