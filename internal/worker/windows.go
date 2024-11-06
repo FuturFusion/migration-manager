@@ -19,10 +19,10 @@ import (
 
 type BitLockerState int
 const (
-	BITLOCKERSTATE_UNENCRYPTED BitLockerState = iota
+	BITLOCKERSTATE_UNKNOWN BitLockerState = iota
+	BITLOCKERSTATE_UNENCRYPTED
 	BITLOCKERSTATE_ENCRYPTED
 	BITLOCKERSTATE_CLEARKEY
-	BITLOCKERSTATE_UNKNOWN
 )
 
 const bitLockerMountPath string = "/mnt/dislocker/"

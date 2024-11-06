@@ -6,9 +6,9 @@ import (
 
 type SourceType int
 const (
-	SOURCETYPE_COMMON = iota
+	SOURCETYPE_UNKNOWN = iota
+	SOURCETYPE_COMMON
 	SOURCETYPE_VMWARE
-	SOURCETYPE_UNKNOWN
 )
 
 // Interface definition for all migration manager sources.
