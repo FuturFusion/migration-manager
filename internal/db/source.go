@@ -102,11 +102,12 @@ func (n *Node) UpdateSource(s source.Source) error {
 	defer tx.Rollback()
 
 	// Update source in the database.
-	q := `UPDATE sources SET name=?, config=? WHERE id=?`
+	q := `UPDATE sources SET name=?,config=? WHERE id=?`
 
 	configString := ""
 
 	switch specificSource := s.(type) {
+	case *source.CommonSource:
 	case *source.VMwareSource:
 		marshalled, err := json.Marshal(specificSource.VMwareSourceSpecific)
 		if err != nil {
@@ -117,9 +118,17 @@ func (n *Node) UpdateSource(s source.Source) error {
 		return fmt.Errorf("Can only update a Common or VMware source")
 	}
 
-	_, err = tx.Exec(q, s.GetName(), configString, s.GetDatabaseID())
+	result, err := tx.Exec(q, s.GetName(), configString, s.GetDatabaseID())
 	if err != nil {
 		return err
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if affectedRows == 0 {
+		return fmt.Errorf("Source with ID %d doesn't exist, can't update", s.GetDatabaseID())
 	}
 
 	tx.Commit()
@@ -156,7 +165,7 @@ func (n *Node) getSourcesHelper(id int) ([]source.Source, error) {
 	for rows.Next() {
 		err := rows.Scan(&sourceID, &sourceName, &sourceType, &sourceConfig)
 		if err != nil {
-			return []source.Source{}, err
+			return nil, err
 		}
 
 		switch sourceType {
@@ -167,13 +176,13 @@ func (n *Node) getSourcesHelper(id int) ([]source.Source, error) {
 			specificConfig := source.VMwareSourceSpecific{}
 			err := json.Unmarshal([]byte(sourceConfig), &specificConfig)
 			if err != nil {
-				return []source.Source{}, err
+				return nil, err
 			}
 			newSource := source.NewVMwareSource(sourceName, specificConfig.Endpoint, specificConfig.Username, specificConfig.Password, specificConfig.Insecure)
 			newSource.SetDatabaseID(sourceID)
 			ret = append(ret, newSource)
 		default:
-			return []source.Source{}, fmt.Errorf("Unknown source type %d", sourceType)
+			return nil, fmt.Errorf("Unknown source type %d", sourceType)
 		}
 	}
 
