@@ -10,12 +10,12 @@ import (
 )
 
 func DoMount(device string, path string, options []string) error {
-        if !util.PathExists(path) {
-                err := os.MkdirAll(path, 0755)
-                if err != nil {
-                        return fmt.Errorf("Failed to create mount target %q", path)
-                }
-        }
+	if !util.PathExists(path) {
+		err := os.MkdirAll(path, 0755)
+		if err != nil {
+			return fmt.Errorf("Failed to create mount target %q", path)
+		}
+	}
 
 	args := options
 	args = append(args, device)
