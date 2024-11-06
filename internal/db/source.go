@@ -48,7 +48,12 @@ func (n *Node) AddSource(s source.Source) error {
 	if err != nil {
 		return err
 	}
-	s.SetDatabaseID(int(lastInsertId))
+	switch specificSource := s.(type) {
+	case *source.CommonSource:
+		specificSource.DatabaseID = int(lastInsertId)
+	case *source.VMwareSource:
+		specificSource.DatabaseID = int(lastInsertId)
+	}
 
 	tx.Commit()
 	return nil
@@ -182,7 +187,7 @@ func (n *Node) getSourcesHelper(id int) ([]source.Source, error) {
 				return nil, err
 			}
 			newSource := source.NewVMwareSource(sourceName, specificConfig.Endpoint, specificConfig.Username, specificConfig.Password, specificConfig.Insecure)
-			newSource.SetDatabaseID(sourceID)
+			newSource.DatabaseID = sourceID
 			ret = append(ret, newSource)
 		default:
 			return nil, fmt.Errorf("Unknown source type %d", sourceType)

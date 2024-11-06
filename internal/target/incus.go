@@ -159,10 +159,6 @@ func (t *IncusTarget) GetDatabaseID() int {
 	return t.DatabaseID
 }
 
-func (t *IncusTarget) SetDatabaseID(id int ) {
-	t.DatabaseID = id
-}
-
 func (t *IncusTarget) SetProfile(profile string) error {
 	if !t.isConnected {
 		return fmt.Errorf("Cannot change profile before connecting")

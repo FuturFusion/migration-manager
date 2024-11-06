@@ -14,7 +14,6 @@ type Target interface {
 
 	GetName() string
 	GetDatabaseID() int
-	SetDatabaseID(id int)
 
 	SetProfile(profile string) error
 	SetProject(project string) error

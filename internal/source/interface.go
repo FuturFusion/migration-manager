@@ -22,5 +22,4 @@ type Source interface {
 
 	GetName() string
 	GetDatabaseID() int
-	SetDatabaseID(id int)
 }

@@ -47,7 +47,3 @@ func (s *CommonSource) GetName() string {
 func (s *CommonSource) GetDatabaseID() int {
 	return s.DatabaseID
 }
-
-func (s *CommonSource) SetDatabaseID(id int ) {
-	s.DatabaseID = id
-}

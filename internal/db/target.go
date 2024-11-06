@@ -39,7 +39,7 @@ func (n *Node) AddTarget(t target.Target) error {
 	if err != nil {
 		return err
 	}
-	t.SetDatabaseID(int(lastInsertId))
+	incusTarget.DatabaseID = int(lastInsertId)
 
 	tx.Commit()
 	return nil
