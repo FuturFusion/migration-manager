@@ -18,6 +18,19 @@ CREATE TABLE sources (
     UNIQUE (name)
 );
 
+CREATE TABLE targets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    endpoint VARCHAR(255) NOT NULL,
+    tlsclientkey TEXT NOT NULL,
+    tlsclientcert TEXT NOT NULL,
+    oidctokens TEXT NOT NULL,
+    insecure BOOLEAN,
+    incusprofile VARCHAR(255) NOT NULL,
+    incusproject VARCHAR(255) NOT NULL,
+    UNIQUE (name)
+);
+
 INSERT INTO schema (version, updated_at) VALUES (1, strftime("%s"))
 `
 
@@ -61,6 +74,19 @@ CREATE TABLE sources (
     name VARCHAR(255) NOT NULL,
     type INTEGER NOT NULL,
     config TEXT NOT NULL,
+    UNIQUE (name)
+);
+
+CREATE TABLE targets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    endpoint VARCHAR(255) NOT NULL,
+    tlsclientkey TEXT NOT NULL,
+    tlsclientcert TEXT NOT NULL,
+    oidctokens TEXT NOT NULL,
+    insecure BOOLEAN,
+    incusprofile VARCHAR(255) NOT NULL,
+    incusproject VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 `
