@@ -22,6 +22,15 @@ type CommonSource struct {
 	isConnected bool
 }
 
+// Returns a new CommonSource ready for use.
+func NewCommonSource(name string) *CommonSource {
+	return &CommonSource{
+		Name: name,
+		DatabaseID: internal.INVALID_DATABASE_ID,
+		isConnected: false,
+	}
+}
+
 func (s *CommonSource) Connect(ctx context.Context) error {
 	return fmt.Errorf("Not implemented by CommonSource")
 }

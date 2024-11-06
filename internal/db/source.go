@@ -182,7 +182,8 @@ func (n *Node) getSourcesHelper(id int) ([]source.Source, error) {
 
 		switch sourceType {
 		case source.SOURCETYPE_COMMON:
-			newSource := &source.CommonSource{Name: sourceName, DatabaseID: sourceID}
+			newSource := source.NewCommonSource(sourceName)
+			newSource.DatabaseID = sourceID
 			ret = append(ret, newSource)
 		case source.SOURCETYPE_VMWARE:
 			specificConfig := source.VMwareSourceSpecific{}

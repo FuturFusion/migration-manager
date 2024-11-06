@@ -11,7 +11,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/worker"
 )
 
-var commonSource = &source.CommonSource{Name: "common_source", DatabaseID: 123}
+var commonSource = source.NewCommonSource("common_source")
 var vmwareSourceA = source.NewVMwareSource("vmware_source", "endpoint_url", "user", "pass", false)
 var vmwareSourceB = source.NewVMwareSource("vmware_source2", "endpoint_ip", "another_user", "pass", true)
 var workerConfigs = []worker.WorkerConfig{
