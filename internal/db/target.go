@@ -103,11 +103,15 @@ func (n *Node) UpdateTarget(t target.Target) error {
 		return fmt.Errorf("Only Incus targets are supported")
 	}
 
+	id, err := t.GetDatabaseID()
+	if err != nil {
+		return err
+	}
 	marshalledOIDCTokens, err := json.Marshal(incusTarget.OIDCTokens)
 	if err != nil {
 		return err
 	}
-	result, err := tx.Exec(q, incusTarget.Name, incusTarget.Endpoint, incusTarget.TLSClientKey, incusTarget.TLSClientCert, marshalledOIDCTokens, incusTarget.Insecure, incusTarget.IncusProfile, incusTarget.IncusProject, t.GetDatabaseID())
+	result, err := tx.Exec(q, incusTarget.Name, incusTarget.Endpoint, incusTarget.TLSClientKey, incusTarget.TLSClientCert, marshalledOIDCTokens, incusTarget.Insecure, incusTarget.IncusProfile, incusTarget.IncusProject, id)
 	if err != nil {
 		return err
 	}
@@ -117,7 +121,7 @@ func (n *Node) UpdateTarget(t target.Target) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Target with ID %d doesn't exist, can't update", t.GetDatabaseID())
+		return fmt.Errorf("Target with ID %d doesn't exist, can't update", id)
 	}
 
 	tx.Commit()

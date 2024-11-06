@@ -155,8 +155,12 @@ func (t *IncusTarget) GetName() string {
 	return t.Name
 }
 
-func (t *IncusTarget) GetDatabaseID() int {
-	return t.DatabaseID
+func (t *IncusTarget) GetDatabaseID() (int, error) {
+	if t.DatabaseID == internal.INVALID_DATABASE_ID {
+		return internal.INVALID_DATABASE_ID, fmt.Errorf("Target has not been added to database, so it doesn't have an ID")
+	}
+
+	return t.DatabaseID, nil
 }
 
 func (t *IncusTarget) SetProfile(profile string) error {

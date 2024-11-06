@@ -3,6 +3,8 @@ package source
 import (
 	"context"
 	"fmt"
+
+	"github.com/FuturFusion/migration-manager/internal"
 )
 
 // CommonSource defines properties common to all sources.
@@ -44,6 +46,10 @@ func (s *CommonSource) GetName() string {
 	return s.Name
 }
 
-func (s *CommonSource) GetDatabaseID() int {
-	return s.DatabaseID
+func (s *CommonSource) GetDatabaseID() (int, error) {
+	if s.DatabaseID == internal.INVALID_DATABASE_ID {
+		return internal.INVALID_DATABASE_ID, fmt.Errorf("Source has not been added to database, so it doesn't have an ID")
+	}
+
+	return s.DatabaseID, nil
 }

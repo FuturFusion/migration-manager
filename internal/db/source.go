@@ -126,7 +126,11 @@ func (n *Node) UpdateSource(s source.Source) error {
 		return fmt.Errorf("Can only update a Common or VMware source")
 	}
 
-	result, err := tx.Exec(q, s.GetName(), configString, s.GetDatabaseID())
+	id, err := s.GetDatabaseID()
+	if err != nil {
+		return err
+	}
+	result, err := tx.Exec(q, s.GetName(), configString, id)
 	if err != nil {
 		return err
 	}
@@ -136,7 +140,7 @@ func (n *Node) UpdateSource(s source.Source) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Source with ID %d doesn't exist, can't update", s.GetDatabaseID())
+		return fmt.Errorf("Source with ID %d doesn't exist, can't update", id)
 	}
 
 	tx.Commit()

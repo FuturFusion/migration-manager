@@ -48,7 +48,9 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.Equal(t, len(targets), 3)
 
 	// Should get back incusTargetA unchanged.
-	incusTargetA_DB, err := db.GetTarget(incusTargetA.GetDatabaseID())
+	id, err := incusTargetA.GetDatabaseID()
+	require.NoError(t, err)
+	incusTargetA_DB, err := db.GetTarget(id)
 	require.NoError(t, err)
 	require.Equal(t, incusTargetA, incusTargetA_DB)
 
@@ -57,14 +59,18 @@ func TestTargetDatabaseActions(t *testing.T) {
 	incusTargetB.IncusProfile = "new-profile"
 	err = db.UpdateTarget(incusTargetB)
 	require.NoError(t, err)
-	incusTargetB_DB, err := db.GetTarget(incusTargetB.GetDatabaseID())
+	id, err = incusTargetB.GetDatabaseID()
+	require.NoError(t, err)
+	incusTargetB_DB, err := db.GetTarget(id)
 	require.NoError(t, err)
 	require.Equal(t, incusTargetB, incusTargetB_DB)
 
 	// Delete a target.
-	err = db.DeleteTarget(incusTargetA.GetDatabaseID())
+	id, err = incusTargetA.GetDatabaseID()
 	require.NoError(t, err)
-	_, err = db.GetTarget(incusTargetA.GetDatabaseID())
+	err = db.DeleteTarget(id)
+	require.NoError(t, err)
+	_, err = db.GetTarget(id)
 	require.Error(t, err)
 
 	// Should have two targets remaining.

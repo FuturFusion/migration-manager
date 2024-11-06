@@ -47,9 +47,9 @@ type Target interface {
 
 	// Returns a unique ID for this target that can be used when interacting with the database.
 	//
-	// A freshly-created target that hasn't yet been added to the database via AddTarget() or
-	// retrieved via GetTarget()/GetAllTargets() will return an invalid ID.
-	GetDatabaseID() int
+	// Attempting to get an ID for a freshly-created target that hasn't yet been added to the database
+	// via AddTarget() or retrieved via GetTarget()/GetAllTargets() will return an error.
+	GetDatabaseID() (int, error)
 
 	//////////////////////////////////////////////////
 

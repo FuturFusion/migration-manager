@@ -33,9 +33,9 @@ type Source interface {
 
 	// Returns a unique ID for this source that can be used when interacting with the database.
 	//
-	// A freshly-created source that hasn't yet been added to the database via AddSource() or
-	// retrieved via GetSource()/GetAllSources() will return an invalid ID.
-	GetDatabaseID() int
+	// Attempting to get an ID for a freshly-created source that hasn't yet been added to the database
+	// via AddSsource() or retrieved via GetSource()/GetAllSources() will return an error.
+	GetDatabaseID() (int, error)
 
 //////////////////////////////////////////////////
 
