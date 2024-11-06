@@ -7,6 +7,8 @@ import (
 	"github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
+
+	"github.com/FuturFusion/migration-manager/internal"
 )
 
 // IncusTarget defines an Incus target for use by the migration manager.
@@ -55,7 +57,7 @@ type IncusTarget struct {
 func NewIncusTarget(name string, endpoint string) *IncusTarget {
 	return &IncusTarget{
 		Name: name,
-		DatabaseID: -1,
+		DatabaseID: internal.INVALID_DATABASE_ID,
 		Endpoint: endpoint,
 		TLSClientKey: "",
 		TLSClientCert: "",

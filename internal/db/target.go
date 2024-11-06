@@ -8,6 +8,8 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/target"
 )
 
+const ALL_TARGETS int = -1
+
 func (n *Node) AddTarget(t target.Target) error {
 	tx, err := n.db.Begin()
 	if err != nil {
@@ -57,7 +59,7 @@ func (n *Node) GetTarget(id int) (target.Target, error) {
 }
 
 func (n *Node) GetAllTargets() ([]target.Target, error) {
-	return n.getTargetsHelper(-1)
+	return n.getTargetsHelper(ALL_TARGETS)
 }
 
 func (n *Node) DeleteTarget(id int) error {
@@ -134,7 +136,7 @@ func (n *Node) getTargetsHelper(id int) ([]target.Target, error) {
 	// Get all targets in the database.
 	q := `SELECT id,name,endpoint,tlsclientkey,tlsclientcert,oidctokens,insecure,incusprofile,incusproject FROM targets`
 	var rows *sql.Rows
-	if id != -1 {
+	if id != ALL_TARGETS {
 		q += ` WHERE id=?`
 		rows, err = tx.Query(q, id)
 	} else {

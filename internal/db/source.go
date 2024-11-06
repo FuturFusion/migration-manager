@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/source"
 )
+
+const ALL_SOURCES int = -1
 
 func (n *Node) AddSource(s source.Source) error {
 	tx, err := n.db.Begin()
@@ -65,7 +68,7 @@ func (n *Node) GetSource(id int) (source.Source, error) {
 }
 
 func (n *Node) GetAllSources() ([]source.Source, error) {
-	return n.getSourcesHelper(-1)
+	return n.getSourcesHelper(ALL_SOURCES)
 }
 
 func (n *Node) DeleteSource(id int) error {
@@ -144,7 +147,7 @@ func (n *Node) getSourcesHelper(id int) ([]source.Source, error) {
 	}
 	defer tx.Rollback()
 
-	sourceID := -1
+	sourceID := internal.INVALID_DATABASE_ID
 	sourceName := ""
 	sourceType := source.SOURCETYPE_UNKNOWN
 	sourceConfig := "" 
@@ -152,7 +155,7 @@ func (n *Node) getSourcesHelper(id int) ([]source.Source, error) {
 	// Get all sources in the database.
 	q := `SELECT id,name,type,config FROM sources`
 	var rows *sql.Rows
-	if id != -1 {
+	if id != ALL_SOURCES {
 		q += ` WHERE id=?`
 		rows, err = tx.Query(q, id)
 	} else {

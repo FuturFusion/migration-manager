@@ -11,6 +11,7 @@ import (
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/soap"
 
+	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware_nbdkit"
@@ -56,7 +57,7 @@ func NewVMwareSource(name string, endpoint string, username string, password str
 	return &VMwareSource{
 		CommonSource: CommonSource{
 			Name: name,
-			DatabaseID: -1,
+			DatabaseID: internal.INVALID_DATABASE_ID,
 			isConnected: false,
 		},
 		VMwareSourceSpecific: VMwareSourceSpecific{
