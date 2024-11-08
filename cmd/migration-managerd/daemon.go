@@ -7,9 +7,9 @@ import (
 
 	"github.com/lxc/incus/v6/shared/logger"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/server/endpoint"
+	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
 type DaemonConfig struct {
@@ -46,7 +46,7 @@ func newDaemon(config *DaemonConfig) *Daemon {
 func (d *Daemon) Start() error {
 	var err error
 
-	logger.Info("Starting up", logger.Ctx{"version": internal.Version})
+	logger.Info("Starting up", logger.Ctx{"version": version.Version})
 
 	// Open the local sqlite database.
 	d.db, err = db.OpenDatabase(d.config.dbPathDir)

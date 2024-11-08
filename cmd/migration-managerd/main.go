@@ -6,7 +6,7 @@ import (
 	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/internal"
+	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
 type cmdGlobal struct {
@@ -51,7 +51,7 @@ func main() {
 
 	// Version handling
 	app.SetVersionTemplate("{{.Version}}\n")
-	app.Version = internal.Version
+	app.Version = version.Version
 
 	// Run the main command and handle errors
 	err := app.Execute()

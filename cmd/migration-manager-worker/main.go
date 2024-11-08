@@ -10,6 +10,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/worker"
+	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
 func main() {
@@ -25,7 +26,7 @@ func main() {
 
 	ctx := context.TODO()
 
-	fmt.Printf("This is migration-manager-worker v%s\n", internal.Version)
+	fmt.Printf("This is migration-manager-worker v%s\n", version.Version)
 
 	// TODO -- Fetch this file from the config drive that's mounted into the VM
 	workerConfig, err := worker.WorkerConfigFromYamlFile("./worker.yaml")
