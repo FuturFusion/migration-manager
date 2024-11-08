@@ -91,7 +91,7 @@ func (a WorkerConfig) MarshalYAML() (interface{}, error) {
 	type WorkerConfigWrapper WorkerConfig
 	val, err := yaml.Marshal(&struct {
 		TYPE int `yaml:"TYPE"`
-		WorkerConfigWrapper
+		WorkerConfigWrapper `yaml:",inline"`
 	}{
 		TYPE: sourceType,
 		WorkerConfigWrapper: (WorkerConfigWrapper)(a),
@@ -118,21 +118,16 @@ func (a *WorkerConfig) UnmarshalYAML(value *yaml.Node) error {
 	}
 
 	// Ugh, need to do this by hand manually...
-	configVals, ok := unmarshaledData["workerconfigwrapper"].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("Error extracting workerconfigwrapper")
-	}
-
-	sourceVals, ok := configVals["source"].(map[string]interface{})
+	sourceVals, ok := unmarshaledData["source"].(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("Error extracting source")
 	}
 
 	newWorkerConfig := new(WorkerConfig)
-	newWorkerConfig.MigrationManagerEndpoint, _ = configVals["migrationManagerEndpoint"].(string)
-	newWorkerConfig.VMName, _ = configVals["vmName"].(string)
-	newWorkerConfig.VMOperatingSystemName, _ = configVals["vmOperatingSystemName"].(string)
-	newWorkerConfig.VMOperatingSystemVersion, _ = configVals["vmOperatingSystemVersion"].(string)
+	newWorkerConfig.MigrationManagerEndpoint, _ = unmarshaledData["migrationManagerEndpoint"].(string)
+	newWorkerConfig.VMName, _ = unmarshaledData["vmName"].(string)
+	newWorkerConfig.VMOperatingSystemName, _ = unmarshaledData["vmOperatingSystemName"].(string)
+	newWorkerConfig.VMOperatingSystemVersion, _ = unmarshaledData["vmOperatingSystemVersion"].(string)
 
 	switch unmarshaledData["TYPE"] {
 	case source.SOURCETYPE_COMMON:
