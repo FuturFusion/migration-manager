@@ -3,12 +3,12 @@ package response
 import (
 	"bytes"
 	"compress/gzip"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
+	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -45,10 +45,15 @@ func SyncResponseETag(success bool, metadata any, etag any) Response {
 	return &syncResponse{success: success, metadata: metadata, etag: etag}
 }
 
+// SyncResponseLocation returns a new syncResponse with a location.
+func SyncResponseLocation(success bool, metadata any, location string) Response {
+	return &syncResponse{success: success, metadata: metadata, location: location}
+}
+
 func (r *syncResponse) Render(w http.ResponseWriter) error {
 	// Set an appropriate ETag header
 	if r.etag != nil {
-		etag, err := etagHash(r.etag)
+		etag, err := util.EtagHash(r.etag)
 		if err == nil {
 			w.Header().Set("ETag", fmt.Sprintf("\"%s\"", etag))
 		}
@@ -151,6 +156,11 @@ type errorResponse struct {
 	msg  string // Message to return in the Error field of the response body.
 }
 
+// BadRequest returns a bad request response (400) with the given error.
+func BadRequest(err error) Response {
+	return &errorResponse{http.StatusBadRequest, err.Error()}
+}
+
 // Forbidden returns a forbidden response (403) with the given error.
 func Forbidden(err error) Response {
 	message := "not authorized"
@@ -184,6 +194,12 @@ func NotImplemented(err error) Response {
 	}
 
 	return &errorResponse{http.StatusNotImplemented, message}
+}
+
+// PreconditionFailed returns a precondition failed response (412) with the
+// given error.
+func PreconditionFailed(err error) Response {
+	return &errorResponse{http.StatusPreconditionFailed, err.Error()}
 }
 
 // Unavailable return an unavailable response (503) with the given error.
@@ -233,17 +249,6 @@ func (r *errorResponse) Render(w http.ResponseWriter) error {
 	_, err = fmt.Fprintln(w, buf.String())
 
 	return err
-}
-
-// etagHash hashes the provided data and returns the sha256.
-func etagHash(data any) (string, error) {
-	etag := sha256.New()
-	err := json.NewEncoder(etag).Encode(data)
-	if err != nil {
-		return "", err
-	}
-
-	return fmt.Sprintf("%x", etag.Sum(nil)), nil
 }
 
 // writeJSON encodes the body as JSON and sends it back to the client

@@ -14,6 +14,8 @@ var api10Cmd = APIEndpoint{
 
 var api10 = []APIEndpoint{
 	api10Cmd,
+	sourceCmd,
+	sourcesCmd,
 }
 
 // swagger:operation GET /1.0?public server server_get_untrusted
