@@ -116,6 +116,7 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, name string) ([]target.Target, error
 		q += ` WHERE name=?`
 		rows, err = tx.Query(q, name)
 	} else {
+		q += ` ORDER BY name`
 		rows, err = tx.Query(q)
 	}
 	if err != nil {

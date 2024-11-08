@@ -140,6 +140,7 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string) ([]source.Source, error
 		q += ` WHERE name=?`
 		rows, err = tx.Query(q, name)
 	} else {
+		q += ` ORDER BY name`
 		rows, err = tx.Query(q)
 	}
 	if err != nil {
