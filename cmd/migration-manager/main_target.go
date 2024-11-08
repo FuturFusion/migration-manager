@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -30,8 +28,10 @@ func (c *cmdTarget) Run(cmd *cobra.Command, args []string) error {
 	if exit {
 		return err
 	}
-
-	fmt.Printf("Target stub!\n")
+	err = c.global.CheckConfigStatus()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -4,8 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/user"
+	"path"
 
 	"github.com/lxc/incus/v6/shared/ask"
+	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/version"
@@ -14,11 +17,12 @@ import (
 type cmdGlobal struct {
 	asker ask.Asker
 
+	config   *Config
 	cmd      *cobra.Command
 	ret      int
 
-	flagHelp       bool
-	flagVersion    bool
+	flagHelp    bool
+	flagVersion bool
 }
 
 func main() {
@@ -42,6 +46,9 @@ func main() {
 	app.PersistentFlags().BoolVar(&globalCmd.flagVersion, "version", false, "Print version number")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagHelp, "help", "h", false, "Print help")
 
+	// Wrappers
+	app.PersistentPreRunE = globalCmd.PreRun
+
 	// Version handling
 	app.SetVersionTemplate("{{.Version}}\n")
 	app.Version = version.Version
@@ -59,6 +66,69 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
+}
+
+func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
+	var err error
+
+	// If calling the help, skip pre-run
+	if cmd.Name() == "help" {
+		return nil
+	}
+
+	// Figure out the config directory and config path
+	var configDir string
+	if os.Getenv("MIGRATION_MANAGER_CONF") != "" {
+		configDir = os.Getenv("MIGRATION_MANAGER_CONF")
+	} else if os.Getenv("HOME") != "" && util.PathExists(os.Getenv("HOME")) {
+		configDir = path.Join(os.Getenv("HOME"), ".config", "migration-manager")
+	} else {
+		user, err := user.Current()
+		if err != nil {
+			return err
+		}
+
+		if util.PathExists(user.HomeDir) {
+			configDir = path.Join(user.HomeDir, ".config", "migration-manager")
+		}
+	}
+
+	configDir = os.ExpandEnv(configDir)
+	configFile := path.Join(configDir, "config.yml")
+	if !util.PathExists(configDir) {
+		// Create the config dir if it doesn't exist
+		err = os.MkdirAll(configDir, 0750)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Load the configuration
+	if util.PathExists(configFile) {
+		c.config, err = LoadConfig(configFile)
+		if err != nil {
+			return err
+		}
+		c.config.ConfigDir = configDir
+	} else {
+		c.config = NewConfig(configDir)
+	}
+
+	return nil
+}
+
+func (c *cmdGlobal) CheckConfigStatus() error {
+	if c.config.MMServer != "" {
+		return nil
+	}
+
+	resp, err := c.asker.AskString("Please enter the migration manager server URL: ", "", nil)
+	if err != nil {
+		return err
+	}
+	c.config.MMServer = resp
+
+	return c.config.SaveConfig()
 }
 
 func (c *cmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, maxArgs int) (bool, error) {
