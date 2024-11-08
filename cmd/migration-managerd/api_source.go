@@ -15,6 +15,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/version"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 var sourcesCmd = APIEndpoint{
@@ -86,9 +87,9 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 		for _, s := range sources {
 			switch s.(type) {
 			case *source.InternalCommonSource:
-				result = append(result, sourcesResult{Type: source.SOURCETYPE_COMMON, Source: s})
+				result = append(result, sourcesResult{Type: api.SOURCETYPE_COMMON, Source: s})
 			case *source.InternalVMwareSource:
-				result = append(result, sourcesResult{Type: source.SOURCETYPE_VMWARE, Source: s})
+				result = append(result, sourcesResult{Type: api.SOURCETYPE_VMWARE, Source: s})
 			default:
 				return fmt.Errorf("Unsupported source type %T", s)
 			}
@@ -148,9 +149,9 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 
 	// Setup the correct source type for unmarshaling.
 	switch sourceType {
-	case source.SOURCETYPE_COMMON:
+	case api.SOURCETYPE_COMMON:
 		s = &source.InternalCommonSource{}
-	case source.SOURCETYPE_VMWARE:
+	case api.SOURCETYPE_VMWARE:
 		s = &source.InternalVMwareSource{}
 	default:
 		return response.BadRequest(fmt.Errorf("Unsupported source type %d", sourceType))

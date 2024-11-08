@@ -1,5 +1,12 @@
 package api
 
+type SourceType int
+const (
+	SOURCETYPE_UNKNOWN = iota
+	SOURCETYPE_COMMON
+	SOURCETYPE_VMWARE
+)
+
 // CommonSource defines properties common to all sources.
 //
 // swagger:model

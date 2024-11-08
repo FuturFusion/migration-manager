@@ -4,13 +4,6 @@ import (
 	"context"
 )
 
-type SourceType int
-const (
-	SOURCETYPE_UNKNOWN = iota
-	SOURCETYPE_COMMON
-	SOURCETYPE_VMWARE
-)
-
 // Interface definition for all migration manager sources.
 type Source interface {
 	// Connects to the source, using any source-specific details when the object was created.

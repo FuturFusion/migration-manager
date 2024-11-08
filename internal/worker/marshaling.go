@@ -7,17 +7,18 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/migration-manager/internal/source"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Implement the encoding/json Marshaler interface.
 func (a WorkerConfig) MarshalJSON() ([]byte, error) {
 	// Determine the source's type.
-	sourceType := source.SOURCETYPE_UNKNOWN
+	sourceType := api.SOURCETYPE_UNKNOWN
 	switch a.Source.(type) {
 	case *source.InternalCommonSource:
-		sourceType = source.SOURCETYPE_COMMON
+		sourceType = api.SOURCETYPE_COMMON
 	case *source.InternalVMwareSource:
-		sourceType = source.SOURCETYPE_VMWARE
+		sourceType = api.SOURCETYPE_VMWARE
 	default:
 		return nil, fmt.Errorf("Unsupported source type %T", a.Source)
 	}
@@ -49,9 +50,9 @@ func (a *WorkerConfig) UnmarshalJSON(data []byte) error {
 	// Set a correct Source for the WorkerConfig based on the type.
 	newWorkerConfig := new(WorkerConfig)
 	switch unmarshaledData["TYPE"].(float64) {
-	case source.SOURCETYPE_COMMON:
+	case api.SOURCETYPE_COMMON:
 		newWorkerConfig.Source = &source.InternalCommonSource{}
-	case source.SOURCETYPE_VMWARE:
+	case api.SOURCETYPE_VMWARE:
 		newWorkerConfig.Source = &source.InternalVMwareSource{}
 	default:
 		return fmt.Errorf("Unsupported source type %d", unmarshaledData["TYPE"])
@@ -77,12 +78,12 @@ func (a *WorkerConfig) UnmarshalJSON(data []byte) error {
 // Implement the gopkg.in/yaml.v3 Marshaler interface.
 func (a WorkerConfig) MarshalYAML() (interface{}, error) {
 	// Determine the source's type.
-	sourceType := source.SOURCETYPE_UNKNOWN
+	sourceType := api.SOURCETYPE_UNKNOWN
 	switch a.Source.(type) {
 	case *source.InternalCommonSource:
-		sourceType = source.SOURCETYPE_COMMON
+		sourceType = api.SOURCETYPE_COMMON
 	case *source.InternalVMwareSource:
-		sourceType = source.SOURCETYPE_VMWARE
+		sourceType = api.SOURCETYPE_VMWARE
 	default:
 		return nil, fmt.Errorf("Unsupported source type %T", a.Source)
 	}
@@ -130,12 +131,12 @@ func (a *WorkerConfig) UnmarshalYAML(value *yaml.Node) error {
 	newWorkerConfig.VMOperatingSystemVersion, _ = unmarshaledData["vmOperatingSystemVersion"].(string)
 
 	switch unmarshaledData["TYPE"] {
-	case source.SOURCETYPE_COMMON:
+	case api.SOURCETYPE_COMMON:
 		s := &source.InternalCommonSource{}
 		s.Name, _ = sourceVals["name"].(string)
 		s.DatabaseID, _ = sourceVals["databaseID"].(int)
 		newWorkerConfig.Source = s
-	case source.SOURCETYPE_VMWARE:
+	case api.SOURCETYPE_VMWARE:
 		s := &source.InternalVMwareSource{}
 		s.Name, _ = sourceVals["name"].(string)
 		s.DatabaseID, _ = sourceVals["databaseID"].(int)

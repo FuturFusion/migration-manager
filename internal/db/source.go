@@ -7,20 +7,21 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/source"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 	// Add source to the database.
 	q := `INSERT INTO sources (name,type,config) VALUES(?,?,?)`
 
-	sourceType := source.SOURCETYPE_UNKNOWN
+	sourceType := api.SOURCETYPE_UNKNOWN
 	configString := ""
 
 	switch specificSource := s.(type) {
 	case *source.InternalCommonSource:
-		sourceType = source.SOURCETYPE_COMMON
+		sourceType = api.SOURCETYPE_COMMON
 	case *source.InternalVMwareSource:
-		sourceType = source.SOURCETYPE_VMWARE
+		sourceType = api.SOURCETYPE_VMWARE
 		marshalled, err := json.Marshal(specificSource.VMwareSourceSpecific)
 		if err != nil {
 			return err
@@ -129,7 +130,7 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string) ([]source.Source, error
 
 	sourceID := internal.INVALID_DATABASE_ID
 	sourceName := ""
-	sourceType := source.SOURCETYPE_UNKNOWN
+	sourceType := api.SOURCETYPE_UNKNOWN
 	sourceConfig := "" 
 
 	// Get all sources in the database.
@@ -154,11 +155,11 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string) ([]source.Source, error
 		}
 
 		switch sourceType {
-		case source.SOURCETYPE_COMMON:
+		case api.SOURCETYPE_COMMON:
 			newSource := source.NewCommonSource(sourceName)
 			newSource.DatabaseID = sourceID
 			ret = append(ret, newSource)
-		case source.SOURCETYPE_VMWARE:
+		case api.SOURCETYPE_VMWARE:
 			specificConfig := source.InternalVMwareSourceSpecific{}
 			err := json.Unmarshal([]byte(sourceConfig), &specificConfig)
 			if err != nil {
