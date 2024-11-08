@@ -40,6 +40,11 @@ func SyncResponse(success bool, metadata any) Response {
 	return &syncResponse{success: success, metadata: metadata}
 }
 
+// SyncResponseETag returns a new syncResponse with an etag.
+func SyncResponseETag(success bool, metadata any, etag any) Response {
+	return &syncResponse{success: success, metadata: metadata, etag: etag}
+}
+
 func (r *syncResponse) Render(w http.ResponseWriter) error {
 	// Set an appropriate ETag header
 	if r.etag != nil {
@@ -146,6 +151,21 @@ type errorResponse struct {
 	msg  string // Message to return in the Error field of the response body.
 }
 
+// Forbidden returns a forbidden response (403) with the given error.
+func Forbidden(err error) Response {
+	message := "not authorized"
+	if err != nil {
+		message = err.Error()
+	}
+
+	return &errorResponse{http.StatusForbidden, message}
+}
+
+// InternalError returns an internal error response (500) with the given error.
+func InternalError(err error) Response {
+	return &errorResponse{http.StatusInternalServerError, err.Error()}
+}
+
 // NotFound returns a not found response (404) with the given error.
 func NotFound(err error) Response {
 	message := "not found"
@@ -154,6 +174,26 @@ func NotFound(err error) Response {
 	}
 
 	return &errorResponse{http.StatusNotFound, message}
+}
+
+// NotImplemented returns a not implemented response (501) with the given error.
+func NotImplemented(err error) Response {
+	message := "not implemented"
+	if err != nil {
+		message = err.Error()
+	}
+
+	return &errorResponse{http.StatusNotImplemented, message}
+}
+
+// Unavailable return an unavailable response (503) with the given error.
+func Unavailable(err error) Response {
+	message := "unavailable"
+	if err != nil {
+		message = err.Error()
+	}
+
+	return &errorResponse{http.StatusServiceUnavailable, message}
 }
 
 func (r *errorResponse) String() string {
