@@ -15,37 +15,16 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware_nbdkit"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-// VMwareSource composes the common and VMware-specific structs into a unified struct for common use.
-//
-// swagger:model
-type VMwareSource struct {
-	CommonSource
-	VMwareSourceSpecific
+type InternalVMwareSource struct {
+	InternalCommonSource `yaml:",inline"`
+	InternalVMwareSourceSpecific `yaml:",inline"`
 }
 
-// VMwareSourceSpecific defines a VMware endpoint that the migration manager can connect to.
-//
-// It is defined as a separate struct to facilitate marshaling/unmarshaling of just the VMware-specific fields.
-//
-// swagger:model
-type VMwareSourceSpecific struct {
-	// Hostname or IP address of the source endpoint
-	// Example: vsphere.local
-	Endpoint string `json:"endpoint" yaml:"endpoint"`
-
-	// Username to authenticate against the endpoint
-	// Example: admin
-	Username string `json:"username" yaml:"username"`
-
-	// Password to authenticate against the endpoint
-	// Example: password
-	Password string `json:"password" yaml:"password"`
-
-	// If true, disable TLS certificate validation
-	// Example: false
-	Insecure bool `json:"insecure" yaml:"insecure"`
+type InternalVMwareSourceSpecific struct {
+	api.VMwareSourceSpecific `yaml:",inline"`
 
 	vimClient  *vim25.Client
 	vimSession *cache.Session
@@ -53,23 +32,27 @@ type VMwareSourceSpecific struct {
 }
 
 // Returns a new VMwareSource ready for use.
-func NewVMwareSource(name string, endpoint string, username string, password string, insecure bool) *VMwareSource {
-	return &VMwareSource{
-		CommonSource: CommonSource{
-			Name: name,
-			DatabaseID: internal.INVALID_DATABASE_ID,
+func NewVMwareSource(name string, endpoint string, username string, password string, insecure bool) *InternalVMwareSource {
+	return &InternalVMwareSource{
+		InternalCommonSource: InternalCommonSource{
+			CommonSource: api.CommonSource{
+				Name: name,
+				DatabaseID: internal.INVALID_DATABASE_ID,
+			},
 			isConnected: false,
 		},
-		VMwareSourceSpecific: VMwareSourceSpecific{
-			Endpoint: endpoint,
-			Username: username,
-			Password: password,
-			Insecure: insecure,
+		InternalVMwareSourceSpecific: InternalVMwareSourceSpecific{
+			VMwareSourceSpecific: api.VMwareSourceSpecific{
+				Endpoint: endpoint,
+				Username: username,
+				Password: password,
+				Insecure: insecure,
+			},
 		},
 	}
 }
 
-func (s *VMwareSource) Connect(ctx context.Context) error {
+func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 	if s.isConnected {
 		return fmt.Errorf("Already connected to endpoint '%s'", s.Endpoint)
 	}
@@ -108,7 +91,7 @@ func (s *VMwareSource) Connect(ctx context.Context) error {
 	return nil
 }
 
-func (s *VMwareSource) Disconnect(ctx context.Context) error {
+func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 	if !s.isConnected {
 		return fmt.Errorf("Not connected to endpoint '%s'", s.Endpoint)
 	}
@@ -125,7 +108,7 @@ func (s *VMwareSource) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (s *VMwareSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
+func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
 	vm, err := s.getVM(ctx, vmName)
 	if err != nil {
 		return err
@@ -143,7 +126,7 @@ func (s *VMwareSource) DeleteVMSnapshot(ctx context.Context, vmName string, snap
 	return nil
 }
 
-func (s *VMwareSource) ImportDisks(ctx context.Context, vmName string) error {
+func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string) error {
 	vm, err := s.getVM(ctx, vmName)
 	if err != nil {
 		return err
@@ -153,7 +136,7 @@ func (s *VMwareSource) ImportDisks(ctx context.Context, vmName string) error {
 	return NbdkitServers.MigrationCycle(ctx, false)
 }
 
-func (s *VMwareSource) getVM(ctx context.Context, vmName string) (*object.VirtualMachine, error) {
+func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*object.VirtualMachine, error) {
 	finder := find.NewFinder(s.vimClient)
 	res, err := finder.VirtualMachineList(ctx, vmName)
 	if err != nil {

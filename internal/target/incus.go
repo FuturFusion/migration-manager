@@ -6,47 +6,13 @@ import (
 
 	"github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
-	"github.com/zitadel/oidc/v3/pkg/oidc"
 
 	"github.com/FuturFusion/migration-manager/internal"
+	mmapi "github.com/FuturFusion/migration-manager/shared/api"
 )
 
-// IncusTarget defines an Incus target for use by the migration manager.
-//
-// swagger:model
-type IncusTarget struct {
-	// A human-friendly name for this target
-	// Example: MyTarget
-	Name string `json:"name" yaml:"name"`
-
-	// An opaque integer identifier for the target
-	// Example: 123
-	DatabaseID int `json:"databaseID" yaml:"databaseID"`
-
-	// Hostname or IP address of the target endpoint
-	// Example: https://incus.local:8443
-	Endpoint string `json:"endpoint" yaml:"endpoint"`
-
-	// base64-encoded TLS client key for authentication
-	TLSClientKey string `json:"tlsClientKey" yaml:"tlsClientKey"`
-
-	// base64-encoded TLS client certificate for authentication
-	TLSClientCert string `json:"tlsClientCert" yaml:"tlsClientCert"`
-
-	// OpenID Connect tokens
-	OIDCTokens *oidc.Tokens[*oidc.IDTokenClaims] `json:"oidcTokens" yaml:"oidcTokens"`
-
-	// If true, disable TLS certificate validation
-	// Example: false
-	Insecure bool `json:"insecure" yaml:"insecure"`
-
-	// The Incus profile to use
-	// Example: default
-	IncusProfile string `json:"incusProfile" yaml:"incusProfile"`
-
-	// The Incus project to use
-	// Example: default
-	IncusProject string `json:"incusProject" yaml:"incusProject"`
+type InternalIncusTarget struct {
+	mmapi.IncusTarget `yaml:",inline"`
 
 	isConnected bool
 	incusConnectionArgs *incus.ConnectionArgs
@@ -54,22 +20,24 @@ type IncusTarget struct {
 }
 
 // Returns a new IncusTarget ready for use.
-func NewIncusTarget(name string, endpoint string) *IncusTarget {
-	return &IncusTarget{
-		Name: name,
-		DatabaseID: internal.INVALID_DATABASE_ID,
-		Endpoint: endpoint,
-		TLSClientKey: "",
-		TLSClientCert: "",
-		OIDCTokens: nil,
-		Insecure: false,
-		IncusProfile: "default",
-		IncusProject: "default",
+func NewIncusTarget(name string, endpoint string) *InternalIncusTarget {
+	return &InternalIncusTarget{
+		IncusTarget: mmapi.IncusTarget{
+			Name: name,
+			DatabaseID: internal.INVALID_DATABASE_ID,
+			Endpoint: endpoint,
+			TLSClientKey: "",
+			TLSClientCert: "",
+			OIDCTokens: nil,
+			Insecure: false,
+			IncusProfile: "default",
+			IncusProject: "default",
+		},
 		isConnected: false,
 	}
 }
 
-func (t *IncusTarget) Connect(ctx context.Context) error {
+func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	if t.isConnected {
 		return fmt.Errorf("Already connected to endpoint '%s'", t.Endpoint)
 	}
@@ -115,7 +83,7 @@ func (t *IncusTarget) Connect(ctx context.Context) error {
 	return nil
 }
 
-func (t *IncusTarget) Disconnect(ctx context.Context) error {
+func (t *InternalIncusTarget) Disconnect(ctx context.Context) error {
 	if !t.isConnected {
 		return fmt.Errorf("Not connected to endpoint '%s'", t.Endpoint)
 	}
@@ -128,7 +96,7 @@ func (t *IncusTarget) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (t *IncusTarget) SetInsecureTLS(insecure bool) error {
+func (t *InternalIncusTarget) SetInsecureTLS(insecure bool) error {
 	if t.isConnected {
 		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
 	}
@@ -137,7 +105,7 @@ func (t *IncusTarget) SetInsecureTLS(insecure bool) error {
 	return nil
 }
 
-func (t *IncusTarget) SetClientTLSCredentials(key string, cert string) error {
+func (t *InternalIncusTarget) SetClientTLSCredentials(key string, cert string) error {
 	if t.isConnected {
 		return fmt.Errorf("Cannot change client TLS key/cert after connecting")
 	}
@@ -147,15 +115,15 @@ func (t *IncusTarget) SetClientTLSCredentials(key string, cert string) error {
 	return nil
 }
 
-func (t *IncusTarget) IsConnected() bool {
+func (t *InternalIncusTarget) IsConnected() bool {
 	return t.isConnected
 }
 
-func (t *IncusTarget) GetName() string {
+func (t *InternalIncusTarget) GetName() string {
 	return t.Name
 }
 
-func (t *IncusTarget) GetDatabaseID() (int, error) {
+func (t *InternalIncusTarget) GetDatabaseID() (int, error) {
 	if t.DatabaseID == internal.INVALID_DATABASE_ID {
 		return internal.INVALID_DATABASE_ID, fmt.Errorf("Target has not been added to database, so it doesn't have an ID")
 	}
@@ -163,7 +131,7 @@ func (t *IncusTarget) GetDatabaseID() (int, error) {
 	return t.DatabaseID, nil
 }
 
-func (t *IncusTarget) SetProfile(profile string) error {
+func (t *InternalIncusTarget) SetProfile(profile string) error {
 	if !t.isConnected {
 		return fmt.Errorf("Cannot change profile before connecting")
 	}
@@ -173,7 +141,7 @@ func (t *IncusTarget) SetProfile(profile string) error {
 	return nil
 }
 
-func (t *IncusTarget) SetProject(project string) error {
+func (t *InternalIncusTarget) SetProject(project string) error {
 	if !t.isConnected {
 		return fmt.Errorf("Cannot change project before connecting")
 	}

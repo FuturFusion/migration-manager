@@ -11,7 +11,7 @@ import (
 const ALL_TARGETS int = -1
 
 func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
-	incusTarget, ok := t.(*target.IncusTarget)
+	incusTarget, ok := t.(*target.InternalIncusTarget)
 	if !ok {
 		return fmt.Errorf("Only Incus targets are supported")
 	}
@@ -78,7 +78,7 @@ func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 	// Update target in the database.
 	q := `UPDATE targets SET name=?,endpoint=?,tlsclientkey=?,tlsclientcert=?,oidctokens=?,insecure=?,incusprofile=?,incusproject=? WHERE id=?`
 
-	incusTarget, ok := t.(*target.IncusTarget)
+	incusTarget, ok := t.(*target.InternalIncusTarget)
 	if !ok {
 		return fmt.Errorf("Only Incus targets are supported")
 	}
@@ -125,7 +125,7 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, id int) ([]target.Target, error) {
 	}
 
 	for rows.Next() {
-		newTarget := &target.IncusTarget{}
+		newTarget := &target.InternalIncusTarget{}
 		marshalledOIDCTokens := ""
 
 		err := rows.Scan(&newTarget.DatabaseID, &newTarget.Name, &newTarget.Endpoint, &newTarget.TLSClientKey, &newTarget.TLSClientCert, &marshalledOIDCTokens, &newTarget.Insecure, &newTarget.IncusProfile, &newTarget.IncusProject)

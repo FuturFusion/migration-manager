@@ -19,9 +19,9 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 	configString := ""
 
 	switch specificSource := s.(type) {
-	case *source.CommonSource:
+	case *source.InternalCommonSource:
 		sourceType = source.SOURCETYPE_COMMON
-	case *source.VMwareSource:
+	case *source.InternalVMwareSource:
 		sourceType = source.SOURCETYPE_VMWARE
 		marshalled, err := json.Marshal(specificSource.VMwareSourceSpecific)
 		if err != nil {
@@ -43,9 +43,9 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 		return err
 	}
 	switch specificSource := s.(type) {
-	case *source.CommonSource:
+	case *source.InternalCommonSource:
 		specificSource.DatabaseID = int(lastInsertId)
-	case *source.VMwareSource:
+	case *source.InternalVMwareSource:
 		specificSource.DatabaseID = int(lastInsertId)
 	}
 
@@ -95,8 +95,8 @@ func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 	configString := ""
 
 	switch specificSource := s.(type) {
-	case *source.CommonSource:
-	case *source.VMwareSource:
+	case *source.InternalCommonSource:
+	case *source.InternalVMwareSource:
 		marshalled, err := json.Marshal(specificSource.VMwareSourceSpecific)
 		if err != nil {
 			return err
@@ -160,7 +160,7 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, id int) ([]source.Source, error) {
 			newSource.DatabaseID = sourceID
 			ret = append(ret, newSource)
 		case source.SOURCETYPE_VMWARE:
-			specificConfig := source.VMwareSourceSpecific{}
+			specificConfig := source.InternalVMwareSourceSpecific{}
 			err := json.Unmarshal([]byte(sourceConfig), &specificConfig)
 			if err != nil {
 				return nil, err

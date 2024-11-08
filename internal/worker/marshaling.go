@@ -14,9 +14,9 @@ func (a WorkerConfig) MarshalJSON() ([]byte, error) {
 	// Determine the source's type.
 	sourceType := source.SOURCETYPE_UNKNOWN
 	switch a.Source.(type) {
-	case *source.CommonSource:
+	case *source.InternalCommonSource:
 		sourceType = source.SOURCETYPE_COMMON
-	case *source.VMwareSource:
+	case *source.InternalVMwareSource:
 		sourceType = source.SOURCETYPE_VMWARE
 	default:
 		return nil, fmt.Errorf("Unsupported source type %T", a.Source)
@@ -50,9 +50,9 @@ func (a *WorkerConfig) UnmarshalJSON(data []byte) error {
 	newWorkerConfig := new(WorkerConfig)
 	switch unmarshaledData["TYPE"].(float64) {
 	case source.SOURCETYPE_COMMON:
-		newWorkerConfig.Source = &source.CommonSource{}
+		newWorkerConfig.Source = &source.InternalCommonSource{}
 	case source.SOURCETYPE_VMWARE:
-		newWorkerConfig.Source = &source.VMwareSource{}
+		newWorkerConfig.Source = &source.InternalVMwareSource{}
 	default:
 		return fmt.Errorf("Unsupported source type %d", unmarshaledData["TYPE"])
 	}
@@ -79,9 +79,9 @@ func (a WorkerConfig) MarshalYAML() (interface{}, error) {
 	// Determine the source's type.
 	sourceType := source.SOURCETYPE_UNKNOWN
 	switch a.Source.(type) {
-	case *source.CommonSource:
+	case *source.InternalCommonSource:
 		sourceType = source.SOURCETYPE_COMMON
-	case *source.VMwareSource:
+	case *source.InternalVMwareSource:
 		sourceType = source.SOURCETYPE_VMWARE
 	default:
 		return nil, fmt.Errorf("Unsupported source type %T", a.Source)
@@ -136,20 +136,18 @@ func (a *WorkerConfig) UnmarshalYAML(value *yaml.Node) error {
 
 	switch unmarshaledData["TYPE"] {
 	case source.SOURCETYPE_COMMON:
-		s := &source.CommonSource{}
+		s := &source.InternalCommonSource{}
 		s.Name, _ = sourceVals["name"].(string)
 		s.DatabaseID, _ = sourceVals["databaseID"].(int)
 		newWorkerConfig.Source = s
 	case source.SOURCETYPE_VMWARE:
-		commonVals, _ := sourceVals["commonsource"].(map[string]interface{})
-		s := &source.VMwareSource{}
-		s.Name, _ = commonVals["name"].(string)
-		s.DatabaseID, _ = commonVals["databaseID"].(int)
-		specificVals, _ := sourceVals["vmwaresourcespecific"].(map[string]interface{})
-		s.Endpoint, _ = specificVals["endpoint"].(string)
-		s.Username, _ = specificVals["username"].(string)
-		s.Password, _ = specificVals["password"].(string)
-		s.Insecure, _ = specificVals["insecure"].(bool)
+		s := &source.InternalVMwareSource{}
+		s.Name, _ = sourceVals["name"].(string)
+		s.DatabaseID, _ = sourceVals["databaseID"].(int)
+		s.Endpoint, _ = sourceVals["endpoint"].(string)
+		s.Username, _ = sourceVals["username"].(string)
+		s.Password, _ = sourceVals["password"].(string)
+		s.Insecure, _ = sourceVals["insecure"].(bool)
 		newWorkerConfig.Source = s
 	default:
 		return fmt.Errorf("Unsupported source type %d", unmarshaledData["TYPE"])
