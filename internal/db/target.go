@@ -10,13 +10,7 @@ import (
 
 const ALL_TARGETS int = -1
 
-func (n *Node) AddTarget(t target.Target) error {
-	tx, err := n.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 	incusTarget, ok := t.(*target.IncusTarget)
 	if !ok {
 		return fmt.Errorf("Only Incus targets are supported")
@@ -41,12 +35,11 @@ func (n *Node) AddTarget(t target.Target) error {
 	}
 	incusTarget.DatabaseID = int(lastInsertId)
 
-	tx.Commit()
 	return nil
 }
 
-func (n *Node) GetTarget(id int) (target.Target, error) {
-	ret, err := n.getTargetsHelper(id)
+func (n *Node) GetTarget(tx *sql.Tx, id int) (target.Target, error) {
+	ret, err := n.getTargetsHelper(tx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -58,17 +51,11 @@ func (n *Node) GetTarget(id int) (target.Target, error) {
 	return ret[0], nil
 }
 
-func (n *Node) GetAllTargets() ([]target.Target, error) {
-	return n.getTargetsHelper(ALL_TARGETS)
+func (n *Node) GetAllTargets(tx *sql.Tx) ([]target.Target, error) {
+	return n.getTargetsHelper(tx, ALL_TARGETS)
 }
 
-func (n *Node) DeleteTarget(id int) error {
-	tx, err := n.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (n *Node) DeleteTarget(tx *sql.Tx, id int) error {
 	// Delete the target from the database.
 	q := `DELETE FROM targets WHERE id=?`
 	result, err := tx.Exec(q, id)
@@ -84,17 +71,10 @@ func (n *Node) DeleteTarget(id int) error {
 		return fmt.Errorf("Target with ID %d doesn't exist, can't delete", id)
 	}
 
-	tx.Commit()
 	return nil
 }
 
-func (n *Node) UpdateTarget(t target.Target) error {
-	tx, err := n.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 	// Update target in the database.
 	q := `UPDATE targets SET name=?,endpoint=?,tlsclientkey=?,tlsclientcert=?,oidctokens=?,insecure=?,incusprofile=?,incusproject=? WHERE id=?`
 
@@ -124,22 +104,16 @@ func (n *Node) UpdateTarget(t target.Target) error {
 		return fmt.Errorf("Target with ID %d doesn't exist, can't update", id)
 	}
 
-	tx.Commit()
 	return nil
 }
 
-func (n *Node) getTargetsHelper(id int) ([]target.Target, error) {
+func (n *Node) getTargetsHelper(tx *sql.Tx, id int) ([]target.Target, error) {
 	ret := []target.Target{}
-
-	tx, err := n.db.Begin()
-	if err != nil {
-		return ret, err
-	}
-	defer tx.Rollback()
 
 	// Get all targets in the database.
 	q := `SELECT id,name,endpoint,tlsclientkey,tlsclientcert,oidctokens,insecure,incusprofile,incusproject FROM targets`
 	var rows *sql.Rows
+	var err error
 	if id != ALL_TARGETS {
 		q += ` WHERE id=?`
 		rows, err = tx.Query(q, id)
@@ -166,6 +140,5 @@ func (n *Node) getTargetsHelper(id int) ([]target.Target, error) {
 		ret = append(ret, newTarget)
 	}
 
-	tx.Commit()
 	return ret, nil
 }

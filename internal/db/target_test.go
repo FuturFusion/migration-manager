@@ -30,66 +30,72 @@ func TestTargetDatabaseActions(t *testing.T) {
 	db, err := db.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
+	// Start a transaction.
+	tx, err := db.DB.Begin()
+	require.NoError(t, err)
+	defer tx.Rollback()
+
 	// Add incusTargetA.
-	err = db.AddTarget(incusTargetA)
+	err = db.AddTarget(tx, incusTargetA)
 	require.NoError(t, err)
 
 	// Add incusTargetB.
-	err = db.AddTarget(incusTargetB)
+	err = db.AddTarget(tx, incusTargetB)
 	require.NoError(t, err)
 
 	// Add incusTargetC.
-	err = db.AddTarget(incusTargetC)
+	err = db.AddTarget(tx, incusTargetC)
 	require.NoError(t, err)
 
 	// Ensure we have three entries
-	targets, err := db.GetAllTargets()
+	targets, err := db.GetAllTargets(tx)
 	require.NoError(t, err)
 	require.Equal(t, len(targets), 3)
 
 	// Should get back incusTargetA unchanged.
 	id, err := incusTargetA.GetDatabaseID()
 	require.NoError(t, err)
-	incusTargetA_DB, err := db.GetTarget(id)
+	incusTargetA_DB, err := db.GetTarget(tx, id)
 	require.NoError(t, err)
 	require.Equal(t, incusTargetA, incusTargetA_DB)
 
 	// Test updating a target.
 	incusTargetB.Name = "FooBar"
 	incusTargetB.IncusProfile = "new-profile"
-	err = db.UpdateTarget(incusTargetB)
+	err = db.UpdateTarget(tx, incusTargetB)
 	require.NoError(t, err)
 	id, err = incusTargetB.GetDatabaseID()
 	require.NoError(t, err)
-	incusTargetB_DB, err := db.GetTarget(id)
+	incusTargetB_DB, err := db.GetTarget(tx, id)
 	require.NoError(t, err)
 	require.Equal(t, incusTargetB, incusTargetB_DB)
 
 	// Delete a target.
 	id, err = incusTargetA.GetDatabaseID()
 	require.NoError(t, err)
-	err = db.DeleteTarget(id)
+	err = db.DeleteTarget(tx, id)
 	require.NoError(t, err)
-	_, err = db.GetTarget(id)
+	_, err = db.GetTarget(tx, id)
 	require.Error(t, err)
 
 	// Should have two targets remaining.
-	targets, err = db.GetAllTargets()
+	targets, err = db.GetAllTargets(tx)
 	require.NoError(t, err)
 	require.Equal(t, len(targets), 2)
 
 	// Can't delete a target that doesn't exist.
-	err = db.DeleteTarget(123456)
+	err = db.DeleteTarget(tx, 123456)
 	require.Error(t, err)
 
 	// Can't update a target that doesn't exist.
-	err = db.UpdateTarget(incusTargetA)
+	err = db.UpdateTarget(tx, incusTargetA)
 	require.Error(t, err)
 
 	// Can't add a duplicate target.
-	err = db.AddTarget(incusTargetB)
+	err = db.AddTarget(tx, incusTargetB)
 	require.Error(t, err)
 
+	tx.Commit()
 	err = db.Close()
 	require.NoError(t, err)
 }

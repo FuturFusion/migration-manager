@@ -11,13 +11,7 @@ import (
 
 const ALL_SOURCES int = -1
 
-func (n *Node) AddSource(s source.Source) error {
-	tx, err := n.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 	// Add source to the database.
 	q := `INSERT INTO sources (name,type,config) VALUES(?,?,?)`
 
@@ -55,12 +49,11 @@ func (n *Node) AddSource(s source.Source) error {
 		specificSource.DatabaseID = int(lastInsertId)
 	}
 
-	tx.Commit()
 	return nil
 }
 
-func (n *Node) GetSource(id int) (source.Source, error) {
-	ret, err := n.getSourcesHelper(id)
+func (n *Node) GetSource(tx *sql.Tx, id int) (source.Source, error) {
+	ret, err := n.getSourcesHelper(tx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -72,17 +65,11 @@ func (n *Node) GetSource(id int) (source.Source, error) {
 	return ret[0], nil
 }
 
-func (n *Node) GetAllSources() ([]source.Source, error) {
-	return n.getSourcesHelper(ALL_SOURCES)
+func (n *Node) GetAllSources(tx *sql.Tx) ([]source.Source, error) {
+	return n.getSourcesHelper(tx, ALL_SOURCES)
 }
 
-func (n *Node) DeleteSource(id int) error {
-	tx, err := n.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (n *Node) DeleteSource(tx *sql.Tx, id int) error {
 	// Delete the source from the database.
 	q := `DELETE FROM sources WHERE id=?`
 	result, err := tx.Exec(q, id)
@@ -98,17 +85,10 @@ func (n *Node) DeleteSource(id int) error {
 		return fmt.Errorf("Source with ID %d doesn't exist, can't delete", id)
 	}
 
-	tx.Commit()
 	return nil
 }
 
-func (n *Node) UpdateSource(s source.Source) error {
-	tx, err := n.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
+func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 	// Update source in the database.
 	q := `UPDATE sources SET name=?,config=? WHERE id=?`
 
@@ -143,18 +123,11 @@ func (n *Node) UpdateSource(s source.Source) error {
 		return fmt.Errorf("Source with ID %d doesn't exist, can't update", id)
 	}
 
-	tx.Commit()
 	return nil
 }
 
-func (n *Node) getSourcesHelper(id int) ([]source.Source, error) {
+func (n *Node) getSourcesHelper(tx *sql.Tx, id int) ([]source.Source, error) {
 	ret := []source.Source{}
-
-	tx, err := n.db.Begin()
-	if err != nil {
-		return ret, err
-	}
-	defer tx.Rollback()
 
 	sourceID := internal.INVALID_DATABASE_ID
 	sourceName := ""
@@ -164,6 +137,7 @@ func (n *Node) getSourcesHelper(id int) ([]source.Source, error) {
 	// Get all sources in the database.
 	q := `SELECT id,name,type,config FROM sources`
 	var rows *sql.Rows
+	var err error
 	if id != ALL_SOURCES {
 		q += ` WHERE id=?`
 		rows, err = tx.Query(q, id)
@@ -199,6 +173,5 @@ func (n *Node) getSourcesHelper(id int) ([]source.Source, error) {
 		}
 	}
 
-	tx.Commit()
 	return ret, nil
 }

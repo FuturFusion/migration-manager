@@ -9,14 +9,15 @@ import (
 
 	"github.com/lxc/incus/v6/shared/logger"
 
+	"github.com/FuturFusion/migration-manager/internal/db/query"
 	"github.com/FuturFusion/migration-manager/internal/db/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/util"
 )
 
 // Node represents access to the local database.
 type Node struct {
-	db  *sql.DB // Handle to the local SQLite database file.
-	dir string  // Reference to the directory where the database file lives.
+	DB  *sql.DB // Handle to the local SQLite database file.
+	Dir string  // Reference to the directory where the database file lives.
 }
 
 // OpenDatabase creates a new DB object.
@@ -37,16 +38,25 @@ func OpenDatabase(dir string) (*Node, error) {
 	}
 
 	node := &Node{
-		db:  db,
-		dir: dir,
+		DB:  db,
+		Dir: dir,
 	}
 
 	return node, nil
 }
 
+// Transactionally executes the database interactions invoked by the
+// given function. If the function returns no error, all database
+// changes are committed to the database, otherwise they are rolled back.
+func (n *Node) Transaction(ctx context.Context, f func(context.Context, *sql.Tx) error) error {
+	return query.Transaction(ctx, n.DB, func(ctx context.Context, tx *sql.Tx) error {
+		return f(ctx, tx)
+	})
+}
+
 // Close the database facade.
 func (n *Node) Close() error {
-	return n.db.Close()
+	return n.DB.Close()
 }
 
 // EnsureSchema applies all relevant schema updates to the local database.
