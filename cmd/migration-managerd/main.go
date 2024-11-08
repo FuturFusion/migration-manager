@@ -1,0 +1,61 @@
+package main
+
+import (
+	"os"
+
+	"github.com/lxc/incus/v6/shared/logger"
+	"github.com/spf13/cobra"
+
+	"github.com/FuturFusion/migration-manager/internal"
+)
+
+type cmdGlobal struct {
+	cmd *cobra.Command
+
+	flagHelp    bool
+	flagVersion bool
+
+	flagLogFile    string
+	flagLogDebug   bool
+	flagLogVerbose bool
+}
+
+func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
+	err := logger.InitLogger(c.flagLogFile, "", c.flagLogVerbose, c.flagLogDebug, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func main() {
+	// daemon command (main)
+	daemonCmd := cmdDaemon{}
+	app := daemonCmd.Command()
+	app.SilenceUsage = true
+	app.CompletionOptions = cobra.CompletionOptions{DisableDefaultCmd: true}
+
+	// Workaround for main command
+	app.Args = cobra.ArbitraryArgs
+
+	// Global flags
+	globalCmd := cmdGlobal{cmd: app}
+	daemonCmd.global = &globalCmd
+	app.PersistentPreRunE = globalCmd.Run
+	app.PersistentFlags().BoolVar(&globalCmd.flagVersion, "version", false, "Print version number")
+	app.PersistentFlags().BoolVarP(&globalCmd.flagHelp, "help", "h", false, "Print help")
+	app.PersistentFlags().StringVar(&globalCmd.flagLogFile, "logfile", "", "Path to the log file")
+	app.PersistentFlags().BoolVarP(&globalCmd.flagLogDebug, "debug", "d", false, "Show all debug messages")
+	app.PersistentFlags().BoolVarP(&globalCmd.flagLogVerbose, "verbose", "v", false, "Show all information messages")
+
+	// Version handling
+	app.SetVersionTemplate("{{.Version}}\n")
+	app.Version = internal.Version
+
+	// Run the main command and handle errors
+	err := app.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
+}
