@@ -5,6 +5,7 @@ go 1.22.7
 require (
 	github.com/Rican7/retry v0.3.1
 	github.com/flosch/pongo2/v4 v4.0.2
+	github.com/gorilla/mux v1.8.1
 	github.com/gosimple/slug v1.14.0
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/lxc/distrobuilder v0.0.0-20241028190734-2c5ab324c05d
