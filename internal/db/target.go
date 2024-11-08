@@ -8,8 +8,6 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/target"
 )
 
-const ALL_TARGETS int = -1
-
 func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 	incusTarget, ok := t.(*target.InternalIncusTarget)
 	if !ok {
@@ -38,27 +36,27 @@ func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 	return nil
 }
 
-func (n *Node) GetTarget(tx *sql.Tx, id int) (target.Target, error) {
-	ret, err := n.getTargetsHelper(tx, id)
+func (n *Node) GetTarget(tx *sql.Tx, name string) (target.Target, error) {
+	ret, err := n.getTargetsHelper(tx, name)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(ret) != 1 {
-		return nil, fmt.Errorf("No target exists with ID %d", id)
+		return nil, fmt.Errorf("No target exists with name '%s'", name)
 	}
 
 	return ret[0], nil
 }
 
 func (n *Node) GetAllTargets(tx *sql.Tx) ([]target.Target, error) {
-	return n.getTargetsHelper(tx, ALL_TARGETS)
+	return n.getTargetsHelper(tx, "")
 }
 
-func (n *Node) DeleteTarget(tx *sql.Tx, id int) error {
+func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 	// Delete the target from the database.
-	q := `DELETE FROM targets WHERE id=?`
-	result, err := tx.Exec(q, id)
+	q := `DELETE FROM targets WHERE name=?`
+	result, err := tx.Exec(q, name)
 	if err != nil {
 		return err
 	}
@@ -68,7 +66,7 @@ func (n *Node) DeleteTarget(tx *sql.Tx, id int) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Target with ID %d doesn't exist, can't delete", id)
+		return fmt.Errorf("Target with name '%s' doesn't exist, can't delete", name)
 	}
 
 	return nil
@@ -107,16 +105,16 @@ func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 	return nil
 }
 
-func (n *Node) getTargetsHelper(tx *sql.Tx, id int) ([]target.Target, error) {
+func (n *Node) getTargetsHelper(tx *sql.Tx, name string) ([]target.Target, error) {
 	ret := []target.Target{}
 
 	// Get all targets in the database.
 	q := `SELECT id,name,endpoint,tlsclientkey,tlsclientcert,oidctokens,insecure,incusprofile,incusproject FROM targets`
 	var rows *sql.Rows
 	var err error
-	if id != ALL_TARGETS {
-		q += ` WHERE id=?`
-		rows, err = tx.Query(q, id)
+	if name != "" {
+		q += ` WHERE name=?`
+		rows, err = tx.Query(q, name)
 	} else {
 		rows, err = tx.Query(q)
 	}

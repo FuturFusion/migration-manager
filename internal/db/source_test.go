@@ -39,9 +39,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.Equal(t, len(sources), 2)
 
 	// Should get back commonSourceB unchanged.
-	id, err := commonSourceB.GetDatabaseID()
-	require.NoError(t, err)
-	commonSourceB_DB, err := db.GetSource(tx, id)
+	commonSourceB_DB, err := db.GetSource(tx, commonSourceB.GetName())
 	require.NoError(t, err)
 	require.Equal(t, commonSourceB, commonSourceB_DB)
 
@@ -59,9 +57,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.Equal(t, len(sources), 4)
 
 	// Should get back vmwareSourceA unchanged.
-	id, err = vmwareSourceA.GetDatabaseID()
-	require.NoError(t, err)
-	vmwareSourceA_DB, err := db.GetSource(tx, id)
+	vmwareSourceA_DB, err := db.GetSource(tx, vmwareSourceA.GetName())
 	require.NoError(t, err)
 	require.Equal(t, vmwareSourceA, vmwareSourceA_DB)
 
@@ -70,18 +66,14 @@ func TestSourceDatabaseActions(t *testing.T) {
 	vmwareSourceB.Username = "aNewUser"
 	err = db.UpdateSource(tx, vmwareSourceB)
 	require.NoError(t, err)
-	id, err = vmwareSourceB.GetDatabaseID()
-	require.NoError(t, err)
-	vmwareSourceB_DB, err := db.GetSource(tx, id)
+	vmwareSourceB_DB, err := db.GetSource(tx, vmwareSourceB.GetName())
 	require.NoError(t, err)
 	require.Equal(t, vmwareSourceB, vmwareSourceB_DB)
 
 	// Delete a source.
-	id, err = commonSourceA.GetDatabaseID()
+	err = db.DeleteSource(tx, commonSourceA.GetName())
 	require.NoError(t, err)
-	err = db.DeleteSource(tx, id)
-	require.NoError(t, err)
-	_, err = db.GetSource(tx, id)
+	_, err = db.GetSource(tx, commonSourceA.GetName())
 	require.Error(t, err)
 
 	// Should have three sources remaining.
@@ -90,7 +82,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.Equal(t, len(sources), 3)
 
 	// Can't delete a source that doesn't exist.
-	err = db.DeleteSource(tx, 123456)
+	err = db.DeleteSource(tx, "BazBiz")
 	require.Error(t, err)
 
 	// Can't update a source that doesn't exist.

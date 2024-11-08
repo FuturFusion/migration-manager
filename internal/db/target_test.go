@@ -53,9 +53,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.Equal(t, len(targets), 3)
 
 	// Should get back incusTargetA unchanged.
-	id, err := incusTargetA.GetDatabaseID()
-	require.NoError(t, err)
-	incusTargetA_DB, err := db.GetTarget(tx, id)
+	incusTargetA_DB, err := db.GetTarget(tx, incusTargetA.GetName())
 	require.NoError(t, err)
 	require.Equal(t, incusTargetA, incusTargetA_DB)
 
@@ -64,18 +62,14 @@ func TestTargetDatabaseActions(t *testing.T) {
 	incusTargetB.IncusProfile = "new-profile"
 	err = db.UpdateTarget(tx, incusTargetB)
 	require.NoError(t, err)
-	id, err = incusTargetB.GetDatabaseID()
-	require.NoError(t, err)
-	incusTargetB_DB, err := db.GetTarget(tx, id)
+	incusTargetB_DB, err := db.GetTarget(tx, incusTargetB.GetName())
 	require.NoError(t, err)
 	require.Equal(t, incusTargetB, incusTargetB_DB)
 
 	// Delete a target.
-	id, err = incusTargetA.GetDatabaseID()
+	err = db.DeleteTarget(tx, incusTargetA.GetName())
 	require.NoError(t, err)
-	err = db.DeleteTarget(tx, id)
-	require.NoError(t, err)
-	_, err = db.GetTarget(tx, id)
+	_, err = db.GetTarget(tx, incusTargetA.GetName())
 	require.Error(t, err)
 
 	// Should have two targets remaining.
@@ -84,7 +78,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.Equal(t, len(targets), 2)
 
 	// Can't delete a target that doesn't exist.
-	err = db.DeleteTarget(tx, 123456)
+	err = db.DeleteTarget(tx, "BazBiz")
 	require.Error(t, err)
 
 	// Can't update a target that doesn't exist.

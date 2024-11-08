@@ -9,8 +9,6 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/source"
 )
 
-const ALL_SOURCES int = -1
-
 func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 	// Add source to the database.
 	q := `INSERT INTO sources (name,type,config) VALUES(?,?,?)`
@@ -52,27 +50,27 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 	return nil
 }
 
-func (n *Node) GetSource(tx *sql.Tx, id int) (source.Source, error) {
-	ret, err := n.getSourcesHelper(tx, id)
+func (n *Node) GetSource(tx *sql.Tx, name string) (source.Source, error) {
+	ret, err := n.getSourcesHelper(tx, name)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(ret) != 1 {
-		return nil, fmt.Errorf("No source exists with ID %d", id)
+		return nil, fmt.Errorf("No source exists with name '%s'", name)
 	}
 
 	return ret[0], nil
 }
 
 func (n *Node) GetAllSources(tx *sql.Tx) ([]source.Source, error) {
-	return n.getSourcesHelper(tx, ALL_SOURCES)
+	return n.getSourcesHelper(tx, "")
 }
 
-func (n *Node) DeleteSource(tx *sql.Tx, id int) error {
+func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
 	// Delete the source from the database.
-	q := `DELETE FROM sources WHERE id=?`
-	result, err := tx.Exec(q, id)
+	q := `DELETE FROM sources WHERE name=?`
+	result, err := tx.Exec(q, name)
 	if err != nil {
 		return err
 	}
@@ -82,7 +80,7 @@ func (n *Node) DeleteSource(tx *sql.Tx, id int) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Source with ID %d doesn't exist, can't delete", id)
+		return fmt.Errorf("Source with name '%s' doesn't exist, can't delete", name)
 	}
 
 	return nil
@@ -126,7 +124,7 @@ func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 	return nil
 }
 
-func (n *Node) getSourcesHelper(tx *sql.Tx, id int) ([]source.Source, error) {
+func (n *Node) getSourcesHelper(tx *sql.Tx, name string) ([]source.Source, error) {
 	ret := []source.Source{}
 
 	sourceID := internal.INVALID_DATABASE_ID
@@ -138,9 +136,9 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, id int) ([]source.Source, error) {
 	q := `SELECT id,name,type,config FROM sources`
 	var rows *sql.Rows
 	var err error
-	if id != ALL_SOURCES {
-		q += ` WHERE id=?`
-		rows, err = tx.Query(q, id)
+	if name != "" {
+		q += ` WHERE name=?`
+		rows, err = tx.Query(q, name)
 	} else {
 		rows, err = tx.Query(q)
 	}
