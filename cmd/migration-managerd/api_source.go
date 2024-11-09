@@ -77,7 +77,7 @@ type sourcesResult struct {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func sourcesGet(d *Daemon, r *http.Request) response.Response {
-	var result []sourcesResult
+	result := []sourcesResult{}
 	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		sources, err := d.db.GetAllSources(tx)
 		if err != nil {

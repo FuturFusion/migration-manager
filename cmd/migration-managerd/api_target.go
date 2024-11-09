@@ -69,7 +69,7 @@ var targetCmd = APIEndpoint{
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func targetsGet(d *Daemon, r *http.Request) response.Response {
-	var result []target.Target
+	result := []target.Target{}
 	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		targets, err := d.db.GetAllTargets(tx)
 		if err != nil {
