@@ -11,6 +11,7 @@ require (
 	github.com/lxc/distrobuilder v0.0.0-20241028190734-2c5ab324c05d
 	github.com/lxc/incus/v6 v6.6.1-0.20241106204235-40d3bfa0b8cd
 	github.com/mattn/go-sqlite3 v1.14.24
+	github.com/olekukonko/tablewriter v0.0.5
 	github.com/schollz/progressbar/v3 v3.17.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
@@ -35,6 +36,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
 	github.com/pkg/sftp v1.13.6 // indirect
