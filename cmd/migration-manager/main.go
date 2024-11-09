@@ -71,6 +71,7 @@ func main() {
 	// Run the main command and handle errors
 	err := app.Execute()
 	if err != nil {
+		fmt.Printf("%s\n", err)
 		os.Exit(1)
 	}
 }
@@ -121,13 +122,15 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 		c.config = NewConfig(configDir)
 	}
 
-	return nil
+	return c.CheckConfigStatus()
 }
 
 func (c *cmdGlobal) CheckConfigStatus() error {
 	if c.config.MMServer != "" {
 		return nil
 	}
+
+	fmt.Printf("No config found, performing first-time configuration...\n")
 
 	resp, err := c.asker.AskString("Please enter the migration manager server URL: ", "", nil)
 	if err != nil {

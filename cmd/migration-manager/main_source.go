@@ -28,10 +28,6 @@ func (c *cmdSource) Run(cmd *cobra.Command, args []string) error {
 	if exit {
 		return err
 	}
-	err = c.global.CheckConfigStatus()
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
