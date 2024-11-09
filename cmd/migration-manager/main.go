@@ -2,7 +2,12 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"os/user"
 	"path"
@@ -12,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/version"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type cmdGlobal struct {
@@ -36,6 +42,7 @@ func main() {
   The migration manager can be interacted with through the various commands
   below. For help with any of those, simply call them with --help.
 `
+
 	app.SilenceUsage = true
 	app.SilenceErrors = true
 	app.CompletionOptions = cobra.CompletionOptions{HiddenDefaultCmd: true}
@@ -143,4 +150,42 @@ func (c *cmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 	}
 
 	return false, nil
+}
+
+func (c *cmdGlobal) DoHttpRequest(endpoint string, method string, query string, content []byte) (*api.ResponseRaw, error) {
+	u, err := url.Parse(c.config.MMServer)
+	if err != nil {
+		return nil, err
+	}
+	u.Path = endpoint
+	u.RawQuery = query
+
+	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil ,err
+	}
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonResp api.ResponseRaw
+	err = json.Unmarshal(bodyBytes, &jsonResp)
+	if err != nil {
+		return nil, err
+	} else if jsonResp.Code != 0 {
+		return &jsonResp, fmt.Errorf("Received error from the server: %s", jsonResp.Error)
+	}
+
+	return &jsonResp, nil
 }
