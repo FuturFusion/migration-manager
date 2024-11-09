@@ -271,7 +271,17 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", name, err))
 	}
 
-	return response.SyncResponseETag(true, s, s)
+	var ret sourcesResult
+	switch s.(type) {
+	case *source.InternalCommonSource:
+		ret = sourcesResult{Type: api.SOURCETYPE_COMMON, Source: s}
+	case *source.InternalVMwareSource:
+		ret = sourcesResult{Type: api.SOURCETYPE_VMWARE, Source: s}
+	default:
+		return response.BadRequest(fmt.Errorf("Unsupported source type %T", s))
+	}
+
+	return response.SyncResponseETag(true, ret, s)
 }
 
 // swagger:operation PUT /1.0/sources/{name} sources source_put
