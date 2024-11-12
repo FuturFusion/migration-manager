@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/lxc/incus/v6/shared/logger"
@@ -45,7 +46,6 @@ type DaemonConfig struct {
 
 type Daemon struct {
 	config         *DaemonConfig
-	endpoint       *endpoint.Endpoint
 
 	db             *db.Node
 
@@ -85,11 +85,14 @@ func (d *Daemon) Start() error {
 		NetworkAddress: d.config.restServerIPAddr,
 		NetworkPort:    d.config.restServerPort,
 	}
-	d.endpoint, err = endpoint.Up(config)
+	_, err = endpoint.Up(config)
 	if err != nil {
 		logger.Errorf("Failed to start REST endpoint: %s", err)
 		return err
 	}
+
+	// Start background workers
+	d.runPeriodicTask(d.syncInstancesFromSources, time.Duration(time.Second * 10))
 
 	logger.Info("Daemon started")
 
