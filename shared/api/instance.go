@@ -10,7 +10,8 @@ import (
 type MigrationStatusType int
 const (
 	MIGRATIONSTATUS_UNKNOWN = iota
-	MIGRATIONSTATUS_NOT_STARTED
+	MIGRATIONSTATUS_NOT_READY
+	MIGRATIONSTATUS_READY
 	MIGRATIONSTATUS_PENDING
 	MIGRATIONSTATUS_RUNNING
 	MIGRATIONSTATUS_FINISHED
@@ -22,8 +23,10 @@ func (m MigrationStatusType) String() string {
 	switch m {
 	case MIGRATIONSTATUS_UNKNOWN:
 		return "Unknown"
-	case MIGRATIONSTATUS_NOT_STARTED:
-		return "Not started"
+	case MIGRATIONSTATUS_NOT_READY:
+		return "Not ready"
+	case MIGRATIONSTATUS_READY:
+		return "Ready"
 	case MIGRATIONSTATUS_PENDING:
 		return "Pending"
 	case MIGRATIONSTATUS_RUNNING:

@@ -17,7 +17,7 @@ func NewInstance(UUID uuid.UUID, sourceID int, targetID int, name string, os str
 	return &InternalInstance{
 		Instance: api.Instance{
 			UUID: UUID,
-			MigrationStatus: api.MIGRATIONSTATUS_NOT_STARTED,
+			MigrationStatus: api.MIGRATIONSTATUS_NOT_READY,
 			LastUpdateFromSource: time.Now().UTC(),
 			SourceID: sourceID,
 			TargetID: targetID,
