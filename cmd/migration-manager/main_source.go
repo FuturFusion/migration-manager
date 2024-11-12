@@ -256,7 +256,7 @@ func parseReturnedSource(source any) (any, error) {
 
 		return source, nil
 	default:
-		return nil, fmt.Errorf("Unsupported source type %d", rawSource["type"].(float64))
+		return nil, fmt.Errorf("Unsupported source type %f", rawSource["type"].(float64))
 	}
 }
 

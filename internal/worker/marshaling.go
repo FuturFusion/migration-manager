@@ -55,7 +55,7 @@ func (a *WorkerConfig) UnmarshalJSON(data []byte) error {
 	case api.SOURCETYPE_VMWARE:
 		newWorkerConfig.Source = &source.InternalVMwareSource{}
 	default:
-		return fmt.Errorf("Unsupported source type %d", unmarshaledData["TYPE"].(float64))
+		return fmt.Errorf("Unsupported source type %f", unmarshaledData["TYPE"].(float64))
 	}
 
 	// Unmarshal the json object into an WorkerConfig.
