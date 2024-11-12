@@ -60,6 +60,7 @@ type cmdSourceAdd struct {
 	global *cmdGlobal
 
 	flagInsecure bool
+	flagNoTestConnection bool
 }
 
 func (c *cmdSourceAdd) Command() *cobra.Command {
@@ -78,6 +79,7 @@ func (c *cmdSourceAdd) Command() *cobra.Command {
 
 	cmd.RunE = c.Run
 	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the source")
+	cmd.Flags().BoolVar(&c.flagNoTestConnection, "no-test-connection", false, "Don't test connection to the new source")
 
 	return cmd
 }
@@ -146,9 +148,11 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		err = internalSource.Connect(ctx)
-		if err != nil {
-			return err
+		if !c.flagNoTestConnection {
+			err = internalSource.Connect(ctx)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Insert into database.
