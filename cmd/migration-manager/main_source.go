@@ -287,6 +287,45 @@ func (c *cmdSourceRemove) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
+	// Check if any instances are defined from this source.
+	sourceId := -1
+	resp, err := c.global.DoHttpRequest("/1.0/sources/" + name, http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+
+	s, err := parseReturnedSource(resp.Metadata)
+	if err != nil {
+		return err
+	}
+
+	switch specificSource := s.(type) {
+	case api.VMwareSource:
+		sourceId = specificSource.DatabaseID
+	default:
+		return fmt.Errorf("Unsupported source type %T; must be one of %q", s, supportedTypes)
+	}
+
+	numInstancesForSource := 0
+	resp, err = c.global.DoHttpRequest("/1.0/instances", http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+
+	for _, anyInstance := range resp.Metadata.([]any) {
+		newInstance, err := parseReturnedInstance(anyInstance)
+		if err != nil {
+			return err
+		}
+		if newInstance.(api.Instance).SourceID == sourceId {
+			numInstancesForSource++
+		}
+	}
+
+	if numInstancesForSource > 0 {
+		return fmt.Errorf("%d instances are using this source, so it cannot be removed.", numInstancesForSource)
+	}
+
 	// Remove the source.
 	_, err = c.global.DoHttpRequest("/1.0/sources/" + name, http.MethodDelete, "", nil)
 	if err != nil {
