@@ -1,0 +1,117 @@
+package db_test
+
+import (
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+
+	"github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/source"
+	"github.com/FuturFusion/migration-manager/internal/target"
+	"github.com/FuturFusion/migration-manager/shared/api"
+)
+
+var testSource = source.NewCommonSource("TestSource")
+var testTarget = target.NewIncusTarget("TestTarget", "https://localhost:8443")
+var instanceAUUID, _ = uuid.NewRandom()
+var instanceA = instance.NewInstance(instanceAUUID, 2, 1, "UbuntuVM", "Ubuntu", "24.04", 2, 2048, false, false)
+var instanceBUUID, _ = uuid.NewRandom()
+var instanceB = instance.NewInstance(instanceBUUID, 2, 1, "WindowsVM", "Windows", "11", 4, 4096, true, true)
+var instanceCUUID, _ = uuid.NewRandom()
+var instanceC = instance.NewInstance(instanceCUUID, 2, 1, "DebianVM", "Debian", "bookworm", 4, 4096, false, true)
+
+func TestInstanceDatabaseActions(t *testing.T) {
+	// Create a new temporary database.
+	tmpDir := t.TempDir()
+	db, err := db.OpenDatabase(tmpDir)
+	require.NoError(t, err)
+
+	// Start a transaction.
+	tx, err := db.DB.Begin()
+	require.NoError(t, err)
+	defer tx.Rollback()
+
+	// Cannot add an instance with an invalid source and/or target.
+	err = db.AddInstance(tx, instanceA)
+	require.Error(t, err)
+	err = db.AddSource(tx, testSource)
+	require.NoError(t, err)
+	err = db.AddInstance(tx, instanceA)
+	require.Error(t, err)
+	err = db.DeleteSource(tx, testSource.GetName())
+	require.NoError(t, err)
+	err = db.AddTarget(tx, testTarget)
+	require.NoError(t, err)
+	err = db.AddInstance(tx, instanceA)
+	require.Error(t, err)
+	err = db.AddSource(tx, testSource)
+	require.NoError(t, err)
+
+	// Add instanceA.
+	err = db.AddInstance(tx, instanceA)
+	require.NoError(t, err)
+
+	// Add instanceB.
+	err = db.AddInstance(tx, instanceB)
+	require.NoError(t, err)
+
+	// Add instanceC.
+	err = db.AddInstance(tx, instanceC)
+	require.NoError(t, err)
+
+	// Cannot delete a source or target if referenced by an instance.
+	err = db.DeleteSource(tx, testSource.GetName())
+	require.Error(t, err)
+	err = db.DeleteTarget(tx, testTarget.GetName())
+	require.Error(t, err)
+
+	// Ensure we have three instances.
+	instances, err := db.GetAllInstances(tx)
+	require.NoError(t, err)
+	require.Equal(t, len(instances), 3)
+
+	// Should get back instanceA unchanged.
+	instanceA_DB, err := db.GetInstance(tx, instanceA.GetUUID())
+	require.NoError(t, err)
+	require.Equal(t, instanceA, instanceA_DB)
+
+	// Test updating an instance.
+	instanceB.Name = "FooBar"
+	instanceB.NumberCPUs = 8
+	instanceB.MigrationStatus = api.MIGRATIONSTATUS_RUNNING
+	err = db.UpdateInstance(tx, instanceB)
+	require.NoError(t, err)
+	instanceB_DB, err := db.GetInstance(tx, instanceB.GetUUID())
+	require.NoError(t, err)
+	require.Equal(t, instanceB, instanceB_DB)
+
+	// Delete an instance.
+	err = db.DeleteInstance(tx, instanceA.GetUUID())
+	require.NoError(t, err)
+	_, err = db.GetInstance(tx, instanceA.GetUUID())
+	require.Error(t, err)
+
+	// Should have two instances remaining.
+	instances, err = db.GetAllInstances(tx)
+	require.NoError(t, err)
+	require.Equal(t, len(instances), 2)
+
+	// Can't delete an instance that doesn't exist.
+	randomUUID, _ := uuid.NewRandom()
+	err = db.DeleteInstance(tx, randomUUID)
+	require.Error(t, err)
+
+	// Can't update an instance that doesn't exist.
+	err = db.UpdateInstance(tx, instanceA)
+	require.Error(t, err)
+
+	// Can't add a duplicate instance.
+	err = db.AddInstance(tx, instanceB)
+	require.Error(t, err)
+
+	tx.Commit()
+	err = db.Close()
+	require.NoError(t, err)
+}

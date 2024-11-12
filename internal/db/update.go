@@ -10,6 +10,23 @@ import (
 )
 
 const freshSchema = `
+CREATE TABLE instances (
+    uuid TEXT PRIMARY KEY NOT NULL,
+    migrationstatus INTEGER NOT NULL,
+    lastupdatefromsource TEXT NOT NULL,
+    sourceid INTEGER NOT NULL,
+    targetid INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    os VARCHAR(255) NOT NULL,
+    osversion VARCHAR(255) NOT NULL,
+    numbercpus INTEGER NOT NULL,
+    memoryinmib INTEGER NOT NULL,
+    securebootenabled INTEGER NOT NULL,
+    tpmpresent INTEGER NOT NULL,
+    FOREIGN KEY(sourceid) REFERENCES sources(id),
+    FOREIGN KEY(targetid) REFERENCES targets(id)
+);
+
 CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -69,6 +86,23 @@ var updates = map[int]schema.Update{
 func updateFromV0(ctx context.Context, tx *sql.Tx) error {
 	// v0..v1 the dawn of migration manager
 	stmt := `
+CREATE TABLE instances (
+    uuid TEXT PRIMARY KEY NOT NULL,
+    migrationstatus INTEGER NOT NULL,
+    lastupdatefromsource TEXT NOT NULL,
+    sourceid INTEGER NOT NULL,
+    targetid INTEGER NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    os VARCHAR(255) NOT NULL,
+    osversion VARCHAR(255) NOT NULL,
+    numbercpus INTEGER NOT NULL,
+    memoryinmib INTEGER NOT NULL,
+    securebootenabled INTEGER NOT NULL,
+    tpmpresent INTEGER NOT NULL,
+    FOREIGN KEY(sourceid) REFERENCES sources(id),
+    FOREIGN KEY(targetid) REFERENCES targets(id)
+);
+
 CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
