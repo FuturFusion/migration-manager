@@ -60,6 +60,10 @@ func main() {
 	app.SetVersionTemplate("{{.Version}}\n")
 	app.Version = version.Version
 
+	// instance sub-command
+	instanceCmd := cmdInstance{global: &globalCmd}
+	app.AddCommand(instanceCmd.Command())
+
 	// source sub-command
 	sourceCmd := cmdSource{global: &globalCmd}
 	app.AddCommand(sourceCmd.Command())
