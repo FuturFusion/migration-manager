@@ -14,6 +14,8 @@ var api10Cmd = APIEndpoint{
 
 var api10 = []APIEndpoint{
 	api10Cmd,
+	instanceCmd,
+	instancesCmd,
 	sourceCmd,
 	sourcesCmd,
 	targetCmd,
