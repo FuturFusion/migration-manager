@@ -4,14 +4,19 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/session/cache"
 	"github.com/vmware/govmomi/vim25"
+	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 
 	"github.com/FuturFusion/migration-manager/internal"
+	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware_nbdkit"
@@ -108,6 +113,54 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 	return nil
 }
 
+func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
+	ret := []instance.InternalInstance{}
+
+	finder := find.NewFinder(s.vimClient)
+	vms, err := finder.VirtualMachineList(ctx, "/...")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, vm := range vms {
+		vmProps, err := s.getVMProperties(ctx, vm)
+		if err != nil {
+			return nil, err
+		}
+
+		UUID, err := uuid.Parse(vmProps.Summary.Config.InstanceUuid)
+		if err != nil {
+			return nil, err
+		}
+
+		secureBootEnabled := false
+		tpmPresent := false
+		if *vmProps.Capability.SecureBootSupported {
+			secureBootEnabled = true
+			tpmPresent = true
+		}
+
+		ret = append(ret, instance.InternalInstance{
+			Instance: api.Instance{
+				UUID: UUID,
+				MigrationStatus: api.MIGRATIONSTATUS_NOT_STARTED,
+				LastUpdateFromSource: time.Now().UTC(),
+				SourceID: s.DatabaseID,
+				TargetID: -1,
+				Name: vmProps.Summary.Config.Name,
+				OS: strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
+				OSVersion: vmProps.Summary.Config.GuestFullName,
+				NumberCPUs: int(vmProps.Summary.Config.NumCpu),
+				MemoryInMiB: int(vmProps.Summary.Config.MemorySizeMB),
+				SecureBootEnabled: secureBootEnabled,
+				TPMPresent: tpmPresent,
+			},
+		})
+	}
+
+	return ret, nil
+}
+
 func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
 	vm, err := s.getVM(ctx, vmName)
 	if err != nil {
@@ -144,4 +197,10 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*objec
 	}
 
 	return res[0], nil
+}
+
+func (s *InternalVMwareSource) getVMProperties(ctx context.Context, vm *object.VirtualMachine) (mo.VirtualMachine, error) {
+	var v mo.VirtualMachine
+	err := vm.Properties(ctx, vm.Reference(), []string{}, &v)
+	return v, err
 }

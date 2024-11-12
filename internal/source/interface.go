@@ -2,6 +2,8 @@ package source
 
 import (
 	"context"
+
+	"github.com/FuturFusion/migration-manager/internal/instance"
 )
 
 // Interface definition for all migration manager sources.
@@ -31,6 +33,9 @@ type Source interface {
 	GetDatabaseID() (int, error)
 
 //////////////////////////////////////////////////
+
+	// Returns a list of all VMs available from the source.
+	GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error)
 
 	// Deletes a given snapshot, if it exists, from the specified VM.
 	//

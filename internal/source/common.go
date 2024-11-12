@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/FuturFusion/migration-manager/internal"
+	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -37,14 +38,6 @@ func (s *InternalCommonSource) IsConnected() bool {
 	return s.isConnected
 }
 
-func (s *InternalCommonSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
-	return fmt.Errorf("Not implemented by CommonSource")
-}
-
-func (s *InternalCommonSource) ImportDisks(ctx context.Context, vmName string) error {
-	return fmt.Errorf("Not implemented by CommonSource")
-}
-
 func (s *InternalCommonSource) GetName() string {
 	return s.Name
 }
@@ -55,4 +48,16 @@ func (s *InternalCommonSource) GetDatabaseID() (int, error) {
 	}
 
 	return s.DatabaseID, nil
+}
+
+func (s *InternalCommonSource) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
+	return nil, fmt.Errorf("Not implemented by CommonSource")
+}
+
+func (s *InternalCommonSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
+	return fmt.Errorf("Not implemented by CommonSource")
+}
+
+func (s *InternalCommonSource) ImportDisks(ctx context.Context, vmName string) error {
+	return fmt.Errorf("Not implemented by CommonSource")
 }
