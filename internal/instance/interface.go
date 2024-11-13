@@ -8,4 +8,7 @@ import (
 type Instance interface {
 	// Returns the UUID for this instance.
 	GetUUID() uuid.UUID
+
+	// Returns the name of this instance.
+	GetName() string
 }

@@ -35,3 +35,7 @@ func NewInstance(UUID uuid.UUID, sourceID int, targetID int, name string, os str
 func (i *InternalInstance) GetUUID() uuid.UUID {
 	return i.UUID
 }
+
+func (i *InternalInstance) GetName() string {
+	return i.Name
+}
