@@ -111,7 +111,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Instance with ID %d doesn't exist, can't update", internalInstance.UUID)
+		return fmt.Errorf("Instance with UUID '%s' doesn't exist, can't update", internalInstance.UUID.String())
 	}
 
 	return nil

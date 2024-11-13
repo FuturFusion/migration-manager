@@ -10,6 +10,17 @@ import (
 )
 
 const freshSchema = `
+CREATE TABLE batches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    status INTEGER NOT NULL,
+    includeregex TEXT NOT NULL,
+    excluderegex TEXT NOT NULL,
+    migrationwindowstart TEXT NOT NULL,
+    migrationwindowend TEXT NOT NULL,
+    UNIQUE (name)
+);
+
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
     migrationstatus INTEGER NOT NULL,
@@ -92,6 +103,17 @@ var updates = map[int]schema.Update{
 func updateFromV0(ctx context.Context, tx *sql.Tx) error {
 	// v0..v1 the dawn of migration manager
 	stmt := `
+CREATE TABLE batches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    status INTEGER NOT NULL,
+    includeregex TEXT NOT NULL,
+    excluderegex TEXT NOT NULL,
+    migrationwindowstart TEXT NOT NULL,
+    migrationwindowend TEXT NOT NULL,
+    UNIQUE (name)
+);
+
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
     migrationstatus INTEGER NOT NULL,
