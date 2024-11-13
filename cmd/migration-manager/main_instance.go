@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -123,14 +124,18 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	// Render the table.
 	header := []string{"Name", "Migration Status", "Source", "Target", "OS", "OS Version", "Num vCPUs", "Memory (MiB)"}
 	if c.flagVerbose {
-		header = append(header, "UUID")
+		header = append(header, "UUID", "Last Sync", "Last Manual Update")
 	}
 	data := [][]string{}
 
 	for _, i := range instances {
 		row := []string{i.Name, i.MigrationStatus.String(), sourcesMap[i.SourceID], targetsMap[i.TargetID], i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), strconv.Itoa(i.MemoryInMiB)}
 		if c.flagVerbose {
-			row = append(row, i.UUID.String())
+			lastUpdate := "Never"
+			if !i.LastManualUpdate.IsZero() {
+				lastUpdate = i.LastManualUpdate.String()
+			}
+			row = append(row, i.UUID.String(), i.LastUpdateFromSource.String(), lastUpdate)
 		}
 		data = append(data, row)
 	}
@@ -201,13 +206,19 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		inst.NumberCPUs = int(val)
+		if inst.NumberCPUs != int(val) {
+			inst.NumberCPUs = int(val)
+			inst.LastManualUpdate = time.Now().UTC()
+		}
 
 		val, err = c.global.asker.AskInt("Memory in MiB: [" + strconv.Itoa(inst.MemoryInMiB) + "] ", 1, 1024*1024*1024, strconv.Itoa(inst.MemoryInMiB), nil)
 		if err != nil {
 			return err
 		}
-		inst.MemoryInMiB = int(val)
+		if inst.MemoryInMiB != int(val) {
+			inst.MemoryInMiB = int(val)
+			inst.LastManualUpdate = time.Now().UTC()
+		}
 
 		i = inst
 	}

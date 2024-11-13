@@ -16,13 +16,17 @@ func (n *Node) AddInstance(tx *sql.Tx, i instance.Instance) error {
 	}
 
 	// Add instance to the database.
-	q := `INSERT INTO instances (uuid,migrationstatus,lastupdatefromsource,sourceid,targetid,name,os,osversion,numbercpus,memoryinmib,securebootenabled,tpmpresent) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`
+	q := `INSERT INTO instances (uuid,migrationstatus,lastupdatefromsource,lastmanualupdate,sourceid,targetid,name,os,osversion,numbercpus,memoryinmib,securebootenabled,tpmpresent) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`
 
 	marshalledLastUpdateFromSource, err := internalInstance.LastUpdateFromSource.MarshalText()
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(q, internalInstance.UUID, internalInstance.MigrationStatus, marshalledLastUpdateFromSource, internalInstance.SourceID, internalInstance.TargetID, internalInstance.Name, internalInstance.OS, internalInstance.OSVersion, internalInstance.NumberCPUs, internalInstance.MemoryInMiB, internalInstance.SecureBootEnabled, internalInstance.TPMPresent)
+	marshalledLastManualUpdate, err := internalInstance.LastManualUpdate.MarshalText()
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(q, internalInstance.UUID, internalInstance.MigrationStatus, marshalledLastUpdateFromSource, marshalledLastManualUpdate, internalInstance.SourceID, internalInstance.TargetID, internalInstance.Name, internalInstance.OS, internalInstance.OSVersion, internalInstance.NumberCPUs, internalInstance.MemoryInMiB, internalInstance.SecureBootEnabled, internalInstance.TPMPresent)
 
 	return err
 }
@@ -65,7 +69,7 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 
 func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	// Update instance in the database.
-	q := `UPDATE instances SET migrationstatus=?,lastupdatefromsource=?,sourceid=?,targetid=?,name=?,os=?,osversion=?,numbercpus=?,memoryinmib=?,securebootenabled=?,tpmpresent=? WHERE uuid=?`
+	q := `UPDATE instances SET migrationstatus=?,lastupdatefromsource=?,lastmanualupdate=?,sourceid=?,targetid=?,name=?,os=?,osversion=?,numbercpus=?,memoryinmib=?,securebootenabled=?,tpmpresent=? WHERE uuid=?`
 
 	internalInstance, ok := i.(*instance.InternalInstance)
 	if !ok {
@@ -76,7 +80,11 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	if err != nil {
 		return err
 	}
-	result, err := tx.Exec(q, internalInstance.MigrationStatus, marshalledLastUpdateFromSource, internalInstance.SourceID, internalInstance.TargetID, internalInstance.Name, internalInstance.OS, internalInstance.OSVersion, internalInstance.NumberCPUs, internalInstance.MemoryInMiB, internalInstance.SecureBootEnabled, internalInstance.TPMPresent, internalInstance.UUID)
+	marshalledLastManualUpdate, err := internalInstance.LastManualUpdate.MarshalText()
+	if err != nil {
+		return err
+	}
+	result, err := tx.Exec(q, internalInstance.MigrationStatus, marshalledLastUpdateFromSource, marshalledLastManualUpdate, internalInstance.SourceID, internalInstance.TargetID, internalInstance.Name, internalInstance.OS, internalInstance.OSVersion, internalInstance.NumberCPUs, internalInstance.MemoryInMiB, internalInstance.SecureBootEnabled, internalInstance.TPMPresent, internalInstance.UUID)
 	if err != nil {
 		return err
 	}
@@ -96,7 +104,7 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 	ret := []instance.Instance{}
 
 	// Get all instances in the database.
-	q := `SELECT uuid,migrationstatus,lastupdatefromsource,sourceid,targetid,name,os,osversion,numbercpus,memoryinmib,securebootenabled,tpmpresent FROM instances`
+	q := `SELECT uuid,migrationstatus,lastupdatefromsource,lastmanualupdate,sourceid,targetid,name,os,osversion,numbercpus,memoryinmib,securebootenabled,tpmpresent FROM instances`
 	var rows *sql.Rows
 	var err error
 	if UUID != [16]byte{} {
@@ -113,12 +121,17 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 	for rows.Next() {
 		newInstance := &instance.InternalInstance{}
 		marshalledLastUpdateFromSource := ""
+		marshalledLastManualUpdate := ""
 
-		err := rows.Scan(&newInstance.UUID, &newInstance.MigrationStatus, &marshalledLastUpdateFromSource, &newInstance.SourceID, &newInstance.TargetID, &newInstance.Name, &newInstance.OS, &newInstance.OSVersion, &newInstance.NumberCPUs, &newInstance.MemoryInMiB, &newInstance.SecureBootEnabled, &newInstance.TPMPresent)
+		err := rows.Scan(&newInstance.UUID, &newInstance.MigrationStatus, &marshalledLastUpdateFromSource, &marshalledLastManualUpdate, &newInstance.SourceID, &newInstance.TargetID, &newInstance.Name, &newInstance.OS, &newInstance.OSVersion, &newInstance.NumberCPUs, &newInstance.MemoryInMiB, &newInstance.SecureBootEnabled, &newInstance.TPMPresent)
 		if err != nil {
 			return nil, err
 		}
 		err = newInstance.LastUpdateFromSource.UnmarshalText([]byte(marshalledLastUpdateFromSource))
+		if err != nil {
+			return nil, err
+		}
+		err = newInstance.LastManualUpdate.UnmarshalText([]byte(marshalledLastManualUpdate))
 		if err != nil {
 			return nil, err
 		}

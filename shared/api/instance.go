@@ -56,6 +56,10 @@ type Instance struct {
 	// Example: 2024-11-12 16:15:00 +0000 UTC
 	LastUpdateFromSource time.Time `json:"lastUpdateFromSource" yaml:"lastUpdateFromSource"`
 
+	// The last time, if any, this instance was manually updated
+	// Example: 2024-11-12 16:15:00 +0000 UTC
+	LastManualUpdate time.Time `json:"lastManualUpdate" yaml:"lastManualUpdate"`
+
 	// The originating source ID for this instance
 	// Example: 1
 	SourceID int `json:"sourceId" yaml:"sourceId"`

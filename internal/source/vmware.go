@@ -145,6 +145,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 				UUID: UUID,
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_READY,
 				LastUpdateFromSource: time.Now().UTC(),
+				// Initialize LastManualUpdate to its zero value
 				SourceID: s.DatabaseID,
 				TargetID: -1,
 				Name: vmProps.Summary.Config.Name,

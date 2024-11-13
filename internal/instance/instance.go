@@ -19,6 +19,7 @@ func NewInstance(UUID uuid.UUID, sourceID int, targetID int, name string, os str
 			UUID: UUID,
 			MigrationStatus: api.MIGRATIONSTATUS_NOT_READY,
 			LastUpdateFromSource: time.Now().UTC(),
+			// Initialize LastManualUpdate to its zero value
 			SourceID: sourceID,
 			TargetID: targetID,
 			Name: name,
