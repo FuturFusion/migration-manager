@@ -1,0 +1,310 @@
+package main
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+
+	"github.com/gorilla/mux"
+
+	"github.com/FuturFusion/migration-manager/internal/batch"
+	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/version"
+)
+
+var batchesCmd = APIEndpoint{
+	Path: "batches",
+
+	Get:  APIEndpointAction{Handler: batchesGet, AllowUntrusted: true},
+	Post: APIEndpointAction{Handler: batchesPost, AllowUntrusted: true},
+}
+
+var batchCmd = APIEndpoint{
+	Path: "batches/{name}",
+
+	Delete: APIEndpointAction{Handler: batchDelete, AllowUntrusted: true},
+	Get:    APIEndpointAction{Handler: batchGet, AllowUntrusted: true},
+	Put:    APIEndpointAction{Handler: batchPut, AllowUntrusted: true},
+}
+
+// swagger:operation GET /1.0/batches batches batches_get
+//
+//	Get the batches
+//
+//	Returns a list of batches (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API batches
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of sources
+//	          items:
+//	            $ref: "#/definitions/Batch"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func batchesGet(d *Daemon, r *http.Request) response.Response {
+	result := []batch.Batch{}
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		batches, err := d.db.GetAllBatches(tx)
+		if err != nil {
+			return err
+		}
+
+		result = batches
+		return nil
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponse(true, result)
+}
+
+// swagger:operation POST /1.0/batches batches batches_post
+//
+//	Add a batch
+//
+//	Creates a new batch.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: batch
+//	    description: Batch configuration
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/Batch"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func batchesPost(d *Daemon, r *http.Request) response.Response {
+	var b batch.InternalBatch
+
+	// Decode into the new batch.
+	err := json.NewDecoder(r.Body).Decode(&b)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	// Insert into database.
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		return d.db.AddBatch(tx, &b)
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed creating batch %q: %w", b.GetName(), err))
+	}
+
+	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/batches/" + b.GetName())
+}
+
+// swagger:operation DELETE /1.0/batches/{name} batches batch_delete
+//
+//	Delete the batch
+//
+//	Removes the batch.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func batchDelete(d *Daemon, r *http.Request) response.Response {
+	name, err := url.PathUnescape(mux.Vars(r)["name"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	if name == "" {
+		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+	}
+
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		return d.db.DeleteBatch(tx, name)
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to delete batch '%s': %w", name, err))
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation GET /1.0/batches/{name} batches batch_get
+//
+//	Get the batch
+//
+//	Gets a specific batch.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Batch
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/Batch"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func batchGet(d *Daemon, r *http.Request) response.Response {
+	name, err := url.PathUnescape(mux.Vars(r)["name"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	if name == "" {
+		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+	}
+
+	var b batch.Batch
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbBatch, err := d.db.GetBatch(tx, name)
+		if err != nil {
+			return err
+		}
+
+		b = dbBatch
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get batch '%s': %w", name, err))
+	}
+
+	return response.SyncResponseETag(true, b, b)
+}
+
+// swagger:operation PUT /1.0/batches/{name} batches batch_put
+//
+//	Update the batch
+//
+//	Updates the batch definition.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: batch
+//	    description: Batch definition
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/Batch"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func batchPut(d *Daemon, r *http.Request) response.Response {
+	name, err := url.PathUnescape(mux.Vars(r)["name"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	if name == "" {
+		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+	}
+
+	// Get the existing batch.
+	var b batch.Batch
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbBatch, err := d.db.GetBatch(tx, name)
+		if err != nil {
+			return err
+		}
+
+		b = dbBatch
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get batch '%s': %w", name, err))
+	}
+
+	// Validate ETag
+	err = util.EtagCheck(r, b)
+	if err != nil {
+		return response.PreconditionFailed(err)
+	}
+
+	// Decode into the existing batch.
+	err = json.NewDecoder(r.Body).Decode(&b)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	// Update batch in the database.
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		return d.db.UpdateBatch(tx, b)
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", b.GetName(), err))
+	}
+
+	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/batches/" + b.GetName())
+}
