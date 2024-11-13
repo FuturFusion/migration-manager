@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -120,6 +121,11 @@ func (d *Daemon) syncInstancesFromSources() bool {
 					instanceUpdated = true
 				}
 
+				if existingInstance.Architecture != i.Architecture {
+					existingInstance.Architecture = i.Architecture
+					instanceUpdated = true
+				}
+
 				if existingInstance.OS != i.OS {
 					existingInstance.OS = i.OS
 					instanceUpdated = true
@@ -127,6 +133,21 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 				if existingInstance.OSVersion != i.OSVersion {
 					existingInstance.OSVersion = i.OSVersion
+					instanceUpdated = true
+				}
+
+				if !slices.Equal(existingInstance.Disks, i.Disks) {
+					existingInstance.Disks = i.Disks
+					instanceUpdated = true
+				}
+
+				if !slices.Equal(existingInstance.NICs, i.NICs) {
+					existingInstance.NICs = i.NICs
+					instanceUpdated = true
+				}
+
+				if existingInstance.UseLegacyBios != i.UseLegacyBios {
+					existingInstance.UseLegacyBios = i.UseLegacyBios
 					instanceUpdated = true
 				}
 
@@ -151,6 +172,8 @@ func (d *Daemon) syncInstancesFromSources() bool {
 						existingInstance.MemoryInMiB = i.MemoryInMiB
 						instanceUpdated = true
 					}
+				} else {
+					logger.Debug("Instance " +  i.GetName() + " (" + i.GetUUID().String() + ") has been manually updated, skipping some automatic sync updates", loggerCtx)
 				}
 
 				if instanceUpdated {

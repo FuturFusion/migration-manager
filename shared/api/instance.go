@@ -68,9 +68,17 @@ type Instance struct {
 	// Example: 1
 	TargetID int `json:"targetId" yaml:"targetId"`
 
+	// The batch ID for this instance
+	// Example: 1
+	BatchID int `json:"batchId" yaml:"batchId"`
+
 	// The name of this instance
 	// Example: UbuntuServer
 	Name string `json:"name" yaml:"name"`
+
+	// The architecture of this instance
+	// Example: x86_64
+	Architecture string `json:"architecture" yaml:"architecture"`
 
 	// The name of the operating system
 	// Example: Ubuntu
@@ -80,6 +88,12 @@ type Instance struct {
 	// Example: 24.04
 	OSVersion string `json:"osVersion" yaml:"osVersion"`
 
+	// Disk(s) for this instance
+	Disks []InstanceDiskInfo `json:"disks" yaml"disks"`
+
+	// NIC(s) for this instance
+	NICs []InstanceNICInfo `json:"nics" yaml"nics"`
+
 	// The number of vCPUs for this instance
 	// Example: 4
 	NumberCPUs int `json:"numberCpus" yaml"numberCpus"`
@@ -88,6 +102,10 @@ type Instance struct {
 	// Example: 4096
 	MemoryInMiB int `json:"memoryInMib" yaml:"memoryInMib"`
 
+	// Does this instance boot with legacy BIOS rather than UEFI
+	// Example: false
+	UseLegacyBios bool `json:"useLegacyBios" yaml:"useLegacyBios"`
+
 	// Is Secure Boot enabled for this instance
 	// Example: false
 	SecureBootEnabled bool `json:"secureBootEnabled" yaml:"secureBootEnabled"`
@@ -95,4 +113,30 @@ type Instance struct {
 	// Is a TPM device present for this instance
 	// Example: false
 	TPMPresent bool `json:"tpmPresent" yaml:"tpmPresent"`
+}
+
+// InstanceDiskInfo defines disk information for an Instance.
+//
+// swagger:model
+type InstanceDiskInfo struct {
+	// The name of this disk
+	// Example: sda
+	Name string `json:"name" yaml:"name"`
+
+	// The size of this disk, in bytes
+	// Example: 1073741824
+	SizeInBytes int64 `json:"sizeInBytes" yaml:"sizeInBytes"`
+}
+
+// InstancNICInfo defines network information for an Instance.
+//
+// swagger:model
+type InstanceNICInfo struct {
+	// The network for this NIC
+	// Example: default
+	Network string `json:"network" yaml:"network"`
+
+	// The MAC address for this NIC
+	// Example: 00:16:3e:05:6c:38
+	Hwaddr string `json:"hwaddr" yaml:"hwaddr"`
 }

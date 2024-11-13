@@ -16,11 +16,11 @@ import (
 var testSource = source.NewCommonSource("TestSource")
 var testTarget = target.NewIncusTarget("TestTarget", "https://localhost:8443")
 var instanceAUUID, _ = uuid.NewRandom()
-var instanceA = instance.NewInstance(instanceAUUID, 2, 1, "UbuntuVM", "Ubuntu", "24.04", 2, 2048, false, false)
+var instanceA = instance.NewInstance(instanceAUUID, 2, 1, -1, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{{"disk", 123}}, []api.InstanceNICInfo{{"net", "mac"}}, 2, 2048, false, false, false)
 var instanceBUUID, _ = uuid.NewRandom()
-var instanceB = instance.NewInstance(instanceBUUID, 2, 1, "WindowsVM", "Windows", "11", 4, 4096, true, true)
+var instanceB = instance.NewInstance(instanceBUUID, 2, 1, -1, "WindowsVM", "x86_64", "Windows", "11", []api.InstanceDiskInfo{{"disk", 321}}, []api.InstanceNICInfo{{"net1", "mac1"},{"net2", "mac2"}}, 4, 4096, false, true, true)
 var instanceCUUID, _ = uuid.NewRandom()
-var instanceC = instance.NewInstance(instanceCUUID, 2, 1, "DebianVM", "Debian", "bookworm", 4, 4096, false, true)
+var instanceC = instance.NewInstance(instanceCUUID, 2, 1, -1, "DebianVM", "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{{"disk1", 123},{"disk2", 321}}, nil, 4, 4096, true, false, true)
 
 func TestInstanceDatabaseActions(t *testing.T) {
 	// Create a new temporary database.
