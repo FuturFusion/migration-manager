@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/logger"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -79,7 +80,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 		return false
 	}
 
-	// Check each source for any new or changed instances.
+	// Check each source for any new, changed, or deleted instances.
 	for _, s := range sources {
 		err := s.Connect(d.shutdownCtx)
 		if err != nil {
@@ -92,6 +93,8 @@ func (d *Daemon) syncInstancesFromSources() bool {
 			logger.Warn(err.Error(), loggerCtx)
 			continue
 		}
+
+		currentInstancesFromSource := make(map[uuid.UUID]bool)
 
 		// Iterate each instance from this source.
 		for _, i := range instances {
@@ -108,9 +111,68 @@ func (d *Daemon) syncInstancesFromSources() bool {
 			})
 
 			if err == nil {
-				// TODO handle updating of instances from source
+				// An instance already exists in the database; update with any changes from the source.
+				instanceUpdated := false
+
+				// First, check any fields that cannot be changed through the migration manager
+				if existingInstance.Name != i.Name {
+					existingInstance.Name = i.Name
+					instanceUpdated = true
+				}
+
+				if existingInstance.OS != i.OS {
+					existingInstance.OS = i.OS
+					instanceUpdated = true
+				}
+
+				if existingInstance.OSVersion != i.OSVersion {
+					existingInstance.OSVersion = i.OSVersion
+					instanceUpdated = true
+				}
+
+				if existingInstance.SecureBootEnabled != i.SecureBootEnabled {
+					existingInstance.SecureBootEnabled = i.SecureBootEnabled
+					instanceUpdated = true
+				}
+
+				if existingInstance.TPMPresent != i.TPMPresent {
+					existingInstance.TPMPresent = i.TPMPresent
+					instanceUpdated = true
+				}
+
+				// Next, check fields that can be updated, but only sync if this instance hasn't been manually updated.
+				if existingInstance.LastManualUpdate.IsZero() {
+					if existingInstance.NumberCPUs != i.NumberCPUs {
+						existingInstance.NumberCPUs = i.NumberCPUs
+						instanceUpdated = true
+					}
+
+					if existingInstance.MemoryInMiB != i.MemoryInMiB {
+						existingInstance.MemoryInMiB = i.MemoryInMiB
+						instanceUpdated = true
+					}
+				}
+
+				if instanceUpdated {
+					logger.Info("Syncing changes to instance " + i.GetName() + " (" + i.GetUUID().String() + ") from source " + s.GetName(), loggerCtx)
+					existingInstance.LastUpdateFromSource = i.LastUpdateFromSource
+					err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+						err := d.db.UpdateInstance(tx, existingInstance)
+						if err != nil {
+							return err
+						}
+
+						return nil
+					})
+
+					if err != nil {
+						logger.Warn(err.Error(), loggerCtx)
+						continue
+					}
+				}
 			} else {
-				logger.Info("Adding instance " + i.Name + " (" + i.UUID.String() + ") to database", loggerCtx)
+				// Add a new instance to the database.
+				logger.Info("Adding instance " + i.GetName() + " (" + i.GetUUID().String() + ") from source " + s.GetName() + " to database", loggerCtx)
 				i.TargetID = targetId
 
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -127,9 +189,45 @@ func (d *Daemon) syncInstancesFromSources() bool {
 					continue
 				}
 			}
+
+			// Record that this instance exists.
+			currentInstancesFromSource[i.GetUUID()] = true
 		}
 
-		// TODO handle removing instances that no longer exist in source
+		// Remove instances that no longer exist in this source.
+		allDBInstances := []instance.Instance{}
+		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			instances, err := d.db.GetAllInstances(tx)
+			if err != nil {
+				return err
+			}
+
+			allDBInstances = instances
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+
+		for _, i := range allDBInstances {
+			_, instanceExists := currentInstancesFromSource[i.GetUUID()]
+			if !instanceExists {
+				logger.Info("Instance " + i.GetName() + " (" + i.GetUUID().String() + ") removed from source " + s.GetName(), loggerCtx)
+				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					err := d.db.DeleteInstance(tx, i.GetUUID())
+					if err != nil {
+						return err
+					}
+
+					return nil
+				})
+				if err != nil {
+					logger.Warn(err.Error(), loggerCtx)
+					continue
+				}
+			}
+		}
 	}
 
 	return false
