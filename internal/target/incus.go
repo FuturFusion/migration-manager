@@ -3,11 +3,13 @@ package target
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal"
+	"github.com/FuturFusion/migration-manager/internal/instance"
 	mmapi "github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -150,4 +152,110 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 	t.incusClient = t.incusClient.UseProject(t.IncusProject)
 
 	return nil
+}
+
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalInstance) api.InstancesPost {
+	ret := api.InstancesPost{
+		Name: instanceDef.Name,
+                Source: api.InstanceSource{
+                        Type: "none",
+                },
+		Type: api.InstanceTypeVM,
+        }
+
+	ret.Config = make(map[string]string)
+	ret.Devices = make(map[string]map[string]string)
+
+	// Set basic config fields.
+	ret.Config["image.architecture"] = instanceDef.Architecture
+	ret.Config["image.description"] = "Auto-imported from VMware"
+	ret.Config["image.os"] = instanceDef.OS
+	ret.Config["image.release"] = instanceDef.OSVersion
+
+	// Apply CPU and memory limits.
+	ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.NumberCPUs)
+	ret.Config["limits.memory"] = fmt.Sprintf("%dMiB", instanceDef.MemoryInMiB)
+
+	// Attempt to fetch the existing profile to get proper root device definition.
+	profile, _, _ := t.incusClient.GetProfile(t.IncusProfile)
+
+	// Get the existing root device definition, if it exists.
+	defaultRoot, exists := profile.Devices["root"]
+	if !exists {
+		defaultRoot = map[string]string{
+			"path": "/",
+			"pool": "default",
+			"type": "disk",
+		}
+	}
+
+	// Add empty disk(s) from VM definition that will be synced later.
+	for i, disk := range instanceDef.Disks {
+		diskKey := "root"
+		if i != 0 {
+			diskKey = fmt.Sprintf("disk%d", i)
+		}
+
+		ret.Devices[diskKey] = make(map[string]string)
+		for k, v := range defaultRoot {
+			ret.Devices[diskKey][k] = v
+		}
+		ret.Devices[diskKey]["size"] = fmt.Sprintf("%dB", disk.SizeInBytes)
+
+		if i != 0 {
+			ret.Devices[diskKey]["path"] = diskKey
+		}
+	}
+
+	// Add NIC(s).
+	for i, nic := range instanceDef.NICs {
+		deviceName := fmt.Sprintf("eth%d", i)
+		for _, profileDevice := range profile.Devices {
+			if profileDevice["type"] == "nic" && profileDevice["network"] == nic.Network {
+				ret.Devices[deviceName] = make(map[string]string)
+				for k, v := range profileDevice {
+					ret.Devices[deviceName][k] = v
+				}
+				ret.Devices[deviceName]["hwaddr"] = nic.Hwaddr
+			}
+		}
+	}
+
+	// Add TPM if needed.
+	if instanceDef.TPMPresent {
+		ret.Devices["vtpm"] = map[string]string{
+			"type": "tpm",
+			"path": "/dev/tpm0",
+		}
+	}
+
+	// Set UEFI and secure boot configs
+	if instanceDef.UseLegacyBios {
+		ret.Config["security.csm"] = "true"
+	} else {
+		ret.Config["security.csm"] = "false"
+	}
+	if instanceDef.SecureBootEnabled {
+		ret.Config["security.secureboot"] = "true"
+	} else {
+		ret.Config["security.secureboot"] = "false"
+	}
+
+	ret.Description = ret.Config["image.description"]
+
+	// Don't set any profiles by default.
+	ret.Profiles = []string{}
+
+	// Handle Windows-specific configuration.
+	if strings.Contains(ret.Config["image.os"], "windows") {
+		// Set some additional QEMU options.
+		ret.Config["raw.qemu"] = "-device intel-hda -device hda-duplex -audio spice"
+
+		// If image.os contains the string "Windows", then the incus-agent config drive won't be mapped.
+		// But we need that when running the initial migration logic from the ISO image. Reverse the string
+		// for now, and un-reverse it before finalizing the VM.
+		ret.Config["image.os"] = strings.Replace(ret.Config["image.os"], "windows", "swodniw", 1)
+	}
+
+        return ret
 }

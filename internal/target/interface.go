@@ -2,6 +2,10 @@ package target
 
 import (
 	"context"
+
+	"github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/migration-manager/internal/instance"
 )
 
 // Interface definition for all migration manager targets.
@@ -62,4 +66,7 @@ type Target interface {
 	//
 	// Returns an error if called while disconnected from a target.
 	SetProject(project string) error
+
+	// Creates a VM definition for use with the Incus REST API.
+	CreateVMDefinition(instanceDef instance.InternalInstance) api.InstancesPost
 }
