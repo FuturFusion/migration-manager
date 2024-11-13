@@ -4,16 +4,19 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/session/cache"
 	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
+	"github.com/vmware/govmomi/vim25/types"
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -133,11 +136,75 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			return nil, err
 		}
 
+		// Some information, such as the VM's architecture, appears to only available via VMware's guest tools integration(?)
+		guestInfo := make(map[string]string)
+		if vmProps.Config.ExtraConfig != nil {
+			for _, v := range vmProps.Config.ExtraConfig {
+				if v.GetOptionValue().Key == "guestInfo.detailed.data" {
+					re := regexp.MustCompile(`architecture='(.+)' bitness='(\d+)'`)
+					matches := re.FindStringSubmatch(v.GetOptionValue().Value.(string))
+					if matches != nil {
+						guestInfo["architecture"] = matches[1]
+						guestInfo["bits"] = matches[2]
+					}
+					break
+				}
+			}
+		}
+
+		arch := "x86_64"
+		if guestInfo["architecture"] == "X86" {
+			if guestInfo["bits"] == "64" {
+				arch = "x86_64"
+			} else {
+				arch = "i686"
+			}
+		} else if guestInfo["architecture"] == "Arm" {
+			if guestInfo["bits"] == "64" {
+				arch = "aarch64"
+			} else {
+				arch = "armv8l"
+			}
+		} else {
+			logger.Debugf("Unable to determine architecture for %s (%s) from source %s; defaulting to x86_64", vmProps.Summary.Config.Name, UUID.String(), s.Name)
+
+		}
+
+		useLegacyBios := false
 		secureBootEnabled := false
 		tpmPresent := false
+
+		// Detect if secure boot is enabled.
 		if *vmProps.Capability.SecureBootSupported {
 			secureBootEnabled = true
 			tpmPresent = true
+		}
+
+		// Handle VMs without UEFI and/or secure boot.
+		if vmProps.Config.Firmware == "bios" {
+			useLegacyBios = true
+			secureBootEnabled = false
+		}
+		if !*vmProps.Capability.SecureBootSupported {
+			secureBootEnabled = false
+		}
+
+		// Process any disks and networks attached to the VM.
+		disks := []api.InstanceDiskInfo{}
+		nics := []api.InstanceNICInfo{}
+		for _, device := range object.VirtualDeviceList(vmProps.Config.Hardware.Device) {
+			switch md := device.(type) {
+			case *types.VirtualDisk:
+				b, ok := md.Backing.(types.BaseVirtualDeviceFileBackingInfo)
+				if ok {
+					disks = append(disks, api.InstanceDiskInfo{Name: b.GetVirtualDeviceFileBackingInfo().FileName, SizeInBytes: md.CapacityInBytes})
+				}
+			case types.BaseVirtualEthernetCard:
+				b, ok := md.GetVirtualEthernetCard().VirtualDevice.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
+				if ok {
+					nics = append(nics, api.InstanceNICInfo{Network: b.Network.Value, Hwaddr: md.GetVirtualEthernetCard().MacAddress})
+				}
+			}
 		}
 
 		ret = append(ret, instance.InternalInstance{
@@ -147,12 +214,17 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 				LastUpdateFromSource: time.Now().UTC(),
 				// Initialize LastManualUpdate to its zero value
 				SourceID: s.DatabaseID,
-				TargetID: -1,
+				TargetID: internal.INVALID_DATABASE_ID,
+				BatchID: internal.INVALID_DATABASE_ID,
 				Name: vmProps.Summary.Config.Name,
+				Architecture: arch,
 				OS: strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
 				OSVersion: vmProps.Summary.Config.GuestFullName,
+				Disks: disks,
+				NICs: nics,
 				NumberCPUs: int(vmProps.Summary.Config.NumCpu),
 				MemoryInMiB: int(vmProps.Summary.Config.MemorySizeMB),
+				UseLegacyBios: useLegacyBios,
 				SecureBootEnabled: secureBootEnabled,
 				TPMPresent: tpmPresent,
 			},
@@ -192,12 +264,7 @@ func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string) e
 
 func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*object.VirtualMachine, error) {
 	finder := find.NewFinder(s.vimClient)
-	res, err := finder.VirtualMachineList(ctx, vmName)
-	if err != nil {
-		return nil, err
-	}
-
-	return res[0], nil
+	return finder.VirtualMachine(ctx, vmName)
 }
 
 func (s *InternalVMwareSource) getVMProperties(ctx context.Context, vm *object.VirtualMachine) (mo.VirtualMachine, error) {
