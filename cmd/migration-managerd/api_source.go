@@ -171,6 +171,9 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", s.GetName(), err))
 	}
 
+	// Trigger a scan of this new source for instances.
+	_ = d.syncInstancesFromSources()
+
 	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/sources/" + s.GetName())
 }
 
