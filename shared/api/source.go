@@ -1,11 +1,29 @@
 package api
 
+import (
+	"fmt"
+)
+
 type SourceType int
 const (
 	SOURCETYPE_UNKNOWN = iota
 	SOURCETYPE_COMMON
 	SOURCETYPE_VMWARE
 )
+
+// Implement the stringer interface.
+func (s SourceType) String() string {
+	switch s {
+	case SOURCETYPE_UNKNOWN:
+		return "Unknown"
+	case SOURCETYPE_COMMON:
+		return "Common"
+	case SOURCETYPE_VMWARE:
+		return "VMware"
+	default:
+		return fmt.Sprintf("SourceType(%d)", s)
+	}
+}
 
 // CommonSource defines properties common to all sources.
 //
@@ -18,6 +36,10 @@ type CommonSource struct {
 	// An opaque integer identifier for the source
 	// Example: 123
 	DatabaseID int `json:"databaseID" yaml:"databaseID"`
+
+	// If true, disable TLS certificate validation
+	// Example: false
+	Insecure bool `json:"insecure" yaml:"insecure"`
 }
 
 // VMwareSource composes the common and VMware-specific structs into a unified struct for common use.
@@ -45,8 +67,4 @@ type VMwareSourceSpecific struct {
 	// Password to authenticate against the endpoint
 	// Example: password
 	Password string `json:"password" yaml:"password"`
-
-	// If true, disable TLS certificate validation
-	// Example: false
-	Insecure bool `json:"insecure" yaml:"insecure"`
 }

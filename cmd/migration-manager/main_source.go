@@ -125,12 +125,12 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		s := api.VMwareSource{
 			CommonSource: api.CommonSource{
 				Name: sourceName,
+				Insecure: c.flagInsecure,
 			},
 			VMwareSourceSpecific: api.VMwareSourceSpecific{
 				Endpoint: sourceEndpoint,
 				Username: sourceUsername,
 				Password: sourcePassword,
-				Insecure: c.flagInsecure,
 			},
 		}
 
@@ -221,11 +221,11 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Endpoint", "Username", "Password", "Insecure"}
+	header := []string{"Name", "Type", "Endpoint", "Username", "Password", "Insecure"}
 	data := [][]string{}
 
 	for _, source := range vmwareSources {
-		data = append(data, []string{source.Name, source.Endpoint, source.Username, source.Password, strconv.FormatBool(source.Insecure)})
+		data = append(data, []string{source.Name, "VMware", source.Endpoint, source.Username, source.Password, strconv.FormatBool(source.Insecure)})
 	}
 
 	return util.RenderTable(c.flagFormat, header, data, vmwareSources)
@@ -286,45 +286,6 @@ func (c *cmdSourceRemove) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	name := args[0]
-
-	// Check if any instances are defined from this source.
-	sourceId := -1
-	resp, err := c.global.DoHttpRequest("/1.0/sources/" + name, http.MethodGet, "", nil)
-	if err != nil {
-		return err
-	}
-
-	s, err := parseReturnedSource(resp.Metadata)
-	if err != nil {
-		return err
-	}
-
-	switch specificSource := s.(type) {
-	case api.VMwareSource:
-		sourceId = specificSource.DatabaseID
-	default:
-		return fmt.Errorf("Unsupported source type %T; must be one of %q", s, supportedTypes)
-	}
-
-	numInstancesForSource := 0
-	resp, err = c.global.DoHttpRequest("/1.0/instances", http.MethodGet, "", nil)
-	if err != nil {
-		return err
-	}
-
-	for _, anyInstance := range resp.Metadata.([]any) {
-		newInstance, err := parseReturnedInstance(anyInstance)
-		if err != nil {
-			return err
-		}
-		if newInstance.(api.Instance).SourceID == sourceId {
-			numInstancesForSource++
-		}
-	}
-
-	if numInstancesForSource > 0 {
-		return fmt.Errorf("%d instances are using this source, so it cannot be removed.", numInstancesForSource)
-	}
 
 	// Remove the source.
 	_, err = c.global.DoHttpRequest("/1.0/sources/" + name, http.MethodDelete, "", nil)

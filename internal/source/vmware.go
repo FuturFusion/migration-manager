@@ -40,12 +40,13 @@ type InternalVMwareSourceSpecific struct {
 }
 
 // Returns a new VMwareSource ready for use.
-func NewVMwareSource(name string, endpoint string, username string, password string, insecure bool) *InternalVMwareSource {
+func NewVMwareSource(name string, endpoint string, username string, password string) *InternalVMwareSource {
 	return &InternalVMwareSource{
 		InternalCommonSource: InternalCommonSource{
 			CommonSource: api.CommonSource{
 				Name: name,
 				DatabaseID: internal.INVALID_DATABASE_ID,
+				Insecure: false,
 			},
 			isConnected: false,
 		},
@@ -54,7 +55,6 @@ func NewVMwareSource(name string, endpoint string, username string, password str
 				Endpoint: endpoint,
 				Username: username,
 				Password: password,
-				Insecure: insecure,
 			},
 		},
 	}

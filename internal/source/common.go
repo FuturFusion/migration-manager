@@ -21,6 +21,7 @@ func NewCommonSource(name string) *InternalCommonSource {
 		CommonSource: api.CommonSource{
 			Name: name,
 			DatabaseID: internal.INVALID_DATABASE_ID,
+			Insecure: false,
 		},
 		isConnected: false,
 	}
@@ -32,6 +33,15 @@ func (s *InternalCommonSource) Connect(ctx context.Context) error {
 
 func (s *InternalCommonSource) Disconnect(ctx context.Context) error {
 	return fmt.Errorf("Not implemented by CommonSource")
+}
+
+func (s *InternalCommonSource) SetInsecureTLS(insecure bool) error {
+	if s.isConnected {
+		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
+	}
+
+	s.Insecure = insecure
+	return nil
 }
 
 func (s *InternalCommonSource) IsConnected() bool {

@@ -18,6 +18,13 @@ type Source interface {
 	// Returns an error if there was a problem disconnecting from the source.
 	Disconnect(ctx context.Context) error
 
+	// Toggles whether TLS verification should be skipped or not.
+	//
+	// As this can enable MITM-style attacks, in general this SHOULD NOT be used.
+	//
+	// Returns an error if called while connected to a source.
+	SetInsecureTLS(insecure bool) error
+
 	// Returns whether currently connected to the source or not.
 	IsConnected() bool
 
@@ -34,7 +41,9 @@ type Source interface {
 
 //////////////////////////////////////////////////
 
-	// Returns a list of all VMs available from the source.
+	// Returns an array of all VMs available from the source, encoded as Instances.
+	//
+	// Returns an error if there is a problem fetching VMs or their properties.
 	GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error)
 
 	// Deletes a given snapshot, if it exists, from the specified VM.

@@ -12,8 +12,8 @@ import (
 )
 
 var commonSource = source.NewCommonSource("common_source")
-var vmwareSourceA = source.NewVMwareSource("vmware_source", "endpoint_url", "user", "pass", false)
-var vmwareSourceB = source.NewVMwareSource("vmware_source2", "endpoint_ip", "another_user", "pass", true)
+var vmwareSourceA = source.NewVMwareSource("vmware_source", "endpoint_url", "user", "pass")
+var vmwareSourceB = source.NewVMwareSource("vmware_source2", "endpoint_ip", "another_user", "pass")
 var workerConfigs = []worker.WorkerConfig{
 	worker.WorkerConfig{MigrationManagerEndpoint: "mm.local", VMName: "DebianServer", VMOperatingSystemName: "Debian", VMOperatingSystemVersion: "12", Source: commonSource},
 	worker.WorkerConfig{MigrationManagerEndpoint: "mm.local", VMName: "DebianServer", VMOperatingSystemName: "Debian", VMOperatingSystemVersion: "13", Source: vmwareSourceA},

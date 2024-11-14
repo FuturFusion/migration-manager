@@ -48,6 +48,7 @@ CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
     type INTEGER NOT NULL,
+    insecure BOOLEAN,
     config TEXT NOT NULL,
     UNIQUE (name)
 );
@@ -141,6 +142,7 @@ CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
     type INTEGER NOT NULL,
+    insecure BOOLEAN,
     config TEXT NOT NULL,
     UNIQUE (name)
 );

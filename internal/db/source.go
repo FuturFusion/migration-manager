@@ -12,14 +12,16 @@ import (
 
 func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 	// Add source to the database.
-	q := `INSERT INTO sources (name,type,config) VALUES(?,?,?)`
+	q := `INSERT INTO sources (name,type,insecure,config) VALUES(?,?,?,?)`
 
 	sourceType := api.SOURCETYPE_UNKNOWN
 	configString := ""
+	isInsecure := false
 
 	switch specificSource := s.(type) {
 	case *source.InternalCommonSource:
 		sourceType = api.SOURCETYPE_COMMON
+		isInsecure = specificSource.Insecure
 	case *source.InternalVMwareSource:
 		sourceType = api.SOURCETYPE_VMWARE
 		marshalled, err := json.Marshal(specificSource.VMwareSourceSpecific)
@@ -27,11 +29,12 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 			return err
 		}
 		configString = string(marshalled)
+		isInsecure = specificSource.Insecure
 	default:
 		return fmt.Errorf("Can only add a Common or VMware source")
 	}
 
-	result, err := tx.Exec(q, s.GetName(), sourceType, configString)
+	result, err := tx.Exec(q, s.GetName(), sourceType, isInsecure, configString)
 	if err != nil {
 		return err
 	}
@@ -69,8 +72,29 @@ func (n *Node) GetAllSources(tx *sql.Tx) ([]source.Source, error) {
 }
 
 func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
+	// Verify no instances refer to this source and return a nicer error than 'FOREIGN KEY constraint failed' if so.
+	s, err := n.GetSource(tx, name)
+	if err != nil {
+		return err
+	}
+	sID, err := s.GetDatabaseID()
+	if err != nil {
+		return err
+	}
+	q := `SELECT COUNT(uuid) FROM instances WHERE sourceid=?`
+	row := tx.QueryRow(q, sID)
+
+	numInstances := 0
+	err = row.Scan(&numInstances)
+	if err != nil {
+		return err
+	}
+	if numInstances > 0 {
+		return fmt.Errorf("%d instances refer to source '%s', can't delete", numInstances, name)
+	}
+
 	// Delete the source from the database.
-	q := `DELETE FROM sources WHERE name=?`
+	q = `DELETE FROM sources WHERE name=?`
 	result, err := tx.Exec(q, name)
 	if err != nil {
 		return err
@@ -89,18 +113,21 @@ func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
 
 func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 	// Update source in the database.
-	q := `UPDATE sources SET name=?,config=? WHERE id=?`
+	q := `UPDATE sources SET name=?,insecure=?,config=? WHERE id=?`
 
 	configString := ""
+	isInsecure := false
 
 	switch specificSource := s.(type) {
 	case *source.InternalCommonSource:
+		isInsecure = specificSource.Insecure
 	case *source.InternalVMwareSource:
 		marshalled, err := json.Marshal(specificSource.VMwareSourceSpecific)
 		if err != nil {
 			return err
 		}
 		configString = string(marshalled)
+		isInsecure = specificSource.Insecure
 	default:
 		return fmt.Errorf("Can only update a Common or VMware source")
 	}
@@ -109,7 +136,7 @@ func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 	if err != nil {
 		return err
 	}
-	result, err := tx.Exec(q, s.GetName(), configString, id)
+	result, err := tx.Exec(q, s.GetName(), isInsecure, configString, id)
 	if err != nil {
 		return err
 	}
@@ -131,10 +158,11 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string) ([]source.Source, error
 	sourceID := internal.INVALID_DATABASE_ID
 	sourceName := ""
 	sourceType := api.SOURCETYPE_UNKNOWN
+	sourceInsecure := false
 	sourceConfig := "" 
 
 	// Get all sources in the database.
-	q := `SELECT id,name,type,config FROM sources`
+	q := `SELECT id,name,type,insecure,config FROM sources`
 	var rows *sql.Rows
 	var err error
 	if name != "" {
@@ -149,7 +177,7 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string) ([]source.Source, error
 	}
 
 	for rows.Next() {
-		err := rows.Scan(&sourceID, &sourceName, &sourceType, &sourceConfig)
+		err := rows.Scan(&sourceID, &sourceName, &sourceType, &sourceInsecure, &sourceConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -158,6 +186,7 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string) ([]source.Source, error
 		case api.SOURCETYPE_COMMON:
 			newSource := source.NewCommonSource(sourceName)
 			newSource.DatabaseID = sourceID
+			newSource.Insecure = sourceInsecure
 			ret = append(ret, newSource)
 		case api.SOURCETYPE_VMWARE:
 			specificConfig := source.InternalVMwareSourceSpecific{}
@@ -165,8 +194,9 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string) ([]source.Source, error
 			if err != nil {
 				return nil, err
 			}
-			newSource := source.NewVMwareSource(sourceName, specificConfig.Endpoint, specificConfig.Username, specificConfig.Password, specificConfig.Insecure)
+			newSource := source.NewVMwareSource(sourceName, specificConfig.Endpoint, specificConfig.Username, specificConfig.Password)
 			newSource.DatabaseID = sourceID
+			newSource.Insecure = sourceInsecure
 			ret = append(ret, newSource)
 		default:
 			return nil, fmt.Errorf("Unknown source type %d", sourceType)
