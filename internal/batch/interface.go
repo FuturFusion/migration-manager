@@ -10,4 +10,7 @@ type Batch interface {
 	// Attempting to get an ID for a freshly-created batch that hasn't yet been added to the database
 	// via AddBatch() or retrieved via GetBatch()/GetAllBatches() will return an error.
 	GetDatabaseID() (int, error)
+
+	// Returns true if the batch can be modified.
+	CanBeModified() bool
 }

@@ -38,3 +38,7 @@ func (b *InternalBatch) GetDatabaseID() (int, error) {
 
 	return b.DatabaseID, nil
 }
+
+func (b *InternalBatch) CanBeModified() bool {
+	return b.Status == api.BATCHSTATUS_DEFINED || b.Status == api.BATCHSTATUS_FINISHED || b.Status == api.BATCHSTATUS_ERROR
+}

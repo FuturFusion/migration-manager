@@ -2,8 +2,6 @@ package instance
 
 import (
 	"github.com/google/uuid"
-
-	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Interface definition for all migration manager instances.
@@ -14,6 +12,6 @@ type Instance interface {
 	// Returns the name of this instance.
 	GetName() string
 
-	// Returns the migration status.
-	GetMigrationStatus() api.MigrationStatusType
+	// Returns true if the instance can be modified.
+	CanBeModified() bool
 }

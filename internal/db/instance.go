@@ -9,7 +9,6 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/instance"
-	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func (n *Node) AddInstance(tx *sql.Tx, i instance.Instance) error {
@@ -65,9 +64,8 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	migrationStatus := i.GetMigrationStatus()
-	if migrationStatus != api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH && migrationStatus != api.MIGRATIONSTATUS_FINISHED && migrationStatus != api.MIGRATIONSTATUS_ERROR {
-		return fmt.Errorf("Cannot delete instance '%s': Migration status is '%s'", i.GetName(), migrationStatus.String())
+	if !i.CanBeModified() {
+		return fmt.Errorf("Cannot delete instance '%s': Either assigned to a batch or currently migrating", i.GetName())
 	}
 
 	// Delete the instance from the database.

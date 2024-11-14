@@ -47,6 +47,6 @@ func (i *InternalInstance) GetName() string {
 	return i.Name
 }
 
-func (i *InternalInstance) GetMigrationStatus() api.MigrationStatusType {
-	return i.MigrationStatus
+func (i *InternalInstance) CanBeModified() bool {
+	return i.MigrationStatus == api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH || i.MigrationStatus == api.MIGRATIONSTATUS_FINISHED || i.MigrationStatus == api.MIGRATIONSTATUS_ERROR
 }
