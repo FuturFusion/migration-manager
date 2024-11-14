@@ -15,6 +15,9 @@ type Instance interface {
 	// Returns true if the instance can be modified.
 	CanBeModified() bool
 
+	// Returns true if the instance is migrating.
+	IsMigrating() bool
+
 	// Returns the ID of the batch this instance is assigned to, if any.
 	GetBatchID() int
 }

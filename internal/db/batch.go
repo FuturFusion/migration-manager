@@ -70,6 +70,35 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 		return fmt.Errorf("Cannot delete batch '%s': Currently in a migration phase", name)
 	}
 
+	// Get a list of any instances currently assigned to this batch.
+	batchID, err := dbBatch.GetDatabaseID()
+	if err != nil {
+		return err
+	}
+	instances, err := n.getAllInstancesForBatchID(tx, batchID)
+	if err != nil {
+		return err
+	}
+
+	// Verify all instances for this batch aren't in a migration phase and remove their association with this batch.
+	for _, i := range instances {
+		instance, err := n.GetInstance(tx, i)
+		if err != nil {
+			return err
+		}
+
+		if instance.IsMigrating() {
+			return fmt.Errorf("Cannot delete batch '%s': At least one assigned instance is in a migration phase", name)
+		}
+
+		q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
+		var status api.MigrationStatusType = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
+		_, err = tx.Exec(q, internal.INVALID_DATABASE_ID, status, status.String(), instance.GetUUID())
+		if err != nil {
+			return err
+		}
+	}
+
 	// Delete the batch from the database.
 	q := `DELETE FROM batches WHERE name=?`
 	result, err := tx.Exec(q, name)
@@ -185,30 +214,39 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string) ([]batch.Batch, error) 
 	return ret, nil
 }
 
-func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
-	// Get a list of any instances currently assigned to this batch.
-	instances := []uuid.UUID{}
+func (n *Node) getAllInstancesForBatchID(tx *sql.Tx, id int) ([]uuid.UUID, error) {
+	ret := []uuid.UUID{}
 	q := `SELECT uuid FROM instances WHERE batchid=?`
-	batchID, err := b.GetDatabaseID()
+	rows, err := tx.Query(q, id)
 	if err != nil {
-		return err
-	}
-	rows, err := tx.Query(q, batchID)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for rows.Next() {
 		u := ""
 		err := rows.Scan(&u)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		instanceUUID, err := uuid.Parse(u)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		instances = append(instances, instanceUUID)
+		ret = append(ret, instanceUUID)
+	}
+
+	return ret, nil
+}
+
+func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
+	// Get a list of any instances currently assigned to this batch.
+	batchID, err := b.GetDatabaseID()
+	if err != nil {
+		return err
+	}
+	instances, err := n.getAllInstancesForBatchID(tx, batchID)
+	if err != nil {
+		return err
 	}
 
 	// Check if each existing instance should still be assigned to this batch.
@@ -220,7 +258,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 
 		if !b.InstanceMatchesCriteria(instance) {
 			if instance.CanBeModified() {
-				q = `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
+				q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
 				var status api.MigrationStatusType = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
 				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, status, status.String(), instance.GetUUID())
 				if err != nil {
@@ -231,24 +269,9 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Get a list of all unassigned instances.
-	instances = []uuid.UUID{}
-	q = `SELECT uuid FROM instances WHERE batchid=?`
-	rows, err = tx.Query(q, internal.INVALID_DATABASE_ID)
+	instances, err = n.getAllInstancesForBatchID(tx, internal.INVALID_DATABASE_ID)
 	if err != nil {
 		return err
-	}
-
-	for rows.Next() {
-		u := ""
-		err := rows.Scan(&u)
-		if err != nil {
-			return err
-		}
-		instanceUUID, err := uuid.Parse(u)
-		if err != nil {
-			return err
-		}
-		instances = append(instances, instanceUUID)
 	}
 
 	// Check if any unassigned instances should be assigned to this batch.
@@ -260,7 +283,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 
 		if b.InstanceMatchesCriteria(instance) {
 			if instance.CanBeModified() {
-				q = `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
+				q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
 				var status api.MigrationStatusType = api.MIGRATIONSTATUS_ASSIGNED_BATCH
 				_, err := tx.Exec(q, batchID, status, status.String(), instance.GetUUID())
 				if err != nil {

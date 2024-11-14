@@ -52,6 +52,10 @@ func (i *InternalInstance) CanBeModified() bool {
 	return i.MigrationStatus == api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH || i.MigrationStatus == api.MIGRATIONSTATUS_FINISHED || i.MigrationStatus == api.MIGRATIONSTATUS_ERROR
 }
 
+func (i *InternalInstance) IsMigrating() bool {
+	return i.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT || i.MigrationStatus == api.MIGRATIONSTATUS_IDLE || i.MigrationStatus == api.MIGRATIONSTATUS_FINAL_IMPORT
+}
+
 func (i *InternalInstance) GetBatchID() int {
 	return i.BatchID
 }
