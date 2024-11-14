@@ -8,6 +8,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 var batchA = batch.NewBatch("BatchA", "include", "exclude", time.Time{}, time.Time{})
@@ -50,6 +51,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 	// Test updating a batch.
 	batchB.Name = "FooBar"
 	batchB.IncludeRegex = "a-new-regex"
+	batchB.Status = api.BATCHSTATUS_RUNNING
 	err = db.UpdateBatch(tx, batchB)
 	require.NoError(t, err)
 	batchB_DB, err := db.GetBatch(tx, batchB.GetName())
@@ -60,6 +62,14 @@ func TestBatchDatabaseActions(t *testing.T) {
 	err = db.DeleteBatch(tx, batchA.GetName())
 	require.NoError(t, err)
 	_, err = db.GetBatch(tx, batchA.GetName())
+	require.Error(t, err)
+
+	// Can't delete a batch that has started migration.
+	err = db.DeleteBatch(tx, batchB.GetName())
+	require.Error(t, err)
+
+	// Can't update a batch that has started migration.
+	err = db.UpdateBatch(tx, batchB)
 	require.Error(t, err)
 
 	// Should have two batches remaining.

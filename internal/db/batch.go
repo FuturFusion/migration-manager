@@ -61,6 +61,15 @@ func (n *Node) GetAllBatches(tx *sql.Tx) ([]batch.Batch, error) {
 }
 
 func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
+	// Don't allow deletion if the batch is in a migration phase.
+	dbBatch, err := n.GetBatch(tx, name)
+	if err != nil {
+		return err
+	}
+	if !dbBatch.CanBeModified() {
+		return fmt.Errorf("Cannot delete batch '%s': Currently in a migration phase", name)
+	}
+
 	// Delete the batch from the database.
 	q := `DELETE FROM batches WHERE name=?`
 	result, err := tx.Exec(q, name)
@@ -80,8 +89,30 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 }
 
 func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
+	// Don't allow updates if the batch is in a migration phase.
+	q := `SELECT name FROM batches WHERE id=?`
+	id, err := b.GetDatabaseID()
+	if err != nil {
+		return err
+	}
+	row := tx.QueryRow(q, id)
+
+	origName := ""
+	err = row.Scan(&origName)
+	if err != nil {
+		return err
+	}
+
+	dbBatch, err := n.GetBatch(tx, origName)
+	if err != nil {
+		return err
+	}
+	if !dbBatch.CanBeModified() {
+		return fmt.Errorf("Cannot update batch '%s': Currently in a migration phase", b.GetName())
+	}
+
 	// Update batch in the database.
-	q := `UPDATE batches SET name=?,status=?,includeregex=?,excluderegex=?,migrationwindowstart=?,migrationwindowend=? WHERE id=?`
+	q = `UPDATE batches SET name=?,status=?,includeregex=?,excluderegex=?,migrationwindowstart=?,migrationwindowend=? WHERE id=?`
 
 	internalBatch, ok := b.(*batch.InternalBatch)
 	if !ok {
