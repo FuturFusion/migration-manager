@@ -38,6 +38,18 @@ var batchInstancesCmd = APIEndpoint{
 	Get:    APIEndpointAction{Handler: batchInstancesGet, AllowUntrusted: true},
 }
 
+var batchStartCmd = APIEndpoint{
+	Path: "batches/{name}/start",
+
+	Get:    APIEndpointAction{Handler: batchStartGet, AllowUntrusted: true},
+}
+
+var batchStopCmd = APIEndpoint{
+	Path: "batches/{name}/stop",
+
+	Get:    APIEndpointAction{Handler: batchStopGet, AllowUntrusted: true},
+}
+
 // swagger:operation GET /1.0/batches batches batches_get
 //
 //	Get the batches
@@ -420,4 +432,90 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 
 
 	return response.SyncResponse(true, result)
+}
+
+// swagger:operation GET /1.0/batches/{name}/start batches batches_start_get
+//
+//	Start a batch
+//
+//	Starts a batch and begins the migration process for its instances.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func batchStartGet(d *Daemon, r *http.Request) response.Response {
+	name, err := url.PathUnescape(mux.Vars(r)["name"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	if name == "" {
+		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+	}
+
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		err := d.db.StartBatch(tx, name)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to start batch '%s': %w", name, err))
+	}
+
+	return response.SyncResponse(true, nil)
+}
+
+// swagger:operation GET /1.0/batches/{name}/stop batches batches_stop_get
+//
+//	Stop a batch
+//
+//	Stops a batch and suspends the migration process for its instances.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func batchStopGet(d *Daemon, r *http.Request) response.Response {
+	name, err := url.PathUnescape(mux.Vars(r)["name"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	if name == "" {
+		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+	}
+
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		err := d.db.StopBatch(tx, name)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to stop batch '%s': %w", name, err))
+	}
+
+	return response.SyncResponse(true, nil)
 }
