@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func (n *Node) AddInstance(tx *sql.Tx, i instance.Instance) error {
@@ -58,6 +59,16 @@ func (n *Node) GetAllInstances(tx *sql.Tx) ([]instance.Instance, error) {
 }
 
 func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
+	// Don't allow deletion if the instance is in a migration phase.
+	i, err := n.GetInstance(tx, UUID)
+	if err != nil {
+		return err
+	}
+	migrationStatus := i.GetMigrationStatus()
+	if migrationStatus != api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH && migrationStatus != api.MIGRATIONSTATUS_FINISHED && migrationStatus != api.MIGRATIONSTATUS_ERROR {
+		return fmt.Errorf("Cannot delete instance '%s': Migration status is '%s'", i.GetName(), migrationStatus.String())
+	}
+
 	// Delete the instance from the database.
 	q := `DELETE FROM instances WHERE uuid=?`
 	result, err := tx.Exec(q, UUID)

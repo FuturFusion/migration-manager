@@ -81,7 +81,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	instanceB.Name = "FooBar"
 	instanceB.NumberCPUs = 8
 	instanceB.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
-	instanceB.MigrationStatusString = "Background import started"
+	instanceB.MigrationStatusString = instanceB.MigrationStatus.String()
 	err = db.UpdateInstance(tx, instanceB)
 	require.NoError(t, err)
 	instanceB_DB, err := db.GetInstance(tx, instanceB.GetUUID())
@@ -92,6 +92,10 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	err = db.DeleteInstance(tx, instanceA.GetUUID())
 	require.NoError(t, err)
 	_, err = db.GetInstance(tx, instanceA.GetUUID())
+	require.Error(t, err)
+
+	// Can't delete an instance that has started migration.
+	err = db.DeleteInstance(tx, instanceB.GetUUID())
 	require.Error(t, err)
 
 	// Should have two instances remaining.

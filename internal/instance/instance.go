@@ -46,3 +46,7 @@ func (i *InternalInstance) GetUUID() uuid.UUID {
 func (i *InternalInstance) GetName() string {
 	return i.Name
 }
+
+func (i *InternalInstance) GetMigrationStatus() api.MigrationStatusType {
+	return i.MigrationStatus
+}

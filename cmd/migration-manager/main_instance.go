@@ -91,6 +91,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	// Get nice names for the batches.
 	batchesMap := make(map[int]string)
+	batchesMap[-1] = ""
 	resp, err = c.global.DoHttpRequest("/1.0/batches", http.MethodGet, "", nil)
 	if err != nil {
 		return err
@@ -144,7 +145,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, i := range instances {
-		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatus.String(), i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), strconv.Itoa(i.MemoryInMiB)}
+		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), strconv.Itoa(i.MemoryInMiB)}
 		if c.flagVerbose {
 			lastUpdate := "Never"
 			if !i.LastManualUpdate.IsZero() {

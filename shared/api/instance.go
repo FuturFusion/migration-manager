@@ -25,15 +25,15 @@ func (m MigrationStatusType) String() string {
 	case MIGRATIONSTATUS_UNKNOWN:
 		return "Unknown"
 	case MIGRATIONSTATUS_NOT_ASSIGNED_BATCH:
-		return "Not assigned batch"
+		return "Not yet assigned to a batch"
 	case MIGRATIONSTATUS_ASSIGNED_BATCH:
-		return "Assigned batch"
+		return "Assigned to a batch"
 	case MIGRATIONSTATUS_BACKGROUND_IMPORT:
-		return "Background import"
+		return "Performing background import tasks"
 	case MIGRATIONSTATUS_IDLE:
 		return "Idle"
 	case MIGRATIONSTATUS_FINAL_IMPORT:
-		return "Final import"
+		return "Performing final import tasks"
 	case MIGRATIONSTATUS_FINISHED:
 		return "Finished"
 	case MIGRATIONSTATUS_ERROR:
