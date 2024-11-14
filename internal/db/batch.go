@@ -295,3 +295,51 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 
 	return nil
 }
+
+func (n *Node) StartBatch(tx *sql.Tx, name string) error {
+	// Get the batch to start.
+	b, err := n.GetBatch(tx, name)
+	if err != nil {
+		return err
+	}
+
+	internalBatch, ok := b.(*batch.InternalBatch)
+	if !ok {
+		return fmt.Errorf("Wasn't given an InternalBatch?")
+	}
+
+	// Ensure batch is in a state that is ready to start.
+	if internalBatch.Status != api.BATCHSTATUS_DEFINED && internalBatch.Status != api.BATCHSTATUS_STOPPED && internalBatch.Status != api.BATCHSTATUS_ERROR {
+		return fmt.Errorf("Cannot start batch '%s' in its current state '%s'", internalBatch.Name, internalBatch.Status)
+	}
+
+	// Move batch status to "ready".
+	q := `UPDATE batches SET status=? WHERE id=?`
+	_, err = tx.Exec(q, api.BATCHSTATUS_READY, internalBatch.DatabaseID)
+
+	return err
+}
+
+func (n *Node) StopBatch(tx *sql.Tx, name string) error {
+	// Get the batch to stop.
+	b, err := n.GetBatch(tx, name)
+	if err != nil {
+		return err
+	}
+
+	internalBatch, ok := b.(*batch.InternalBatch)
+	if !ok {
+		return fmt.Errorf("Wasn't given an InternalBatch?")
+	}
+
+	// Ensure batch is in a state that is ready to stop.
+	if internalBatch.Status != api.BATCHSTATUS_READY && internalBatch.Status != api.BATCHSTATUS_QUEUED && internalBatch.Status != api.BATCHSTATUS_RUNNING {
+		return fmt.Errorf("Cannot stop batch '%s' in its current state '%s'", internalBatch.Name, internalBatch.Status)
+	}
+
+	// Move batch status to "stopped".
+	q := `UPDATE batches SET status=? WHERE id=?`
+	_, err = tx.Exec(q, api.BATCHSTATUS_STOPPED, internalBatch.DatabaseID)
+
+	return err
+}
