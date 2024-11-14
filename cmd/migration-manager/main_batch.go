@@ -37,6 +37,10 @@ func (c *cmdBatch) Command() *cobra.Command {
 	batchRemoveCmd := cmdBatchRemove{global: c.global}
 	cmd.AddCommand(batchRemoveCmd.Command())
 
+	// Show
+	batchShowCmd := cmdBatchShow{global: c.global}
+	cmd.AddCommand(batchShowCmd.Command())
+
 	// Update
 	batchUpdateCmd := cmdBatchUpdate{global: c.global}
 	cmd.AddCommand(batchUpdateCmd.Command())
@@ -225,6 +229,85 @@ func (c *cmdBatchRemove) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("Successfully removed batch '%s'.\n", name)
+	return nil
+}
+
+// Show
+type cmdBatchShow struct {
+	global *cmdGlobal
+}
+
+func (c *cmdBatchShow) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "show <name>"
+	cmd.Short = "Show information about a batch"
+	cmd.Long = `Description:
+  Show information about a batch, including all instances assigned to it.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	name := args[0]
+
+	// Get the batch.
+	resp, err := c.global.DoHttpRequest("/1.0/batches/" + name, http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+
+	parsed, err := parseReturnedBatch(resp.Metadata)
+	if err != nil {
+		return err
+	}
+	b := parsed.(api.Batch)
+
+	// Get all instances for this batch.
+	resp, err = c.global.DoHttpRequest("/1.0/batches/" + name + "/instances", http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+
+	instances := []api.Instance{}
+
+	// Loop through returned instances.
+	for _, anyInstance := range resp.Metadata.([]any) {
+		newInstance, err := parseReturnedInstance(anyInstance)
+		if err != nil {
+			return err
+		}
+		instances = append(instances, newInstance.(api.Instance))
+	}
+
+	// Show the details
+	fmt.Printf("Batch: %s\n", b.Name)
+	fmt.Printf("  - Status:        %s\n", b.Status)
+	if b.IncludeRegex != "" {
+		fmt.Printf("  - Include regex: %s\n", b.IncludeRegex)
+	}
+	if b.ExcludeRegex != "" {
+		fmt.Printf("  - Exclude regex: %s\n", b.ExcludeRegex)
+	}
+	if !b.MigrationWindowStart.IsZero() {
+		fmt.Printf("  - Window start:  %s\n", b.MigrationWindowStart)
+	}
+	if !b.MigrationWindowEnd.IsZero() {
+		fmt.Printf("  - Window end:    %s\n", b.MigrationWindowEnd)
+	}
+
+	fmt.Printf("\n  - Instances:\n")
+	for _, i := range instances {
+		fmt.Printf("    - %s (%s)\n", i.Name, i.MigrationStatusString)
+	}
 	return nil
 }
 
