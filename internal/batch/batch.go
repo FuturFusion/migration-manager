@@ -2,9 +2,11 @@ package batch
 
 import (
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/FuturFusion/migration-manager/internal"
+	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -41,4 +43,24 @@ func (b *InternalBatch) GetDatabaseID() (int, error) {
 
 func (b *InternalBatch) CanBeModified() bool {
 	return b.Status == api.BATCHSTATUS_DEFINED || b.Status == api.BATCHSTATUS_FINISHED || b.Status == api.BATCHSTATUS_ERROR
+}
+
+func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {
+	// Handle any exclusionary criteria first.
+	if b.ExcludeRegex != "" {
+		excludeRegex := regexp.MustCompile(b.ExcludeRegex)
+		if excludeRegex.Match([]byte(i.GetName())) {
+			return false
+		}
+	}
+
+	// Handle any inclusionary criteria second.
+	if b.IncludeRegex != "" {
+		includeRegex := regexp.MustCompile(b.IncludeRegex)
+		if !includeRegex.Match([]byte(i.GetName())) {
+			return false
+		}
+	}
+
+	return true
 }

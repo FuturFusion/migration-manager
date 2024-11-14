@@ -1,5 +1,9 @@
 package batch
 
+import (
+	"github.com/FuturFusion/migration-manager/internal/instance"
+)
+
 // Interface definition for all migration manager batches.
 type Batch interface {
 	// Returns the name of this batch.
@@ -13,4 +17,7 @@ type Batch interface {
 
 	// Returns true if the batch can be modified.
 	CanBeModified() bool
+
+	// Returns true if the instance matches inclusion/exclusion criteria for this batch.
+	InstanceMatchesCriteria(i instance.Instance) bool
 }
