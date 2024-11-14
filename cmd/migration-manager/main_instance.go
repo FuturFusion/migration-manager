@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -91,7 +92,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	// Get nice names for the batches.
 	batchesMap := make(map[int]string)
-	batchesMap[-1] = ""
+	batchesMap[internal.INVALID_DATABASE_ID] = ""
 	resp, err = c.global.DoHttpRequest("/1.0/batches", http.MethodGet, "", nil)
 	if err != nil {
 		return err

@@ -2,10 +2,12 @@ package db_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/source"
@@ -15,12 +17,13 @@ import (
 
 var testSource = source.NewCommonSource("TestSource")
 var testTarget = target.NewIncusTarget("TestTarget", "https://localhost:8443")
+var testBatch = batch.NewBatch("TestBatch", "", "", time.Time{}, time.Time{})
 var instanceAUUID, _ = uuid.NewRandom()
 var instanceA = instance.NewInstance(instanceAUUID, 2, 1, -1, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{{"disk", 123}}, []api.InstanceNICInfo{{"net", "mac"}}, 2, 2048, false, false, false)
 var instanceBUUID, _ = uuid.NewRandom()
 var instanceB = instance.NewInstance(instanceBUUID, 2, 1, -1, "WindowsVM", "x86_64", "Windows", "11", []api.InstanceDiskInfo{{"disk", 321}}, []api.InstanceNICInfo{{"net1", "mac1"},{"net2", "mac2"}}, 4, 4096, false, true, true)
 var instanceCUUID, _ = uuid.NewRandom()
-var instanceC = instance.NewInstance(instanceCUUID, 2, 1, -1, "DebianVM", "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{{"disk1", 123},{"disk2", 321}}, nil, 4, 4096, true, false, true)
+var instanceC = instance.NewInstance(instanceCUUID, 2, 1, 1, "DebianVM", "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{{"disk1", 123},{"disk2", 321}}, nil, 4, 4096, true, false, true)
 
 func TestInstanceDatabaseActions(t *testing.T) {
 	// Create a new temporary database.
@@ -47,6 +50,10 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	err = db.AddInstance(tx, instanceA)
 	require.Error(t, err)
 	err = db.AddSource(tx, testSource)
+	require.NoError(t, err)
+
+	// Add dummy batch.
+	err = db.AddBatch(tx, testBatch)
 	require.NoError(t, err)
 
 	// Add instanceA.
@@ -96,6 +103,10 @@ func TestInstanceDatabaseActions(t *testing.T) {
 
 	// Can't delete an instance that has started migration.
 	err = db.DeleteInstance(tx, instanceB.GetUUID())
+	require.Error(t, err)
+
+	// Can't update an instance that is assigned to a batch.
+	err = db.UpdateInstance(tx, instanceC)
 	require.Error(t, err)
 
 	// Should have two instances remaining.

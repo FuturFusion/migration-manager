@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -88,8 +89,30 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 }
 
 func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
+	// Don't allow updates if this instance has been assigned to a batch.
+	q := `SELECT batchid FROM instances WHERE uuid=?`
+	row := tx.QueryRow(q, i.GetUUID())
+
+	batchID := internal.INVALID_DATABASE_ID
+	err := row.Scan(&batchID)
+	if err != nil {
+		return err
+	}
+	if batchID != internal.INVALID_DATABASE_ID {
+		q = `SELECT name FROM batches WHERE id=?`
+		row = tx.QueryRow(q, batchID)
+
+		batchName := ""
+		err := row.Scan(&batchName)
+		if err != nil {
+			return err
+		}
+
+		return fmt.Errorf("Cannot update instance '%s' while assigned to batch '%s'", i.GetName(), batchName)
+	}
+
 	// Update instance in the database.
-	q := `UPDATE instances SET migrationstatus=?,migrationstatusstring=?,lastupdatefromsource=?,lastmanualupdate=?,sourceid=?,targetid=?,batchid=?,name=?,architecture=?,os=?,osversion=?,disks=?,nics=?,numbercpus=?,memoryinmib=?,uselegacybios=?,securebootenabled=?,tpmpresent=? WHERE uuid=?`
+	q = `UPDATE instances SET migrationstatus=?,migrationstatusstring=?,lastupdatefromsource=?,lastmanualupdate=?,sourceid=?,targetid=?,batchid=?,name=?,architecture=?,os=?,osversion=?,disks=?,nics=?,numbercpus=?,memoryinmib=?,uselegacybios=?,securebootenabled=?,tpmpresent=? WHERE uuid=?`
 
 	internalInstance, ok := i.(*instance.InternalInstance)
 	if !ok {
