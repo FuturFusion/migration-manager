@@ -18,7 +18,7 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Add batch to the database.
-	q := `INSERT INTO batches (name,status,includeregex,excluderegex,migrationwindowstart,migrationwindowend) VALUES(?,?,?,?,?,?)`
+	q := `INSERT INTO batches (name,status,statusstring,includeregex,excluderegex,migrationwindowstart,migrationwindowend) VALUES(?,?,?,?,?,?,?)`
 
 	marshalledMigrationWindowStart, err := internalBatch.MigrationWindowStart.MarshalText()
 	if err != nil {
@@ -28,7 +28,7 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 	if err != nil {
 		return err
 	}
-	result, err := tx.Exec(q, internalBatch.Name, internalBatch.Status, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd)
+	result, err := tx.Exec(q, internalBatch.Name, internalBatch.Status, internalBatch.StatusString, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd)
 	if err != nil {
 		return err
 	}
@@ -141,7 +141,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Update batch in the database.
-	q = `UPDATE batches SET name=?,status=?,includeregex=?,excluderegex=?,migrationwindowstart=?,migrationwindowend=? WHERE id=?`
+	q = `UPDATE batches SET name=?,status=?,statusstring=?,includeregex=?,excluderegex=?,migrationwindowstart=?,migrationwindowend=? WHERE id=?`
 
 	internalBatch, ok := b.(*batch.InternalBatch)
 	if !ok {
@@ -156,7 +156,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	if err != nil {
 		return err
 	}
-	result, err := tx.Exec(q, internalBatch.Name, internalBatch.Status, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DatabaseID)
+	result, err := tx.Exec(q, internalBatch.Name, internalBatch.Status, internalBatch.StatusString, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DatabaseID)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string) ([]batch.Batch, error) 
 	ret := []batch.Batch{}
 
 	// Get all batches in the database.
-	q := `SELECT id,name,status,includeregex,excluderegex,migrationwindowstart,migrationwindowend FROM batches`
+	q := `SELECT id,name,status,statusstring,includeregex,excluderegex,migrationwindowstart,migrationwindowend FROM batches`
 	var rows *sql.Rows
 	var err error
 	if name != "" {
@@ -195,7 +195,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string) ([]batch.Batch, error) 
 		marshalledMigrationWindowStart := ""
 		marshalledMigrationWindowEnd := ""
 
-		err := rows.Scan(&newBatch.DatabaseID, &newBatch.Name, &newBatch.Status, &newBatch.IncludeRegex, &newBatch.ExcludeRegex, &marshalledMigrationWindowStart, &marshalledMigrationWindowEnd)
+		err := rows.Scan(&newBatch.DatabaseID, &newBatch.Name, &newBatch.Status, &newBatch.StatusString, &newBatch.IncludeRegex, &newBatch.ExcludeRegex, &marshalledMigrationWindowStart, &marshalledMigrationWindowEnd)
 		if err != nil {
 			return nil, err
 		}
@@ -314,8 +314,9 @@ func (n *Node) StartBatch(tx *sql.Tx, name string) error {
 	}
 
 	// Move batch status to "ready".
-	q := `UPDATE batches SET status=? WHERE id=?`
-	_, err = tx.Exec(q, api.BATCHSTATUS_READY, internalBatch.DatabaseID)
+	var status api.BatchStatusType = api.BATCHSTATUS_READY
+	q := `UPDATE batches SET status=?,statusstring=? WHERE id=?`
+	_, err = tx.Exec(q, status, status.String(), internalBatch.DatabaseID)
 
 	return err
 }
@@ -338,8 +339,9 @@ func (n *Node) StopBatch(tx *sql.Tx, name string) error {
 	}
 
 	// Move batch status to "stopped".
-	q := `UPDATE batches SET status=? WHERE id=?`
-	_, err = tx.Exec(q, api.BATCHSTATUS_STOPPED, internalBatch.DatabaseID)
+	var status api.BatchStatusType = api.BATCHSTATUS_STOPPED
+	q := `UPDATE batches SET status=?,statusstring=? WHERE id=?`
+	_, err = tx.Exec(q, status, status.String(), internalBatch.DatabaseID)
 
 	return err
 }

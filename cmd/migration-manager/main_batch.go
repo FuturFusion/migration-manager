@@ -90,9 +90,11 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Add the batch.
+	var status api.BatchStatusType = api.BATCHSTATUS_DEFINED
 	b := api.Batch{
 		Name: args[0],
-		Status: api.BATCHSTATUS_DEFINED,
+		Status: status,
+		StatusString: status.String(),
 	}
 
 	includeRegex, err := c.global.asker.AskString("Regular expression to include instances: ", "", nil)
@@ -182,7 +184,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 		if !b.MigrationWindowEnd.IsZero() {
 			endString = b.MigrationWindowEnd.String()
 		}
-		data = append(data, []string{b.Name, b.Status.String(), b.IncludeRegex, b.ExcludeRegex, startString, endString})
+		data = append(data, []string{b.Name, b.StatusString, b.IncludeRegex, b.ExcludeRegex, startString, endString})
 	}
 
 	return util.RenderTable(c.flagFormat, header, data, batches)
@@ -298,7 +300,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	// Show the details
 	fmt.Printf("Batch: %s\n", b.Name)
-	fmt.Printf("  - Status:        %s\n", b.Status)
+	fmt.Printf("  - Status:        %s\n", b.StatusString)
 	if b.IncludeRegex != "" {
 		fmt.Printf("  - Include regex: %s\n", b.IncludeRegex)
 	}

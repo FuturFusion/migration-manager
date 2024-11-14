@@ -57,11 +57,21 @@ type Batch struct {
 	// Example: BATCHSTATUS_DEFINED
 	Status BatchStatusType `json:"status" yaml:"status"`
 
+	// A free-form string to provide additional information about the status
+	// Example: "4 of 5 instances migrated"
+	StatusString string `json:"statusString" yaml:"statusString"`
+
+	// A regular expression used to select instances to add to this batch
+	// Example: .*
 	IncludeRegex string `json:"includeRegex" yaml:"includeRegex"`
 
+	// A regular expression used to exclude instances from this batch
+	// Example: Windows
 	ExcludeRegex string `json:"excludeRegex" yaml:"excludeRegex"`
 
+	// If specified, don't start the migration before this time
 	MigrationWindowStart time.Time `json:"migrationWindowStart" yaml:"migrationWindowStart"`
 
+	// If specified, don't start the migration after this time
 	MigrationWindowEnd time.Time `json:"migrationWindowEnd" yaml:"migrationWindowEnd"`
 }
