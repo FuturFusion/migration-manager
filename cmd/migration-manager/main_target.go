@@ -273,38 +273,6 @@ func (c *cmdTargetRemove) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Check if any instances are destined for this target.
-	resp, err := c.global.DoHttpRequest("/1.0/targets/" + name, http.MethodGet, "", nil)
-	if err != nil {
-		return err
-	}
-
-	t, err := parseReturnedTarget(resp.Metadata)
-	if err != nil {
-		return err
-	}
-	targetId := t.(api.IncusTarget).DatabaseID
-
-	numInstancesForTarget := 0
-	resp, err = c.global.DoHttpRequest("/1.0/instances", http.MethodGet, "", nil)
-	if err != nil {
-		return err
-	}
-
-	for _, anyInstance := range resp.Metadata.([]any) {
-		newInstance, err := parseReturnedInstance(anyInstance)
-		if err != nil {
-			return err
-		}
-		if newInstance.(api.Instance).TargetID == targetId {
-			numInstancesForTarget++
-		}
-	}
-
-	if numInstancesForTarget > 0 {
-		return fmt.Errorf("%d instances are using this target, so it cannot be removed.", numInstancesForTarget)
-	}
-
 	// Remove the target.
 	_, err = c.global.DoHttpRequest("/1.0/targets/" + name, http.MethodDelete, "", nil)
 	if err != nil {

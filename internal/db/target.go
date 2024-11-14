@@ -54,8 +54,29 @@ func (n *Node) GetAllTargets(tx *sql.Tx) ([]target.Target, error) {
 }
 
 func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
+	// Verify no instances refer to this target and return a nicer error than 'FOREIGN KEY constraint failed' if so.
+	t, err := n.GetTarget(tx, name)
+	if err != nil {
+		return err
+	}
+	tID, err := t.GetDatabaseID()
+	if err != nil {
+		return err
+	}
+	q := `SELECT COUNT(uuid) FROM instances WHERE targetid=?`
+	row := tx.QueryRow(q, tID)
+
+	numInstances := 0
+	err = row.Scan(&numInstances)
+	if err != nil {
+		return err
+	}
+	if numInstances > 0 {
+		return fmt.Errorf("%d instances refer to target '%s', can't delete", numInstances, name)
+	}
+
 	// Delete the target from the database.
-	q := `DELETE FROM targets WHERE name=?`
+	q = `DELETE FROM targets WHERE name=?`
 	result, err := tx.Exec(q, name)
 	if err != nil {
 		return err

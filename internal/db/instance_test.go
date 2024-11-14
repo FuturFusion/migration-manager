@@ -115,6 +115,10 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	err = db.DeleteSource(tx, testSource.GetName())
 	require.Error(t, err)
 
+	// Can't delete a target that has at least one associated instance.
+	err = db.DeleteTarget(tx, testTarget.GetName())
+	require.Error(t, err)
+
 	tx.Commit()
 	err = db.Close()
 	require.NoError(t, err)
