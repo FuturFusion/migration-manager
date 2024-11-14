@@ -17,7 +17,8 @@ func NewInstance(UUID uuid.UUID, sourceID int, targetID int, batchID int, name s
 	return &InternalInstance{
 		Instance: api.Instance{
 			UUID: UUID,
-			MigrationStatus: api.MIGRATIONSTATUS_NOT_READY,
+			MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+			MigrationStatusString: "",
 			LastUpdateFromSource: time.Now().UTC(),
 			// Initialize LastManualUpdate to its zero value
 			SourceID: sourceID,

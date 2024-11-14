@@ -10,10 +10,11 @@ import (
 type MigrationStatusType int
 const (
 	MIGRATIONSTATUS_UNKNOWN = iota
-	MIGRATIONSTATUS_NOT_READY
-	MIGRATIONSTATUS_READY
-	MIGRATIONSTATUS_PENDING
-	MIGRATIONSTATUS_RUNNING
+	MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
+	MIGRATIONSTATUS_ASSIGNED_BATCH
+	MIGRATIONSTATUS_BACKGROUND_IMPORT
+	MIGRATIONSTATUS_IDLE
+	MIGRATIONSTATUS_FINAL_IMPORT
 	MIGRATIONSTATUS_FINISHED
 	MIGRATIONSTATUS_ERROR
 )
@@ -23,14 +24,16 @@ func (m MigrationStatusType) String() string {
 	switch m {
 	case MIGRATIONSTATUS_UNKNOWN:
 		return "Unknown"
-	case MIGRATIONSTATUS_NOT_READY:
-		return "Not ready"
-	case MIGRATIONSTATUS_READY:
-		return "Ready"
-	case MIGRATIONSTATUS_PENDING:
-		return "Pending"
-	case MIGRATIONSTATUS_RUNNING:
-		return "Running"
+	case MIGRATIONSTATUS_NOT_ASSIGNED_BATCH:
+		return "Not assigned batch"
+	case MIGRATIONSTATUS_ASSIGNED_BATCH:
+		return "Assigned batch"
+	case MIGRATIONSTATUS_BACKGROUND_IMPORT:
+		return "Background import"
+	case MIGRATIONSTATUS_IDLE:
+		return "Idle"
+	case MIGRATIONSTATUS_FINAL_IMPORT:
+		return "Final import"
 	case MIGRATIONSTATUS_FINISHED:
 		return "Finished"
 	case MIGRATIONSTATUS_ERROR:
@@ -51,6 +54,10 @@ type Instance struct {
 	// The migration status of this instance
 	// Example: MIGRATIONSTATUS_RUNNING
 	MigrationStatus MigrationStatusType `json:"migrationStatus" yaml:"migrationStatus"`
+
+	// A free-form string to provide additional information about the migration status
+	// Example: "Migration 25% complete"
+	MigrationStatusString string `json:"migrationStatusString" yaml:"migrationStatusString"`
 
 	// The last time this instance was updated from its source
 	// Example: 2024-11-12 16:15:00 +0000 UTC

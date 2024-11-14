@@ -80,7 +80,8 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Test updating an instance.
 	instanceB.Name = "FooBar"
 	instanceB.NumberCPUs = 8
-	instanceB.MigrationStatus = api.MIGRATIONSTATUS_RUNNING
+	instanceB.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
+	instanceB.MigrationStatusString = "Background import started"
 	err = db.UpdateInstance(tx, instanceB)
 	require.NoError(t, err)
 	instanceB_DB, err := db.GetInstance(tx, instanceB.GetUUID())

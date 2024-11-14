@@ -89,6 +89,21 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		instances = append(instances, newInstance.(api.Instance))
 	}
 
+	// Get nice names for the batches.
+	batchesMap := make(map[int]string)
+	resp, err = c.global.DoHttpRequest("/1.0/batches", http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+	for _, anyBatch := range resp.Metadata.([]any) {
+		newBatch, err := parseReturnedBatch(anyBatch)
+		if err != nil {
+			return err
+		}
+		b := newBatch.(api.Batch)
+		batchesMap[b.DatabaseID] = b.Name
+	}
+
 	// Get nice names for the sources.
 	sourcesMap := make(map[int]string)
 	resp, err = c.global.DoHttpRequest("/1.0/sources", http.MethodGet, "", nil)
@@ -122,14 +137,14 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Migration Status", "Source", "Target", "OS", "OS Version", "Num vCPUs", "Memory (MiB)"}
+	header := []string{"Name", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Num vCPUs", "Memory (MiB)"}
 	if c.flagVerbose {
 		header = append(header, "UUID", "Last Sync", "Last Manual Update")
 	}
 	data := [][]string{}
 
 	for _, i := range instances {
-		row := []string{i.Name, i.MigrationStatus.String(), sourcesMap[i.SourceID], targetsMap[i.TargetID], i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), strconv.Itoa(i.MemoryInMiB)}
+		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatus.String(), i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), strconv.Itoa(i.MemoryInMiB)}
 		if c.flagVerbose {
 			lastUpdate := "Never"
 			if !i.LastManualUpdate.IsZero() {

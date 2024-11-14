@@ -24,6 +24,7 @@ CREATE TABLE batches (
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
     migrationstatus INTEGER NOT NULL,
+    migrationstatusstring TEXT NOT NULL,
     lastupdatefromsource TEXT NOT NULL,
     lastmanualupdate TEXT NOT NULL,
     sourceid INTEGER NOT NULL,
@@ -118,6 +119,7 @@ CREATE TABLE batches (
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
     migrationstatus INTEGER NOT NULL,
+    migrationstatusstring TEXT NOT NULL,
     lastupdatefromsource TEXT NOT NULL,
     lastmanualupdate TEXT NOT NULL,
     sourceid INTEGER NOT NULL,

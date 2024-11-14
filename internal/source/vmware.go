@@ -210,7 +210,8 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 		ret = append(ret, instance.InternalInstance{
 			Instance: api.Instance{
 				UUID: UUID,
-				MigrationStatus: api.MIGRATIONSTATUS_NOT_READY,
+				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatusString: "Not yet assigned to a batch",
 				LastUpdateFromSource: time.Now().UTC(),
 				// Initialize LastManualUpdate to its zero value
 				SourceID: s.DatabaseID,
