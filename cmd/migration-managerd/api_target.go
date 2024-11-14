@@ -130,6 +130,9 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", t.GetName(), err))
 	}
 
+	// Trigger a scan for new instances.
+	_ = d.syncInstancesFromSources()
+
 	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/targets/" + t.GetName())
 }
 
