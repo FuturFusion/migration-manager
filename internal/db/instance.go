@@ -64,7 +64,7 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
-	if !i.CanBeModified() {
+	if i.GetBatchID() != internal.INVALID_DATABASE_ID || !i.CanBeModified() {
 		return fmt.Errorf("Cannot delete instance '%s': Either assigned to a batch or currently migrating", i.GetName())
 	}
 
