@@ -75,7 +75,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
-	instances, err := n.getAllInstancesForBatchID(tx, batchID)
+	instances, err := n.GetAllInstancesForBatchID(tx, batchID)
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string) ([]batch.Batch, error) 
 	return ret, nil
 }
 
-func (n *Node) getAllInstancesForBatchID(tx *sql.Tx, id int) ([]uuid.UUID, error) {
+func (n *Node) GetAllInstancesForBatchID(tx *sql.Tx, id int) ([]uuid.UUID, error) {
 	ret := []uuid.UUID{}
 	q := `SELECT uuid FROM instances WHERE batchid=?`
 	rows, err := tx.Query(q, id)
@@ -244,7 +244,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	if err != nil {
 		return err
 	}
-	instances, err := n.getAllInstancesForBatchID(tx, batchID)
+	instances, err := n.GetAllInstancesForBatchID(tx, batchID)
 	if err != nil {
 		return err
 	}
@@ -269,7 +269,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Get a list of all unassigned instances.
-	instances, err = n.getAllInstancesForBatchID(tx, internal.INVALID_DATABASE_ID)
+	instances, err = n.GetAllInstancesForBatchID(tx, internal.INVALID_DATABASE_ID)
 	if err != nil {
 		return err
 	}

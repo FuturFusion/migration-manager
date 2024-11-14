@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
+	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
@@ -29,6 +30,12 @@ var batchCmd = APIEndpoint{
 	Delete: APIEndpointAction{Handler: batchDelete, AllowUntrusted: true},
 	Get:    APIEndpointAction{Handler: batchGet, AllowUntrusted: true},
 	Put:    APIEndpointAction{Handler: batchPut, AllowUntrusted: true},
+}
+
+var batchInstancesCmd = APIEndpoint{
+	Path: "batches/{name}/instances",
+
+	Get:    APIEndpointAction{Handler: batchInstancesGet, AllowUntrusted: true},
 }
 
 // swagger:operation GET /1.0/batches batches batches_get
@@ -323,4 +330,94 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/batches/" + b.GetName())
+}
+
+// swagger:operation GET /1.0/batches/{name}/instances batches batches_instances_get
+//
+//	Get instances for the batch
+//
+//	Returns a list of instances assigned to this batch (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API instances
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of sources
+//	          items:
+//	            $ref: "#/definitions/Instance"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
+	name, err := url.PathUnescape(mux.Vars(r)["name"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	if name == "" {
+		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+	}
+
+	var b batch.Batch
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbBatch, err := d.db.GetBatch(tx, name)
+		if err != nil {
+			return err
+		}
+
+		b = dbBatch
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get batch '%s': %w", name, err))
+	}
+
+	result := []instance.Instance{}
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		id, err := b.GetDatabaseID()
+		if err != nil {
+			return err
+		}
+		uuids, err := d.db.GetAllInstancesForBatchID(tx, id)
+		if err != nil {
+			return err
+		}
+
+		for _, u := range uuids {
+			dbInstance, err := d.db.GetInstance(tx, u)
+			if err != nil {
+				return err
+			}
+
+			result = append(result, dbInstance)
+		}
+		return nil
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+
+	return response.SyncResponse(true, result)
 }
