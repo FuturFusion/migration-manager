@@ -130,6 +130,14 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating batch %q: %w", b.GetName(), err))
 	}
 
+	// Add any instances to this batch that match selection criteria.
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		return d.db.UpdateInstancesAssignedToBatch(tx, &b)
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to assign instances to batch %q: %w", b.GetName(), err))
+	}
+
 	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/batches/" + b.GetName())
 }
 
@@ -304,6 +312,14 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", b.GetName(), err))
+	}
+
+	// Update any instances for this batch that match selection criteria.
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		return d.db.UpdateInstancesAssignedToBatch(tx, b)
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to update instances for batch %q: %w", b.GetName(), err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/batches/" + b.GetName())

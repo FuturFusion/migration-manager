@@ -4,7 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/google/uuid"
+
+	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/batch"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
@@ -148,4 +152,92 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string) ([]batch.Batch, error) 
 	}
 
 	return ret, nil
+}
+
+func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
+	// Get a list of any instances currently assigned to this batch.
+	instances := []uuid.UUID{}
+	q := `SELECT uuid FROM instances WHERE batchid=?`
+	batchID, err := b.GetDatabaseID()
+	if err != nil {
+		return err
+	}
+	rows, err := tx.Query(q, batchID)
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		u := ""
+		err := rows.Scan(&u)
+		if err != nil {
+			return err
+		}
+		instanceUUID, err := uuid.Parse(u)
+		if err != nil {
+			return err
+		}
+		instances = append(instances, instanceUUID)
+	}
+
+	// Check if each existing instance should still be assigned to this batch.
+	for _, i := range instances {
+		instance, err := n.GetInstance(tx, i)
+		if err != nil {
+			return err
+		}
+
+		if !b.InstanceMatchesCriteria(instance) {
+			if instance.CanBeModified() {
+				q = `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
+				var status api.MigrationStatusType = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
+				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, status, status.String(), instance.GetUUID())
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// Get a list of all unassigned instances.
+	instances = []uuid.UUID{}
+	q = `SELECT uuid FROM instances WHERE batchid=?`
+	rows, err = tx.Query(q, internal.INVALID_DATABASE_ID)
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		u := ""
+		err := rows.Scan(&u)
+		if err != nil {
+			return err
+		}
+		instanceUUID, err := uuid.Parse(u)
+		if err != nil {
+			return err
+		}
+		instances = append(instances, instanceUUID)
+	}
+
+	// Check if any unassigned instances should be assigned to this batch.
+	for _, i := range instances {
+		instance, err := n.GetInstance(tx, i)
+		if err != nil {
+			return err
+		}
+
+		if b.InstanceMatchesCriteria(instance) {
+			if instance.CanBeModified() {
+				q = `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
+				var status api.MigrationStatusType = api.MIGRATIONSTATUS_ASSIGNED_BATCH
+				_, err := tx.Exec(q, batchID, status, status.String(), instance.GetUUID())
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
 }
