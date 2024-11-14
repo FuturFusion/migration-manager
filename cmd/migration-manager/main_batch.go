@@ -41,6 +41,14 @@ func (c *cmdBatch) Command() *cobra.Command {
 	batchShowCmd := cmdBatchShow{global: c.global}
 	cmd.AddCommand(batchShowCmd.Command())
 
+	// Start
+	batchStartCmd := cmdBatchStart{global: c.global}
+	cmd.AddCommand(batchStartCmd.Command())
+
+	// Stop
+	batchStopCmd := cmdBatchStop{global: c.global}
+	cmd.AddCommand(batchStopCmd.Command())
+
 	// Update
 	batchUpdateCmd := cmdBatchUpdate{global: c.global}
 	cmd.AddCommand(batchUpdateCmd.Command())
@@ -308,6 +316,80 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	for _, i := range instances {
 		fmt.Printf("    - %s (%s)\n", i.Name, i.MigrationStatusString)
 	}
+	return nil
+}
+
+// Start
+type cmdBatchStart struct {
+	global *cmdGlobal
+}
+
+func (c *cmdBatchStart) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "start <name>"
+	cmd.Short = "Start batch"
+	cmd.Long = `Description:
+  Activate a batch and start the migration process for its instances.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdBatchStart) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	name := args[0]
+
+	// Start the batch.
+	_, err = c.global.DoHttpRequest("/1.0/batches/" + name + "/start", http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully started batch '%s'.\n", name)
+	return nil
+}
+
+// Stop
+type cmdBatchStop struct {
+	global *cmdGlobal
+}
+
+func (c *cmdBatchStop) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "stop <name>"
+	cmd.Short = "Stop batch"
+	cmd.Long = `Description:
+  Deactivate a batch and stop the migration process for its instances.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	name := args[0]
+
+	// Start the batch.
+	_, err = c.global.DoHttpRequest("/1.0/batches/" + name + "/stop", http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Successfully stopped batch '%s'.\n", name)
 	return nil
 }
 
