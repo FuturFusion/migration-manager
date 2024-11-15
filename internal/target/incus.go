@@ -7,6 +7,7 @@ import (
 
 	"github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v6/shared/revert"
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -258,4 +259,45 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	}
 
         return ret
+}
+
+func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost) error {
+	revert := revert.New()
+        defer revert.Fail()
+
+	// Attach bootable ISO to run migration of this VM.
+	apiDef.Devices["migration-iso"] = map[string]string{
+		"type": "disk",
+		"pool": "iscsi",
+		"source": "migration-manager-minimal-boot.iso",
+		"boot.priority": "10",
+	}
+
+	// If this is a Windows VM, attach the virtio drivers ISO.
+	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
+		apiDef.Devices["drivers"] = map[string]string{
+			"type": "disk",
+			"pool": "iscsi",
+			"source": "virtio-win.iso",
+		}
+	}
+
+	// Create the instance.
+        op, err := t.incusClient.CreateInstance(apiDef)
+        if err != nil {
+                return err
+        }
+
+        revert.Add(func() {
+		_, _ = t.incusClient.DeleteInstance(apiDef.Name)
+        })
+
+	err = op.Wait()
+	if err != nil {
+		return err
+	}
+
+	revert.Success()
+
+	return nil
 }

@@ -69,4 +69,7 @@ type Target interface {
 
 	// Creates a VM definition for use with the Incus REST API.
 	CreateVMDefinition(instanceDef instance.InternalInstance) api.InstancesPost
+
+	// Creates a new VM from the pre-populated API defition.
+	CreateNewVM(apiDef api.InstancesPost) error
 }
