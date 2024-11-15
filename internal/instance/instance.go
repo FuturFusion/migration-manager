@@ -59,3 +59,7 @@ func (i *InternalInstance) IsMigrating() bool {
 func (i *InternalInstance) GetBatchID() int {
 	return i.BatchID
 }
+
+func (i *InternalInstance) GetTargetID() int {
+	return i.TargetID
+}
