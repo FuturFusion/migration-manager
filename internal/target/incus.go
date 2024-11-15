@@ -172,6 +172,8 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	ret.Config["image.description"] = "Auto-imported from VMware"
 	ret.Config["image.os"] = instanceDef.OS
 	ret.Config["image.release"] = instanceDef.OSVersion
+	ret.Config["volatile.uuid"] = instanceDef.UUID.String()
+	ret.Config["volatile.uuid.generation"] = instanceDef.UUID.String()
 
 	// Apply CPU and memory limits.
 	ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.NumberCPUs)
