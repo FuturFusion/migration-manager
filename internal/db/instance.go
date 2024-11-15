@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func (n *Node) AddInstance(tx *sql.Tx, i instance.Instance) error {
@@ -199,4 +200,11 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 	}
 
 	return ret, nil
+}
+
+func (n *Node) UpdateInstanceStatus(tx *sql.Tx, UUID uuid.UUID, status api.MigrationStatusType, statusString string) error {
+	q := `UPDATE instances SET migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
+	_, err := tx.Exec(q, status, statusString, UUID)
+
+	return err
 }
