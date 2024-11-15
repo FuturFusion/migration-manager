@@ -47,6 +47,10 @@ func (b *InternalBatch) CanBeModified() bool {
 	return b.Status == api.BATCHSTATUS_DEFINED || b.Status == api.BATCHSTATUS_FINISHED || b.Status == api.BATCHSTATUS_ERROR
 }
 
+func (b *InternalBatch) GetStatus() api.BatchStatusType {
+	return b.Status
+}
+
 func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {
 	// Handle any exclusionary criteria first.
 	if b.ExcludeRegex != "" {

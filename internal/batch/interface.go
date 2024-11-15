@@ -2,6 +2,7 @@ package batch
 
 import (
 	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Interface definition for all migration manager batches.
@@ -20,4 +21,7 @@ type Batch interface {
 
 	// Returns true if the instance matches inclusion/exclusion criteria for this batch.
 	InstanceMatchesCriteria(i instance.Instance) bool
+
+	// Returns the status of this batch.
+	GetStatus() api.BatchStatusType
 }
