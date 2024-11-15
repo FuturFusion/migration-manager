@@ -380,3 +380,205 @@ func (d *Daemon) processReadyBatches() bool {
 
 	return false
 }
+
+func (d *Daemon) processQueuedBatches() bool {
+	loggerCtx := logger.Ctx{"method": "processQueuedBatches"}
+
+	// Get any batches in the "queued" state.
+	batches := []batch.Batch{}
+	err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		var err error
+		batches, err = d.db.GetAllBatchesByState(tx, api.BATCHSTATUS_QUEUED)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.Warn(err.Error(), loggerCtx)
+		return false
+	}
+
+	// See if we can start running this batch.
+	for _, b := range batches {
+		logger.Info("Batch '" + b.GetName() + "' status is 'Queued', processing....", loggerCtx)
+		batchID, err := b.GetDatabaseID()
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+
+		if !b.GetMigrationWindowStart().IsZero() && b.GetMigrationWindowStart().After(time.Now().UTC()) {
+			logger.Debug("Start of migration window hasn't arrived yet", loggerCtx)
+			continue
+		}
+
+		if !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(time.Now().UTC()) {
+			logger.Error("Batch '" + b.GetName() + "' window end time has already passed", loggerCtx)
+
+			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				continue
+			}
+
+			continue
+		}
+
+		// Get all instances for this batch.
+		instances := []instance.Instance{}
+		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			var err error
+			instances, err = d.db.GetAllInstancesForBatchID(tx, batchID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+
+		// Instantiate each new empty VM in Incus.
+		for _, i := range instances {
+			// Update the instance status.
+			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				var state api.MigrationStatusType = api.MIGRATIONSTATUS_CREATING
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, state.String())
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				continue
+			}
+
+			// Get the target for this instance.
+			var t target.Target
+			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				var err error
+				t, err = d.db.GetTargetByID(tx, i.GetTargetID())
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, err.Error())
+					if err != nil {
+						return err
+					}
+
+					return nil
+				})
+				continue
+			}
+
+			// Connect to the target.
+			err = t.Connect(d.shutdownCtx)
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, err.Error())
+					if err != nil {
+						return err
+					}
+
+					return nil
+				})
+				continue
+			}
+
+			// Create the instance.
+			internalInstance, _ := i.(*instance.InternalInstance)
+			instanceDef := t.CreateVMDefinition(*internalInstance)
+			creationErr := t.CreateNewVM(instanceDef)
+			if creationErr == nil {
+				// Creation was successful, update the instance state to 'Idle'.
+				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					var state api.MigrationStatusType = api.MIGRATIONSTATUS_IDLE
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, state.String())
+					if err != nil {
+						return err
+					}
+
+					return nil
+				})
+				if err != nil {
+					logger.Warn(err.Error(), loggerCtx)
+					continue
+				}
+			} else {
+				logger.Warn(creationErr.Error(), loggerCtx)
+				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, creationErr.Error())
+					if err != nil {
+						return err
+					}
+
+					return nil
+				})
+				if err != nil {
+					logger.Warn(err.Error(), loggerCtx)
+					continue
+				}
+			}
+
+			// Start the instance.
+			startErr := t.StartVM(i.GetName())
+			if startErr != nil {
+				logger.Warn(startErr.Error(), loggerCtx)
+				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, startErr.Error())
+					if err != nil {
+						return err
+					}
+
+					return nil
+				})
+				if err != nil {
+					logger.Warn(err.Error(), loggerCtx)
+					continue
+				}
+			}
+		}
+
+		// Move batch to "running" status.
+		logger.Info("Updating batch '" + b.GetName() + "' status to 'Running'", loggerCtx)
+
+		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			var state api.BatchStatusType = api.BATCHSTATUS_RUNNING
+			err := d.db.UpdateBatchStatus(tx, batchID, state, state.String())
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+	}
+	return false
+}

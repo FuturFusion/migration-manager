@@ -94,6 +94,7 @@ func (d *Daemon) Start() error {
 	// Start background workers
 	d.runPeriodicTask(d.syncInstancesFromSources, time.Duration(time.Minute * 10))
 	d.runPeriodicTask(d.processReadyBatches, time.Duration(time.Second * 10))
+	d.runPeriodicTask(d.processQueuedBatches, time.Duration(time.Second * 10))
 
 	logger.Info("Daemon started")
 
