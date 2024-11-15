@@ -214,7 +214,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	for i, nic := range instanceDef.NICs {
 		deviceName := fmt.Sprintf("eth%d", i)
 		for _, profileDevice := range profile.Devices {
-			if profileDevice["type"] == "nic" && profileDevice["network"] == nic.Network {
+			if profileDevice["type"] == "nic" && profileDevice["network"] == "vmware" { // FIXME need to fix up network mappings
 				ret.Devices[deviceName] = make(map[string]string)
 				for k, v := range profileDevice {
 					ret.Devices[deviceName][k] = v
