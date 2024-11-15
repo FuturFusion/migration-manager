@@ -303,3 +303,44 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost) error {
 
 	return nil
 }
+
+func (t *InternalIncusTarget) DeleteVM(name string) error {
+	op, err := t.incusClient.DeleteInstance(name)
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
+}
+
+func (t *InternalIncusTarget) StartVM(name string) error {
+	req := api.InstanceStatePut{
+		Action:   "start",
+		Timeout:  -1,
+		Force:    false,
+		Stateful: false,
+	}
+
+	op, err := t.incusClient.UpdateInstanceState(name, req, "")
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
+}
+
+func (t *InternalIncusTarget) StopVM(name string) error {
+	req := api.InstanceStatePut{
+		Action:   "stop",
+		Timeout:  -1,
+		Force:    false,
+		Stateful: false,
+	}
+
+	op, err := t.incusClient.UpdateInstanceState(name, req, "")
+	if err != nil {
+		return err
+	}
+
+	return op.Wait()
+}

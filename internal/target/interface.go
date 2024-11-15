@@ -72,4 +72,13 @@ type Target interface {
 
 	// Creates a new VM from the pre-populated API defition.
 	CreateNewVM(apiDef api.InstancesPost) error
+
+	// Deletes a VM.
+	DeleteVM(name string) error
+
+	// Starts a VM.
+	StartVM(name string) error
+
+	// Stops a VM.
+	StopVM(name string) error
 }
