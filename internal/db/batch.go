@@ -8,6 +8,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/batch"
+	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -81,12 +82,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 	}
 
 	// Verify all instances for this batch aren't in a migration phase and remove their association with this batch.
-	for _, i := range instances {
-		instance, err := n.GetInstance(tx, i)
-		if err != nil {
-			return err
-		}
-
+	for _, instance := range instances {
 		if instance.IsMigrating() {
 			return fmt.Errorf("Cannot delete batch '%s': At least one assigned instance is in a migration phase", name)
 		}
@@ -214,8 +210,8 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string) ([]batch.Batch, error) 
 	return ret, nil
 }
 
-func (n *Node) GetAllInstancesForBatchID(tx *sql.Tx, id int) ([]uuid.UUID, error) {
-	ret := []uuid.UUID{}
+func (n *Node) GetAllInstancesForBatchID(tx *sql.Tx, id int) ([]instance.Instance, error) {
+	ret := []instance.Instance{}
 	q := `SELECT uuid FROM instances WHERE batchid=?`
 	rows, err := tx.Query(q, id)
 	if err != nil {
@@ -232,7 +228,13 @@ func (n *Node) GetAllInstancesForBatchID(tx *sql.Tx, id int) ([]uuid.UUID, error
 		if err != nil {
 			return nil, err
 		}
-		ret = append(ret, instanceUUID)
+
+		i, err := n.GetInstance(tx, instanceUUID)
+		if err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, i)
 	}
 
 	return ret, nil
@@ -251,16 +253,11 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 
 	// Check if each existing instance should still be assigned to this batch.
 	for _, i := range instances {
-		instance, err := n.GetInstance(tx, i)
-		if err != nil {
-			return err
-		}
-
-		if !b.InstanceMatchesCriteria(instance) {
-			if instance.CanBeModified() {
+		if !b.InstanceMatchesCriteria(i) {
+			if i.CanBeModified() {
 				q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
 				var status api.MigrationStatusType = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
-				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, status, status.String(), instance.GetUUID())
+				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, status, status.String(), i.GetUUID())
 				if err != nil {
 					return err
 				}
@@ -276,16 +273,11 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 
 	// Check if any unassigned instances should be assigned to this batch.
 	for _, i := range instances {
-		instance, err := n.GetInstance(tx, i)
-		if err != nil {
-			return err
-		}
-
-		if b.InstanceMatchesCriteria(instance) {
-			if instance.CanBeModified() {
+		if b.InstanceMatchesCriteria(i) {
+			if i.CanBeModified() {
 				q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
 				var status api.MigrationStatusType = api.MIGRATIONSTATUS_ASSIGNED_BATCH
-				_, err := tx.Exec(q, batchID, status, status.String(), instance.GetUUID())
+				_, err := tx.Exec(q, batchID, status, status.String(), i.GetUUID())
 				if err != nil {
 					return err
 				}
@@ -315,10 +307,7 @@ func (n *Node) StartBatch(tx *sql.Tx, name string) error {
 
 	// Move batch status to "ready".
 	var status api.BatchStatusType = api.BATCHSTATUS_READY
-	q := `UPDATE batches SET status=?,statusstring=? WHERE id=?`
-	_, err = tx.Exec(q, status, status.String(), internalBatch.DatabaseID)
-
-	return err
+	return n.UpdateBatchStatus(tx, internalBatch.DatabaseID, status, status.String())
 }
 
 func (n *Node) StopBatch(tx *sql.Tx, name string) error {
@@ -340,8 +329,29 @@ func (n *Node) StopBatch(tx *sql.Tx, name string) error {
 
 	// Move batch status to "stopped".
 	var status api.BatchStatusType = api.BATCHSTATUS_STOPPED
+	return n.UpdateBatchStatus(tx, internalBatch.DatabaseID, status, status.String())
+}
+
+func (n *Node) GetAllBatchesByState(tx *sql.Tx, status api.BatchStatusType) ([]batch.Batch, error) {
+	ret := []batch.Batch{}
+
+	batches, err := n.GetAllBatches(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, b := range batches {
+		if b.GetStatus() == status {
+			ret = append(ret, b)
+		}
+	}
+
+	return ret, nil
+}
+
+func (n *Node) UpdateBatchStatus(tx *sql.Tx, id int, status api.BatchStatusType, statusString string) error {
 	q := `UPDATE batches SET status=?,statusstring=? WHERE id=?`
-	_, err = tx.Exec(q, status, status.String(), internalBatch.DatabaseID)
+	_, err := tx.Exec(q, status, statusString, id)
 
 	return err
 }

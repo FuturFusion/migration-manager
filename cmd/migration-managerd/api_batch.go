@@ -411,19 +411,11 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 		if err != nil {
 			return err
 		}
-		uuids, err := d.db.GetAllInstancesForBatchID(tx, id)
+		result, err = d.db.GetAllInstancesForBatchID(tx, id)
 		if err != nil {
 			return err
 		}
 
-		for _, u := range uuids {
-			dbInstance, err := d.db.GetInstance(tx, u)
-			if err != nil {
-				return err
-			}
-
-			result = append(result, dbInstance)
-		}
 		return nil
 	})
 	if err != nil {
