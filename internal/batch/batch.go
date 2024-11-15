@@ -51,6 +51,14 @@ func (b *InternalBatch) GetStatus() api.BatchStatusType {
 	return b.Status
 }
 
+func (b *InternalBatch) GetMigrationWindowStart() time.Time {
+	return b.MigrationWindowStart
+}
+
+func (b *InternalBatch) GetMigrationWindowEnd() time.Time {
+	return b.MigrationWindowEnd
+}
+
 func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {
 	// Handle any exclusionary criteria first.
 	if b.ExcludeRegex != "" {

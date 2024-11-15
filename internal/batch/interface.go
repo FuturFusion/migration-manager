@@ -1,6 +1,8 @@
 package batch
 
 import (
+	"time"
+
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -24,4 +26,10 @@ type Batch interface {
 
 	// Returns the status of this batch.
 	GetStatus() api.BatchStatusType
+
+	// Returns the migration window start time
+	GetMigrationWindowStart() time.Time
+
+	// Returns the migration window end time
+	GetMigrationWindowEnd() time.Time
 }

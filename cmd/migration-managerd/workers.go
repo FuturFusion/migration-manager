@@ -286,6 +286,44 @@ func (d *Daemon) processReadyBatches() bool {
 			continue
 		}
 
+		// If a migration window is defined, ensure sure it makes sense.
+		if !b.GetMigrationWindowStart().IsZero() && !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(b.GetMigrationWindowStart()) {
+			logger.Error("Batch '" + b.GetName() + "' window end time is before its start time", loggerCtx)
+
+			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "Migration window end before start")
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				continue
+			}
+
+			continue
+		}
+		if !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(time.Now().UTC()) {
+			logger.Error("Batch '" + b.GetName() + "' window end time has already passed", loggerCtx)
+
+			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				continue
+			}
+
+			continue
+		}
+
 		// Get all instances for this batch.
 		instances := []instance.Instance{}
 		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
