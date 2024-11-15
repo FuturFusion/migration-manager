@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/target"
 )
 
@@ -37,7 +38,7 @@ func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 }
 
 func (n *Node) GetTarget(tx *sql.Tx, name string) (target.Target, error) {
-	ret, err := n.getTargetsHelper(tx, name)
+	ret, err := n.getTargetsHelper(tx, name, internal.INVALID_DATABASE_ID)
 	if err != nil {
 		return nil, err
 	}
@@ -49,8 +50,21 @@ func (n *Node) GetTarget(tx *sql.Tx, name string) (target.Target, error) {
 	return ret[0], nil
 }
 
+func (n *Node) GetTargetByID(tx *sql.Tx, id int) (target.Target, error) {
+	ret, err := n.getTargetsHelper(tx, "", id)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ret) != 1 {
+		return nil, fmt.Errorf("No target exists with ID '%d'", id)
+	}
+
+	return ret[0], nil
+}
+
 func (n *Node) GetAllTargets(tx *sql.Tx) ([]target.Target, error) {
-	return n.getTargetsHelper(tx, "")
+	return n.getTargetsHelper(tx, "", internal.INVALID_DATABASE_ID)
 }
 
 func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
@@ -126,7 +140,7 @@ func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 	return nil
 }
 
-func (n *Node) getTargetsHelper(tx *sql.Tx, name string) ([]target.Target, error) {
+func (n *Node) getTargetsHelper(tx *sql.Tx, name string, id int) ([]target.Target, error) {
 	ret := []target.Target{}
 
 	// Get all targets in the database.
@@ -136,6 +150,9 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, name string) ([]target.Target, error
 	if name != "" {
 		q += ` WHERE name=?`
 		rows, err = tx.Query(q, name)
+	} else if id != internal.INVALID_DATABASE_ID {
+		q += ` WHERE id=?`
+		rows, err = tx.Query(q, id)
 	} else {
 		q += ` ORDER BY name`
 		rows, err = tx.Query(q)
