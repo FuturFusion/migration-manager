@@ -61,7 +61,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		t.incusConnectionArgs = nil
 		return fmt.Errorf("Failed to connect to endpoint '%s': %s", t.Endpoint, err)
 	}
-	t.incusClient = client
+	t.incusClient = client.UseProject(t.IncusProject)
 
 	// Do a quick check to see if our authentication was accepted by the server.
 	srv, _, err := t.incusClient.GetServer()
