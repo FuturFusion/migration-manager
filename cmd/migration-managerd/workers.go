@@ -9,9 +9,11 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/logger"
 
+	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func (d *Daemon) runPeriodicTask(f func() bool, interval time.Duration) {
@@ -250,6 +252,91 @@ func (d *Daemon) syncInstancesFromSources() bool {
 					continue
 				}
 			}
+		}
+	}
+
+	return false
+}
+
+func (d *Daemon) processReadyBatches() bool {
+	loggerCtx := logger.Ctx{"method": "processReadyBatches"}
+
+	// Get any batches in the "ready" state.
+	batches := []batch.Batch{}
+	err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		var err error
+		batches, err = d.db.GetAllBatchesByState(tx, api.BATCHSTATUS_READY)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.Warn(err.Error(), loggerCtx)
+		return false
+	}
+
+	// Do some basic sanity check of each batch before adding it to the queue.
+	for _, b := range batches {
+		logger.Info("Batch '" + b.GetName() + "' status is 'Ready', processing....", loggerCtx)
+		batchID, err := b.GetDatabaseID()
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+
+		// Get all instances for this batch.
+		instances := []instance.Instance{}
+		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			var err error
+			instances, err = d.db.GetAllInstancesForBatchID(tx, batchID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+
+		// If no instances apply to this batch, return an error.
+		if len(instances) == 0 {
+			logger.Error("Batch '" + b.GetName() + "' has no instances", loggerCtx)
+
+			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "No instances assigned")
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				continue
+			}
+
+			continue
+		}
+
+		// No issues detected, move to "queued" status.
+		logger.Info("Updating batch '" + b.GetName() + "' status to 'Queued'", loggerCtx)
+
+		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			var state api.BatchStatusType = api.BATCHSTATUS_QUEUED
+			err := d.db.UpdateBatchStatus(tx, batchID, state, state.String())
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
 		}
 	}
 
