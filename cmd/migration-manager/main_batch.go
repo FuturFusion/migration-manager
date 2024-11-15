@@ -172,7 +172,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Status", "Include Regex", "Exclude Regex", "Window Start", "Window End"}
+	header := []string{"Name", "Status", "Status String", "Include Regex", "Exclude Regex", "Window Start", "Window End"}
 	data := [][]string{}
 
 	for _, b := range batches {
@@ -184,7 +184,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 		if !b.MigrationWindowEnd.IsZero() {
 			endString = b.MigrationWindowEnd.String()
 		}
-		data = append(data, []string{b.Name, b.StatusString, b.IncludeRegex, b.ExcludeRegex, startString, endString})
+		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.IncludeRegex, b.ExcludeRegex, startString, endString})
 	}
 
 	return util.RenderTable(c.flagFormat, header, data, batches)
