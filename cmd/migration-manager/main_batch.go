@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -97,19 +98,45 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		StatusString: status.String(),
 	}
 
-	includeRegex, err := c.global.asker.AskString("Regular expression to include instances: ", "", nil)
+	includeRegex, err := c.global.asker.AskString("Regular expression to include instances: ", "", func(s string) error { return nil })
 	if err != nil {
 		return err
 	}
 	b.IncludeRegex = includeRegex
 
-	excludeRegex, err := c.global.asker.AskString("Regular expression to exclude instances: ", "", nil)
+	excludeRegex, err := c.global.asker.AskString("Regular expression to exclude instances: ", "", func(s string) error { return nil })
 	if err != nil {
 		return err
 	}
 	b.ExcludeRegex = excludeRegex
 
-	// TODO handle reading in timestamps for window start/end
+	windowStart, err := c.global.asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ", "", func(s string) error {
+		if s != "" {
+			_, err := time.Parse(time.DateTime, s)
+			return err
+		}
+		return nil
+		})
+	if err != nil {
+		return err
+	}
+	if windowStart != "" {
+		b.MigrationWindowStart, _ = time.Parse(time.DateTime, windowStart)
+	}
+
+	windowEnd, err := c.global.asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ", "", func(s string) error {
+		if s != "" {
+			_, err := time.Parse(time.DateTime, s)
+			return err
+		}
+		return nil
+		})
+	if err != nil {
+		return err
+	}
+	if windowEnd != "" {
+		b.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
+	}
 
 	// Insert into database.
 	content, err := json.Marshal(b)
@@ -445,17 +472,51 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		bb.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: [" + bb.IncludeRegex + "] ", bb.IncludeRegex, nil)
+		bb.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: [" + bb.IncludeRegex + "] ", bb.IncludeRegex, func(s string) error { return nil })
 		if err != nil {
 			return err
 		}
 
-		bb.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: [" + bb.ExcludeRegex + "] ", bb.ExcludeRegex, nil)
+		bb.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: [" + bb.ExcludeRegex + "] ", bb.ExcludeRegex, func(s string) error { return nil })
 		if err != nil {
 			return err
 		}
 
-		// TODO handle reading in timestamps for window start/end
+		windowStartValue := ""
+		if !bb.MigrationWindowStart.IsZero() {
+			windowStartValue = bb.MigrationWindowStart.Format(time.DateTime)
+		}
+		windowStart, err := c.global.asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): [" + windowStartValue + "] ", windowStartValue, func(s string) error {
+			if s != "" {
+				_, err := time.Parse(time.DateTime, s)
+				return err
+			}
+			return nil
+			})
+		if err != nil {
+			return err
+		}
+		if windowStart != "" {
+			bb.MigrationWindowStart, _ = time.Parse(time.DateTime, windowStart)
+		}
+
+		windowEndValue := ""
+		if !bb.MigrationWindowEnd.IsZero() {
+			windowEndValue = bb.MigrationWindowEnd.Format(time.DateTime)
+		}
+		windowEnd, err := c.global.asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): [" + windowEndValue + "] ", windowEndValue, func(s string) error {
+			if s != "" {
+				_, err := time.Parse(time.DateTime, s)
+				return err
+			}
+			return nil
+			})
+		if err != nil {
+			return err
+		}
+		if windowEnd != "" {
+			bb.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
+		}
 
 		newBatchName = bb.Name
 		b = bb
