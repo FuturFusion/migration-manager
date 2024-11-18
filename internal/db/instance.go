@@ -19,7 +19,7 @@ func (n *Node) AddInstance(tx *sql.Tx, i instance.Instance) error {
 	}
 
 	// Add instance to the database.
-	q := `INSERT INTO instances (uuid,migrationstatus,migrationstatusstring,lastupdatefromsource,lastmanualupdate,sourceid,targetid,batchid,name,architecture,os,osversion,disks,nics,numbercpus,memoryinmib,uselegacybios,securebootenabled,tpmpresent) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+	q := `INSERT INTO instances (uuid,migrationstatus,migrationstatusstring,lastupdatefromsource,lastmanualupdate,sourceid,targetid,batchid,name,architecture,os,osversion,disks,nics,numbercpus,memoryinmib,uselegacybios,securebootenabled,tpmpresent,needsdiskimport) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
 
 	marshalledLastUpdateFromSource, err := internalInstance.LastUpdateFromSource.MarshalText()
 	if err != nil {
@@ -37,7 +37,7 @@ func (n *Node) AddInstance(tx *sql.Tx, i instance.Instance) error {
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(q, internalInstance.UUID, internalInstance.MigrationStatus, internalInstance.MigrationStatusString, marshalledLastUpdateFromSource, marshalledLastManualUpdate, internalInstance.SourceID, internalInstance.TargetID, internalInstance.BatchID, internalInstance.Name, internalInstance.Architecture, internalInstance.OS, internalInstance.OSVersion, marshalledDisks, marshalledNICs, internalInstance.NumberCPUs, internalInstance.MemoryInMiB, internalInstance.UseLegacyBios, internalInstance.SecureBootEnabled, internalInstance.TPMPresent)
+	_, err = tx.Exec(q, internalInstance.UUID, internalInstance.MigrationStatus, internalInstance.MigrationStatusString, marshalledLastUpdateFromSource, marshalledLastManualUpdate, internalInstance.SourceID, internalInstance.TargetID, internalInstance.BatchID, internalInstance.Name, internalInstance.Architecture, internalInstance.OS, internalInstance.OSVersion, marshalledDisks, marshalledNICs, internalInstance.NumberCPUs, internalInstance.MemoryInMiB, internalInstance.UseLegacyBios, internalInstance.SecureBootEnabled, internalInstance.TPMPresent, internalInstance.NeedsDiskImport)
 
 	return err
 }
@@ -111,7 +111,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	}
 
 	// Update instance in the database.
-	q = `UPDATE instances SET migrationstatus=?,migrationstatusstring=?,lastupdatefromsource=?,lastmanualupdate=?,sourceid=?,targetid=?,batchid=?,name=?,architecture=?,os=?,osversion=?,disks=?,nics=?,numbercpus=?,memoryinmib=?,uselegacybios=?,securebootenabled=?,tpmpresent=? WHERE uuid=?`
+	q = `UPDATE instances SET migrationstatus=?,migrationstatusstring=?,lastupdatefromsource=?,lastmanualupdate=?,sourceid=?,targetid=?,batchid=?,name=?,architecture=?,os=?,osversion=?,disks=?,nics=?,numbercpus=?,memoryinmib=?,uselegacybios=?,securebootenabled=?,tpmpresent=?,needsdiskimport=? WHERE uuid=?`
 
 	internalInstance, ok := i.(*instance.InternalInstance)
 	if !ok {
@@ -134,7 +134,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	if err != nil {
 		return err
 	}
-	result, err := tx.Exec(q, internalInstance.MigrationStatus, internalInstance.MigrationStatusString, marshalledLastUpdateFromSource, marshalledLastManualUpdate, internalInstance.SourceID, internalInstance.TargetID, internalInstance.BatchID, internalInstance.Name, internalInstance.Architecture, internalInstance.OS, internalInstance.OSVersion, marshalledDisks, marshalledNICs, internalInstance.NumberCPUs, internalInstance.MemoryInMiB, internalInstance.UseLegacyBios, internalInstance.SecureBootEnabled, internalInstance.TPMPresent, internalInstance.UUID)
+	result, err := tx.Exec(q, internalInstance.MigrationStatus, internalInstance.MigrationStatusString, marshalledLastUpdateFromSource, marshalledLastManualUpdate, internalInstance.SourceID, internalInstance.TargetID, internalInstance.BatchID, internalInstance.Name, internalInstance.Architecture, internalInstance.OS, internalInstance.OSVersion, marshalledDisks, marshalledNICs, internalInstance.NumberCPUs, internalInstance.MemoryInMiB, internalInstance.UseLegacyBios, internalInstance.SecureBootEnabled, internalInstance.TPMPresent, internalInstance.NeedsDiskImport, internalInstance.UUID)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 	ret := []instance.Instance{}
 
 	// Get all instances in the database.
-	q := `SELECT uuid,migrationstatus,migrationstatusstring,lastupdatefromsource,lastmanualupdate,sourceid,targetid,batchid,name,architecture,os,osversion,disks,nics,numbercpus,memoryinmib,uselegacybios,securebootenabled,tpmpresent FROM instances`
+	q := `SELECT uuid,migrationstatus,migrationstatusstring,lastupdatefromsource,lastmanualupdate,sourceid,targetid,batchid,name,architecture,os,osversion,disks,nics,numbercpus,memoryinmib,uselegacybios,securebootenabled,tpmpresent,needsdiskimport FROM instances`
 	var rows *sql.Rows
 	var err error
 	if UUID != [16]byte{} {
@@ -175,7 +175,7 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 		marshalledDisks := ""
 		marshalledNICs := ""
 
-		err := rows.Scan(&newInstance.UUID, &newInstance.MigrationStatus, &newInstance.MigrationStatusString, &marshalledLastUpdateFromSource, &marshalledLastManualUpdate, &newInstance.SourceID, &newInstance.TargetID, &newInstance.BatchID, &newInstance.Name, &newInstance.Architecture, &newInstance.OS, &newInstance.OSVersion, &marshalledDisks, &marshalledNICs, &newInstance.NumberCPUs, &newInstance.MemoryInMiB, &newInstance.UseLegacyBios, &newInstance.SecureBootEnabled, &newInstance.TPMPresent)
+		err := rows.Scan(&newInstance.UUID, &newInstance.MigrationStatus, &newInstance.MigrationStatusString, &marshalledLastUpdateFromSource, &marshalledLastManualUpdate, &newInstance.SourceID, &newInstance.TargetID, &newInstance.BatchID, &newInstance.Name, &newInstance.Architecture, &newInstance.OS, &newInstance.OSVersion, &marshalledDisks, &marshalledNICs, &newInstance.NumberCPUs, &newInstance.MemoryInMiB, &newInstance.UseLegacyBios, &newInstance.SecureBootEnabled, &newInstance.TPMPresent, &newInstance.NeedsDiskImport)
 		if err != nil {
 			return nil, err
 		}
@@ -202,9 +202,9 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 	return ret, nil
 }
 
-func (n *Node) UpdateInstanceStatus(tx *sql.Tx, UUID uuid.UUID, status api.MigrationStatusType, statusString string) error {
-	q := `UPDATE instances SET migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
-	_, err := tx.Exec(q, status, statusString, UUID)
+func (n *Node) UpdateInstanceStatus(tx *sql.Tx, UUID uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) error {
+	q := `UPDATE instances SET migrationstatus=?,migrationstatusstring=?,needsdiskimport=? WHERE uuid=?`
+	_, err := tx.Exec(q, status, statusString, needsDiskImport, UUID)
 
 	return err
 }

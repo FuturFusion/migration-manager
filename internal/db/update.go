@@ -42,6 +42,7 @@ CREATE TABLE instances (
     uselegacybios INTEGER NOT NULL,
     securebootenabled INTEGER NOT NULL,
     tpmpresent INTEGER NOT NULL,
+    needsdiskimport INTEGER NOT NULL,
     FOREIGN KEY(sourceid) REFERENCES sources(id),
     FOREIGN KEY(targetid) REFERENCES targets(id)
 );
@@ -138,6 +139,7 @@ CREATE TABLE instances (
     uselegacybios INTEGER NOT NULL,
     securebootenabled INTEGER NOT NULL,
     tpmpresent INTEGER NOT NULL,
+    needsdiskimport INTEGER NOT NULL,
     FOREIGN KEY(sourceid) REFERENCES sources(id),
     FOREIGN KEY(targetid) REFERENCES targets(id)
 );

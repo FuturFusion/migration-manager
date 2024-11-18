@@ -454,7 +454,7 @@ func (d *Daemon) processQueuedBatches() bool {
 			// Update the instance status.
 			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				var state api.MigrationStatusType = api.MIGRATIONSTATUS_CREATING
-				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, state.String())
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, state.String(), true)
 				if err != nil {
 					return err
 				}
@@ -481,7 +481,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				logger.Warn(err.Error(), loggerCtx)
 				_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, err.Error())
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, err.Error(), true)
 					if err != nil {
 						return err
 					}
@@ -497,7 +497,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				logger.Warn(err.Error(), loggerCtx)
 				_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, err.Error())
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, err.Error(), true)
 					if err != nil {
 						return err
 					}
@@ -515,7 +515,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				// Creation was successful, update the instance state to 'Idle'.
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					var state api.MigrationStatusType = api.MIGRATIONSTATUS_IDLE
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, state.String())
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, state.String(), true)
 					if err != nil {
 						return err
 					}
@@ -530,7 +530,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				logger.Warn(creationErr.Error(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, creationErr.Error())
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, creationErr.Error(), true)
 					if err != nil {
 						return err
 					}
@@ -549,7 +549,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				logger.Warn(startErr.Error(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, startErr.Error())
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, startErr.Error(), true)
 					if err != nil {
 						return err
 					}

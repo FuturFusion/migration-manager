@@ -10,6 +10,8 @@ import (
 
 type InternalInstance struct {
 	api.Instance `yaml:",inline"`
+
+	NeedsDiskImport bool
 }
 
 // Returns a new Instance ready for use.
@@ -37,6 +39,7 @@ func NewInstance(UUID uuid.UUID, sourceID int, targetID int, batchID int, name s
 			SecureBootEnabled: secureBootEnabled,
 			TPMPresent: tpmPresent,
 		},
+		NeedsDiskImport: true,
 	}
 }
 

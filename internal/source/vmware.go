@@ -230,6 +230,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 				SecureBootEnabled: secureBootEnabled,
 				TPMPresent: tpmPresent,
 			},
+			NeedsDiskImport: true,
 		})
 	}
 
