@@ -1,77 +1,61 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"os"
 
-	"github.com/lxc/incus/v6/shared/util"
+	"github.com/lxc/incus/v6/shared/logger"
+	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/internal"
-	"github.com/FuturFusion/migration-manager/internal/source"
-	"github.com/FuturFusion/migration-manager/internal/worker"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
-func main() {
-	if os.Geteuid() != 0 {
-		fmt.Printf("This tool must be run as root\n")
-		os.Exit(1)
-	}
+type cmdGlobal struct {
+	cmd *cobra.Command
 
-	if !util.PathExists("/dev/virtio-ports/org.linuxcontainers.incus") {
-		fmt.Printf("This tool is designed to be run within an Incus VM\n")
-		os.Exit(1)
-	}
+	flagHelp    bool
+	flagVersion bool
 
-	ctx := context.TODO()
-
-	fmt.Printf("This is migration-manager-worker v%s\n", version.Version)
-
-	// TODO -- Fetch this file from the config drive that's mounted into the VM
-	workerConfig, err := worker.WorkerConfigFromYamlFile("./worker.yaml")
-	if err != nil {
-		fmt.Printf("Failed to open config file: %s\n", err)
-		os.Exit(1)
-	}
-
-	fmt.Printf("Config loaded, connecting to migration manager at %s\n", workerConfig.MigrationManagerEndpoint)
-	// TODO -- Actually reach out to migration manager and get instructions
-
-	fmt.Printf("Connecting to source %s\n", workerConfig.Source.GetName())
-	err = workerConfig.Source.Connect(ctx)
-	if err != nil {
-		fmt.Printf("ERROR: %s\n", err)
-		os.Exit(1)
-	}
-
-	// TODO -- This will eventually be in some sort of callback that triggers a disk import.
-	err = importDisks(ctx, workerConfig.Source, workerConfig.VMName)
-	if err != nil {
-		fmt.Printf("ERROR: %s\n", err)
-		os.Exit(1)
-	}
-
-	if workerConfig.VMOperatingSystemName == "Windows" {
-		err := worker.WindowsInjectDrivers(ctx, "w11", "/dev/sda3", "/dev/sda4") // TODO -- values are hardcoded
-		if err != nil {
-			fmt.Printf("ERROR: %s\n", err)
-			os.Exit(1)
-		}
-	} else if workerConfig.VMOperatingSystemName == "Debian" {
-		err := worker.LinuxDoPostMigrationConfig("Debian", "/dev/sda1") // TODO -- value is hardcoded
-		if err != nil {
-			fmt.Printf("ERROR: %s\n", err)
-			os.Exit(1)
-		}
-	}
+	flagLogFile    string
+	flagLogDebug   bool
+	flagLogVerbose bool
 }
 
-func importDisks(ctx context.Context, source source.Source, vmName string) error {
-	err := source.DeleteVMSnapshot(ctx, vmName, internal.IncusSnapshotName)
+func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
+	err := logger.InitLogger(c.flagLogFile, "", c.flagLogVerbose, c.flagLogDebug, nil)
 	if err != nil {
 		return err
 	}
 
-	return source.ImportDisks(ctx, vmName)
+	return nil
+}
+
+func main() {
+	// worker command (main)
+	workerCmd := cmdWorker{}
+	app := workerCmd.Command()
+	app.SilenceUsage = true
+	app.CompletionOptions = cobra.CompletionOptions{DisableDefaultCmd: true}
+
+	// Workaround for main command
+	app.Args = cobra.ArbitraryArgs
+
+	// Global flags
+	globalCmd := cmdGlobal{cmd: app}
+	workerCmd.global = &globalCmd
+	app.PersistentPreRunE = globalCmd.Run
+	app.PersistentFlags().BoolVar(&globalCmd.flagVersion, "version", false, "Print version number")
+	app.PersistentFlags().BoolVarP(&globalCmd.flagHelp, "help", "h", false, "Print help")
+	app.PersistentFlags().StringVar(&globalCmd.flagLogFile, "logfile", "", "Path to the log file")
+	app.PersistentFlags().BoolVarP(&globalCmd.flagLogDebug, "debug", "d", false, "Show all debug messages")
+	app.PersistentFlags().BoolVarP(&globalCmd.flagLogVerbose, "verbose", "v", false, "Show all information messages")
+
+	// Version handling
+	app.SetVersionTemplate("{{.Version}}\n")
+	app.Version = version.Version
+
+	// Run the main command and handle errors
+	err := app.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
 }
