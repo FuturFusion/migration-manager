@@ -147,7 +147,7 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseETag(true, i, i)
 }
 
-// swagger:operation PUT /1.0/instances/{name} instances instance_put
+// swagger:operation PUT /1.0/instances/{uuid} instances instance_put
 //
 //	Update the instance
 //
