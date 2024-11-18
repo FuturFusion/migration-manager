@@ -133,6 +133,11 @@ type InstanceDiskInfo struct {
 	// Example: sda
 	Name string `json:"name" yaml:"name"`
 
+	// Flag that indicates if differential sync is supported
+	// For VMware sources, this requires setting a VM's `ctkEnabled` and `scsix:x.ctkEnabled` options
+	// Example: true
+	DifferentialSyncSupported bool `json:"differentialSyncSupported" yaml:"differentialSyncSupported"`
+
 	// The size of this disk, in bytes
 	// Example: 1073741824
 	SizeInBytes int64 `json:"sizeInBytes" yaml:"sizeInBytes"`
