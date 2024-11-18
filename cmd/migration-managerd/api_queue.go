@@ -201,7 +201,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Setup the default "idle" command
-	cmd := api.WokerCommand{
+	cmd := api.WorkerCommand{
 		Command: api.WORKERCOMMAND_IDLE,
 		Name: i.Name,
 		Source: api.VMwareSource{},
@@ -265,10 +265,10 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 //	parameters:
 //	  - in: body
 //	    name: response
-//	    description: WokerResponse definition
+//	    description: WorkerResponse definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/WokerResponse"
+//	      $ref: "#/definitions/WorkerResponse"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -316,7 +316,7 @@ func queuePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Decode the command response.
-	var resp api.WokerResponse
+	var resp api.WorkerResponse
 	err = json.NewDecoder(r.Body).Decode(&resp)
 	if err != nil {
 		return response.BadRequest(err)

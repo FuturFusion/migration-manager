@@ -1,6 +1,6 @@
 package api
 
-type WorkerComandType int
+type WorkerCommandType int
 const (
 	WORKERCOMMAND_UNKNOWN = iota
 	WORKERCOMMAND_IDLE
@@ -19,10 +19,10 @@ const (
 // WorkerCommand defines a command sent from the migration manager to a worker.
 //
 // swagger:model
-type WokerCommand struct {
+type WorkerCommand struct {
 	// The command for the worker to execute
 	// Example: WORKERCOMMAND_IMPORT_DISKS
-	Command WorkerComandType `json:"command" yaml:"command"`
+	Command WorkerCommandType `json:"command" yaml:"command"`
 
 	// The name of the instance
 	// Example: UbuntuServer
@@ -44,7 +44,7 @@ type WokerCommand struct {
 // WorkerResponse defines a response received from a worker.
 //
 // swagger:model
-type WokerResponse struct {
+type WorkerResponse struct {
 	// The status of the command the work is/was executing.
 	// Example: WORKERRESPONSE_RUNNING
 	Status WorkerResponseType `json:"status" yaml:"status"`
