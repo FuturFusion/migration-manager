@@ -63,3 +63,11 @@ func (i *InternalInstance) GetBatchID() int {
 func (i *InternalInstance) GetTargetID() int {
 	return i.TargetID
 }
+
+func (i *InternalInstance) GetMigrationStatus() api.MigrationStatusType {
+	return i.MigrationStatus
+}
+
+func (i *InternalInstance) GetMigrationStatusString() string {
+	return i.MigrationStatusString
+}
