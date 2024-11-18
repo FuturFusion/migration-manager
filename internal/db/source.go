@@ -55,7 +55,7 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 }
 
 func (n *Node) GetSource(tx *sql.Tx, name string) (source.Source, error) {
-	ret, err := n.getSourcesHelper(tx, name)
+	ret, err := n.getSourcesHelper(tx, name, internal.INVALID_DATABASE_ID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +67,21 @@ func (n *Node) GetSource(tx *sql.Tx, name string) (source.Source, error) {
 	return ret[0], nil
 }
 
+func (n *Node) GetSourceByID(tx *sql.Tx, id int) (source.Source, error) {
+	ret, err := n.getSourcesHelper(tx, "", id)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ret) != 1 {
+		return nil, fmt.Errorf("No source exists with ID '%d'", id)
+	}
+
+	return ret[0], nil
+}
+
 func (n *Node) GetAllSources(tx *sql.Tx) ([]source.Source, error) {
-	return n.getSourcesHelper(tx, "")
+	return n.getSourcesHelper(tx, "", internal.INVALID_DATABASE_ID)
 }
 
 func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
@@ -152,7 +165,7 @@ func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 	return nil
 }
 
-func (n *Node) getSourcesHelper(tx *sql.Tx, name string) ([]source.Source, error) {
+func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]source.Source, error) {
 	ret := []source.Source{}
 
 	sourceID := internal.INVALID_DATABASE_ID
@@ -168,6 +181,9 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string) ([]source.Source, error
 	if name != "" {
 		q += ` WHERE name=?`
 		rows, err = tx.Query(q, name)
+	} else if id != internal.INVALID_DATABASE_ID {
+		q += ` WHERE id=?`
+		rows, err = tx.Query(q, id)
 	} else {
 		q += ` ORDER BY name`
 		rows, err = tx.Query(q)
