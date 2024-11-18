@@ -3,9 +3,15 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+
+	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
@@ -16,6 +22,13 @@ var queueRootCmd = APIEndpoint{
 	Path: "queue",
 
 	Get:  APIEndpointAction{Handler: queueRootGet, AllowUntrusted: true},
+}
+
+var queueCmd = APIEndpoint{
+	Path: "queue/{uuid}",
+
+	Get:    APIEndpointAction{Handler: queueGet, AllowUntrusted: true},
+	Put:    APIEndpointAction{Handler: queuePut, AllowUntrusted: true},
 }
 
 // swagger:operation GET /1.0/queue queue queueRoot_get
@@ -111,4 +124,227 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	return response.SyncResponse(true, result)
+}
+
+// swagger:operation GET /1.0/queue/{uuid} queue queue_get
+//
+//	Get worker command for instance
+//
+//	Gets a worker command, if any, for this queued instance.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: WorkerCommand
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/WorkerCommand"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func queueGet(d *Daemon, r *http.Request) response.Response {
+	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	// Get the instance.
+	var i *instance.InternalInstance
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbInstance, err := d.db.GetInstance(tx, UUID)
+		if err != nil {
+			return err
+		}
+
+		internalInstance, ok := dbInstance.(*instance.InternalInstance)
+		if !ok {
+			return fmt.Errorf("Wasn't given an InternalInstance?")
+		}
+		i = internalInstance
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
+	}
+
+	// Don't return info for instances that aren't in the migration queue.
+	if i.GetBatchID() == internal.INVALID_DATABASE_ID || !i.IsMigrating() {
+		return response.BadRequest(fmt.Errorf("Instance '%s' isn't in the migration queue", i.GetName()))
+	}
+
+	// If the instance is already doing something, don't start something else.
+	if i.MigrationStatus != api.MIGRATIONSTATUS_IDLE {
+		return response.BadRequest(fmt.Errorf("Instance '%s' isn't idle: %s (%s)", i.Name, i.MigrationStatus.String(), i.MigrationStatusString))
+	}
+
+	// Setup the default "idle" command
+	cmd := api.WokerCommand{
+		Command: api.WORKERCOMMAND_IDLE,
+		Name: i.Name,
+		Source: api.VMwareSource{},
+		OS: i.OS,
+		OSVersion: i.OSVersion,
+	}
+
+	// Fetch the source for the instance.
+	var s api.VMwareSource
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbSource, err := d.db.GetSourceByID(tx, i.SourceID)
+		if err != nil {
+			return err
+		}
+
+		encodedSource, err := json.Marshal(dbSource)
+		if err != nil {
+			return err
+		}
+
+		return json.Unmarshal(encodedSource, &s)
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", UUID, err))
+	}
+
+	// If we can do a background disk sync, kick it off if needed
+	if i.NeedsDiskImport && i.Disks[0].DifferentialSyncSupported {
+		cmd.Command = api.WORKERCOMMAND_IMPORT_DISKS
+		cmd.Source = s
+
+		i.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
+		i.MigrationStatusString = i.MigrationStatus.String()
+	}
+
+	// TODO other commands
+
+
+	// Update instance in the database.
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		return d.db.UpdateInstanceStatus(tx, UUID, i.MigrationStatus, i.MigrationStatusString, i.NeedsDiskImport)
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed updating instance '%s': %w", i.GetUUID(), err))
+	}
+
+	return response.SyncResponseETag(true, cmd, cmd)
+}
+
+// swagger:operation PUT /1.0/queue/{uuid} queue queue_put
+//
+//	Sets worker response for instance
+//
+//	Sets the response from the worker for this queued instance.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: response
+//	    description: WokerResponse definition
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/WokerResponse"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func queuePut(d *Daemon, r *http.Request) response.Response {
+	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	// Get the instance.
+	var i *instance.InternalInstance
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbInstance, err := d.db.GetInstance(tx, UUID)
+		if err != nil {
+			return err
+		}
+
+		internalInstance, ok := dbInstance.(*instance.InternalInstance)
+		if !ok {
+			return fmt.Errorf("Wasn't given an InternalInstance?")
+		}
+		i = internalInstance
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
+	}
+
+	// Don't update instances that aren't in the migration queue.
+	if i.GetBatchID() == internal.INVALID_DATABASE_ID || !i.IsMigrating() {
+		return response.BadRequest(fmt.Errorf("Instance '%s' isn't in the migration queue", i.GetName()))
+	}
+
+	// Decode the command response.
+	var resp api.WokerResponse
+	err = json.NewDecoder(r.Body).Decode(&resp)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	// Process the response.
+	switch resp.Status {
+	case api.WORKERRESPONSE_RUNNING:
+		i.MigrationStatusString = resp.StatusString
+	case api.WORKERRESPONSE_SUCCESS:
+		if i.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT {
+			i.NeedsDiskImport = false
+		}
+
+		i.MigrationStatus = api.MIGRATIONSTATUS_IDLE
+		i.MigrationStatusString = i.MigrationStatus.String()
+	case api.WORKERRESPONSE_FAILED:
+		i.MigrationStatus = api.MIGRATIONSTATUS_ERROR
+		i.MigrationStatusString = resp.StatusString
+	}
+
+	// Update instance in the database.
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		return d.db.UpdateInstanceStatus(tx, UUID, i.MigrationStatus, i.MigrationStatusString, i.NeedsDiskImport)
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed updating instance '%s': %w", i.GetUUID(), err))
+	}
+
+	return response.SyncResponse(true, nil)
 }
