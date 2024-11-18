@@ -21,6 +21,7 @@ var api10 = []APIEndpoint{
 	batchesCmd,
 	instanceCmd,
 	instancesCmd,
+	queueRootCmd,
 	sourceCmd,
 	sourcesCmd,
 	targetCmd,
