@@ -185,7 +185,7 @@ func (c *cmdGlobal) DoHttpRequest(endpoint string, method string, query string, 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil ,err
+		return nil, err
 	}
 	defer resp.Body.Close()
 
@@ -199,7 +199,7 @@ func (c *cmdGlobal) DoHttpRequest(endpoint string, method string, query string, 
 	if err != nil {
 		return nil, err
 	} else if jsonResp.Code != 0 {
-		return &jsonResp, fmt.Errorf("Received error from the server: %s", jsonResp.Error)
+		return &jsonResp, fmt.Errorf("Received an error from the server: %s", jsonResp.Error)
 	}
 
 	return &jsonResp, nil
