@@ -222,3 +222,11 @@ func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 		route.Name(c.Name)
 	}
 }
+
+func (d *Daemon) getEndpoint() string {
+	if d.config.restServerTLSConfig == nil {
+		return fmt.Sprintf("http://%s:%d", d.config.restServerIPAddr, d.config.restServerPort)
+	} else {
+		return fmt.Sprintf("https://%s:%d", d.config.restServerIPAddr, d.config.restServerPort)
+	}
+}
