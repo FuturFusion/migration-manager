@@ -57,5 +57,5 @@ type Source interface {
 	// directly write to raw disk devices, overwriting any data that might already be present.
 	//
 	// Returns an error if there is a problem importing the disk(s).
-	ImportDisks(ctx context.Context, vmName string) error
+	ImportDisks(ctx context.Context, vmName string, statusCallback func(string, float64)) error
 }

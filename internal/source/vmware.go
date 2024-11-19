@@ -255,13 +255,13 @@ func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName stri
 	return nil
 }
 
-func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string) error {
+func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string, float64)) error {
 	vm, err := s.getVM(ctx, vmName)
 	if err != nil {
 		return err
 	}
 
-	NbdkitServers := vmware_nbdkit.NewNbdkitServers(s.vddkConfig, vm)
+	NbdkitServers := vmware_nbdkit.NewNbdkitServers(s.vddkConfig, vm, statusCallback)
 
 	// Occasionally connecting to VMware via nbdkit is flaky, so retry a couple of times before returning an error.
 	for i := 0; i < 5; i++ {
