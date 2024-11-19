@@ -262,7 +262,18 @@ func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string) e
 	}
 
 	NbdkitServers := vmware_nbdkit.NewNbdkitServers(s.vddkConfig, vm)
-	return NbdkitServers.MigrationCycle(ctx, false)
+
+	// Occasionally connecting to VMware via nbdkit is flaky, so retry a couple of times before returning an error.
+	for i := 0; i < 5; i++ {
+		err = NbdkitServers.MigrationCycle(ctx, false)
+		if err == nil {
+			break
+		}
+
+		time.Sleep(time.Second * 1)
+	}
+
+	return err
 }
 
 func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*object.VirtualMachine, error) {
