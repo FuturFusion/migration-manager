@@ -12,7 +12,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migratekit/progress"
 )
 
-func Run(source, destination string, size int64, targetIsClean bool) error {
+func Run(source, destination string, size int64, targetIsClean bool, diskName string, statusCallback func(string, float64)) error {
 	logger := log.WithFields(log.Fields{
 		"source":      source,
 		"destination": destination,
@@ -63,6 +63,7 @@ func Run(source, destination string, size int64, targetIsClean bool) error {
 			}
 
 			bar.Set64(progress * size / 100)
+			statusCallback(diskName, float64(progress))
 		}
 
 		if err := scanner.Err(); err != nil {

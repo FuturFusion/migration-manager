@@ -38,6 +38,7 @@ type NbdkitServers struct {
 	VirtualMachine *object.VirtualMachine
 	SnapshotRef    types.ManagedObjectReference
 	Servers        []*NbdkitServer
+	StatusCallback func(string, float64)
 }
 
 type NbdkitServer struct {
@@ -46,11 +47,12 @@ type NbdkitServer struct {
 	Nbdkit  *nbdkit.NbdkitServer
 }
 
-func NewNbdkitServers(vddk *VddkConfig, vm *object.VirtualMachine) *NbdkitServers {
+func NewNbdkitServers(vddk *VddkConfig, vm *object.VirtualMachine, statusCallback func(string, float64)) *NbdkitServers {
 	return &NbdkitServers{
 		VddkConfig:     vddk,
 		VirtualMachine: vm,
 		Servers:        []*NbdkitServer{},
+		StatusCallback: statusCallback,
 	}
 }
 
@@ -197,7 +199,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 			runV2V = false
 		}
 
-		err = server.SyncToTarget(ctx, t, runV2V)
+		err = server.SyncToTarget(ctx, t, runV2V, s.StatusCallback)
 		if err != nil {
 			return err
 		}
@@ -206,7 +208,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	return nil
 }
 
-func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsClean bool) error {
+func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsClean bool, statusCallback func(string, float64)) error {
 	logger := log.WithFields(log.Fields{
 		"vm":   s.Servers.VirtualMachine.Name(),
 		"disk": s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName,
@@ -219,6 +221,8 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 		path,
 		s.Disk.CapacityInBytes,
 		targetIsClean,
+		s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName,
+		statusCallback,
 	)
 	if err != nil {
 		return err
@@ -229,7 +233,7 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 	return nil
 }
 
-func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Target, path string) error {
+func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Target, path string, statusCallback func(string, float64)) error {
 	logger := log.WithFields(log.Fields{
 		"vm":   s.Servers.VirtualMachine.Name(),
 		"disk": s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName,
@@ -260,6 +264,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 
 	startOffset := int64(0)
 	bar := progress.DataProgressBar("Incremental copy", s.Disk.CapacityInBytes)
+	diskName := s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
 
 	for {
 		req := types.QueryChangedDiskAreas{
@@ -296,6 +301,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 				}
 
 				bar.Set64(offset + chunkSize)
+				statusCallback(diskName, float64(offset + chunkSize)/float64(s.Disk.CapacityInBytes))
 				offset += chunkSize
 			}
 		}
@@ -311,7 +317,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 	return nil
 }
 
-func (s *NbdkitServer) SyncToTarget(ctx context.Context, t target.Target, runV2V bool) error {
+func (s *NbdkitServer) SyncToTarget(ctx context.Context, t target.Target, runV2V bool, statusCallback func(string, float64)) error {
 	snapshotChangeId, err := vmware.GetChangeID(s.Disk)
 	if err != nil {
 		// Rather than returning an error when CBT isn't enabled, just proceed with a dummy change ID.
@@ -354,12 +360,12 @@ func (s *NbdkitServer) SyncToTarget(ctx context.Context, t target.Target, runV2V
 	}
 
 	if needFullCopy {
-		err = s.FullCopyToTarget(t, path, targetIsClean)
+		err = s.FullCopyToTarget(t, path, targetIsClean, statusCallback)
 		if err != nil {
 			return err
 		}
 	} else {
-		err = s.IncrementalCopyToTarget(ctx, t, path)
+		err = s.IncrementalCopyToTarget(ctx, t, path, statusCallback)
 		if err != nil {
 			return err
 		}
