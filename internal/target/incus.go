@@ -376,3 +376,16 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 
 	return err
 }
+
+func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []string) error {
+	req := api.InstanceExecPost{
+		Command: cmd,
+		WaitForWS: true,
+		Interactive: false,
+	}
+
+	args := incus.InstanceExecArgs{}
+
+	_, err := t.incusClient.ExecInstance(instanceName, req, &args)
+	return err
+}
