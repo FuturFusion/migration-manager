@@ -81,4 +81,7 @@ type Target interface {
 
 	// Stops a VM.
 	StopVM(name string) error
+
+	// Push a file into a running instance.
+	PushFile(instanceName string, file string, destDir string) error
 }

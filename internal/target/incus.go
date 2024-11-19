@@ -3,7 +3,10 @@ package target
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
@@ -343,4 +346,33 @@ func (t *InternalIncusTarget) StopVM(name string) error {
 	}
 
 	return op.Wait()
+}
+
+func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir string) error {
+	f, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+
+	args := incus.InstanceFileArgs{
+		UID: 0,
+		GID: 0,
+		Mode: 0755,
+		Type: "file",
+		Content: f,
+	}
+
+	// It takes a while for incus-agent to start when booting a VM, so retry up to a minute.
+	for i := 0; i < 60; i++ {
+		err = t.incusClient.CreateInstanceFile(instanceName, filepath.Join(destDir, file), args)
+
+		if err == nil {
+			return nil
+		}
+
+		time.Sleep(time.Second * 1)
+		args.Content, _ = os.Open(file)
+	}
+
+	return err
 }
