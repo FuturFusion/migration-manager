@@ -235,10 +235,14 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 
 		i.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
 		i.MigrationStatusString = i.MigrationStatus.String()
+	} else if !i.NeedsDiskImport || !i.Disks[0].DifferentialSyncSupported {
+		// FIXME need finer-grained logic before kicking off finalization step.
+		cmd.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
+		cmd.Source = s
+
+		i.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
+		i.MigrationStatusString = i.MigrationStatus.String()
 	}
-
-	// TODO other commands
-
 
 	// Update instance in the database.
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
@@ -327,12 +331,15 @@ func queuePut(d *Daemon, r *http.Request) response.Response {
 	case api.WORKERRESPONSE_RUNNING:
 		i.MigrationStatusString = resp.StatusString
 	case api.WORKERRESPONSE_SUCCESS:
-		if i.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT {
+		switch i.MigrationStatus {
+		case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
 			i.NeedsDiskImport = false
+			i.MigrationStatus = api.MIGRATIONSTATUS_IDLE
+			i.MigrationStatusString = i.MigrationStatus.String()
+		case api.MIGRATIONSTATUS_FINAL_IMPORT:
+			i.MigrationStatus = api.MIGRATIONSTATUS_FINISHED
+			i.MigrationStatusString = i.MigrationStatus.String()
 		}
-
-		i.MigrationStatus = api.MIGRATIONSTATUS_IDLE
-		i.MigrationStatusString = i.MigrationStatus.String()
 	case api.WORKERRESPONSE_FAILED:
 		i.MigrationStatus = api.MIGRATIONSTATUS_ERROR
 		i.MigrationStatusString = resp.StatusString

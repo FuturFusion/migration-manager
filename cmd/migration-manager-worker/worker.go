@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/logger"
@@ -16,6 +17,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/version"
+	"github.com/FuturFusion/migration-manager/internal/worker"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -114,15 +116,7 @@ func (w *Worker) importDisks(cmd api.WorkerCommand) {
 
 	logger.Info("Performing disk import")
 
-	// Delete any existing migration snapshot that might be left over.
-	err := w.source.DeleteVMSnapshot(w.shutdownCtx, cmd.Name, internal.IncusSnapshotName)
-	if err != nil {
-		w.sendErrorResponse(err)
-		return
-	}
-
-	// Do the actual import.
-	err = w.source.ImportDisks(w.shutdownCtx, cmd.Name)
+	err := w.importDisksHelper(cmd)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return
@@ -132,8 +126,67 @@ func (w *Worker) importDisks(cmd api.WorkerCommand) {
 	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Disk import completed successfully")
 }
 
+func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
+	// Delete any existing migration snapshot that might be left over.
+	err := w.source.DeleteVMSnapshot(w.shutdownCtx, cmd.Name, internal.IncusSnapshotName)
+	if err != nil {
+		return err
+	}
+
+	// Do the actual import.
+	err = w.source.ImportDisks(w.shutdownCtx, cmd.Name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
-	logger.Warn("Finalize not yet implemented")
+	if w.source == nil {
+		err := w.connectSource(w.shutdownCtx, cmd.Source)
+		if err != nil {
+			w.sendErrorResponse(err)
+			return
+		}
+	}
+
+	logger.Info("Performing final disk sync")
+
+	err := w.importDisksHelper(cmd)
+	if err != nil {
+		w.sendErrorResponse(err)
+		return
+	}
+
+	logger.Info("Performing final migration tasks")
+
+	// Windows-specific
+	if strings.Contains(strings.ToLower(cmd.OS), "windows") {
+		err := worker.WindowsInjectDrivers(w.shutdownCtx, "w11", "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
+		if err != nil {
+			w.sendErrorResponse(err)
+			return
+		}
+	}
+
+	// Linux-specific
+	if strings.Contains(strings.ToLower(cmd.OS), "debian") {
+		err := worker.LinuxDoPostMigrationConfig("Debian", "/dev/sda1") // FIXME -- value is hardcoded
+		if err != nil {
+			w.sendErrorResponse(err)
+			return
+		}
+	} else if strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
+		err := worker.LinuxDoPostMigrationConfig("Ubuntu", "/dev/sda1") // FIXME -- value is hardcoded
+		if err != nil {
+			w.sendErrorResponse(err)
+			return
+		}
+	}
+
+	logger.Info("Final migration tasks completed successfully")
+	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Final migration tasks completed successfully")
 }
 
 func (w *Worker) connectSource(ctx context.Context, s api.VMwareSource) error {
