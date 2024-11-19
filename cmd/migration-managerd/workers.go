@@ -561,6 +561,44 @@ func (d *Daemon) processQueuedBatches() bool {
 					continue
 				}
 			}
+
+			// Inject the worker binary.
+			pushErr := t.PushFile(i.GetName(), "./migration-manager-worker", "/root/")
+			if pushErr != nil {
+				logger.Warn(pushErr.Error(), loggerCtx)
+				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, pushErr.Error(), true)
+					if err != nil {
+						return err
+					}
+
+					return nil
+				})
+				if err != nil {
+					logger.Warn(err.Error(), loggerCtx)
+					continue
+				}
+			}
+
+			// Start the worker binary.
+			workerStartErr := t.ExecWithoutWaiting(i.GetName(), []string{"/root/migration-manager-worker", "--endpoint", d.getEndpoint(), "--uuid", i.GetUUID().String()})
+			if workerStartErr != nil {
+				logger.Warn(workerStartErr.Error(), loggerCtx)
+				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, workerStartErr.Error(), true)
+					if err != nil {
+						return err
+					}
+
+					return nil
+				})
+				if err != nil {
+					logger.Warn(err.Error(), loggerCtx)
+					continue
+				}
+			}
 		}
 
 		// Move batch to "running" status.
