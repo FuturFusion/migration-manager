@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,12 +13,15 @@ import (
 
 	"github.com/lxc/incus/v6/shared/logger"
 
+	"github.com/FuturFusion/migration-manager/internal"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type Worker struct {
 	endpoint       *url.URL
+	source         source.Source
 	uuid           string
 
 	shutdownCtx    context.Context    // Canceled when shutdown starts.
@@ -36,6 +40,7 @@ func newWorker(endpoint string, uuid string) (*Worker, error) {
 
 	ret := &Worker{
 		endpoint: parsedUrl,
+		source: nil,
 		uuid: uuid,
 		shutdownCtx: shutdownCtx,
 		shutdownCancel: shutdownCancel,
@@ -43,7 +48,7 @@ func newWorker(endpoint string, uuid string) (*Worker, error) {
 	}
 
 	// Do a quick connectivity check to the endpoint.
-	_, err = ret.doHttpRequest("/1.0")
+	_, err = ret.doHttpRequest("/1.0", http.MethodGet, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +61,7 @@ func (w *Worker) Start() error {
 
 	go func() {
 		for {
-			resp, err := w.doHttpRequest("/1.0/queue/" + w.uuid)
+			resp, err := w.doHttpRequest("/1.0/queue/" + w.uuid, http.MethodGet, nil)
 			if err != nil {
 				logger.Errorf("%s", err.Error())
 			} else {
@@ -99,16 +104,83 @@ func (w *Worker) Stop(ctx context.Context, sig os.Signal) error {
 }
 
 func (w *Worker) importDisks(cmd api.WorkerCommand) {
-	logger.Info("Doing disk import!")
+	if w.source == nil {
+		err := w.connectSource(w.shutdownCtx, cmd.Source)
+		if err != nil {
+			w.sendErrorResponse(err)
+			return
+		}
+	}
+
+	logger.Info("Performing disk import")
+
+	// Delete any existing migration snapshot that might be left over.
+	err := w.source.DeleteVMSnapshot(w.shutdownCtx, cmd.Name, internal.IncusSnapshotName)
+	if err != nil {
+		w.sendErrorResponse(err)
+		return
+	}
+
+	// Do the actual import.
+	err = w.source.ImportDisks(w.shutdownCtx, cmd.Name)
+	if err != nil {
+		w.sendErrorResponse(err)
+		return
+	}
+
+	logger.Info("Disk import completed successfully")
+	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Disk import completed successfully")
 }
 
 func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 	logger.Warn("Finalize not yet implemented")
 }
 
-func (w *Worker) doHttpRequest(path string) (*api.ResponseRaw, error) {
+func (w *Worker) connectSource(ctx context.Context, s api.VMwareSource) error {
+	w.source = source.NewVMwareSource(s.Name, s.Endpoint, s.Username, s.Password)
+	if s.Insecure {
+		w.source.SetInsecureTLS(true)
+	}
+
+	return w.source.Connect(ctx)
+}
+
+func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusString string) {
+	resp := api.WorkerResponse{Status: statusVal, StatusString: statusString}
+
+	content, err := json.Marshal(resp)
+	if err != nil {
+		logger.Errorf("Failed to send status back to migration manager: %s", err.Error())
+		return
+	}
+
+	_, err = w.doHttpRequest("/1.0/queue/" + w.uuid, http.MethodPut, content)
+	if err != nil {
+		logger.Errorf("Failed to send status back to migration manager: %s", err.Error())
+		return
+	}
+}
+
+func (w *Worker) sendErrorResponse(err error) {
+	logger.Errorf("%s", err.Error())
+	resp := api.WorkerResponse{Status: api.WORKERRESPONSE_FAILED, StatusString: err.Error()}
+
+	content, err := json.Marshal(resp)
+	if err != nil {
+		logger.Errorf("Failed to send error back to migration manager: %s", err.Error())
+		return
+	}
+
+	_, err = w.doHttpRequest("/1.0/queue/" + w.uuid, http.MethodPut, content)
+	if err != nil {
+		logger.Errorf("Failed to send error back to migration manager: %s", err.Error())
+		return
+	}
+}
+
+func (w *Worker) doHttpRequest(path string, method string, content []byte) (*api.ResponseRaw, error) {
 	w.endpoint.Path = path
-	req, err := http.NewRequest(http.MethodGet, w.endpoint.String(), nil)
+	req, err := http.NewRequest(method, w.endpoint.String(), bytes.NewBuffer(content))
 	if err != nil {
 		return nil, err
 	}
