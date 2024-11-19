@@ -26,6 +26,8 @@ type Worker struct {
 	source         source.Source
 	uuid           string
 
+	lastUpdate     time.Time
+
 	shutdownCtx    context.Context    // Canceled when shutdown starts.
 	shutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
 	shutdownDoneCh chan error         // Receives the result of the w.Stop() function and tells the daemon to end.
@@ -44,6 +46,7 @@ func newWorker(endpoint string, uuid string) (*Worker, error) {
 		endpoint: parsedUrl,
 		source: nil,
 		uuid: uuid,
+		lastUpdate: time.Now().UTC(),
 		shutdownCtx: shutdownCtx,
 		shutdownCancel: shutdownCancel,
 		shutdownDoneCh: make(chan error),
@@ -134,7 +137,18 @@ func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
 	}
 
 	// Do the actual import.
-	err = w.source.ImportDisks(w.shutdownCtx, cmd.Name)
+	err = w.source.ImportDisks(w.shutdownCtx, cmd.Name, func(disk string, percentage float64) {
+		// Don't send updates more than once every 30 seconds.
+		if time.Since(w.lastUpdate).Seconds() < 30 {
+			return
+		}
+
+		w.lastUpdate = time.Now().UTC()
+
+		status := fmt.Sprintf("Importing disk '%s': %02.2f%% complete", disk, percentage)
+		logger.Info(status)
+		w.sendStatusResponse(api.WORKERRESPONSE_RUNNING, status)
+	})
 	if err != nil {
 		return err
 	}
@@ -160,6 +174,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 	}
 
 	logger.Info("Performing final migration tasks")
+	w.sendStatusResponse(api.WORKERRESPONSE_RUNNING, "Performing final migration tasks")
 
 	// Windows-specific
 	if strings.Contains(strings.ToLower(cmd.OS), "windows") {
