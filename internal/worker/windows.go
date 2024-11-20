@@ -13,6 +13,7 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/lxc/distrobuilder/shared"
 	"github.com/lxc/distrobuilder/windows"
+	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
 )
@@ -77,7 +78,7 @@ func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error
 }
 
 func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartition string, recoveryPartition string) error {
-	fmt.Printf("Preparing to inject Windows drivers into VM....\n")
+	logger.Info("Preparing to inject Windows drivers into VM")
 
 	// Mount the virtio drivers image.
 	err := DoMount(driversMountDevice, driversMountPath, nil)
@@ -140,7 +141,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 		return err
 	}
 
-	fmt.Printf("Successfully injected drivers!\n")
+	logger.Info("Successfully injected drivers!")
 	return nil
 }
 

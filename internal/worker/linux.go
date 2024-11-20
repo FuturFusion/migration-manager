@@ -2,11 +2,11 @@ package worker
 
 import(
 	"embed"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/lxc/incus/v6/shared/subprocess"
 )
 
@@ -16,7 +16,7 @@ var embeddedScripts embed.FS
 const chrootMountPath string = "/mnt/target/"
 
 func LinuxDoPostMigrationConfig(distro string, rootPartition string) error {
-	fmt.Printf("Preparing to perform post-migration configuration of VM....\n")
+	logger.Info("Preparing to perform post-migration configuration of VM")
 
 	// Mount the migrated root partition.
 	err := DoMount(rootPartition, chrootMountPath, nil)
@@ -51,7 +51,7 @@ func LinuxDoPostMigrationConfig(distro string, rootPartition string) error {
 		}	
 	}
 
-	fmt.Printf("Post-migration configuration complete!\n")
+	logger.Info("Post-migration configuration complete!")
 	return nil
 }
 
