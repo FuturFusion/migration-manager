@@ -67,6 +67,15 @@ type Target interface {
 	// Returns an error if called while disconnected from a target.
 	SetProject(project string) error
 
+	// Returns the storage pool that holds various migration ISO images.
+	GetStoragePool() string
+
+	// Returns the name of the boot environment ISO image.
+	GetBootISOImage() string
+
+	// Returns the name of the virtio drivers ISO image.
+	GetDriversISOImage() string
+
 	// Creates a VM definition for use with the Incus REST API.
 	CreateVMDefinition(instanceDef instance.InternalInstance) api.InstancesPost
 

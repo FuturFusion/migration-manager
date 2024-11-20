@@ -11,9 +11,9 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/target"
 )
 
-var incusTargetA = target.NewIncusTarget("Target A", "https://localhost:8443")
-var incusTargetB = target.NewIncusTarget("Target B", "https://incus.local:8443")
-var incusTargetC = target.NewIncusTarget("Target C", "https://10.10.10.10:8443")
+var incusTargetA = target.NewIncusTarget("Target A", "https://localhost:8443", "pool", "boot.iso", "drivers.iso")
+var incusTargetB = target.NewIncusTarget("Target B", "https://incus.local:8443", "pool2", "boot2.iso", "")
+var incusTargetC = target.NewIncusTarget("Target C", "https://10.10.10.10:8443", "pool3", "boot3.iso", "drivers3.iso")
 
 func TestTargetDatabaseActions(t *testing.T) {
 	// Customize the targets.

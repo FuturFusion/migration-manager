@@ -40,4 +40,16 @@ type IncusTarget struct {
 	// The Incus project to use
 	// Example: default
 	IncusProject string `json:"incusProject" yaml:"incusProject"`
+
+	// The storage pool that holds various migration ISO images.
+	// Example: local
+	StoragePool string `json:"storagePool" yaml:"storagePool"`
+
+	// The name of the boot environment ISO image.
+	// Example: migration-manager-minimal-boot.iso
+	BootISOImage string `json:"bootIsoImage" yaml:"bootIsoImage"`
+
+	// The name of the virtio drivers ISO image.
+	// Example: virtio-win.iso
+	DriversISOImage string `json:"driversIdoImage" yaml:"DriversISOImage"`
 }

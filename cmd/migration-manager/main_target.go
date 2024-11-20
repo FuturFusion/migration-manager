@@ -123,17 +123,30 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		t.TLSClientKey = string(contents)
 	}
 
-	project, err := c.global.asker.AskString("What Incus project should this target use? [default] ", "default", nil)
+	t.IncusProject, err = c.global.asker.AskString("What Incus project should this target use? [default] ", "default", nil)
 	if err != nil {
 		return err
 	}
-	t.IncusProject = project
 
-	profile, err := c.global.asker.AskString("What Incus profile should this target use? [default] ", "default", nil)
+	t.IncusProfile, err = c.global.asker.AskString("What Incus profile should this target use? [default] ", "default", nil)
 	if err != nil {
 		return err
 	}
-	t.IncusProfile = profile
+
+	t.StoragePool, err = c.global.asker.AskString("What storage pool holds the migration ISO images? [local] ", "local", nil)
+	if err != nil {
+		return err
+	}
+
+	t.BootISOImage, err = c.global.asker.AskString("What is the migration environment boot ISO image name? ", "", nil)
+	if err != nil {
+		return err
+	}
+
+	t.DriversISOImage, err = c.global.asker.AskString("What is the virtio drivers ISO image name? ", "", nil)
+	if err != nil {
+		return err
+	}
 
 	content, err := json.Marshal(t)
 	if err != nil {
@@ -217,7 +230,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Endpoint", "Auth Type", "Project", "Profile", "Insecure"}
+	header := []string{"Name", "Endpoint", "Auth Type", "Project", "Profile", "Storage Pool", "Migration ISO", "Drivers ISO", "Insecure"}
 	data := [][]string{}
 
 	for _, t := range targets {
@@ -225,7 +238,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 		if t.TLSClientKey != "" {
 			authType = "TLS"
 		}
-		data = append(data, []string{t.Name, t.Endpoint, authType, t.IncusProject, t.IncusProfile, strconv.FormatBool(t.Insecure)})
+		data = append(data, []string{t.Name, t.Endpoint, authType, t.IncusProject, t.IncusProfile, t.StoragePool, t.BootISOImage, t.DriversISOImage, strconv.FormatBool(t.Insecure)})
 	}
 
 	return util.RenderTable(c.flagFormat, header, data, targets)
@@ -392,6 +405,21 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		incusTarget.IncusProfile, err = c.global.asker.AskString("Profile: [" + incusTarget.IncusProfile + "] ", incusTarget.IncusProfile, nil)
+		if err != nil {
+			return err
+		}
+
+		incusTarget.StoragePool, err = c.global.asker.AskString("Storage pool: [" + incusTarget.StoragePool + "] ", incusTarget.StoragePool, nil)
+		if err != nil {
+			return err
+		}
+
+		incusTarget.BootISOImage, err = c.global.asker.AskString("Boot ISO image: [" + incusTarget.BootISOImage + "] ", incusTarget.BootISOImage, nil)
+		if err != nil {
+			return err
+		}
+
+		incusTarget.DriversISOImage, err = c.global.asker.AskString("Drivers ISO image: [" + incusTarget.DriversISOImage + "] ", incusTarget.DriversISOImage, nil)
 		if err != nil {
 			return err
 		}

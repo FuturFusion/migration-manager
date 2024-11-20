@@ -66,6 +66,9 @@ CREATE TABLE targets (
     insecure BOOLEAN,
     incusprofile VARCHAR(255) NOT NULL,
     incusproject VARCHAR(255) NOT NULL,
+    storagepool VARCHAR(255) NOT NULL,
+    bootisoimage VARCHAR(255) NOT NULL,
+    driversisoimage VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 
@@ -163,6 +166,9 @@ CREATE TABLE targets (
     insecure BOOLEAN,
     incusprofile VARCHAR(255) NOT NULL,
     incusproject VARCHAR(255) NOT NULL,
+    storagepool VARCHAR(255) NOT NULL,
+    bootisoimage VARCHAR(255) NOT NULL,
+    driversisoimage VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 `

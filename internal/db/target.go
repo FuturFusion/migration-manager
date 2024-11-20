@@ -16,13 +16,13 @@ func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 	}
 
 	// Add target to the database.
-	q := `INSERT INTO targets (name,endpoint,tlsclientkey,tlsclientcert,oidctokens,insecure,incusprofile,incusproject) VALUES(?,?,?,?,?,?,?,?)`
+	q := `INSERT INTO targets (name,endpoint,tlsclientkey,tlsclientcert,oidctokens,insecure,incusprofile,incusproject,storagepool,bootisoimage,driversisoimage) VALUES(?,?,?,?,?,?,?,?,?,?,?)`
 
 	marshalledOIDCTokens, err := json.Marshal(incusTarget.OIDCTokens)
 	if err != nil {
 		return err
 	}
-	result, err := tx.Exec(q, incusTarget.Name, incusTarget.Endpoint, incusTarget.TLSClientKey, incusTarget.TLSClientCert, marshalledOIDCTokens, incusTarget.Insecure, incusTarget.IncusProfile, incusTarget.IncusProject)
+	result, err := tx.Exec(q, incusTarget.Name, incusTarget.Endpoint, incusTarget.TLSClientKey, incusTarget.TLSClientCert, marshalledOIDCTokens, incusTarget.Insecure, incusTarget.IncusProfile, incusTarget.IncusProject, incusTarget.StoragePool, incusTarget.BootISOImage, incusTarget.DriversISOImage)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 
 func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 	// Update target in the database.
-	q := `UPDATE targets SET name=?,endpoint=?,tlsclientkey=?,tlsclientcert=?,oidctokens=?,insecure=?,incusprofile=?,incusproject=? WHERE id=?`
+	q := `UPDATE targets SET name=?,endpoint=?,tlsclientkey=?,tlsclientcert=?,oidctokens=?,insecure=?,incusprofile=?,incusproject=?,storagepool=?,bootisoimage=?,driversisoimage=? WHERE id=?`
 
 	incusTarget, ok := t.(*target.InternalIncusTarget)
 	if !ok {
@@ -124,7 +124,7 @@ func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 	if err != nil {
 		return err
 	}
-	result, err := tx.Exec(q, incusTarget.Name, incusTarget.Endpoint, incusTarget.TLSClientKey, incusTarget.TLSClientCert, marshalledOIDCTokens, incusTarget.Insecure, incusTarget.IncusProfile, incusTarget.IncusProject, id)
+	result, err := tx.Exec(q, incusTarget.Name, incusTarget.Endpoint, incusTarget.TLSClientKey, incusTarget.TLSClientCert, marshalledOIDCTokens, incusTarget.Insecure, incusTarget.IncusProfile, incusTarget.IncusProject, incusTarget.StoragePool, incusTarget.BootISOImage, incusTarget.DriversISOImage, id)
 	if err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, name string, id int) ([]target.Targe
 	ret := []target.Target{}
 
 	// Get all targets in the database.
-	q := `SELECT id,name,endpoint,tlsclientkey,tlsclientcert,oidctokens,insecure,incusprofile,incusproject FROM targets`
+	q := `SELECT id,name,endpoint,tlsclientkey,tlsclientcert,oidctokens,insecure,incusprofile,incusproject,storagepool,bootisoimage,driversisoimage FROM targets`
 	var rows *sql.Rows
 	var err error
 	if name != "" {
@@ -165,7 +165,7 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, name string, id int) ([]target.Targe
 		newTarget := &target.InternalIncusTarget{}
 		marshalledOIDCTokens := ""
 
-		err := rows.Scan(&newTarget.DatabaseID, &newTarget.Name, &newTarget.Endpoint, &newTarget.TLSClientKey, &newTarget.TLSClientCert, &marshalledOIDCTokens, &newTarget.Insecure, &newTarget.IncusProfile, &newTarget.IncusProject)
+		err := rows.Scan(&newTarget.DatabaseID, &newTarget.Name, &newTarget.Endpoint, &newTarget.TLSClientKey, &newTarget.TLSClientCert, &marshalledOIDCTokens, &newTarget.Insecure, &newTarget.IncusProfile, &newTarget.IncusProject, &newTarget.StoragePool, &newTarget.BootISOImage, &newTarget.DriversISOImage)
 		if err != nil {
 			return nil, err
 		}
