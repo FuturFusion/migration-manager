@@ -178,7 +178,12 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 
 	// Windows-specific
 	if strings.Contains(strings.ToLower(cmd.OS), "windows") {
-		err := worker.WindowsInjectDrivers(w.shutdownCtx, "w11", "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
+		winVer, err := worker.MapWindowsVersionToAbbrev(cmd.OSVersion)
+		if err != nil {
+			w.sendErrorResponse(err)
+			return
+		}
+		err = worker.WindowsInjectDrivers(w.shutdownCtx, winVer, "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
 		if err != nil {
 			w.sendErrorResponse(err)
 			return

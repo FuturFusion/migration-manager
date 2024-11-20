@@ -220,3 +220,29 @@ func toHex(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo
 
 	return pongo2.AsValue(strings.TrimSuffix(builder.String(), ",")), nil
 }
+
+// Take a full version string and return the abbreviation used by distrobuilder logic.
+// Versions supported are an intersection of what's supported by distrobuilder and vCenter.
+func MapWindowsVersionToAbbrev(version string) (string, error) {
+	if strings.Contains(version, "Windows XP") {
+		return "xp", nil
+	} else if strings.Contains(version, "Windows 7") {
+		return "w7", nil
+	} else if strings.Contains(version, "Windows 8") {
+		return "w8", nil
+	} else if strings.Contains(version, "Windows 10") {
+		return "w10", nil
+	} else if strings.Contains(version, "Windows 11") {
+		return "w11", nil
+	} else if strings.Contains(version, "Server 2003") {
+		return "2k3", nil
+	} else if strings.Contains(version, "Server 2008 R2") {
+		return "2k8r2", nil
+	} else if strings.Contains(version, "Server 2019") {
+		return "2k19", nil
+	} else if strings.Contains(version, "Server 2022") {
+		return "2k22", nil
+	}
+
+	return "", fmt.Errorf("'%s' is not currently supported", version)
+}
