@@ -15,11 +15,26 @@ var embeddedScripts embed.FS
 
 const chrootMountPath string = "/mnt/target/"
 
-func LinuxDoPostMigrationConfig(distro string, rootPartition string) error {
+func LinuxDoPostMigrationConfig(distro string) error {
 	logger.Info("Preparing to perform post-migration configuration of VM")
 
+	// Determine the root partition.
+	rootPartition, rootPartitionType, err := DetermineRootPartition()
+	if err != nil {
+		return err
+	}
+
+	// Activate VG prior to mounting, if needed.
+	if rootPartitionType == PARTITION_TYPE_LVM {
+		err := ActivateVG()
+		if err != nil {
+			return err
+		}
+		defer func() { _ = DeactivateVG() }()
+	}
+
 	// Mount the migrated root partition.
-	err := DoMount(rootPartition, chrootMountPath, nil)
+	err = DoMount(rootPartition, chrootMountPath, nil)
 	if err != nil {
 		return err
 	}

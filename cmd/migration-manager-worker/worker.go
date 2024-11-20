@@ -192,13 +192,13 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 
 	// Linux-specific
 	if strings.Contains(strings.ToLower(cmd.OS), "debian") {
-		err := worker.LinuxDoPostMigrationConfig("Debian", "/dev/sda1") // FIXME -- value is hardcoded
+		err := worker.LinuxDoPostMigrationConfig("Debian")
 		if err != nil {
 			w.sendErrorResponse(err)
 			return
 		}
 	} else if strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
-		err := worker.LinuxDoPostMigrationConfig("Ubuntu", "/dev/sda1") // FIXME -- value is hardcoded
+		err := worker.LinuxDoPostMigrationConfig("Ubuntu")
 		if err != nil {
 			w.sendErrorResponse(err)
 			return
