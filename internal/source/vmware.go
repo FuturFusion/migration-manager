@@ -200,10 +200,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 					disks = append(disks, api.InstanceDiskInfo{Name: b.GetVirtualDeviceFileBackingInfo().FileName, DifferentialSyncSupported: *vmProps.Config.ChangeTrackingEnabled, SizeInBytes: md.CapacityInBytes})
 				}
 			case types.BaseVirtualEthernetCard:
-				b, ok := md.GetVirtualEthernetCard().VirtualDevice.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
-				if ok {
-					nics = append(nics, api.InstanceNICInfo{Network: b.Network.Value, Hwaddr: md.GetVirtualEthernetCard().MacAddress})
-				}
+				nics = append(nics, api.InstanceNICInfo{Network: "", Hwaddr: md.GetVirtualEthernetCard().MacAddress})
 			}
 		}
 
