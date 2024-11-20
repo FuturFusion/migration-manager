@@ -56,7 +56,7 @@ func (i *InternalInstance) CanBeModified() bool {
 }
 
 func (i *InternalInstance) IsMigrating() bool {
-	return i.MigrationStatus == api.MIGRATIONSTATUS_CREATING || i.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT || i.MigrationStatus == api.MIGRATIONSTATUS_IDLE || i.MigrationStatus == api.MIGRATIONSTATUS_FINAL_IMPORT
+	return i.MigrationStatus == api.MIGRATIONSTATUS_CREATING || i.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT || i.MigrationStatus == api.MIGRATIONSTATUS_IDLE || i.MigrationStatus == api.MIGRATIONSTATUS_FINAL_IMPORT || i.MigrationStatus == api.MIGRATIONSTATUS_IMPORT_COMPLETE
 }
 
 func (i *InternalInstance) GetBatchID() int {

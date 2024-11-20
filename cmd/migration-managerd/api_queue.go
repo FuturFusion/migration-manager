@@ -337,7 +337,7 @@ func queuePut(d *Daemon, r *http.Request) response.Response {
 			i.MigrationStatus = api.MIGRATIONSTATUS_IDLE
 			i.MigrationStatusString = i.MigrationStatus.String()
 		case api.MIGRATIONSTATUS_FINAL_IMPORT:
-			i.MigrationStatus = api.MIGRATIONSTATUS_FINISHED
+			i.MigrationStatus = api.MIGRATIONSTATUS_IMPORT_COMPLETE
 			i.MigrationStatusString = i.MigrationStatus.String()
 		}
 	case api.WORKERRESPONSE_FAILED:
