@@ -37,15 +37,13 @@ func init() {
 }
 
 func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
+	uncleanShutdownErrorRegex := regexp.MustCompile(`\[CRITICAL\] Cannot parse volume header. Abort.`)
 	unencryptedRegex := regexp.MustCompile(`\[ERROR\] The signature of the volume \(.+\) doesn't match the BitLocker's ones \(-FVE-FS- or MSWIN4.1\). Abort.`)
 	bitLockerEnabledRegex := regexp.MustCompile(`\[INFO\] =====================\[ BitLocker information structure \]=====================`)
 	noClearKeyRegex := regexp.MustCompile(`\[INFO\] No clear key found.`)
 	clearKeyRegex := regexp.MustCompile(`\[INFO\] =======\[ There's a clear key here \]========`)
 
 	stdout, err := subprocess.RunCommand("dislocker-metadata", "-V", partition)
-	if err != nil {
-		return BITLOCKERSTATE_UNKNOWN, err
-	}
 
 	if unencryptedRegex.Match([]byte(stdout)) {
 		return BITLOCKERSTATE_UNENCRYPTED, nil
@@ -55,6 +53,10 @@ func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
 		} else if clearKeyRegex.Match([]byte(stdout)) {
 			return BITLOCKERSTATE_CLEARKEY, nil
 		}
+	} else if uncleanShutdownErrorRegex.Match([]byte(stdout)) {
+		return BITLOCKERSTATE_UNKNOWN, fmt.Errorf("NTFS partition %s is in an unclean state; please resume and shutdown Windows fully (no hibernation or fast restart)", partition)
+	} else if err != nil {
+		return BITLOCKERSTATE_UNKNOWN, err
 	}
 
 	return BITLOCKERSTATE_UNKNOWN, fmt.Errorf("Failed to determine BitLocker status for %s", partition)
