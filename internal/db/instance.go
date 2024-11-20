@@ -202,6 +202,23 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 	return ret, nil
 }
 
+func (n *Node) GetAllInstancesByState(tx *sql.Tx, status api.MigrationStatusType) ([]instance.Instance, error) {
+	ret := []instance.Instance{}
+
+	instances, err := n.GetAllInstances(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, i := range instances {
+		if i.GetMigrationStatus() == status {
+			ret = append(ret, i)
+		}
+	}
+
+	return ret, nil
+}
+
 func (n *Node) UpdateInstanceStatus(tx *sql.Tx, UUID uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) error {
 	q := `UPDATE instances SET migrationstatus=?,migrationstatusstring=?,needsdiskimport=? WHERE uuid=?`
 	_, err := tx.Exec(q, status, statusString, needsDiskImport, UUID)

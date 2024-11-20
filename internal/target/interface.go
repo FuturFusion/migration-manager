@@ -3,6 +3,7 @@ package target
 import (
 	"context"
 
+	"github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -96,4 +97,10 @@ type Target interface {
 
 	// Run a command within an instance and return immediately without waiting for it to complete.
 	ExecWithoutWaiting(instanceName string, cmd []string) error
+
+	// Wrapper around Incus' GetInstance method.
+	GetInstance(name string) (*api.Instance, string, error)
+
+	// Wrapper around Incus' UpdateInstance method.
+	UpdateInstance(name string, instance api.InstancePut, ETag string) (incus.Operation, error)
 }

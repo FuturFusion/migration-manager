@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -615,6 +616,197 @@ func (d *Daemon) processQueuedBatches() bool {
 		})
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+	}
+	return false
+}
+
+func (d *Daemon) finalizeCompleteInstances() bool {
+	loggerCtx := logger.Ctx{"method": "finalizeCompleteInstances"}
+
+	// Get any instances in the "complete" state.
+	instances := []instance.Instance{}
+	err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		var err error
+		instances, err = d.db.GetAllInstancesByState(tx, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.Warn(err.Error(), loggerCtx)
+		return false
+	}
+
+	for _, i := range instances {
+		logger.Info("Finalizing migration steps for instance " + i.GetName(), loggerCtx)
+		// Get the target for this instance.
+		var t target.Target
+		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			var err error
+			t, err = d.db.GetTargetByID(tx, i.GetTargetID())
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, err.Error(), true)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			continue
+		}
+
+		// Connect to the target.
+		err = t.Connect(d.shutdownCtx)
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, err.Error(), true)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			continue
+		}
+
+		// Stop the instance.
+		stopErr := t.StopVM(i.GetName())
+		if stopErr != nil {
+			logger.Warn(stopErr.Error(), loggerCtx)
+			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, stopErr.Error(), true)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				continue
+			}
+		}
+
+		// Get the instance definition.
+		apiDef, etag, err := t.GetInstance(i.GetName())
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, err.Error(), true)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				continue
+			}
+		}
+
+		// Remove the migration ISO image.
+		delete(apiDef.Devices, "migration-iso")
+
+	// Add NIC(s).
+	//internalInstance, _ := i.(*instance.InternalInstance)
+	/*for i, nic := range instanceDef.NICs {
+		deviceName := fmt.Sprintf("eth%d", i)
+		for _, profileDevice := range profile.Devices {
+			if profileDevice["type"] == "nic" && profileDevice["network"] == "vmware" { // FIXME need to fix up network mappings
+				ret.Devices[deviceName] = make(map[string]string)
+				for k, v := range profileDevice {
+					ret.Devices[deviceName][k] = v
+				}
+				ret.Devices[deviceName]["hwaddr"] = nic.Hwaddr
+			}
+		}
+	}*/
+
+		// Don't set any profiles by default.
+		apiDef.Profiles = []string{}
+
+		// Handle Windows-specific completion steps.
+		if strings.Contains(apiDef.Config["image.os"], "swodniw") {
+			// Remove the drivers ISO image.
+			delete(apiDef.Devices, "drivers")
+
+			// Fixup the OS name.
+			apiDef.Config["image.os"] = strings.Replace(apiDef.Config["image.os"], "swodniw", "windows", 1)
+		}
+
+		// Update the instance in Incus.
+		op, updateErr := t.UpdateInstance(i.GetName(), apiDef.Writable(), etag)
+		if updateErr != nil {
+			logger.Warn(updateErr.Error(), loggerCtx)
+			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, updateErr.Error(), true)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				continue
+			}
+		}
+		updateErr = op.Wait()
+		if updateErr != nil {
+			logger.Warn(updateErr.Error(), loggerCtx)
+			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, updateErr.Error(), true)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+				continue
+			}
+		}
+
+		// Update the instance status.
+		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			var state api.MigrationStatusType = api.MIGRATIONSTATUS_FINISHED
+			err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, state.String(), true)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+
+		// Power on the completed instance.
+		startErr := t.StartVM(i.GetName())
+		if startErr != nil {
+			logger.Warn(startErr.Error(), loggerCtx)
 			continue
 		}
 	}

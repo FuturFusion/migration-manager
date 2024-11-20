@@ -174,6 +174,9 @@ func (t *InternalIncusTarget) GetDriversISOImage() string {
 }
 
 func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalInstance) api.InstancesPost {
+	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
+	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
+
 	ret := api.InstancesPost{
 		Name: instanceDef.Name,
                 Source: api.InstanceSource{
@@ -186,6 +189,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	ret.Devices = make(map[string]map[string]string)
 
 	// Set basic config fields.
+	ret.Architecture = instanceDef.Architecture
 	ret.Config["image.architecture"] = instanceDef.Architecture
 	ret.Config["image.description"] = "Auto-imported from VMware"
 	ret.Config["image.os"] = instanceDef.OS
@@ -228,20 +232,6 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 		}
 	}
 
-	// Add NIC(s).
-	for i, nic := range instanceDef.NICs {
-		deviceName := fmt.Sprintf("eth%d", i)
-		for _, profileDevice := range profile.Devices {
-			if profileDevice["type"] == "nic" && profileDevice["network"] == "vmware" { // FIXME need to fix up network mappings
-				ret.Devices[deviceName] = make(map[string]string)
-				for k, v := range profileDevice {
-					ret.Devices[deviceName][k] = v
-				}
-				ret.Devices[deviceName]["hwaddr"] = nic.Hwaddr
-			}
-		}
-	}
-
 	// Add TPM if needed.
 	if instanceDef.TPMPresent {
 		ret.Devices["vtpm"] = map[string]string{
@@ -263,9 +253,6 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	}
 
 	ret.Description = ret.Config["image.description"]
-
-	// Don't set any profiles by default.
-	ret.Profiles = []string{}
 
 	// Handle Windows-specific configuration.
 	if strings.Contains(ret.Config["image.os"], "windows") {
@@ -403,4 +390,12 @@ func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []stri
 
 	_, err := t.incusClient.ExecInstance(instanceName, req, &args)
 	return err
+}
+
+func (t *InternalIncusTarget) GetInstance(name string) (*api.Instance, string, error) {
+	return t.incusClient.GetInstance(name)
+}
+
+func (t *InternalIncusTarget) UpdateInstance(name string, instance api.InstancePut, ETag string) (incus.Operation, error) {
+	return t.incusClient.UpdateInstance(name, instance, ETag)
 }
