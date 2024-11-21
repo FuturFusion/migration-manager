@@ -301,7 +301,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 				}
 
 				bar.Set64(offset + chunkSize)
-				statusCallback(diskName, float64(offset + chunkSize)/float64(s.Disk.CapacityInBytes))
+				statusCallback(diskName, float64(offset + chunkSize)/float64(s.Disk.CapacityInBytes)*100.0)
 				offset += chunkSize
 			}
 		}
