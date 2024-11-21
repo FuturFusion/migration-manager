@@ -90,7 +90,7 @@ type Target interface {
 	StartVM(name string) error
 
 	// Stops a VM.
-	StopVM(name string) error
+	StopVM(name string, force bool) error
 
 	// Push a file into a running instance.
 	PushFile(instanceName string, file string, destDir string) error

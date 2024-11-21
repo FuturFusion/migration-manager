@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/lxc/incus/v6/shared/logger"
+	"golang.org/x/sys/unix"
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/source"
@@ -204,6 +205,9 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 			return
 		}
 	}
+
+	// When the worker is done, the VM will be forced off, so call sync() to ensure all data is saved to disk.
+	unix.Sync()
 
 	logger.Info("Final migration tasks completed successfully")
 	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Final migration tasks completed successfully")

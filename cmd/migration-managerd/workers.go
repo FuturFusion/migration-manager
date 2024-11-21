@@ -686,7 +686,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		}
 
 		// Stop the instance.
-		stopErr := t.StopVM(i.GetName())
+		stopErr := t.StopVM(i.GetName(), true)
 		if stopErr != nil {
 			logger.Warn(stopErr.Error(), loggerCtx)
 			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {

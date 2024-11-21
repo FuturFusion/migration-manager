@@ -334,11 +334,11 @@ func (t *InternalIncusTarget) StartVM(name string) error {
 	return op.Wait()
 }
 
-func (t *InternalIncusTarget) StopVM(name string) error {
+func (t *InternalIncusTarget) StopVM(name string, force bool) error {
 	req := api.InstanceStatePut{
 		Action:   "stop",
 		Timeout:  -1,
-		Force:    false,
+		Force:    force,
 		Stateful: false,
 	}
 
