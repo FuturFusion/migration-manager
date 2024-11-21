@@ -541,8 +541,8 @@ func (d *Daemon) processQueuedBatches() bool {
 				})
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
-					continue
 				}
+				continue
 			}
 
 			// Start the instance.
@@ -560,8 +560,8 @@ func (d *Daemon) processQueuedBatches() bool {
 				})
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
-					continue
 				}
+				continue
 			}
 
 			// Inject the worker binary.
@@ -579,8 +579,8 @@ func (d *Daemon) processQueuedBatches() bool {
 				})
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
-					continue
 				}
+				continue
 			}
 
 			// Start the worker binary.
@@ -598,8 +598,8 @@ func (d *Daemon) processQueuedBatches() bool {
 				})
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
-					continue
 				}
+				continue
 			}
 		}
 
@@ -700,8 +700,8 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			})
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
-				continue
 			}
+			continue
 		}
 
 		// Get the instance definition.
@@ -719,8 +719,8 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			})
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
-				continue
 			}
+			continue
 		}
 
 		// Add NIC(s).
@@ -774,8 +774,8 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			})
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
-				continue
 			}
+			continue
 		}
 		updateErr = op.Wait()
 		if updateErr != nil {
@@ -791,8 +791,8 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			})
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
-				continue
 			}
+			continue
 		}
 
 		// Update the instance status.
