@@ -584,7 +584,7 @@ func (d *Daemon) processQueuedBatches() bool {
 			}
 
 			// Start the worker binary.
-			workerStartErr := t.ExecWithoutWaiting(i.GetName(), []string{"/root/migration-manager-worker", "--endpoint", d.getEndpoint(), "--uuid", i.GetUUID().String()})
+			workerStartErr := t.ExecWithoutWaiting(i.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getEndpoint(), "--uuid", i.GetUUID().String()})
 			if workerStartErr != nil {
 				logger.Warn(workerStartErr.Error(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {

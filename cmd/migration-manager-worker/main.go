@@ -45,7 +45,7 @@ func main() {
 	app.PersistentPreRunE = globalCmd.Run
 	app.PersistentFlags().BoolVar(&globalCmd.flagVersion, "version", false, "Print version number")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagHelp, "help", "h", false, "Print help")
-	app.PersistentFlags().StringVar(&globalCmd.flagLogFile, "logfile", "", "Path to the log file")
+	app.PersistentFlags().StringVar(&globalCmd.flagLogFile, "logfile", "worker.log", "Path to the log file")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagLogDebug, "debug", "d", false, "Show all debug messages")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagLogVerbose, "verbose", "v", false, "Show all information messages")
 
