@@ -63,6 +63,7 @@ func (s *NbdkitServers) createSnapshot(ctx context.Context) error {
 	}
 
 	bar := progress.NewVMwareProgressBar("Creating snapshot")
+	s.StatusCallback("Creating snapshot", 0.0)
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		bar.Loop(ctx.Done())
@@ -74,6 +75,7 @@ func (s *NbdkitServers) createSnapshot(ctx context.Context) error {
 		return err
 	}
 
+	s.StatusCallback("Creating snapshot", 100.0)
 	s.SnapshotRef = info.Result.(types.ManagedObjectReference)
 	return nil
 }
@@ -148,6 +150,7 @@ func (s *NbdkitServers) removeSnapshot(ctx context.Context) error {
 	}
 
 	bar := progress.NewVMwareProgressBar("Removing snapshot")
+	s.StatusCallback("Removing snapshot", 0.0)
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		bar.Loop(ctx.Done())
@@ -159,6 +162,7 @@ func (s *NbdkitServers) removeSnapshot(ctx context.Context) error {
 		return err
 	}
 
+	s.StatusCallback("Removing snapshot", 100.0)
 	return nil
 }
 
