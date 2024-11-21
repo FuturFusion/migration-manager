@@ -1,9 +1,11 @@
 package worker
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/subprocess"
@@ -36,7 +38,28 @@ func DoMount(device string, path string, options []string) error {
 	args := options
 	args = append(args, device)
 	args = append(args, path)
-	_, err := subprocess.RunCommand("mount", args...)
+	_, stderr, err := subprocess.RunCommandSplit(context.TODO(), nil, nil, "mount", args...)
+
+	// An unclean NTFS partition (suspended, improper shutdown, etc) will only mount read-only.
+	// Since we won't be able to inject drivers, attempt to fix the file system, then remount it.
+	if strings.Contains(stderr, "Falling back to read-only mount because the NTFS partition") {
+		// Unmount.
+		err := DoUnmount(path)
+		if err != nil {
+			return err
+		}
+
+		// Attempt to fix the NTFS partition.
+		_, err = subprocess.RunCommand("ntfsfix", device)
+		if err != nil {
+			return fmt.Errorf("NTFS partition %s contains an unclean file system; running `ntfsfix` failed. Please cleanly shutdown the source VM, then re-try migration.", device)
+		}
+
+		// Mount the clean NTFS partition.
+		_, err = subprocess.RunCommand("mount", args...)
+		return err
+	}
+
 	return err
 }
 
