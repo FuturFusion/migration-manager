@@ -47,6 +47,13 @@ CREATE TABLE instances (
     FOREIGN KEY(targetid) REFERENCES targets(id)
 );
 
+CREATE TABLE networks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    config INTEGER NOT NULL,
+    UNIQUE (name)
+);
+
 CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -145,6 +152,13 @@ CREATE TABLE instances (
     needsdiskimport INTEGER NOT NULL,
     FOREIGN KEY(sourceid) REFERENCES sources(id),
     FOREIGN KEY(targetid) REFERENCES targets(id)
+);
+
+CREATE TABLE networks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    config INTEGER NOT NULL,
+    UNIQUE (name)
 );
 
 CREATE TABLE sources (
