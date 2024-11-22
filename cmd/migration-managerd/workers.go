@@ -85,12 +85,40 @@ func (d *Daemon) syncInstancesFromSources() bool {
 		return false
 	}
 
-	// Check each source for any new, changed, or deleted instances.
+	// Check each source for any net networks and any new, changed, or deleted instances.
 	for _, s := range sources {
 		err := s.Connect(d.shutdownCtx)
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
 			continue
+		}
+
+		networks, err := s.GetAllNetworks(d.shutdownCtx)
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+
+		// Iterate each network from this source.
+		for _, n := range networks {
+			// Check if a network already exists with the same name.
+			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				_, err := d.db.GetNetwork(tx, n.Name)
+				return err
+			})
+
+			// Only add the network if it doesn't yet exist
+			if err != nil {
+				logger.Info("Adding network " + n.Name + " from source " + s.GetName(), loggerCtx)
+				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					return d.db.AddNetwork(tx, &n)
+				})
+
+				if err != nil {
+					logger.Warn(err.Error(), loggerCtx)
+					continue
+				}
+			}
 		}
 
 		instances, err := s.GetAllVMs(d.shutdownCtx)
