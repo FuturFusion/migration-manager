@@ -751,25 +751,113 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			continue
 		}
 
-		// Add NIC(s).
-		//internalInstance, _ := i.(*instance.InternalInstance)
-		for i, nic := range i.(*instance.InternalInstance).NICs {
-			deviceName := fmt.Sprintf("eth%d", i)
-			apiDef.Devices[deviceName] = make(map[string]string)
-			apiDef.Devices[deviceName]["type"] = "nic"
-			apiDef.Devices[deviceName]["nictype"] = "macvlan"
-			apiDef.Devices[deviceName]["parent"] = "wan4350"
-			apiDef.Devices[deviceName]["name"] = deviceName
-			apiDef.Devices[deviceName]["hwaddr"] = nic.Hwaddr
-			/*for _, profileDevice := range profile.Devices {
-				if profileDevice["type"] == "nic" && profileDevice["network"] == "vmware" { // FIXME need to fix up network mappings
-					ret.Devices[deviceName] = make(map[string]string)
-					for k, v := range profileDevice {
-						ret.Devices[deviceName][k] = v
-					}
-					ret.Devices[deviceName]["hwaddr"] = nic.Hwaddr
+		// Get the batch for this instance.
+		batchID := i.GetBatchID()
+		var dbBatch batch.Batch
+		batchErr := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			var err error
+			dbBatch, err = d.db.GetBatchByID(tx, batchID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if batchErr != nil {
+			logger.Warn(batchErr.Error(), loggerCtx)
+			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, batchErr.Error(), true)
+				if err != nil {
+					return err
 				}
-			}*/
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+			}
+			continue
+		}
+
+		// Get the default network to use for this instance.
+		var defaultNetwork api.Network
+		defNetErr := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			var err error
+			defaultNetwork, err = d.db.GetNetwork(tx, dbBatch.GetDefaultNetwork())
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if defNetErr != nil {
+			logger.Warn(defNetErr.Error(), loggerCtx)
+			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, defNetErr.Error(), true)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
+			}
+			continue
+		}
+
+		// Add NIC(s).
+		for idx, nic := range i.(*instance.InternalInstance).NICs {
+			nicDeviceName := fmt.Sprintf("eth%d", idx)
+			baseNetwork := defaultNetwork
+
+			// If the NIC has a network set, and it's not the default, fetch the network definition.
+			if nic.Network != "" && nic.Network != baseNetwork.Name {
+				netErr := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					var err error
+					baseNetwork, err = d.db.GetNetwork(tx, nic.Network)
+					if err != nil {
+						return err
+					}
+
+					return nil
+				})
+				if netErr != nil {
+					logger.Warn(netErr.Error(), loggerCtx)
+					err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+						var state api.MigrationStatusType = api.MIGRATIONSTATUS_ERROR
+						err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), state, netErr.Error(), true)
+						if err != nil {
+							return err
+						}
+
+						return nil
+					})
+					if err != nil {
+						logger.Warn(err.Error(), loggerCtx)
+					}
+					continue
+				}
+			}
+
+			// Pickup device name override if set.
+			deviceName, ok := baseNetwork.Config["name"]
+			if ok {
+				nicDeviceName = deviceName
+			}
+
+			// Copy the base network definitions.
+			apiDef.Devices[nicDeviceName] = make(map[string]string)
+			for k, v := range baseNetwork.Config {
+				apiDef.Devices[nicDeviceName][k] = v
+			}
+
+			// Set a few forced overrides.
+			apiDef.Devices[nicDeviceName]["type"] = "nic"
+			apiDef.Devices[nicDeviceName]["name"] = nicDeviceName
+			apiDef.Devices[nicDeviceName]["hwaddr"] = nic.Hwaddr
 		}
 
 		// Remove the migration ISO image.
