@@ -9,6 +9,25 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/worker"
 )
 
+var lsblk = `
+{
+   "blockdevices": [
+      {
+         "name": "vda",
+         "children": [
+            {
+               "name": "vda1"
+            },{
+               "name": "vda2"
+            },{
+               "name": "vda5"
+            }
+         ]
+      }
+   ]
+}
+`
+
 var noVGs = `
   {
       "report": [
@@ -31,6 +50,17 @@ var oneVG = `
       ]
   }
 `
+
+func TestLSBLKUnmarshaling(t *testing.T) {
+	lsblkOutput := worker.LSBLKOutput{}
+	err := json.Unmarshal([]byte(lsblk), &lsblkOutput)
+	require.NoError(t, err)
+	require.Equal(t, len(lsblkOutput.BlockDevices), 1)
+	require.Equal(t, lsblkOutput.BlockDevices[0].Name, "vda")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[0].Name, "vda1")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[1].Name, "vda2")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[2].Name, "vda5")
+}
 
 func TestLVSUnmarshaling(t *testing.T) {
 	novg := worker.LVSOutput{}

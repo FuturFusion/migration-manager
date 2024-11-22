@@ -2,16 +2,43 @@ package worker
 
 import(
 	"embed"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/lxc/incus/v6/shared/subprocess"
+	"github.com/lxc/incus/v6/shared/util"
 )
 
 //go:embed scripts/*
 var embeddedScripts embed.FS
+
+const (
+	PARTITION_TYPE_UNKNOWN = iota
+	PARTITION_TYPE_PLAIN
+	PARTITION_TYPE_LVM
+)
+
+type LSBLKOutput struct {
+	BlockDevices []struct {
+		Name string `json:"name"`
+		Children []struct {
+			Name string `json:"name"`
+		} `json:"children"`
+	} `json:"blockdevices"`
+}
+
+type LVSOutput struct {
+	Report []struct {
+		LV []struct {
+			VGName string `json:"vg_name"`
+			LVName string `json:"lv_name"`
+		} `json:"lv"`
+	} `json:"report"`
+}
 
 const chrootMountPath string = "/mnt/target/"
 
@@ -19,7 +46,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 	logger.Info("Preparing to perform post-migration configuration of VM")
 
 	// Determine the root partition.
-	rootPartition, rootPartitionType, err := DetermineRootPartition()
+	rootPartition, rootPartitionType, err := determineRootPartition()
 	if err != nil {
 		return err
 	}
@@ -70,6 +97,52 @@ func LinuxDoPostMigrationConfig(distro string) error {
 	return nil
 }
 
+func ActivateVG() error {
+	_, err := subprocess.RunCommand("vgchange", "-a", "y")
+	return err
+}
+
+func DeactivateVG() error {
+	_, err := subprocess.RunCommand("vgchange", "-a", "n")
+	return err
+}
+
+func determineRootPartition() (string, int, error) {
+	lvs, err := scanVGs()
+	if err != nil {
+		return "", PARTITION_TYPE_UNKNOWN, err
+	}
+
+	// If a VG(s) exists, check if any LVs look like the root partition.
+	if len(lvs.Report[0].LV) > 0 {
+		err := ActivateVG()
+		if err != nil {
+			return "", PARTITION_TYPE_UNKNOWN, err
+		}
+		defer func() { _ = DeactivateVG() }()
+
+		for _, lv := range lvs.Report[0].LV {
+			if looksLikeRootPartition(fmt.Sprintf("/dev/%s/%s", lv.VGName, lv.LVName)) {
+				return fmt.Sprintf("/dev/%s/%s", lv.VGName, lv.LVName), PARTITION_TYPE_LVM, nil
+			}
+		}
+	}
+
+	partitions, err := scanPartitions("/dev/sda")
+	if err != nil {
+		return "", PARTITION_TYPE_UNKNOWN, err
+	}
+
+	// Loop through any partitions on /dev/sda and check if they look like the root partition.
+	for _, partition := range partitions.BlockDevices[0].Children {
+		if looksLikeRootPartition(fmt.Sprintf("/dev/%s", partition.Name)) {
+			return fmt.Sprintf("/dev/%s", partition.Name), PARTITION_TYPE_PLAIN, nil
+		}
+	}
+
+	return "", PARTITION_TYPE_UNKNOWN, fmt.Errorf("Failed to determine the root partition")
+}
+
 func runScriptInChroot(scriptName string) error {
 	// Get the embedded script's contents.
 	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
@@ -78,14 +151,55 @@ func runScriptInChroot(scriptName string) error {
 	}
 
 	// Write script to tmp file.
-	tmpFileName := filepath.Join("tmp", scriptName)
-	err = os.WriteFile(filepath.Join(chrootMountPath, tmpFileName), script, 0755)
+	err = os.WriteFile(filepath.Join(chrootMountPath, scriptName), script, 0755)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = os.Remove(filepath.Join(chrootMountPath, tmpFileName)) }()
+	defer func() { _ = os.Remove(filepath.Join(chrootMountPath, scriptName)) }()
 
 	// Run the script within the chroot.
-	_, err = subprocess.RunCommand("chroot", chrootMountPath, tmpFileName)
+	_, err = subprocess.RunCommand("chroot", chrootMountPath, filepath.Join("/", scriptName))
 	return err
+}
+
+func scanVGs() (LVSOutput, error) {
+	ret := LVSOutput{}
+	output, err := subprocess.RunCommand("lvs", "-o", "vg_name,lv_name", "--reportformat", "json")
+	if err != nil {
+		return ret, err
+	}
+
+	err = json.Unmarshal([]byte(output), &ret)
+	if err != nil {
+		return ret, err
+	}
+
+	return ret, nil
+}
+
+func scanPartitions(device string) (LSBLKOutput, error) {
+	ret := LSBLKOutput{}
+	output, err := subprocess.RunCommand("lsblk", "-J", "-o", "NAME", device)
+	if err != nil {
+		return ret, err
+	}
+
+	err = json.Unmarshal([]byte(output), &ret)
+	if err != nil {
+		return ret, err
+	}
+
+	return ret, nil
+}
+
+func looksLikeRootPartition(partition string) bool {
+	// Mount the potential root partition.
+	err := DoMount(partition, chrootMountPath, nil)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = DoUnmount(chrootMountPath) }()
+
+	// If /usr/ and /etc/ exist, this is probably the root partition.
+	return util.PathExists(filepath.Join(chrootMountPath, "usr")) && util.PathExists(filepath.Join(chrootMountPath, "etc"))
 }
