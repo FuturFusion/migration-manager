@@ -17,7 +17,7 @@ import (
 
 var testSource = source.NewCommonSource("TestSource")
 var testTarget = target.NewIncusTarget("TestTarget", "https://localhost:8443", "pool", "boot.iso", "drivers.iso")
-var testBatch = batch.NewBatch("TestBatch", "", "", time.Time{}, time.Time{})
+var testBatch = batch.NewBatch("TestBatch", "", "", time.Time{}, time.Time{}, "network")
 var instanceAUUID, _ = uuid.NewRandom()
 var instanceA = instance.NewInstance(instanceAUUID, 2, 1, -1, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{{"disk", true, 123}}, []api.InstanceNICInfo{{"net", "mac"}}, 2, 2048, false, false, false)
 var instanceBUUID, _ = uuid.NewRandom()

@@ -98,17 +98,15 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		StatusString: status.String(),
 	}
 
-	includeRegex, err := c.global.asker.AskString("Regular expression to include instances: ", "", func(s string) error { return nil })
+	b.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: ", "", func(s string) error { return nil })
 	if err != nil {
 		return err
 	}
-	b.IncludeRegex = includeRegex
 
-	excludeRegex, err := c.global.asker.AskString("Regular expression to exclude instances: ", "", func(s string) error { return nil })
+	b.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: ", "", func(s string) error { return nil })
 	if err != nil {
 		return err
 	}
-	b.ExcludeRegex = excludeRegex
 
 	windowStart, err := c.global.asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ", "", func(s string) error {
 		if s != "" {
@@ -136,6 +134,11 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	}
 	if windowEnd != "" {
 		b.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
+	}
+
+	b.DefaultNetwork, err = c.global.asker.AskString("Default network for instances: ", "", func(s string) error { return nil })
+	if err != nil {
+		return err
 	}
 
 	// Insert into database.
@@ -199,7 +202,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Status", "Status String", "Include Regex", "Exclude Regex", "Window Start", "Window End"}
+	header := []string{"Name", "Status", "Status String", "Include Regex", "Exclude Regex", "Window Start", "Window End", "Default Network"}
 	data := [][]string{}
 
 	for _, b := range batches {
@@ -211,7 +214,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 		if !b.MigrationWindowEnd.IsZero() {
 			endString = b.MigrationWindowEnd.String()
 		}
-		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.IncludeRegex, b.ExcludeRegex, startString, endString})
+		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.IncludeRegex, b.ExcludeRegex, startString, endString, b.DefaultNetwork})
 	}
 
 	return util.RenderTable(c.flagFormat, header, data, batches)
@@ -329,16 +332,19 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Batch: %s\n", b.Name)
 	fmt.Printf("  - Status:        %s\n", b.StatusString)
 	if b.IncludeRegex != "" {
-		fmt.Printf("  - Include regex: %s\n", b.IncludeRegex)
+		fmt.Printf("  - Include regex:   %s\n", b.IncludeRegex)
 	}
 	if b.ExcludeRegex != "" {
-		fmt.Printf("  - Exclude regex: %s\n", b.ExcludeRegex)
+		fmt.Printf("  - Exclude regex:   %s\n", b.ExcludeRegex)
 	}
 	if !b.MigrationWindowStart.IsZero() {
-		fmt.Printf("  - Window start:  %s\n", b.MigrationWindowStart)
+		fmt.Printf("  - Window start:    %s\n", b.MigrationWindowStart)
 	}
 	if !b.MigrationWindowEnd.IsZero() {
-		fmt.Printf("  - Window end:    %s\n", b.MigrationWindowEnd)
+		fmt.Printf("  - Window end:      %s\n", b.MigrationWindowEnd)
+	}
+	if b.DefaultNetwork != "" {
+		fmt.Printf("  - Default network: %s\n", b.DefaultNetwork)
 	}
 
 	fmt.Printf("\n  - Instances:\n")
@@ -516,6 +522,11 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 		if windowEnd != "" {
 			bb.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
+		}
+
+		bb.DefaultNetwork, err = c.global.asker.AskString("Default network for instances: [" + bb.DefaultNetwork + "] ", bb.DefaultNetwork, func(s string) error { return nil })
+		if err != nil {
+			return err
 		}
 
 		newBatchName = bb.Name

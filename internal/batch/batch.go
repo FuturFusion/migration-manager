@@ -15,7 +15,7 @@ type InternalBatch struct {
 }
 
 // Returns a new Batch ready for use.
-func NewBatch(name string, includeRegex string, excludeRegex string, migrationWindowStart time.Time, migrationWindowEnd time.Time) *InternalBatch {
+func NewBatch(name string, includeRegex string, excludeRegex string, migrationWindowStart time.Time, migrationWindowEnd time.Time, defaultNetwork string) *InternalBatch {
 	var status api.BatchStatusType = api.BATCHSTATUS_DEFINED
 	return &InternalBatch{
 		Batch: api.Batch{
@@ -27,6 +27,7 @@ func NewBatch(name string, includeRegex string, excludeRegex string, migrationWi
 			ExcludeRegex: excludeRegex,
 			MigrationWindowStart: migrationWindowStart,
 			MigrationWindowEnd: migrationWindowEnd,
+			DefaultNetwork: defaultNetwork,
 		},
 	}
 }
@@ -57,6 +58,10 @@ func (b *InternalBatch) GetMigrationWindowStart() time.Time {
 
 func (b *InternalBatch) GetMigrationWindowEnd() time.Time {
 	return b.MigrationWindowEnd
+}
+
+func (b *InternalBatch) GetDefaultNetwork() string {
+	return b.DefaultNetwork
 }
 
 func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {

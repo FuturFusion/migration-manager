@@ -19,6 +19,7 @@ CREATE TABLE batches (
     excluderegex TEXT NOT NULL,
     migrationwindowstart TEXT NOT NULL,
     migrationwindowend TEXT NOT NULL,
+    defaultnetwork VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 
@@ -126,6 +127,7 @@ CREATE TABLE batches (
     excluderegex TEXT NOT NULL,
     migrationwindowstart TEXT NOT NULL,
     migrationwindowend TEXT NOT NULL,
+    defaultnetwork VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 
