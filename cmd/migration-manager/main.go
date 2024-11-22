@@ -68,6 +68,10 @@ func main() {
 	instanceCmd := cmdInstance{global: &globalCmd}
 	app.AddCommand(instanceCmd.Command())
 
+	// network sub-command
+	networkCmd := cmdNetwork{global: &globalCmd}
+	app.AddCommand(networkCmd.Command())
+
 	// queue sub-command
 	queueCmd := cmdQueue{global: &globalCmd}
 	app.AddCommand(queueCmd.Command())
