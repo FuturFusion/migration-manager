@@ -45,7 +45,7 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 }
 
 func (n *Node) GetBatch(tx *sql.Tx, name string) (batch.Batch, error) {
-	ret, err := n.getBatchesHelper(tx, name)
+	ret, err := n.getBatchesHelper(tx, name, internal.INVALID_DATABASE_ID)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +57,21 @@ func (n *Node) GetBatch(tx *sql.Tx, name string) (batch.Batch, error) {
 	return ret[0], nil
 }
 
+func (n *Node) GetBatchByID(tx *sql.Tx, id int) (batch.Batch, error) {
+	ret, err := n.getBatchesHelper(tx, "", id)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(ret) != 1 {
+		return nil, fmt.Errorf("No batch exists with ID '%d'", id)
+	}
+
+	return ret[0], nil
+}
+
 func (n *Node) GetAllBatches(tx *sql.Tx) ([]batch.Batch, error) {
-	return n.getBatchesHelper(tx, "")
+	return n.getBatchesHelper(tx, "", internal.INVALID_DATABASE_ID)
 }
 
 func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
@@ -168,7 +181,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	return nil
 }
 
-func (n *Node) getBatchesHelper(tx *sql.Tx, name string) ([]batch.Batch, error) {
+func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch, error) {
 	ret := []batch.Batch{}
 
 	// Get all batches in the database.
@@ -178,6 +191,9 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string) ([]batch.Batch, error) 
 	if name != "" {
 		q += ` WHERE name=?`
 		rows, err = tx.Query(q, name)
+	} else if id != internal.INVALID_DATABASE_ID {
+		q += ` WHERE id=?`
+		rows, err = tx.Query(q, id)
 	} else {
 		q += ` ORDER BY name`
 		rows, err = tx.Query(q)
