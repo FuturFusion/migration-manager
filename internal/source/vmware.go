@@ -239,6 +239,22 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 	return ret, nil
 }
 
+func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
+	ret := []api.Network{}
+
+	finder := find.NewFinder(s.vimClient)
+	networks, err := finder.NetworkList(ctx, "/...")
+	if err != nil {
+		return nil, err
+	}
+
+	for _, n := range networks {
+		ret = append(ret, api.Network{Name: n.Reference().Value})
+	}
+
+	return ret, nil
+}
+
 func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
 	vm, err := s.getVM(ctx, vmName)
 	if err != nil {

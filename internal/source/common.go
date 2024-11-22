@@ -64,6 +64,10 @@ func (s *InternalCommonSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 	return nil, fmt.Errorf("Not implemented by CommonSource")
 }
 
+func (s *InternalCommonSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
+	return nil, fmt.Errorf("Not implemented by CommonSource")
+}
+
 func (s *InternalCommonSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
 	return fmt.Errorf("Not implemented by CommonSource")
 }

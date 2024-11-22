@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Interface definition for all migration manager sources.
@@ -45,6 +46,11 @@ type Source interface {
 	//
 	// Returns an error if there is a problem fetching VMs or their properties.
 	GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error)
+
+	// Returns an array of all networks available from the source, encoded as Networks.
+	//
+	// Returns an error if there is a problem fetching networks or their properties.
+	GetAllNetworks(ctx context.Context) ([]api.Network, error)
 
 	// Deletes a given snapshot, if it exists, from the specified VM.
 	//
