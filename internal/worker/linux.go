@@ -1,11 +1,13 @@
 package worker
 
 import(
+	"bufio"
 	"embed"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/lxc/incus/v6/shared/logger"
@@ -78,6 +80,15 @@ func LinuxDoPostMigrationConfig(distro string) error {
 		return err
 	}
 	defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "sys")) }()
+
+	// Mount additional file systems, such as /var/ on a different partition.
+	for _, mnt := range getAdditionalMounts() {
+		err := DoMount(mnt["device"], filepath.Join(chrootMountPath, mnt["path"]), nil)
+		if err != nil {
+			return err
+		}
+		defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, mnt["path"])) }()
+	}
 
 	// Install incus-agent into the VM.
 	err = runScriptInChroot("install-incus-agent.sh")
@@ -202,4 +213,28 @@ func looksLikeRootPartition(partition string) bool {
 
 	// If /usr/ and /etc/ exist, this is probably the root partition.
 	return util.PathExists(filepath.Join(chrootMountPath, "usr")) && util.PathExists(filepath.Join(chrootMountPath, "etc"))
+}
+
+func getAdditionalMounts() []map[string]string {
+	ret := []map[string]string{}
+
+	fstab, err := os.Open(filepath.Join(chrootMountPath, "etc/fstab"))
+	if err != nil {
+		return ret
+	}
+	defer func() { _ = fstab.Close() }()
+
+	sc := bufio.NewScanner(fstab)
+	for sc.Scan() {
+		text := strings.TrimSpace(sc.Text())
+
+		if len(text) > 0 && !strings.HasPrefix(text, "#") {
+			fields := regexp.MustCompile(`\s+`).Split(text, -1)
+			if strings.HasPrefix(fields[1], "/var") {
+				ret = append(ret, map[string]string{"device": fields[0], "path": fields[1]})
+			}
+		}
+	}
+
+	return ret
 }
