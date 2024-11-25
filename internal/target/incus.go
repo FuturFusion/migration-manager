@@ -201,17 +201,11 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.NumberCPUs)
 	ret.Config["limits.memory"] = fmt.Sprintf("%dMiB", instanceDef.MemoryInMiB)
 
-	// Attempt to fetch the existing profile to get proper root device definition.
-	profile, _, _ := t.incusClient.GetProfile(t.IncusProfile)
-
-	// Get the existing root device definition, if it exists.
-	defaultRoot, exists := profile.Devices["root"]
-	if !exists {
-		defaultRoot = map[string]string{
-			"path": "/",
-			"pool": "default",
-			"type": "disk",
-		}
+	// Define the default disk settings.
+	defaultDiskDef := map[string]string{
+		"path": "/",
+		"pool": t.GetStoragePool(),
+		"type": "disk",
 	}
 
 	// Add empty disk(s) from VM definition that will be synced later.
@@ -222,7 +216,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 		}
 
 		ret.Devices[diskKey] = make(map[string]string)
-		for k, v := range defaultRoot {
+		for k, v := range defaultDiskDef {
 			ret.Devices[diskKey][k] = v
 		}
 		ret.Devices[diskKey]["size"] = fmt.Sprintf("%dB", disk.SizeInBytes)
