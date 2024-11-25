@@ -36,7 +36,6 @@ func NewIncusTarget(name string, endpoint string, storagePool string, bootISOIma
 			TLSClientCert: "",
 			OIDCTokens: nil,
 			Insecure: false,
-			IncusProfile: "default",
 			IncusProject: "default",
 			StoragePool: storagePool,
 			BootISOImage: bootISOImage,
@@ -138,16 +137,6 @@ func (t *InternalIncusTarget) GetDatabaseID() (int, error) {
 	}
 
 	return t.DatabaseID, nil
-}
-
-func (t *InternalIncusTarget) SetProfile(profile string) error {
-	if !t.isConnected {
-		return fmt.Errorf("Cannot change profile before connecting")
-	}
-
-	t.IncusProfile = profile
-
-	return nil
 }
 
 func (t *InternalIncusTarget) SetProject(project string) error {

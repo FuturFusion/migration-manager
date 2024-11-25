@@ -23,7 +23,6 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	incusTargetC.SetInsecureTLS(true)
 	incusTargetC.IncusProject = "my-other-project"
-	incusTargetC.IncusProfile = "my-other-profile"
 
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
@@ -59,7 +58,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 
 	// Test updating a target.
 	incusTargetB.Name = "FooBar"
-	incusTargetB.IncusProfile = "new-profile"
+	incusTargetB.IncusProject = "new-project"
 	err = db.UpdateTarget(tx, incusTargetB)
 	require.NoError(t, err)
 	incusTargetB_DB, err := db.GetTarget(tx, incusTargetB.GetName())

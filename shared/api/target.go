@@ -33,10 +33,6 @@ type IncusTarget struct {
 	// Example: false
 	Insecure bool `json:"insecure" yaml:"insecure"`
 
-	// The Incus profile to use
-	// Example: default
-	IncusProfile string `json:"incusProfile" yaml:"incusProfile"`
-
 	// The Incus project to use
 	// Example: default
 	IncusProject string `json:"incusProject" yaml:"incusProject"`

@@ -58,11 +58,6 @@ type Target interface {
 
 	//////////////////////////////////////////////////
 
-	// Selects the Incus profile to use when performing actions on the target.
-	//
-	// Returns an error if called while disconnected from a target.
-	SetProfile(profile string) error
-
 	// Selects the Incus project to use when performing actions on the target.
 	//
 	// Returns an error if called while disconnected from a target.
