@@ -29,6 +29,7 @@ type LSBLKOutput struct {
 		Name string `json:"name"`
 		Children []struct {
 			Name string `json:"name"`
+			FSType string `json:"fstype"`
 		} `json:"children"`
 	} `json:"blockdevices"`
 }
@@ -48,7 +49,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 	logger.Info("Preparing to perform post-migration configuration of VM")
 
 	// Determine the root partition.
-	rootPartition, rootPartitionType, err := determineRootPartition()
+	rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition()
 	if err != nil {
 		return err
 	}
@@ -63,7 +64,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 	}
 
 	// Mount the migrated root partition.
-	err = DoMount(rootPartition, chrootMountPath, nil)
+	err = DoMount(rootPartition, chrootMountPath, rootMountOpts)
 	if err != nil {
 		return err
 	}
@@ -83,7 +84,11 @@ func LinuxDoPostMigrationConfig(distro string) error {
 
 	// Mount additional file systems, such as /var/ on a different partition.
 	for _, mnt := range getAdditionalMounts() {
-		err := DoMount(mnt["device"], filepath.Join(chrootMountPath, mnt["path"]), nil)
+		opts := []string{}
+		if mnt["options"] != "" {
+			opts = []string{"-o", mnt["options"]}
+		}
+		err := DoMount(mnt["device"], filepath.Join(chrootMountPath, mnt["path"]), opts)
 		if err != nil {
 			return err
 		}
@@ -118,40 +123,50 @@ func DeactivateVG() error {
 	return err
 }
 
-func determineRootPartition() (string, int, error) {
+func determineRootPartition() (string, int, []string, error) {
 	lvs, err := scanVGs()
 	if err != nil {
-		return "", PARTITION_TYPE_UNKNOWN, err
+		return "", PARTITION_TYPE_UNKNOWN, nil, err
 	}
 
 	// If a VG(s) exists, check if any LVs look like the root partition.
 	if len(lvs.Report[0].LV) > 0 {
 		err := ActivateVG()
 		if err != nil {
-			return "", PARTITION_TYPE_UNKNOWN, err
+			return "", PARTITION_TYPE_UNKNOWN, nil, err
 		}
 		defer func() { _ = DeactivateVG() }()
 
 		for _, lv := range lvs.Report[0].LV {
-			if looksLikeRootPartition(fmt.Sprintf("/dev/%s/%s", lv.VGName, lv.LVName)) {
-				return fmt.Sprintf("/dev/%s/%s", lv.VGName, lv.LVName), PARTITION_TYPE_LVM, nil
+			if looksLikeRootPartition(fmt.Sprintf("/dev/%s/%s", lv.VGName, lv.LVName), nil) {
+				return fmt.Sprintf("/dev/%s/%s", lv.VGName, lv.LVName), PARTITION_TYPE_LVM, nil, nil
 			}
 		}
 	}
 
 	partitions, err := scanPartitions("/dev/sda")
 	if err != nil {
-		return "", PARTITION_TYPE_UNKNOWN, err
+		return "", PARTITION_TYPE_UNKNOWN, nil, err
 	}
 
 	// Loop through any partitions on /dev/sda and check if they look like the root partition.
-	for _, partition := range partitions.BlockDevices[0].Children {
-		if looksLikeRootPartition(fmt.Sprintf("/dev/%s", partition.Name)) {
-			return fmt.Sprintf("/dev/%s", partition.Name), PARTITION_TYPE_PLAIN, nil
+	for _, p := range partitions.BlockDevices[0].Children {
+		partition := fmt.Sprintf("/dev/%s", p.Name)
+		if p.FSType == "btrfs" {
+			btrfsSubvol, err := getBTRFSTopSubvol(partition)
+			if err != nil {
+				return "", PARTITION_TYPE_UNKNOWN, nil, err
+			}
+			opts := []string{"-o", fmt.Sprintf("subvol=%s", btrfsSubvol)}
+			if looksLikeRootPartition(partition, opts) {
+				return partition, PARTITION_TYPE_PLAIN, opts, nil
+			}
+		} else if looksLikeRootPartition(partition, nil) {
+			return partition, PARTITION_TYPE_PLAIN, nil, nil
 		}
 	}
 
-	return "", PARTITION_TYPE_UNKNOWN, fmt.Errorf("Failed to determine the root partition")
+	return "", PARTITION_TYPE_UNKNOWN, nil, fmt.Errorf("Failed to determine the root partition")
 }
 
 func runScriptInChroot(scriptName string) error {
@@ -190,7 +205,7 @@ func scanVGs() (LVSOutput, error) {
 
 func scanPartitions(device string) (LSBLKOutput, error) {
 	ret := LSBLKOutput{}
-	output, err := subprocess.RunCommand("lsblk", "-J", "-o", "NAME", device)
+	output, err := subprocess.RunCommand("lsblk", "-J", "-o", "NAME,FSTYPE", device)
 	if err != nil {
 		return ret, err
 	}
@@ -203,9 +218,9 @@ func scanPartitions(device string) (LSBLKOutput, error) {
 	return ret, nil
 }
 
-func looksLikeRootPartition(partition string) bool {
+func looksLikeRootPartition(partition string, opts []string) bool {
 	// Mount the potential root partition.
-	err := DoMount(partition, chrootMountPath, nil)
+	err := DoMount(partition, chrootMountPath, opts)
 	if err != nil {
 		return false
 	}
@@ -231,10 +246,33 @@ func getAdditionalMounts() []map[string]string {
 		if len(text) > 0 && !strings.HasPrefix(text, "#") {
 			fields := regexp.MustCompile(`\s+`).Split(text, -1)
 			if strings.HasPrefix(fields[1], "/var") {
-				ret = append(ret, map[string]string{"device": fields[0], "path": fields[1]})
+				ret = append(ret, map[string]string{"device": fields[0], "path": fields[1], "options": fields[3]})
 			}
 		}
 	}
 
 	return ret
+}
+
+func getBTRFSTopSubvol(partition string) (string, error) {
+	// Mount the partition so we can get the list of subvolumes.
+	err := DoMount(partition, chrootMountPath, nil)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = DoUnmount(chrootMountPath) }()
+
+	// Get the subvolumes.
+	output, err := subprocess.RunCommand("btrfs", "subvolume", "list", chrootMountPath)
+	if err != nil {
+		return "", err
+	}
+
+	// Get the top level subvolume.
+	submatch := regexp.MustCompile(` top level 5 path (.+)`).FindStringSubmatch(output)
+	if submatch != nil {
+		return submatch[1], nil
+	}
+
+	return "", fmt.Errorf("Unable to determine top level subvolume for partition %s", partition)
 }

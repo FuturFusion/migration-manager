@@ -13,14 +13,21 @@ var lsblk = `
 {
    "blockdevices": [
       {
-         "name": "vda",
+         "name": "sda",
+         "fstype": null,
          "children": [
             {
-               "name": "vda1"
+               "name": "sda1",
+               "fstype": "ext4"
             },{
-               "name": "vda2"
+               "name": "sda2",
+               "fstype": "ext3"
             },{
-               "name": "vda5"
+               "name": "sda3",
+               "fstype": "swap"
+            },{
+               "name": "sda4",
+               "fstype": "btrfs"
             }
          ]
       }
@@ -56,10 +63,15 @@ func TestLSBLKUnmarshaling(t *testing.T) {
 	err := json.Unmarshal([]byte(lsblk), &lsblkOutput)
 	require.NoError(t, err)
 	require.Equal(t, len(lsblkOutput.BlockDevices), 1)
-	require.Equal(t, lsblkOutput.BlockDevices[0].Name, "vda")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[0].Name, "vda1")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[1].Name, "vda2")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[2].Name, "vda5")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Name, "sda")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[0].Name, "sda1")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[0].FSType, "ext4")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[1].Name, "sda2")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[1].FSType, "ext3")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[2].Name, "sda3")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[2].FSType, "swap")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[3].Name, "sda4")
+	require.Equal(t, lsblkOutput.BlockDevices[0].Children[3].FSType, "btrfs")
 }
 
 func TestLVSUnmarshaling(t *testing.T) {
