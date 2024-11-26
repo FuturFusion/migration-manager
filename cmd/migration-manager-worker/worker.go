@@ -55,7 +55,7 @@ func newWorker(endpoint string, uuid string) (*Worker, error) {
 	}
 
 	// Do a quick connectivity check to the endpoint.
-	_, err = ret.doHttpRequest("/1.0", http.MethodGet, nil)
+	_, err = ret.doHttpRequest("/" + api.APIVersion, http.MethodGet, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (w *Worker) Start() error {
 
 	go func() {
 		for {
-			resp, err := w.doHttpRequest("/1.0/queue/" + w.uuid, http.MethodGet, nil)
+			resp, err := w.doHttpRequest("/" + api.APIVersion + "/queue/" + w.uuid, http.MethodGet, nil)
 			if err != nil {
 				logger.Errorf("%s", err.Error())
 			} else {
@@ -229,7 +229,7 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusStri
 		return
 	}
 
-	_, err = w.doHttpRequest("/1.0/queue/" + w.uuid, http.MethodPut, content)
+	_, err = w.doHttpRequest("/" + api.APIVersion + "/queue/" + w.uuid, http.MethodPut, content)
 	if err != nil {
 		logger.Errorf("Failed to send status back to migration manager: %s", err.Error())
 		return
@@ -246,7 +246,7 @@ func (w *Worker) sendErrorResponse(err error) {
 		return
 	}
 
-	_, err = w.doHttpRequest("/1.0/queue/" + w.uuid, http.MethodPut, content)
+	_, err = w.doHttpRequest("/" + api.APIVersion + "/queue/" + w.uuid, http.MethodPut, content)
 	if err != nil {
 		logger.Errorf("Failed to send error back to migration manager: %s", err.Error())
 		return
