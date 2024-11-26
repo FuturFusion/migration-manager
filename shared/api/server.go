@@ -1,5 +1,8 @@
 package api
 
+const APIVersion string = "1.0"
+const APIStatus string = "devel"
+
 // ServerPut represents the modifiable fields of a server configuration
 //
 // swagger:model

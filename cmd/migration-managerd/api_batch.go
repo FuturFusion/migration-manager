@@ -14,7 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
-	"github.com/FuturFusion/migration-manager/internal/version"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 var batchesCmd = APIEndpoint{
@@ -157,7 +157,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed to assign instances to batch %q: %w", b.GetName(), err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/batches/" + b.GetName())
+	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/batches/" + b.GetName())
 }
 
 // swagger:operation DELETE /1.0/batches/{name} batches batch_delete
@@ -341,7 +341,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed to update instances for batch %q: %w", b.GetName(), err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/batches/" + b.GetName())
+	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/batches/" + b.GetName())
 }
 
 // swagger:operation GET /1.0/batches/{name}/instances batches batches_instances_get

@@ -14,7 +14,6 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/source"
-	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -174,7 +173,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 	// Trigger a scan of this new source for instances.
 	_ = d.syncInstancesFromSources()
 
-	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/sources/" + s.GetName())
+	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/sources/" + s.GetName())
 }
 
 // swagger:operation DELETE /1.0/sources/{name} sources source_delete
@@ -362,5 +361,5 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", s.GetName(), err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/sources/" + s.GetName())
+	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/sources/" + s.GetName())
 }

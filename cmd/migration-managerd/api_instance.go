@@ -14,7 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
-	"github.com/FuturFusion/migration-manager/internal/version"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 var instancesCmd = APIEndpoint{
@@ -222,5 +222,5 @@ func instancePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed updating instance '%s': %w", i.GetUUID(), err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + version.APIVersion + "/instances/" + i.GetUUID().String())
+	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/instances/" + i.GetUUID().String())
 }

@@ -4,7 +4,6 @@ import (
 	"net/http"
 
 	"github.com/FuturFusion/migration-manager/internal/server/response"
-	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -69,8 +68,8 @@ var api10 = []APIEndpoint{
 //      $ref: "#/responses/InternalServerError"
 func api10Get(d *Daemon, r *http.Request) response.Response {
 	srv := api.ServerUntrusted{
-		APIStatus:   "devel",
-		APIVersion:  version.APIVersion,
+		APIStatus:   api.APIStatus,
+		APIVersion:  api.APIVersion,
 		Auth:        "untrusted",
 		AuthMethods: []string{},
 	}
