@@ -863,6 +863,9 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		// Remove the migration ISO image.
 		delete(apiDef.Devices, "migration-iso")
 
+		// Temp work around for #1425.
+		delete(apiDef.Config, "volatile.cpu.nodes")
+
 		// Don't set any profiles by default.
 		apiDef.Profiles = []string{}
 
