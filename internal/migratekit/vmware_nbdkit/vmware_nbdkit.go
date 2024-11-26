@@ -133,7 +133,7 @@ func (s *NbdkitServers) Start(ctx context.Context) error {
 
 		err := s.Stop(ctx)
 		if err != nil {
-			log.WithError(err).Fatal("Failed to stop nbdkit servers")
+			log.WithError(err).Error("Failed to stop nbdkit servers")
 		}
 
 		os.Exit(1)
@@ -189,7 +189,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	defer func() {
 		err := s.Stop(ctx)
 		if err != nil {
-			log.WithError(err).Fatal("Failed to stop nbdkit servers")
+			log.WithError(err).Error("Failed to stop nbdkit servers")
 		}
 	}()
 
@@ -352,7 +352,7 @@ func (s *NbdkitServer) SyncToTarget(ctx context.Context, t target.Target, runV2V
 
 		err := t.Disconnect(ctx)
 		if err != nil {
-			log.WithError(err).Fatal("Failed to disconnect from target")
+			log.WithError(err).Error("Failed to disconnect from target")
 		}
 
 		os.Exit(1)
