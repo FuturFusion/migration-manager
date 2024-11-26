@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/lxc/incus/v6/shared/api"
 )
 
 // EtagHash hashes the provided data and returns the sha256.

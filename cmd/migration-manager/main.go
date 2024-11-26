@@ -12,12 +12,12 @@ import (
 	"os/user"
 	"path"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/ask"
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/version"
-	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type cmdGlobal struct {

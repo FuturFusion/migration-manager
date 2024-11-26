@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/lxc/incus/v6/shared/api"
 )
 
 var httpResponseErrors = map[int][]error{

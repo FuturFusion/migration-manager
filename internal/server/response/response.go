@@ -8,8 +8,9 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/lxc/incus/v6/shared/api"
+
 	"github.com/FuturFusion/migration-manager/internal/server/util"
-	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Response represents an API response.

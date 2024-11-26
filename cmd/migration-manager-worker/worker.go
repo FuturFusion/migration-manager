@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/logger"
 	"golang.org/x/sys/unix"
 
@@ -252,7 +253,7 @@ func (w *Worker) sendErrorResponse(err error) {
 	}
 }
 
-func (w *Worker) doHttpRequest(path string, method string, content []byte) (*api.ResponseRaw, error) {
+func (w *Worker) doHttpRequest(path string, method string, content []byte) (*incusAPI.ResponseRaw, error) {
 	w.endpoint.Path = path
 	req, err := http.NewRequest(method, w.endpoint.String(), bytes.NewBuffer(content))
 	if err != nil {
@@ -273,7 +274,7 @@ func (w *Worker) doHttpRequest(path string, method string, content []byte) (*api
 		return nil, err
 	}
 
-	var jsonResp api.ResponseRaw
+	var jsonResp incusAPI.ResponseRaw
 	err = json.Unmarshal(bodyBytes, &jsonResp)
 	if err != nil {
 		return nil, err
