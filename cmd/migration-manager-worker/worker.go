@@ -138,23 +138,17 @@ func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
 	}
 
 	// Do the actual import.
-	err = w.source.ImportDisks(w.shutdownCtx, cmd.Name, func(disk string, percentage float64) {
-		// Don't send updates more than once every 30 seconds.
+	return w.source.ImportDisks(w.shutdownCtx, cmd.Name, func(status string) {
+		logger.Info(status)
+
+		// Don't send updates back to the server more than once every 30 seconds.
 		if time.Since(w.lastUpdate).Seconds() < 30 {
 			return
 		}
 
 		w.lastUpdate = time.Now().UTC()
-
-		status := fmt.Sprintf("Importing disk '%s': %02.2f%% complete", disk, percentage)
-		logger.Info(status)
 		w.sendStatusResponse(api.WORKERRESPONSE_RUNNING, status)
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (w *Worker) finalizeImport(cmd api.WorkerCommand) {

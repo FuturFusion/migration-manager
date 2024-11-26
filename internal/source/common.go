@@ -72,6 +72,6 @@ func (s *InternalCommonSource) DeleteVMSnapshot(ctx context.Context, vmName stri
 	return fmt.Errorf("Not implemented by CommonSource")
 }
 
-func (s *InternalCommonSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string, float64)) error {
+func (s *InternalCommonSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string)) error {
 	return fmt.Errorf("Not implemented by CommonSource")
 }

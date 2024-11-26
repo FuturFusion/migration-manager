@@ -2,6 +2,7 @@ package nbdcopy
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
@@ -12,7 +13,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migratekit/progress"
 )
 
-func Run(source, destination string, size int64, targetIsClean bool, diskName string, statusCallback func(string, float64)) error {
+func Run(source, destination string, size int64, targetIsClean bool, diskName string, statusCallback func(string)) error {
 	logger := log.WithFields(log.Fields{
 		"source":      source,
 		"destination": destination,
@@ -63,7 +64,7 @@ func Run(source, destination string, size int64, targetIsClean bool, diskName st
 			}
 
 			bar.Set64(progress * size / 100)
-			statusCallback(diskName, float64(progress))
+			statusCallback(fmt.Sprintf("Importing disk '%s': %02.2f%% complete", diskName, float64(progress)))
 		}
 
 		if err := scanner.Err(); err != nil {
