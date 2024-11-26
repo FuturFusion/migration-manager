@@ -34,8 +34,8 @@ var sourceCmd = APIEndpoint{
 }
 
 type sourcesResult struct {
-	Type   int           `json:"type" yaml:"type"`
-	Source source.Source `json:"source" yaml:"source"`
+	Type   api.SourceType `json:"type" yaml:"type"`
+	Source source.Source  `json:"source" yaml:"source"`
 }
 
 // swagger:operation GET /1.0/sources sources sources_get
@@ -148,7 +148,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Setup the correct source type for unmarshaling.
-	switch sourceType {
+	switch api.SourceType(sourceType) {
 	case api.SOURCETYPE_COMMON:
 		s = &source.InternalCommonSource{}
 	case api.SOURCETYPE_VMWARE:

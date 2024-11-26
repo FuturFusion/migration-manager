@@ -7,7 +7,7 @@ import (
 
 type BatchStatusType int
 const (
-	BATCHSTATUS_UNKNOWN = iota
+	BATCHSTATUS_UNKNOWN BatchStatusType = iota
 	BATCHSTATUS_DEFINED
 	BATCHSTATUS_READY
 	BATCHSTATUS_QUEUED

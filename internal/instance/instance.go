@@ -16,12 +16,11 @@ type InternalInstance struct {
 
 // Returns a new Instance ready for use.
 func NewInstance(UUID uuid.UUID, sourceID int, targetID int, batchID int, name string, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInMiB int, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
-	var migrationStatus api.MigrationStatusType = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
 	return &InternalInstance{
 		Instance: api.Instance{
 			UUID: UUID,
-			MigrationStatus: migrationStatus,
-			MigrationStatusString: migrationStatus.String(),
+			MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+			MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 			LastUpdateFromSource: time.Now().UTC(),
 			// Initialize LastManualUpdate to its zero value
 			SourceID: sourceID,

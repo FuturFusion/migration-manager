@@ -101,8 +101,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 		}
 
 		q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
-		var status api.MigrationStatusType = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
-		_, err = tx.Exec(q, internal.INVALID_DATABASE_ID, status, status.String(), instance.GetUUID())
+		_, err = tx.Exec(q, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), instance.GetUUID())
 		if err != nil {
 			return err
 		}
@@ -272,8 +271,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 		if !b.InstanceMatchesCriteria(i) {
 			if i.CanBeModified() {
 				q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
-				var status api.MigrationStatusType = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
-				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, status, status.String(), i.GetUUID())
+				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), i.GetUUID())
 				if err != nil {
 					return err
 				}
@@ -292,8 +290,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 		if b.InstanceMatchesCriteria(i) {
 			if i.CanBeModified() {
 				q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
-				var status api.MigrationStatusType = api.MIGRATIONSTATUS_ASSIGNED_BATCH
-				_, err := tx.Exec(q, batchID, status, status.String(), i.GetUUID())
+				_, err := tx.Exec(q, batchID, api.MIGRATIONSTATUS_ASSIGNED_BATCH, api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(), i.GetUUID())
 				if err != nil {
 					return err
 				}
@@ -322,8 +319,7 @@ func (n *Node) StartBatch(tx *sql.Tx, name string) error {
 	}
 
 	// Move batch status to "ready".
-	var status api.BatchStatusType = api.BATCHSTATUS_READY
-	return n.UpdateBatchStatus(tx, internalBatch.DatabaseID, status, status.String())
+	return n.UpdateBatchStatus(tx, internalBatch.DatabaseID, api.BATCHSTATUS_READY, api.BATCHSTATUS_READY.String())
 }
 
 func (n *Node) StopBatch(tx *sql.Tx, name string) error {
@@ -344,8 +340,7 @@ func (n *Node) StopBatch(tx *sql.Tx, name string) error {
 	}
 
 	// Move batch status to "stopped".
-	var status api.BatchStatusType = api.BATCHSTATUS_STOPPED
-	return n.UpdateBatchStatus(tx, internalBatch.DatabaseID, status, status.String())
+	return n.UpdateBatchStatus(tx, internalBatch.DatabaseID, api.BATCHSTATUS_STOPPED, api.BATCHSTATUS_STOPPED.String())
 }
 
 func (n *Node) GetAllBatchesByState(tx *sql.Tx, status api.BatchStatusType) ([]batch.Batch, error) {

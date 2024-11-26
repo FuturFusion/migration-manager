@@ -209,12 +209,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			}
 		}
 
-		var migrationStatus api.MigrationStatusType = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
 		ret = append(ret, instance.InternalInstance{
 			Instance: api.Instance{
 				UUID: UUID,
-				MigrationStatus: migrationStatus,
-				MigrationStatusString: migrationStatus.String(),
+				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource: time.Now().UTC(),
 				// Initialize LastManualUpdate to its zero value
 				SourceID: s.DatabaseID,

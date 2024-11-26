@@ -241,7 +241,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		cmd.Source = s
 
 		i.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
-		i.MigrationStatusString = i.MigrationStatus.String()
+		i.MigrationStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
 	}
 
 	// Update instance in the database.
@@ -335,10 +335,10 @@ func queuePut(d *Daemon, r *http.Request) response.Response {
 		case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
 			i.NeedsDiskImport = false
 			i.MigrationStatus = api.MIGRATIONSTATUS_IDLE
-			i.MigrationStatusString = i.MigrationStatus.String()
+			i.MigrationStatusString = api.MIGRATIONSTATUS_IDLE.String()
 		case api.MIGRATIONSTATUS_FINAL_IMPORT:
 			i.MigrationStatus = api.MIGRATIONSTATUS_IMPORT_COMPLETE
-			i.MigrationStatusString = i.MigrationStatus.String()
+			i.MigrationStatusString = api.MIGRATIONSTATUS_IMPORT_COMPLETE.String()
 		}
 	case api.WORKERRESPONSE_FAILED:
 		i.MigrationStatus = api.MIGRATIONSTATUS_ERROR

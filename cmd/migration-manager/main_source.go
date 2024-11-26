@@ -161,7 +161,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		_, err = c.global.DoHttpRequest("/1.0/sources", http.MethodPost, "type=" + strconv.Itoa(api.SOURCETYPE_VMWARE), content)
+		_, err = c.global.DoHttpRequest("/1.0/sources", http.MethodPost, "type=" + strconv.Itoa(int(api.SOURCETYPE_VMWARE)), content)
 		if err != nil {
 			return err
 		}
@@ -238,7 +238,7 @@ func parseReturnedSource(source any) (any, error) {
 		return nil, err
 	}
 
-	switch rawSource["type"].(float64) {
+	switch api.SourceType(rawSource["type"].(float64)) {
 	case api.SOURCETYPE_COMMON:
 		var source api.CommonSource
 		err = json.Unmarshal(reJsonified, &source)

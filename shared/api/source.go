@@ -6,7 +6,7 @@ import (
 
 type SourceType int
 const (
-	SOURCETYPE_UNKNOWN = iota
+	SOURCETYPE_UNKNOWN SourceType = iota
 	SOURCETYPE_COMMON
 	SOURCETYPE_VMWARE
 )

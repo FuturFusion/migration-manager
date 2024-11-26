@@ -91,11 +91,10 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Add the batch.
-	var status api.BatchStatusType = api.BATCHSTATUS_DEFINED
 	b := api.Batch{
 		Name: args[0],
-		Status: status,
-		StatusString: status.String(),
+		Status: api.BATCHSTATUS_DEFINED,
+		StatusString: api.BATCHSTATUS_DEFINED.String(),
 	}
 
 	b.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: ", "", func(s string) error { return nil })
