@@ -10,10 +10,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/logger"
+	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
-	"github.com/vmware/govmomi/session/cache"
-	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
@@ -34,9 +33,8 @@ type InternalVMwareSource struct {
 type InternalVMwareSourceSpecific struct {
 	api.VMwareSourceSpecific `yaml:",inline"`
 
-	vimClient  *vim25.Client
-	vimSession *cache.Session
-	vddkConfig *vmware_nbdkit.VddkConfig
+	govmomiClient *govmomi.Client
+	vddkConfig    *vmware_nbdkit.VddkConfig
 }
 
 // Returns a new VMwareSource ready for use.
@@ -72,13 +70,7 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 	endpointURL.User = url.UserPassword(s.Username, s.Password)
 
-	s.vimSession = &cache.Session{
-		URL:      endpointURL,
-		Insecure: s.Insecure,
-	}
-
-	s.vimClient = new(vim25.Client)
-	err = s.vimSession.Login(ctx, s.vimClient, nil)
+	s.govmomiClient, err = soapWithKeepalive(ctx, endpointURL, s.Insecure)
 	if err != nil {
 		return err
 	}
@@ -104,13 +96,12 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 		return fmt.Errorf("Not connected to endpoint '%s'", s.Endpoint)
 	}
 
-	err := s.vimSession.Logout(ctx, s.vimClient)
+	err := s.govmomiClient.Logout(ctx)
 	if err != nil {
 		return err
 	}
 
-	s.vimClient = nil
-	s.vimSession = nil
+	s.govmomiClient = nil
 	s.vddkConfig = nil
 	s.isConnected = false
 	return nil
@@ -119,7 +110,7 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
 	ret := []instance.InternalInstance{}
 
-	finder := find.NewFinder(s.vimClient)
+	finder := find.NewFinder(s.govmomiClient.Client)
 	vms, err := finder.VirtualMachineList(ctx, "/...")
 	if err != nil {
 		return nil, err
@@ -241,7 +232,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
 	ret := []api.Network{}
 
-	finder := find.NewFinder(s.vimClient)
+	finder := find.NewFinder(s.govmomiClient.Client)
 	networks, err := finder.NetworkList(ctx, "/...")
 	if err != nil {
 		return nil, err
@@ -294,7 +285,7 @@ func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, s
 }
 
 func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*object.VirtualMachine, error) {
-	finder := find.NewFinder(s.vimClient)
+	finder := find.NewFinder(s.govmomiClient.Client)
 	return finder.VirtualMachine(ctx, vmName)
 }
 
