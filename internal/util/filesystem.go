@@ -1,3 +1,8 @@
+// REVIEW: util as a package name is generally discurraged in Go, since it
+// does not tell anything.
+// see: https://go.dev/wiki/CodeReviewComments#package-names
+// Maybe split the two things (filesystem and table) into their own packages
+// with meaningful names.
 package util
 
 import (

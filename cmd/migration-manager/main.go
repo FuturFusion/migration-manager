@@ -105,6 +105,7 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 	if os.Getenv("MIGRATION_MANAGER_CONF") != "" {
 		configDir = os.Getenv("MIGRATION_MANAGER_CONF")
 	} else if os.Getenv("HOME") != "" && util.PathExists(os.Getenv("HOME")) {
+		// REVIEW: maybe use https://pkg.go.dev/os#UserConfigDir instead?
 		configDir = path.Join(os.Getenv("HOME"), ".config", "migration-manager")
 	} else {
 		user, err := user.Current()

@@ -8,8 +8,12 @@ import (
 )
 
 type Config struct {
+	// REVIEW: having the config dir as part of the config yaml is surprising to me. Isn't this kind of circular?
 	ConfigDir string `yaml:"configDir"`
 
+	// REVIEW: I would prefer a speaking name instead of the abbreviation `mm`. Maybe a structure like this:
+	// MigrationManager:
+	//   Server: "localhost:1234"
 	MMServer string `yaml:"mmServer"`
 }
 

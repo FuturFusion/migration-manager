@@ -81,7 +81,6 @@ func (c *cmdTargetAdd) Command() *cobra.Command {
 }
 
 func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
-
 	// Quick checks.
 	exit, err := c.global.CheckArgs(cmd, args, 2, 2)
 	if exit {
@@ -143,18 +142,16 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	content, err := json.Marshal(t)
-	if err != nil {
-		return err
-	}
-
+	// REVIEW: Me personally, I would prefix this comment with TODO: like this
+	//     // TODO: Verify we can connect to the target, and if using OIDC grab the tokens.
+	// I have configured my VS code to highlight such comments and I have an extension,
+	// which presents me all such comments for simplified navigation.
 	// Verify we can connect to the target, and if using OIDC grab the tokens.
 	ctx := context.TODO()
 
-	internalTarget := target.InternalIncusTarget{}
-	err = json.Unmarshal(content, &internalTarget)
-	if err != nil {
-		return err
+	// REVIEW: why not just like this instead of the JSON marshal / unmarshal dance?
+	internalTarget := target.InternalIncusTarget{
+		IncusTarget: t,
 	}
 
 	if !c.flagNoTestConnection {
@@ -165,7 +162,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Insert into database.
-	content, err = json.Marshal(internalTarget)
+	content, err := json.Marshal(internalTarget)
 	if err != nil {
 		return err
 	}
@@ -175,6 +172,10 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// REVIEW: I wonder, if we will use a logging package in the future.
+	// Additionally I wonder, if this output should go to os.Stderr, such that
+	// os.Stdout is available, if someone would like to automate stuff and uses
+	// migration-manager to query and get e.g. JSON in return.
 	fmt.Printf("Successfully added new target '%s'.\n", t.Name)
 	return nil
 }
@@ -216,6 +217,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	targets := []api.IncusTarget{}
 
 	// Loop through returned targets.
+	// REVIEW: what if the type assertion on `[]any` fails?
 	for _, anyTarget := range resp.Metadata.([]any) {
 		newTarget, err := parseReturnedTarget(anyTarget)
 		if err != nil {
@@ -239,13 +241,21 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	return util.RenderTable(c.flagFormat, header, data, targets)
 }
 
+// REVIEW: Not super happy about this approach, but I guess if we rely on
+// api.ResponseRaw from incus, there is not much we can do about this.
+// It would be nice, if Metadata on the api.ResponseRaw would be json.RawMessage
+// instead of any, which would allow for a proper 2 stage unmarshal.
+// REVIEW: one possible improvment would be to accept a pointer to the target,
+// such that on the caller side no additional type assertion is necessary.
+// Looking at this again, why return `any`, if the function always returns
+// `api.IncusTarget`?
 func parseReturnedTarget(t any) (any, error) {
 	reJsonified, err := json.Marshal(t)
 	if err != nil {
 		return nil, err
 	}
 
-	var ret = api.IncusTarget{}
+	ret := api.IncusTarget{}
 	err = json.Unmarshal(reJsonified, &ret)
 	if err != nil {
 		return nil, err
