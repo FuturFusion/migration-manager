@@ -171,12 +171,15 @@ func (c *cmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 	return false, nil
 }
 
-func (c *cmdGlobal) DoHttpRequest(endpoint string, method string, query string, content []byte) (*api.ResponseRaw, error) {
+func (c *cmdGlobal) doHttpRequestV1(endpoint string, method string, query string, content []byte) (*api.ResponseRaw, error) {
 	u, err := url.Parse(c.config.MMServer)
 	if err != nil {
 		return nil, err
 	}
-	u.Path = endpoint
+	u.Path, err = url.JoinPath("/1.0/", endpoint)
+	if err != nil {
+		return nil, err
+	}
 	u.RawQuery = query
 
 	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))

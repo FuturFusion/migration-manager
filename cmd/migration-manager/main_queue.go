@@ -66,7 +66,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the current migration queue.
-	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/queue", http.MethodGet, "", nil)
+	resp, err := c.global.doHttpRequestV1("/queue", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
