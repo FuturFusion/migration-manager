@@ -85,7 +85,6 @@ func (c *cmdSourceAdd) Command() *cobra.Command {
 }
 
 func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
-
 	// Quick checks.
 	exit, err := c.global.CheckArgs(cmd, args, 2, 3)
 	if exit {
@@ -97,6 +96,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 	sourceEndpoint := ""
 
 	// Set variables.
+	// REVIEW: I would prefer to not have this condition by making the source type a flag.
 	if len(args) == 3 {
 		if !slices.Contains(supportedTypes, strings.ToLower(args[0])) {
 			return fmt.Errorf("Unsupported source type '%s'; must be one of %q", args[0], supportedTypes)
@@ -117,6 +117,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		// REVIEW: Should there be a "non-printing" AskPassword for such cases?
 		sourcePassword, err := c.global.asker.AskString("Please enter password for endpoint '"+sourceEndpoint+"': ", "", nil)
 		if err != nil {
 			return err
@@ -214,6 +215,8 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		// REVIEW: Error handling is missing, if the source is not a VMWare source.
+		// REVIEW: parseReturnedSource might also return `source api.CommonSource`
 		switch s := newSource.(type) {
 		case api.VMwareSource:
 			vmwareSources = append(vmwareSources, s)
@@ -221,6 +224,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
+	// REVIEW: should we really print the password here as well? Should this maybe be guarded with an additional flag?
 	header := []string{"Name", "Type", "Endpoint", "Username", "Password", "Insecure"}
 	data := [][]string{}
 
@@ -362,10 +366,8 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		isInsecure := "no"
-		if specificSource.Insecure {
-			isInsecure = "yes"
-		}
+		// REVIEW: I don't know, if you like this.
+		isInsecure := iif(specificSource.Insecure, "yes", "no")
 		specificSource.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err
@@ -409,4 +411,13 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Successfully updated source '%s'.\n", newSourceName)
 	return nil
+}
+
+// iif (inline if or ternary) operator returns the truthy value if the conditon
+// is met and thd the falsy value otherwise.
+func iif[T any](condition bool, truthy T, falsy T) T {
+	if condition {
+		return truthy
+	}
+	return falsy
 }

@@ -83,7 +83,6 @@ func (c *cmdBatchAdd) Command() *cobra.Command {
 }
 
 func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
-
 	// Quick checks.
 	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
 	if exit {
@@ -97,12 +96,18 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		StatusString: api.BATCHSTATUS_DEFINED.String(),
 	}
 
-	b.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: ", "", func(s string) error { return nil })
+	b.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: ", "", func(s string) error {
+		// REVIEW: the regex should be at least compiled to make sure, it is synactically correct.
+		return nil
+	})
 	if err != nil {
 		return err
 	}
 
-	b.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: ", "", func(s string) error { return nil })
+	b.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: ", "", func(s string) error {
+		// REVIEW: the regex should be at least compiled to make sure, it is synactically correct.
+		return nil
+	})
 	if err != nil {
 		return err
 	}
@@ -134,7 +139,9 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	if windowEnd != "" {
 		b.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
 	}
+	// REVIEW: should we check, if b.MigrationWindowEnd is after b.MigrationWindowStart?
 
+	// REVIEW: what kind of input is expected here? Should an example be given? Is there any validation we can do?
 	b.DefaultNetwork, err = c.global.asker.AskString("Default network for instances: ", "", func(s string) error { return nil })
 	if err != nil {
 		return err
@@ -225,7 +232,7 @@ func parseReturnedBatch(b any) (any, error) {
 		return nil, err
 	}
 
-	var ret = api.Batch{}
+	ret := api.Batch{}
 	err = json.Unmarshal(reJsonified, &ret)
 	if err != nil {
 		return nil, err
@@ -327,6 +334,9 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 		instances = append(instances, newInstance.(api.Instance))
 	}
 
+	// REVIEW: I wonder, if the code would become easier to read / maintain,
+	// if we would use text/template instead. This could also pave the way towards
+	// similar functionality as available with e.g. kubectl
 	// Show the details
 	fmt.Printf("Batch: %s\n", b.Name)
 	fmt.Printf("  - Status:        %s\n", b.StatusString)
@@ -477,16 +487,23 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		bb.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: ["+bb.IncludeRegex+"] ", bb.IncludeRegex, func(s string) error { return nil })
+		bb.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: ["+bb.IncludeRegex+"] ", bb.IncludeRegex, func(s string) error {
+			// REVIEW: Validation, see my comment in create.
+			return nil
+		})
 		if err != nil {
 			return err
 		}
 
-		bb.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: ["+bb.ExcludeRegex+"] ", bb.ExcludeRegex, func(s string) error { return nil })
+		bb.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: ["+bb.ExcludeRegex+"] ", bb.ExcludeRegex, func(s string) error {
+			// REVIEW: Validation, see my comment in create.
+			return nil
+		})
 		if err != nil {
 			return err
 		}
 
+		// REVIEW: could use `iif` here as well.
 		windowStartValue := ""
 		if !bb.MigrationWindowStart.IsZero() {
 			windowStartValue = bb.MigrationWindowStart.Format(time.DateTime)
@@ -522,6 +539,9 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		if windowEnd != "" {
 			bb.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
 		}
+		// REVIEW: Same validation is required as in create. I wonder if we can move the validation to the model in the api, such that the mode can
+		// return if it self is valid or not. With this we could share the logic here and in create.
+		// Alternatively, the validation logic could be moved to a small function in this package.
 
 		bb.DefaultNetwork, err = c.global.asker.AskString("Default network for instances: ["+bb.DefaultNetwork+"] ", bb.DefaultNetwork, func(s string) error { return nil })
 		if err != nil {

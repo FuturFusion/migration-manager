@@ -24,6 +24,9 @@ func (c *cmdWorker) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "migration-manager-worker"
 	cmd.Short = "The migration manager worker"
+	// REVIEW: if I understand the workflow correctly, the `migration-manager-worker`
+	// is executed within every target machine, we migrate to. So I expect this
+	// also to include Windows machines. Correct?
 	cmd.Long = `Description:
   The migration manager worker
 
@@ -39,14 +42,18 @@ func (c *cmdWorker) Command() *cobra.Command {
 }
 
 func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
+	// REVIEW: why is `args[0] != ""` part of the condition below?
+	// REVIEW: wouldn't this condition be enough: !(len(args) == 1 && args[0] == "migration-manager-worker")
 	if len(args) > 1 || (len(args) == 1 && args[0] != "migration-manager-worker" && args[0] != "") {
 		return fmt.Errorf("unknown command \"%s\" for \"%s\"", args[0], cmd.CommandPath())
 	}
 
+	// REVIEW: on Windows, this returns -1
 	if os.Geteuid() != 0 {
 		return fmt.Errorf("This tool must be run as root\n")
 	}
 
+	// REVIEW: does this check also work in Windows?
 	if !util.PathExists("/dev/virtio-ports/org.linuxcontainers.incus") {
 		return fmt.Errorf("This tool is designed to be run within an Incus VM\n")
 	}
@@ -56,6 +63,11 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// REVIEW: We can not use these signals on Windows, since those are not available on Windows.
+	// REVIEW: From the doc of signal.Notify:
+	// > Package signal will not block sending to c: the caller must ensure that c has sufficient buffer space to keep up with the expected signal rate. For a channel used for notification of just one signal value, a buffer of size 1 is sufficient.
+	// Therefore we need to make the signal channel at least of size 4.
+	// REVIEW: Maybe it would be simpler to use: signal.NotifyContext(parent context.Context, signals ...os.Signal)
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, unix.SIGPWR)
 	signal.Notify(sigCh, unix.SIGINT)
@@ -78,12 +90,18 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 				logger.Warn("Ignoring signal, shutdown already in progress", logger.Ctx{"signal": sig})
 			} else {
 				go func() {
+					// REVIEW: based on the comment for `shutdownDoneCh`, I would send
+					// to this channel also in `w.Stop` and not pass this responsability
+					// to the caller, where it can be easily forgotten and the promise
+					// stated in the comment becomes invalid.
 					w.shutdownDoneCh <- w.Stop(context.Background(), sig)
 				}()
 			}
 
 		case err = <-w.shutdownDoneCh:
 			return err
+
+			// REVIEW: should we wait for cmd.Context().Done() as well?
 		}
 	}
 }

@@ -20,14 +20,16 @@ type cmdTarget struct {
 }
 
 func (c *cmdTarget) Command() *cobra.Command {
-	cmd := &cobra.Command{}
-	cmd.Use = "target"
-	cmd.Short = "Interact with migration targets"
-	cmd.Long = `Description:
+	// REVIEW: Is there a special reason, why the struct is not initialized directly like this:
+	cmd := &cobra.Command{
+		Use:   "target",
+		Short: "Interact with migration targets",
+		Long: `Description:
   Interact with migration targets
 
   Configure migration targets for use by the migration manager.
-`
+`,
+	}
 
 	// Add
 	targetAddCmd := cmdTargetAdd{global: c.global}
@@ -75,6 +77,8 @@ func (c *cmdTargetAdd) Command() *cobra.Command {
 
 	cmd.RunE = c.Run
 	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the target")
+	// REVIEW: I suggest to name the flag `skip-connection-test`. The advantage I see is, that the condtion, where this is used
+	// is not a double negation but just `if !flagSkipConnectionTest {`
 	cmd.Flags().BoolVar(&c.flagNoTestConnection, "no-test-connection", false, "Don't test connection to the new target")
 
 	return cmd
@@ -86,6 +90,9 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 	if exit {
 		return err
 	}
+
+	// REVIEW: do we have to check, that the arguments provided are not the empty string (`""`)?
+	// E.g. for the `name`, I would exect this to fail, since we require a non-empty name.
 
 	// Add the target.
 	t := api.IncusTarget{
@@ -342,6 +349,9 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	// Prompt for updates.
 	origTargetName := ""
 	newTargetName := ""
+	// REVIEW: Can a target ever be something else than api.IncusTarget?
+	// REVIEW: The error case is missing here, if the target is not api.IncusTarget
+	// no update to the resource is made and just the old state is persisted again.
 	switch incusTarget := t.(type) {
 	case api.IncusTarget:
 		origTargetName = incusTarget.Name
@@ -379,6 +389,8 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 				}
 				contents, err := os.ReadFile(tlsCertPath)
 				if err != nil {
+					// REVIEW: at some point we might want to offer the user the possibility to provide a different file name, if we fail to read the file,
+					// instead of just returning an error and forcing the user to enter all the settings again.
 					return err
 				}
 				incusTarget.TLSClientCert = string(contents)
@@ -434,8 +446,10 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
+	// REVIEW: At some point we might want to use cmd.Context()
 	ctx := context.TODO()
 
+	// REVIEW: see my comment above
 	internalTarget := target.InternalIncusTarget{}
 	err = json.Unmarshal(content, &internalTarget)
 	if err != nil {

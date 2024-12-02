@@ -60,6 +60,7 @@ func NewVMwareSource(name string, endpoint string, username string, password str
 
 func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 	if s.isConnected {
+		// REVIEW: is this really an error? or should we just return nil and move a long?
 		return fmt.Errorf("Already connected to endpoint '%s'", s.Endpoint)
 	}
 
@@ -93,6 +94,7 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 	if !s.isConnected {
+		// REVIEW: is this really an error? or should we just return nil and move a long?
 		return fmt.Errorf("Not connected to endpoint '%s'", s.Endpoint)
 	}
 
@@ -108,6 +110,7 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 }
 
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
+	// REVIEW: this could be initialized to len(vms)
 	ret := []instance.InternalInstance{}
 
 	finder := find.NewFinder(s.govmomiClient.Client)
@@ -132,6 +135,10 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 		if vmProps.Config.ExtraConfig != nil {
 			for _, v := range vmProps.Config.ExtraConfig {
 				if v.GetOptionValue().Key == "guestInfo.detailed.data" {
+					// REVIEW: regex stays the same for every iteration, no need to compile
+					// it over and over again. I would move the regex to a private, package
+					// global variable, which is basically used as a const, but in Go
+					// there are no const for non basic types.
 					re := regexp.MustCompile(`architecture='(.+)' bitness='(\d+)'`)
 					matches := re.FindStringSubmatch(v.GetOptionValue().Value.(string))
 					if matches != nil {
@@ -158,12 +165,15 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			}
 		} else {
 			logger.Debugf("Unable to determine architecture for %s (%s) from source %s; defaulting to x86_64", vmProps.Summary.Config.Name, UUID.String(), s.Name)
-
 		}
 
 		useLegacyBios := false
 		secureBootEnabled := false
 		tpmPresent := false
+
+		// REVIEW: Some of the attributes of vmProps are defined as pointer and
+		// therefore might be null. Do we need to check?
+		// Examples: vmProps.Capability.SecureBootSupported, vmProps.Config
 
 		// Detect if secure boot is enabled.
 		if *vmProps.Capability.SecureBootSupported {
@@ -176,6 +186,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			useLegacyBios = true
 			secureBootEnabled = false
 		}
+		// REVIEW: This kind of feels redundant to the SecureBootSupported check above.
 		if !*vmProps.Capability.SecureBootSupported {
 			secureBootEnabled = false
 		}
@@ -187,9 +198,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			switch md := device.(type) {
 			case *types.VirtualDisk:
 				b, ok := md.Backing.(types.BaseVirtualDeviceFileBackingInfo)
-				if ok {
-					disks = append(disks, api.InstanceDiskInfo{Name: b.GetVirtualDeviceFileBackingInfo().FileName, DifferentialSyncSupported: *vmProps.Config.ChangeTrackingEnabled, SizeInBytes: md.CapacityInBytes})
+				// REVIEW: I would put the happy path on the left:
+				if !ok {
+					continue
 				}
+				disks = append(disks, api.InstanceDiskInfo{Name: b.GetVirtualDeviceFileBackingInfo().FileName, DifferentialSyncSupported: *vmProps.Config.ChangeTrackingEnabled, SizeInBytes: md.CapacityInBytes})
 			case types.BaseVirtualEthernetCard:
 				networkName := ""
 				backing, ok := md.GetVirtualEthernetCard().VirtualDevice.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
@@ -252,12 +265,21 @@ func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName stri
 	}
 
 	snapshotRef, _ := vm.FindSnapshot(ctx, snapshotName)
-	if snapshotRef != nil {
-		consolidate := true
-		_, err := vm.RemoveSnapshot(ctx, snapshotRef.Value, false, &consolidate)
-		if err != nil {
-			return err
-		}
+	// REVIEW: early return?
+	if snapshotRef == nil {
+		return nil
+	}
+
+	// REVIEW: we often added a small helper for this in a package called ptr:
+	// func To[T any](v T) *T {
+	// 	return &v
+	// }
+	// then this call can become:
+	// _, err = vm.RemoveSnapshot(ctx, snapshotRef.Value, false, ptr.To(true))
+	consolidate := true
+	_, err = vm.RemoveSnapshot(ctx, snapshotRef.Value, false, &consolidate)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -272,6 +294,9 @@ func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, s
 	NbdkitServers := vmware_nbdkit.NewNbdkitServers(s.vddkConfig, vm, statusCallback)
 
 	// Occasionally connecting to VMware via nbdkit is flaky, so retry a couple of times before returning an error.
+	// REVIEW: maybe move the retry logic to its own package, since this is something, that might be needed in multiple
+	// places. If we use a middleware for this, we can test the logic without it being
+	// polluted with logic, that is not actually relevant to the task at hand.
 	for i := 0; i < 5; i++ {
 		err = NbdkitServers.MigrationCycle(ctx, false)
 		if err == nil {

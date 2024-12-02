@@ -72,7 +72,6 @@ func (c *cmdNetworkAdd) Command() *cobra.Command {
 }
 
 func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
-
 	// Quick checks.
 	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
 	if exit {
@@ -84,6 +83,8 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 		Name: args[0],
 	}
 
+	// REVIEW: this is absolutely not user friendly. We should ask the user for a file
+	// containing the JSON or accept this with a flag.
 	_, err = c.global.asker.AskString("Enter a JSON string with any network-specific configuration: ", "", func(s string) error {
 		if s != "" {
 			return json.Unmarshal([]byte(s), &n.Config)
@@ -175,7 +176,7 @@ func parseReturnedNetwork(n any) (any, error) {
 		return nil, err
 	}
 
-	var ret = api.Network{}
+	ret := api.Network{}
 	err = json.Unmarshal(reJsonified, &ret)
 	if err != nil {
 		return nil, err

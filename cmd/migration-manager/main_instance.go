@@ -91,6 +91,10 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get nice names for the batches.
+	// REVIEW: small optimization would be possible, if `batchesMap` would be initialized
+	// to the correct size. The size is known after converting `resp.Metadata` to `[]any`.
+	// It would be len of said slice +1 (for INVALID_DATABASE_ID).
+	// See also the cases below.
 	batchesMap := make(map[int]string)
 	batchesMap[internal.INVALID_DATABASE_ID] = ""
 	resp, err = c.global.doHttpRequestV1("/batches", http.MethodGet, "", nil)
@@ -124,6 +128,8 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get nice names for the targets.
+	// REVIEW: The same pattern keeps popping up (get a list of items over HTTP, convert it into a slice of statically type items)
+	// I think, this can be solved with a generic function.
 	targetsMap := make(map[int]string)
 	resp, err = c.global.doHttpRequestV1("/targets", http.MethodGet, "", nil)
 	if err != nil {
@@ -148,6 +154,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	for _, i := range instances {
 		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), strconv.Itoa(i.MemoryInMiB)}
 		if c.flagVerbose {
+			// REVIEW: might be easier to read with `iif`
 			lastUpdate := "Never"
 			if !i.LastManualUpdate.IsZero() {
 				lastUpdate = i.LastManualUpdate.String()
@@ -166,7 +173,7 @@ func parseReturnedInstance(i any) (any, error) {
 		return nil, err
 	}
 
-	var ret = api.Instance{}
+	ret := api.Instance{}
 	err = json.Unmarshal(reJsonified, &ret)
 	if err != nil {
 		return nil, err
@@ -203,6 +210,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// REVIEW: should we validate, that it really is a UUID?
 	UUIDString := args[0]
 
 	// Get the existing instance.
@@ -228,6 +236,11 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 			inst.LastManualUpdate = time.Now().UTC()
 		}
 
+		// REVIEW: Maybe add a comment, that 1024*1024*1024 MiB = 1 PiB
+		// Normally, I prefer to use somehting like https://pkg.go.dev/github.com/alecthomas/units, but this does not work well here,
+		// since the base unit is not byte but MiB.
+		// REVIEW: Maybe it is worth considering a dedicated asker for byte sizes, which supports the respective suffix
+		// such that the user for example can enter: 4GiB.
 		val, err = c.global.asker.AskInt("Memory in MiB: ["+strconv.Itoa(inst.MemoryInMiB)+"] ", 1, 1024*1024*1024, strconv.Itoa(inst.MemoryInMiB), nil)
 		if err != nil {
 			return err
