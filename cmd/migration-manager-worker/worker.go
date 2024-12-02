@@ -24,11 +24,11 @@ import (
 )
 
 type Worker struct {
-	endpoint       *url.URL
-	source         source.Source
-	uuid           string
+	endpoint *url.URL
+	source   source.Source
+	uuid     string
 
-	lastUpdate     time.Time
+	lastUpdate time.Time
 
 	shutdownCtx    context.Context    // Canceled when shutdown starts.
 	shutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
@@ -45,17 +45,17 @@ func newWorker(endpoint string, uuid string) (*Worker, error) {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	ret := &Worker{
-		endpoint: parsedUrl,
-		source: nil,
-		uuid: uuid,
-		lastUpdate: time.Now().UTC(),
-		shutdownCtx: shutdownCtx,
+		endpoint:       parsedUrl,
+		source:         nil,
+		uuid:           uuid,
+		lastUpdate:     time.Now().UTC(),
+		shutdownCtx:    shutdownCtx,
 		shutdownCancel: shutdownCancel,
 		shutdownDoneCh: make(chan error),
 	}
 
 	// Do a quick connectivity check to the endpoint.
-	_, err = ret.doHttpRequest("/" + api.APIVersion, http.MethodGet, nil)
+	_, err = ret.doHttpRequest("/"+api.APIVersion, http.MethodGet, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (w *Worker) Start() error {
 
 	go func() {
 		for {
-			resp, err := w.doHttpRequest("/" + api.APIVersion + "/queue/" + w.uuid, http.MethodGet, nil)
+			resp, err := w.doHttpRequest("/"+api.APIVersion+"/queue/"+w.uuid, http.MethodGet, nil)
 			if err != nil {
 				logger.Errorf("%s", err.Error())
 			} else {
@@ -229,7 +229,7 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusStri
 		return
 	}
 
-	_, err = w.doHttpRequest("/" + api.APIVersion + "/queue/" + w.uuid, http.MethodPut, content)
+	_, err = w.doHttpRequest("/"+api.APIVersion+"/queue/"+w.uuid, http.MethodPut, content)
 	if err != nil {
 		logger.Errorf("Failed to send status back to migration manager: %s", err.Error())
 		return
@@ -246,7 +246,7 @@ func (w *Worker) sendErrorResponse(err error) {
 		return
 	}
 
-	_, err = w.doHttpRequest("/" + api.APIVersion + "/queue/" + w.uuid, http.MethodPut, content)
+	_, err = w.doHttpRequest("/"+api.APIVersion+"/queue/"+w.uuid, http.MethodPut, content)
 	if err != nil {
 		logger.Errorf("Failed to send error back to migration manager: %s", err.Error())
 		return

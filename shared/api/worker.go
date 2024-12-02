@@ -1,6 +1,7 @@
 package api
 
 type WorkerCommandType int
+
 const (
 	WORKERCOMMAND_UNKNOWN WorkerCommandType = iota
 	WORKERCOMMAND_IDLE
@@ -9,6 +10,7 @@ const (
 )
 
 type WorkerResponseType int
+
 const (
 	WORKERRESPONSE_UNKNOWN WorkerResponseType = iota
 	WORKERRESPONSE_RUNNING

@@ -1,6 +1,6 @@
 package worker
 
-import(
+import (
 	"bufio"
 	"embed"
 	"encoding/json"
@@ -26,9 +26,9 @@ const (
 
 type LSBLKOutput struct {
 	BlockDevices []struct {
-		Name string `json:"name"`
+		Name     string `json:"name"`
 		Children []struct {
-			Name string `json:"name"`
+			Name   string `json:"name"`
 			FSType string `json:"fstype"`
 		} `json:"children"`
 	} `json:"blockdevices"`
@@ -106,7 +106,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 		err := runScriptInChroot("debian-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
-		}	
+		}
 	}
 
 	logger.Info("Post-migration configuration complete!")

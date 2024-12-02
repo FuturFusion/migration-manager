@@ -56,7 +56,7 @@ func (c *cmdTarget) Command() *cobra.Command {
 type cmdTargetAdd struct {
 	global *cmdGlobal
 
-	flagInsecure bool
+	flagInsecure         bool
 	flagNoTestConnection bool
 }
 
@@ -90,7 +90,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 
 	// Add the target.
 	t := api.IncusTarget{
-		Name: args[0],
+		Name:     args[0],
 		Endpoint: args[1],
 		Insecure: c.flagInsecure,
 	}
@@ -170,7 +170,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/targets", http.MethodPost, "", content)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/targets", http.MethodPost, "", content)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all targets.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/targets", http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/targets", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func (c *cmdTargetRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Remove the target.
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/targets/" + name, http.MethodDelete, "", nil)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/targets/"+name, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -319,7 +319,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the existing target.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/targets/" + name, http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/targets/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -336,12 +336,12 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	case api.IncusTarget:
 		origTargetName = incusTarget.Name
 
-		incusTarget.Name, err = c.global.asker.AskString("Target name: [" + incusTarget.Name + "] ", incusTarget.Name, nil)
+		incusTarget.Name, err = c.global.asker.AskString("Target name: ["+incusTarget.Name+"] ", incusTarget.Name, nil)
 		if err != nil {
 			return err
 		}
 
-		incusTarget.Endpoint, err = c.global.asker.AskString("Endpoint: [" + incusTarget.Endpoint + "] ", incusTarget.Endpoint, nil)
+		incusTarget.Endpoint, err = c.global.asker.AskString("Endpoint: ["+incusTarget.Endpoint+"] ", incusTarget.Endpoint, nil)
 		if err != nil {
 			return err
 		}
@@ -389,27 +389,27 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		if incusTarget.Insecure {
 			isInsecure = "yes"
 		}
-		incusTarget.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? [" + isInsecure + "] ", isInsecure)
+		incusTarget.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err
 		}
 
-		incusTarget.IncusProject, err = c.global.asker.AskString("Project: [" + incusTarget.IncusProject + "] ", incusTarget.IncusProject, nil)
+		incusTarget.IncusProject, err = c.global.asker.AskString("Project: ["+incusTarget.IncusProject+"] ", incusTarget.IncusProject, nil)
 		if err != nil {
 			return err
 		}
 
-		incusTarget.StoragePool, err = c.global.asker.AskString("Storage pool: [" + incusTarget.StoragePool + "] ", incusTarget.StoragePool, nil)
+		incusTarget.StoragePool, err = c.global.asker.AskString("Storage pool: ["+incusTarget.StoragePool+"] ", incusTarget.StoragePool, nil)
 		if err != nil {
 			return err
 		}
 
-		incusTarget.BootISOImage, err = c.global.asker.AskString("Boot ISO image: [" + incusTarget.BootISOImage + "] ", incusTarget.BootISOImage, nil)
+		incusTarget.BootISOImage, err = c.global.asker.AskString("Boot ISO image: ["+incusTarget.BootISOImage+"] ", incusTarget.BootISOImage, nil)
 		if err != nil {
 			return err
 		}
 
-		incusTarget.DriversISOImage, err = c.global.asker.AskString("Drivers ISO image: [" + incusTarget.DriversISOImage + "] ", incusTarget.DriversISOImage, nil)
+		incusTarget.DriversISOImage, err = c.global.asker.AskString("Drivers ISO image: ["+incusTarget.DriversISOImage+"] ", incusTarget.DriversISOImage, nil)
 		if err != nil {
 			return err
 		}
@@ -443,7 +443,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/targets/" + origTargetName, http.MethodPut, "", content)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/targets/"+origTargetName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

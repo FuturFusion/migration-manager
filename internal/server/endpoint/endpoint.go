@@ -27,11 +27,11 @@ type Config struct {
 }
 
 type Endpoint struct {
-	tomb      *tomb.Tomb       // Controls the HTTP servers shutdown.
-	mu        sync.RWMutex     // Serialize access to internal state.
-	listener  net.Listener     // Activer listeners by endpoint type.
-	server    *http.Server     // HTTP servers by endpoint type.
-	tlsConfig *tls.Config      // Keypair and CA to use for TLS.
+	tomb      *tomb.Tomb   // Controls the HTTP servers shutdown.
+	mu        sync.RWMutex // Serialize access to internal state.
+	listener  net.Listener // Activer listeners by endpoint type.
+	server    *http.Server // HTTP servers by endpoint type.
+	tlsConfig *tls.Config  // Keypair and CA to use for TLS.
 }
 
 func Up(config *Config) (*Endpoint, error) {

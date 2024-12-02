@@ -5,6 +5,7 @@ import (
 )
 
 type SourceType int
+
 const (
 	SOURCETYPE_UNKNOWN SourceType = iota
 	SOURCETYPE_COMMON
@@ -46,7 +47,7 @@ type CommonSource struct {
 //
 // swagger:model
 type VMwareSource struct {
-	CommonSource `yaml:",inline"`
+	CommonSource         `yaml:",inline"`
 	VMwareSourceSpecific `yaml:",inline"`
 }
 

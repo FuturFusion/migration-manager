@@ -26,7 +26,7 @@ import (
 )
 
 type InternalVMwareSource struct {
-	InternalCommonSource `yaml:",inline"`
+	InternalCommonSource         `yaml:",inline"`
 	InternalVMwareSourceSpecific `yaml:",inline"`
 }
 
@@ -42,9 +42,9 @@ func NewVMwareSource(name string, endpoint string, username string, password str
 	return &InternalVMwareSource{
 		InternalCommonSource: InternalCommonSource{
 			CommonSource: api.CommonSource{
-				Name: name,
+				Name:       name,
 				DatabaseID: internal.INVALID_DATABASE_ID,
-				Insecure: false,
+				Insecure:   false,
 			},
 			isConnected: false,
 		},
@@ -80,7 +80,7 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 		return err
 	}
 
-	s.vddkConfig = &vmware_nbdkit.VddkConfig {
+	s.vddkConfig = &vmware_nbdkit.VddkConfig{
 		Debug:       false,
 		Endpoint:    endpointURL,
 		Thumbprint:  thumbprint,
@@ -202,25 +202,25 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 
 		ret = append(ret, instance.InternalInstance{
 			Instance: api.Instance{
-				UUID: UUID,
-				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				UUID:                  UUID,
+				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-				LastUpdateFromSource: time.Now().UTC(),
+				LastUpdateFromSource:  time.Now().UTC(),
 				// Initialize LastManualUpdate to its zero value
-				SourceID: s.DatabaseID,
-				TargetID: internal.INVALID_DATABASE_ID,
-				BatchID: internal.INVALID_DATABASE_ID,
-				Name: vmProps.Summary.Config.Name,
-				Architecture: arch,
-				OS: strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
-				OSVersion: vmProps.Summary.Config.GuestFullName,
-				Disks: disks,
-				NICs: nics,
-				NumberCPUs: int(vmProps.Summary.Config.NumCpu),
-				MemoryInMiB: int(vmProps.Summary.Config.MemorySizeMB),
-				UseLegacyBios: useLegacyBios,
+				SourceID:          s.DatabaseID,
+				TargetID:          internal.INVALID_DATABASE_ID,
+				BatchID:           internal.INVALID_DATABASE_ID,
+				Name:              vmProps.Summary.Config.Name,
+				Architecture:      arch,
+				OS:                strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
+				OSVersion:         vmProps.Summary.Config.GuestFullName,
+				Disks:             disks,
+				NICs:              nics,
+				NumberCPUs:        int(vmProps.Summary.Config.NumCpu),
+				MemoryInMiB:       int(vmProps.Summary.Config.MemorySizeMB),
+				UseLegacyBios:     useLegacyBios,
 				SecureBootEnabled: secureBootEnabled,
-				TPMPresent: tpmPresent,
+				TPMPresent:        tpmPresent,
 			},
 			NeedsDiskImport: true,
 		})

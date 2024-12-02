@@ -133,7 +133,7 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 	// Trigger a scan for new instances.
 	_ = d.syncInstancesFromSources()
 
-	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/targets/" + t.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+t.GetName())
 }
 
 // swagger:operation DELETE /1.0/targets/{name} targets target_delete
@@ -309,5 +309,5 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", t.GetName(), err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/targets/" + t.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+t.GetName())
 }

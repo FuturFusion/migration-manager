@@ -129,7 +129,7 @@ func networksPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating network %q: %w", n.Name, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/networks/" + n.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+n.Name)
 }
 
 // swagger:operation DELETE /1.0/networks/{name} networks network_delete
@@ -305,5 +305,5 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", n.Name, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/networks/" + n.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+n.Name)
 }

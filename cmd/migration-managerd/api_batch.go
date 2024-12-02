@@ -35,19 +35,19 @@ var batchCmd = APIEndpoint{
 var batchInstancesCmd = APIEndpoint{
 	Path: "batches/{name}/instances",
 
-	Get:    APIEndpointAction{Handler: batchInstancesGet, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: batchInstancesGet, AllowUntrusted: true},
 }
 
 var batchStartCmd = APIEndpoint{
 	Path: "batches/{name}/start",
 
-	Get:    APIEndpointAction{Handler: batchStartGet, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: batchStartGet, AllowUntrusted: true},
 }
 
 var batchStopCmd = APIEndpoint{
 	Path: "batches/{name}/stop",
 
-	Get:    APIEndpointAction{Handler: batchStopGet, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: batchStopGet, AllowUntrusted: true},
 }
 
 // swagger:operation GET /1.0/batches batches batches_get
@@ -157,7 +157,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed to assign instances to batch %q: %w", b.GetName(), err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/batches/" + b.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+b.GetName())
 }
 
 // swagger:operation DELETE /1.0/batches/{name} batches batch_delete
@@ -341,7 +341,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed to update instances for batch %q: %w", b.GetName(), err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/batches/" + b.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+b.GetName())
 }
 
 // swagger:operation GET /1.0/batches/{name}/instances batches batches_instances_get
@@ -421,7 +421,6 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(err)
 	}
-
 
 	return response.SyncResponse(true, result)
 }

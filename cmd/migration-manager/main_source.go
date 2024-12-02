@@ -59,7 +59,7 @@ func (c *cmdSource) Command() *cobra.Command {
 type cmdSourceAdd struct {
 	global *cmdGlobal
 
-	flagInsecure bool
+	flagInsecure         bool
 	flagNoTestConnection bool
 }
 
@@ -112,19 +112,19 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 	// Add the source.
 	switch sourceType {
 	case "vmware":
-		sourceUsername, err := c.global.asker.AskString("Please enter username for endpoint '" + sourceEndpoint + "': ", "", nil)
+		sourceUsername, err := c.global.asker.AskString("Please enter username for endpoint '"+sourceEndpoint+"': ", "", nil)
 		if err != nil {
 			return err
 		}
 
-		sourcePassword, err := c.global.asker.AskString("Please enter password for endpoint '" + sourceEndpoint + "': ", "", nil)
+		sourcePassword, err := c.global.asker.AskString("Please enter password for endpoint '"+sourceEndpoint+"': ", "", nil)
 		if err != nil {
 			return err
 		}
 
 		s := api.VMwareSource{
 			CommonSource: api.CommonSource{
-				Name: sourceName,
+				Name:     sourceName,
 				Insecure: c.flagInsecure,
 			},
 			VMwareSourceSpecific: api.VMwareSourceSpecific{
@@ -161,7 +161,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/sources", http.MethodPost, "type=" + strconv.Itoa(int(api.SOURCETYPE_VMWARE)), content)
+		_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/sources", http.MethodPost, "type="+strconv.Itoa(int(api.SOURCETYPE_VMWARE)), content)
 		if err != nil {
 			return err
 		}
@@ -201,7 +201,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all sources.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/sources", http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/sources", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -288,7 +288,7 @@ func (c *cmdSourceRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Remove the source.
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/sources/" + name, http.MethodDelete, "", nil)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/sources/"+name, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -325,7 +325,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the existing source.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/sources/" + name, http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/sources/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -342,22 +342,22 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	case api.VMwareSource:
 		origSourceName = specificSource.Name
 
-		specificSource.Name, err = c.global.asker.AskString("Source name: [" + specificSource.Name + "] ", specificSource.Name, nil)
+		specificSource.Name, err = c.global.asker.AskString("Source name: ["+specificSource.Name+"] ", specificSource.Name, nil)
 		if err != nil {
 			return err
 		}
 
-		specificSource.Endpoint, err = c.global.asker.AskString("Endpoint: [" + specificSource.Endpoint + "] ", specificSource.Endpoint, nil)
+		specificSource.Endpoint, err = c.global.asker.AskString("Endpoint: ["+specificSource.Endpoint+"] ", specificSource.Endpoint, nil)
 		if err != nil {
 			return err
 		}
 
-		specificSource.Username, err = c.global.asker.AskString("Username: [" + specificSource.Username + "] ", specificSource.Username, nil)
+		specificSource.Username, err = c.global.asker.AskString("Username: ["+specificSource.Username+"] ", specificSource.Username, nil)
 		if err != nil {
 			return err
 		}
 
-		specificSource.Password, err = c.global.asker.AskString("Password: [" + specificSource.Password + "] ", specificSource.Password, nil)
+		specificSource.Password, err = c.global.asker.AskString("Password: ["+specificSource.Password+"] ", specificSource.Password, nil)
 		if err != nil {
 			return err
 		}
@@ -366,7 +366,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		if specificSource.Insecure {
 			isInsecure = "yes"
 		}
-		specificSource.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? [" + isInsecure + "] ", isInsecure)
+		specificSource.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err
 		}
@@ -402,7 +402,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/sources/" + origSourceName, http.MethodPut, "", content)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/sources/"+origSourceName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

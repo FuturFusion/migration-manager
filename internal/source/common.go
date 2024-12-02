@@ -19,9 +19,9 @@ type InternalCommonSource struct {
 func NewCommonSource(name string) *InternalCommonSource {
 	return &InternalCommonSource{
 		CommonSource: api.CommonSource{
-			Name: name,
+			Name:       name,
 			DatabaseID: internal.INVALID_DATABASE_ID,
-			Insecure: false,
+			Insecure:   false,
 		},
 		isConnected: false,
 	}

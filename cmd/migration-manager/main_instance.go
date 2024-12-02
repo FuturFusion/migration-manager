@@ -74,7 +74,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all instances.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/instances", http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/instances", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	// Get nice names for the batches.
 	batchesMap := make(map[int]string)
 	batchesMap[internal.INVALID_DATABASE_ID] = ""
-	resp, err = c.global.DoHttpRequest("/" + api.APIVersion + "/batches", http.MethodGet, "", nil)
+	resp, err = c.global.DoHttpRequest("/"+api.APIVersion+"/batches", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	// Get nice names for the sources.
 	sourcesMap := make(map[int]string)
-	resp, err = c.global.DoHttpRequest("/" + api.APIVersion + "/sources", http.MethodGet, "", nil)
+	resp, err = c.global.DoHttpRequest("/"+api.APIVersion+"/sources", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	// Get nice names for the targets.
 	targetsMap := make(map[int]string)
-	resp, err = c.global.DoHttpRequest("/" + api.APIVersion + "/targets", http.MethodGet, "", nil)
+	resp, err = c.global.DoHttpRequest("/"+api.APIVersion+"/targets", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 	UUIDString := args[0]
 
 	// Get the existing instance.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/instances/" + UUIDString, http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/instances/"+UUIDString, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -219,7 +219,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 	// Prompt for updates.
 	switch inst := i.(type) {
 	case api.Instance:
-		val, err := c.global.asker.AskInt("Number of vCPUs: [" + strconv.Itoa(inst.NumberCPUs) + "] ", 1, 1024, strconv.Itoa(inst.NumberCPUs), nil)
+		val, err := c.global.asker.AskInt("Number of vCPUs: ["+strconv.Itoa(inst.NumberCPUs)+"] ", 1, 1024, strconv.Itoa(inst.NumberCPUs), nil)
 		if err != nil {
 			return err
 		}
@@ -228,7 +228,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 			inst.LastManualUpdate = time.Now().UTC()
 		}
 
-		val, err = c.global.asker.AskInt("Memory in MiB: [" + strconv.Itoa(inst.MemoryInMiB) + "] ", 1, 1024*1024*1024, strconv.Itoa(inst.MemoryInMiB), nil)
+		val, err = c.global.asker.AskInt("Memory in MiB: ["+strconv.Itoa(inst.MemoryInMiB)+"] ", 1, 1024*1024*1024, strconv.Itoa(inst.MemoryInMiB), nil)
 		if err != nil {
 			return err
 		}
@@ -245,7 +245,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/instances/" + UUIDString, http.MethodPut, "", content)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/instances/"+UUIDString, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

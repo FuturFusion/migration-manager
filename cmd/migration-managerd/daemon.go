@@ -19,14 +19,14 @@ import (
 
 // APIEndpoint represents a URL in our API.
 type APIEndpoint struct {
-	Name    string             // Name for this endpoint.
-	Path    string             // Path pattern for this endpoint.
-	Get     APIEndpointAction
-	Head    APIEndpointAction
-	Put     APIEndpointAction
-	Post    APIEndpointAction
-	Delete  APIEndpointAction
-	Patch   APIEndpointAction
+	Name   string // Name for this endpoint.
+	Path   string // Path pattern for this endpoint.
+	Get    APIEndpointAction
+	Head   APIEndpointAction
+	Put    APIEndpointAction
+	Post   APIEndpointAction
+	Delete APIEndpointAction
+	Patch  APIEndpointAction
 }
 
 // APIEndpointAction represents an action on an API endpoint.
@@ -45,9 +45,9 @@ type DaemonConfig struct {
 }
 
 type Daemon struct {
-	config         *DaemonConfig
+	config *DaemonConfig
 
-	db             *db.Node
+	db *db.Node
 
 	shutdownCtx    context.Context    // Canceled when shutdown starts.
 	shutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
@@ -58,9 +58,9 @@ func newDaemon(config *DaemonConfig) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	return &Daemon{
-		config: config,
-		db: &db.Node{},
-		shutdownCtx: shutdownCtx,
+		config:         config,
+		db:             &db.Node{},
+		shutdownCtx:    shutdownCtx,
 		shutdownCancel: shutdownCancel,
 		shutdownDoneCh: make(chan error),
 	}
@@ -92,10 +92,10 @@ func (d *Daemon) Start() error {
 	}
 
 	// Start background workers
-	d.runPeriodicTask(d.syncInstancesFromSources, time.Duration(time.Minute * 10))
-	d.runPeriodicTask(d.processReadyBatches, time.Duration(time.Second * 10))
-	d.runPeriodicTask(d.processQueuedBatches, time.Duration(time.Second * 10))
-	d.runPeriodicTask(d.finalizeCompleteInstances, time.Duration(time.Second * 10))
+	d.runPeriodicTask(d.syncInstancesFromSources, time.Duration(time.Minute*10))
+	d.runPeriodicTask(d.processReadyBatches, time.Duration(time.Second*10))
+	d.runPeriodicTask(d.processQueuedBatches, time.Duration(time.Second*10))
+	d.runPeriodicTask(d.finalizeCompleteInstances, time.Duration(time.Second*10))
 
 	logger.Info("Daemon started")
 

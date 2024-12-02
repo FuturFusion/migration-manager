@@ -172,7 +172,7 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]source.Sourc
 	sourceName := ""
 	sourceType := api.SOURCETYPE_UNKNOWN
 	sourceInsecure := false
-	sourceConfig := "" 
+	sourceConfig := ""
 
 	// Get all sources in the database.
 	q := `SELECT id,name,type,insecure,config FROM sources`

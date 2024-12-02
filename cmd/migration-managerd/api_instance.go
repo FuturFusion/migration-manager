@@ -20,14 +20,14 @@ import (
 var instancesCmd = APIEndpoint{
 	Path: "instances",
 
-	Get:  APIEndpointAction{Handler: instancesGet, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: instancesGet, AllowUntrusted: true},
 }
 
 var instanceCmd = APIEndpoint{
 	Path: "instances/{uuid}",
 
-	Get:    APIEndpointAction{Handler: instanceGet, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: instancePut, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: instanceGet, AllowUntrusted: true},
+	Put: APIEndpointAction{Handler: instancePut, AllowUntrusted: true},
 }
 
 // swagger:operation GET /1.0/instances instances instances_get
@@ -222,5 +222,5 @@ func instancePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed updating instance '%s': %w", i.GetUUID(), err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/instances/" + i.GetUUID().String())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+i.GetUUID().String())
 }

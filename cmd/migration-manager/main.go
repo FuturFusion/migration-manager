@@ -23,9 +23,9 @@ import (
 type cmdGlobal struct {
 	asker ask.Asker
 
-	config   *Config
-	cmd      *cobra.Command
-	ret      int
+	config *Config
+	cmd    *cobra.Command
+	ret    int
 
 	flagHelp    bool
 	flagVersion bool

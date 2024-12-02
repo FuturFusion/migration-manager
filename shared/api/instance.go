@@ -8,6 +8,7 @@ import (
 )
 
 type MigrationStatusType int
+
 const (
 	MIGRATIONSTATUS_UNKNOWN MigrationStatusType = iota
 	MIGRATIONSTATUS_NOT_ASSIGNED_BATCH

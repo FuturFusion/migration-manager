@@ -105,38 +105,38 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 
 // swagger:operation POST /1.0/sources sources sources_post
 //
-//	Add a source
+//		Add a source
 //
-//	Creates a new source.
+//		Creates a new source.
 //
-//	---
-//	consumes:
-//	  - application/json
-//	produces:
-//	  - application/json
-//	parameters:
-//	  - in: query
-//	    name: type
-//	    description: Source type
-//          type: int
-//	    required: true
-//	    example: 2
-//	  - in: body
-//	    name: source
-//	    description: Source configuration
-//	    required: true
-//	    schema:
-//	      $ref: "#/definitions/CommonSource"
-//	      $ref: "#/definitions/VMwareSource"
-//	responses:
-//	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
-//	  "400":
-//	    $ref: "#/responses/BadRequest"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
+//		---
+//		consumes:
+//		  - application/json
+//		produces:
+//		  - application/json
+//		parameters:
+//		  - in: query
+//		    name: type
+//		    description: Source type
+//	         type: int
+//		    required: true
+//		    example: 2
+//		  - in: body
+//		    name: source
+//		    description: Source configuration
+//		    required: true
+//		    schema:
+//		      $ref: "#/definitions/CommonSource"
+//		      $ref: "#/definitions/VMwareSource"
+//		responses:
+//		  "200":
+//		    $ref: "#/responses/EmptySyncResponse"
+//		  "400":
+//		    $ref: "#/responses/BadRequest"
+//		  "403":
+//		    $ref: "#/responses/Forbidden"
+//		  "500":
+//		    $ref: "#/responses/InternalServerError"
 func sourcesPost(d *Daemon, r *http.Request) response.Response {
 	var s source.Source
 
@@ -173,7 +173,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 	// Trigger a scan of this new source for instances.
 	_ = d.syncInstancesFromSources()
 
-	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/sources/" + s.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+s.GetName())
 }
 
 // swagger:operation DELETE /1.0/sources/{name} sources source_delete
@@ -361,5 +361,5 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", s.GetName(), err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/" + api.APIVersion + "/sources/" + s.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+s.GetName())
 }

@@ -111,7 +111,7 @@ func Schema() *schema.Schema {
 */
 
 var updates = map[int]schema.Update{
-	1:  updateFromV0,
+	1: updateFromV0,
 }
 
 func updateFromV0(ctx context.Context, tx *sql.Tx) error {

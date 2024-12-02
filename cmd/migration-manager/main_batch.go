@@ -92,8 +92,8 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 
 	// Add the batch.
 	b := api.Batch{
-		Name: args[0],
-		Status: api.BATCHSTATUS_DEFINED,
+		Name:         args[0],
+		Status:       api.BATCHSTATUS_DEFINED,
 		StatusString: api.BATCHSTATUS_DEFINED.String(),
 	}
 
@@ -113,7 +113,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		return nil
-		})
+	})
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		return nil
-		})
+	})
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/batches", http.MethodPost, "", content)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/batches", http.MethodPost, "", content)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all batches.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/batches", http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/batches", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -262,7 +262,7 @@ func (c *cmdBatchRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Remove the batch.
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/batches/" + name, http.MethodDelete, "", nil)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/batches/"+name, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -299,7 +299,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the batch.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/batches/" + name, http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/batches/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -311,7 +311,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	b := parsed.(api.Batch)
 
 	// Get all instances for this batch.
-	resp, err = c.global.DoHttpRequest("/" + api.APIVersion + "/batches/" + name + "/instances", http.MethodGet, "", nil)
+	resp, err = c.global.DoHttpRequest("/"+api.APIVersion+"/batches/"+name+"/instances", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -381,7 +381,7 @@ func (c *cmdBatchStart) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Start the batch.
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/batches/" + name + "/start", http.MethodGet, "", nil)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/batches/"+name+"/start", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -418,7 +418,7 @@ func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Start the batch.
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/batches/" + name + "/stop", http.MethodGet, "", nil)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/batches/"+name+"/stop", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -455,7 +455,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the existing batch.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/batches/" + name, http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/batches/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -472,17 +472,17 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 	case api.Batch:
 		origBatchName = bb.Name
 
-		bb.Name, err = c.global.asker.AskString("Batch name: [" + bb.Name + "] ", bb.Name, nil)
+		bb.Name, err = c.global.asker.AskString("Batch name: ["+bb.Name+"] ", bb.Name, nil)
 		if err != nil {
 			return err
 		}
 
-		bb.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: [" + bb.IncludeRegex + "] ", bb.IncludeRegex, func(s string) error { return nil })
+		bb.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: ["+bb.IncludeRegex+"] ", bb.IncludeRegex, func(s string) error { return nil })
 		if err != nil {
 			return err
 		}
 
-		bb.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: [" + bb.ExcludeRegex + "] ", bb.ExcludeRegex, func(s string) error { return nil })
+		bb.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: ["+bb.ExcludeRegex+"] ", bb.ExcludeRegex, func(s string) error { return nil })
 		if err != nil {
 			return err
 		}
@@ -491,13 +491,13 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		if !bb.MigrationWindowStart.IsZero() {
 			windowStartValue = bb.MigrationWindowStart.Format(time.DateTime)
 		}
-		windowStart, err := c.global.asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): [" + windowStartValue + "] ", windowStartValue, func(s string) error {
+		windowStart, err := c.global.asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ["+windowStartValue+"] ", windowStartValue, func(s string) error {
 			if s != "" {
 				_, err := time.Parse(time.DateTime, s)
 				return err
 			}
 			return nil
-			})
+		})
 		if err != nil {
 			return err
 		}
@@ -509,13 +509,13 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		if !bb.MigrationWindowEnd.IsZero() {
 			windowEndValue = bb.MigrationWindowEnd.Format(time.DateTime)
 		}
-		windowEnd, err := c.global.asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): [" + windowEndValue + "] ", windowEndValue, func(s string) error {
+		windowEnd, err := c.global.asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ["+windowEndValue+"] ", windowEndValue, func(s string) error {
 			if s != "" {
 				_, err := time.Parse(time.DateTime, s)
 				return err
 			}
 			return nil
-			})
+		})
 		if err != nil {
 			return err
 		}
@@ -523,7 +523,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 			bb.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
 		}
 
-		bb.DefaultNetwork, err = c.global.asker.AskString("Default network for instances: [" + bb.DefaultNetwork + "] ", bb.DefaultNetwork, func(s string) error { return nil })
+		bb.DefaultNetwork, err = c.global.asker.AskString("Default network for instances: ["+bb.DefaultNetwork+"] ", bb.DefaultNetwork, func(s string) error { return nil })
 		if err != nil {
 			return err
 		}
@@ -537,7 +537,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/batches/" + origBatchName, http.MethodPut, "", content)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/batches/"+origBatchName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

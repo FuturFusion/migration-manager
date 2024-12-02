@@ -109,7 +109,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 			// Only add the network if it doesn't yet exist
 			if err != nil {
-				logger.Info("Adding network " + n.Name + " from source " + s.GetName(), loggerCtx)
+				logger.Info("Adding network "+n.Name+" from source "+s.GetName(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					return d.db.AddNetwork(tx, &n)
 				})
@@ -205,11 +205,11 @@ func (d *Daemon) syncInstancesFromSources() bool {
 						instanceUpdated = true
 					}
 				} else {
-					logger.Debug("Instance " +  i.GetName() + " (" + i.GetUUID().String() + ") has been manually updated, skipping some automatic sync updates", loggerCtx)
+					logger.Debug("Instance "+i.GetName()+" ("+i.GetUUID().String()+") has been manually updated, skipping some automatic sync updates", loggerCtx)
 				}
 
 				if instanceUpdated {
-					logger.Info("Syncing changes to instance " + i.GetName() + " (" + i.GetUUID().String() + ") from source " + s.GetName(), loggerCtx)
+					logger.Info("Syncing changes to instance "+i.GetName()+" ("+i.GetUUID().String()+") from source "+s.GetName(), loggerCtx)
 					existingInstance.LastUpdateFromSource = i.LastUpdateFromSource
 					err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 						err := d.db.UpdateInstance(tx, existingInstance)
@@ -227,7 +227,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 				}
 			} else {
 				// Add a new instance to the database.
-				logger.Info("Adding instance " + i.GetName() + " (" + i.GetUUID().String() + ") from source " + s.GetName() + " to database", loggerCtx)
+				logger.Info("Adding instance "+i.GetName()+" ("+i.GetUUID().String()+") from source "+s.GetName()+" to database", loggerCtx)
 				i.TargetID = targetId
 
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -268,7 +268,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 		for _, i := range allDBInstances {
 			_, instanceExists := currentInstancesFromSource[i.GetUUID()]
 			if !instanceExists {
-				logger.Info("Instance " + i.GetName() + " (" + i.GetUUID().String() + ") removed from source " + s.GetName(), loggerCtx)
+				logger.Info("Instance "+i.GetName()+" ("+i.GetUUID().String()+") removed from source "+s.GetName(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					err := d.db.DeleteInstance(tx, i.GetUUID())
 					if err != nil {
@@ -309,7 +309,7 @@ func (d *Daemon) processReadyBatches() bool {
 
 	// Do some basic sanity check of each batch before adding it to the queue.
 	for _, b := range batches {
-		logger.Info("Batch '" + b.GetName() + "' status is 'Ready', processing....", loggerCtx)
+		logger.Info("Batch '"+b.GetName()+"' status is 'Ready', processing....", loggerCtx)
 		batchID, err := b.GetDatabaseID()
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
@@ -318,7 +318,7 @@ func (d *Daemon) processReadyBatches() bool {
 
 		// If a migration window is defined, ensure sure it makes sense.
 		if !b.GetMigrationWindowStart().IsZero() && !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(b.GetMigrationWindowStart()) {
-			logger.Error("Batch '" + b.GetName() + "' window end time is before its start time", loggerCtx)
+			logger.Error("Batch '"+b.GetName()+"' window end time is before its start time", loggerCtx)
 
 			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "Migration window end before start")
@@ -336,7 +336,7 @@ func (d *Daemon) processReadyBatches() bool {
 			continue
 		}
 		if !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(time.Now().UTC()) {
-			logger.Error("Batch '" + b.GetName() + "' window end time has already passed", loggerCtx)
+			logger.Error("Batch '"+b.GetName()+"' window end time has already passed", loggerCtx)
 
 			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
@@ -372,7 +372,7 @@ func (d *Daemon) processReadyBatches() bool {
 
 		// If no instances apply to this batch, return an error.
 		if len(instances) == 0 {
-			logger.Error("Batch '" + b.GetName() + "' has no instances", loggerCtx)
+			logger.Error("Batch '"+b.GetName()+"' has no instances", loggerCtx)
 
 			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "No instances assigned")
@@ -391,7 +391,7 @@ func (d *Daemon) processReadyBatches() bool {
 		}
 
 		// No issues detected, move to "queued" status.
-		logger.Info("Updating batch '" + b.GetName() + "' status to 'Queued'", loggerCtx)
+		logger.Info("Updating batch '"+b.GetName()+"' status to 'Queued'", loggerCtx)
 
 		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_QUEUED.String())
@@ -431,7 +431,7 @@ func (d *Daemon) processQueuedBatches() bool {
 
 	// See if we can start running this batch.
 	for _, b := range batches {
-		logger.Info("Batch '" + b.GetName() + "' status is 'Queued', processing....", loggerCtx)
+		logger.Info("Batch '"+b.GetName()+"' status is 'Queued', processing....", loggerCtx)
 		batchID, err := b.GetDatabaseID()
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
@@ -444,7 +444,7 @@ func (d *Daemon) processQueuedBatches() bool {
 		}
 
 		if !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(time.Now().UTC()) {
-			logger.Error("Batch '" + b.GetName() + "' window end time has already passed", loggerCtx)
+			logger.Error("Batch '"+b.GetName()+"' window end time has already passed", loggerCtx)
 
 			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
@@ -623,7 +623,7 @@ func (d *Daemon) processQueuedBatches() bool {
 		}
 
 		// Move batch to "running" status.
-		logger.Info("Updating batch '" + b.GetName() + "' status to 'Running'", loggerCtx)
+		logger.Info("Updating batch '"+b.GetName()+"' status to 'Running'", loggerCtx)
 
 		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_RUNNING.String())
@@ -661,7 +661,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 	}
 
 	for _, i := range instances {
-		logger.Info("Finalizing migration steps for instance " + i.GetName(), loggerCtx)
+		logger.Info("Finalizing migration steps for instance "+i.GetName(), loggerCtx)
 		// Get the target for this instance.
 		var t target.Target
 		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {

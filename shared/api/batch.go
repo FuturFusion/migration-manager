@@ -6,6 +6,7 @@ import (
 )
 
 type BatchStatusType int
+
 const (
 	BATCHSTATUS_UNKNOWN BatchStatusType = iota
 	BATCHSTATUS_DEFINED

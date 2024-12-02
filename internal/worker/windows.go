@@ -19,6 +19,7 @@ import (
 )
 
 type BitLockerState int
+
 const (
 	BITLOCKERSTATE_UNKNOWN BitLockerState = iota
 	BITLOCKERSTATE_UNENCRYPTED
@@ -74,7 +75,7 @@ func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error
 		return err
 	}
 
-	_, err := subprocess.RunCommand("dislocker-fuse", "-V", partition, "--recovery-password=" + encryptionKey, "--", bitLockerMountPath)
+	_, err := subprocess.RunCommand("dislocker-fuse", "-V", partition, "--recovery-password="+encryptionKey, "--", bitLockerMountPath)
 	return err
 }
 

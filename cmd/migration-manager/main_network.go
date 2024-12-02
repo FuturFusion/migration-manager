@@ -89,7 +89,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 			return json.Unmarshal([]byte(s), &n.Config)
 		}
 		return nil
-		})
+	})
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/networks", http.MethodPost, "", content)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/networks", http.MethodPost, "", content)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all networks.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/networks", http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/networks", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -212,7 +212,7 @@ func (c *cmdNetworkRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Remove the network.
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/networks/" + name, http.MethodDelete, "", nil)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/networks/"+name, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -249,7 +249,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the existing network.
-	resp, err := c.global.DoHttpRequest("/" + api.APIVersion + "/networks/" + name, http.MethodGet, "", nil)
+	resp, err := c.global.DoHttpRequest("/"+api.APIVersion+"/networks/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -271,17 +271,17 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	n.Name, err = c.global.asker.AskString("Network name: [" + n.Name + "] ", n.Name, nil)
+	n.Name, err = c.global.asker.AskString("Network name: ["+n.Name+"] ", n.Name, nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.global.asker.AskString("JSON config: [" + string(configString) + "] ", string(configString), func(s string) error {
+	_, err = c.global.asker.AskString("JSON config: ["+string(configString)+"] ", string(configString), func(s string) error {
 		if s != "" {
 			return json.Unmarshal([]byte(s), &n.Config)
 		}
 		return nil
-		})
+	})
 	if err != nil {
 		return err
 	}
@@ -294,7 +294,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.DoHttpRequest("/" + api.APIVersion + "/networks/" + origNetworkName, http.MethodPut, "", content)
+	_, err = c.global.DoHttpRequest("/"+api.APIVersion+"/networks/"+origNetworkName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

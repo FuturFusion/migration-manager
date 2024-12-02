@@ -21,14 +21,14 @@ import (
 var queueRootCmd = APIEndpoint{
 	Path: "queue",
 
-	Get:  APIEndpointAction{Handler: queueRootGet, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: queueRootGet, AllowUntrusted: true},
 }
 
 var queueCmd = APIEndpoint{
 	Path: "queue/{uuid}",
 
-	Get:    APIEndpointAction{Handler: queueGet, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: queuePut, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: queueGet, AllowUntrusted: true},
+	Put: APIEndpointAction{Handler: queuePut, AllowUntrusted: true},
 }
 
 // swagger:operation GET /1.0/queue queue queueRoot_get
@@ -113,12 +113,12 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 
 		for _, i := range instances {
 			result = append(result, api.QueueEntry{
-				InstanceUUID: i.GetUUID(),
-				InstanceName: i.GetName(),
-				MigrationStatus: i.GetMigrationStatus(),
+				InstanceUUID:          i.GetUUID(),
+				InstanceName:          i.GetName(),
+				MigrationStatus:       i.GetMigrationStatus(),
 				MigrationStatusString: i.GetMigrationStatusString(),
-				BatchID: id,
-				BatchName: b.GetName(),
+				BatchID:               id,
+				BatchName:             b.GetName(),
 			})
 		}
 	}
@@ -202,10 +202,10 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 
 	// Setup the default "idle" command
 	cmd := api.WorkerCommand{
-		Command: api.WORKERCOMMAND_IDLE,
-		Name: i.Name,
-		Source: api.VMwareSource{},
-		OS: i.OS,
+		Command:   api.WORKERCOMMAND_IDLE,
+		Name:      i.Name,
+		Source:    api.VMwareSource{},
+		OS:        i.OS,
 		OSVersion: i.OSVersion,
 	}
 

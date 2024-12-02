@@ -20,25 +20,25 @@ import (
 type InternalIncusTarget struct {
 	mmapi.IncusTarget `yaml:",inline"`
 
-	isConnected bool
+	isConnected         bool
 	incusConnectionArgs *incus.ConnectionArgs
-	incusClient incus.InstanceServer
+	incusClient         incus.InstanceServer
 }
 
 // Returns a new IncusTarget ready for use.
 func NewIncusTarget(name string, endpoint string, storagePool string, bootISOImage string, driversISOImage string) *InternalIncusTarget {
 	return &InternalIncusTarget{
 		IncusTarget: mmapi.IncusTarget{
-			Name: name,
-			DatabaseID: internal.INVALID_DATABASE_ID,
-			Endpoint: endpoint,
-			TLSClientKey: "",
-			TLSClientCert: "",
-			OIDCTokens: nil,
-			Insecure: false,
-			IncusProject: "default",
-			StoragePool: storagePool,
-			BootISOImage: bootISOImage,
+			Name:            name,
+			DatabaseID:      internal.INVALID_DATABASE_ID,
+			Endpoint:        endpoint,
+			TLSClientKey:    "",
+			TLSClientCert:   "",
+			OIDCTokens:      nil,
+			Insecure:        false,
+			IncusProject:    "default",
+			StoragePool:     storagePool,
+			BootISOImage:    bootISOImage,
 			DriversISOImage: driversISOImage,
 		},
 		isConnected: false,
@@ -55,10 +55,10 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		authType = api.AuthenticationMethodOIDC
 	}
 	t.incusConnectionArgs = &incus.ConnectionArgs{
-		AuthType: authType,
-		TLSClientKey: t.TLSClientKey,
-		TLSClientCert: t.TLSClientCert,
-		OIDCTokens: t.OIDCTokens,
+		AuthType:           authType,
+		TLSClientKey:       t.TLSClientKey,
+		TLSClientCert:      t.TLSClientCert,
+		OIDCTokens:         t.OIDCTokens,
 		InsecureSkipVerify: t.Insecure,
 	}
 
@@ -168,11 +168,11 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 
 	ret := api.InstancesPost{
 		Name: instanceDef.Name,
-                Source: api.InstanceSource{
-                        Type: "none",
-                },
+		Source: api.InstanceSource{
+			Type: "none",
+		},
 		Type: api.InstanceTypeVM,
-        }
+	}
 
 	ret.Config = make(map[string]string)
 	ret.Devices = make(map[string]map[string]string)
@@ -248,39 +248,39 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 		ret.Config["image.os"] = strings.Replace(ret.Config["image.os"], "windows", "swodniw", 1)
 	}
 
-        return ret
+	return ret
 }
 
 func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost) error {
 	revert := revert.New()
-        defer revert.Fail()
+	defer revert.Fail()
 
 	// Attach bootable ISO to run migration of this VM.
 	apiDef.Devices["migration-iso"] = map[string]string{
-		"type": "disk",
-		"pool": t.GetStoragePool(),
-		"source": t.GetBootISOImage(),
+		"type":          "disk",
+		"pool":          t.GetStoragePool(),
+		"source":        t.GetBootISOImage(),
 		"boot.priority": "10",
 	}
 
 	// If this is a Windows VM, attach the virtio drivers ISO.
 	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
 		apiDef.Devices["drivers"] = map[string]string{
-			"type": "disk",
-			"pool": t.GetStoragePool(),
+			"type":   "disk",
+			"pool":   t.GetStoragePool(),
 			"source": t.GetDriversISOImage(),
 		}
 	}
 
 	// Create the instance.
-        op, err := t.incusClient.CreateInstance(apiDef)
-        if err != nil {
-                return err
-        }
+	op, err := t.incusClient.CreateInstance(apiDef)
+	if err != nil {
+		return err
+	}
 
-        revert.Add(func() {
+	revert.Add(func() {
 		_, _ = t.incusClient.DeleteInstance(apiDef.Name)
-        })
+	})
 
 	err = op.Wait()
 	if err != nil {
@@ -340,10 +340,10 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 	}
 
 	args := incus.InstanceFileArgs{
-		UID: 0,
-		GID: 0,
-		Mode: 0755,
-		Type: "file",
+		UID:     0,
+		GID:     0,
+		Mode:    0755,
+		Type:    "file",
 		Content: f,
 	}
 
@@ -364,8 +364,8 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 
 func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []string) error {
 	req := api.InstanceExecPost{
-		Command: cmd,
-		WaitForWS: true,
+		Command:     cmd,
+		WaitForWS:   true,
 		Interactive: false,
 	}
 

@@ -194,7 +194,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	}()
 
 	for index, server := range s.Servers {
-		t, err := target.NewDiskTarget(s.VirtualMachine, server.Disk, fmt.Sprintf("/dev/sd%c", 'a' + index))
+		t, err := target.NewDiskTarget(s.VirtualMachine, server.Disk, fmt.Sprintf("/dev/sd%c", 'a'+index))
 		if err != nil {
 			return err
 		}
@@ -305,7 +305,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 				}
 
 				bar.Set64(offset + chunkSize)
-				statusCallback(fmt.Sprintf("Importing disk '%s': %02.2f%% complete", diskName, float64(offset + chunkSize)/float64(s.Disk.CapacityInBytes)*100.0))
+				statusCallback(fmt.Sprintf("Importing disk '%s': %02.2f%% complete", diskName, float64(offset+chunkSize)/float64(s.Disk.CapacityInBytes)*100.0))
 				offset += chunkSize
 			}
 		}
