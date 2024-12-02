@@ -381,7 +381,7 @@ func (c *cmdBatchStart) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Start the batch.
-	_, err = c.global.doHttpRequestV1("/batches/"+name+"/start", http.MethodGet, "", nil)
+	_, err = c.global.doHttpRequestV1("/batches/"+name+"/start", http.MethodPost, "", nil)
 	if err != nil {
 		return err
 	}
@@ -418,7 +418,7 @@ func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Start the batch.
-	_, err = c.global.doHttpRequestV1("/batches/"+name+"/stop", http.MethodGet, "", nil)
+	_, err = c.global.doHttpRequestV1("/batches/"+name+"/stop", http.MethodPost, "", nil)
 	if err != nil {
 		return err
 	}

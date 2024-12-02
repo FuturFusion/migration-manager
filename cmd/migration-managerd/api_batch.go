@@ -41,13 +41,13 @@ var batchInstancesCmd = APIEndpoint{
 var batchStartCmd = APIEndpoint{
 	Path: "batches/{name}/start",
 
-	Get: APIEndpointAction{Handler: batchStartGet, AllowUntrusted: true},
+	Post: APIEndpointAction{Handler: batchStartPost, AllowUntrusted: true},
 }
 
 var batchStopCmd = APIEndpoint{
 	Path: "batches/{name}/stop",
 
-	Get: APIEndpointAction{Handler: batchStopGet, AllowUntrusted: true},
+	Post: APIEndpointAction{Handler: batchStopPost, AllowUntrusted: true},
 }
 
 // swagger:operation GET /1.0/batches batches batches_get
@@ -425,7 +425,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/batches/{name}/start batches batches_start_get
+// swagger:operation POST /1.0/batches/{name}/start batches batches_start_post
 //
 //	Start a batch
 //
@@ -443,7 +443,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func batchStartGet(d *Daemon, r *http.Request) response.Response {
+func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	name, err := url.PathUnescape(mux.Vars(r)["name"])
 	if err != nil {
 		return response.SmartError(err)
@@ -468,7 +468,7 @@ func batchStartGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponse(true, nil)
 }
 
-// swagger:operation GET /1.0/batches/{name}/stop batches batches_stop_get
+// swagger:operation POST /1.0/batches/{name}/stop batches batches_stop_post
 //
 //	Stop a batch
 //
@@ -486,7 +486,7 @@ func batchStartGet(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func batchStopGet(d *Daemon, r *http.Request) response.Response {
+func batchStopPost(d *Daemon, r *http.Request) response.Response {
 	name, err := url.PathUnescape(mux.Vars(r)["name"])
 	if err != nil {
 		return response.SmartError(err)
