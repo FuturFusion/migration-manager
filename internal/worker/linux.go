@@ -177,7 +177,7 @@ func runScriptInChroot(scriptName string) error {
 	}
 
 	// Write script to tmp file.
-	err = os.WriteFile(filepath.Join(chrootMountPath, scriptName), script, 0755)
+	err = os.WriteFile(filepath.Join(chrootMountPath, scriptName), script, 0o755)
 	if err != nil {
 		return err
 	}

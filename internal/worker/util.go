@@ -13,7 +13,7 @@ import (
 
 func DoMount(device string, path string, options []string) error {
 	if !util.PathExists(path) {
-		err := os.MkdirAll(path, 0755)
+		err := os.MkdirAll(path, 0o755)
 		if err != nil {
 			return fmt.Errorf("Failed to create mount target %q", path)
 		}

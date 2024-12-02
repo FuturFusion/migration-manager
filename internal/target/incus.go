@@ -342,7 +342,7 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 	args := incus.InstanceFileArgs{
 		UID:     0,
 		GID:     0,
-		Mode:    0755,
+		Mode:    0o755,
 		Type:    "file",
 		Content: f,
 	}

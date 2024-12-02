@@ -64,7 +64,7 @@ func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
 
 func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error {
 	if !util.PathExists(bitLockerMountPath) {
-		err := os.MkdirAll(bitLockerMountPath, 0755)
+		err := os.MkdirAll(bitLockerMountPath, 0o755)
 		if err != nil {
 			return fmt.Errorf("Failed to create mount target %q", bitLockerMountPath)
 		}

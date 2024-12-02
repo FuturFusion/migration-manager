@@ -60,5 +60,5 @@ func (t *DiskTarget) GetCurrentChangeID(ctx context.Context) (*vmware.ChangeID, 
 }
 
 func (t *DiskTarget) WriteChangeID(ctx context.Context, changeID *vmware.ChangeID) error {
-	return os.WriteFile("/tmp/migration-manager.cid", []byte(changeID.Value), 0644)
+	return os.WriteFile("/tmp/migration-manager.cid", []byte(changeID.Value), 0o644)
 }

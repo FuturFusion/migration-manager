@@ -41,7 +41,7 @@ func (c *Config) SaveConfig() error {
 		return err
 	}
 
-	err = os.WriteFile(path.Join(c.ConfigDir, "config.yml"), contents, 0644)
+	err = os.WriteFile(path.Join(c.ConfigDir, "config.yml"), contents, 0o644)
 	if err != nil {
 		return err
 	}

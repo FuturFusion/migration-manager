@@ -121,7 +121,7 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 	configFile := path.Join(configDir, "config.yml")
 	if !util.PathExists(configDir) {
 		// Create the config dir if it doesn't exist
-		err = os.MkdirAll(configDir, 0750)
+		err = os.MkdirAll(configDir, 0o750)
 		if err != nil {
 			return err
 		}

@@ -260,7 +260,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 		return err
 	}
 
-	fd, err := os.OpenFile(path, os.O_WRONLY|os.O_EXCL|syscall.O_DIRECT, 0644)
+	fd, err := os.OpenFile(path, os.O_WRONLY|os.O_EXCL|syscall.O_DIRECT, 0o644)
 	if err != nil {
 		return err
 	}
