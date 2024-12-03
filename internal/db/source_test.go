@@ -9,10 +9,12 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/source"
 )
 
-var commonSourceA = source.NewCommonSource("CommonSourceA")
-var commonSourceB = source.NewCommonSource("CommonSourceB")
-var vmwareSourceA = source.NewVMwareSource("vmware_source", "endpoint_url", "user", "pass")
-var vmwareSourceB = source.NewVMwareSource("vmware_source2", "endpoint_ip", "another_user", "pass")
+var (
+	commonSourceA = source.NewCommonSource("CommonSourceA")
+	commonSourceB = source.NewCommonSource("CommonSourceB")
+	vmwareSourceA = source.NewVMwareSource("vmware_source", "endpoint_url", "user", "pass")
+	vmwareSourceB = source.NewVMwareSource("vmware_source2", "endpoint_ip", "another_user", "pass")
+)
 
 func TestSourceDatabaseActions(t *testing.T) {
 	vmwareSourceB.SetInsecureTLS(true)

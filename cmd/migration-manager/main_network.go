@@ -72,7 +72,6 @@ func (c *cmdNetworkAdd) Command() *cobra.Command {
 }
 
 func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
-
 	// Quick checks.
 	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
 	if exit {
@@ -175,7 +174,7 @@ func parseReturnedNetwork(n any) (any, error) {
 		return nil, err
 	}
 
-	var ret = api.Network{}
+	ret := api.Network{}
 	err = json.Unmarshal(reJsonified, &ret)
 	if err != nil {
 		return nil, err

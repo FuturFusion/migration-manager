@@ -106,14 +106,12 @@ func (d *Daemon) syncInstancesFromSources() bool {
 				_, err := d.db.GetNetwork(tx, n.Name)
 				return err
 			})
-
 			// Only add the network if it doesn't yet exist
 			if err != nil {
 				logger.Info("Adding network "+n.Name+" from source "+s.GetName(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					return d.db.AddNetwork(tx, &n)
 				})
-
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 					continue
@@ -219,7 +217,6 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 						return nil
 					})
-
 					if err != nil {
 						logger.Warn(err.Error(), loggerCtx)
 						continue
@@ -238,7 +235,6 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 					return nil
 				})
-
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 					continue
@@ -537,21 +533,7 @@ func (d *Daemon) processQueuedBatches() bool {
 			internalInstance, _ := i.(*instance.InternalInstance)
 			instanceDef := t.CreateVMDefinition(*internalInstance)
 			creationErr := t.CreateNewVM(instanceDef)
-			if creationErr == nil {
-				// Creation was successful, update the instance state to 'Idle'.
-				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
-				if err != nil {
-					logger.Warn(err.Error(), loggerCtx)
-					continue
-				}
-			} else {
+			if creationErr != nil {
 				logger.Warn(creationErr.Error(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, creationErr.Error(), true)
@@ -564,6 +546,20 @@ func (d *Daemon) processQueuedBatches() bool {
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 				}
+				continue
+			}
+
+			// Creation was successful, update the instance state to 'Idle'.
+			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				logger.Warn(err.Error(), loggerCtx)
 				continue
 			}
 
@@ -832,7 +828,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			}
 
 			// Copy the base network definitions.
-			apiDef.Devices[nicDeviceName] = make(map[string]string)
+			apiDef.Devices[nicDeviceName] = make(map[string]string, len(baseNetwork.Config))
 			for k, v := range baseNetwork.Config {
 				apiDef.Devices[nicDeviceName][k] = v
 			}

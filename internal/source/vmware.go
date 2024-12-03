@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware_nbdkit"
+	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -158,7 +159,6 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			}
 		} else {
 			logger.Debugf("Unable to determine architecture for %s (%s) from source %s; defaulting to x86_64", vmProps.Summary.Config.Name, UUID.String(), s.Name)
-
 		}
 
 		useLegacyBios := false
@@ -187,9 +187,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			switch md := device.(type) {
 			case *types.VirtualDisk:
 				b, ok := md.Backing.(types.BaseVirtualDeviceFileBackingInfo)
-				if ok {
-					disks = append(disks, api.InstanceDiskInfo{Name: b.GetVirtualDeviceFileBackingInfo().FileName, DifferentialSyncSupported: *vmProps.Config.ChangeTrackingEnabled, SizeInBytes: md.CapacityInBytes})
+				if !ok {
+					continue
 				}
+
+				disks = append(disks, api.InstanceDiskInfo{Name: b.GetVirtualDeviceFileBackingInfo().FileName, DifferentialSyncSupported: *vmProps.Config.ChangeTrackingEnabled, SizeInBytes: md.CapacityInBytes})
 			case types.BaseVirtualEthernetCard:
 				networkName := ""
 				backing, ok := md.GetVirtualEthernetCard().VirtualDevice.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
@@ -252,12 +254,13 @@ func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName stri
 	}
 
 	snapshotRef, _ := vm.FindSnapshot(ctx, snapshotName)
-	if snapshotRef != nil {
-		consolidate := true
-		_, err := vm.RemoveSnapshot(ctx, snapshotRef.Value, false, &consolidate)
-		if err != nil {
-			return err
-		}
+	if snapshotRef == nil {
+		return nil
+	}
+
+	_, err = vm.RemoveSnapshot(ctx, snapshotRef.Value, false, ptr.To(true))
+	if err != nil {
+		return err
 	}
 
 	return nil

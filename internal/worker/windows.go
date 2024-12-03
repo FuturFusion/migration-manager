@@ -27,11 +27,13 @@ const (
 	BITLOCKERSTATE_CLEARKEY
 )
 
-const bitLockerMountPath string = "/mnt/dislocker/"
-const driversMountDevice string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
-const driversMountPath string = "/mnt/drivers/"
-const windowsMainMountPath string = "/mnt/win_main/"
-const windowsRecoveryMountPath string = "/mnt/win_recovery/"
+const (
+	bitLockerMountPath       string = "/mnt/dislocker/"
+	driversMountDevice       string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
+	driversMountPath         string = "/mnt/drivers/"
+	windowsMainMountPath     string = "/mnt/win_main/"
+	windowsRecoveryMountPath string = "/mnt/win_recovery/"
+)
 
 func init() {
 	_ = pongo2.RegisterFilter("toHex", toHex)
@@ -49,13 +51,19 @@ func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
 	// Return the status.
 	if unencryptedRegex.Match([]byte(stdout)) {
 		return BITLOCKERSTATE_UNENCRYPTED, nil
-	} else if bitLockerEnabledRegex.Match([]byte(stdout)) {
+	}
+
+	if bitLockerEnabledRegex.Match([]byte(stdout)) {
 		if noClearKeyRegex.Match([]byte(stdout)) {
 			return BITLOCKERSTATE_ENCRYPTED, nil
-		} else if clearKeyRegex.Match([]byte(stdout)) {
+		}
+
+		if clearKeyRegex.Match([]byte(stdout)) {
 			return BITLOCKERSTATE_CLEARKEY, nil
 		}
-	} else if err != nil {
+	}
+
+	if err != nil {
 		return BITLOCKERSTATE_UNKNOWN, err
 	}
 
@@ -149,7 +157,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 
 func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 	cacheDir := "/tmp/inject-drivers"
-	err := os.MkdirAll(cacheDir, 0700)
+	err := os.MkdirAll(cacheDir, 0o700)
 	if err != nil {
 		return err
 	}
@@ -226,25 +234,26 @@ func toHex(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo
 // Take a full version string and return the abbreviation used by distrobuilder logic.
 // Versions supported are an intersection of what's supported by distrobuilder and vCenter.
 func MapWindowsVersionToAbbrev(version string) (string, error) {
-	if strings.Contains(version, "Windows XP") {
+	switch {
+	case strings.Contains(version, "Windows XP"):
 		return "xp", nil
-	} else if strings.Contains(version, "Windows 7") {
+	case strings.Contains(version, "Windows 7"):
 		return "w7", nil
-	} else if strings.Contains(version, "Windows 8") {
+	case strings.Contains(version, "Windows 8"):
 		return "w8", nil
-	} else if strings.Contains(version, "Windows 10") {
+	case strings.Contains(version, "Windows 10"):
 		return "w10", nil
-	} else if strings.Contains(version, "Windows 11") {
+	case strings.Contains(version, "Windows 11"):
 		return "w11", nil
-	} else if strings.Contains(version, "Server 2003") {
+	case strings.Contains(version, "Server 2003"):
 		return "2k3", nil
-	} else if strings.Contains(version, "Server 2008 R2") {
+	case strings.Contains(version, "Server 2008 R2"):
 		return "2k8r2", nil
-	} else if strings.Contains(version, "Server 2019") {
+	case strings.Contains(version, "Server 2019"):
 		return "2k19", nil
-	} else if strings.Contains(version, "Server 2022") {
+	case strings.Contains(version, "Server 2022"):
 		return "2k22", nil
+	default:
+		return "", fmt.Errorf("'%s' is not currently supported", version)
 	}
-
-	return "", fmt.Errorf("'%s' is not currently supported", version)
 }

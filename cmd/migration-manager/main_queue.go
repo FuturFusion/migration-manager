@@ -106,7 +106,7 @@ func parseReturnedQueueEntry(i any) (any, error) {
 		return nil, err
 	}
 
-	var ret = api.QueueEntry{}
+	ret := api.QueueEntry{}
 	err = json.Unmarshal(reJsonified, &ret)
 	if err != nil {
 		return nil, err

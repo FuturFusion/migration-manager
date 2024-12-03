@@ -81,7 +81,6 @@ func (c *cmdTargetAdd) Command() *cobra.Command {
 }
 
 func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
-
 	// Quick checks.
 	exit, err := c.global.CheckArgs(cmd, args, 2, 2)
 	if exit {
@@ -245,7 +244,7 @@ func parseReturnedTarget(t any) (any, error) {
 		return nil, err
 	}
 
-	var ret = api.IncusTarget{}
+	ret := api.IncusTarget{}
 	err = json.Unmarshal(reJsonified, &ret)
 	if err != nil {
 		return nil, err

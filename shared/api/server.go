@@ -1,7 +1,9 @@
 package api
 
-const APIVersion string = "1.0"
-const APIStatus string = "devel"
+const (
+	APIVersion string = "1.0"
+	APIStatus  string = "devel"
+)
 
 // ServerPut represents the modifiable fields of a server configuration
 //

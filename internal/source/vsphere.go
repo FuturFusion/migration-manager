@@ -46,16 +46,16 @@ func soapWithKeepalive(ctx context.Context, url *url.URL, insecure bool) (*govmo
 }
 
 func soapKeepAliveHandler(ctx context.Context, c *vim25.Client) func() error {
-	//logger := logging.FromContext(ctx).With("rpc", "keepalive")
+	// logger := logging.FromContext(ctx).With("rpc", "keepalive")
 
 	return func() error {
-		//logger.Info("Executing SOAP keep-alive handler")
+		// logger.Info("Executing SOAP keep-alive handler")
 		_, err := methods.GetCurrentTime(ctx, c)
 		if err != nil {
 			return err
 		}
 
-		//logger.Infof("vCenter current time: %s", t.String())
+		// logger.Infof("vCenter current time: %s", t.String())
 		return nil
 	}
 }

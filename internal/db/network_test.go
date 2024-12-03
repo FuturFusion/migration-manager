@@ -9,9 +9,11 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-var networkA = api.Network{Name: "networkA"}
-var networkB = api.Network{Name: "networkB", Config: map[string]string{"network": "foo"}}
-var networkC = api.Network{Name: "networkC", Config: map[string]string{"network": "bar", "biz": "baz"}}
+var (
+	networkA = api.Network{Name: "networkA"}
+	networkB = api.Network{Name: "networkB", Config: map[string]string{"network": "foo"}}
+	networkC = api.Network{Name: "networkC", Config: map[string]string{"network": "bar", "biz": "baz"}}
+)
 
 func TestNetworkDatabaseActions(t *testing.T) {
 	// Create a new temporary database.
