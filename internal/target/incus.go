@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lxc/incus/v6/client"
+	incus "github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 
@@ -71,6 +71,9 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 
 	// Do a quick check to see if our authentication was accepted by the server.
 	srv, _, err := t.incusClient.GetServer()
+	if err != nil {
+		return fmt.Errorf("failed to connect to endpoint '%s': %s", t.Endpoint, err)
+	}
 	if srv.Auth != "trusted" {
 		t.incusConnectionArgs = nil
 		t.incusClient = nil
