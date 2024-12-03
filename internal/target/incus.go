@@ -26,7 +26,7 @@ type InternalIncusTarget struct {
 }
 
 // Returns a new IncusTarget ready for use.
-func NewIncusTarget(name string, endpoint string, bootISOImage string, driversISOImage string) *InternalIncusTarget {
+func NewIncusTarget(name string, endpoint string) *InternalIncusTarget {
 	return &InternalIncusTarget{
 		IncusTarget: mmapi.IncusTarget{
 			Name:            name,
@@ -37,8 +37,6 @@ func NewIncusTarget(name string, endpoint string, bootISOImage string, driversIS
 			OIDCTokens:      nil,
 			Insecure:        false,
 			IncusProject:    "default",
-			BootISOImage:    bootISOImage,
-			DriversISOImage: driversISOImage,
 		},
 		isConnected: false,
 	}
@@ -152,14 +150,6 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 	return nil
 }
 
-func (t *InternalIncusTarget) GetBootISOImage() string {
-	return t.BootISOImage
-}
-
-func (t *InternalIncusTarget) GetDriversISOImage() string {
-	return t.DriversISOImage
-}
-
 func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalInstance, storagePool string) api.InstancesPost {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
@@ -257,7 +247,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool 
 	apiDef.Devices["migration-iso"] = map[string]string{
 		"type":          "disk",
 		"pool":          storagePool,
-		"source":        t.GetBootISOImage(),
+		"source":        "",
 		"boot.priority": "10",
 	}
 
@@ -266,7 +256,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool 
 		apiDef.Devices["drivers"] = map[string]string{
 			"type":   "disk",
 			"pool":   storagePool,
-			"source": t.GetDriversISOImage(),
+			"source": "",
 		}
 	}
 

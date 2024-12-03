@@ -74,8 +74,6 @@ CREATE TABLE targets (
     oidctokens TEXT NOT NULL,
     insecure BOOLEAN,
     incusproject VARCHAR(255) NOT NULL,
-    bootisoimage VARCHAR(255) NOT NULL,
-    driversisoimage VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 
@@ -181,8 +179,6 @@ CREATE TABLE targets (
     oidctokens TEXT NOT NULL,
     insecure BOOLEAN,
     incusproject VARCHAR(255) NOT NULL,
-    bootisoimage VARCHAR(255) NOT NULL,
-    driversisoimage VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 `

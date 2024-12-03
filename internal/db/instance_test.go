@@ -17,7 +17,7 @@ import (
 
 var (
 	testSource       = source.NewCommonSource("TestSource")
-	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:8443", "boot.iso", "drivers.iso")
+	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:8443")
 	testBatch        = batch.NewBatch("TestBatch", "", "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()
 	instanceA        = instance.NewInstance(instanceAUUID, 2, 1, -1, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{{"disk", true, 123}}, []api.InstanceNICInfo{{"net", "mac"}}, 2, 2048, false, false, false)
