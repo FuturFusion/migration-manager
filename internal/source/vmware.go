@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware_nbdkit"
+	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -257,8 +258,7 @@ func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName stri
 		return nil
 	}
 
-	consolidate := true
-	_, err = vm.RemoveSnapshot(ctx, snapshotRef.Value, false, &consolidate)
+	_, err = vm.RemoveSnapshot(ctx, snapshotRef.Value, false, ptr.To(true))
 	if err != nil {
 		return err
 	}
