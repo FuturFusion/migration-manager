@@ -106,14 +106,12 @@ func (d *Daemon) syncInstancesFromSources() bool {
 				_, err := d.db.GetNetwork(tx, n.Name)
 				return err
 			})
-
 			// Only add the network if it doesn't yet exist
 			if err != nil {
 				logger.Info("Adding network "+n.Name+" from source "+s.GetName(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					return d.db.AddNetwork(tx, &n)
 				})
-
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 					continue
@@ -219,7 +217,6 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 						return nil
 					})
-
 					if err != nil {
 						logger.Warn(err.Error(), loggerCtx)
 						continue
@@ -238,7 +235,6 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 					return nil
 				})
-
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 					continue

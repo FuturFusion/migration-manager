@@ -85,7 +85,6 @@ func (c *cmdSourceAdd) Command() *cobra.Command {
 }
 
 func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
-
 	// Quick checks.
 	exit, err := c.global.CheckArgs(cmd, args, 2, 3)
 	if exit {

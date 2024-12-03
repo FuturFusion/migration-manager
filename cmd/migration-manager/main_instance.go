@@ -166,7 +166,7 @@ func parseReturnedInstance(i any) (any, error) {
 		return nil, err
 	}
 
-	var ret = api.Instance{}
+	ret := api.Instance{}
 	err = json.Unmarshal(reJsonified, &ret)
 	if err != nil {
 		return nil, err

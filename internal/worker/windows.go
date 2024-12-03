@@ -27,11 +27,13 @@ const (
 	BITLOCKERSTATE_CLEARKEY
 )
 
-const bitLockerMountPath string = "/mnt/dislocker/"
-const driversMountDevice string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
-const driversMountPath string = "/mnt/drivers/"
-const windowsMainMountPath string = "/mnt/win_main/"
-const windowsRecoveryMountPath string = "/mnt/win_recovery/"
+const (
+	bitLockerMountPath       string = "/mnt/dislocker/"
+	driversMountDevice       string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
+	driversMountPath         string = "/mnt/drivers/"
+	windowsMainMountPath     string = "/mnt/win_main/"
+	windowsRecoveryMountPath string = "/mnt/win_recovery/"
+)
 
 func init() {
 	_ = pongo2.RegisterFilter("toHex", toHex)
@@ -149,7 +151,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 
 func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 	cacheDir := "/tmp/inject-drivers"
-	err := os.MkdirAll(cacheDir, 0700)
+	err := os.MkdirAll(cacheDir, 0o700)
 	if err != nil {
 		return err
 	}

@@ -295,7 +295,7 @@ func parseReturnedCommand(c any) (api.WorkerCommand, error) {
 		return api.WorkerCommand{}, err
 	}
 
-	var ret = api.WorkerCommand{}
+	ret := api.WorkerCommand{}
 	err = json.Unmarshal(reJsonified, &ret)
 	if err != nil {
 		return api.WorkerCommand{}, err

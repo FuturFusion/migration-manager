@@ -235,7 +235,6 @@ func (r *errorResponse) Render(w http.ResponseWriter) error {
 	}
 
 	err := json.NewEncoder(output).Encode(resp)
-
 	if err != nil {
 		return err
 	}

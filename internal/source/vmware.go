@@ -158,7 +158,6 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			}
 		} else {
 			logger.Debugf("Unable to determine architecture for %s (%s) from source %s; defaulting to x86_64", vmProps.Summary.Config.Name, UUID.String(), s.Name)
-
 		}
 
 		useLegacyBios := false

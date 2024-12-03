@@ -11,9 +11,11 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-var batchA = batch.NewBatch("BatchA", "include", "exclude", time.Time{}, time.Time{}, "")
-var batchB = batch.NewBatch("BatchB", "", "exclude", time.Now().UTC(), time.Time{}, "network-name")
-var batchC = batch.NewBatch("BatchC", "include", "", time.Time{}, time.Now().UTC(), "another-network")
+var (
+	batchA = batch.NewBatch("BatchA", "include", "exclude", time.Time{}, time.Time{}, "")
+	batchB = batch.NewBatch("BatchB", "", "exclude", time.Now().UTC(), time.Time{}, "network-name")
+	batchC = batch.NewBatch("BatchC", "include", "", time.Time{}, time.Now().UTC(), "another-network")
+)
 
 func TestBatchDatabaseActions(t *testing.T) {
 	// Create a new temporary database.
