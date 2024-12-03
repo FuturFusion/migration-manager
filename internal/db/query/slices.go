@@ -20,7 +20,7 @@ func SelectIntegers(ctx context.Context, tx *sql.Tx, query string, args ...any) 
 		return nil
 	}
 
-	err := scanSingleColumn(ctx, tx, query, args, "INTEGER", scan)
+	err := scanSingleColumn(ctx, tx, query, args, scan)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func SelectIntegers(ctx context.Context, tx *sql.Tx, query string, args ...any) 
 // Execute the given query and ensure that it yields rows with a single column
 // of the given database type. For every row yielded, execute the given
 // scanner.
-func scanSingleColumn(ctx context.Context, tx *sql.Tx, query string, args []any, typeName string, scan scanFunc) error {
+func scanSingleColumn(ctx context.Context, tx *sql.Tx, query string, args []any, scan scanFunc) error {
 	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return err
