@@ -103,14 +103,14 @@ type Instance struct {
 	OSVersion string `json:"osVersion" yaml:"osVersion"`
 
 	// Disk(s) for this instance
-	Disks []InstanceDiskInfo `json:"disks" yaml"disks"`
+	Disks []InstanceDiskInfo `json:"disks" yaml:"disks"`
 
 	// NIC(s) for this instance
-	NICs []InstanceNICInfo `json:"nics" yaml"nics"`
+	NICs []InstanceNICInfo `json:"nics" yaml:"nics"`
 
 	// The number of vCPUs for this instance
 	// Example: 4
-	NumberCPUs int `json:"numberCpus" yaml"numberCpus"`
+	NumberCPUs int `json:"numberCpus" yaml:"numberCpus"`
 
 	// The amount of memory for this instance, in MiB
 	// Example: 4096
