@@ -62,6 +62,10 @@ type Batch struct {
 	// Example: "4 of 5 instances migrated"
 	StatusString string `json:"statusString" yaml:"statusString"`
 
+	// The Incus storage pool that this batch should use for creating VMs and mounting ISO images
+	// Example: local
+	StoragePool string `json:"storagePool" yaml:"storagePool"`
+
 	// A regular expression used to select instances to add to this batch
 	// Example: .*
 	IncludeRegex string `json:"includeRegex" yaml:"includeRegex"`

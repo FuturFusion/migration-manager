@@ -15,6 +15,7 @@ CREATE TABLE batches (
     name VARCHAR(255) NOT NULL,
     status INTEGER NOT NULL,
     statusstring TEXT NOT NULL,
+    storagepool VARCHAR(255) NOT NULL,
     includeregex TEXT NOT NULL,
     excluderegex TEXT NOT NULL,
     migrationwindowstart TEXT NOT NULL,
@@ -73,7 +74,6 @@ CREATE TABLE targets (
     oidctokens TEXT NOT NULL,
     insecure BOOLEAN,
     incusproject VARCHAR(255) NOT NULL,
-    storagepool VARCHAR(255) NOT NULL,
     bootisoimage VARCHAR(255) NOT NULL,
     driversisoimage VARCHAR(255) NOT NULL,
     UNIQUE (name)
@@ -122,6 +122,7 @@ CREATE TABLE batches (
     name VARCHAR(255) NOT NULL,
     status INTEGER NOT NULL,
     statusstring TEXT NOT NULL,
+    storagepool VARCHAR(255) NOT NULL,
     includeregex TEXT NOT NULL,
     excluderegex TEXT NOT NULL,
     migrationwindowstart TEXT NOT NULL,
@@ -180,7 +181,6 @@ CREATE TABLE targets (
     oidctokens TEXT NOT NULL,
     insecure BOOLEAN,
     incusproject VARCHAR(255) NOT NULL,
-    storagepool VARCHAR(255) NOT NULL,
     bootisoimage VARCHAR(255) NOT NULL,
     driversisoimage VARCHAR(255) NOT NULL,
     UNIQUE (name)

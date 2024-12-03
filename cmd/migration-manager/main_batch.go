@@ -96,6 +96,11 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		StatusString: api.BATCHSTATUS_DEFINED.String(),
 	}
 
+	b.StoragePool, err = c.global.asker.AskString("What storage pool should be used for VMs and the migration ISO images? [local] ", "local", nil)
+	if err != nil {
+		return err
+	}
+
 	b.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: ", "", func(s string) error { return nil })
 	if err != nil {
 		return err
@@ -200,7 +205,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Status", "Status String", "Include Regex", "Exclude Regex", "Window Start", "Window End", "Default Network"}
+	header := []string{"Name", "Status", "Status String", "Storage Pool", "Include Regex", "Exclude Regex", "Window Start", "Window End", "Default Network"}
 	data := [][]string{}
 
 	for _, b := range batches {
@@ -212,7 +217,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 		if !b.MigrationWindowEnd.IsZero() {
 			endString = b.MigrationWindowEnd.String()
 		}
-		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.IncludeRegex, b.ExcludeRegex, startString, endString, b.DefaultNetwork})
+		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.StoragePool, b.IncludeRegex, b.ExcludeRegex, startString, endString, b.DefaultNetwork})
 	}
 
 	return util.RenderTable(c.flagFormat, header, data, batches)
@@ -329,6 +334,9 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	// Show the details
 	fmt.Printf("Batch: %s\n", b.Name)
 	fmt.Printf("  - Status:        %s\n", b.StatusString)
+	if b.StoragePool != "" {
+		fmt.Printf("  - Storage pool:    %s\n", b.StoragePool)
+	}
 	if b.IncludeRegex != "" {
 		fmt.Printf("  - Include regex:   %s\n", b.IncludeRegex)
 	}
@@ -472,6 +480,11 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		origBatchName = bb.Name
 
 		bb.Name, err = c.global.asker.AskString("Batch name: ["+bb.Name+"] ", bb.Name, nil)
+		if err != nil {
+			return err
+		}
+
+		bb.StoragePool, err = c.global.asker.AskString("Storage pool: ["+bb.StoragePool+"] ", bb.StoragePool, nil)
 		if err != nil {
 			return err
 		}

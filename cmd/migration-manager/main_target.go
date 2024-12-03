@@ -127,11 +127,6 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	t.StoragePool, err = c.global.asker.AskString("What storage pool should be used for VMs and the migration ISO images? [local] ", "local", nil)
-	if err != nil {
-		return err
-	}
-
 	t.BootISOImage, err = c.global.asker.AskString("What is the migration environment boot ISO image name? ", "", nil)
 	if err != nil {
 		return err
@@ -224,7 +219,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Endpoint", "Auth Type", "Project", "Storage Pool", "Migration ISO", "Drivers ISO", "Insecure"}
+	header := []string{"Name", "Endpoint", "Auth Type", "Project", "Migration ISO", "Drivers ISO", "Insecure"}
 	data := [][]string{}
 
 	for _, t := range targets {
@@ -232,7 +227,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 		if t.TLSClientKey != "" {
 			authType = "TLS"
 		}
-		data = append(data, []string{t.Name, t.Endpoint, authType, t.IncusProject, t.StoragePool, t.BootISOImage, t.DriversISOImage, strconv.FormatBool(t.Insecure)})
+		data = append(data, []string{t.Name, t.Endpoint, authType, t.IncusProject, t.BootISOImage, t.DriversISOImage, strconv.FormatBool(t.Insecure)})
 	}
 
 	return util.RenderTable(c.flagFormat, header, data, targets)
@@ -394,11 +389,6 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		incusTarget.IncusProject, err = c.global.asker.AskString("Project: ["+incusTarget.IncusProject+"] ", incusTarget.IncusProject, nil)
-		if err != nil {
-			return err
-		}
-
-		incusTarget.StoragePool, err = c.global.asker.AskString("Storage pool: ["+incusTarget.StoragePool+"] ", incusTarget.StoragePool, nil)
 		if err != nil {
 			return err
 		}

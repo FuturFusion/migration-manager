@@ -26,7 +26,7 @@ type InternalIncusTarget struct {
 }
 
 // Returns a new IncusTarget ready for use.
-func NewIncusTarget(name string, endpoint string, storagePool string, bootISOImage string, driversISOImage string) *InternalIncusTarget {
+func NewIncusTarget(name string, endpoint string, bootISOImage string, driversISOImage string) *InternalIncusTarget {
 	return &InternalIncusTarget{
 		IncusTarget: mmapi.IncusTarget{
 			Name:            name,
@@ -37,7 +37,6 @@ func NewIncusTarget(name string, endpoint string, storagePool string, bootISOIma
 			OIDCTokens:      nil,
 			Insecure:        false,
 			IncusProject:    "default",
-			StoragePool:     storagePool,
 			BootISOImage:    bootISOImage,
 			DriversISOImage: driversISOImage,
 		},
@@ -153,10 +152,6 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 	return nil
 }
 
-func (t *InternalIncusTarget) GetStoragePool() string {
-	return t.StoragePool
-}
-
 func (t *InternalIncusTarget) GetBootISOImage() string {
 	return t.BootISOImage
 }
@@ -196,7 +191,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	// Define the default disk settings.
 	defaultDiskDef := map[string]string{
 		"path": "/",
-		"pool": t.GetStoragePool(),
+		"pool": "",
 		"type": "disk",
 	}
 
@@ -261,7 +256,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost) error {
 	// Attach bootable ISO to run migration of this VM.
 	apiDef.Devices["migration-iso"] = map[string]string{
 		"type":          "disk",
-		"pool":          t.GetStoragePool(),
+		"pool":          "",
 		"source":        t.GetBootISOImage(),
 		"boot.priority": "10",
 	}
@@ -270,7 +265,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost) error {
 	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
 		apiDef.Devices["drivers"] = map[string]string{
 			"type":   "disk",
-			"pool":   t.GetStoragePool(),
+			"pool":   "",
 			"source": t.GetDriversISOImage(),
 		}
 	}

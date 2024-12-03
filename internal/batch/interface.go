@@ -27,6 +27,9 @@ type Batch interface {
 	// Returns the status of this batch.
 	GetStatus() api.BatchStatusType
 
+	// Returns the storage pool for this batch
+	GetStoragePool() string
+
 	// Returns the migration window start time
 	GetMigrationWindowStart() time.Time
 

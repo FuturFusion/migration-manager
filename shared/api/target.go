@@ -37,10 +37,6 @@ type IncusTarget struct {
 	// Example: default
 	IncusProject string `json:"incusProject" yaml:"incusProject"`
 
-	// The storage pool that holds various migration ISO images.
-	// Example: local
-	StoragePool string `json:"storagePool" yaml:"storagePool"`
-
 	// The name of the boot environment ISO image.
 	// Example: migration-manager-minimal-boot.iso
 	BootISOImage string `json:"bootIsoImage" yaml:"bootIsoImage"`

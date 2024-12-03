@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	incusTargetA = target.NewIncusTarget("Target A", "https://localhost:8443", "pool", "boot.iso", "drivers.iso")
-	incusTargetB = target.NewIncusTarget("Target B", "https://incus.local:8443", "pool2", "boot2.iso", "")
-	incusTargetC = target.NewIncusTarget("Target C", "https://10.10.10.10:8443", "pool3", "boot3.iso", "drivers3.iso")
+	incusTargetA = target.NewIncusTarget("Target A", "https://localhost:8443", "boot.iso", "drivers.iso")
+	incusTargetB = target.NewIncusTarget("Target B", "https://incus.local:8443", "boot2.iso", "")
+	incusTargetC = target.NewIncusTarget("Target C", "https://10.10.10.10:8443", "boot3.iso", "drivers3.iso")
 )
 
 func TestTargetDatabaseActions(t *testing.T) {

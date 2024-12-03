@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	batchA = batch.NewBatch("BatchA", "include", "exclude", time.Time{}, time.Time{}, "")
-	batchB = batch.NewBatch("BatchB", "", "exclude", time.Now().UTC(), time.Time{}, "network-name")
-	batchC = batch.NewBatch("BatchC", "include", "", time.Time{}, time.Now().UTC(), "another-network")
+	batchA = batch.NewBatch("BatchA", "pool1", "include", "exclude", time.Time{}, time.Time{}, "")
+	batchB = batch.NewBatch("BatchB", "pool2", "", "exclude", time.Now().UTC(), time.Time{}, "network-name")
+	batchC = batch.NewBatch("BatchC", "pool3", "include", "", time.Time{}, time.Now().UTC(), "another-network")
 )
 
 func TestBatchDatabaseActions(t *testing.T) {
