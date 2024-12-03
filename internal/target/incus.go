@@ -160,7 +160,7 @@ func (t *InternalIncusTarget) GetDriversISOImage() string {
 	return t.DriversISOImage
 }
 
-func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalInstance) api.InstancesPost {
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalInstance, storagePool string) api.InstancesPost {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
@@ -191,7 +191,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	// Define the default disk settings.
 	defaultDiskDef := map[string]string{
 		"path": "/",
-		"pool": "",
+		"pool": storagePool,
 		"type": "disk",
 	}
 
@@ -249,14 +249,14 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	return ret
 }
 
-func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost) error {
+func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool string) error {
 	revert := revert.New()
 	defer revert.Fail()
 
 	// Attach bootable ISO to run migration of this VM.
 	apiDef.Devices["migration-iso"] = map[string]string{
 		"type":          "disk",
-		"pool":          "",
+		"pool":          storagePool,
 		"source":        t.GetBootISOImage(),
 		"boot.priority": "10",
 	}
@@ -265,7 +265,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost) error {
 	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
 		apiDef.Devices["drivers"] = map[string]string{
 			"type":   "disk",
-			"pool":   "",
+			"pool":   storagePool,
 			"source": t.GetDriversISOImage(),
 		}
 	}

@@ -70,10 +70,10 @@ type Target interface {
 	GetDriversISOImage() string
 
 	// Creates a VM definition for use with the Incus REST API.
-	CreateVMDefinition(instanceDef instance.InternalInstance) api.InstancesPost
+	CreateVMDefinition(instanceDef instance.InternalInstance, storagePool string) api.InstancesPost
 
 	// Creates a new VM from the pre-populated API definition.
-	CreateNewVM(apiDef api.InstancesPost) error
+	CreateNewVM(apiDef api.InstancesPost, storagePool string) error
 
 	// Deletes a VM.
 	DeleteVM(name string) error

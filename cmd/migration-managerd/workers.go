@@ -531,8 +531,8 @@ func (d *Daemon) processQueuedBatches() bool {
 
 			// Create the instance.
 			internalInstance, _ := i.(*instance.InternalInstance)
-			instanceDef := t.CreateVMDefinition(*internalInstance)
-			creationErr := t.CreateNewVM(instanceDef)
+			instanceDef := t.CreateVMDefinition(*internalInstance, b.GetStoragePool())
+			creationErr := t.CreateNewVM(instanceDef, b.GetStoragePool())
 			if creationErr != nil {
 				logger.Warn(creationErr.Error(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
