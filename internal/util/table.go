@@ -79,7 +79,7 @@ func RenderTable(format string, header []string, data [][]string, raw any) error
 
 		fmt.Printf("%s", out)
 	default:
-		return fmt.Errorf("Invalid format %q", format)
+		return fmt.Errorf("invalid format %q", format)
 	}
 
 	return nil

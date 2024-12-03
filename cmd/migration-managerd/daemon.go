@@ -160,7 +160,7 @@ func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 		}
 
 		if d.shutdownCtx.Err() == context.Canceled && !allowedDuringShutdown() {
-			_ = response.Unavailable(fmt.Errorf("Shutting down")).Render(w)
+			_ = response.Unavailable(fmt.Errorf("shutting down")).Render(w)
 			return
 		}
 
@@ -171,12 +171,12 @@ func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 
 			// All APIEndpointActions should have an access handler or should allow untrusted requests.
 			if action.AccessHandler == nil && !action.AllowUntrusted {
-				return response.InternalError(fmt.Errorf("Access handler not defined for %s %s", r.Method, r.URL.RequestURI()))
+				return response.InternalError(fmt.Errorf("access handler not defined for %s %s", r.Method, r.URL.RequestURI()))
 			}
 
 			// If the request is not trusted, only call the handler if the action allows it.
 			if !trusted && !action.AllowUntrusted {
-				return response.Forbidden(fmt.Errorf("You must be authenticated"))
+				return response.Forbidden(fmt.Errorf("you must be authenticated"))
 			}
 
 			// Call the access handler if there is one.
@@ -204,7 +204,7 @@ func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 		case "PATCH":
 			resp = handleRequest(c.Patch)
 		default:
-			resp = response.NotFound(fmt.Errorf("Method %q not found", r.Method))
+			resp = response.NotFound(fmt.Errorf("method %q not found", r.Method))
 		}
 
 		// Handle errors

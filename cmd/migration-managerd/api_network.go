@@ -126,7 +126,7 @@ func networksPost(d *Daemon, r *http.Request) response.Response {
 		return d.db.AddNetwork(tx, &n)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating network %q: %w", n.Name, err))
+		return response.SmartError(fmt.Errorf("failed creating network %q: %w", n.Name, err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+n.Name)
@@ -157,14 +157,14 @@ func networkDelete(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Network name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("network name cannot be empty"))
 	}
 
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		return d.db.DeleteNetwork(tx, name)
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to delete network '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to delete network '%s': %w", name, err))
 	}
 
 	return response.EmptySyncResponse
@@ -211,7 +211,7 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Network name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("network name cannot be empty"))
 	}
 
 	var n api.Network
@@ -225,7 +225,7 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get network '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to get network '%s': %w", name, err))
 	}
 
 	return response.SyncResponseETag(true, n, n)
@@ -267,7 +267,7 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Network name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("network name cannot be empty"))
 	}
 
 	// Get the existing network.
@@ -282,7 +282,7 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get network '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to get network '%s': %w", name, err))
 	}
 
 	// Validate ETag
@@ -302,7 +302,7 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		return d.db.UpdateNetwork(tx, n)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", n.Name, err))
+		return response.SmartError(fmt.Errorf("failed updating network %q: %w", n.Name, err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+n.Name)

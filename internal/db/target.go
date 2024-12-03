@@ -12,7 +12,7 @@ import (
 func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 	incusTarget, ok := t.(*target.InternalIncusTarget)
 	if !ok {
-		return fmt.Errorf("Only Incus targets are supported")
+		return fmt.Errorf("only Incus targets are supported")
 	}
 
 	// Add target to the database.
@@ -44,7 +44,7 @@ func (n *Node) GetTarget(tx *sql.Tx, name string) (target.Target, error) {
 	}
 
 	if len(ret) != 1 {
-		return nil, fmt.Errorf("No target exists with name '%s'", name)
+		return nil, fmt.Errorf("no target exists with name '%s'", name)
 	}
 
 	return ret[0], nil
@@ -57,7 +57,7 @@ func (n *Node) GetTargetByID(tx *sql.Tx, id int) (target.Target, error) {
 	}
 
 	if len(ret) != 1 {
-		return nil, fmt.Errorf("No target exists with ID '%d'", id)
+		return nil, fmt.Errorf("no target exists with ID '%d'", id)
 	}
 
 	return ret[0], nil
@@ -101,7 +101,7 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Target with name '%s' doesn't exist, can't delete", name)
+		return fmt.Errorf("target with name '%s' doesn't exist, can't delete", name)
 	}
 
 	return nil
@@ -113,7 +113,7 @@ func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 
 	incusTarget, ok := t.(*target.InternalIncusTarget)
 	if !ok {
-		return fmt.Errorf("Only Incus targets are supported")
+		return fmt.Errorf("only Incus targets are supported")
 	}
 
 	id, err := t.GetDatabaseID()
@@ -134,7 +134,7 @@ func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Target with ID %d doesn't exist, can't update", id)
+		return fmt.Errorf("target with ID %d doesn't exist, can't update", id)
 	}
 
 	return nil

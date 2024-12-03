@@ -44,11 +44,11 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if os.Geteuid() != 0 {
-		return fmt.Errorf("This tool must be run as root\n")
+		return fmt.Errorf("this tool must be run as root\n")
 	}
 
 	if !util.PathExists("/dev/virtio-ports/org.linuxcontainers.incus") {
-		return fmt.Errorf("This tool is designed to be run within an Incus VM\n")
+		return fmt.Errorf("this tool is designed to be run within an Incus VM\n")
 	}
 
 	w, err := newWorker(c.flagMMEndpoint, c.flagUUID)

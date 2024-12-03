@@ -38,7 +38,7 @@ func (n *Node) GetNetwork(tx *sql.Tx, name string) (api.Network, error) {
 	}
 
 	if len(ret) != 1 {
-		return api.Network{}, fmt.Errorf("No network '%s'", name)
+		return api.Network{}, fmt.Errorf("no network '%s'", name)
 	}
 
 	return ret[0], nil
@@ -61,7 +61,7 @@ func (n *Node) DeleteNetwork(tx *sql.Tx, name string) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("No network '%s' exists, can't delete", name)
+		return fmt.Errorf("no network '%s' exists, can't delete", name)
 	}
 
 	return nil
@@ -85,7 +85,7 @@ func (n *Node) UpdateNetwork(tx *sql.Tx, net api.Network) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("No network '%s' exists, can't update", net.Name)
+		return fmt.Errorf("no network '%s' exists, can't update", net.Name)
 	}
 
 	return nil

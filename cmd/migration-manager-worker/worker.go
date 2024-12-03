@@ -283,7 +283,7 @@ func (w *Worker) doHttpRequestV1(endpoint string, method string, content []byte)
 	if err != nil {
 		return nil, err
 	} else if jsonResp.Code != 0 {
-		return &jsonResp, fmt.Errorf("Received an error from the endpoint: %s", jsonResp.Error)
+		return &jsonResp, fmt.Errorf("received an error from the endpoint: %s", jsonResp.Error)
 	}
 
 	return &jsonResp, nil

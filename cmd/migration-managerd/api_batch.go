@@ -146,7 +146,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return d.db.AddBatch(tx, &b)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating batch %q: %w", b.GetName(), err))
+		return response.SmartError(fmt.Errorf("failed creating batch %q: %w", b.GetName(), err))
 	}
 
 	// Add any instances to this batch that match selection criteria.
@@ -154,7 +154,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return d.db.UpdateInstancesAssignedToBatch(tx, &b)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to assign instances to batch %q: %w", b.GetName(), err))
+		return response.SmartError(fmt.Errorf("failed to assign instances to batch %q: %w", b.GetName(), err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+b.GetName())
@@ -185,14 +185,14 @@ func batchDelete(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("batch name cannot be empty"))
 	}
 
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		return d.db.DeleteBatch(tx, name)
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to delete batch '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to delete batch '%s': %w", name, err))
 	}
 
 	return response.EmptySyncResponse
@@ -239,7 +239,7 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("batch name cannot be empty"))
 	}
 
 	var b batch.Batch
@@ -253,7 +253,7 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to get batch '%s': %w", name, err))
 	}
 
 	return response.SyncResponseETag(true, b, b)
@@ -295,7 +295,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("batch name cannot be empty"))
 	}
 
 	// Get the existing batch.
@@ -310,7 +310,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to get batch '%s': %w", name, err))
 	}
 
 	// Validate ETag
@@ -330,7 +330,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return d.db.UpdateBatch(tx, b)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", b.GetName(), err))
+		return response.SmartError(fmt.Errorf("failed updating batch %q: %w", b.GetName(), err))
 	}
 
 	// Update any instances for this batch that match selection criteria.
@@ -338,7 +338,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return d.db.UpdateInstancesAssignedToBatch(tx, b)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to update instances for batch %q: %w", b.GetName(), err))
+		return response.SmartError(fmt.Errorf("failed to update instances for batch %q: %w", b.GetName(), err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+b.GetName())
@@ -388,7 +388,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("batch name cannot be empty"))
 	}
 
 	var b batch.Batch
@@ -402,7 +402,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to get batch '%s': %w", name, err))
 	}
 
 	result := []instance.Instance{}
@@ -450,7 +450,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("batch name cannot be empty"))
 	}
 
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
@@ -462,7 +462,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to start batch '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to start batch '%s': %w", name, err))
 	}
 
 	return response.SyncResponse(true, nil)
@@ -493,7 +493,7 @@ func batchStopPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("batch name cannot be empty"))
 	}
 
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
@@ -505,7 +505,7 @@ func batchStopPost(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to stop batch '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to stop batch '%s': %w", name, err))
 	}
 
 	return response.SyncResponse(true, nil)

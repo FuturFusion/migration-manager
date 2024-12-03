@@ -31,7 +31,7 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 		configString = string(marshalled)
 		isInsecure = specificSource.Insecure
 	default:
-		return fmt.Errorf("Can only add a Common or VMware source")
+		return fmt.Errorf("can only add a Common or VMware source")
 	}
 
 	result, err := tx.Exec(q, s.GetName(), sourceType, isInsecure, configString)
@@ -61,7 +61,7 @@ func (n *Node) GetSource(tx *sql.Tx, name string) (source.Source, error) {
 	}
 
 	if len(ret) != 1 {
-		return nil, fmt.Errorf("No source exists with name '%s'", name)
+		return nil, fmt.Errorf("no source exists with name '%s'", name)
 	}
 
 	return ret[0], nil
@@ -74,7 +74,7 @@ func (n *Node) GetSourceByID(tx *sql.Tx, id int) (source.Source, error) {
 	}
 
 	if len(ret) != 1 {
-		return nil, fmt.Errorf("No source exists with ID '%d'", id)
+		return nil, fmt.Errorf("no source exists with ID '%d'", id)
 	}
 
 	return ret[0], nil
@@ -118,7 +118,7 @@ func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Source with name '%s' doesn't exist, can't delete", name)
+		return fmt.Errorf("source with name '%s' doesn't exist, can't delete", name)
 	}
 
 	return nil
@@ -142,7 +142,7 @@ func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 		configString = string(marshalled)
 		isInsecure = specificSource.Insecure
 	default:
-		return fmt.Errorf("Can only update a Common or VMware source")
+		return fmt.Errorf("can only update a Common or VMware source")
 	}
 
 	id, err := s.GetDatabaseID()
@@ -159,7 +159,7 @@ func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Source with ID %d doesn't exist, can't update", id)
+		return fmt.Errorf("source with ID %d doesn't exist, can't update", id)
 	}
 
 	return nil
@@ -215,7 +215,7 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]source.Sourc
 			newSource.Insecure = sourceInsecure
 			ret = append(ret, newSource)
 		default:
-			return nil, fmt.Errorf("Unknown source type %d", sourceType)
+			return nil, fmt.Errorf("unknown source type %d", sourceType)
 		}
 	}
 

@@ -166,7 +166,7 @@ func determineRootPartition() (string, int, []string, error) {
 		}
 	}
 
-	return "", PARTITION_TYPE_UNKNOWN, nil, fmt.Errorf("Failed to determine the root partition")
+	return "", PARTITION_TYPE_UNKNOWN, nil, fmt.Errorf("failed to determine the root partition")
 }
 
 func runScriptInChroot(scriptName string) error {
@@ -274,5 +274,5 @@ func getBTRFSTopSubvol(partition string) (string, error) {
 		return submatch[1], nil
 	}
 
-	return "", fmt.Errorf("Unable to determine top level subvolume for partition %s", partition)
+	return "", fmt.Errorf("unable to determine top level subvolume for partition %s", partition)
 }

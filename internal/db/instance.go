@@ -15,7 +15,7 @@ import (
 func (n *Node) AddInstance(tx *sql.Tx, i instance.Instance) error {
 	internalInstance, ok := i.(*instance.InternalInstance)
 	if !ok {
-		return fmt.Errorf("Wasn't given an InternalInstance?")
+		return fmt.Errorf("wasn't given an InternalInstance?")
 	}
 
 	// Add instance to the database.
@@ -49,7 +49,7 @@ func (n *Node) GetInstance(tx *sql.Tx, UUID uuid.UUID) (instance.Instance, error
 	}
 
 	if len(ret) != 1 {
-		return nil, fmt.Errorf("No instance exists with UUID '%s'", UUID)
+		return nil, fmt.Errorf("no instance exists with UUID '%s'", UUID)
 	}
 
 	return ret[0], nil
@@ -66,7 +66,7 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 		return err
 	}
 	if i.GetBatchID() != internal.INVALID_DATABASE_ID || i.IsMigrating() {
-		return fmt.Errorf("Cannot delete instance '%s': Either assigned to a batch or currently migrating", i.GetName())
+		return fmt.Errorf("cannot delete instance '%s': Either assigned to a batch or currently migrating", i.GetName())
 	}
 
 	// Delete the instance from the database.
@@ -81,7 +81,7 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Instance with UUID '%s' doesn't exist, can't delete", UUID)
+		return fmt.Errorf("instance with UUID '%s' doesn't exist, can't delete", UUID)
 	}
 
 	return nil
@@ -107,7 +107,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 			return err
 		}
 
-		return fmt.Errorf("Cannot update instance '%s' while assigned to batch '%s'", i.GetName(), batchName)
+		return fmt.Errorf("cannot update instance '%s' while assigned to batch '%s'", i.GetName(), batchName)
 	}
 
 	// Update instance in the database.
@@ -115,7 +115,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 
 	internalInstance, ok := i.(*instance.InternalInstance)
 	if !ok {
-		return fmt.Errorf("Wasn't given an InternalInstance?")
+		return fmt.Errorf("wasn't given an InternalInstance?")
 	}
 
 	marshalledLastUpdateFromSource, err := internalInstance.LastUpdateFromSource.MarshalText()
@@ -144,7 +144,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 		return err
 	}
 	if affectedRows == 0 {
-		return fmt.Errorf("Instance with UUID '%s' doesn't exist, can't update", internalInstance.UUID.String())
+		return fmt.Errorf("instance with UUID '%s' doesn't exist, can't update", internalInstance.UUID.String())
 	}
 
 	return nil

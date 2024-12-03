@@ -90,7 +90,7 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 			case *source.InternalVMwareSource:
 				result = append(result, sourcesResult{Type: api.SOURCETYPE_VMWARE, Source: s})
 			default:
-				return fmt.Errorf("Unsupported source type %T", s)
+				return fmt.Errorf("unsupported source type %T", s)
 			}
 		}
 
@@ -143,7 +143,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 	// Get source type parameter.
 	sourceType, err := strconv.Atoi(r.FormValue("type"))
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Source type must be an integer"))
+		return response.BadRequest(fmt.Errorf("source type must be an integer"))
 	}
 
 	// Setup the correct source type for unmarshaling.
@@ -153,7 +153,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 	case api.SOURCETYPE_VMWARE:
 		s = &source.InternalVMwareSource{}
 	default:
-		return response.BadRequest(fmt.Errorf("Unsupported source type %d", sourceType))
+		return response.BadRequest(fmt.Errorf("unsupported source type %d", sourceType))
 	}
 
 	// Decode into the new source.
@@ -167,7 +167,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		return d.db.AddSource(tx, s)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", s.GetName(), err))
+		return response.SmartError(fmt.Errorf("failed creating source %q: %w", s.GetName(), err))
 	}
 
 	// Trigger a scan of this new source for instances.
@@ -201,14 +201,14 @@ func sourceDelete(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Source name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("source name cannot be empty"))
 	}
 
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		return d.db.DeleteSource(tx, name)
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to delete source '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to delete source '%s': %w", name, err))
 	}
 
 	return response.EmptySyncResponse
@@ -256,7 +256,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Source name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("source name cannot be empty"))
 	}
 
 	var s source.Source
@@ -270,7 +270,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to get source '%s': %w", name, err))
 	}
 
 	var ret sourcesResult
@@ -280,7 +280,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 	case *source.InternalVMwareSource:
 		ret = sourcesResult{Type: api.SOURCETYPE_VMWARE, Source: s}
 	default:
-		return response.BadRequest(fmt.Errorf("Unsupported source type %T", s))
+		return response.BadRequest(fmt.Errorf("unsupported source type %T", s))
 	}
 
 	return response.SyncResponseETag(true, ret, s)
@@ -323,7 +323,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Source name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("source name cannot be empty"))
 	}
 
 	// Get the existing source.
@@ -338,7 +338,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to get source '%s': %w", name, err))
 	}
 
 	// Validate ETag
@@ -358,7 +358,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return d.db.UpdateSource(tx, s)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", s.GetName(), err))
+		return response.SmartError(fmt.Errorf("failed updating source %q: %w", s.GetName(), err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+s.GetName())

@@ -99,7 +99,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 	// Set variables.
 	if len(args) == 3 {
 		if !slices.Contains(supportedTypes, strings.ToLower(args[0])) {
-			return fmt.Errorf("Unsupported source type '%s'; must be one of %q", args[0], supportedTypes)
+			return fmt.Errorf("unsupported source type '%s'; must be one of %q", args[0], supportedTypes)
 		}
 		sourceType = strings.ToLower(args[0])
 		sourceName = args[1]
@@ -256,7 +256,7 @@ func parseReturnedSource(source any) (any, error) {
 
 		return source, nil
 	default:
-		return nil, fmt.Errorf("Unsupported source type %f", rawSource["type"].(float64))
+		return nil, fmt.Errorf("unsupported source type %f", rawSource["type"].(float64))
 	}
 }
 
@@ -393,7 +393,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		newSourceName = specificSource.Name
 		s = internalSource
 	default:
-		return fmt.Errorf("Unsupported source type %T; must be one of %q", s, supportedTypes)
+		return fmt.Errorf("unsupported source type %T; must be one of %q", s, supportedTypes)
 	}
 
 	// Update the source.

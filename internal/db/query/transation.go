@@ -23,7 +23,7 @@ func Transaction(ctx context.Context, db *sql.DB, f func(context.Context, *sql.T
 			_, _ = db.Exec("ROLLBACK")
 		}
 
-		return fmt.Errorf("Failed to begin transaction: %w", err)
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 
 	err = f(ctx, tx)

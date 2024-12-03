@@ -141,7 +141,7 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
+		return response.BadRequest(fmt.Errorf("failed to get instance '%s': %w", UUID, err))
 	}
 
 	return response.SyncResponseETag(true, i, i)
@@ -199,7 +199,7 @@ func instancePut(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
+		return response.BadRequest(fmt.Errorf("failed to get instance '%s': %w", UUID, err))
 	}
 
 	// Validate ETag
@@ -219,7 +219,7 @@ func instancePut(d *Daemon, r *http.Request) response.Response {
 		return d.db.UpdateInstance(tx, i)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating instance '%s': %w", i.GetUUID(), err))
+		return response.SmartError(fmt.Errorf("failed updating instance '%s': %w", i.GetUUID(), err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+i.GetUUID().String())

@@ -127,7 +127,7 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 		return d.db.AddTarget(tx, &t)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", t.GetName(), err))
+		return response.SmartError(fmt.Errorf("failed creating target %q: %w", t.GetName(), err))
 	}
 
 	// Trigger a scan for new instances.
@@ -161,14 +161,14 @@ func targetDelete(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Target name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("target name cannot be empty"))
 	}
 
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		return d.db.DeleteTarget(tx, name)
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to delete target '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to delete target '%s': %w", name, err))
 	}
 
 	return response.EmptySyncResponse
@@ -215,7 +215,7 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Target name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("target name cannot be empty"))
 	}
 
 	var t target.Target
@@ -229,7 +229,7 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get target '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to get target '%s': %w", name, err))
 	}
 
 	return response.SyncResponseETag(true, t, t)
@@ -271,7 +271,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
-		return response.BadRequest(fmt.Errorf("Target name cannot be empty"))
+		return response.BadRequest(fmt.Errorf("target name cannot be empty"))
 	}
 
 	// Get the existing target.
@@ -286,7 +286,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get target '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("failed to get target '%s': %w", name, err))
 	}
 
 	// Validate ETag
@@ -306,7 +306,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		return d.db.UpdateTarget(tx, t)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", t.GetName(), err))
+		return response.SmartError(fmt.Errorf("failed updating target %q: %w", t.GetName(), err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+t.GetName())

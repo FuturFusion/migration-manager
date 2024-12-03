@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lxc/incus/v6/client"
+	incus "github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 
@@ -47,7 +47,7 @@ func NewIncusTarget(name string, endpoint string, storagePool string, bootISOIma
 
 func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	if t.isConnected {
-		return fmt.Errorf("Already connected to endpoint '%s'", t.Endpoint)
+		return fmt.Errorf("already connected to endpoint '%s'", t.Endpoint)
 	}
 
 	authType := api.AuthenticationMethodTLS
@@ -65,7 +65,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	client, err := incus.ConnectIncusWithContext(ctx, t.Endpoint, t.incusConnectionArgs)
 	if err != nil {
 		t.incusConnectionArgs = nil
-		return fmt.Errorf("Failed to connect to endpoint '%s': %s", t.Endpoint, err)
+		return fmt.Errorf("failed to connect to endpoint '%s': %s", t.Endpoint, err)
 	}
 	t.incusClient = client.UseProject(t.IncusProject)
 
@@ -74,14 +74,14 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	if srv.Auth != "trusted" {
 		t.incusConnectionArgs = nil
 		t.incusClient = nil
-		return fmt.Errorf("Failed to connect to endpoint '%s': not authorized", t.Endpoint)
+		return fmt.Errorf("failed to connect to endpoint '%s': not authorized", t.Endpoint)
 	}
 
 	// Save the OIDC tokens.
 	if authType == api.AuthenticationMethodOIDC {
 		pi, ok := t.incusClient.(*incus.ProtocolIncus)
 		if !ok {
-			return fmt.Errorf("Server != ProtocolIncus")
+			return fmt.Errorf("server != ProtocolIncus")
 		}
 
 		t.OIDCTokens = pi.GetOIDCTokens()
@@ -93,7 +93,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 
 func (t *InternalIncusTarget) Disconnect(ctx context.Context) error {
 	if !t.isConnected {
-		return fmt.Errorf("Not connected to endpoint '%s'", t.Endpoint)
+		return fmt.Errorf("not connected to endpoint '%s'", t.Endpoint)
 	}
 
 	t.incusClient.Disconnect()
@@ -106,7 +106,7 @@ func (t *InternalIncusTarget) Disconnect(ctx context.Context) error {
 
 func (t *InternalIncusTarget) SetInsecureTLS(insecure bool) error {
 	if t.isConnected {
-		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
+		return fmt.Errorf("cannot change insecure TLS setting after connecting")
 	}
 
 	t.Insecure = insecure
@@ -115,7 +115,7 @@ func (t *InternalIncusTarget) SetInsecureTLS(insecure bool) error {
 
 func (t *InternalIncusTarget) SetClientTLSCredentials(key string, cert string) error {
 	if t.isConnected {
-		return fmt.Errorf("Cannot change client TLS key/cert after connecting")
+		return fmt.Errorf("cannot change client TLS key/cert after connecting")
 	}
 
 	t.TLSClientKey = key
@@ -133,7 +133,7 @@ func (t *InternalIncusTarget) GetName() string {
 
 func (t *InternalIncusTarget) GetDatabaseID() (int, error) {
 	if t.DatabaseID == internal.INVALID_DATABASE_ID {
-		return internal.INVALID_DATABASE_ID, fmt.Errorf("Target has not been added to database, so it doesn't have an ID")
+		return internal.INVALID_DATABASE_ID, fmt.Errorf("target has not been added to database, so it doesn't have an ID")
 	}
 
 	return t.DatabaseID, nil
@@ -141,7 +141,7 @@ func (t *InternalIncusTarget) GetDatabaseID() (int, error) {
 
 func (t *InternalIncusTarget) SetProject(project string) error {
 	if !t.isConnected {
-		return fmt.Errorf("Cannot change project before connecting")
+		return fmt.Errorf("cannot change project before connecting")
 	}
 
 	t.IncusProject = project

@@ -28,16 +28,16 @@ func NewCommonSource(name string) *InternalCommonSource {
 }
 
 func (s *InternalCommonSource) Connect(ctx context.Context) error {
-	return fmt.Errorf("Not implemented by CommonSource")
+	return fmt.Errorf("not implemented by CommonSource")
 }
 
 func (s *InternalCommonSource) Disconnect(ctx context.Context) error {
-	return fmt.Errorf("Not implemented by CommonSource")
+	return fmt.Errorf("not implemented by CommonSource")
 }
 
 func (s *InternalCommonSource) SetInsecureTLS(insecure bool) error {
 	if s.isConnected {
-		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
+		return fmt.Errorf("cannot change insecure TLS setting after connecting")
 	}
 
 	s.Insecure = insecure
@@ -54,24 +54,24 @@ func (s *InternalCommonSource) GetName() string {
 
 func (s *InternalCommonSource) GetDatabaseID() (int, error) {
 	if s.DatabaseID == internal.INVALID_DATABASE_ID {
-		return internal.INVALID_DATABASE_ID, fmt.Errorf("Source has not been added to database, so it doesn't have an ID")
+		return internal.INVALID_DATABASE_ID, fmt.Errorf("source has not been added to database, so it doesn't have an ID")
 	}
 
 	return s.DatabaseID, nil
 }
 
 func (s *InternalCommonSource) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
-	return nil, fmt.Errorf("Not implemented by CommonSource")
+	return nil, fmt.Errorf("not implemented by CommonSource")
 }
 
 func (s *InternalCommonSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
-	return nil, fmt.Errorf("Not implemented by CommonSource")
+	return nil, fmt.Errorf("not implemented by CommonSource")
 }
 
 func (s *InternalCommonSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
-	return fmt.Errorf("Not implemented by CommonSource")
+	return fmt.Errorf("not implemented by CommonSource")
 }
 
 func (s *InternalCommonSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string)) error {
-	return fmt.Errorf("Not implemented by CommonSource")
+	return fmt.Errorf("not implemented by CommonSource")
 }

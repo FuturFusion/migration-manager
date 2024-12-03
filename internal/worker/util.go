@@ -15,7 +15,7 @@ func DoMount(device string, path string, options []string) error {
 	if !util.PathExists(path) {
 		err := os.MkdirAll(path, 0o755)
 		if err != nil {
-			return fmt.Errorf("Failed to create mount target %q", path)
+			return fmt.Errorf("failed to create mount target %q", path)
 		}
 	}
 
@@ -36,7 +36,7 @@ func DoMount(device string, path string, options []string) error {
 		// Attempt to fix the NTFS partition.
 		_, err = subprocess.RunCommand("ntfsfix", device)
 		if err != nil {
-			return fmt.Errorf("NTFS partition %s contains an unclean file system; running `ntfsfix` failed. Please cleanly shutdown the source VM, then re-try migration.", device)
+			return fmt.Errorf("detected NTFS partition %s contains an unclean file system; running `ntfsfix` failed. Please cleanly shutdown the source VM, then re-try migration", device)
 		}
 
 		// Mount the clean NTFS partition.

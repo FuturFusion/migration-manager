@@ -165,7 +165,7 @@ func (c *cmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 			return true, nil
 		}
 
-		return true, fmt.Errorf("Invalid number of arguments")
+		return true, fmt.Errorf("invalid number of arguments")
 	}
 
 	return false, nil
@@ -206,7 +206,7 @@ func (c *cmdGlobal) doHttpRequestV1(endpoint string, method string, query string
 	if err != nil {
 		return nil, err
 	} else if jsonResp.Code != 0 {
-		return &jsonResp, fmt.Errorf("Received an error from the server: %s", jsonResp.Error)
+		return &jsonResp, fmt.Errorf("received an error from the server: %s", jsonResp.Error)
 	}
 
 	return &jsonResp, nil

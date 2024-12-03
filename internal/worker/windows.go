@@ -27,11 +27,13 @@ const (
 	BITLOCKERSTATE_CLEARKEY
 )
 
-const bitLockerMountPath string = "/mnt/dislocker/"
-const driversMountDevice string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
-const driversMountPath string = "/mnt/drivers/"
-const windowsMainMountPath string = "/mnt/win_main/"
-const windowsRecoveryMountPath string = "/mnt/win_recovery/"
+const (
+	bitLockerMountPath       string = "/mnt/dislocker/"
+	driversMountDevice       string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
+	driversMountPath         string = "/mnt/drivers/"
+	windowsMainMountPath     string = "/mnt/win_main/"
+	windowsRecoveryMountPath string = "/mnt/win_recovery/"
+)
 
 func init() {
 	_ = pongo2.RegisterFilter("toHex", toHex)
@@ -59,14 +61,14 @@ func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
 		return BITLOCKERSTATE_UNKNOWN, err
 	}
 
-	return BITLOCKERSTATE_UNKNOWN, fmt.Errorf("Failed to determine BitLocker status for %s", partition)
+	return BITLOCKERSTATE_UNKNOWN, fmt.Errorf("failed to determine BitLocker status for %s", partition)
 }
 
 func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error {
 	if !util.PathExists(bitLockerMountPath) {
 		err := os.MkdirAll(bitLockerMountPath, 0o755)
 		if err != nil {
-			return fmt.Errorf("Failed to create mount target %q", bitLockerMountPath)
+			return fmt.Errorf("failed to create mount target %q", bitLockerMountPath)
 		}
 	}
 
@@ -117,7 +119,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 		defer func() { _ = DoUnmount(windowsMainMountPath) }()
 	default:
 		// TODO -- Handle passing in of a recovery key for mounting BitLocker partition.
-		return fmt.Errorf("BitLocker without a clear key detected; bailing out for now")
+		return fmt.Errorf("unsupported BitLocker state, no clear key detected; bailing out for now")
 	}
 
 	// Mount the Windows recovery partition.
@@ -131,7 +133,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	mountCheckTries := 0
 	for !util.PathExists(filepath.Join(windowsMainMountPath, "Windows")) || !util.PathExists(filepath.Join(windowsRecoveryMountPath, "Recovery")) {
 		if mountCheckTries > 100 {
-			return fmt.Errorf("Windows partitions failed to mount properly; can't inject drivers")
+			return fmt.Errorf("failed to properly mount Windows partitions; can't inject drivers")
 		}
 		mountCheckTries++
 		time.Sleep(100 * time.Millisecond)
@@ -149,25 +151,25 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 
 func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 	cacheDir := "/tmp/inject-drivers"
-	err := os.MkdirAll(cacheDir, 0700)
+	err := os.MkdirAll(cacheDir, 0o700)
 	if err != nil {
 		return err
 	}
 
 	logger, err := shared.GetLogger(false)
 	if err != nil {
-		return fmt.Errorf("Failed to get logger: %w\n", err)
+		return fmt.Errorf("failed to get logger: %w", err)
 	}
 
 	repackUtuil := windows.NewRepackUtil(cacheDir, ctx, logger)
 
 	reWim, err := shared.FindFirstMatch(windowsRecoveryMountPath, "Recovery/WindowsRE", "winre.wim")
 	if err != nil {
-		return fmt.Errorf("Unable to find winre.wim: %w", err)
+		return fmt.Errorf("unable to find winre.wim: %w", err)
 	}
 	reWimInfo, err := repackUtuil.GetWimInfo(reWim)
 	if err != nil {
-		return fmt.Errorf("Failed to get RE wim info: %w", err)
+		return fmt.Errorf("failed to get RE wim info: %w", err)
 	}
 
 	if windowsVersion == "" {
@@ -177,11 +179,11 @@ func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 	windowsArchitecture := windows.DetectWindowsArchitecture(reWimInfo.Architecture(1))
 
 	if windowsVersion == "" {
-		return fmt.Errorf("Failed to detect Windows version. Please provide the version using the --windows-version flag")
+		return fmt.Errorf("failed to detect Windows version. Please provide the version using the --windows-version flag")
 	}
 
 	if windowsArchitecture == "" {
-		return fmt.Errorf("Failed to detect Windows architecture. Please provide the architecture using the --windows-architecture flag")
+		return fmt.Errorf("failed to detect Windows architecture. Please provide the architecture using the --windows-architecture flag")
 	}
 
 	repackUtuil.SetWindowsVersionArchitecture(windowsVersion, windowsArchitecture)
@@ -189,13 +191,13 @@ func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 	// Inject drivers into the RE wim image.
 	err = repackUtuil.InjectDriversIntoWim(reWim, reWimInfo, driversMountPath)
 	if err != nil {
-		return fmt.Errorf("Failed to modify wim %q: %w", reWim, err)
+		return fmt.Errorf("failed to modify wim %q: %w", reWim, err)
 	}
 
 	// Inject drivers into the Windows install.
 	err = repackUtuil.InjectDrivers(windowsMainMountPath, driversMountPath)
 	if err != nil {
-		return fmt.Errorf("Failed to inject drivers: %w", err)
+		return fmt.Errorf("failed to inject drivers: %w", err)
 	}
 
 	return nil

@@ -37,7 +37,7 @@ func (b *InternalBatch) GetName() string {
 
 func (b *InternalBatch) GetDatabaseID() (int, error) {
 	if b.DatabaseID == internal.INVALID_DATABASE_ID {
-		return internal.INVALID_DATABASE_ID, fmt.Errorf("Batch has not been added to database, so it doesn't have an ID")
+		return internal.INVALID_DATABASE_ID, fmt.Errorf("batch has not been added to database, so it doesn't have an ID")
 	}
 
 	return b.DatabaseID, nil

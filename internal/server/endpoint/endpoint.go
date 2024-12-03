@@ -36,7 +36,7 @@ type Endpoint struct {
 
 func Up(config *Config) (*Endpoint, error) {
 	if config.RestServer == nil {
-		return nil, fmt.Errorf("No REST server configured")
+		return nil, fmt.Errorf("no REST server configured")
 	}
 
 	if config.Config == nil {
@@ -64,7 +64,7 @@ func (e *Endpoint) up(config *Config) error {
 
 	e.listener, err = networkCreateListener(config.NetworkAddress, config.NetworkPort, e.tlsConfig)
 	if err != nil {
-		return fmt.Errorf("Failed to create listener: %s", err)
+		return fmt.Errorf("failed to create listener: %s", err)
 	}
 
 	logger.Info("Binding socket", logger.Ctx{"socket": e.listener.Addr()})
