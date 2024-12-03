@@ -188,17 +188,13 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 
 	// Linux-specific
 	if strings.Contains(strings.ToLower(cmd.OS), "debian") {
-		err := worker.LinuxDoPostMigrationConfig("Debian")
-		if err != nil {
-			w.sendErrorResponse(err)
-			return
-		}
+		err = worker.LinuxDoPostMigrationConfig("Debian")
 	} else if strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
-		err := worker.LinuxDoPostMigrationConfig("Ubuntu")
-		if err != nil {
-			w.sendErrorResponse(err)
-			return
-		}
+		err = worker.LinuxDoPostMigrationConfig("Ubuntu")
+	}
+	if err != nil {
+		w.sendErrorResponse(err)
+		return
 	}
 
 	// When the worker is done, the VM will be forced off, so call sync() to ensure all data is saved to disk.
