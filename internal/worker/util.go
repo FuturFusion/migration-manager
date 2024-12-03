@@ -49,6 +49,7 @@ func DoMount(device string, path string, options []string) error {
 
 func DoUnmount(path string) error {
 	var err error
+	// REVIEW: generalize retry logic.
 	numTries := 0
 	for {
 		// Sometimes umount fails when called too soon after finishing some file system activity.

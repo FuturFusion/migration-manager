@@ -201,6 +201,9 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 		return ret, err
 	}
 
+	// REVIEW: should we call defer rows.Close() in order to make sure, the rows
+	// are closed even if we have an error while processing?
+
 	for rows.Next() {
 		newBatch := &batch.InternalBatch{}
 		marshalledMigrationWindowStart := ""
@@ -352,6 +355,8 @@ func (n *Node) GetAllBatchesByState(tx *sql.Tx, status api.BatchStatusType) ([]b
 	}
 
 	for _, b := range batches {
+		// REVIEW: why isn't this filtering done directly on the DB with a where
+		// condition?
 		if b.GetStatus() == status {
 			ret = append(ret, b)
 		}

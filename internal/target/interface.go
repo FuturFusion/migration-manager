@@ -3,7 +3,7 @@ package target
 import (
 	"context"
 
-	"github.com/lxc/incus/v6/client"
+	incus "github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -57,6 +57,9 @@ type Target interface {
 	GetDatabaseID() (int, error)
 
 	//////////////////////////////////////////////////
+
+	// REVIEW: I would consider to add context.Context as first argument
+	// to most of the below methods.
 
 	// Selects the Incus project to use when performing actions on the target.
 	//

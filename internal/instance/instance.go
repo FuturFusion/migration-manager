@@ -14,6 +14,8 @@ type InternalInstance struct {
 	NeedsDiskImport bool
 }
 
+var _ Instance = &InternalInstance{}
+
 // Returns a new Instance ready for use.
 func NewInstance(UUID uuid.UUID, sourceID int, targetID int, batchID int, name string, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInMiB int, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
 	return &InternalInstance{

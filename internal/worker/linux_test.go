@@ -58,6 +58,9 @@ var oneVG = `
   }
 `
 
+// REVIEW: not sure about these tests, since they are mainly testing the json
+// package and not our own code.
+
 func TestLSBLKUnmarshaling(t *testing.T) {
 	lsblkOutput := worker.LSBLKOutput{}
 	err := json.Unmarshal([]byte(lsblk), &lsblkOutput)

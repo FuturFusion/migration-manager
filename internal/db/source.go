@@ -18,6 +18,10 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 	configString := ""
 	isInsecure := false
 
+	// REVIEW: I wonder, if we would be better of, if we separate the DTO used in
+	// the business logic from the one that is used in the DB layer. With this
+	// I feel, we could streamline the convertion / type asserting part and
+	// make the code more readable and easier to follow.
 	switch specificSource := s.(type) {
 	case *source.InternalCommonSource:
 		sourceType = api.SOURCETYPE_COMMON
@@ -191,6 +195,9 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]source.Sourc
 	if err != nil {
 		return ret, err
 	}
+
+	// REVIEW: should we call defer rows.Close() in order to make sure, the rows
+	// are closed even if we have an error while processing?
 
 	for rows.Next() {
 		err := rows.Scan(&sourceID, &sourceName, &sourceType, &sourceInsecure, &sourceConfig)

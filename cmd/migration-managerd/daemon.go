@@ -47,6 +47,8 @@ type DaemonConfig struct {
 type Daemon struct {
 	config *DaemonConfig
 
+	// REVIEW: I wonder, if we should bind our self statically to the DB layer implementation or if we should use dependency injection (hexagonal architectur)
+	// in order to have a clear separation between the business logic and the DB (repository) layer.
 	db *db.Node
 
 	shutdownCtx    context.Context    // Canceled when shutdown starts.
@@ -92,6 +94,7 @@ func (d *Daemon) Start() error {
 	}
 
 	// Start background workers
+	// REVIEW: Again, I would consider to pass a context here for cancellation.
 	d.runPeriodicTask(d.syncInstancesFromSources, time.Duration(time.Minute*10))
 	d.runPeriodicTask(d.processReadyBatches, time.Duration(time.Second*10))
 	d.runPeriodicTask(d.processQueuedBatches, time.Duration(time.Second*10))
@@ -110,6 +113,7 @@ func (d *Daemon) Stop(ctx context.Context, sig os.Signal) error {
 
 func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 	var uri string
+	// REVIEW: Should calling without version even be allowed?
 	if c.Path == "" {
 		uri = fmt.Sprintf("/%s", version)
 	} else if version != "" {
@@ -118,6 +122,9 @@ func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 		uri = fmt.Sprintf("/%s", c.Path)
 	}
 
+	// REVIEW: I think, we should embrace the routing enhancements of Go landed in Go 1.22
+	// see: https://go.dev/blog/routing-enhancements
+	// This allows method matching and wildcards.
 	route := restAPI.HandleFunc(uri, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 

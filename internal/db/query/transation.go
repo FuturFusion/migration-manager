@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -19,7 +20,11 @@ func Transaction(ctx context.Context, db *sql.DB, f func(context.Context, *sql.T
 	if err != nil {
 		// If there is a leftover transaction let's try to rollback,
 		// we'll then retry again.
+		// REVIEW: haveing a left over transaction sounds like a developers error.
+		// We should at least have some log about this.
 		if strings.Contains(err.Error(), "cannot start a transaction within a transaction") {
+			// REVIEW: is it intentional, that we still return an error, even if we have
+			// successfully rolled back the transaction?
 			_, _ = db.Exec("ROLLBACK")
 		}
 
@@ -32,7 +37,8 @@ func Transaction(ctx context.Context, db *sql.DB, f func(context.Context, *sql.T
 	}
 
 	err = tx.Commit()
-	if err == sql.ErrTxDone {
+	// REVIEW: It is now recommended to use errors.Is(err, sql.ErrTxDone)
+	if errors.Is(err, sql.ErrTxDone) {
 		err = nil // Ignore duplicate commits/rollbacks
 	}
 
@@ -43,6 +49,8 @@ func Transaction(ctx context.Context, db *sql.DB, f func(context.Context, *sql.T
 // succeeds the given error is returned, otherwise a new error that wraps it
 // gets generated and returned.
 func rollback(tx *sql.Tx, reason error) error {
+	// REVIEW: context.TODO() should be replaced by an actual context. We have
+	// a context in Transaction(...), so it is easy to pass it.
 	err := Retry(context.TODO(), func(_ context.Context) error { return tx.Rollback() })
 	if err != nil {
 		logger.Warnf("Failed to rollback transaction after error (%v): %v", reason, err)

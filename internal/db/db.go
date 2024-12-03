@@ -1,3 +1,7 @@
+// REVIEW: Is this build constraint even necessary? I understand, that we do
+// not support anything else execpt for linux. And if this file is not included
+// in the build, the build will fail, since we miss OpenDatabase, which is
+// referenced in our main package of `migration-managerd`.
 //go:build linux && cgo
 
 package db
@@ -29,6 +33,7 @@ func OpenDatabase(dir string) (*Node, error) {
 		return nil, err
 	}
 
+	// REVIEW: why are these strict limits necessary?
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 

@@ -7,6 +7,9 @@ import (
 
 // SelectIntegers executes a statement which must yield rows with a single integer
 // column. It returns the list of column values.
+// REVIEW: I wonder, if this could be solved on the DB, e.g. with group_concat, something like:
+// SELECT group_concat(integer_column, ",") from table
+// The resulting string can then be split by "," and converted to integer
 func SelectIntegers(ctx context.Context, tx *sql.Tx, query string, args ...any) ([]int, error) {
 	values := []int{}
 	scan := func(rows *sql.Rows) error {
@@ -31,6 +34,7 @@ func SelectIntegers(ctx context.Context, tx *sql.Tx, query string, args ...any) 
 // Execute the given query and ensure that it yields rows with a single column
 // of the given database type. For every row yielded, execute the given
 // scanner.
+// REVIEW: typeName is not used.
 func scanSingleColumn(ctx context.Context, tx *sql.Tx, query string, args []any, typeName string, scan scanFunc) error {
 	rows, err := tx.QueryContext(ctx, query, args...)
 	if err != nil {

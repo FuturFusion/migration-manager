@@ -7,6 +7,10 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
+// REVIEW: I don't understand the purpose of having Batch defined as interface.
+// Do we expect to have different kinds of batches, that we would the handle
+// with some generic logic?
+
 // Interface definition for all migration manager batches.
 type Batch interface {
 	// Returns the name of this batch.

@@ -72,6 +72,7 @@ func RenderTable(format string, header []string, data [][]string, raw any) error
 		}
 
 	case TableFormatYAML:
+		// REVIEW: this case could be handled the same as JSON with yaml.NewEncoder(os.Stdout)
 		out, err := yaml.Marshal(raw)
 		if err != nil {
 			return err

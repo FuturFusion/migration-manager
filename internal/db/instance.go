@@ -168,6 +168,9 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 		return ret, err
 	}
 
+	// REVIEW: should we call defer rows.Close() in order to make sure, the rows
+	// are closed even if we have an error while processing?
+
 	for rows.Next() {
 		newInstance := &instance.InternalInstance{}
 		marshalledLastUpdateFromSource := ""

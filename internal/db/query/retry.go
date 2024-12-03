@@ -36,6 +36,7 @@ func Retry(ctx context.Context, f func(ctx context.Context) error) error {
 			}
 
 			// Process actual errors.
+			// REVIEW: I would invert the conditon and put the happy path on the left.
 			if IsRetriableError(err) {
 				if i == maxRetries {
 					logger.Warn("Database error, giving up", logger.Ctx{"attempt": i, "err": err})

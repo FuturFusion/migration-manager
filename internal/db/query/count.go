@@ -7,6 +7,7 @@ import (
 )
 
 // Count returns the number of rows in the given table.
+// REVIEW: this function is not used. Should it be removed?
 func Count(ctx context.Context, tx *sql.Tx, table string, where string, args ...any) (int, error) {
 	stmt := fmt.Sprintf("SELECT COUNT(*) FROM %s", table)
 	if where != "" {

@@ -27,18 +27,22 @@ const (
 	BITLOCKERSTATE_CLEARKEY
 )
 
-const bitLockerMountPath string = "/mnt/dislocker/"
-const driversMountDevice string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
-const driversMountPath string = "/mnt/drivers/"
-const windowsMainMountPath string = "/mnt/win_main/"
-const windowsRecoveryMountPath string = "/mnt/win_recovery/"
+const (
+	bitLockerMountPath       string = "/mnt/dislocker/"
+	driversMountDevice       string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
+	driversMountPath         string = "/mnt/drivers/"
+	windowsMainMountPath     string = "/mnt/win_main/"
+	windowsRecoveryMountPath string = "/mnt/win_recovery/"
+)
 
 func init() {
+	// REVIEW: is it really save to ignore this error?
 	_ = pongo2.RegisterFilter("toHex", toHex)
 }
 
 func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
 	// Regexes to determine the BitLocker status.
+	// REVIEW: regex can be moved to package global, such that they are only compiled once at startup.
 	unencryptedRegex := regexp.MustCompile(`\[ERROR\] The signature of the volume \(.+\) doesn't match the BitLocker's ones \(-FVE-FS- or MSWIN4.1\). Abort.`)
 	bitLockerEnabledRegex := regexp.MustCompile(`\[INFO\] =====================\[ BitLocker information structure \]=====================`)
 	noClearKeyRegex := regexp.MustCompile(`\[INFO\] No clear key found.`)
@@ -47,6 +51,7 @@ func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
 	stdout, err := subprocess.RunCommand("dislocker-metadata", "-V", partition)
 
 	// Return the status.
+	// REVIEW: if-else-if chain is not necessary and can be omitted with early return.
 	if unencryptedRegex.Match([]byte(stdout)) {
 		return BITLOCKERSTATE_UNENCRYPTED, nil
 	} else if bitLockerEnabledRegex.Match([]byte(stdout)) {
@@ -87,6 +92,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	if err != nil {
 		return err
 	}
+	// REVIEW: save to ignore the errors in all the defer statements?
 	defer func() { _ = DoUnmount(driversMountPath) }()
 
 	// Get the BitLocker status.
@@ -149,7 +155,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 
 func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 	cacheDir := "/tmp/inject-drivers"
-	err := os.MkdirAll(cacheDir, 0700)
+	err := os.MkdirAll(cacheDir, 0o700)
 	if err != nil {
 		return err
 	}
@@ -226,6 +232,8 @@ func toHex(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo
 // Take a full version string and return the abbreviation used by distrobuilder logic.
 // Versions supported are an intersection of what's supported by distrobuilder and vCenter.
 func MapWindowsVersionToAbbrev(version string) (string, error) {
+	// REVIEW: I would either unwind the if-else-chain
+	// or use a switch statemement instead.
 	if strings.Contains(version, "Windows XP") {
 		return "xp", nil
 	} else if strings.Contains(version, "Windows 7") {

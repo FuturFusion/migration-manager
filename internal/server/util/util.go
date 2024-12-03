@@ -1,3 +1,4 @@
+// REVIEW: why not call this package etag and then remove the etag prefix from the function names?
 package util
 
 import (

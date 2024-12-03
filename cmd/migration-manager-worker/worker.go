@@ -217,6 +217,9 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 	}
 
 	// Linux-specific
+	// REVIEW: I would consider defining constants for "debian" and "ubuntu" and
+	// use those instead of string comparison, where we constantly have to make sure,
+	// that the casing does match as well.
 	if strings.Contains(strings.ToLower(cmd.OS), "debian") {
 		err = worker.LinuxDoPostMigrationConfig("Debian")
 	} else if strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {

@@ -68,7 +68,11 @@ func (n *Node) GetAllTargets(tx *sql.Tx) ([]target.Target, error) {
 }
 
 func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
+	// REVIEW: Why not handle the "FOREIGN KEY constraint failed" error explicitly
+	// instead of this additionaly logic to do the verification?
 	// Verify no instances refer to this target and return a nicer error than 'FOREIGN KEY constraint failed' if so.
+	// REVIEW: If you keep this logic, why not handle it in a single DB query, something along the lines of:
+	// SELECT COUNT(1) FROM instances INNER JOIN targets ON instances.targetid = targets.id WHERE targets.name = ?
 	t, err := n.GetTarget(tx, name)
 	if err != nil {
 		return err
@@ -160,6 +164,9 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, name string, id int) ([]target.Targe
 	if err != nil {
 		return ret, err
 	}
+
+	// REVIEW: should we call defer rows.Close() in order to make sure, the rows
+	// are closed even if we have an error while processing?
 
 	for rows.Next() {
 		newTarget := &target.InternalIncusTarget{}

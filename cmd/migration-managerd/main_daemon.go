@@ -45,6 +45,7 @@ func (c *cmdDaemon) Command() *cobra.Command {
 }
 
 func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
+	// REVIEW: wouldn't this condition be enough: !(len(args) == 1 && args[0] == "migration-managerd")
 	if len(args) > 1 || (len(args) == 1 && args[0] != "migration-managerd" && args[0] != "") {
 		return fmt.Errorf("unknown command \"%s\" for \"%s\"", args[0], cmd.CommandPath())
 	}
@@ -55,6 +56,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		restServerPort:      c.flagServerPort,
 		restServerTLSConfig: nil,
 	}
+	// REVIEW: I would raise an error, if only one of flagTLSCert and flagTLSKey is given.
 	if c.flagTLSCert != "" {
 		cert, err := tls.LoadX509KeyPair(c.flagTLSCert, c.flagTLSKey)
 		if err != nil {
@@ -66,6 +68,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 	d := newDaemon(config)
 
+	// REVIEW: same comments about signal handling, context usage, etc. as in migration-manager-worker...
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, unix.SIGPWR)
 	signal.Notify(sigCh, unix.SIGINT)

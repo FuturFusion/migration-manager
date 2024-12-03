@@ -56,10 +56,15 @@ func (r *syncResponse) Render(w http.ResponseWriter) error {
 	if r.etag != nil {
 		etag, err := util.EtagHash(r.etag)
 		if err == nil {
-			w.Header().Set("ETag", fmt.Sprintf("\"%s\"", etag))
+			// REVIEW: use %q instead of "%s"
+			w.Header().Set("ETag", fmt.Sprintf("%q", etag))
 		}
 	}
 
+	// REVIEW: I wonder about the ordering of how the headers are applied.
+	// For the ETag header, it is possible to overwrite it via r.headers.
+	// For the location, this is not possible, since it follows this section.
+	// I would decide for one way or the other.
 	if r.headers != nil {
 		for h, v := range r.headers {
 			w.Header().Set(h, v)
@@ -88,6 +93,7 @@ func (r *syncResponse) Render(w http.ResponseWriter) error {
 		r.code = http.StatusOK
 	}
 
+	// REVIEW: I don't get this case, why is this condition necessary?
 	if w.Header().Get("Connection") != "keep-alive" {
 		w.WriteHeader(r.code)
 	}
@@ -95,6 +101,9 @@ func (r *syncResponse) Render(w http.ResponseWriter) error {
 	// Prepare the JSON response
 	status := api.Success
 	if !r.success {
+		// REVIEW: is this by design, that we do not set the HTTP status code to
+		// non 200, if r.success is not set? Do we intentionally deviation from REST
+		// best practices?
 		status = api.Failure
 
 		// If the metadata is an error, consider the response a SmartError
@@ -106,6 +115,7 @@ func (r *syncResponse) Render(w http.ResponseWriter) error {
 	}
 
 	// Handle plain text responses.
+	// REVIEW: I feel, this is unnecessarily complicated.
 	if r.plaintext {
 		if r.metadata != nil {
 			if r.compress {
@@ -126,6 +136,9 @@ func (r *syncResponse) Render(w http.ResponseWriter) error {
 
 		return nil
 	}
+
+	// REVIEW: to me, it looks like for JSON response we do not compress the response
+	// even if r.compress is set. But we do set the header above, so this is inconsistent.
 
 	// Handle JSON responses.
 	resp := api.ResponseRaw{
@@ -235,7 +248,6 @@ func (r *errorResponse) Render(w http.ResponseWriter) error {
 	}
 
 	err := json.NewEncoder(output).Encode(resp)
-
 	if err != nil {
 		return err
 	}
@@ -243,6 +255,7 @@ func (r *errorResponse) Render(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 
+	// REVIEW: I don't get this. Why is this necessary?
 	if w.Header().Get("Connection") != "keep-alive" {
 		w.WriteHeader(r.code) // Set the error code in the HTTP header response.
 	}

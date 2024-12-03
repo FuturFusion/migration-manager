@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lxc/incus/v6/client"
+	incus "github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 
@@ -70,6 +70,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	t.incusClient = client.UseProject(t.IncusProject)
 
 	// Do a quick check to see if our authentication was accepted by the server.
+	// REVIEW: the err is never checked
 	srv, _, err := t.incusClient.GetServer()
 	if srv.Auth != "trusted" {
 		t.incusConnectionArgs = nil
@@ -224,6 +225,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	}
 
 	// Set UEFI and secure boot configs
+	// REVIEW: some more cases, that could be made simpler using iif.
 	if instanceDef.UseLegacyBios {
 		ret.Config["security.csm"] = "true"
 	} else {
@@ -279,6 +281,10 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost) error {
 	}
 
 	revert.Add(func() {
+		// REVIEW: I wonder, if we should have some sort of retry logic in the revert
+		// in order to minimize situations, where we end up in an inconsistent state
+		// if the revert temporarily fails due to e.g. a network issue.
+		// REVIEW: I would at least log the error in this case.
 		_, _ = t.incusClient.DeleteInstance(apiDef.Name)
 	})
 
@@ -348,6 +354,8 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 	}
 
 	// It takes a while for incus-agent to start when booting a VM, so retry up to a minute.
+	// REVIEW: I have the feeling, that we will need some retry logic in a lot of
+	// places so I suggest to have it in its own package (or use something existing).
 	for i := 0; i < 60; i++ {
 		err = t.incusClient.CreateInstanceFile(instanceName, filepath.Join(destDir, file), args)
 

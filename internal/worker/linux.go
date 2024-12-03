@@ -60,6 +60,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 		if err != nil {
 			return err
 		}
+		// REVIEW: I wonder, if we should at least log the error, if we have an error in defer.
 		defer func() { _ = DeactivateVG() }()
 	}
 
@@ -68,6 +69,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 	if err != nil {
 		return err
 	}
+	// REVIEW: I wonder, if we should at least log the error, if we have an error in defer.
 	defer func() { _ = DoUnmount(chrootMountPath) }()
 
 	// Bind-mount /proc/ and /sys/ into the chroot.
@@ -75,11 +77,14 @@ func LinuxDoPostMigrationConfig(distro string) error {
 	if err != nil {
 		return err
 	}
+	// REVIEW: I wonder, if we should at least log the error, if we have an error in defer.
 	defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "proc")) }()
+
 	err = DoMount("/sys/", filepath.Join(chrootMountPath, "sys"), []string{"-o", "bind"})
 	if err != nil {
 		return err
 	}
+	// REVIEW: I wonder, if we should at least log the error, if we have an error in defer.
 	defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "sys")) }()
 
 	// Mount additional file systems, such as /var/ on a different partition.
@@ -92,6 +97,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 		if err != nil {
 			return err
 		}
+		// REVIEW: I wonder, if we should at least log the error, if we have an error in defer.
 		defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, mnt["path"])) }()
 	}
 
@@ -115,6 +121,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 
 func ActivateVG() error {
 	_, err := subprocess.RunCommand("vgchange", "-a", "y")
+	// REVIEW: I wonder if for debugging puposes, it would be helpful to log the output of the commands.
 	return err
 }
 
@@ -135,6 +142,7 @@ func determineRootPartition() (string, int, []string, error) {
 		if err != nil {
 			return "", PARTITION_TYPE_UNKNOWN, nil, err
 		}
+		// REVIEW: I wonder, if we should at least log the error, if we have an error in defer.
 		defer func() { _ = DeactivateVG() }()
 
 		for _, lv := range lvs.Report[0].LV {

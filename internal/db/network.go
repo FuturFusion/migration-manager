@@ -109,6 +109,9 @@ func (n *Node) getNetworksHelper(tx *sql.Tx, name string) ([]api.Network, error)
 		return ret, err
 	}
 
+	// REVIEW: should we call defer rows.Close() in order to make sure, the rows
+	// are closed even if we have an error while processing?
+
 	for rows.Next() {
 		netNetwork := api.Network{}
 		marshalledConfig := ""

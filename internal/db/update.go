@@ -1,3 +1,5 @@
+// REVIEW: is this build constraint even necessary? I understand, that we do
+// not support anything else execpt for linux.
 //go:build linux && cgo
 
 package db

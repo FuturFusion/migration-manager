@@ -71,6 +71,20 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 	// Get the list of configured sources.
 	sources := []source.Source{}
+	// REVIEW: I wonder about the use of transaction here for two reasons:
+	// 1. My understanding is, that `d.db.Transaction` just runs the provided function
+	//    in a single transacation. In this case, only a single SELECT statememnt is
+	//    executed and therefore no manipulation is done to the data, so the transaction
+	//    is not necessary.
+	// 2. This function (`syncInstancesFromSources`) performs a series of operations
+	//    on the DB (reading and writing), but these operations are not guarded
+	//    in a transaction, so this could in theory lead to an inconsistent state
+	//    of the DB.
+	//
+	// In my understanding, we would need to start a transaction at the beginning
+	// of this function (`syncInstancesFromSources`) and finish it at the end.
+	// For this, I would use `d.db.DB.BeginTx` and then `tx.Commit()` / `tx.Rollback()`
+	// respectively.
 	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 		sources, err = d.db.GetAllSources(tx)
@@ -106,14 +120,12 @@ func (d *Daemon) syncInstancesFromSources() bool {
 				_, err := d.db.GetNetwork(tx, n.Name)
 				return err
 			})
-
 			// Only add the network if it doesn't yet exist
 			if err != nil {
 				logger.Info("Adding network "+n.Name+" from source "+s.GetName(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					return d.db.AddNetwork(tx, &n)
 				})
-
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 					continue
@@ -143,7 +155,17 @@ func (d *Daemon) syncInstancesFromSources() bool {
 				return nil
 			})
 
+			// REVIEW: can we reorganize the code, such that the happy path is on the left?
+			// It is ideomatic in Go to first check if the err != nil, handle the error
+			// and then continue with the rest of the code.
 			if err == nil {
+				// REVIEW: To me, the use of this `instanceUpdated` bool to keep track,
+				// if there has been a change looks a little bit tidious and brittle
+				// (it can easily be forgotten to set properly) and I wonder, if there
+				// isn't a better way of handling this.
+				// `existingInstance` as well as `i` are `instance.InternalInstance`
+				// so I wonder, if we couldn't just compare the two in order to figure
+				// out some differences.
 				// An instance already exists in the database; update with any changes from the source.
 				instanceUpdated := false
 
@@ -219,7 +241,6 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 						return nil
 					})
-
 					if err != nil {
 						logger.Warn(err.Error(), loggerCtx)
 						continue
@@ -238,7 +259,6 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 					return nil
 				})
-
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 					continue
@@ -310,6 +330,11 @@ func (d *Daemon) processReadyBatches() bool {
 	// Do some basic sanity check of each batch before adding it to the queue.
 	for _, b := range batches {
 		logger.Info("Batch '"+b.GetName()+"' status is 'Ready', processing....", loggerCtx)
+		// REVIEW: I wonder about the intended use of the SQLite DB. How should
+		// the duties be split between the application and the DB? In this case,
+		// I would expect, that instead of getting all the batches from the DB
+		// we would only fetch the ones, that meet our creteria, e.g. in regards
+		// to the state, start and end date.
 		batchID, err := b.GetDatabaseID()
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
@@ -317,6 +342,7 @@ func (d *Daemon) processReadyBatches() bool {
 		}
 
 		// If a migration window is defined, ensure sure it makes sense.
+		// REVIEW: This check should already happen, when a new batch is created and not when we process the batch.
 		if !b.GetMigrationWindowStart().IsZero() && !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(b.GetMigrationWindowStart()) {
 			logger.Error("Batch '"+b.GetName()+"' window end time is before its start time", loggerCtx)
 
@@ -358,6 +384,9 @@ func (d *Daemon) processReadyBatches() bool {
 		instances := []instance.Instance{}
 		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			var err error
+			// REVIEW: Why is getting the instances for a batch a separate DB
+			// query? We would be able to fetch the batches including all the instances
+			// with one DB query.
 			instances, err = d.db.GetAllInstancesForBatchID(tx, batchID)
 			if err != nil {
 				return err
@@ -519,6 +548,9 @@ func (d *Daemon) processQueuedBatches() bool {
 			}
 
 			// Connect to the target.
+			// REVIEW: we use Connect to connect to the instance and we also
+			// keep track, if we are already connected to the instance, but I don't
+			// see a call to Disconnect.
 			err = t.Connect(d.shutdownCtx)
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
@@ -537,6 +569,8 @@ func (d *Daemon) processQueuedBatches() bool {
 			internalInstance, _ := i.(*instance.InternalInstance)
 			instanceDef := t.CreateVMDefinition(*internalInstance)
 			creationErr := t.CreateNewVM(instanceDef)
+			// REVIEW: I would handle the error first (all code paths in the error handling part either return or continue)
+			// and then we can have the happy path on the lift without indentation.
 			if creationErr == nil {
 				// Creation was successful, update the instance state to 'Idle'.
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -552,6 +586,8 @@ func (d *Daemon) processQueuedBatches() bool {
 					continue
 				}
 			} else {
+				// REVIEW: setting an instance to state api.MIGRATIONSTATUS_ERROR repeats
+				// multiple times below, so I would move this to a helper function.
 				logger.Warn(creationErr.Error(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, creationErr.Error(), true)
@@ -674,6 +710,8 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			return nil
 		})
 		if err != nil {
+			// REVIEW: setting an instance to api.MIGRATIONSTATUS_ERROR does repeat
+			// multiple times, I would move this to a small helper function.
 			logger.Warn(err.Error(), loggerCtx)
 			_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
@@ -832,7 +870,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			}
 
 			// Copy the base network definitions.
-			apiDef.Devices[nicDeviceName] = make(map[string]string)
+			apiDef.Devices[nicDeviceName] = make(map[string]string, len(baseNetwork.Config))
 			for k, v := range baseNetwork.Config {
 				apiDef.Devices[nicDeviceName][k] = v
 			}

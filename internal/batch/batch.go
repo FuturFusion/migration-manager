@@ -14,6 +14,10 @@ type InternalBatch struct {
 	api.Batch `yaml:",inline"`
 }
 
+// REVIEW: in order to ensure, that InternalBatch actually implements Batch
+// I prefer to add this controll instruction:
+var _ Batch = &InternalBatch{}
+
 // Returns a new Batch ready for use.
 func NewBatch(name string, includeRegex string, excludeRegex string, migrationWindowStart time.Time, migrationWindowEnd time.Time, defaultNetwork string) *InternalBatch {
 	return &InternalBatch{
@@ -63,9 +67,15 @@ func (b *InternalBatch) GetDefaultNetwork() string {
 	return b.DefaultNetwork
 }
 
+// REVIEW: I think, it should be documented, how the matching works.
+// E.g. it works differently as one might assume from e.g. .gitignore, since
+// if it matches the exclude regex, it gets excluded regardless if it would be
+// included by the includeRegex.
 func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {
 	// Handle any exclusionary criteria first.
 	if b.ExcludeRegex != "" {
+		// REVIEW: The regular expressions are user provided content. Are we sure,
+		// that we would want to panic, if we fail to compile the regex?
 		excludeRegex := regexp.MustCompile(b.ExcludeRegex)
 		if excludeRegex.Match([]byte(i.GetName())) {
 			return false
@@ -74,6 +84,8 @@ func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {
 
 	// Handle any inclusionary criteria second.
 	if b.IncludeRegex != "" {
+		// REVIEW: The regular expressions are user provided content. Are we sure,
+		// that we would want to panic, if we fail to compile the regex?
 		includeRegex := regexp.MustCompile(b.IncludeRegex)
 		if !includeRegex.Match([]byte(i.GetName())) {
 			return false
