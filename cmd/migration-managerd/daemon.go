@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -47,6 +48,8 @@ type DaemonConfig struct {
 type Daemon struct {
 	config *DaemonConfig
 
+	globalConfig map[string]string
+
 	db *db.Node
 
 	shutdownCtx    context.Context    // Canceled when shutdown starts.
@@ -75,6 +78,17 @@ func (d *Daemon) Start() error {
 	d.db, err = db.OpenDatabase(d.config.dbPathDir)
 	if err != nil {
 		logger.Errorf("Failed to open sqlite database: %s", err)
+		return err
+	}
+
+	// Read global config, if any, from the database.
+	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		d.globalConfig, err = d.db.ReadGlobalConfig(tx)
+
+		return err
+	})
+	if err != nil {
+		logger.Errorf("Failed to read global config: %s", err)
 		return err
 	}
 

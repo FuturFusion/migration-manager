@@ -24,6 +24,11 @@ CREATE TABLE batches (
     UNIQUE (name)
 );
 
+CREATE TABLE config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    globalConfig TEXT NOT NULL
+);
+
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
     migrationstatus INTEGER NOT NULL,
@@ -127,6 +132,11 @@ CREATE TABLE batches (
     migrationwindowend TEXT NOT NULL,
     defaultnetwork VARCHAR(255) NOT NULL,
     UNIQUE (name)
+);
+
+CREATE TABLE config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    globalConfig TEXT NOT NULL
 );
 
 CREATE TABLE instances (
