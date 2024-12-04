@@ -231,7 +231,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 }
 
 func parseReturnedSource(source any) (any, error) {
-	rawSource := source.(map[string]interface{})
+	rawSource := source.(map[string]any)
 	reJsonified, err := json.Marshal(rawSource["source"])
 	if err != nil {
 		return nil, err
