@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -73,8 +74,13 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 
 	queueEntries := []api.QueueEntry{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned entries.
-	for _, anyEntry := range resp.Metadata.([]any) {
+	for _, anyEntry := range metadata {
 		newEntry, err := parseReturnedQueueEntry(anyEntry)
 		if err != nil {
 			return err

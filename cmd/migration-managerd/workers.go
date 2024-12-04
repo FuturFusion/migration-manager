@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -137,7 +138,12 @@ func (d *Daemon) syncInstancesFromSources() bool {
 					return err
 				}
 
-				existingInstance = inst.(*instance.InternalInstance)
+				var ok bool
+				existingInstance, ok = inst.(*instance.InternalInstance)
+				if !ok {
+					return errors.New("Invalid type for internal instance")
+				}
+
 				return nil
 			})
 
@@ -540,7 +546,12 @@ func (d *Daemon) processQueuedBatches() bool {
 			}
 
 			// Create the instance.
-			internalInstance, _ := i.(*instance.InternalInstance)
+			internalInstance, ok := i.(*instance.InternalInstance)
+			if !ok {
+				logger.Warn("Invalid type for internal instance", loggerCtx)
+				continue
+			}
+
 			instanceDef := t.CreateVMDefinition(*internalInstance, b.GetStoragePool())
 			creationErr := t.CreateNewVM(instanceDef, b.GetStoragePool(), d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
 			if creationErr != nil {

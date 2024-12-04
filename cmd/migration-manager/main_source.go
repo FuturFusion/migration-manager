@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -207,12 +208,18 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 
 	vmwareSources := []api.VMwareSource{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned sources.
-	for _, anySource := range resp.Metadata.([]any) {
+	for _, anySource := range metadata {
 		newSource, err := parseReturnedSource(anySource)
 		if err != nil {
 			return err
 		}
+
 		switch s := newSource.(type) {
 		case api.VMwareSource:
 			vmwareSources = append(vmwareSources, s)
@@ -231,7 +238,11 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 }
 
 func parseReturnedSource(source any) (any, error) {
-	rawSource := source.(map[string]any)
+	rawSource, ok := source.(map[string]any)
+	if !ok {
+		return nil, errors.New("Invalid type for source")
+	}
+
 	reJsonified, err := json.Marshal(rawSource["source"])
 	if err != nil {
 		return nil, err

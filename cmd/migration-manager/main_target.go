@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -199,8 +200,13 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 
 	targets := []api.IncusTarget{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned targets.
-	for _, anyTarget := range resp.Metadata.([]any) {
+	for _, anyTarget := range metadata {
 		newTarget, err := parseReturnedTarget(anyTarget)
 		if err != nil {
 			return err

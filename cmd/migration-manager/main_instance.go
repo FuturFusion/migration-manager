@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -81,8 +82,13 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	instances := []api.Instance{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned instances.
-	for _, anyInstance := range resp.Metadata.([]any) {
+	for _, anyInstance := range metadata {
 		newInstance, err := parseReturnedInstance(anyInstance)
 		if err != nil {
 			return err
@@ -97,12 +103,21 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	for _, anyBatch := range resp.Metadata.([]any) {
+
+	metadata, ok = resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
+	for _, anyBatch := range metadata {
 		newBatch, err := parseReturnedBatch(anyBatch)
 		if err != nil {
 			return err
 		}
-		b := newBatch.(api.Batch)
+		b, ok := newBatch.(api.Batch)
+		if !ok {
+			return errors.New("Invalid type for batch")
+		}
 		batchesMap[b.DatabaseID] = b.Name
 	}
 
@@ -112,7 +127,13 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	for _, anySource := range resp.Metadata.([]any) {
+
+	metadata, ok = resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
+	for _, anySource := range metadata {
 		newSource, err := parseReturnedSource(anySource)
 		if err != nil {
 			return err
@@ -129,12 +150,22 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	for _, anyTarget := range resp.Metadata.([]any) {
+	metadata, ok = resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
+	for _, anyTarget := range metadata {
 		newTarget, err := parseReturnedTarget(anyTarget)
 		if err != nil {
 			return err
 		}
-		t := newTarget.(api.IncusTarget)
+
+		t, ok := newTarget.(api.IncusTarget)
+		if !ok {
+			return errors.New("Invalid type for target")
+		}
+
 		targetsMap[t.DatabaseID] = t.Name
 	}
 

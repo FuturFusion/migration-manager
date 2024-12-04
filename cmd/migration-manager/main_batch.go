@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -195,8 +196,13 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 
 	batches := []api.Batch{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned batches.
-	for _, anyBatch := range resp.Metadata.([]any) {
+	for _, anyBatch := range metadata {
 		newBatch, err := parseReturnedBatch(anyBatch)
 		if err != nil {
 			return err
@@ -312,7 +318,11 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	b := parsed.(api.Batch)
+
+	b, ok := parsed.(api.Batch)
+	if !ok {
+		return errors.New("Invalid type for batch")
+	}
 
 	// Get all instances for this batch.
 	resp, err = c.global.doHTTPRequestV1("/batches/"+name+"/instances", http.MethodGet, "", nil)
@@ -322,8 +332,13 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	instances := []api.Instance{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned instances.
-	for _, anyInstance := range resp.Metadata.([]any) {
+	for _, anyInstance := range metadata {
 		newInstance, err := parseReturnedInstance(anyInstance)
 		if err != nil {
 			return err
