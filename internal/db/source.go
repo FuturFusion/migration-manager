@@ -199,8 +199,10 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]source.Sourc
 	}
 
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
+
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		err := rows.Scan(&sourceID, &sourceName, &sourceType, &sourceInsecure, &sourceConfig)
@@ -228,6 +230,9 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]source.Sourc
 		default:
 			return nil, fmt.Errorf("Unknown source type %d", sourceType)
 		}
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return ret, nil

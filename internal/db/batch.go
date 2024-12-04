@@ -210,8 +210,10 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 	}
 
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
+
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		newBatch := &batch.InternalBatch{}
@@ -235,6 +237,9 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 
 		ret = append(ret, newBatch)
 	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
 
 	return ret, nil
 }
@@ -246,6 +251,8 @@ func (n *Node) GetAllInstancesForBatchID(tx *sql.Tx, id int) ([]instance.Instanc
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		u := ""
@@ -265,6 +272,9 @@ func (n *Node) GetAllInstancesForBatchID(tx *sql.Tx, id int) ([]instance.Instanc
 		}
 
 		ret = append(ret, i)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return ret, nil

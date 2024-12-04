@@ -178,8 +178,10 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 	}
 
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
+
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		newInstance := &instance.InternalInstance{}
@@ -214,6 +216,9 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 		}
 
 		ret = append(ret, newInstance)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return ret, nil

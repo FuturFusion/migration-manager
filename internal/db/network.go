@@ -112,8 +112,10 @@ func (n *Node) getNetworksHelper(tx *sql.Tx, name string) ([]api.Network, error)
 	}
 
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
+
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		netNetwork := api.Network{}
@@ -130,6 +132,9 @@ func (n *Node) getNetworksHelper(tx *sql.Tx, name string) ([]api.Network, error)
 		}
 
 		ret = append(ret, netNetwork)
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return ret, nil
