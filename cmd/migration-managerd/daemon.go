@@ -145,9 +145,10 @@ func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 		if untrustedOk && r.Header.Get("X-Incus-authenticated") == "" {
 			logger.Debug(fmt.Sprintf("Allowing untrusted %s", r.Method), logger.Ctx{"url": r.URL.RequestURI(), "ip": r.RemoteAddr})
 		} else {
-			/*logger.Warn("Rejecting request from untrusted client", logger.Ctx{"ip": r.RemoteAddr})
-			_ = response.Forbidden(nil).Render(w)
-			return*/
+			logger.Warn("Rejecting request from untrusted client", logger.Ctx{"ip": r.RemoteAddr})
+			// TODO: enforce forbidden for untrusted clients
+			// _ = response.Forbidden(nil).Render(w)
+			// return
 		}
 
 		// Actually process the request
