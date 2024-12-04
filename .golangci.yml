@@ -1,11 +1,14 @@
 linters:
   disable-all: true
   enable:
+    - bodyclose
     - gci
     - godot
     - gofumpt
     - goimports
     - misspell
+    - nakedret
+    - prealloc
     - revive
     - staticcheck
     - whitespace
