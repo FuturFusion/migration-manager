@@ -189,6 +189,7 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, name string, id int) ([]target.Targe
 
 		ret = append(ret, newTarget)
 	}
+
 	if rows.Err() != nil {
 		return nil, rows.Err()
 	}

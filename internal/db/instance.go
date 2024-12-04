@@ -217,6 +217,7 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 
 		ret = append(ret, newInstance)
 	}
+
 	if rows.Err() != nil {
 		return nil, rows.Err()
 	}

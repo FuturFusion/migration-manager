@@ -133,6 +133,7 @@ func (n *Node) getNetworksHelper(tx *sql.Tx, name string) ([]api.Network, error)
 
 		ret = append(ret, netNetwork)
 	}
+
 	if rows.Err() != nil {
 		return nil, rows.Err()
 	}

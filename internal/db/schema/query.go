@@ -27,6 +27,7 @@ SELECT COUNT(name) FROM sqlite_master WHERE type = 'table' AND name = 'schema'
 	if !rows.Next() {
 		return false, fmt.Errorf("schema table query returned no rows")
 	}
+
 	if rows.Err() != nil {
 		return false, rows.Err()
 	}
