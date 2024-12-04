@@ -24,7 +24,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	// Start a transaction.
 	tx, err := db.DB.Begin()
 	require.NoError(t, err)
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Add networkA.
 	err = db.AddNetwork(tx, &networkA)
@@ -79,7 +79,9 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	err = db.AddNetwork(tx, &networkB)
 	require.Error(t, err)
 
-	tx.Commit()
+	err = tx.Commit()
+	require.NoError(t, err)
+
 	err = db.Close()
 	require.NoError(t, err)
 }

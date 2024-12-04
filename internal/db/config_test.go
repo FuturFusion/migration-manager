@@ -18,7 +18,7 @@ func TestConfigDatabaseActions(t *testing.T) {
 	// Start a transaction.
 	tx, err := db.DB.Begin()
 	require.NoError(t, err)
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Should get an empty map by default.
 	config, err := db.ReadGlobalConfig(tx)
@@ -47,7 +47,9 @@ func TestConfigDatabaseActions(t *testing.T) {
 	require.Len(t, dbConfig, 3)
 	require.True(t, maps.Equal(config, dbConfig))
 
-	tx.Commit()
+	err = tx.Commit()
+	require.NoError(t, err)
+
 	err = db.Close()
 	require.NoError(t, err)
 }

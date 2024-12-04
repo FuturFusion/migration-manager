@@ -31,9 +31,9 @@ func (c *cmdWorker) Command() *cobra.Command {
 `
 	cmd.RunE = c.Run
 	cmd.Flags().StringVar(&c.flagMMEndpoint, "endpoint", "", "Controlling migration manager endpoint")
-	cmd.MarkFlagRequired("endpoint")
+	must(cmd.MarkFlagRequired("endpoint"))
 	cmd.Flags().StringVar(&c.flagUUID, "uuid", "", "UUID of instance to migrate")
-	cmd.MarkFlagRequired("uuid")
+	must(cmd.MarkFlagRequired("uuid"))
 
 	return cmd
 }
@@ -85,5 +85,11 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 		case err = <-w.shutdownDoneCh:
 			return err
 		}
+	}
+}
+
+func must(err error) {
+	if err != nil {
+		panic(err)
 	}
 }

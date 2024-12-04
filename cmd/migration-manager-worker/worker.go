@@ -207,13 +207,15 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 
 	// When we've finished the import, shutdown the worker.
 	w.shutdownCancel()
-	return
 }
 
 func (w *Worker) connectSource(ctx context.Context, s api.VMwareSource) error {
 	w.source = source.NewVMwareSource(s.Name, s.Endpoint, s.Username, s.Password)
 	if s.Insecure {
-		w.source.SetInsecureTLS(true)
+		err := w.source.SetInsecureTLS(true)
+		if err != nil {
+			return err
+		}
 	}
 
 	return w.source.Connect(ctx)

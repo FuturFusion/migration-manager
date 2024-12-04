@@ -14,7 +14,7 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 	// Add source to the database.
 	q := `INSERT INTO sources (name,type,insecure,config) VALUES(?,?,?,?)`
 
-	sourceType := api.SOURCETYPE_UNKNOWN
+	var sourceType api.SourceType
 	configString := ""
 	isInsecure := false
 

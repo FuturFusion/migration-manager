@@ -19,11 +19,13 @@ var (
 
 func TestTargetDatabaseActions(t *testing.T) {
 	// Customize the targets.
-	incusTargetA.SetClientTLSCredentials("PRIVATE_KEY", "PUBLIC_CERT")
-	incusTargetB.OIDCTokens = &oidc.Tokens[*oidc.IDTokenClaims]{}
-	err := json.Unmarshal([]byte(`{"access_token":"encoded_content","token_type":"Bearer","refresh_token":"encoded_content","expiry":"2024-11-06T14:23:16.439206188Z","IDTokenClaims":null,"IDToken":"encoded_content"}`), &incusTargetB.OIDCTokens)
+	err := incusTargetA.SetClientTLSCredentials("PRIVATE_KEY", "PUBLIC_CERT")
 	require.NoError(t, err)
-	incusTargetC.SetInsecureTLS(true)
+	incusTargetB.OIDCTokens = &oidc.Tokens[*oidc.IDTokenClaims]{}
+	err = json.Unmarshal([]byte(`{"access_token":"encoded_content","token_type":"Bearer","refresh_token":"encoded_content","expiry":"2024-11-06T14:23:16.439206188Z","IDTokenClaims":null,"IDToken":"encoded_content"}`), &incusTargetB.OIDCTokens)
+	require.NoError(t, err)
+	err = incusTargetC.SetInsecureTLS(true)
+	require.NoError(t, err)
 	incusTargetC.IncusProject = "my-other-project"
 
 	// Create a new temporary database.
@@ -34,7 +36,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	// Start a transaction.
 	tx, err := db.DB.Begin()
 	require.NoError(t, err)
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Add incusTargetA.
 	err = db.AddTarget(tx, incusTargetA)
@@ -90,7 +92,9 @@ func TestTargetDatabaseActions(t *testing.T) {
 	err = db.AddTarget(tx, incusTargetB)
 	require.Error(t, err)
 
-	tx.Commit()
+	err = tx.Commit()
+	require.NoError(t, err)
+
 	err = db.Close()
 	require.NoError(t, err)
 }

@@ -17,7 +17,8 @@ var (
 )
 
 func TestSourceDatabaseActions(t *testing.T) {
-	vmwareSourceB.SetInsecureTLS(true)
+	err := vmwareSourceB.SetInsecureTLS(true)
+	require.NoError(t, err)
 
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
@@ -27,7 +28,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	// Start a transaction.
 	tx, err := db.DB.Begin()
 	require.NoError(t, err)
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Add commonSourceA.
 	err = db.AddSource(tx, commonSourceA)
@@ -97,7 +98,9 @@ func TestSourceDatabaseActions(t *testing.T) {
 	err = db.AddSource(tx, commonSourceB)
 	require.Error(t, err)
 
-	tx.Commit()
+	err = tx.Commit()
+	require.NoError(t, err)
+
 	err = db.Close()
 	require.NoError(t, err)
 }

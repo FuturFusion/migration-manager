@@ -25,7 +25,6 @@ type cmdGlobal struct {
 
 	config *Config
 	cmd    *cobra.Command
-	ret    int
 
 	flagHelp    bool
 	flagVersion bool

@@ -26,7 +26,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 	// Start a transaction.
 	tx, err := db.DB.Begin()
 	require.NoError(t, err)
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Add batchA.
 	err = db.AddBatch(tx, batchA)
@@ -91,7 +91,9 @@ func TestBatchDatabaseActions(t *testing.T) {
 	err = db.AddBatch(tx, batchB)
 	require.Error(t, err)
 
-	tx.Commit()
+	err = tx.Commit()
+	require.NoError(t, err)
+
 	err = db.Close()
 	require.NoError(t, err)
 }
