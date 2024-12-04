@@ -7,10 +7,9 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
-
-	"github.com/lxc/incus/v6/shared/logger"
 )
 
 type cmdDaemon struct {
