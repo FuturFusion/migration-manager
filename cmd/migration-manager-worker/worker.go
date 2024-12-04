@@ -206,7 +206,8 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Final migration tasks completed successfully")
 
 	// When we've finished the import, shutdown the worker.
-	os.Exit(0) //nolint: revive
+	w.shutdownCancel()
+	return
 }
 
 func (w *Worker) connectSource(ctx context.Context, s api.VMwareSource) error {
