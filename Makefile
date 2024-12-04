@@ -1,3 +1,5 @@
+GO ?= go
+
 default: build
 
 .PHONY: build
