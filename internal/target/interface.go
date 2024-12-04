@@ -45,7 +45,7 @@ type Target interface {
 	// Returns whether currently connected to the target or not.
 	IsConnected() bool
 
-	//////////////////////////////////////////////////
+	// -----------------------------------------------
 
 	// Returns the human-readable name for this target.
 	GetName() string
@@ -56,7 +56,7 @@ type Target interface {
 	// via AddTarget() or retrieved via GetTarget()/GetAllTargets() will return an error.
 	GetDatabaseID() (int, error)
 
-	//////////////////////////////////////////////////
+	// -----------------------------------------------
 
 	// Selects the Incus project to use when performing actions on the target.
 	//
