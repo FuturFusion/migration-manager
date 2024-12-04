@@ -55,7 +55,7 @@ func newWorker(endpoint string, uuid string) (*Worker, error) {
 	}
 
 	// Do a quick connectivity check to the endpoint.
-	_, err = ret.doHttpRequestV1("/", http.MethodGet, nil)
+	_, err = ret.doHttpRequestV1("", http.MethodGet, nil)
 	if err != nil {
 		return nil, err
 	}
