@@ -162,12 +162,12 @@ func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 		return err
 	}
 
-	logger, err := shared.GetLogger(false)
+	log, err := shared.GetLogger(false)
 	if err != nil {
 		return fmt.Errorf("Failed to get logger: %w\n", err)
 	}
 
-	repackUtuil := windows.NewRepackUtil(cacheDir, ctx, logger)
+	repackUtuil := windows.NewRepackUtil(cacheDir, ctx, log)
 
 	reWim, err := shared.FindFirstMatch(windowsRecoveryMountPath, "Recovery/WindowsRE", "winre.wim")
 	if err != nil {

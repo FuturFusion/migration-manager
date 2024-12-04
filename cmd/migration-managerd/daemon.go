@@ -122,12 +122,12 @@ func (d *Daemon) Stop(ctx context.Context, sig os.Signal) error {
 	return nil
 }
 
-func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
+func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint) {
 	var uri string
 	if c.Path == "" {
-		uri = fmt.Sprintf("/%s", version)
-	} else if version != "" {
-		uri = fmt.Sprintf("/%s/%s", version, c.Path)
+		uri = fmt.Sprintf("/%s", apiVersion)
+	} else if apiVersion != "" {
+		uri = fmt.Sprintf("/%s/%s", apiVersion, c.Path)
 	} else {
 		uri = fmt.Sprintf("/%s", c.Path)
 	}
@@ -159,7 +159,7 @@ func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 		// - /1.0 endpoint
 		// - GET queries
 		allowedDuringShutdown := func() bool {
-			if version == "internal" {
+			if apiVersion == "internal" {
 				return true
 			}
 

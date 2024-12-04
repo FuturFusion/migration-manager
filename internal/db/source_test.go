@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/migration-manager/internal/db"
+	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/source"
 )
 
@@ -21,7 +21,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
-	db, err := db.OpenDatabase(tmpDir)
+	db, err := dbdriver.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
 	// Start a transaction.

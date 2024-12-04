@@ -88,5 +88,5 @@ type Target interface {
 	GetInstance(name string) (*api.Instance, string, error)
 
 	// Wrapper around Incus' UpdateInstance method.
-	UpdateInstance(name string, instance api.InstancePut, ETag string) (incus.Operation, error)
+	UpdateInstance(name string, instanceDef api.InstancePut, ETag string) (incus.Operation, error)
 }

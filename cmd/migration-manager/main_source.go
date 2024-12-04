@@ -230,15 +230,15 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	header := []string{"Name", "Type", "Endpoint", "Username", "Password", "Insecure"}
 	data := [][]string{}
 
-	for _, source := range vmwareSources {
-		data = append(data, []string{source.Name, "VMware", source.Endpoint, source.Username, source.Password, strconv.FormatBool(source.Insecure)})
+	for _, vmwareSource := range vmwareSources {
+		data = append(data, []string{vmwareSource.Name, "VMware", vmwareSource.Endpoint, vmwareSource.Username, vmwareSource.Password, strconv.FormatBool(vmwareSource.Insecure)})
 	}
 
 	return util.RenderTable(c.flagFormat, header, data, vmwareSources)
 }
 
-func parseReturnedSource(source any) (any, error) {
-	rawSource, ok := source.(map[string]any)
+func parseReturnedSource(s any) (any, error) {
+	rawSource, ok := s.(map[string]any)
 	if !ok {
 		return nil, errors.New("Invalid type for source")
 	}
@@ -250,21 +250,21 @@ func parseReturnedSource(source any) (any, error) {
 
 	switch api.SourceType(rawSource["type"].(float64)) {
 	case api.SOURCETYPE_COMMON:
-		var source api.CommonSource
-		err = json.Unmarshal(reJsonified, &source)
+		var src api.CommonSource
+		err = json.Unmarshal(reJsonified, &src)
 		if err != nil {
 			return nil, err
 		}
 
-		return source, nil
+		return src, nil
 	case api.SOURCETYPE_VMWARE:
-		var source api.VMwareSource
-		err = json.Unmarshal(reJsonified, &source)
+		var src api.VMwareSource
+		err = json.Unmarshal(reJsonified, &src)
 		if err != nil {
 			return nil, err
 		}
 
-		return source, nil
+		return src, nil
 	default:
 		return nil, fmt.Errorf("Unsupported source type %f", rawSource["type"].(float64))
 	}

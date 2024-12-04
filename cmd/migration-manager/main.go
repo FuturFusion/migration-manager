@@ -111,13 +111,13 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 	} else if os.Getenv("HOME") != "" && util.PathExists(os.Getenv("HOME")) {
 		configDir = path.Join(os.Getenv("HOME"), ".config", "migration-manager")
 	} else {
-		user, err := user.Current()
+		currentUser, err := user.Current()
 		if err != nil {
 			return err
 		}
 
-		if util.PathExists(user.HomeDir) {
-			configDir = path.Join(user.HomeDir, ".config", "migration-manager")
+		if util.PathExists(currentUser.HomeDir) {
+			configDir = path.Join(currentUser.HomeDir, ".config", "migration-manager")
 		}
 	}
 

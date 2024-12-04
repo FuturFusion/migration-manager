@@ -22,8 +22,8 @@ import (
 
 const keepaliveInterval = 5 * time.Minute // vCenter APIs keep-alive
 
-func soapWithKeepalive(ctx context.Context, url *url.URL, insecure bool) (*govmomi.Client, error) {
-	soapClient := soap.NewClient(url, insecure)
+func soapWithKeepalive(ctx context.Context, clientURL *url.URL, insecure bool) (*govmomi.Client, error) {
+	soapClient := soap.NewClient(clientURL, insecure)
 	vimClient, err := vim25.NewClient(ctx, soapClient)
 	if err != nil {
 		return nil, err
@@ -32,7 +32,7 @@ func soapWithKeepalive(ctx context.Context, url *url.URL, insecure bool) (*govmo
 
 	// explicitly create session to activate keep-alive handler via Login
 	m := session.NewManager(vimClient)
-	err = m.Login(ctx, url.User)
+	err = m.Login(ctx, clientURL.User)
 	if err != nil {
 		return nil, err
 	}

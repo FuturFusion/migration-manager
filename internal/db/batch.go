@@ -95,13 +95,13 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 	}
 
 	// Verify all instances for this batch aren't in a migration phase and remove their association with this batch.
-	for _, instance := range instances {
-		if instance.IsMigrating() {
+	for _, inst := range instances {
+		if inst.IsMigrating() {
 			return fmt.Errorf("Cannot delete batch '%s': At least one assigned instance is in a migration phase", name)
 		}
 
 		q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
-		_, err = tx.Exec(q, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), instance.GetUUID())
+		_, err = tx.Exec(q, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), inst.GetUUID())
 		if err != nil {
 			return err
 		}

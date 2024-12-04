@@ -240,8 +240,8 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 }
 
 func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error {
-	revert := revert.New()
-	defer revert.Fail()
+	reverter := revert.New()
+	defer reverter.Fail()
 
 	// Attach bootable ISO to run migration of this VM.
 	apiDef.Devices["migration-iso"] = map[string]string{
@@ -266,7 +266,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool 
 		return err
 	}
 
-	revert.Add(func() {
+	reverter.Add(func() {
 		_, _ = t.incusClient.DeleteInstance(apiDef.Name)
 	})
 
@@ -275,7 +275,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool 
 		return err
 	}
 
-	revert.Success()
+	reverter.Success()
 
 	return nil
 }
@@ -367,6 +367,6 @@ func (t *InternalIncusTarget) GetInstance(name string) (*api.Instance, string, e
 	return t.incusClient.GetInstance(name)
 }
 
-func (t *InternalIncusTarget) UpdateInstance(name string, instance api.InstancePut, ETag string) (incus.Operation, error) {
-	return t.incusClient.UpdateInstance(name, instance, ETag)
+func (t *InternalIncusTarget) UpdateInstance(name string, instanceDef api.InstancePut, ETag string) (incus.Operation, error) {
+	return t.incusClient.UpdateInstance(name, instanceDef, ETag)
 }
