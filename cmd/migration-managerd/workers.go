@@ -423,8 +423,8 @@ func (d *Daemon) processQueuedBatches() bool {
 		return false
 	}
 
-	if d.globalConfig["core.driver_iso_image"] == "" {
-		logger.Error("Server config 'core.driver_iso_image' isn't set.")
+	if d.globalConfig["core.drivers_iso_image"] == "" {
+		logger.Error("Server config 'core.drivers_iso_image' isn't set.")
 		return false
 	}
 

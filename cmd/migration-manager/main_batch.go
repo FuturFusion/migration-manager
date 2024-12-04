@@ -356,7 +356,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	// Show the details
 	fmt.Printf("Batch: %s\n", b.Name)
-	fmt.Printf("  - Status:        %s\n", b.StatusString)
+	fmt.Printf("  - Status:          %s\n", b.StatusString)
 	if b.StoragePool != "" {
 		fmt.Printf("  - Storage pool:    %s\n", b.StoragePool)
 	}
