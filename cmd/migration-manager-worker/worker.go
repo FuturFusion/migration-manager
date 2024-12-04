@@ -198,8 +198,18 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 	}
 
 	// Linux-specific
-	if strings.Contains(strings.ToLower(cmd.OS), "debian") {
+	if strings.Contains(strings.ToLower(cmd.OS), "centos") {
+		err = worker.LinuxDoPostMigrationConfig("CentOS")
+	} else if strings.Contains(strings.ToLower(cmd.OS), "debian") {
 		err = worker.LinuxDoPostMigrationConfig("Debian")
+	} else if strings.Contains(strings.ToLower(cmd.OS), "opensuse") {
+		err = worker.LinuxDoPostMigrationConfig("openSUSE")
+	} else if strings.Contains(strings.ToLower(cmd.OS), "oracle") {
+		err = worker.LinuxDoPostMigrationConfig("Oracle")
+	} else if strings.Contains(strings.ToLower(cmd.OS), "rhel") {
+		err = worker.LinuxDoPostMigrationConfig("RHEL")
+	} else if strings.Contains(strings.ToLower(cmd.OS), "sles") {
+		err = worker.LinuxDoPostMigrationConfig("SUSE")
 	} else if strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
 		err = worker.LinuxDoPostMigrationConfig("Ubuntu")
 	}
