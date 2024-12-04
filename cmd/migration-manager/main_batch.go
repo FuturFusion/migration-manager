@@ -62,7 +62,7 @@ func (c *cmdBatch) Command() *cobra.Command {
 	return cmd
 }
 
-// Add
+// Add the batch.
 type cmdBatchAdd struct {
 	global *cmdGlobal
 }
@@ -164,7 +164,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// List
+// List the batches.
 type cmdBatchList struct {
 	global *cmdGlobal
 
@@ -251,7 +251,7 @@ func parseReturnedBatch(b any) (any, error) {
 	return ret, nil
 }
 
-// Remove
+// Remove the batch.
 type cmdBatchRemove struct {
 	global *cmdGlobal
 }
@@ -288,7 +288,7 @@ func (c *cmdBatchRemove) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Show
+// Show the batch.
 type cmdBatchShow struct {
 	global *cmdGlobal
 }
@@ -389,7 +389,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Start
+// Start the batch.
 type cmdBatchStart struct {
 	global *cmdGlobal
 }
@@ -426,7 +426,7 @@ func (c *cmdBatchStart) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Stop
+// Stop the batch.
 type cmdBatchStop struct {
 	global *cmdGlobal
 }
@@ -463,7 +463,7 @@ func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Update
+// Update the batch.
 type cmdBatchUpdate struct {
 	global *cmdGlobal
 }

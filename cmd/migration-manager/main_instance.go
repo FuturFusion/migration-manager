@@ -44,7 +44,7 @@ func (c *cmdInstance) Command() *cobra.Command {
 	return cmd
 }
 
-// List
+// List the instances.
 type cmdInstanceList struct {
 	global *cmdGlobal
 
@@ -214,7 +214,7 @@ func parseReturnedInstance(i any) (any, error) {
 	return ret, nil
 }
 
-// Update
+// Update the instance.
 type cmdInstanceUpdate struct {
 	global *cmdGlobal
 }

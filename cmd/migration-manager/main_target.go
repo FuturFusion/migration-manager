@@ -53,7 +53,7 @@ func (c *cmdTarget) Command() *cobra.Command {
 	return cmd
 }
 
-// Add
+// Add the target.
 type cmdTargetAdd struct {
 	global *cmdGlobal
 
@@ -168,7 +168,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// List
+// List the targets.
 type cmdTargetList struct {
 	global *cmdGlobal
 
@@ -250,7 +250,7 @@ func parseReturnedTarget(t any) (any, error) {
 	return ret, nil
 }
 
-// Remove
+// Remove the target.
 type cmdTargetRemove struct {
 	global *cmdGlobal
 }
@@ -287,7 +287,7 @@ func (c *cmdTargetRemove) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Update
+// Update the target.
 type cmdTargetUpdate struct {
 	global *cmdGlobal
 }

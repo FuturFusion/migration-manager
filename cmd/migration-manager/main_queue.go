@@ -36,7 +36,7 @@ func (c *cmdQueue) Command() *cobra.Command {
 	return cmd
 }
 
-// List
+// List the queues.
 type cmdQueueList struct {
 	global *cmdGlobal
 

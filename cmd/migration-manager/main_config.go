@@ -37,7 +37,7 @@ func (c *cmdConfig) Command() *cobra.Command {
 	return cmd
 }
 
-// Show
+// Show the config.
 type cmdConfigShow struct {
 	global *cmdGlobal
 }
@@ -100,7 +100,7 @@ func parseReturnedServerUntrusted(n any) (api.ServerUntrusted, error) {
 	return ret, nil
 }
 
-// Update
+// Update the config.
 type cmdConfigUpdate struct {
 	global *cmdGlobal
 }

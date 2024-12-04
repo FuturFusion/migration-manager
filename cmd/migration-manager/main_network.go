@@ -49,7 +49,7 @@ func (c *cmdNetwork) Command() *cobra.Command {
 	return cmd
 }
 
-// Add
+// Add the network.
 type cmdNetworkAdd struct {
 	global *cmdGlobal
 }
@@ -110,7 +110,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// List
+// List the networks.
 type cmdNetworkList struct {
 	global *cmdGlobal
 
@@ -192,7 +192,7 @@ func parseReturnedNetwork(n any) (any, error) {
 	return ret, nil
 }
 
-// Remove
+// Remove the network.
 type cmdNetworkRemove struct {
 	global *cmdGlobal
 }
@@ -229,7 +229,7 @@ func (c *cmdNetworkRemove) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Update
+// Update the network.
 type cmdNetworkUpdate struct {
 	global *cmdGlobal
 }

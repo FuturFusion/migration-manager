@@ -56,7 +56,7 @@ func (c *cmdSource) Command() *cobra.Command {
 	return cmd
 }
 
-// Add
+// Add the source.
 type cmdSourceAdd struct {
 	global *cmdGlobal
 
@@ -173,7 +173,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// List
+// List the sources.
 type cmdSourceList struct {
 	global *cmdGlobal
 
@@ -271,7 +271,7 @@ func parseReturnedSource(s any) (any, error) {
 	}
 }
 
-// Remove
+// Remove the source.
 type cmdSourceRemove struct {
 	global *cmdGlobal
 }
@@ -308,7 +308,7 @@ func (c *cmdSourceRemove) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Update
+// Update the source.
 type cmdSourceUpdate struct {
 	global *cmdGlobal
 }
