@@ -1,19 +1,27 @@
 GO ?= go
+DETECTED_LIBNBD_VERSION = $(shell dpkg-query --showformat='$${Version}' -W libnbd-dev || echo "0.0.0-libnbd-not-found")
 
 default: build
 
 .PHONY: build
-build:
+build: build-dependencies
 	go build ./cmd/migration-manager
 	go build ./cmd/migration-managerd
 	go build ./cmd/migration-manager-worker
 
+.PHONY: build-dependencies
+build-dependencies:
+	@if ! dpkg --compare-versions 1.20 "<=" ${DETECTED_LIBNBD_VERSION}; then \
+		echo "Please install libnbd-dev with version >= 1.20"; \
+		exit 1; \
+	fi
+
 .PHONY: test
-test:
+test: build-dependencies
 	go test ./... -v -cover
 
 .PHONY: static-analysis
-static-analysis:
+static-analysis: build-dependencies
 ifeq ($(shell command -v go-licenses),)
 	(cd / ; $(GO) install -v -x github.com/google/go-licenses@latest)
 endif
