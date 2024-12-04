@@ -138,5 +138,9 @@ func (n *Node) getNetworksHelper(tx *sql.Tx, name string) ([]api.Network, error)
 		return nil, rows.Err()
 	}
 
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
 	return ret, nil
 }
