@@ -13,6 +13,9 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
+    - thelper
+    - unconvert
+    - unparam
     - whitespace
 issues:
   exclude-use-default: false

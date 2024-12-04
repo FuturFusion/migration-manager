@@ -89,7 +89,7 @@ func (w *Worker) Start() error {
 				}
 			}
 
-			t := time.NewTimer(time.Duration(time.Second * 10))
+			t := time.NewTimer(10 * time.Second)
 
 			select {
 			case <-w.shutdownCtx.Done():
