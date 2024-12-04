@@ -63,7 +63,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 	}
 
 	// For now, just default to the first target defined.
-	targetId, err := targets[0].GetDatabaseID()
+	targetID, err := targets[0].GetDatabaseID()
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
 		return false
@@ -225,7 +225,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 			} else {
 				// Add a new instance to the database.
 				logger.Info("Adding instance "+i.GetName()+" ("+i.GetUUID().String()+") from source "+s.GetName()+" to database", loggerCtx)
-				i.TargetID = targetId
+				i.TargetID = targetID
 
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					err := d.db.AddInstance(tx, &i)

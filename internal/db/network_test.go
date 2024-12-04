@@ -44,17 +44,17 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.Equal(t, len(networks), 3)
 
 	// Should get back networkA unchanged.
-	networkA_DB, err := db.GetNetwork(tx, networkA.Name)
+	dbNetworkA, err := db.GetNetwork(tx, networkA.Name)
 	require.NoError(t, err)
-	require.Equal(t, networkA, networkA_DB)
+	require.Equal(t, networkA, dbNetworkA)
 
 	// Test updating a network.
 	networkB.Name = "FooBar"
 	err = db.UpdateNetwork(tx, networkB)
 	require.NoError(t, err)
-	networkB_DB, err := db.GetNetwork(tx, networkB.Name)
+	dbNetworkB, err := db.GetNetwork(tx, networkB.Name)
 	require.NoError(t, err)
-	require.Equal(t, networkB, networkB_DB)
+	require.Equal(t, networkB, dbNetworkB)
 
 	// Delete a network.
 	err = db.DeleteNetwork(tx, networkA.Name)

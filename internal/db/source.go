@@ -40,15 +40,15 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 	}
 
 	// Set the new ID assigned to the source.
-	lastInsertId, err := result.LastInsertId()
+	lastInsertID, err := result.LastInsertId()
 	if err != nil {
 		return err
 	}
 	switch specificSource := s.(type) {
 	case *source.InternalCommonSource:
-		specificSource.DatabaseID = int(lastInsertId)
+		specificSource.DatabaseID = int(lastInsertID)
 	case *source.InternalVMwareSource:
-		specificSource.DatabaseID = int(lastInsertId)
+		specificSource.DatabaseID = int(lastInsertID)
 	}
 
 	return nil

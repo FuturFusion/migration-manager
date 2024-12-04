@@ -28,11 +28,11 @@ func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 	}
 
 	// Set the new ID assigned to the target.
-	lastInsertId, err := result.LastInsertId()
+	lastInsertID, err := result.LastInsertId()
 	if err != nil {
 		return err
 	}
-	incusTarget.DatabaseID = int(lastInsertId)
+	incusTarget.DatabaseID = int(lastInsertID)
 
 	return nil
 }

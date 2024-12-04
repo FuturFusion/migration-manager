@@ -150,7 +150,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHttpRequestV1("/batches", http.MethodPost, "", content)
+	_, err = c.global.doHTTPRequestV1("/batches", http.MethodPost, "", content)
 	if err != nil {
 		return err
 	}
@@ -188,7 +188,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all batches.
-	resp, err := c.global.doHttpRequestV1("/batches", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/batches", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func (c *cmdBatchRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Remove the batch.
-	_, err = c.global.doHttpRequestV1("/batches/"+name, http.MethodDelete, "", nil)
+	_, err = c.global.doHTTPRequestV1("/batches/"+name, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -303,7 +303,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the batch.
-	resp, err := c.global.doHttpRequestV1("/batches/"+name, http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/batches/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -315,7 +315,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	b := parsed.(api.Batch)
 
 	// Get all instances for this batch.
-	resp, err = c.global.doHttpRequestV1("/batches/"+name+"/instances", http.MethodGet, "", nil)
+	resp, err = c.global.doHTTPRequestV1("/batches/"+name+"/instances", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -388,7 +388,7 @@ func (c *cmdBatchStart) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Start the batch.
-	_, err = c.global.doHttpRequestV1("/batches/"+name+"/start", http.MethodPost, "", nil)
+	_, err = c.global.doHTTPRequestV1("/batches/"+name+"/start", http.MethodPost, "", nil)
 	if err != nil {
 		return err
 	}
@@ -425,7 +425,7 @@ func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Start the batch.
-	_, err = c.global.doHttpRequestV1("/batches/"+name+"/stop", http.MethodPost, "", nil)
+	_, err = c.global.doHTTPRequestV1("/batches/"+name+"/stop", http.MethodPost, "", nil)
 	if err != nil {
 		return err
 	}
@@ -462,7 +462,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the existing batch.
-	resp, err := c.global.doHttpRequestV1("/batches/"+name, http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/batches/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -549,7 +549,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHttpRequestV1("/batches/"+origBatchName, http.MethodPut, "", content)
+	_, err = c.global.doHTTPRequestV1("/batches/"+origBatchName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

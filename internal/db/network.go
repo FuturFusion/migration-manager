@@ -22,11 +22,11 @@ func (n *Node) AddNetwork(tx *sql.Tx, net *api.Network) error {
 	}
 
 	// Set the new ID assigned to the network.
-	lastInsertId, err := result.LastInsertId()
+	lastInsertID, err := result.LastInsertId()
 	if err != nil {
 		return err
 	}
-	net.DatabaseID = int(lastInsertId)
+	net.DatabaseID = int(lastInsertID)
 
 	return err
 }

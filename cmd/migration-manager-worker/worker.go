@@ -37,7 +37,7 @@ type Worker struct {
 
 func newWorker(endpoint string, uuid string) (*Worker, error) {
 	// Parse the provided URL for the migration manager endpoint.
-	parsedUrl, err := url.Parse(endpoint)
+	parsedURL, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func newWorker(endpoint string, uuid string) (*Worker, error) {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	ret := &Worker{
-		endpoint:       parsedUrl,
+		endpoint:       parsedURL,
 		source:         nil,
 		uuid:           uuid,
 		lastUpdate:     time.Now().UTC(),
@@ -55,7 +55,7 @@ func newWorker(endpoint string, uuid string) (*Worker, error) {
 	}
 
 	// Do a quick connectivity check to the endpoint.
-	_, err = ret.doHttpRequestV1("", http.MethodGet, nil)
+	_, err = ret.doHTTPRequestV1("", http.MethodGet, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +68,7 @@ func (w *Worker) Start() error {
 
 	go func() {
 		for {
-			resp, err := w.doHttpRequestV1("/queue/"+w.uuid, http.MethodGet, nil)
+			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodGet, nil)
 			if err != nil {
 				logger.Errorf("%s", err.Error())
 			} else {
@@ -225,7 +225,7 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusStri
 		return
 	}
 
-	_, err = w.doHttpRequestV1("/queue/"+w.uuid, http.MethodPut, content)
+	_, err = w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodPut, content)
 	if err != nil {
 		logger.Errorf("Failed to send status back to migration manager: %s", err.Error())
 		return
@@ -242,14 +242,14 @@ func (w *Worker) sendErrorResponse(err error) {
 		return
 	}
 
-	_, err = w.doHttpRequestV1("/queue/"+w.uuid, http.MethodPut, content)
+	_, err = w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodPut, content)
 	if err != nil {
 		logger.Errorf("Failed to send error back to migration manager: %s", err.Error())
 		return
 	}
 }
 
-func (w *Worker) doHttpRequestV1(endpoint string, method string, content []byte) (*incusAPI.ResponseRaw, error) {
+func (w *Worker) doHTTPRequestV1(endpoint string, method string, content []byte) (*incusAPI.ResponseRaw, error) {
 	var err error
 	w.endpoint.Path, err = url.JoinPath("/1.0/", endpoint)
 	if err != nil {

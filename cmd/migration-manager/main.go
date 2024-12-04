@@ -175,7 +175,7 @@ func (c *cmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 	return false, nil
 }
 
-func (c *cmdGlobal) doHttpRequestV1(endpoint string, method string, query string, content []byte) (*api.ResponseRaw, error) {
+func (c *cmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.ResponseRaw, error) {
 	u, err := url.Parse(c.config.MMServer)
 	if err != nil {
 		return nil, err

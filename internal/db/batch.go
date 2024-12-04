@@ -35,11 +35,11 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Set the new ID assigned to the batch.
-	lastInsertId, err := result.LastInsertId()
+	lastInsertID, err := result.LastInsertId()
 	if err != nil {
 		return err
 	}
-	internalBatch.DatabaseID = int(lastInsertId)
+	internalBatch.DatabaseID = int(lastInsertID)
 
 	return nil
 }

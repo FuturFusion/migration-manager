@@ -43,9 +43,9 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.Equal(t, len(sources), 2)
 
 	// Should get back commonSourceB unchanged.
-	commonSourceB_DB, err := db.GetSource(tx, commonSourceB.GetName())
+	dbCommonSourceB, err := db.GetSource(tx, commonSourceB.GetName())
 	require.NoError(t, err)
-	require.Equal(t, commonSourceB, commonSourceB_DB)
+	require.Equal(t, commonSourceB, dbCommonSourceB)
 
 	// Add vmwareSourceA.
 	err = db.AddSource(tx, vmwareSourceA)
@@ -61,18 +61,18 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.Equal(t, len(sources), 4)
 
 	// Should get back vmwareSourceA unchanged.
-	vmwareSourceA_DB, err := db.GetSource(tx, vmwareSourceA.GetName())
+	dbVMWareSourceA, err := db.GetSource(tx, vmwareSourceA.GetName())
 	require.NoError(t, err)
-	require.Equal(t, vmwareSourceA, vmwareSourceA_DB)
+	require.Equal(t, vmwareSourceA, dbVMWareSourceA)
 
 	// Test updating a source.
 	vmwareSourceB.Name = "FooBar"
 	vmwareSourceB.Username = "aNewUser"
 	err = db.UpdateSource(tx, vmwareSourceB)
 	require.NoError(t, err)
-	vmwareSourceB_DB, err := db.GetSource(tx, vmwareSourceB.GetName())
+	dbVMWareSourceB, err := db.GetSource(tx, vmwareSourceB.GetName())
 	require.NoError(t, err)
-	require.Equal(t, vmwareSourceB, vmwareSourceB_DB)
+	require.Equal(t, vmwareSourceB, dbVMWareSourceB)
 
 	// Delete a source.
 	err = db.DeleteSource(tx, commonSourceA.GetName())

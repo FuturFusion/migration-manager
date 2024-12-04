@@ -54,18 +54,18 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.Equal(t, len(targets), 3)
 
 	// Should get back incusTargetA unchanged.
-	incusTargetA_DB, err := db.GetTarget(tx, incusTargetA.GetName())
+	dbIncusTargetA, err := db.GetTarget(tx, incusTargetA.GetName())
 	require.NoError(t, err)
-	require.Equal(t, incusTargetA, incusTargetA_DB)
+	require.Equal(t, incusTargetA, dbIncusTargetA)
 
 	// Test updating a target.
 	incusTargetB.Name = "FooBar"
 	incusTargetB.IncusProject = "new-project"
 	err = db.UpdateTarget(tx, incusTargetB)
 	require.NoError(t, err)
-	incusTargetB_DB, err := db.GetTarget(tx, incusTargetB.GetName())
+	dbIncusTargetB, err := db.GetTarget(tx, incusTargetB.GetName())
 	require.NoError(t, err)
-	require.Equal(t, incusTargetB, incusTargetB_DB)
+	require.Equal(t, incusTargetB, dbIncusTargetB)
 
 	// Delete a target.
 	err = db.DeleteTarget(tx, incusTargetA.GetName())

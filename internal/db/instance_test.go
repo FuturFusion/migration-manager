@@ -82,9 +82,9 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Equal(t, len(instances), 3)
 
 	// Should get back instanceA unchanged.
-	instanceA_DB, err := db.GetInstance(tx, instanceA.GetUUID())
+	dbInstanceA, err := db.GetInstance(tx, instanceA.GetUUID())
 	require.NoError(t, err)
-	require.Equal(t, instanceA, instanceA_DB)
+	require.Equal(t, instanceA, dbInstanceA)
 
 	// Test updating an instance.
 	instanceB.Name = "FooBar"
@@ -93,9 +93,9 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	instanceB.MigrationStatusString = instanceB.MigrationStatus.String()
 	err = db.UpdateInstance(tx, instanceB)
 	require.NoError(t, err)
-	instanceB_DB, err := db.GetInstance(tx, instanceB.GetUUID())
+	dbInstanceB, err := db.GetInstance(tx, instanceB.GetUUID())
 	require.NoError(t, err)
-	require.Equal(t, instanceB, instanceB_DB)
+	require.Equal(t, instanceB, dbInstanceB)
 
 	// Delete an instance.
 	err = db.DeleteInstance(tx, instanceA.GetUUID())
