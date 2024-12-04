@@ -79,7 +79,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Ensure we have three instances.
 	instances, err := db.GetAllInstances(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(instances), 3)
+	require.Len(t, instances, 3)
 
 	// Should get back instanceA unchanged.
 	dbInstanceA, err := db.GetInstance(tx, instanceA.GetUUID())
@@ -114,7 +114,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Should have two instances remaining.
 	instances, err = db.GetAllInstances(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(instances), 2)
+	require.Len(t, instances, 2)
 
 	// Can't delete an instance that doesn't exist.
 	randomUUID, _ := uuid.NewRandom()

@@ -13,6 +13,7 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
+    - testifylint
     - thelper
     - unconvert
     - unparam

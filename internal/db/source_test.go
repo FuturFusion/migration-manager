@@ -40,7 +40,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	// Quick mid-addition state check.
 	sources, err := db.GetAllSources(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(sources), 2)
+	require.Len(t, sources, 2)
 
 	// Should get back commonSourceB unchanged.
 	dbCommonSourceB, err := db.GetSource(tx, commonSourceB.GetName())
@@ -58,7 +58,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	// Ensure we have four entries
 	sources, err = db.GetAllSources(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(sources), 4)
+	require.Len(t, sources, 4)
 
 	// Should get back vmwareSourceA unchanged.
 	dbVMWareSourceA, err := db.GetSource(tx, vmwareSourceA.GetName())
@@ -83,7 +83,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	// Should have three sources remaining.
 	sources, err = db.GetAllSources(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(sources), 3)
+	require.Len(t, sources, 3)
 
 	// Can't delete a source that doesn't exist.
 	err = db.DeleteSource(tx, "BazBiz")

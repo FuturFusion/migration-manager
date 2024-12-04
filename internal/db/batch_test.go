@@ -43,7 +43,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 	// Ensure we have three entries
 	batches, err := db.GetAllBatches(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(batches), 3)
+	require.Len(t, batches, 3)
 
 	// Should get back batchA unchanged.
 	dbBatchA, err := db.GetBatch(tx, batchA.GetName())
@@ -77,7 +77,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 	// Should have two batches remaining.
 	batches, err = db.GetAllBatches(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(batches), 2)
+	require.Len(t, batches, 2)
 
 	// Can't delete a batch that doesn't exist.
 	err = db.DeleteBatch(tx, "BazBiz")

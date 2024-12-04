@@ -51,7 +51,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	// Ensure we have three entries
 	targets, err := db.GetAllTargets(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(targets), 3)
+	require.Len(t, targets, 3)
 
 	// Should get back incusTargetA unchanged.
 	dbIncusTargetA, err := db.GetTarget(tx, incusTargetA.GetName())
@@ -76,7 +76,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	// Should have two targets remaining.
 	targets, err = db.GetAllTargets(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(targets), 2)
+	require.Len(t, targets, 2)
 
 	// Can't delete a target that doesn't exist.
 	err = db.DeleteTarget(tx, "BazBiz")

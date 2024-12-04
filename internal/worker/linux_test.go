@@ -62,28 +62,28 @@ func TestLSBLKUnmarshaling(t *testing.T) {
 	lsblkOutput := worker.LSBLKOutput{}
 	err := json.Unmarshal([]byte(lsblk), &lsblkOutput)
 	require.NoError(t, err)
-	require.Equal(t, len(lsblkOutput.BlockDevices), 1)
-	require.Equal(t, lsblkOutput.BlockDevices[0].Name, "sda")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[0].Name, "sda1")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[0].FSType, "ext4")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[1].Name, "sda2")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[1].FSType, "ext3")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[2].Name, "sda3")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[2].FSType, "swap")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[3].Name, "sda4")
-	require.Equal(t, lsblkOutput.BlockDevices[0].Children[3].FSType, "btrfs")
+	require.Len(t, lsblkOutput.BlockDevices, 1)
+	require.Equal(t, "sda", lsblkOutput.BlockDevices[0].Name)
+	require.Equal(t, "sda1", lsblkOutput.BlockDevices[0].Children[0].Name)
+	require.Equal(t, "ext4", lsblkOutput.BlockDevices[0].Children[0].FSType)
+	require.Equal(t, "sda2", lsblkOutput.BlockDevices[0].Children[1].Name)
+	require.Equal(t, "ext3", lsblkOutput.BlockDevices[0].Children[1].FSType)
+	require.Equal(t, "sda3", lsblkOutput.BlockDevices[0].Children[2].Name)
+	require.Equal(t, "swap", lsblkOutput.BlockDevices[0].Children[2].FSType)
+	require.Equal(t, "sda4", lsblkOutput.BlockDevices[0].Children[3].Name)
+	require.Equal(t, "btrfs", lsblkOutput.BlockDevices[0].Children[3].FSType)
 }
 
 func TestLVSUnmarshaling(t *testing.T) {
 	novg := worker.LVSOutput{}
 	err := json.Unmarshal([]byte(noVGs), &novg)
 	require.NoError(t, err)
-	require.Equal(t, len(novg.Report[0].LV), 0)
+	require.Empty(t, novg.Report[0].LV)
 
 	onevg := worker.LVSOutput{}
 	err = json.Unmarshal([]byte(oneVG), &onevg)
 	require.NoError(t, err)
-	require.Equal(t, len(onevg.Report[0].LV), 1)
-	require.Equal(t, onevg.Report[0].LV[0].VGName, "ubuntu-vg")
-	require.Equal(t, onevg.Report[0].LV[0].LVName, "ubuntu-lv")
+	require.Len(t, onevg.Report[0].LV, 1)
+	require.Equal(t, "ubuntu-vg", onevg.Report[0].LV[0].VGName)
+	require.Equal(t, "ubuntu-lv", onevg.Report[0].LV[0].LVName)
 }

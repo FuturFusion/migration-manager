@@ -41,7 +41,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	// Ensure we have three entries
 	networks, err := db.GetAllNetworks(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(networks), 3)
+	require.Len(t, networks, 3)
 
 	// Should get back networkA unchanged.
 	dbNetworkA, err := db.GetNetwork(tx, networkA.Name)
@@ -65,7 +65,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	// Should have two networks remaining.
 	networks, err = db.GetAllNetworks(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(networks), 2)
+	require.Len(t, networks, 2)
 
 	// Can't delete a network that doesn't exist.
 	err = db.DeleteNetwork(tx, "BazBiz")
