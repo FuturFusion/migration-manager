@@ -22,6 +22,7 @@ func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 	if err != nil {
 		return err
 	}
+
 	result, err := tx.Exec(q, incusTarget.Name, incusTarget.Endpoint, incusTarget.TLSClientKey, incusTarget.TLSClientCert, marshalledOIDCTokens, incusTarget.Insecure, incusTarget.IncusProject)
 	if err != nil {
 		return err
@@ -32,6 +33,7 @@ func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 	if err != nil {
 		return err
 	}
+
 	incusTarget.DatabaseID = int(lastInsertID)
 
 	return nil
@@ -73,10 +75,12 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
+
 	tID, err := t.GetDatabaseID()
 	if err != nil {
 		return err
 	}
+
 	q := `SELECT COUNT(uuid) FROM instances WHERE targetid=?`
 	row := tx.QueryRow(q, tID)
 
@@ -85,6 +89,7 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
+
 	if numInstances > 0 {
 		return fmt.Errorf("%d instances refer to target '%s', can't delete", numInstances, name)
 	}
@@ -100,6 +105,7 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
+
 	if affectedRows == 0 {
 		return fmt.Errorf("Target with name '%s' doesn't exist, can't delete", name)
 	}
@@ -120,10 +126,12 @@ func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 	if err != nil {
 		return err
 	}
+
 	marshalledOIDCTokens, err := json.Marshal(incusTarget.OIDCTokens)
 	if err != nil {
 		return err
 	}
+
 	result, err := tx.Exec(q, incusTarget.Name, incusTarget.Endpoint, incusTarget.TLSClientKey, incusTarget.TLSClientCert, marshalledOIDCTokens, incusTarget.Insecure, incusTarget.IncusProject, id)
 	if err != nil {
 		return err
@@ -133,6 +141,7 @@ func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 	if err != nil {
 		return err
 	}
+
 	if affectedRows == 0 {
 		return fmt.Errorf("Target with ID %d doesn't exist, can't update", id)
 	}
@@ -157,6 +166,7 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, name string, id int) ([]target.Targe
 		q += ` ORDER BY name`
 		rows, err = tx.Query(q)
 	}
+
 	if err != nil {
 		return ret, err
 	}
@@ -169,6 +179,7 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, name string, id int) ([]target.Targe
 		if err != nil {
 			return nil, err
 		}
+
 		err = json.Unmarshal([]byte(marshalledOIDCTokens), &newTarget.OIDCTokens)
 		if err != nil {
 			return nil, err

@@ -95,6 +95,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = DoUnmount(driversMountPath) }()
 
 	// Get the BitLocker status.
@@ -110,18 +111,21 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = DoUnmount(windowsMainMountPath) }()
 	case BITLOCKERSTATE_CLEARKEY:
 		err = WindowsOpenBitLockerPartition(mainPartition, "")
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = DoUnmount(bitLockerMountPath) }()
 
 		err = DoMount(filepath.Join(bitLockerMountPath, "dislocker-file"), windowsMainMountPath, nil)
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = DoUnmount(windowsMainMountPath) }()
 	default:
 		// TODO -- Handle passing in of a recovery key for mounting BitLocker partition.
@@ -133,6 +137,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = DoUnmount(windowsRecoveryMountPath) }()
 
 	// ntfs-3g is a FUSE-backed file system; the newly mounted file systems might not be ready right away, so wait until they are.
@@ -141,6 +146,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 		if mountCheckTries > 100 {
 			return fmt.Errorf("Windows partitions failed to mount properly; can't inject drivers")
 		}
+
 		mountCheckTries++
 		time.Sleep(100 * time.Millisecond)
 	}
@@ -173,6 +179,7 @@ func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 	if err != nil {
 		return fmt.Errorf("Unable to find winre.wim: %w", err)
 	}
+
 	reWimInfo, err := repackUtuil.GetWimInfo(reWim)
 	if err != nil {
 		return fmt.Errorf("Failed to get RE wim info: %w", err)

@@ -54,15 +54,18 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		restServerPort:      c.flagServerPort,
 		restServerTLSConfig: nil,
 	}
+
 	if c.flagTLSCert != "" {
 		cert, err := tls.LoadX509KeyPair(c.flagTLSCert, c.flagTLSKey)
 		if err != nil {
 			logger.Errorf("Failed to load TLS cert/key: %s", err)
 			return err
 		}
+
 		config.restServerTLSConfig = &tls.Config{}
 		config.restServerTLSConfig.Certificates = append(config.restServerTLSConfig.Certificates, cert)
 	}
+
 	d := newDaemon(config)
 
 	sigCh := make(chan os.Signal, 1)

@@ -60,6 +60,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = DeactivateVG() }()
 	}
 
@@ -68,6 +69,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = DoUnmount(chrootMountPath) }()
 
 	// Bind-mount /proc/ and /sys/ into the chroot.
@@ -75,11 +77,13 @@ func LinuxDoPostMigrationConfig(distro string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "proc")) }()
 	err = DoMount("/sys/", filepath.Join(chrootMountPath, "sys"), []string{"-o", "bind"})
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "sys")) }()
 
 	// Mount additional file systems, such as /var/ on a different partition.
@@ -88,10 +92,12 @@ func LinuxDoPostMigrationConfig(distro string) error {
 		if mnt["options"] != "" {
 			opts = []string{"-o", mnt["options"]}
 		}
+
 		err := DoMount(mnt["device"], filepath.Join(chrootMountPath, mnt["path"]), opts)
 		if err != nil {
 			return err
 		}
+
 		defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, mnt["path"])) }() //nolint: revive
 	}
 
@@ -135,6 +141,7 @@ func determineRootPartition() (string, int, []string, error) {
 		if err != nil {
 			return "", PARTITION_TYPE_UNKNOWN, nil, err
 		}
+
 		defer func() { _ = DeactivateVG() }()
 
 		for _, lv := range lvs.Report[0].LV {
@@ -157,6 +164,7 @@ func determineRootPartition() (string, int, []string, error) {
 			if err != nil {
 				return "", PARTITION_TYPE_UNKNOWN, nil, err
 			}
+
 			opts := []string{"-o", fmt.Sprintf("subvol=%s", btrfsSubvol)}
 			if looksLikeRootPartition(partition, opts) {
 				return partition, PARTITION_TYPE_PLAIN, opts, nil
@@ -181,6 +189,7 @@ func runScriptInChroot(scriptName string) error {
 	if err != nil {
 		return err
 	}
+
 	defer func() { _ = os.Remove(filepath.Join(chrootMountPath, scriptName)) }()
 
 	// Run the script within the chroot.
@@ -224,6 +233,7 @@ func looksLikeRootPartition(partition string, opts []string) bool {
 	if err != nil {
 		return false
 	}
+
 	defer func() { _ = DoUnmount(chrootMountPath) }()
 
 	// If /usr/ and /etc/ exist, this is probably the root partition.
@@ -237,6 +247,7 @@ func getAdditionalMounts() []map[string]string {
 	if err != nil {
 		return ret
 	}
+
 	defer func() { _ = fstab.Close() }()
 
 	sc := bufio.NewScanner(fstab)
@@ -260,6 +271,7 @@ func getBTRFSTopSubvol(partition string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	defer func() { _ = DoUnmount(chrootMountPath) }()
 
 	// Get the subvolumes.

@@ -183,6 +183,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		if !ok {
 			return fmt.Errorf("Wasn't given an InternalInstance?")
 		}
+
 		i = internalInstance
 		return nil
 	})
@@ -307,6 +308,7 @@ func queuePut(d *Daemon, r *http.Request) response.Response {
 		if !ok {
 			return fmt.Errorf("Wasn't given an InternalInstance?")
 		}
+
 		i = internalInstance
 		return nil
 	})
@@ -340,6 +342,7 @@ func queuePut(d *Daemon, r *http.Request) response.Response {
 			i.MigrationStatus = api.MIGRATIONSTATUS_IMPORT_COMPLETE
 			i.MigrationStatusString = api.MIGRATIONSTATUS_IMPORT_COMPLETE.String()
 		}
+
 	case api.WORKERRESPONSE_FAILED:
 		i.MigrationStatus = api.MIGRATIONSTATUS_ERROR
 		i.MigrationStatusString = resp.StatusString

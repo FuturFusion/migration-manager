@@ -58,6 +58,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 		logger.Warn(err.Error(), loggerCtx)
 		return false
 	}
+
 	if len(targets) == 0 {
 		logger.Debug("No targets defined, skipping instance sync from sources", loggerCtx)
 		return false
@@ -337,6 +338,7 @@ func (d *Daemon) processReadyBatches() bool {
 
 			continue
 		}
+
 		if !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(time.Now().UTC()) {
 			logger.Error("Batch '"+b.GetName()+"' window end time has already passed", loggerCtx)
 
@@ -420,6 +422,7 @@ func (d *Daemon) processQueuedBatches() bool {
 		logger.Error("Server config 'core.boot_iso_image' isn't set.")
 		return false
 	}
+
 	if d.globalConfig["core.driver_iso_image"] == "" {
 		logger.Error("Server config 'core.driver_iso_image' isn't set.")
 		return false
@@ -567,6 +570,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 				}
+
 				continue
 			}
 
@@ -599,6 +603,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 				}
+
 				continue
 			}
 
@@ -617,6 +622,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 				}
+
 				continue
 			}
 
@@ -635,6 +641,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 				}
+
 				continue
 			}
 		}
@@ -655,6 +662,7 @@ func (d *Daemon) processQueuedBatches() bool {
 			continue
 		}
 	}
+
 	return false
 }
 
@@ -733,6 +741,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
 
@@ -751,6 +760,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
 
@@ -779,6 +789,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
 
@@ -806,6 +817,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
 
@@ -838,6 +850,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 					if err != nil {
 						logger.Warn(err.Error(), loggerCtx)
 					}
+
 					continue
 				}
 			}
@@ -893,8 +906,10 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
+
 		updateErr = op.Wait()
 		if updateErr != nil {
 			logger.Warn(updateErr.Error(), loggerCtx)
@@ -909,6 +924,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
 

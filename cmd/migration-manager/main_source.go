@@ -101,6 +101,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		if !slices.Contains(supportedTypes, strings.ToLower(args[0])) {
 			return fmt.Errorf("Unsupported source type '%s'; must be one of %q", args[0], supportedTypes)
 		}
+
 		sourceType = strings.ToLower(args[0])
 		sourceName = args[1]
 		sourceEndpoint = args[2]
@@ -376,6 +377,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		if specificSource.Insecure {
 			isInsecure = "yes"
 		}
+
 		specificSource.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err

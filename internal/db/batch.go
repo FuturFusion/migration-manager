@@ -25,10 +25,12 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 	if err != nil {
 		return err
 	}
+
 	marshalledMigrationWindowEnd, err := internalBatch.MigrationWindowEnd.MarshalText()
 	if err != nil {
 		return err
 	}
+
 	result, err := tx.Exec(q, internalBatch.Name, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DefaultNetwork)
 	if err != nil {
 		return err
@@ -39,6 +41,7 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 	if err != nil {
 		return err
 	}
+
 	internalBatch.DatabaseID = int(lastInsertID)
 
 	return nil
@@ -80,6 +83,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
+
 	if !dbBatch.CanBeModified() {
 		return fmt.Errorf("Cannot delete batch '%s': Currently in a migration phase", name)
 	}
@@ -89,6 +93,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
+
 	instances, err := n.GetAllInstancesForBatchID(tx, batchID)
 	if err != nil {
 		return err
@@ -118,6 +123,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
+
 	if affectedRows == 0 {
 		return fmt.Errorf("Batch with name '%s' doesn't exist, can't delete", name)
 	}
@@ -132,6 +138,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	if err != nil {
 		return err
 	}
+
 	row := tx.QueryRow(q, id)
 
 	origName := ""
@@ -144,6 +151,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	if err != nil {
 		return err
 	}
+
 	if !dbBatch.CanBeModified() {
 		return fmt.Errorf("Cannot update batch '%s': Currently in a migration phase", b.GetName())
 	}
@@ -160,10 +168,12 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	if err != nil {
 		return err
 	}
+
 	marshalledMigrationWindowEnd, err := internalBatch.MigrationWindowEnd.MarshalText()
 	if err != nil {
 		return err
 	}
+
 	result, err := tx.Exec(q, internalBatch.Name, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DefaultNetwork, internalBatch.DatabaseID)
 	if err != nil {
 		return err
@@ -173,6 +183,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	if err != nil {
 		return err
 	}
+
 	if affectedRows == 0 {
 		return fmt.Errorf("Batch with ID %d doesn't exist, can't update", internalBatch.DatabaseID)
 	}
@@ -197,6 +208,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 		q += ` ORDER BY name`
 		rows, err = tx.Query(q)
 	}
+
 	if err != nil {
 		return ret, err
 	}
@@ -210,10 +222,12 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 		if err != nil {
 			return nil, err
 		}
+
 		err = newBatch.MigrationWindowStart.UnmarshalText([]byte(marshalledMigrationWindowStart))
 		if err != nil {
 			return nil, err
 		}
+
 		err = newBatch.MigrationWindowEnd.UnmarshalText([]byte(marshalledMigrationWindowEnd))
 		if err != nil {
 			return nil, err
@@ -239,6 +253,7 @@ func (n *Node) GetAllInstancesForBatchID(tx *sql.Tx, id int) ([]instance.Instanc
 		if err != nil {
 			return nil, err
 		}
+
 		instanceUUID, err := uuid.Parse(u)
 		if err != nil {
 			return nil, err
@@ -261,6 +276,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	if err != nil {
 		return err
 	}
+
 	instances, err := n.GetAllInstancesForBatchID(tx, batchID)
 	if err != nil {
 		return err

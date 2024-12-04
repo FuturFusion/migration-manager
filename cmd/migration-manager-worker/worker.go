@@ -179,6 +179,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 			w.sendErrorResponse(err)
 			return
 		}
+
 		err = worker.WindowsInjectDrivers(w.shutdownCtx, winVer, "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
 		if err != nil {
 			w.sendErrorResponse(err)
@@ -192,6 +193,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 	} else if strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
 		err = worker.LinuxDoPostMigrationConfig("Ubuntu")
 	}
+
 	if err != nil {
 		w.sendErrorResponse(err)
 		return
@@ -255,6 +257,7 @@ func (w *Worker) doHTTPRequestV1(endpoint string, method string, content []byte)
 	if err != nil {
 		return nil, err
 	}
+
 	req, err := http.NewRequest(method, w.endpoint.String(), bytes.NewBuffer(content))
 	if err != nil {
 		return nil, err
@@ -267,6 +270,7 @@ func (w *Worker) doHTTPRequestV1(endpoint string, method string, content []byte)
 	if err != nil {
 		return nil, err
 	}
+
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)

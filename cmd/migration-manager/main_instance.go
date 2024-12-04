@@ -93,6 +93,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		instances = append(instances, newInstance.(api.Instance))
 	}
 
@@ -114,10 +115,12 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		b, ok := newBatch.(api.Batch)
 		if !ok {
 			return errors.New("Invalid type for batch")
 		}
+
 		batchesMap[b.DatabaseID] = b.Name
 	}
 
@@ -138,6 +141,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		switch s := newSource.(type) {
 		case api.VMwareSource:
 			sourcesMap[s.DatabaseID] = s.Name
@@ -150,6 +154,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
 	metadata, ok = resp.Metadata.([]any)
 	if !ok {
 		return errors.New("Unexpected API response, invalid type for metadata")
@@ -174,6 +179,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	if c.flagVerbose {
 		header = append(header, "UUID", "Last Sync", "Last Manual Update")
 	}
+
 	data := [][]string{}
 
 	for _, i := range instances {
@@ -183,8 +189,10 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			if !i.LastManualUpdate.IsZero() {
 				lastUpdate = i.LastManualUpdate.String()
 			}
+
 			row = append(row, i.UUID.String(), i.LastUpdateFromSource.String(), lastUpdate)
 		}
+
 		data = append(data, row)
 	}
 
@@ -254,6 +262,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		if inst.NumberCPUs != int(val) {
 			inst.NumberCPUs = int(val)
 			inst.LastManualUpdate = time.Now().UTC()
@@ -263,6 +272,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		if inst.MemoryInMiB != int(val) {
 			inst.MemoryInMiB = int(val)
 			inst.LastManualUpdate = time.Now().UTC()

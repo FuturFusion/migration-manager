@@ -85,6 +85,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		queueEntries = append(queueEntries, newEntry.(api.QueueEntry))
 	}
 
@@ -93,6 +94,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 	if c.flagVerbose {
 		header = append(header, "UUID")
 	}
+
 	data := [][]string{}
 
 	for _, q := range queueEntries {
@@ -100,6 +102,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 		if c.flagVerbose {
 			row = append(row, q.InstanceUUID.String())
 		}
+
 		data = append(data, row)
 	}
 

@@ -28,6 +28,7 @@ func soapWithKeepalive(ctx context.Context, clientURL *url.URL, insecure bool) (
 	if err != nil {
 		return nil, err
 	}
+
 	vimClient.RoundTripper = keepalive.NewHandlerSOAP(vimClient.RoundTripper, keepaliveInterval, soapKeepAliveHandler(ctx, vimClient))
 
 	// explicitly create session to activate keep-alive handler via Login

@@ -137,6 +137,7 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		c.config.ConfigDir = configDir
 	} else {
 		c.config = NewConfig(configDir)
@@ -156,6 +157,7 @@ func (c *cmdGlobal) CheckConfigStatus() error {
 	if err != nil {
 		return err
 	}
+
 	c.config.MMServer = resp
 
 	return c.config.SaveConfig()
@@ -180,10 +182,12 @@ func (c *cmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 	if err != nil {
 		return nil, err
 	}
+
 	u.Path, err = url.JoinPath("/1.0/", endpoint)
 	if err != nil {
 		return nil, err
 	}
+
 	u.RawQuery = query
 
 	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))
@@ -198,6 +202,7 @@ func (c *cmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 	if err != nil {
 		return nil, err
 	}
+
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)

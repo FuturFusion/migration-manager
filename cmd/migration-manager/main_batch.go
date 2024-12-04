@@ -117,11 +117,13 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 			_, err := time.Parse(time.DateTime, s)
 			return err
 		}
+
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
 	if windowStart != "" {
 		b.MigrationWindowStart, _ = time.Parse(time.DateTime, windowStart)
 	}
@@ -131,11 +133,13 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 			_, err := time.Parse(time.DateTime, s)
 			return err
 		}
+
 		return nil
 	})
 	if err != nil {
 		return err
 	}
+
 	if windowEnd != "" {
 		b.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
 	}
@@ -207,6 +211,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		batches = append(batches, newBatch.(api.Batch))
 	}
 
@@ -220,9 +225,11 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 		if !b.MigrationWindowStart.IsZero() {
 			startString = b.MigrationWindowStart.String()
 		}
+
 		if !b.MigrationWindowEnd.IsZero() {
 			endString = b.MigrationWindowEnd.String()
 		}
+
 		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.StoragePool, b.IncludeRegex, b.ExcludeRegex, startString, endString, b.DefaultNetwork})
 	}
 
@@ -343,6 +350,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		instances = append(instances, newInstance.(api.Instance))
 	}
 
@@ -352,18 +360,23 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	if b.StoragePool != "" {
 		fmt.Printf("  - Storage pool:    %s\n", b.StoragePool)
 	}
+
 	if b.IncludeRegex != "" {
 		fmt.Printf("  - Include regex:   %s\n", b.IncludeRegex)
 	}
+
 	if b.ExcludeRegex != "" {
 		fmt.Printf("  - Exclude regex:   %s\n", b.ExcludeRegex)
 	}
+
 	if !b.MigrationWindowStart.IsZero() {
 		fmt.Printf("  - Window start:    %s\n", b.MigrationWindowStart)
 	}
+
 	if !b.MigrationWindowEnd.IsZero() {
 		fmt.Printf("  - Window end:      %s\n", b.MigrationWindowEnd)
 	}
+
 	if b.DefaultNetwork != "" {
 		fmt.Printf("  - Default network: %s\n", b.DefaultNetwork)
 	}
@@ -372,6 +385,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	for _, i := range instances {
 		fmt.Printf("    - %s (%s)\n", i.Name, i.MigrationStatusString)
 	}
+
 	return nil
 }
 
@@ -518,16 +532,19 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		if !bb.MigrationWindowStart.IsZero() {
 			windowStartValue = bb.MigrationWindowStart.Format(time.DateTime)
 		}
+
 		windowStart, err := c.global.asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ["+windowStartValue+"] ", windowStartValue, func(s string) error {
 			if s != "" {
 				_, err := time.Parse(time.DateTime, s)
 				return err
 			}
+
 			return nil
 		})
 		if err != nil {
 			return err
 		}
+
 		if windowStart != "" {
 			bb.MigrationWindowStart, _ = time.Parse(time.DateTime, windowStart)
 		}
@@ -536,16 +553,19 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		if !bb.MigrationWindowEnd.IsZero() {
 			windowEndValue = bb.MigrationWindowEnd.Format(time.DateTime)
 		}
+
 		windowEnd, err := c.global.asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ["+windowEndValue+"] ", windowEndValue, func(s string) error {
 			if s != "" {
 				_, err := time.Parse(time.DateTime, s)
 				return err
 			}
+
 			return nil
 		})
 		if err != nil {
 			return err
 		}
+
 		if windowEnd != "" {
 			bb.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
 		}

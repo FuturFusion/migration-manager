@@ -99,6 +99,7 @@ func (d *Daemon) Start() error {
 		NetworkAddress: d.config.restServerIPAddr,
 		NetworkPort:    d.config.restServerPort,
 	}
+
 	_, err = endpoint.Up(config)
 	if err != nil {
 		logger.Errorf("Failed to start REST endpoint: %s", err)

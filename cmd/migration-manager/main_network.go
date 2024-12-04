@@ -88,6 +88,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 		if s != "" {
 			return json.Unmarshal([]byte(s), &n.Config)
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -156,6 +157,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		networks = append(networks, newNetwork.(api.Network))
 	}
 
@@ -168,6 +170,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 		if n.Config != nil {
 			configString, _ = json.Marshal(n.Config)
 		}
+
 		data = append(data, []string{n.Name, string(configString)})
 	}
 
@@ -289,6 +292,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		if s != "" {
 			return json.Unmarshal([]byte(s), &n.Config)
 		}
+
 		return nil
 	})
 	if err != nil {

@@ -106,20 +106,24 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		contents, err := os.ReadFile(tlsCertPath)
 		if err != nil {
 			return err
 		}
+
 		t.TLSClientCert = string(contents)
 
 		tlsKeyPath, err := c.global.asker.AskString("Please enter path to client TLS key: ", "", nil)
 		if err != nil {
 			return err
 		}
+
 		contents, err = os.ReadFile(tlsKeyPath)
 		if err != nil {
 			return err
 		}
+
 		t.TLSClientKey = string(contents)
 	}
 
@@ -211,6 +215,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		targets = append(targets, newTarget.(api.IncusTarget))
 	}
 
@@ -223,6 +228,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 		if t.TLSClientKey != "" {
 			authType = "TLS"
 		}
+
 		data = append(data, []string{t.Name, t.Endpoint, authType, t.IncusProject, strconv.FormatBool(t.Insecure)})
 	}
 
@@ -340,6 +346,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		if updateAuth {
 			// Clear out existing auth.
 			incusTarget.TLSClientKey = ""
@@ -357,20 +364,24 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
+
 				contents, err := os.ReadFile(tlsCertPath)
 				if err != nil {
 					return err
 				}
+
 				incusTarget.TLSClientCert = string(contents)
 
 				tlsKeyPath, err := c.global.asker.AskString("Please enter path to client TLS key: ", "", nil)
 				if err != nil {
 					return err
 				}
+
 				contents, err = os.ReadFile(tlsKeyPath)
 				if err != nil {
 					return err
 				}
+
 				incusTarget.TLSClientKey = string(contents)
 			}
 		}
@@ -379,6 +390,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		if incusTarget.Insecure {
 			isInsecure = "yes"
 		}
+
 		incusTarget.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err

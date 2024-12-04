@@ -51,6 +51,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	if t.TLSClientKey == "" {
 		authType = api.AuthenticationMethodOIDC
 	}
+
 	t.incusConnectionArgs = &incus.ConnectionArgs{
 		AuthType:           authType,
 		TLSClientKey:       t.TLSClientKey,
@@ -64,6 +65,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		t.incusConnectionArgs = nil
 		return fmt.Errorf("Failed to connect to endpoint '%s': %s", t.Endpoint, err)
 	}
+
 	t.incusClient = client.UseProject(t.IncusProject)
 
 	// Do a quick check to see if our authentication was accepted by the server.
@@ -71,6 +73,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to endpoint '%s': %s", t.Endpoint, err)
 	}
+
 	if srv.Auth != "trusted" {
 		t.incusConnectionArgs = nil
 		t.incusClient = nil
@@ -196,6 +199,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 		for k, v := range defaultDiskDef {
 			ret.Devices[diskKey][k] = v
 		}
+
 		ret.Devices[diskKey]["size"] = fmt.Sprintf("%dB", disk.SizeInBytes)
 
 		if i != 0 {
@@ -217,6 +221,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	} else {
 		ret.Config["security.csm"] = "false"
 	}
+
 	if instanceDef.SecureBootEnabled {
 		ret.Config["security.secureboot"] = "true"
 	} else {
