@@ -92,7 +92,7 @@ func LinuxDoPostMigrationConfig(distro string) error {
 		if err != nil {
 			return err
 		}
-		defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, mnt["path"])) }()
+		defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, mnt["path"])) }() //nolint: revive
 	}
 
 	// Install incus-agent into the VM.
