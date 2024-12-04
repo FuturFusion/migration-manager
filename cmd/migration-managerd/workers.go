@@ -409,6 +409,16 @@ func (d *Daemon) processReadyBatches() bool {
 func (d *Daemon) processQueuedBatches() bool {
 	loggerCtx := logger.Ctx{"method": "processQueuedBatches"}
 
+	// Make sure global server config has been properly set.
+	if d.globalConfig["core.boot_iso_image"] == "" {
+		logger.Error("Server config 'core.boot_iso_image' isn't set.")
+		return false
+	}
+	if d.globalConfig["core.driver_iso_image"] == "" {
+		logger.Error("Server config 'core.driver_iso_image' isn't set.")
+		return false
+	}
+
 	// Get any batches in the "queued" state.
 	batches := []batch.Batch{}
 	err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -532,7 +542,7 @@ func (d *Daemon) processQueuedBatches() bool {
 			// Create the instance.
 			internalInstance, _ := i.(*instance.InternalInstance)
 			instanceDef := t.CreateVMDefinition(*internalInstance, b.GetStoragePool())
-			creationErr := t.CreateNewVM(instanceDef, b.GetStoragePool())
+			creationErr := t.CreateNewVM(instanceDef, b.GetStoragePool(), d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
 			if creationErr != nil {
 				logger.Warn(creationErr.Error(), loggerCtx)
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {

@@ -67,7 +67,7 @@ type Target interface {
 	CreateVMDefinition(instanceDef instance.InternalInstance, storagePool string) api.InstancesPost
 
 	// Creates a new VM from the pre-populated API definition.
-	CreateNewVM(apiDef api.InstancesPost, storagePool string) error
+	CreateNewVM(apiDef api.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error
 
 	// Deletes a VM.
 	DeleteVM(name string) error

@@ -239,7 +239,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	return ret
 }
 
-func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool string) error {
+func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error {
 	revert := revert.New()
 	defer revert.Fail()
 
@@ -247,7 +247,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool 
 	apiDef.Devices["migration-iso"] = map[string]string{
 		"type":          "disk",
 		"pool":          storagePool,
-		"source":        "",
+		"source":        bootISOImage,
 		"boot.priority": "10",
 	}
 
@@ -256,7 +256,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool 
 		apiDef.Devices["drivers"] = map[string]string{
 			"type":   "disk",
 			"pool":   storagePool,
-			"source": "",
+			"source": driversISOImage,
 		}
 	}
 
