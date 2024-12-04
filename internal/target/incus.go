@@ -29,14 +29,14 @@ type InternalIncusTarget struct {
 func NewIncusTarget(name string, endpoint string) *InternalIncusTarget {
 	return &InternalIncusTarget{
 		IncusTarget: mmapi.IncusTarget{
-			Name:            name,
-			DatabaseID:      internal.INVALID_DATABASE_ID,
-			Endpoint:        endpoint,
-			TLSClientKey:    "",
-			TLSClientCert:   "",
-			OIDCTokens:      nil,
-			Insecure:        false,
-			IncusProject:    "default",
+			Name:          name,
+			DatabaseID:    internal.INVALID_DATABASE_ID,
+			Endpoint:      endpoint,
+			TLSClientKey:  "",
+			TLSClientCert: "",
+			OIDCTokens:    nil,
+			Insecure:      false,
+			IncusProject:  "default",
 		},
 		isConnected: false,
 	}
