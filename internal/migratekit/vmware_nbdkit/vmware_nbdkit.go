@@ -38,7 +38,7 @@ type NbdkitServers struct {
 	VirtualMachine *object.VirtualMachine
 	SnapshotRef    types.ManagedObjectReference
 	Servers        []*NbdkitServer
-	StatusCallback func(string)
+	StatusCallback func(string, bool)
 }
 
 type NbdkitServer struct {
@@ -47,7 +47,7 @@ type NbdkitServer struct {
 	Nbdkit  *nbdkit.NbdkitServer
 }
 
-func NewNbdkitServers(vddk *VddkConfig, vm *object.VirtualMachine, statusCallback func(string)) *NbdkitServers {
+func NewNbdkitServers(vddk *VddkConfig, vm *object.VirtualMachine, statusCallback func(string, bool)) *NbdkitServers {
 	return &NbdkitServers{
 		VddkConfig:     vddk,
 		VirtualMachine: vm,
@@ -63,7 +63,7 @@ func (s *NbdkitServers) createSnapshot(ctx context.Context) error {
 	}
 
 	bar := progress.NewVMwareProgressBar("Creating snapshot")
-	s.StatusCallback("Creating snapshot")
+	s.StatusCallback("Creating snapshot", true)
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		bar.Loop(ctx.Done())
@@ -75,7 +75,7 @@ func (s *NbdkitServers) createSnapshot(ctx context.Context) error {
 		return err
 	}
 
-	s.StatusCallback("Done creating snapshot")
+	s.StatusCallback("Done creating snapshot", true)
 	s.SnapshotRef = info.Result.(types.ManagedObjectReference)
 	return nil
 }
@@ -150,7 +150,7 @@ func (s *NbdkitServers) removeSnapshot(ctx context.Context) error {
 	}
 
 	bar := progress.NewVMwareProgressBar("Removing snapshot")
-	s.StatusCallback("Removing snapshot")
+	s.StatusCallback("Removing snapshot", true)
 	ctx, cancel := context.WithCancel(ctx)
 	go func() {
 		bar.Loop(ctx.Done())
@@ -162,7 +162,7 @@ func (s *NbdkitServers) removeSnapshot(ctx context.Context) error {
 		return err
 	}
 
-	s.StatusCallback("Done removing snapshot")
+	s.StatusCallback("Done removing snapshot", true)
 	return nil
 }
 
@@ -212,7 +212,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	return nil
 }
 
-func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsClean bool, statusCallback func(string)) error {
+func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsClean bool, statusCallback func(string, bool)) error {
 	logger := log.WithFields(log.Fields{
 		"vm":   s.Servers.VirtualMachine.Name(),
 		"disk": s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName,
@@ -237,7 +237,7 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 	return nil
 }
 
-func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Target, path string, statusCallback func(string)) error {
+func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Target, path string, statusCallback func(string, bool)) error {
 	logger := log.WithFields(log.Fields{
 		"vm":   s.Servers.VirtualMachine.Name(),
 		"disk": s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName,
@@ -305,7 +305,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 				}
 
 				bar.Set64(offset + chunkSize)
-				statusCallback(fmt.Sprintf("Importing disk '%s': %02.2f%% complete", diskName, float64(offset+chunkSize)/float64(s.Disk.CapacityInBytes)*100.0))
+				statusCallback(fmt.Sprintf("Importing disk '%s': %02.2f%% complete", diskName, float64(offset+chunkSize)/float64(s.Disk.CapacityInBytes)*100.0), false)
 				offset += chunkSize
 			}
 		}
@@ -321,7 +321,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 	return nil
 }
 
-func (s *NbdkitServer) SyncToTarget(ctx context.Context, t target.Target, runV2V bool, statusCallback func(string)) error {
+func (s *NbdkitServer) SyncToTarget(ctx context.Context, t target.Target, runV2V bool, statusCallback func(string, bool)) error {
 	snapshotChangeId, err := vmware.GetChangeID(s.Disk)
 	if err != nil {
 		// Rather than returning an error when CBT isn't enabled, just proceed with a dummy change ID.

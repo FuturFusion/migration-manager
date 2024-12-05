@@ -270,7 +270,7 @@ func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName stri
 	return nil
 }
 
-func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string)) error {
+func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string, bool)) error {
 	vm, err := s.getVM(ctx, vmName)
 	if err != nil {
 		return err

@@ -144,16 +144,14 @@ func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
 	}
 
 	// Do the actual import.
-	return w.source.ImportDisks(w.shutdownCtx, cmd.InventoryPath, func(status string) {
+	return w.source.ImportDisks(w.shutdownCtx, cmd.InventoryPath, func(status string, isImportant bool) {
 		logger.Info(status)
 
-		// Don't send updates back to the server more than once every 30 seconds.
-		if time.Since(w.lastUpdate).Seconds() < 30 {
-			return
+		// Only send updates back to the server if important or once every 30 seconds.
+		if isImportant || time.Since(w.lastUpdate).Seconds() >= 30 {
+			w.lastUpdate = time.Now().UTC()
+			w.sendStatusResponse(api.WORKERRESPONSE_RUNNING, status)
 		}
-
-		w.lastUpdate = time.Now().UTC()
-		w.sendStatusResponse(api.WORKERRESPONSE_RUNNING, status)
 	})
 }
 
