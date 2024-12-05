@@ -15,6 +15,7 @@ import (
 	"github.com/tidwall/gjson"
 
 	"github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -41,7 +42,7 @@ func TestTargetsGet(t *testing.T) {
 			seedDBWithSingleTarget(t, daemon)
 
 			// Execute test
-			statusCode, body := probeAPI(t, http.MethodGet, srvURL+"/1.0/targets", http.NoBody)
+			statusCode, body := probeAPI(t, http.MethodGet, srvURL+"/1.0/targets", http.NoBody, nil)
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
@@ -90,7 +91,7 @@ func TestTargetsPost(t *testing.T) {
 			seedDBWithSingleTarget(t, daemon)
 
 			// Execute test
-			statusCode, _ := probeAPI(t, http.MethodPost, srvURL+"/1.0/targets", bytes.NewBufferString(tc.targetJSON))
+			statusCode, _ := probeAPI(t, http.MethodPost, srvURL+"/1.0/targets", bytes.NewBufferString(tc.targetJSON), nil)
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
@@ -149,7 +150,7 @@ func TestTargetDelete(t *testing.T) {
 			seedDBWithSingleTarget(t, daemon)
 
 			// Execute test
-			statusCode, _ := probeAPI(t, http.MethodDelete, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), http.NoBody)
+			statusCode, _ := probeAPI(t, http.MethodDelete, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), http.NoBody, nil)
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
@@ -210,7 +211,7 @@ func TestTargetGet(t *testing.T) {
 			seedDBWithSingleTarget(t, daemon)
 
 			// Execute test
-			statusCode, body := probeAPI(t, http.MethodGet, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), http.NoBody)
+			statusCode, body := probeAPI(t, http.MethodGet, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), http.NoBody, nil)
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
@@ -219,12 +220,13 @@ func TestTargetGet(t *testing.T) {
 	}
 }
 
-func TestTargetsPut(t *testing.T) {
+func TestTargetPut(t *testing.T) {
 	tests := []struct {
 		name string
 
 		targetName string
 		targetJSON string
+		targetEtag string
 
 		wantHTTPStatus int
 	}{
@@ -233,6 +235,27 @@ func TestTargetsPut(t *testing.T) {
 
 			targetName: "foo",
 			targetJSON: `{"name": "foo", "endpoint": "some endpoint", "insecure": true}`,
+
+			// TODO: why is http.StatusCreated returned for an update operation?
+			wantHTTPStatus: http.StatusCreated,
+		},
+		{
+			name: "success with etag",
+
+			targetName: "foo",
+			targetJSON: `{"name": "foo", "endpoint": "some endpoint", "insecure": true}`,
+			targetEtag: func() string {
+				etag, err := util.EtagHash(target.InternalIncusTarget{
+					IncusTarget: api.IncusTarget{
+						Name:       "foo",
+						DatabaseID: 1,
+						Endpoint:   "bar",
+						Insecure:   true,
+					},
+				})
+				require.NoError(t, err)
+				return etag
+			}(),
 
 			// TODO: why is http.StatusCreated returned for an update operation?
 			wantHTTPStatus: http.StatusCreated,
@@ -272,6 +295,15 @@ func TestTargetsPut(t *testing.T) {
 
 			wantHTTPStatus: http.StatusBadRequest,
 		},
+		{
+			name: "error - invalid etag",
+
+			targetName: "foo",
+			targetJSON: `{"name": "foo", "endpoint": "some endpoint", "insecure": true}`,
+			targetEtag: "invalid_etag",
+
+			wantHTTPStatus: http.StatusPreconditionFailed,
+		},
 	}
 
 	for _, tc := range tests {
@@ -280,8 +312,12 @@ func TestTargetsPut(t *testing.T) {
 			daemon, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
 			seedDBWithSingleTarget(t, daemon)
 
+			headers := map[string]string{
+				"If-Match": tc.targetEtag,
+			}
+
 			// Execute test
-			statusCode, _ := probeAPI(t, http.MethodPut, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), bytes.NewBufferString(tc.targetJSON))
+			statusCode, _ := probeAPI(t, http.MethodPut, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), bytes.NewBufferString(tc.targetJSON), headers)
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
@@ -289,11 +325,15 @@ func TestTargetsPut(t *testing.T) {
 	}
 }
 
-func probeAPI(t *testing.T, method string, url string, requestBody io.Reader) (statusCode int, responseBody string) {
+func probeAPI(t *testing.T, method string, url string, requestBody io.Reader, headers map[string]string) (statusCode int, responseBody string) {
 	t.Helper()
 
 	req, err := http.NewRequest(method, url, requestBody)
 	require.NoError(t, err)
+
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
 
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
