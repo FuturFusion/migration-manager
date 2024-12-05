@@ -82,7 +82,12 @@ func (w *Worker) Start() error {
 					case api.WORKERCOMMAND_IMPORT_DISKS:
 						w.importDisks(cmd)
 					case api.WORKERCOMMAND_FINALIZE_IMPORT:
-						w.finalizeImport(cmd)
+						done := w.finalizeImport(cmd)
+						if done {
+							w.shutdownCancel()
+							return
+						}
+
 					default:
 						logger.Errorf("Received unknown command (%d)", cmd.Command)
 					}
@@ -152,12 +157,17 @@ func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
 	})
 }
 
-func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
+// finalizeImport performs some finalizing tasks. If everything is executed
+// successfully, this function returns true, signaling the everything is done
+// and migration-manager-worker can shut down.
+// If there is an error or not all the finalizing work has been performed
+// yet, false is returned.
+func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 	if w.source == nil {
 		err := w.connectSource(w.shutdownCtx, cmd.Source)
 		if err != nil {
 			w.sendErrorResponse(err)
-			return
+			return false
 		}
 	}
 
@@ -166,7 +176,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 	err := w.importDisksHelper(cmd)
 	if err != nil {
 		w.sendErrorResponse(err)
-		return
+		return false
 	}
 
 	logger.Info("Performing final migration tasks")
@@ -177,13 +187,13 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 		winVer, err := worker.MapWindowsVersionToAbbrev(cmd.OSVersion)
 		if err != nil {
 			w.sendErrorResponse(err)
-			return
+			return false
 		}
 
 		err = worker.WindowsInjectDrivers(w.shutdownCtx, winVer, "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
 		if err != nil {
 			w.sendErrorResponse(err)
-			return
+			return false
 		}
 	}
 
@@ -196,7 +206,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 
 	if err != nil {
 		w.sendErrorResponse(err)
-		return
+		return false
 	}
 
 	// When the worker is done, the VM will be forced off, so call sync() to ensure all data is saved to disk.
@@ -206,7 +216,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) {
 	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Final migration tasks completed successfully")
 
 	// When we've finished the import, shutdown the worker.
-	w.shutdownCancel()
+	return true
 }
 
 func (w *Worker) connectSource(ctx context.Context, s api.VMwareSource) error {
