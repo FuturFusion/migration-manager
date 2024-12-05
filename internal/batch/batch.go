@@ -72,7 +72,7 @@ func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {
 	// Handle any exclusionary criteria first.
 	if b.ExcludeRegex != "" {
 		excludeRegex := regexp.MustCompile(b.ExcludeRegex)
-		if excludeRegex.Match([]byte(i.GetName())) {
+		if excludeRegex.Match([]byte(i.GetInventoryPath())) {
 			return false
 		}
 	}
@@ -80,7 +80,7 @@ func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {
 	// Handle any inclusionary criteria second.
 	if b.IncludeRegex != "" {
 		includeRegex := regexp.MustCompile(b.IncludeRegex)
-		if !includeRegex.Match([]byte(i.GetName())) {
+		if !includeRegex.Match([]byte(i.GetInventoryPath())) {
 			return false
 		}
 	}
