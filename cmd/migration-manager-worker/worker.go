@@ -138,13 +138,13 @@ func (w *Worker) importDisks(cmd api.WorkerCommand) {
 
 func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
 	// Delete any existing migration snapshot that might be left over.
-	err := w.source.DeleteVMSnapshot(w.shutdownCtx, cmd.Name, internal.IncusSnapshotName)
+	err := w.source.DeleteVMSnapshot(w.shutdownCtx, cmd.InventoryPath, internal.IncusSnapshotName)
 	if err != nil {
 		return err
 	}
 
 	// Do the actual import.
-	return w.source.ImportDisks(w.shutdownCtx, cmd.Name, func(status string) {
+	return w.source.ImportDisks(w.shutdownCtx, cmd.InventoryPath, func(status string) {
 		logger.Info(status)
 
 		// Don't send updates back to the server more than once every 30 seconds.

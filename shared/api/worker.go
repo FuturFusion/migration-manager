@@ -26,9 +26,9 @@ type WorkerCommand struct {
 	// Example: WORKERCOMMAND_IMPORT_DISKS
 	Command WorkerCommandType `json:"command" yaml:"command"`
 
-	// The name of the instance
-	// Example: UbuntuServer
-	Name string `json:"name" yaml:"name"`
+	// Internal path to the instance
+	// Example: /SHF/vm/Migration Tests/DebianTest
+	InventoryPath string `json:"inventoryPath" yaml:"inventoryPath"`
 
 	// Source for the worker to fetch VM metadata and/or disk from
 	// Example: VMwareSource{...}

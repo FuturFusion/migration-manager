@@ -203,11 +203,11 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 
 	// Setup the default "idle" command
 	cmd := api.WorkerCommand{
-		Command:   api.WORKERCOMMAND_IDLE,
-		Name:      i.Name,
-		Source:    api.VMwareSource{},
-		OS:        i.OS,
-		OSVersion: i.OSVersion,
+		Command:       api.WORKERCOMMAND_IDLE,
+		InventoryPath: i.InventoryPath,
+		Source:        api.VMwareSource{},
+		OS:            i.OS,
+		OSVersion:     i.OSVersion,
 	}
 
 	// Fetch the source for the instance.
