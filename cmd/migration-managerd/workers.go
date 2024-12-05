@@ -494,156 +494,8 @@ func (d *Daemon) processQueuedBatches() bool {
 		}
 
 		// Instantiate each new empty VM in Incus.
-		for _, i := range instances {
-			// Update the instance status.
-			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			})
-			if err != nil {
-				logger.Warn(err.Error(), loggerCtx)
-				continue
-			}
-
-			// Get the target for this instance.
-			var t target.Target
-			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-				var err error
-				t, err = d.db.GetTargetByID(tx, i.GetTargetID())
-				if err != nil {
-					return err
-				}
-
-				return nil
-			})
-			if err != nil {
-				logger.Warn(err.Error(), loggerCtx)
-				_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
-				continue
-			}
-
-			// Connect to the target.
-			err = t.Connect(d.shutdownCtx)
-			if err != nil {
-				logger.Warn(err.Error(), loggerCtx)
-				_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
-				continue
-			}
-
-			// Create the instance.
-			internalInstance, ok := i.(*instance.InternalInstance)
-			if !ok {
-				logger.Warn("Invalid type for internal instance", loggerCtx)
-				continue
-			}
-
-			instanceDef := t.CreateVMDefinition(*internalInstance, b.GetStoragePool())
-			creationErr := t.CreateNewVM(instanceDef, b.GetStoragePool(), d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
-			if creationErr != nil {
-				logger.Warn(creationErr.Error(), loggerCtx)
-				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, creationErr.Error(), true)
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
-				if err != nil {
-					logger.Warn(err.Error(), loggerCtx)
-				}
-
-				continue
-			}
-
-			// Creation was successful, update the instance state to 'Idle'.
-			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			})
-			if err != nil {
-				logger.Warn(err.Error(), loggerCtx)
-				continue
-			}
-
-			// Start the instance.
-			startErr := t.StartVM(i.GetName())
-			if startErr != nil {
-				logger.Warn(startErr.Error(), loggerCtx)
-				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, startErr.Error(), true)
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
-				if err != nil {
-					logger.Warn(err.Error(), loggerCtx)
-				}
-
-				continue
-			}
-
-			// Inject the worker binary.
-			pushErr := t.PushFile(i.GetName(), "./migration-manager-worker", "/root/")
-			if pushErr != nil {
-				logger.Warn(pushErr.Error(), loggerCtx)
-				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, pushErr.Error(), true)
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
-				if err != nil {
-					logger.Warn(err.Error(), loggerCtx)
-				}
-
-				continue
-			}
-
-			// Start the worker binary.
-			workerStartErr := t.ExecWithoutWaiting(i.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getEndpoint(), "--uuid", i.GetUUID().String()})
-			if workerStartErr != nil {
-				logger.Warn(workerStartErr.Error(), loggerCtx)
-				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, workerStartErr.Error(), true)
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
-				if err != nil {
-					logger.Warn(err.Error(), loggerCtx)
-				}
-
-				continue
-			}
+		for _, inst := range instances {
+			go d.spinUpMigrationEnv(inst, b.GetStoragePool())
 		}
 
 		// Move batch to "running" status.
@@ -664,6 +516,160 @@ func (d *Daemon) processQueuedBatches() bool {
 	}
 
 	return false
+}
+
+func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) {
+	loggerCtx := logger.Ctx{"method": "spinUpMigrationEnv"}
+
+	// Update the instance status.
+	err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.Warn(err.Error(), loggerCtx)
+		return
+	}
+
+	// Get the target for this instance.
+	var t target.Target
+	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		var err error
+		t, err = d.db.GetTargetByID(tx, inst.GetTargetID())
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.Warn(err.Error(), loggerCtx)
+		_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		return
+	}
+
+	// Connect to the target.
+	err = t.Connect(d.shutdownCtx)
+	if err != nil {
+		logger.Warn(err.Error(), loggerCtx)
+		_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		return
+	}
+
+	// Create the instance.
+	internalInstance, ok := inst.(*instance.InternalInstance)
+	if !ok {
+		logger.Warn("Invalid type for internal instance", loggerCtx)
+		return
+	}
+
+	instanceDef := t.CreateVMDefinition(*internalInstance, storagePool)
+	creationErr := t.CreateNewVM(instanceDef, storagePool, d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
+	if creationErr != nil {
+		logger.Warn(creationErr.Error(), loggerCtx)
+		err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, creationErr.Error(), true)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+		}
+
+		return
+	}
+
+	// Creation was successful, update the instance state to 'Idle'.
+	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.Warn(err.Error(), loggerCtx)
+		return
+	}
+
+	// Start the instance.
+	startErr := t.StartVM(inst.GetName())
+	if startErr != nil {
+		logger.Warn(startErr.Error(), loggerCtx)
+		err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, startErr.Error(), true)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+		}
+
+		return
+	}
+
+	// Inject the worker binary.
+	pushErr := t.PushFile(inst.GetName(), "./migration-manager-worker", "/root/")
+	if pushErr != nil {
+		logger.Warn(pushErr.Error(), loggerCtx)
+		err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, pushErr.Error(), true)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+		}
+
+		return
+	}
+
+	// Start the worker binary.
+	workerStartErr := t.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getEndpoint(), "--uuid", inst.GetUUID().String()})
+	if workerStartErr != nil {
+		logger.Warn(workerStartErr.Error(), loggerCtx)
+		err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, workerStartErr.Error(), true)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+		}
+
+		return
+	}
 }
 
 func (d *Daemon) finalizeCompleteInstances() bool {
