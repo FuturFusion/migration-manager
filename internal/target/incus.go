@@ -341,11 +341,13 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 		Content: f,
 	}
 
-	// It takes a while for incus-agent to start when booting a VM, so retry up to a minute.
-	for i := 0; i < 60; i++ {
+	// It can take a while for incus-agent to start when booting a VM, so retry for up to two minutes.
+	for i := 0; i < 120; i++ {
 		err = t.incusClient.CreateInstanceFile(cleanupInstanceName(instanceName), filepath.Join(destDir, file), args)
 
 		if err == nil {
+			// Pause a second before returning to allow things time to settle.
+			time.Sleep(time.Second * 1)
 			return nil
 		}
 
