@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
@@ -45,6 +46,54 @@ func TestTargetsGet(t *testing.T) {
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
 			require.Equal(t, tc.wantTargetCount, gjson.Get(body, "metadata.#").Int())
+		})
+	}
+}
+
+func TestTargetsPost(t *testing.T) {
+	tests := []struct {
+		name string
+
+		targetJSON string
+
+		wantHTTPStatus int
+	}{
+		{
+			name: "success",
+
+			targetJSON: `{"name": "new", "endpoint": "some endpoint", "insecure": true}`,
+
+			wantHTTPStatus: http.StatusCreated,
+		},
+		{
+			name: "error - name already exists",
+
+			targetJSON: `{"name": "foo", "endpoint": "some endpoint", "insecure": true}`,
+
+			// TODO: Unique constraint violation leads to http.StatusInternalServerError
+			// shouldn't this be http.BadRequest or http.StatusConflict?
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - invalid JSON",
+
+			targetJSON: `{`,
+
+			wantHTTPStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			daemon, srvURL := daemonSetup(t, []APIEndpoint{targetsCmd})
+			seedDBWithSingleTarget(t, daemon)
+
+			// Execute test
+			statusCode, _ := probeAPI(t, http.MethodPost, srvURL+"/1.0/targets", bytes.NewBufferString(tc.targetJSON))
+
+			// Assert results
+			require.Equal(t, tc.wantHTTPStatus, statusCode)
 		})
 	}
 }
@@ -217,7 +266,7 @@ func seedDBWithSingleTarget(t *testing.T, daemon *Daemon) {
 			IncusTarget: api.IncusTarget{
 				Name:     "foo",
 				Endpoint: "bar",
-				Insecure: false,
+				Insecure: true,
 			},
 		})
 	})
