@@ -213,6 +213,7 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
+		// TODO: can this code path even be reached?
 		return response.BadRequest(fmt.Errorf("Target name cannot be empty"))
 	}
 
@@ -269,6 +270,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if name == "" {
+		// TODO: can this code path even be reached?
 		return response.BadRequest(fmt.Errorf("Target name cannot be empty"))
 	}
 
