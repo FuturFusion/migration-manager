@@ -169,9 +169,19 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 		}
 	}
 
+	logger.Info("Shutting down source VM")
+
+	err := w.source.PowerOffVM(w.shutdownCtx, cmd.InventoryPath)
+	if err != nil {
+		w.sendErrorResponse(err)
+		return false
+	}
+
+	logger.Info("Source VM shutdown complete")
+
 	logger.Info("Performing final disk sync")
 
-	err := w.importDisksHelper(cmd)
+	err = w.importDisksHelper(cmd)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return false

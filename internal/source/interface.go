@@ -64,4 +64,9 @@ type Source interface {
 	//
 	// Returns an error if there is a problem importing the disk(s).
 	ImportDisks(ctx context.Context, vmName string, statusCallback func(string, bool)) error
+
+	// Powers off a VM.
+	//
+	// Returns an error if there was a problem shutting down the VM.
+	PowerOffVM(ctx context.Context, vmName string) error
 }

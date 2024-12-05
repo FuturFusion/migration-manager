@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/vmware/govmomi"
+	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/mo"
@@ -289,6 +290,46 @@ func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, s
 	}
 
 	return err
+}
+
+func (s *InternalVMwareSource) PowerOffVM(ctx context.Context, vmName string) error {
+	vm, err := s.getVM(ctx, vmName)
+	if err != nil {
+		return err
+	}
+
+	// Get the VM's current power state.
+	state, err := vm.PowerState(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Don't do anything if the VM is already powered off.
+	if state == types.VirtualMachinePowerStatePoweredOff {
+		return nil
+	}
+
+	// Attempt a clean shutdown if guest tools are installed in the VM.
+	err = vm.ShutdownGuest(ctx)
+	if err != nil {
+		if !fault.Is(err, &types.ToolsUnavailable{}) {
+			return err
+		}
+
+		// If guest tools aren't available, fall back to hard power off.
+		task, err := vm.PowerOff(ctx)
+		if err != nil {
+			return err
+		}
+
+		err = task.Wait(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Wait until the VM has powered off.
+	return vm.WaitForPowerState(ctx, types.VirtualMachinePowerStatePoweredOff)
 }
 
 func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*object.VirtualMachine, error) {
