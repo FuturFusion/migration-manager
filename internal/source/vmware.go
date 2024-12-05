@@ -208,6 +208,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 		ret = append(ret, instance.InternalInstance{
 			Instance: api.Instance{
 				UUID:                  UUID,
+				InventoryPath:         vm.InventoryPath,
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource:  time.Now().UTC(),

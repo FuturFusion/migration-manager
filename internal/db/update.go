@@ -31,6 +31,7 @@ CREATE TABLE config (
 
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
+    inventorypath VARCHAR(255) NOT NULL,
     migrationstatus INTEGER NOT NULL,
     migrationstatusstring TEXT NOT NULL,
     lastupdatefromsource TEXT NOT NULL,
@@ -141,6 +142,7 @@ CREATE TABLE config (
 
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
+    inventorypath VARCHAR(255) NOT NULL,
     migrationstatus INTEGER NOT NULL,
     migrationstatusstring TEXT NOT NULL,
     lastupdatefromsource TEXT NOT NULL,

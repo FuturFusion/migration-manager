@@ -58,6 +58,10 @@ type Instance struct {
 	// Example: 26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad
 	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
 
+	// Internal path to the instance
+	// Example: /SHF/vm/Migration Tests/DebianTest
+	InventoryPath string `json:"inventoryPath" yaml:"inventoryPath"`
+
 	// The migration status of this instance
 	// Example: MIGRATIONSTATUS_RUNNING
 	MigrationStatus MigrationStatusType `json:"migrationStatus" yaml:"migrationStatus"`

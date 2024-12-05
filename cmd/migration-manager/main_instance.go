@@ -177,7 +177,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	// Render the table.
 	header := []string{"Name", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Num vCPUs", "Memory (MiB)"}
 	if c.flagVerbose {
-		header = append(header, "UUID", "Last Sync", "Last Manual Update")
+		header = append(header, "UUID", "Inventory Path", "Last Sync", "Last Manual Update")
 	}
 
 	data := [][]string{}
@@ -190,7 +190,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 				lastUpdate = i.LastManualUpdate.String()
 			}
 
-			row = append(row, i.UUID.String(), i.LastUpdateFromSource.String(), lastUpdate)
+			row = append(row, i.UUID.String(), i.InventoryPath, i.LastUpdateFromSource.String(), lastUpdate)
 		}
 
 		data = append(data, row)

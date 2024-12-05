@@ -15,10 +15,11 @@ type InternalInstance struct {
 }
 
 // Returns a new Instance ready for use.
-func NewInstance(UUID uuid.UUID, sourceID int, targetID int, batchID int, name string, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInMiB int, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
+func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID int, batchID int, name string, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInMiB int, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
 	return &InternalInstance{
 		Instance: api.Instance{
 			UUID:                  UUID,
+			InventoryPath:         inventoryPath,
 			MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 			MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 			LastUpdateFromSource:  time.Now().UTC(),
@@ -44,6 +45,10 @@ func NewInstance(UUID uuid.UUID, sourceID int, targetID int, batchID int, name s
 
 func (i *InternalInstance) GetUUID() uuid.UUID {
 	return i.UUID
+}
+
+func (i *InternalInstance) GetInventoryPath() string {
+	return i.InventoryPath
 }
 
 func (i *InternalInstance) GetName() string {
