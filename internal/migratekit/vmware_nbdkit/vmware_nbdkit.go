@@ -260,7 +260,9 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 		return err
 	}
 
-	fd, err := os.OpenFile(path, os.O_WRONLY|os.O_EXCL|syscall.O_DIRECT, 0o644)
+	// We have removed os.O_EXCL, as it was causing some weird failure when attempting to perform followup incremental disk syncs.
+	// For our use, we know nothing else in the migration environment will be doing anything with the raw disk device.
+	fd, err := os.OpenFile(path, os.O_WRONLY|syscall.O_DIRECT, 0o644)
 	if err != nil {
 		return err
 	}
