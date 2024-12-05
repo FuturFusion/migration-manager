@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -35,7 +36,7 @@ func (c *cmdQueue) Command() *cobra.Command {
 	return cmd
 }
 
-// List
+// List the queues.
 type cmdQueueList struct {
 	global *cmdGlobal
 
@@ -66,19 +67,25 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the current migration queue.
-	resp, err := c.global.doHttpRequestV1("/queue", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/queue", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
 
 	queueEntries := []api.QueueEntry{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned entries.
-	for _, anyEntry := range resp.Metadata.([]any) {
+	for _, anyEntry := range metadata {
 		newEntry, err := parseReturnedQueueEntry(anyEntry)
 		if err != nil {
 			return err
 		}
+
 		queueEntries = append(queueEntries, newEntry.(api.QueueEntry))
 	}
 
@@ -87,6 +94,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 	if c.flagVerbose {
 		header = append(header, "UUID")
 	}
+
 	data := [][]string{}
 
 	for _, q := range queueEntries {
@@ -94,6 +102,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 		if c.flagVerbose {
 			row = append(row, q.InstanceUUID.String())
 		}
+
 		data = append(data, row)
 	}
 

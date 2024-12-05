@@ -139,6 +139,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 						guestInfo["architecture"] = matches[1]
 						guestInfo["bits"] = matches[2]
 					}
+
 					break
 				}
 			}
@@ -176,6 +177,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			useLegacyBios = true
 			secureBootEnabled = false
 		}
+
 		if !*vmProps.Capability.SecureBootSupported {
 			secureBootEnabled = false
 		}
@@ -198,6 +200,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 				if ok {
 					networkName = backing.Network.Value
 				}
+
 				nics = append(nics, api.InstanceNICInfo{Network: networkName, Hwaddr: md.GetVirtualEthernetCard().MacAddress})
 			}
 		}

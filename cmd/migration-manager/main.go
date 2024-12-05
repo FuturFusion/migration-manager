@@ -111,13 +111,13 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 	} else if os.Getenv("HOME") != "" && util.PathExists(os.Getenv("HOME")) {
 		configDir = path.Join(os.Getenv("HOME"), ".config", "migration-manager")
 	} else {
-		user, err := user.Current()
+		currentUser, err := user.Current()
 		if err != nil {
 			return err
 		}
 
-		if util.PathExists(user.HomeDir) {
-			configDir = path.Join(user.HomeDir, ".config", "migration-manager")
+		if util.PathExists(currentUser.HomeDir) {
+			configDir = path.Join(currentUser.HomeDir, ".config", "migration-manager")
 		}
 	}
 
@@ -137,6 +137,7 @@ func (c *cmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		c.config.ConfigDir = configDir
 	} else {
 		c.config = NewConfig(configDir)
@@ -156,6 +157,7 @@ func (c *cmdGlobal) CheckConfigStatus() error {
 	if err != nil {
 		return err
 	}
+
 	c.config.MMServer = resp
 
 	return c.config.SaveConfig()
@@ -175,15 +177,17 @@ func (c *cmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 	return false, nil
 }
 
-func (c *cmdGlobal) doHttpRequestV1(endpoint string, method string, query string, content []byte) (*api.ResponseRaw, error) {
+func (c *cmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.ResponseRaw, error) {
 	u, err := url.Parse(c.config.MMServer)
 	if err != nil {
 		return nil, err
 	}
+
 	u.Path, err = url.JoinPath("/1.0/", endpoint)
 	if err != nil {
 		return nil, err
 	}
+
 	u.RawQuery = query
 
 	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))
@@ -198,6 +202,7 @@ func (c *cmdGlobal) doHttpRequestV1(endpoint string, method string, query string
 	if err != nil {
 		return nil, err
 	}
+
 	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)

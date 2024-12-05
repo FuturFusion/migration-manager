@@ -3,7 +3,7 @@ package target
 import (
 	"context"
 
-	"github.com/lxc/incus/v6/client"
+	incus "github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -45,7 +45,7 @@ type Target interface {
 	// Returns whether currently connected to the target or not.
 	IsConnected() bool
 
-	//////////////////////////////////////////////////
+	// -----------------------------------------------
 
 	// Returns the human-readable name for this target.
 	GetName() string
@@ -56,7 +56,7 @@ type Target interface {
 	// via AddTarget() or retrieved via GetTarget()/GetAllTargets() will return an error.
 	GetDatabaseID() (int, error)
 
-	//////////////////////////////////////////////////
+	// -----------------------------------------------
 
 	// Selects the Incus project to use when performing actions on the target.
 	//
@@ -88,5 +88,5 @@ type Target interface {
 	GetInstance(name string) (*api.Instance, string, error)
 
 	// Wrapper around Incus' UpdateInstance method.
-	UpdateInstance(name string, instance api.InstancePut, ETag string) (incus.Operation, error)
+	UpdateInstance(name string, instanceDef api.InstancePut, ETag string) (incus.Operation, error)
 }

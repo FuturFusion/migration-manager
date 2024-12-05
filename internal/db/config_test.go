@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/FuturFusion/migration-manager/internal/db"
+
+	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
 )
 
 func TestConfigDatabaseActions(t *testing.T) {
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
-	db, err := db.OpenDatabase(tmpDir)
+	db, err := dbdriver.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
 	// Start a transaction.
@@ -22,7 +23,7 @@ func TestConfigDatabaseActions(t *testing.T) {
 	// Should get an empty map by default.
 	config, err := db.ReadGlobalConfig(tx)
 	require.NoError(t, err)
-	require.Equal(t, 0, len(config))
+	require.Empty(t, config)
 
 	// Set some values in the config and store in database.
 	config["foo"] = "bar"
@@ -33,7 +34,7 @@ func TestConfigDatabaseActions(t *testing.T) {
 	// Read the config back.
 	dbConfig, err := db.ReadGlobalConfig(tx)
 	require.NoError(t, err)
-	require.Equal(t, 2, len(dbConfig))
+	require.Len(t, dbConfig, 2)
 	require.True(t, maps.Equal(config, dbConfig))
 
 	// Do an update.
@@ -43,7 +44,7 @@ func TestConfigDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	dbConfig, err = db.ReadGlobalConfig(tx)
 	require.NoError(t, err)
-	require.Equal(t, 3, len(dbConfig))
+	require.Len(t, dbConfig, 3)
 	require.True(t, maps.Equal(config, dbConfig))
 
 	tx.Commit()

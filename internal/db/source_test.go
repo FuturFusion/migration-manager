@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/migration-manager/internal/db"
+	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/source"
 )
 
@@ -21,7 +21,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
-	db, err := db.OpenDatabase(tmpDir)
+	db, err := dbdriver.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
 	// Start a transaction.
@@ -40,12 +40,12 @@ func TestSourceDatabaseActions(t *testing.T) {
 	// Quick mid-addition state check.
 	sources, err := db.GetAllSources(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(sources), 2)
+	require.Len(t, sources, 2)
 
 	// Should get back commonSourceB unchanged.
-	commonSourceB_DB, err := db.GetSource(tx, commonSourceB.GetName())
+	dbCommonSourceB, err := db.GetSource(tx, commonSourceB.GetName())
 	require.NoError(t, err)
-	require.Equal(t, commonSourceB, commonSourceB_DB)
+	require.Equal(t, commonSourceB, dbCommonSourceB)
 
 	// Add vmwareSourceA.
 	err = db.AddSource(tx, vmwareSourceA)
@@ -58,21 +58,21 @@ func TestSourceDatabaseActions(t *testing.T) {
 	// Ensure we have four entries
 	sources, err = db.GetAllSources(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(sources), 4)
+	require.Len(t, sources, 4)
 
 	// Should get back vmwareSourceA unchanged.
-	vmwareSourceA_DB, err := db.GetSource(tx, vmwareSourceA.GetName())
+	dbVMWareSourceA, err := db.GetSource(tx, vmwareSourceA.GetName())
 	require.NoError(t, err)
-	require.Equal(t, vmwareSourceA, vmwareSourceA_DB)
+	require.Equal(t, vmwareSourceA, dbVMWareSourceA)
 
 	// Test updating a source.
 	vmwareSourceB.Name = "FooBar"
 	vmwareSourceB.Username = "aNewUser"
 	err = db.UpdateSource(tx, vmwareSourceB)
 	require.NoError(t, err)
-	vmwareSourceB_DB, err := db.GetSource(tx, vmwareSourceB.GetName())
+	dbVMWareSourceB, err := db.GetSource(tx, vmwareSourceB.GetName())
 	require.NoError(t, err)
-	require.Equal(t, vmwareSourceB, vmwareSourceB_DB)
+	require.Equal(t, vmwareSourceB, dbVMWareSourceB)
 
 	// Delete a source.
 	err = db.DeleteSource(tx, commonSourceA.GetName())
@@ -83,7 +83,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	// Should have three sources remaining.
 	sources, err = db.GetAllSources(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(sources), 3)
+	require.Len(t, sources, 3)
 
 	// Can't delete a source that doesn't exist.
 	err = db.DeleteSource(tx, "BazBiz")

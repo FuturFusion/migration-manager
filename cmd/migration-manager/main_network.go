@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -48,7 +49,7 @@ func (c *cmdNetwork) Command() *cobra.Command {
 	return cmd
 }
 
-// Add
+// Add the network.
 type cmdNetworkAdd struct {
 	global *cmdGlobal
 }
@@ -87,6 +88,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 		if s != "" {
 			return json.Unmarshal([]byte(s), &n.Config)
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -99,7 +101,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHttpRequestV1("/networks", http.MethodPost, "", content)
+	_, err = c.global.doHTTPRequestV1("/networks", http.MethodPost, "", content)
 	if err != nil {
 		return err
 	}
@@ -108,7 +110,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// List
+// List the networks.
 type cmdNetworkList struct {
 	global *cmdGlobal
 
@@ -137,19 +139,25 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all networks.
-	resp, err := c.global.doHttpRequestV1("/networks", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/networks", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
 
 	networks := []api.Network{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned networks.
-	for _, anyNetwork := range resp.Metadata.([]any) {
+	for _, anyNetwork := range metadata {
 		newNetwork, err := parseReturnedNetwork(anyNetwork)
 		if err != nil {
 			return err
 		}
+
 		networks = append(networks, newNetwork.(api.Network))
 	}
 
@@ -162,6 +170,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 		if n.Config != nil {
 			configString, _ = json.Marshal(n.Config)
 		}
+
 		data = append(data, []string{n.Name, string(configString)})
 	}
 
@@ -183,7 +192,7 @@ func parseReturnedNetwork(n any) (any, error) {
 	return ret, nil
 }
 
-// Remove
+// Remove the network.
 type cmdNetworkRemove struct {
 	global *cmdGlobal
 }
@@ -211,7 +220,7 @@ func (c *cmdNetworkRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Remove the network.
-	_, err = c.global.doHttpRequestV1("/networks/"+name, http.MethodDelete, "", nil)
+	_, err = c.global.doHTTPRequestV1("/networks/"+name, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -220,7 +229,7 @@ func (c *cmdNetworkRemove) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Update
+// Update the network.
 type cmdNetworkUpdate struct {
 	global *cmdGlobal
 }
@@ -248,7 +257,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the existing network.
-	resp, err := c.global.doHttpRequestV1("/networks/"+name, http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/networks/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -257,7 +266,11 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	n := anyN.(api.Network)
+
+	n, ok := anyN.(api.Network)
+	if !ok {
+		return errors.New("Invalid type for network")
+	}
 
 	// Prompt for updates.
 	origNetworkName := n.Name
@@ -279,6 +292,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		if s != "" {
 			return json.Unmarshal([]byte(s), &n.Config)
 		}
+
 		return nil
 	})
 	if err != nil {
@@ -293,7 +307,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHttpRequestV1("/networks/"+origNetworkName, http.MethodPut, "", content)
+	_, err = c.global.doHTTPRequestV1("/networks/"+origNetworkName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

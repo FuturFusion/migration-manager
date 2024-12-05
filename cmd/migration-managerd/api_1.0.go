@@ -12,7 +12,7 @@ import (
 )
 
 var api10Cmd = APIEndpoint{
-	Get: APIEndpointAction{Handler: api10Get, AllowUntrusted: true},
+	Get:  APIEndpointAction{Handler: api10Get, AllowUntrusted: true},
 	Post: APIEndpointAction{Handler: api10Post, AllowUntrusted: true},
 }
 

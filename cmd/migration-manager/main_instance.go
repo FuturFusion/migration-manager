@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -43,7 +44,7 @@ func (c *cmdInstance) Command() *cobra.Command {
 	return cmd
 }
 
-// List
+// List the instances.
 type cmdInstanceList struct {
 	global *cmdGlobal
 
@@ -74,49 +75,73 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all instances.
-	resp, err := c.global.doHttpRequestV1("/instances", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/instances", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
 
 	instances := []api.Instance{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned instances.
-	for _, anyInstance := range resp.Metadata.([]any) {
+	for _, anyInstance := range metadata {
 		newInstance, err := parseReturnedInstance(anyInstance)
 		if err != nil {
 			return err
 		}
+
 		instances = append(instances, newInstance.(api.Instance))
 	}
 
 	// Get nice names for the batches.
 	batchesMap := make(map[int]string)
 	batchesMap[internal.INVALID_DATABASE_ID] = ""
-	resp, err = c.global.doHttpRequestV1("/batches", http.MethodGet, "", nil)
+	resp, err = c.global.doHTTPRequestV1("/batches", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
-	for _, anyBatch := range resp.Metadata.([]any) {
+
+	metadata, ok = resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
+	for _, anyBatch := range metadata {
 		newBatch, err := parseReturnedBatch(anyBatch)
 		if err != nil {
 			return err
 		}
-		b := newBatch.(api.Batch)
+
+		b, ok := newBatch.(api.Batch)
+		if !ok {
+			return errors.New("Invalid type for batch")
+		}
+
 		batchesMap[b.DatabaseID] = b.Name
 	}
 
 	// Get nice names for the sources.
 	sourcesMap := make(map[int]string)
-	resp, err = c.global.doHttpRequestV1("/sources", http.MethodGet, "", nil)
+	resp, err = c.global.doHTTPRequestV1("/sources", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
-	for _, anySource := range resp.Metadata.([]any) {
+
+	metadata, ok = resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
+	for _, anySource := range metadata {
 		newSource, err := parseReturnedSource(anySource)
 		if err != nil {
 			return err
 		}
+
 		switch s := newSource.(type) {
 		case api.VMwareSource:
 			sourcesMap[s.DatabaseID] = s.Name
@@ -125,16 +150,27 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	// Get nice names for the targets.
 	targetsMap := make(map[int]string)
-	resp, err = c.global.doHttpRequestV1("/targets", http.MethodGet, "", nil)
+	resp, err = c.global.doHTTPRequestV1("/targets", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
-	for _, anyTarget := range resp.Metadata.([]any) {
+
+	metadata, ok = resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
+	for _, anyTarget := range metadata {
 		newTarget, err := parseReturnedTarget(anyTarget)
 		if err != nil {
 			return err
 		}
-		t := newTarget.(api.IncusTarget)
+
+		t, ok := newTarget.(api.IncusTarget)
+		if !ok {
+			return errors.New("Invalid type for target")
+		}
+
 		targetsMap[t.DatabaseID] = t.Name
 	}
 
@@ -143,6 +179,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	if c.flagVerbose {
 		header = append(header, "UUID", "Last Sync", "Last Manual Update")
 	}
+
 	data := [][]string{}
 
 	for _, i := range instances {
@@ -152,8 +189,10 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			if !i.LastManualUpdate.IsZero() {
 				lastUpdate = i.LastManualUpdate.String()
 			}
+
 			row = append(row, i.UUID.String(), i.LastUpdateFromSource.String(), lastUpdate)
 		}
+
 		data = append(data, row)
 	}
 
@@ -175,7 +214,7 @@ func parseReturnedInstance(i any) (any, error) {
 	return ret, nil
 }
 
-// Update
+// Update the instance.
 type cmdInstanceUpdate struct {
 	global *cmdGlobal
 }
@@ -206,7 +245,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 	UUIDString := args[0]
 
 	// Get the existing instance.
-	resp, err := c.global.doHttpRequestV1("/instances/"+UUIDString, http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/instances/"+UUIDString, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -223,6 +262,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		if inst.NumberCPUs != int(val) {
 			inst.NumberCPUs = int(val)
 			inst.LastManualUpdate = time.Now().UTC()
@@ -232,6 +272,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		if inst.MemoryInMiB != int(val) {
 			inst.MemoryInMiB = int(val)
 			inst.LastManualUpdate = time.Now().UTC()
@@ -245,7 +286,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHttpRequestV1("/instances/"+UUIDString, http.MethodPut, "", content)
+	_, err = c.global.doHTTPRequestV1("/instances/"+UUIDString, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

@@ -99,6 +99,7 @@ func (d *Daemon) Start() error {
 		NetworkAddress: d.config.restServerIPAddr,
 		NetworkPort:    d.config.restServerPort,
 	}
+
 	_, err = endpoint.Up(config)
 	if err != nil {
 		logger.Errorf("Failed to start REST endpoint: %s", err)
@@ -106,10 +107,10 @@ func (d *Daemon) Start() error {
 	}
 
 	// Start background workers
-	d.runPeriodicTask(d.syncInstancesFromSources, time.Duration(time.Minute*10))
-	d.runPeriodicTask(d.processReadyBatches, time.Duration(time.Second*10))
-	d.runPeriodicTask(d.processQueuedBatches, time.Duration(time.Second*10))
-	d.runPeriodicTask(d.finalizeCompleteInstances, time.Duration(time.Second*10))
+	d.runPeriodicTask(d.syncInstancesFromSources, 10*time.Minute)
+	d.runPeriodicTask(d.processReadyBatches, 10*time.Second)
+	d.runPeriodicTask(d.processQueuedBatches, 10*time.Second)
+	d.runPeriodicTask(d.finalizeCompleteInstances, 10*time.Second)
 
 	logger.Info("Daemon started")
 
@@ -122,12 +123,12 @@ func (d *Daemon) Stop(ctx context.Context, sig os.Signal) error {
 	return nil
 }
 
-func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
+func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint) {
 	var uri string
 	if c.Path == "" {
-		uri = fmt.Sprintf("/%s", version)
-	} else if version != "" {
-		uri = fmt.Sprintf("/%s/%s", version, c.Path)
+		uri = fmt.Sprintf("/%s", apiVersion)
+	} else if apiVersion != "" {
+		uri = fmt.Sprintf("/%s/%s", apiVersion, c.Path)
 	} else {
 		uri = fmt.Sprintf("/%s", c.Path)
 	}
@@ -145,9 +146,10 @@ func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 		if untrustedOk && r.Header.Get("X-Incus-authenticated") == "" {
 			logger.Debug(fmt.Sprintf("Allowing untrusted %s", r.Method), logger.Ctx{"url": r.URL.RequestURI(), "ip": r.RemoteAddr})
 		} else {
-			/*logger.Warn("Rejecting request from untrusted client", logger.Ctx{"ip": r.RemoteAddr})
-			_ = response.Forbidden(nil).Render(w)
-			return*/
+			logger.Warn("Rejecting request from untrusted client", logger.Ctx{"ip": r.RemoteAddr})
+			// TODO: enforce forbidden for untrusted clients
+			// _ = response.Forbidden(nil).Render(w)
+			// return
 		}
 
 		// Actually process the request
@@ -158,7 +160,7 @@ func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 		// - /1.0 endpoint
 		// - GET queries
 		allowedDuringShutdown := func() bool {
-			if version == "internal" {
+			if apiVersion == "internal" {
 				return true
 			}
 
@@ -241,7 +243,7 @@ func (d *Daemon) createCmd(restAPI *mux.Router, version string, c APIEndpoint) {
 func (d *Daemon) getEndpoint() string {
 	if d.config.restServerTLSConfig == nil {
 		return fmt.Sprintf("http://%s:%d", d.config.restServerIPAddr, d.config.restServerPort)
-	} else {
-		return fmt.Sprintf("https://%s:%d", d.config.restServerIPAddr, d.config.restServerPort)
 	}
+
+	return fmt.Sprintf("https://%s:%d", d.config.restServerIPAddr, d.config.restServerPort)
 }

@@ -251,7 +251,7 @@ func (r *errorResponse) Render(w http.ResponseWriter) error {
 	return err
 }
 
-// writeJSON encodes the body as JSON and sends it back to the client
+// writeJSON encodes the body as JSON and sends it back to the client.
 func writeJSON(w http.ResponseWriter, body any) error {
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)

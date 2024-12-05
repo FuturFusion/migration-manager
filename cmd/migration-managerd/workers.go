@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -57,13 +58,14 @@ func (d *Daemon) syncInstancesFromSources() bool {
 		logger.Warn(err.Error(), loggerCtx)
 		return false
 	}
+
 	if len(targets) == 0 {
 		logger.Debug("No targets defined, skipping instance sync from sources", loggerCtx)
 		return false
 	}
 
 	// For now, just default to the first target defined.
-	targetId, err := targets[0].GetDatabaseID()
+	targetID, err := targets[0].GetDatabaseID()
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
 		return false
@@ -137,7 +139,12 @@ func (d *Daemon) syncInstancesFromSources() bool {
 					return err
 				}
 
-				existingInstance = inst.(*instance.InternalInstance)
+				var ok bool
+				existingInstance, ok = inst.(*instance.InternalInstance)
+				if !ok {
+					return errors.New("Invalid type for internal instance")
+				}
+
 				return nil
 			})
 
@@ -225,7 +232,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 			} else {
 				// Add a new instance to the database.
 				logger.Info("Adding instance "+i.GetName()+" ("+i.GetUUID().String()+") from source "+s.GetName()+" to database", loggerCtx)
-				i.TargetID = targetId
+				i.TargetID = targetID
 
 				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					err := d.db.AddInstance(tx, &i)
@@ -331,6 +338,7 @@ func (d *Daemon) processReadyBatches() bool {
 
 			continue
 		}
+
 		if !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(time.Now().UTC()) {
 			logger.Error("Batch '"+b.GetName()+"' window end time has already passed", loggerCtx)
 
@@ -414,6 +422,7 @@ func (d *Daemon) processQueuedBatches() bool {
 		logger.Error("Server config 'core.boot_iso_image' isn't set.")
 		return false
 	}
+
 	if d.globalConfig["core.driver_iso_image"] == "" {
 		logger.Error("Server config 'core.driver_iso_image' isn't set.")
 		return false
@@ -540,7 +549,12 @@ func (d *Daemon) processQueuedBatches() bool {
 			}
 
 			// Create the instance.
-			internalInstance, _ := i.(*instance.InternalInstance)
+			internalInstance, ok := i.(*instance.InternalInstance)
+			if !ok {
+				logger.Warn("Invalid type for internal instance", loggerCtx)
+				continue
+			}
+
 			instanceDef := t.CreateVMDefinition(*internalInstance, b.GetStoragePool())
 			creationErr := t.CreateNewVM(instanceDef, b.GetStoragePool(), d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
 			if creationErr != nil {
@@ -556,6 +570,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 				}
+
 				continue
 			}
 
@@ -588,6 +603,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 				}
+
 				continue
 			}
 
@@ -606,6 +622,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 				}
+
 				continue
 			}
 
@@ -624,6 +641,7 @@ func (d *Daemon) processQueuedBatches() bool {
 				if err != nil {
 					logger.Warn(err.Error(), loggerCtx)
 				}
+
 				continue
 			}
 		}
@@ -644,6 +662,7 @@ func (d *Daemon) processQueuedBatches() bool {
 			continue
 		}
 	}
+
 	return false
 }
 
@@ -722,6 +741,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
 
@@ -740,6 +760,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
 
@@ -768,6 +789,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
 
@@ -795,6 +817,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
 
@@ -827,6 +850,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 					if err != nil {
 						logger.Warn(err.Error(), loggerCtx)
 					}
+
 					continue
 				}
 			}
@@ -882,8 +906,10 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
+
 		updateErr = op.Wait()
 		if updateErr != nil {
 			logger.Warn(updateErr.Error(), loggerCtx)
@@ -898,6 +924,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			if err != nil {
 				logger.Warn(err.Error(), loggerCtx)
 			}
+
 			continue
 		}
 

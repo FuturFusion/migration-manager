@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -55,7 +56,7 @@ func (c *cmdSource) Command() *cobra.Command {
 	return cmd
 }
 
-// Add
+// Add the source.
 type cmdSourceAdd struct {
 	global *cmdGlobal
 
@@ -100,6 +101,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		if !slices.Contains(supportedTypes, strings.ToLower(args[0])) {
 			return fmt.Errorf("Unsupported source type '%s'; must be one of %q", args[0], supportedTypes)
 		}
+
 		sourceType = strings.ToLower(args[0])
 		sourceName = args[1]
 		sourceEndpoint = args[2]
@@ -160,7 +162,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		_, err = c.global.doHttpRequestV1("/sources", http.MethodPost, "type="+strconv.Itoa(int(api.SOURCETYPE_VMWARE)), content)
+		_, err = c.global.doHTTPRequestV1("/sources", http.MethodPost, "type="+strconv.Itoa(int(api.SOURCETYPE_VMWARE)), content)
 		if err != nil {
 			return err
 		}
@@ -171,7 +173,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// List
+// List the sources.
 type cmdSourceList struct {
 	global *cmdGlobal
 
@@ -200,19 +202,25 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all sources.
-	resp, err := c.global.doHttpRequestV1("/sources", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/sources", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
 
 	vmwareSources := []api.VMwareSource{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned sources.
-	for _, anySource := range resp.Metadata.([]any) {
+	for _, anySource := range metadata {
 		newSource, err := parseReturnedSource(anySource)
 		if err != nil {
 			return err
 		}
+
 		switch s := newSource.(type) {
 		case api.VMwareSource:
 			vmwareSources = append(vmwareSources, s)
@@ -223,15 +231,19 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	header := []string{"Name", "Type", "Endpoint", "Username", "Password", "Insecure"}
 	data := [][]string{}
 
-	for _, source := range vmwareSources {
-		data = append(data, []string{source.Name, "VMware", source.Endpoint, source.Username, source.Password, strconv.FormatBool(source.Insecure)})
+	for _, vmwareSource := range vmwareSources {
+		data = append(data, []string{vmwareSource.Name, "VMware", vmwareSource.Endpoint, vmwareSource.Username, vmwareSource.Password, strconv.FormatBool(vmwareSource.Insecure)})
 	}
 
 	return util.RenderTable(c.flagFormat, header, data, vmwareSources)
 }
 
-func parseReturnedSource(source any) (any, error) {
-	rawSource := source.(map[string]interface{})
+func parseReturnedSource(s any) (any, error) {
+	rawSource, ok := s.(map[string]any)
+	if !ok {
+		return nil, errors.New("Invalid type for source")
+	}
+
 	reJsonified, err := json.Marshal(rawSource["source"])
 	if err != nil {
 		return nil, err
@@ -239,27 +251,27 @@ func parseReturnedSource(source any) (any, error) {
 
 	switch api.SourceType(rawSource["type"].(float64)) {
 	case api.SOURCETYPE_COMMON:
-		var source api.CommonSource
-		err = json.Unmarshal(reJsonified, &source)
+		var src api.CommonSource
+		err = json.Unmarshal(reJsonified, &src)
 		if err != nil {
 			return nil, err
 		}
 
-		return source, nil
+		return src, nil
 	case api.SOURCETYPE_VMWARE:
-		var source api.VMwareSource
-		err = json.Unmarshal(reJsonified, &source)
+		var src api.VMwareSource
+		err = json.Unmarshal(reJsonified, &src)
 		if err != nil {
 			return nil, err
 		}
 
-		return source, nil
+		return src, nil
 	default:
 		return nil, fmt.Errorf("Unsupported source type %f", rawSource["type"].(float64))
 	}
 }
 
-// Remove
+// Remove the source.
 type cmdSourceRemove struct {
 	global *cmdGlobal
 }
@@ -287,7 +299,7 @@ func (c *cmdSourceRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Remove the source.
-	_, err = c.global.doHttpRequestV1("/sources/"+name, http.MethodDelete, "", nil)
+	_, err = c.global.doHTTPRequestV1("/sources/"+name, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -296,7 +308,7 @@ func (c *cmdSourceRemove) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Update
+// Update the source.
 type cmdSourceUpdate struct {
 	global *cmdGlobal
 }
@@ -324,7 +336,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the existing source.
-	resp, err := c.global.doHttpRequestV1("/sources/"+name, http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/sources/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -365,6 +377,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		if specificSource.Insecure {
 			isInsecure = "yes"
 		}
+
 		specificSource.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err
@@ -401,7 +414,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHttpRequestV1("/sources/"+origSourceName, http.MethodPut, "", content)
+	_, err = c.global.doHTTPRequestV1("/sources/"+origSourceName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

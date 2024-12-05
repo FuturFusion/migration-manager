@@ -28,6 +28,7 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 		if err != nil {
 			return err
 		}
+
 		configString = string(marshalled)
 		isInsecure = specificSource.Insecure
 	default:
@@ -40,15 +41,16 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 	}
 
 	// Set the new ID assigned to the source.
-	lastInsertId, err := result.LastInsertId()
+	lastInsertID, err := result.LastInsertId()
 	if err != nil {
 		return err
 	}
+
 	switch specificSource := s.(type) {
 	case *source.InternalCommonSource:
-		specificSource.DatabaseID = int(lastInsertId)
+		specificSource.DatabaseID = int(lastInsertID)
 	case *source.InternalVMwareSource:
-		specificSource.DatabaseID = int(lastInsertId)
+		specificSource.DatabaseID = int(lastInsertID)
 	}
 
 	return nil
@@ -90,10 +92,12 @@ func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
+
 	sID, err := s.GetDatabaseID()
 	if err != nil {
 		return err
 	}
+
 	q := `SELECT COUNT(uuid) FROM instances WHERE sourceid=?`
 	row := tx.QueryRow(q, sID)
 
@@ -102,6 +106,7 @@ func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
+
 	if numInstances > 0 {
 		return fmt.Errorf("%d instances refer to source '%s', can't delete", numInstances, name)
 	}
@@ -117,6 +122,7 @@ func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
+
 	if affectedRows == 0 {
 		return fmt.Errorf("Source with name '%s' doesn't exist, can't delete", name)
 	}
@@ -139,6 +145,7 @@ func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 		if err != nil {
 			return err
 		}
+
 		configString = string(marshalled)
 		isInsecure = specificSource.Insecure
 	default:
@@ -149,6 +156,7 @@ func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 	if err != nil {
 		return err
 	}
+
 	result, err := tx.Exec(q, s.GetName(), isInsecure, configString, id)
 	if err != nil {
 		return err
@@ -158,6 +166,7 @@ func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 	if err != nil {
 		return err
 	}
+
 	if affectedRows == 0 {
 		return fmt.Errorf("Source with ID %d doesn't exist, can't update", id)
 	}
@@ -188,9 +197,12 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]source.Sourc
 		q += ` ORDER BY name`
 		rows, err = tx.Query(q)
 	}
+
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
+
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		err := rows.Scan(&sourceID, &sourceName, &sourceType, &sourceInsecure, &sourceConfig)
@@ -210,6 +222,7 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]source.Sourc
 			if err != nil {
 				return nil, err
 			}
+
 			newSource := source.NewVMwareSource(sourceName, specificConfig.Endpoint, specificConfig.Username, specificConfig.Password)
 			newSource.DatabaseID = sourceID
 			newSource.Insecure = sourceInsecure
@@ -217,6 +230,9 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]source.Sourc
 		default:
 			return nil, fmt.Errorf("Unknown source type %d", sourceType)
 		}
+	}
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return ret, nil

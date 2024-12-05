@@ -37,7 +37,7 @@ func (c *cmdConfig) Command() *cobra.Command {
 	return cmd
 }
 
-// Show
+// Show the config.
 type cmdConfigShow struct {
 	global *cmdGlobal
 }
@@ -63,7 +63,7 @@ func (c *cmdConfigShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the server config.
-	resp, err := c.global.doHttpRequestV1("", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -100,7 +100,7 @@ func parseReturnedServerUntrusted(n any) (api.ServerUntrusted, error) {
 	return ret, nil
 }
 
-// Update
+// Update the config.
 type cmdConfigUpdate struct {
 	global *cmdGlobal
 }
@@ -126,7 +126,7 @@ func (c *cmdConfigUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the existing config.
-	resp, err := c.global.doHttpRequestV1("", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func (c *cmdConfigUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHttpRequestV1("", http.MethodPost, "", content)
+	_, err = c.global.doHTTPRequestV1("", http.MethodPost, "", content)
 	if err != nil {
 		return err
 	}

@@ -87,9 +87,9 @@ INSERT INTO schema (version, updated_at) VALUES (1, strftime("%s"))
 
 // Schema for the local database.
 func Schema() *schema.Schema {
-	schema := schema.NewFromMap(updates)
-	schema.Fresh(freshSchema)
-	return schema
+	dbSchema := schema.NewFromMap(updates)
+	dbSchema.Fresh(freshSchema)
+	return dbSchema
 }
 
 /* Database updates are one-time actions that are needed to move an

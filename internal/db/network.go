@@ -16,17 +16,19 @@ func (n *Node) AddNetwork(tx *sql.Tx, net *api.Network) error {
 	if err != nil {
 		return err
 	}
+
 	result, err := tx.Exec(q, net.Name, marshalledconfig)
 	if err != nil {
 		return err
 	}
 
 	// Set the new ID assigned to the network.
-	lastInsertId, err := result.LastInsertId()
+	lastInsertID, err := result.LastInsertId()
 	if err != nil {
 		return err
 	}
-	net.DatabaseID = int(lastInsertId)
+
+	net.DatabaseID = int(lastInsertID)
 
 	return err
 }
@@ -60,6 +62,7 @@ func (n *Node) DeleteNetwork(tx *sql.Tx, name string) error {
 	if err != nil {
 		return err
 	}
+
 	if affectedRows == 0 {
 		return fmt.Errorf("No network '%s' exists, can't delete", name)
 	}
@@ -75,6 +78,7 @@ func (n *Node) UpdateNetwork(tx *sql.Tx, net api.Network) error {
 	if err != nil {
 		return err
 	}
+
 	result, err := tx.Exec(q, net.Name, marshalledconfig, net.DatabaseID)
 	if err != nil {
 		return err
@@ -84,6 +88,7 @@ func (n *Node) UpdateNetwork(tx *sql.Tx, net api.Network) error {
 	if err != nil {
 		return err
 	}
+
 	if affectedRows == 0 {
 		return fmt.Errorf("No network '%s' exists, can't update", net.Name)
 	}
@@ -105,9 +110,12 @@ func (n *Node) getNetworksHelper(tx *sql.Tx, name string) ([]api.Network, error)
 		q += ` ORDER BY name`
 		rows, err = tx.Query(q)
 	}
+
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
+
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		netNetwork := api.Network{}
@@ -117,12 +125,17 @@ func (n *Node) getNetworksHelper(tx *sql.Tx, name string) ([]api.Network, error)
 		if err != nil {
 			return nil, err
 		}
+
 		err = json.Unmarshal([]byte(marshalledConfig), &netNetwork.Config)
 		if err != nil {
 			return nil, err
 		}
 
 		ret = append(ret, netNetwork)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return ret, nil

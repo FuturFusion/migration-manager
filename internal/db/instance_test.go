@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
-	"github.com/FuturFusion/migration-manager/internal/db"
+	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
@@ -30,7 +30,7 @@ var (
 func TestInstanceDatabaseActions(t *testing.T) {
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
-	db, err := db.OpenDatabase(tmpDir)
+	db, err := dbdriver.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
 	// Start a transaction.
@@ -79,12 +79,12 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Ensure we have three instances.
 	instances, err := db.GetAllInstances(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(instances), 3)
+	require.Len(t, instances, 3)
 
 	// Should get back instanceA unchanged.
-	instanceA_DB, err := db.GetInstance(tx, instanceA.GetUUID())
+	dbInstanceA, err := db.GetInstance(tx, instanceA.GetUUID())
 	require.NoError(t, err)
-	require.Equal(t, instanceA, instanceA_DB)
+	require.Equal(t, instanceA, dbInstanceA)
 
 	// Test updating an instance.
 	instanceB.Name = "FooBar"
@@ -93,9 +93,9 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	instanceB.MigrationStatusString = instanceB.MigrationStatus.String()
 	err = db.UpdateInstance(tx, instanceB)
 	require.NoError(t, err)
-	instanceB_DB, err := db.GetInstance(tx, instanceB.GetUUID())
+	dbInstanceB, err := db.GetInstance(tx, instanceB.GetUUID())
 	require.NoError(t, err)
-	require.Equal(t, instanceB, instanceB_DB)
+	require.Equal(t, instanceB, dbInstanceB)
 
 	// Delete an instance.
 	err = db.DeleteInstance(tx, instanceA.GetUUID())
@@ -114,7 +114,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Should have two instances remaining.
 	instances, err = db.GetAllInstances(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(instances), 2)
+	require.Len(t, instances, 2)
 
 	// Can't delete an instance that doesn't exist.
 	randomUUID, _ := uuid.NewRandom()

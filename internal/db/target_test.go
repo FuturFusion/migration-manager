@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 
-	"github.com/FuturFusion/migration-manager/internal/db"
+	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/target"
 )
 
@@ -28,7 +28,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
-	db, err := db.OpenDatabase(tmpDir)
+	db, err := dbdriver.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
 	// Start a transaction.
@@ -51,21 +51,21 @@ func TestTargetDatabaseActions(t *testing.T) {
 	// Ensure we have three entries
 	targets, err := db.GetAllTargets(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(targets), 3)
+	require.Len(t, targets, 3)
 
 	// Should get back incusTargetA unchanged.
-	incusTargetA_DB, err := db.GetTarget(tx, incusTargetA.GetName())
+	dbIncusTargetA, err := db.GetTarget(tx, incusTargetA.GetName())
 	require.NoError(t, err)
-	require.Equal(t, incusTargetA, incusTargetA_DB)
+	require.Equal(t, incusTargetA, dbIncusTargetA)
 
 	// Test updating a target.
 	incusTargetB.Name = "FooBar"
 	incusTargetB.IncusProject = "new-project"
 	err = db.UpdateTarget(tx, incusTargetB)
 	require.NoError(t, err)
-	incusTargetB_DB, err := db.GetTarget(tx, incusTargetB.GetName())
+	dbIncusTargetB, err := db.GetTarget(tx, incusTargetB.GetName())
 	require.NoError(t, err)
-	require.Equal(t, incusTargetB, incusTargetB_DB)
+	require.Equal(t, incusTargetB, dbIncusTargetB)
 
 	// Delete a target.
 	err = db.DeleteTarget(tx, incusTargetA.GetName())
@@ -76,7 +76,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	// Should have two targets remaining.
 	targets, err = db.GetAllTargets(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(targets), 2)
+	require.Len(t, targets, 2)
 
 	// Can't delete a target that doesn't exist.
 	err = db.DeleteTarget(tx, "BazBiz")

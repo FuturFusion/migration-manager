@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/migration-manager/internal/db"
+	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -18,7 +18,7 @@ var (
 func TestNetworkDatabaseActions(t *testing.T) {
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
-	db, err := db.OpenDatabase(tmpDir)
+	db, err := dbdriver.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
 	// Start a transaction.
@@ -41,20 +41,20 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	// Ensure we have three entries
 	networks, err := db.GetAllNetworks(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(networks), 3)
+	require.Len(t, networks, 3)
 
 	// Should get back networkA unchanged.
-	networkA_DB, err := db.GetNetwork(tx, networkA.Name)
+	dbNetworkA, err := db.GetNetwork(tx, networkA.Name)
 	require.NoError(t, err)
-	require.Equal(t, networkA, networkA_DB)
+	require.Equal(t, networkA, dbNetworkA)
 
 	// Test updating a network.
 	networkB.Name = "FooBar"
 	err = db.UpdateNetwork(tx, networkB)
 	require.NoError(t, err)
-	networkB_DB, err := db.GetNetwork(tx, networkB.Name)
+	dbNetworkB, err := db.GetNetwork(tx, networkB.Name)
 	require.NoError(t, err)
-	require.Equal(t, networkB, networkB_DB)
+	require.Equal(t, networkB, dbNetworkB)
 
 	// Delete a network.
 	err = db.DeleteNetwork(tx, networkA.Name)
@@ -65,7 +65,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	// Should have two networks remaining.
 	networks, err = db.GetAllNetworks(tx)
 	require.NoError(t, err)
-	require.Equal(t, len(networks), 2)
+	require.Len(t, networks, 2)
 
 	// Can't delete a network that doesn't exist.
 	err = db.DeleteNetwork(tx, "BazBiz")

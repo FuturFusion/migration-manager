@@ -25,18 +25,22 @@ func (n *Node) AddInstance(tx *sql.Tx, i instance.Instance) error {
 	if err != nil {
 		return err
 	}
+
 	marshalledLastManualUpdate, err := internalInstance.LastManualUpdate.MarshalText()
 	if err != nil {
 		return err
 	}
+
 	marshalledDisks, err := json.Marshal(internalInstance.Disks)
 	if err != nil {
 		return err
 	}
+
 	marshalledNICs, err := json.Marshal(internalInstance.NICs)
 	if err != nil {
 		return err
 	}
+
 	_, err = tx.Exec(q, internalInstance.UUID, internalInstance.MigrationStatus, internalInstance.MigrationStatusString, marshalledLastUpdateFromSource, marshalledLastManualUpdate, internalInstance.SourceID, internalInstance.TargetID, internalInstance.BatchID, internalInstance.Name, internalInstance.Architecture, internalInstance.OS, internalInstance.OSVersion, marshalledDisks, marshalledNICs, internalInstance.NumberCPUs, internalInstance.MemoryInMiB, internalInstance.UseLegacyBios, internalInstance.SecureBootEnabled, internalInstance.TPMPresent, internalInstance.NeedsDiskImport)
 
 	return err
@@ -65,6 +69,7 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+
 	if i.GetBatchID() != internal.INVALID_DATABASE_ID || i.IsMigrating() {
 		return fmt.Errorf("Cannot delete instance '%s': Either assigned to a batch or currently migrating", i.GetName())
 	}
@@ -80,6 +85,7 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+
 	if affectedRows == 0 {
 		return fmt.Errorf("Instance with UUID '%s' doesn't exist, can't delete", UUID)
 	}
@@ -97,6 +103,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	if err != nil {
 		return err
 	}
+
 	if batchID != internal.INVALID_DATABASE_ID {
 		q = `SELECT name FROM batches WHERE id=?`
 		row = tx.QueryRow(q, batchID)
@@ -122,18 +129,22 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	if err != nil {
 		return err
 	}
+
 	marshalledLastManualUpdate, err := internalInstance.LastManualUpdate.MarshalText()
 	if err != nil {
 		return err
 	}
+
 	marshalledDisks, err := json.Marshal(internalInstance.Disks)
 	if err != nil {
 		return err
 	}
+
 	marshalledNICs, err := json.Marshal(internalInstance.NICs)
 	if err != nil {
 		return err
 	}
+
 	result, err := tx.Exec(q, internalInstance.MigrationStatus, internalInstance.MigrationStatusString, marshalledLastUpdateFromSource, marshalledLastManualUpdate, internalInstance.SourceID, internalInstance.TargetID, internalInstance.BatchID, internalInstance.Name, internalInstance.Architecture, internalInstance.OS, internalInstance.OSVersion, marshalledDisks, marshalledNICs, internalInstance.NumberCPUs, internalInstance.MemoryInMiB, internalInstance.UseLegacyBios, internalInstance.SecureBootEnabled, internalInstance.TPMPresent, internalInstance.NeedsDiskImport, internalInstance.UUID)
 	if err != nil {
 		return err
@@ -143,6 +154,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	if err != nil {
 		return err
 	}
+
 	if affectedRows == 0 {
 		return fmt.Errorf("Instance with UUID '%s' doesn't exist, can't update", internalInstance.UUID.String())
 	}
@@ -164,9 +176,12 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 		q += ` ORDER BY name`
 		rows, err = tx.Query(q)
 	}
+
 	if err != nil {
-		return ret, err
+		return nil, err
 	}
+
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		newInstance := &instance.InternalInstance{}
@@ -179,24 +194,32 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 		if err != nil {
 			return nil, err
 		}
+
 		err = newInstance.LastUpdateFromSource.UnmarshalText([]byte(marshalledLastUpdateFromSource))
 		if err != nil {
 			return nil, err
 		}
+
 		err = newInstance.LastManualUpdate.UnmarshalText([]byte(marshalledLastManualUpdate))
 		if err != nil {
 			return nil, err
 		}
+
 		err = json.Unmarshal([]byte(marshalledDisks), &newInstance.Disks)
 		if err != nil {
 			return nil, err
 		}
+
 		err = json.Unmarshal([]byte(marshalledNICs), &newInstance.NICs)
 		if err != nil {
 			return nil, err
 		}
 
 		ret = append(ret, newInstance)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	return ret, nil

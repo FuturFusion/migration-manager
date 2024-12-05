@@ -37,6 +37,7 @@ func (n *Node) WriteGlobalConfig(tx *sql.Tx, config map[string]string) error {
 	if err != nil {
 		return err
 	}
+
 	_, err = tx.Exec(q, marshalledConfig)
 	return err
 }

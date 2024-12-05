@@ -29,7 +29,7 @@ type Source interface {
 	// Returns whether currently connected to the source or not.
 	IsConnected() bool
 
-	//////////////////////////////////////////////////
+	// -----------------------------------------------
 
 	// Returns the human-readable name for this source.
 	GetName() string
@@ -40,7 +40,7 @@ type Source interface {
 	// via AddSsource() or retrieved via GetSource()/GetAllSources() will return an error.
 	GetDatabaseID() (int, error)
 
-	//////////////////////////////////////////////////
+	// -----------------------------------------------
 
 	// Returns an array of all VMs available from the source, encoded as Instances.
 	//

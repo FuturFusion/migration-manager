@@ -28,6 +28,10 @@ SELECT COUNT(name) FROM sqlite_master WHERE type = 'table' AND name = 'schema'
 		return false, fmt.Errorf("schema table query returned no rows")
 	}
 
+	if rows.Err() != nil {
+		return false, rows.Err()
+	}
+
 	var count int
 
 	err = rows.Scan(&count)
@@ -61,11 +65,11 @@ CREATE TABLE schema (
 }
 
 // Insert a new version into the schema table.
-func insertSchemaVersion(tx *sql.Tx, new int) error {
+func insertSchemaVersion(tx *sql.Tx, newVersion int) error {
 	statement := `
 INSERT INTO schema (version, updated_at) VALUES (?, strftime("%s"))
 `
-	_, err := tx.Exec(statement, new)
+	_, err := tx.Exec(statement, newVersion)
 	return err
 }
 

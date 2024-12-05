@@ -411,6 +411,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 		if err != nil {
 			return err
 		}
+
 		result, err = d.db.GetAllInstancesForBatchID(tx, id)
 		if err != nil {
 			return err

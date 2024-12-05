@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -52,7 +53,7 @@ func (c *cmdTarget) Command() *cobra.Command {
 	return cmd
 }
 
-// Add
+// Add the target.
 type cmdTargetAdd struct {
 	global *cmdGlobal
 
@@ -105,20 +106,24 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		contents, err := os.ReadFile(tlsCertPath)
 		if err != nil {
 			return err
 		}
+
 		t.TLSClientCert = string(contents)
 
 		tlsKeyPath, err := c.global.asker.AskString("Please enter path to client TLS key: ", "", nil)
 		if err != nil {
 			return err
 		}
+
 		contents, err = os.ReadFile(tlsKeyPath)
 		if err != nil {
 			return err
 		}
+
 		t.TLSClientKey = string(contents)
 	}
 
@@ -154,7 +159,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHttpRequestV1("/targets", http.MethodPost, "", content)
+	_, err = c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
 	if err != nil {
 		return err
 	}
@@ -163,7 +168,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// List
+// List the targets.
 type cmdTargetList struct {
 	global *cmdGlobal
 
@@ -192,19 +197,25 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all targets.
-	resp, err := c.global.doHttpRequestV1("/targets", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/targets", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
 
 	targets := []api.IncusTarget{}
 
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return errors.New("Unexpected API response, invalid type for metadata")
+	}
+
 	// Loop through returned targets.
-	for _, anyTarget := range resp.Metadata.([]any) {
+	for _, anyTarget := range metadata {
 		newTarget, err := parseReturnedTarget(anyTarget)
 		if err != nil {
 			return err
 		}
+
 		targets = append(targets, newTarget.(api.IncusTarget))
 	}
 
@@ -217,6 +228,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 		if t.TLSClientKey != "" {
 			authType = "TLS"
 		}
+
 		data = append(data, []string{t.Name, t.Endpoint, authType, t.IncusProject, strconv.FormatBool(t.Insecure)})
 	}
 
@@ -238,7 +250,7 @@ func parseReturnedTarget(t any) (any, error) {
 	return ret, nil
 }
 
-// Remove
+// Remove the target.
 type cmdTargetRemove struct {
 	global *cmdGlobal
 }
@@ -266,7 +278,7 @@ func (c *cmdTargetRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Remove the target.
-	_, err = c.global.doHttpRequestV1("/targets/"+name, http.MethodDelete, "", nil)
+	_, err = c.global.doHTTPRequestV1("/targets/"+name, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -275,7 +287,7 @@ func (c *cmdTargetRemove) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Update
+// Update the target.
 type cmdTargetUpdate struct {
 	global *cmdGlobal
 }
@@ -303,7 +315,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the existing target.
-	resp, err := c.global.doHttpRequestV1("/targets/"+name, http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/targets/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -334,6 +346,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
 		if updateAuth {
 			// Clear out existing auth.
 			incusTarget.TLSClientKey = ""
@@ -351,20 +364,24 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 				if err != nil {
 					return err
 				}
+
 				contents, err := os.ReadFile(tlsCertPath)
 				if err != nil {
 					return err
 				}
+
 				incusTarget.TLSClientCert = string(contents)
 
 				tlsKeyPath, err := c.global.asker.AskString("Please enter path to client TLS key: ", "", nil)
 				if err != nil {
 					return err
 				}
+
 				contents, err = os.ReadFile(tlsKeyPath)
 				if err != nil {
 					return err
 				}
+
 				incusTarget.TLSClientKey = string(contents)
 			}
 		}
@@ -373,6 +390,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		if incusTarget.Insecure {
 			isInsecure = "yes"
 		}
+
 		incusTarget.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err
@@ -412,7 +430,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHttpRequestV1("/targets/"+origTargetName, http.MethodPut, "", content)
+	_, err = c.global.doHTTPRequestV1("/targets/"+origTargetName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}
