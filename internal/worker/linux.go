@@ -72,13 +72,21 @@ func LinuxDoPostMigrationConfig(distro string) error {
 
 	defer func() { _ = DoUnmount(chrootMountPath) }()
 
-	// Bind-mount /proc/ and /sys/ into the chroot.
+	// Bind-mount /dev/, /proc/ and /sys/ into the chroot.
+	err = DoMount("/dev/", filepath.Join(chrootMountPath, "dev"), []string{"-o", "bind"})
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "dev")) }()
+
 	err = DoMount("/proc/", filepath.Join(chrootMountPath, "proc"), []string{"-o", "bind"})
 	if err != nil {
 		return err
 	}
 
 	defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "proc")) }()
+
 	err = DoMount("/sys/", filepath.Join(chrootMountPath, "sys"), []string{"-o", "bind"})
 	if err != nil {
 		return err
@@ -110,6 +118,20 @@ func LinuxDoPostMigrationConfig(distro string) error {
 	// Perform distro-specific post-migration steps.
 	if strings.ToLower(distro) == "debian" || strings.ToLower(distro) == "ubuntu" {
 		err := runScriptInChroot("debian-purge-open-vm-tools.sh")
+		if err != nil {
+			return err
+		}
+	}
+
+	if strings.ToLower(distro) == "centos" || strings.ToLower(distro) == "oracle" || strings.ToLower(distro) == "rhel" {
+		err := runScriptInChroot("redhat-purge-open-vm-tools.sh")
+		if err != nil {
+			return err
+		}
+	}
+
+	if strings.ToLower(distro) == "suse" || strings.ToLower(distro) == "opensuse" {
+		err := runScriptInChroot("suse-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
