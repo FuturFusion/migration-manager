@@ -242,6 +242,10 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 		return nil, rows.Err()
 	}
 
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
 	return ret, nil
 }
 
@@ -273,6 +277,10 @@ func (n *Node) GetAllInstancesForBatchID(tx *sql.Tx, id int) ([]instance.Instanc
 		}
 
 		ret = append(ret, i)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
 	}
 
 	if rows.Err() != nil {

@@ -32,6 +32,10 @@ SELECT COUNT(name) FROM sqlite_master WHERE type = 'table' AND name = 'schema'
 		return false, rows.Err()
 	}
 
+	if rows.Err() != nil {
+		return false, rows.Err()
+	}
+
 	var count int
 
 	err = rows.Scan(&count)

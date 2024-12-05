@@ -20,11 +20,46 @@ var (
 	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:8443")
 	testBatch        = batch.NewBatch("TestBatch", "", "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()
-	instanceA        = instance.NewInstance(instanceAUUID, 2, 1, -1, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{{"disk", true, 123}}, []api.InstanceNICInfo{{"net", "mac"}}, 2, 2048, false, false, false)
+	instanceA        = instance.NewInstance(instanceAUUID, 2, 1, -1, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{
+		{
+			Name:                      "disk",
+			DifferentialSyncSupported: true,
+			SizeInBytes:               123,
+		},
+	}, []api.InstanceNICInfo{
+		{
+			Network: "net",
+			Hwaddr:  "mac",
+		},
+	}, 2, 2048, false, false, false)
 	instanceBUUID, _ = uuid.NewRandom()
-	instanceB        = instance.NewInstance(instanceBUUID, 2, 1, -1, "WindowsVM", "x86_64", "Windows", "11", []api.InstanceDiskInfo{{"disk", false, 321}}, []api.InstanceNICInfo{{"net1", "mac1"}, {"net2", "mac2"}}, 4, 4096, false, true, true)
+	instanceB        = instance.NewInstance(instanceBUUID, 2, 1, -1, "WindowsVM", "x86_64", "Windows", "11", []api.InstanceDiskInfo{
+		{
+			Name:                      "disk",
+			DifferentialSyncSupported: false,
+			SizeInBytes:               321,
+		},
+	}, []api.InstanceNICInfo{
+		{
+			Network: "net1",
+			Hwaddr:  "mac1",
+		}, {
+			Network: "net2",
+			Hwaddr:  "mac2",
+		},
+	}, 4, 4096, false, true, true)
 	instanceCUUID, _ = uuid.NewRandom()
-	instanceC        = instance.NewInstance(instanceCUUID, 2, 1, 1, "DebianVM", "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{{"disk1", true, 123}, {"disk2", true, 321}}, nil, 4, 4096, true, false, true)
+	instanceC        = instance.NewInstance(instanceCUUID, 2, 1, 1, "DebianVM", "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{
+		{
+			Name:                      "disk1",
+			DifferentialSyncSupported: true,
+			SizeInBytes:               123,
+		}, {
+			Name:                      "disk2",
+			DifferentialSyncSupported: true,
+			SizeInBytes:               321,
+		},
+	}, nil, 4, 4096, true, false, true)
 )
 
 func TestInstanceDatabaseActions(t *testing.T) {
@@ -36,7 +71,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Start a transaction.
 	tx, err := db.DB.Begin()
 	require.NoError(t, err)
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	// Cannot add an instance with an invalid source and/or target.
 	err = db.AddInstance(tx, instanceA)
@@ -137,7 +172,9 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	err = db.DeleteTarget(tx, testTarget.GetName())
 	require.Error(t, err)
 
-	tx.Commit()
+	err = tx.Commit()
+	require.NoError(t, err)
+
 	err = db.Close()
 	require.NoError(t, err)
 }

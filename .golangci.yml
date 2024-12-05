@@ -2,10 +2,14 @@ linters:
   disable-all: true
   enable:
     - bodyclose
+    - errcheck
     - gci
     - godot
     - gofumpt
     - goimports
+    - gosimple
+    - govet
+    - ineffassign
     - misspell
     - nakedret
     - prealloc
@@ -17,6 +21,7 @@ linters:
     - thelper
     - unconvert
     - unparam
+    - unused
     - whitespace
 issues:
   exclude-use-default: false
