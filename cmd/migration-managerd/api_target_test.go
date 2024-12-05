@@ -219,6 +219,76 @@ func TestTargetGet(t *testing.T) {
 	}
 }
 
+func TestTargetsPut(t *testing.T) {
+	tests := []struct {
+		name string
+
+		targetName string
+		targetJSON string
+
+		wantHTTPStatus int
+	}{
+		{
+			name: "success",
+
+			targetName: "foo",
+			targetJSON: `{"name": "foo", "endpoint": "some endpoint", "insecure": true}`,
+
+			// TODO: why is http.StatusCreated returned for an update operation?
+			wantHTTPStatus: http.StatusCreated,
+		},
+		{
+			name: "error - empty name",
+
+			targetName: "",
+
+			// TODO: the business logic would like to return http.BadRequest for this
+			// but this gets never hit, because the router is already handling this
+			// request with http.StatusNotFound.
+			wantHTTPStatus: http.StatusNotFound,
+		},
+		{
+			name: "error - empty name (with final slash)",
+
+			targetName: "/",
+
+			// TODO: the business logic would like to return http.BadRequest for this
+			// but this gets never hit, because the router is already handling this
+			// request with http.StatusNotFound.
+			wantHTTPStatus: http.StatusNotFound,
+		},
+		{
+			name: "error - not found",
+
+			targetName: "invalid_target",
+
+			wantHTTPStatus: http.StatusBadRequest,
+		},
+		{
+			name: "error - invalid JSON",
+
+			targetName: "foo",
+			targetJSON: `{`,
+
+			wantHTTPStatus: http.StatusBadRequest,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			daemon, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
+			seedDBWithSingleTarget(t, daemon)
+
+			// Execute test
+			statusCode, _ := probeAPI(t, http.MethodPut, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), bytes.NewBufferString(tc.targetJSON))
+
+			// Assert results
+			require.Equal(t, tc.wantHTTPStatus, statusCode)
+		})
+	}
+}
+
 func probeAPI(t *testing.T, method string, url string, requestBody io.Reader) (statusCode int, responseBody string) {
 	t.Helper()
 
