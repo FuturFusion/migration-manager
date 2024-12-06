@@ -16,6 +16,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -895,6 +896,15 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 
 			// Fixup the OS name.
 			apiDef.Config["image.os"] = strings.Replace(apiDef.Config["image.os"], "swodniw", "windows", 1)
+		}
+
+		// Handle RHEL (and derivative) specific completion steps.
+		if util.IsRHELOrDerivative(apiDef.Config["image.os"]) {
+			// RHEL7+ don't support 9p, so make agent config available via cdrom.
+			apiDef.Devices["agent"] = map[string]string{
+				"type":   "disk",
+				"source": "agent:config",
+			}
 		}
 
 		// Update the instance in Incus.
