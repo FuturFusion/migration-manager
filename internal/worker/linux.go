@@ -117,33 +117,36 @@ func LinuxDoPostMigrationConfig(distro string) error {
 		return err
 	}
 
-	// Perform distro-specific post-migration steps.
+	// Remove any open-vm-tools packing that might be installed.
 	if internalUtil.IsDebianOrDerivative(distro) {
 		err := runScriptInChroot("debian-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
-	}
-
-	if internalUtil.IsRHELOrDerivative(distro) {
+	} else if internalUtil.IsRHELOrDerivative(distro) {
 		err := runScriptInChroot("redhat-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
-	}
-
-	if internalUtil.IsSUSEOrDerivative(distro) {
+	} else if internalUtil.IsSUSEOrDerivative(distro) {
 		err := runScriptInChroot("suse-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
 	}
 
+	// Add the virtio drivers if needed.
 	if internalUtil.IsRHELOrDerivative(distro) || internalUtil.IsSUSEOrDerivative(distro) {
 		err := runScriptInChroot("dracut-add-virtio-drivers.sh")
 		if err != nil {
 			return err
 		}
+	}
+
+	// Setup udev rules to create network device aliases.
+	err = runScriptInChroot("add-udev-network-rules.sh")
+	if err != nil {
+		return err
 	}
 
 	logger.Info("Post-migration configuration complete!")
