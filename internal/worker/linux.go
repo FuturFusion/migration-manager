@@ -13,6 +13,8 @@ import (
 	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
+
+	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )
 
 //go:embed scripts/*
@@ -116,28 +118,28 @@ func LinuxDoPostMigrationConfig(distro string) error {
 	}
 
 	// Perform distro-specific post-migration steps.
-	if strings.ToLower(distro) == "debian" || strings.ToLower(distro) == "ubuntu" {
+	if internalUtil.IsDebianOrDerivative(distro) {
 		err := runScriptInChroot("debian-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
 	}
 
-	if strings.ToLower(distro) == "centos" || strings.ToLower(distro) == "oracle" || strings.ToLower(distro) == "rhel" {
+	if internalUtil.IsRHELOrDerivative(distro) {
 		err := runScriptInChroot("redhat-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
 	}
 
-	if strings.ToLower(distro) == "suse" || strings.ToLower(distro) == "opensuse" {
+	if internalUtil.IsSUSEOrDerivative(distro) {
 		err := runScriptInChroot("suse-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
 	}
 
-	if strings.ToLower(distro) == "centos" || strings.ToLower(distro) == "oracle" || strings.ToLower(distro) == "rhel" || strings.ToLower(distro) == "suse" || strings.ToLower(distro) == "opensuse" {
+	if internalUtil.IsRHELOrDerivative(distro) || internalUtil.IsSUSEOrDerivative(distro) {
 		err := runScriptInChroot("dracut-add-virtio-drivers.sh")
 		if err != nil {
 			return err
