@@ -902,6 +902,10 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			}
 		}
 
+		// Set the instance's UUID copied from the source.
+		apiDef.Config["volatile.uuid"] = i.GetUUID().String()
+		apiDef.Config["volatile.uuid.generation"] = i.GetUUID().String()
+
 		// Update the instance in Incus.
 		op, updateErr := t.UpdateInstance(i.GetName(), apiDef.Writable(), etag)
 		if updateErr != nil {
