@@ -228,11 +228,11 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Type", "Endpoint", "Username", "Password", "Insecure"}
+	header := []string{"Name", "Type", "Endpoint", "Username", "Insecure"}
 	data := [][]string{}
 
 	for _, vmwareSource := range vmwareSources {
-		data = append(data, []string{vmwareSource.Name, "VMware", vmwareSource.Endpoint, vmwareSource.Username, vmwareSource.Password, strconv.FormatBool(vmwareSource.Insecure)})
+		data = append(data, []string{vmwareSource.Name, "VMware", vmwareSource.Endpoint, vmwareSource.Username, strconv.FormatBool(vmwareSource.Insecure)})
 	}
 
 	return util.RenderTable(c.flagFormat, header, data, vmwareSources)
