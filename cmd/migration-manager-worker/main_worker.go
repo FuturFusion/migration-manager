@@ -58,34 +58,39 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, unix.SIGPWR)
-	signal.Notify(sigCh, unix.SIGINT)
-	signal.Notify(sigCh, unix.SIGQUIT)
-	signal.Notify(sigCh, unix.SIGTERM)
-
 	chIgnore := make(chan os.Signal, 1)
 	signal.Notify(chIgnore, unix.SIGHUP)
 
-	err = w.Start()
-	if err != nil {
-		return err
-	}
+	rootCtx, stop := signal.NotifyContext(context.Background(),
+		unix.SIGPWR,
+		unix.SIGINT,
+		unix.SIGQUIT,
+		unix.SIGTERM,
+	)
+	defer stop()
+
+	ctx, shutdown := context.WithCancel(rootCtx)
+	defer shutdown()
+
+	shutdownCompleted := make(chan struct{})
+	go func() {
+		defer close(shutdownCompleted)
+		w.Run(ctx)
+	}()
 
 	for {
 		select {
-		case sig := <-sigCh:
-			logger.Info("Received signal", logger.Ctx{"signal": sig})
-			if w.ShutdownCtx.Err() != nil {
-				logger.Warn("Ignoring signal, shutdown already in progress", logger.Ctx{"signal": sig})
-			} else {
-				go func() {
-					w.ShutdownDoneCh <- w.Stop(context.Background(), sig)
-				}()
+		case <-rootCtx.Done():
+			logger.Info("Shutting down")
+			if ctx.Err() != nil {
+				logger.Warn("Ignoring signal, shutdown already in progress")
+				continue
 			}
 
-		case err = <-w.ShutdownDoneCh:
-			return err
+			shutdown()
+
+		case <-shutdownCompleted:
+			return nil
 		}
 	}
 }

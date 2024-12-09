@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -31,10 +30,6 @@ type Worker struct {
 	uuid     string
 
 	lastUpdate time.Time
-
-	ShutdownCtx    context.Context    // Canceled when shutdown starts.
-	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
-	ShutdownDoneCh chan error         // Receives the result of the w.Stop() function and tells the daemon to end.
 }
 
 func NewWorker(endpoint string, uuid string) (*Worker, error) {
@@ -44,82 +39,66 @@ func NewWorker(endpoint string, uuid string) (*Worker, error) {
 		return nil, err
 	}
 
-	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
-
-	ret := &Worker{
-		endpoint:       parsedURL,
-		source:         nil,
-		uuid:           uuid,
-		lastUpdate:     time.Now().UTC(),
-		ShutdownCtx:    shutdownCtx,
-		ShutdownCancel: shutdownCancel,
-		ShutdownDoneCh: make(chan error),
+	wrkr := &Worker{
+		endpoint:   parsedURL,
+		source:     nil,
+		uuid:       uuid,
+		lastUpdate: time.Now().UTC(),
 	}
 
 	// Do a quick connectivity check to the endpoint.
-	_, err = ret.doHTTPRequestV1("", http.MethodGet, nil)
+	_, err = wrkr.doHTTPRequestV1("", http.MethodGet, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return ret, nil
+	return wrkr, nil
 }
 
-func (w *Worker) Start() error {
+func (w *Worker) Run(ctx context.Context) {
 	logger.Info("Starting up", logger.Ctx{"version": version.Version})
 
-	go func() {
-		for {
-			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodGet, nil)
+	for {
+		resp, err := w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodGet, nil)
+		if err != nil {
+			logger.Errorf("%s", err.Error())
+		} else {
+			cmd, err := parseReturnedCommand(resp.Metadata)
 			if err != nil {
 				logger.Errorf("%s", err.Error())
 			} else {
-				cmd, err := parseReturnedCommand(resp.Metadata)
-				if err != nil {
-					logger.Errorf("%s", err.Error())
-				} else {
-					switch cmd.Command {
-					case api.WORKERCOMMAND_IDLE:
-						logger.Debug("Received IDLE command, sleeping")
-					case api.WORKERCOMMAND_IMPORT_DISKS:
-						w.importDisks(cmd)
-					case api.WORKERCOMMAND_FINALIZE_IMPORT:
-						done := w.finalizeImport(cmd)
-						if done {
-							w.ShutdownCancel()
-							return
-						}
-
-					default:
-						logger.Errorf("Received unknown command (%d)", cmd.Command)
+				switch cmd.Command {
+				case api.WORKERCOMMAND_IDLE:
+					logger.Debug("Received IDLE command, sleeping")
+				case api.WORKERCOMMAND_IMPORT_DISKS:
+					w.importDisks(ctx, cmd)
+				case api.WORKERCOMMAND_FINALIZE_IMPORT:
+					done := w.finalizeImport(ctx, cmd)
+					if done {
+						return
 					}
+
+				default:
+					logger.Errorf("Received unknown command (%d)", cmd.Command)
 				}
 			}
-
-			t := time.NewTimer(10 * time.Second)
-
-			select {
-			case <-w.ShutdownCtx.Done():
-				t.Stop()
-				return
-			case <-t.C:
-				t.Stop()
-			}
 		}
-	}()
 
-	return nil
+		t := time.NewTimer(10 * time.Second)
+
+		select {
+		case <-ctx.Done():
+			t.Stop()
+			return
+		case <-t.C:
+			t.Stop()
+		}
+	}
 }
 
-func (w *Worker) Stop(ctx context.Context, sig os.Signal) error {
-	logger.Info("Worker stopped")
-
-	return nil
-}
-
-func (w *Worker) importDisks(cmd api.WorkerCommand) {
+func (w *Worker) importDisks(ctx context.Context, cmd api.WorkerCommand) {
 	if w.source == nil {
-		err := w.connectSource(w.ShutdownCtx, cmd.Source)
+		err := w.connectSource(ctx, cmd.Source)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return
@@ -128,7 +107,7 @@ func (w *Worker) importDisks(cmd api.WorkerCommand) {
 
 	logger.Info("Performing disk import")
 
-	err := w.importDisksHelper(cmd)
+	err := w.importDisksHelper(ctx, cmd)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return
@@ -138,15 +117,15 @@ func (w *Worker) importDisks(cmd api.WorkerCommand) {
 	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Disk import completed successfully")
 }
 
-func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
+func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) error {
 	// Delete any existing migration snapshot that might be left over.
-	err := w.source.DeleteVMSnapshot(w.ShutdownCtx, cmd.InventoryPath, internal.IncusSnapshotName)
+	err := w.source.DeleteVMSnapshot(ctx, cmd.InventoryPath, internal.IncusSnapshotName)
 	if err != nil {
 		return err
 	}
 
 	// Do the actual import.
-	return w.source.ImportDisks(w.ShutdownCtx, cmd.InventoryPath, func(status string, isImportant bool) {
+	return w.source.ImportDisks(ctx, cmd.InventoryPath, func(status string, isImportant bool) {
 		logger.Info(status)
 
 		// Only send updates back to the server if important or once every 5 seconds.
@@ -162,9 +141,9 @@ func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
 // and migration-manager-worker can shut down.
 // If there is an error or not all the finalizing work has been performed
 // yet, false is returned.
-func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
+func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (done bool) {
 	if w.source == nil {
-		err := w.connectSource(w.ShutdownCtx, cmd.Source)
+		err := w.connectSource(ctx, cmd.Source)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false
@@ -173,7 +152,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 
 	logger.Info("Shutting down source VM")
 
-	err := w.source.PowerOffVM(w.ShutdownCtx, cmd.InventoryPath)
+	err := w.source.PowerOffVM(ctx, cmd.InventoryPath)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return false
@@ -183,7 +162,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 
 	logger.Info("Performing final disk sync")
 
-	err = w.importDisksHelper(cmd)
+	err = w.importDisksHelper(ctx, cmd)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return false
@@ -200,7 +179,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 			return false
 		}
 
-		err = worker.WindowsInjectDrivers(w.ShutdownCtx, winVer, "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
+		err = worker.WindowsInjectDrivers(ctx, winVer, "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false
