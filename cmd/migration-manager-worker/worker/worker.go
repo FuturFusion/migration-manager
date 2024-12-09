@@ -30,6 +30,7 @@ type Worker struct {
 	uuid     string
 
 	lastUpdate time.Time
+	idleSleep  time.Duration
 }
 
 func NewWorker(endpoint string, uuid string) (*Worker, error) {
@@ -44,6 +45,7 @@ func NewWorker(endpoint string, uuid string) (*Worker, error) {
 		source:     nil,
 		uuid:       uuid,
 		lastUpdate: time.Now().UTC(),
+		idleSleep:  10 * time.Second,
 	}
 
 	// Do a quick connectivity check to the endpoint.
@@ -59,32 +61,41 @@ func (w *Worker) Run(ctx context.Context) {
 	logger.Info("Starting up", logger.Ctx{"version": version.Version})
 
 	for {
-		resp, err := w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodGet, nil)
-		if err != nil {
-			logger.Errorf("%s", err.Error())
-		} else {
+		done := func() (done bool) {
+			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodGet, nil)
+			if err != nil {
+				logger.Errorf("%s", err.Error())
+				return false
+			}
+
 			cmd, err := parseReturnedCommand(resp.Metadata)
 			if err != nil {
 				logger.Errorf("%s", err.Error())
-			} else {
-				switch cmd.Command {
-				case api.WORKERCOMMAND_IDLE:
-					logger.Debug("Received IDLE command, sleeping")
-				case api.WORKERCOMMAND_IMPORT_DISKS:
-					w.importDisks(ctx, cmd)
-				case api.WORKERCOMMAND_FINALIZE_IMPORT:
-					done := w.finalizeImport(ctx, cmd)
-					if done {
-						return
-					}
-
-				default:
-					logger.Errorf("Received unknown command (%d)", cmd.Command)
-				}
+				return false
 			}
+
+			switch cmd.Command {
+			case api.WORKERCOMMAND_IDLE:
+				logger.Debug("Received IDLE command, sleeping")
+				return false
+
+			case api.WORKERCOMMAND_IMPORT_DISKS:
+				w.importDisks(ctx, cmd)
+				return false
+
+			case api.WORKERCOMMAND_FINALIZE_IMPORT:
+				return w.finalizeImport(ctx, cmd)
+
+			default:
+				logger.Errorf("Received unknown command (%d)", cmd.Command)
+				return false
+			}
+		}()
+		if done {
+			return
 		}
 
-		t := time.NewTimer(10 * time.Second)
+		t := time.NewTimer(w.idleSleep)
 
 		select {
 		case <-ctx.Done():
@@ -258,7 +269,7 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusStri
 
 	content, err := json.Marshal(resp)
 	if err != nil {
-		logger.Errorf("Failed to send status back to migration manager: %s", err.Error())
+		logger.Errorf("Failed to marshal status response for migration manager: %s", err.Error())
 		return
 	}
 
