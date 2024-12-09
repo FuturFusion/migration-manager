@@ -98,7 +98,7 @@ func (w *Worker) Run(ctx context.Context) {
 
 func (w *Worker) importDisks(ctx context.Context, cmd api.WorkerCommand) {
 	if w.source == nil {
-		err := w.connectSource(ctx, cmd.Source)
+		err := w.connectSource(ctx, cmd.SourceType, cmd.Source)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return
@@ -143,7 +143,7 @@ func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) e
 // yet, false is returned.
 func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (done bool) {
 	if w.source == nil {
-		err := w.connectSource(ctx, cmd.Source)
+		err := w.connectSource(ctx, cmd.SourceType, cmd.Source)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false
@@ -227,14 +227,28 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 	return true
 }
 
-func (w *Worker) connectSource(ctx context.Context, s api.VMwareSource) error {
-	w.source = source.NewVMwareSource(s.Name, s.Endpoint, s.Username, s.Password)
-	if s.Insecure {
-		err := w.source.SetInsecureTLS(true)
+func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, sourceRaw json.RawMessage) error {
+	var src source.Source
+
+	switch sourceType {
+	case api.SOURCETYPE_VMWARE:
+		vmwareSource := api.VMwareSource{}
+
+		err := json.Unmarshal(sourceRaw, &vmwareSource)
 		if err != nil {
 			return err
 		}
+
+		vmwareSrc := source.NewVMwareSource(vmwareSource.Name, vmwareSource.Endpoint, vmwareSource.Username, vmwareSource.Password)
+		vmwareSrc.Insecure = vmwareSource.Insecure
+
+		src = vmwareSrc
+
+	default:
+		return fmt.Errorf("Provided source type %q is not usable with `migration-manager-worker`", sourceType.String())
 	}
+
+	w.source = src
 
 	return w.source.Connect(ctx)
 }
