@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lxc/incus/v6/shared/ask"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/source"
@@ -118,10 +119,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		sourcePassword, err := c.global.asker.AskString("Please enter password for endpoint '"+sourceEndpoint+"': ", "", nil)
-		if err != nil {
-			return err
-		}
+		sourcePassword := ask.AskPassword("Please enter password for endpoint '" + sourceEndpoint + "': ")
 
 		s := api.VMwareSource{
 			CommonSource: api.CommonSource{
@@ -368,10 +366,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		specificSource.Password, err = c.global.asker.AskString("Password: ["+specificSource.Password+"] ", specificSource.Password, nil)
-		if err != nil {
-			return err
-		}
+		specificSource.Password = ask.AskPassword("Password: ")
 
 		isInsecure := "no"
 		if specificSource.Insecure {
