@@ -119,6 +119,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 	}
 
 	for _, vm := range vms {
+		// Ignore any vCLS instances.
+		if regexp.MustCompile(`/vCLS/`).Match([]byte(vm.InventoryPath)) {
+			continue
+		}
+
 		vmProps, err := s.getVMProperties(ctx, vm)
 		if err != nil {
 			return nil, err
