@@ -305,7 +305,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	// Check if each existing instance should still be assigned to this batch.
 	for _, i := range instances {
 		if !b.InstanceMatchesCriteria(i) {
-			if i.CanBeModified() {
+			if !i.IsMigrating() {
 				q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
 				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), i.GetUUID())
 				if err != nil {
