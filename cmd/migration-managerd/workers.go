@@ -454,11 +454,6 @@ func (d *Daemon) processQueuedBatches() bool {
 			continue
 		}
 
-		if !b.GetMigrationWindowStart().IsZero() && b.GetMigrationWindowStart().After(time.Now().UTC()) {
-			logger.Debug("Start of migration window hasn't arrived yet", loggerCtx)
-			continue
-		}
-
 		if !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(time.Now().UTC()) {
 			logger.Error("Batch '"+b.GetName()+"' window end time has already passed", loggerCtx)
 

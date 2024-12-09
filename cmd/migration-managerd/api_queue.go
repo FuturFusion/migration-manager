@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -229,15 +230,38 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", UUID, err))
 	}
 
-	// If we can do a background disk sync, kick it off if needed
+	// Fetch the batch for the instance.
+	var b batch.Batch
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbBatch, err := d.db.GetBatchByID(tx, i.GetBatchID())
+		if err != nil {
+			return err
+		}
+
+		b = dbBatch
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get batch '%d': %w", i.GetBatchID(), err))
+	}
+
+	// Determine what action, if any, the worker should start.
 	if i.NeedsDiskImport && i.Disks[0].DifferentialSyncSupported {
+		// If we can do a background disk sync, kick it off.
 		cmd.Command = api.WORKERCOMMAND_IMPORT_DISKS
 		cmd.Source = s
 
 		i.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
 		i.MigrationStatusString = i.MigrationStatus.String()
-	} else if !i.NeedsDiskImport || !i.Disks[0].DifferentialSyncSupported {
-		// FIXME need finer-grained logic before kicking off finalization step.
+	} else if !b.GetMigrationWindowStart().IsZero() && b.GetMigrationWindowStart().Before(time.Now().UTC()) {
+		// If a migration window has been defined, and we have passed the start time, begin the final migration.
+		cmd.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
+		cmd.Source = s
+
+		i.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
+		i.MigrationStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
+	} else if b.GetMigrationWindowStart().IsZero() {
+		// If no migration window start time has been defined, go ahead and begin the final migration.
 		cmd.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
 		cmd.Source = s
 
