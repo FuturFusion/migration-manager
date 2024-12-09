@@ -154,7 +154,7 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 	return nil
 }
 
-func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalInstance, storagePool string) api.InstancesPost {
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalInstance, sourceName string, storagePool string) api.InstancesPost {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
@@ -228,6 +228,9 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	}
 
 	ret.Description = ret.Config["image.description"]
+
+	// Set the migration source as a user tag to allow easy filtering.
+	ret.Config["user.migration.source"] = sourceName
 
 	// Handle Windows-specific configuration.
 	if strings.Contains(ret.Config["image.os"], "windows") {

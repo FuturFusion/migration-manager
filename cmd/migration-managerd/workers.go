@@ -531,6 +531,30 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 		return
 	}
 
+	// Get the source for this instance.
+	var s source.Source
+	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		var err error
+		s, err = d.db.GetSourceByID(tx, inst.GetSourceID())
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		logger.Warn(err.Error(), loggerCtx)
+		_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		return
+	}
+
 	// Get the target for this instance.
 	var t target.Target
 	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -577,7 +601,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 		return
 	}
 
-	instanceDef := t.CreateVMDefinition(*internalInstance, storagePool)
+	instanceDef := t.CreateVMDefinition(*internalInstance, s.GetName(), storagePool)
 	creationErr := t.CreateNewVM(instanceDef, storagePool, d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
 	if creationErr != nil {
 		logger.Warn(creationErr.Error(), loggerCtx)
