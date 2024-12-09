@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal"
@@ -175,7 +176,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Num vCPUs", "Memory (MiB)"}
+	header := []string{"Name", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Num vCPUs", "Memory"}
 	if c.flagVerbose {
 		header = append(header, "UUID", "Inventory Path", "Last Sync", "Last Manual Update")
 	}
@@ -183,7 +184,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, i := range instances {
-		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), strconv.Itoa(i.MemoryInMiB)}
+		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(int64(i.MemoryInMiB*1024*1024), 2)}
 		if c.flagVerbose {
 			lastUpdate := "Never"
 			if !i.LastManualUpdate.IsZero() {
