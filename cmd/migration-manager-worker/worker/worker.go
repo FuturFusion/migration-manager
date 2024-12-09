@@ -33,7 +33,9 @@ type Worker struct {
 	idleSleep  time.Duration
 }
 
-func NewWorker(endpoint string, uuid string) (*Worker, error) {
+type WorkerOption func(*Worker) error
+
+func NewWorker(endpoint string, uuid string, opts ...WorkerOption) (*Worker, error) {
 	// Parse the provided URL for the migration manager endpoint.
 	parsedURL, err := url.Parse(endpoint)
 	if err != nil {
@@ -48,6 +50,13 @@ func NewWorker(endpoint string, uuid string) (*Worker, error) {
 		idleSleep:  10 * time.Second,
 	}
 
+	for _, opt := range opts {
+		err := opt(wrkr)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Do a quick connectivity check to the endpoint.
 	_, err = wrkr.doHTTPRequestV1("", http.MethodGet, nil)
 	if err != nil {
@@ -55,6 +64,20 @@ func NewWorker(endpoint string, uuid string) (*Worker, error) {
 	}
 
 	return wrkr, nil
+}
+
+func WithIdleSleep(sleep time.Duration) WorkerOption {
+	return func(w *Worker) error {
+		w.idleSleep = sleep
+		return nil
+	}
+}
+
+func WithSource(src source.Source) WorkerOption {
+	return func(w *Worker) error {
+		w.source = src
+		return nil
+	}
 }
 
 func (w *Worker) Run(ctx context.Context) {
@@ -204,7 +227,10 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 	// VMware API doesn't distinguish openSUSE and Ubuntu versions.
 	if !strings.Contains(strings.ToLower(cmd.OS), "opensuse") && !strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
 		majorVersionRegex := regexp.MustCompile(`^\w+?(\d+)(_64)?$`)
-		majorVersion, _ = strconv.Atoi(majorVersionRegex.FindStringSubmatch(cmd.OS)[1])
+		matches := majorVersionRegex.FindStringSubmatch(cmd.OS)
+		if len(matches) > 1 {
+			majorVersion, _ = strconv.Atoi(majorVersionRegex.FindStringSubmatch(cmd.OS)[1])
+		}
 	}
 
 	if strings.Contains(strings.ToLower(cmd.OS), "centos") {
