@@ -67,6 +67,10 @@ func (i *InternalInstance) GetBatchID() int {
 	return i.BatchID
 }
 
+func (i *InternalInstance) GetSourceID() int {
+	return i.SourceID
+}
+
 func (i *InternalInstance) GetTargetID() int {
 	return i.TargetID
 }
