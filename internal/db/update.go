@@ -14,45 +14,45 @@ CREATE TABLE batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
     status INTEGER NOT NULL,
-    statusstring TEXT NOT NULL,
-    storagepool VARCHAR(255) NOT NULL,
-    includeregex TEXT NOT NULL,
-    excluderegex TEXT NOT NULL,
-    migrationwindowstart TEXT NOT NULL,
-    migrationwindowend TEXT NOT NULL,
-    defaultnetwork VARCHAR(255) NOT NULL,
+    status_string TEXT NOT NULL,
+    storage_pool VARCHAR(255) NOT NULL,
+    include_regex TEXT NOT NULL,
+    exclude_regex TEXT NOT NULL,
+    migration_window_start TEXT NOT NULL,
+    migration_window_end TEXT NOT NULL,
+    default_network VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 
 CREATE TABLE config (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    globalConfig TEXT NOT NULL
+    global_config TEXT NOT NULL
 );
 
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
-    inventorypath VARCHAR(255) NOT NULL,
-    migrationstatus INTEGER NOT NULL,
-    migrationstatusstring TEXT NOT NULL,
-    lastupdatefromsource TEXT NOT NULL,
-    lastmanualupdate TEXT NOT NULL,
-    sourceid INTEGER NOT NULL,
-    targetid INTEGER NOT NULL,
-    batchid INTEGER NOT NULL,
+    inventory_path VARCHAR(255) NOT NULL,
+    migration_status INTEGER NOT NULL,
+    migration_status_string TEXT NOT NULL,
+    last_update_from_source TEXT NOT NULL,
+    last_manual_update TEXT NOT NULL,
+    source_id INTEGER NOT NULL,
+    target_id INTEGER NOT NULL,
+    batch_id INTEGER NOT NULL,
     name VARCHAR(255) NOT NULL,
     architecture VARCHAR(255) NOT NULL,
     os VARCHAR(255) NOT NULL,
-    osversion VARCHAR(255) NOT NULL,
+    os_version VARCHAR(255) NOT NULL,
     disks TEXT NOT NULL,
     nics TEXT NOT NULL,
-    numbercpus INTEGER NOT NULL,
-    memoryinbytes INTEGER NOT NULL,
-    uselegacybios INTEGER NOT NULL,
-    securebootenabled INTEGER NOT NULL,
-    tpmpresent INTEGER NOT NULL,
-    needsdiskimport INTEGER NOT NULL,
-    FOREIGN KEY(sourceid) REFERENCES sources(id),
-    FOREIGN KEY(targetid) REFERENCES targets(id)
+    number_cpus INTEGER NOT NULL,
+    memory_in_bytes INTEGER NOT NULL,
+    use_legacy_bios INTEGER NOT NULL,
+    secure_boot_enabled INTEGER NOT NULL,
+    tpm_present INTEGER NOT NULL,
+    needs_disk_import INTEGER NOT NULL,
+    FOREIGN KEY(source_id) REFERENCES sources(id),
+    FOREIGN KEY(target_id) REFERENCES targets(id)
 );
 
 CREATE TABLE networks (
@@ -75,11 +75,11 @@ CREATE TABLE targets (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
     endpoint VARCHAR(255) NOT NULL,
-    tlsclientkey TEXT NOT NULL,
-    tlsclientcert TEXT NOT NULL,
-    oidctokens TEXT NOT NULL,
+    tls_client_key TEXT NOT NULL,
+    tls_client_cert TEXT NOT NULL,
+    oidc_tokens TEXT NOT NULL,
     insecure BOOLEAN,
-    incusproject VARCHAR(255) NOT NULL,
+    incus_project VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 
@@ -125,45 +125,45 @@ CREATE TABLE batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
     status INTEGER NOT NULL,
-    statusstring TEXT NOT NULL,
-    storagepool VARCHAR(255) NOT NULL,
-    includeregex TEXT NOT NULL,
-    excluderegex TEXT NOT NULL,
-    migrationwindowstart TEXT NOT NULL,
-    migrationwindowend TEXT NOT NULL,
-    defaultnetwork VARCHAR(255) NOT NULL,
+    status_string TEXT NOT NULL,
+    storage_pool VARCHAR(255) NOT NULL,
+    include_regex TEXT NOT NULL,
+    exclude_regex TEXT NOT NULL,
+    migration_window_start TEXT NOT NULL,
+    migration_window_end TEXT NOT NULL,
+    default_network VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 
 CREATE TABLE config (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    globalConfig TEXT NOT NULL
+    global_config TEXT NOT NULL
 );
 
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
-    inventorypath VARCHAR(255) NOT NULL,
-    migrationstatus INTEGER NOT NULL,
-    migrationstatusstring TEXT NOT NULL,
-    lastupdatefromsource TEXT NOT NULL,
-    lastmanualupdate TEXT NOT NULL,
-    sourceid INTEGER NOT NULL,
-    targetid INTEGER NOT NULL,
-    batchid INTEGER NOT NULL,
+    inventory_path VARCHAR(255) NOT NULL,
+    migration_status INTEGER NOT NULL,
+    migration_status_string TEXT NOT NULL,
+    last_update_from_source TEXT NOT NULL,
+    last_manual_update TEXT NOT NULL,
+    source_id INTEGER NOT NULL,
+    target_id INTEGER NOT NULL,
+    batch_id INTEGER NOT NULL,
     name VARCHAR(255) NOT NULL,
     architecture VARCHAR(255) NOT NULL,
     os VARCHAR(255) NOT NULL,
-    osversion VARCHAR(255) NOT NULL,
+    os_version VARCHAR(255) NOT NULL,
     disks TEXT NOT NULL,
     nics TEXT NOT NULL,
-    numbercpus INTEGER NOT NULL,
-    memoryinbytes INTEGER NOT NULL,
-    uselegacybios INTEGER NOT NULL,
-    securebootenabled INTEGER NOT NULL,
-    tpmpresent INTEGER NOT NULL,
-    needsdiskimport INTEGER NOT NULL,
-    FOREIGN KEY(sourceid) REFERENCES sources(id),
-    FOREIGN KEY(targetid) REFERENCES targets(id)
+    number_cpus INTEGER NOT NULL,
+    memory_in_bytes INTEGER NOT NULL,
+    use_legacy_bios INTEGER NOT NULL,
+    secure_boot_enabled INTEGER NOT NULL,
+    tpm_present INTEGER NOT NULL,
+    needs_disk_import INTEGER NOT NULL,
+    FOREIGN KEY(source_id) REFERENCES sources(id),
+    FOREIGN KEY(target_id) REFERENCES targets(id)
 );
 
 CREATE TABLE networks (
@@ -186,11 +186,11 @@ CREATE TABLE targets (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
     endpoint VARCHAR(255) NOT NULL,
-    tlsclientkey TEXT NOT NULL,
-    tlsclientcert TEXT NOT NULL,
-    oidctokens TEXT NOT NULL,
+    tls_client_key TEXT NOT NULL,
+    tls_client_cert TEXT NOT NULL,
+    oidc_tokens TEXT NOT NULL,
     insecure BOOLEAN,
-    incusproject VARCHAR(255) NOT NULL,
+    incus_project VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 `

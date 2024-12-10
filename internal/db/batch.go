@@ -19,7 +19,7 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Add batch to the database.
-	q := `INSERT INTO batches (name,status,statusstring,storagepool,includeregex,excluderegex,migrationwindowstart,migrationwindowend,defaultnetwork) VALUES(?,?,?,?,?,?,?,?,?)`
+	q := `INSERT INTO batches (name,status,status_string,storage_pool,include_regex,exclude_regex,migration_window_start,migration_window_end,default_network) VALUES(?,?,?,?,?,?,?,?,?)`
 
 	marshalledMigrationWindowStart, err := internalBatch.MigrationWindowStart.MarshalText()
 	if err != nil {
@@ -105,7 +105,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 			return fmt.Errorf("Cannot delete batch '%s': At least one assigned instance is in a migration phase", name)
 		}
 
-		q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
+		q := `UPDATE instances SET batch_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
 		_, err = tx.Exec(q, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), inst.GetUUID())
 		if err != nil {
 			return err
@@ -157,7 +157,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Update batch in the database.
-	q = `UPDATE batches SET name=?,status=?,statusstring=?,storagepool=?,includeregex=?,excluderegex=?,migrationwindowstart=?,migrationwindowend=?,defaultnetwork=? WHERE id=?`
+	q = `UPDATE batches SET name=?,status=?,status_string=?,storage_pool=?,include_regex=?,exclude_regex=?,migration_window_start=?,migration_window_end=?,default_network=? WHERE id=?`
 
 	internalBatch, ok := b.(*batch.InternalBatch)
 	if !ok {
@@ -195,7 +195,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 	ret := []batch.Batch{}
 
 	// Get all batches in the database.
-	q := `SELECT id,name,status,statusstring,storagepool,includeregex,excluderegex,migrationwindowstart,migrationwindowend,defaultnetwork FROM batches`
+	q := `SELECT id,name,status,status_string,storage_pool,include_regex,exclude_regex,migration_window_start,migration_window_end,default_network FROM batches`
 	var rows *sql.Rows
 	var err error
 	if name != "" {
@@ -251,7 +251,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 
 func (n *Node) GetAllInstancesForBatchID(tx *sql.Tx, id int) ([]instance.Instance, error) {
 	ret := []instance.Instance{}
-	q := `SELECT uuid FROM instances WHERE batchid=?`
+	q := `SELECT uuid FROM instances WHERE batch_id=?`
 	rows, err := tx.Query(q, id)
 	if err != nil {
 		return nil, err
@@ -306,7 +306,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	for _, i := range instances {
 		if !b.InstanceMatchesCriteria(i) {
 			if !i.IsMigrating() {
-				q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
+				q := `UPDATE instances SET batch_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
 				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), i.GetUUID())
 				if err != nil {
 					return err
@@ -325,7 +325,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	for _, i := range instances {
 		if b.InstanceMatchesCriteria(i) {
 			if i.CanBeModified() {
-				q := `UPDATE instances SET batchid=?,migrationstatus=?,migrationstatusstring=? WHERE uuid=?`
+				q := `UPDATE instances SET batch_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
 				_, err := tx.Exec(q, batchID, api.MIGRATIONSTATUS_ASSIGNED_BATCH, api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(), i.GetUUID())
 				if err != nil {
 					return err
@@ -397,7 +397,7 @@ func (n *Node) GetAllBatchesByState(tx *sql.Tx, status api.BatchStatusType) ([]b
 }
 
 func (n *Node) UpdateBatchStatus(tx *sql.Tx, id int, status api.BatchStatusType, statusString string) error {
-	q := `UPDATE batches SET status=?,statusstring=? WHERE id=?`
+	q := `UPDATE batches SET status=?,status_string=? WHERE id=?`
 	_, err := tx.Exec(q, status, statusString, id)
 
 	return err

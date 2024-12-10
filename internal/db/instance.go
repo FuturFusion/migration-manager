@@ -19,7 +19,7 @@ func (n *Node) AddInstance(tx *sql.Tx, i instance.Instance) error {
 	}
 
 	// Add instance to the database.
-	q := `INSERT INTO instances (uuid,inventorypath,migrationstatus,migrationstatusstring,lastupdatefromsource,lastmanualupdate,sourceid,targetid,batchid,name,architecture,os,osversion,disks,nics,numbercpus,memoryinbytes,uselegacybios,securebootenabled,tpmpresent,needsdiskimport) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+	q := `INSERT INTO instances (uuid,inventory_path,migration_status,migration_status_string,last_update_from_source,last_manual_update,source_id,target_id,batch_id,name,architecture,os,os_version,disks,nics,number_cpus,memory_in_bytes,use_legacy_bios,secure_boot_enabled,tpm_present,needs_disk_import) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
 
 	marshalledLastUpdateFromSource, err := internalInstance.LastUpdateFromSource.MarshalText()
 	if err != nil {
@@ -95,7 +95,7 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 
 func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	// Don't allow updates if this instance has been assigned to a batch.
-	q := `SELECT batchid FROM instances WHERE uuid=?`
+	q := `SELECT batch_id FROM instances WHERE uuid=?`
 	row := tx.QueryRow(q, i.GetUUID())
 
 	batchID := internal.INVALID_DATABASE_ID
@@ -118,7 +118,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	}
 
 	// Update instance in the database.
-	q = `UPDATE instances SET inventorypath=?,migrationstatus=?,migrationstatusstring=?,lastupdatefromsource=?,lastmanualupdate=?,sourceid=?,targetid=?,batchid=?,name=?,architecture=?,os=?,osversion=?,disks=?,nics=?,numbercpus=?,memoryinbytes=?,uselegacybios=?,securebootenabled=?,tpmpresent=?,needsdiskimport=? WHERE uuid=?`
+	q = `UPDATE instances SET inventory_path=?,migration_status=?,migration_status_string=?,last_update_from_source=?,last_manual_update=?,source_id=?,target_id=?,batch_id=?,name=?,architecture=?,os=?,os_version=?,disks=?,nics=?,number_cpus=?,memory_in_bytes=?,use_legacy_bios=?,secure_boot_enabled=?,tpm_present=?,needs_disk_import=? WHERE uuid=?`
 
 	internalInstance, ok := i.(*instance.InternalInstance)
 	if !ok {
@@ -166,7 +166,7 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 	ret := []instance.Instance{}
 
 	// Get all instances in the database.
-	q := `SELECT uuid,inventorypath,migrationstatus,migrationstatusstring,lastupdatefromsource,lastmanualupdate,sourceid,targetid,batchid,name,architecture,os,osversion,disks,nics,numbercpus,memoryinbytes,uselegacybios,securebootenabled,tpmpresent,needsdiskimport FROM instances`
+	q := `SELECT uuid,inventory_path,migration_status,migration_status_string,last_update_from_source,last_manual_update,source_id,target_id,batch_id,name,architecture,os,os_version,disks,nics,number_cpus,memory_in_bytes,use_legacy_bios,secure_boot_enabled,tpm_present,needs_disk_import FROM instances`
 	var rows *sql.Rows
 	var err error
 	if UUID != [16]byte{} {
@@ -247,7 +247,7 @@ func (n *Node) GetAllInstancesByState(tx *sql.Tx, status api.MigrationStatusType
 }
 
 func (n *Node) UpdateInstanceStatus(tx *sql.Tx, UUID uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) error {
-	q := `UPDATE instances SET migrationstatus=?,migrationstatusstring=?,needsdiskimport=? WHERE uuid=?`
+	q := `UPDATE instances SET migration_status=?,migration_status_string=?,needs_disk_import=? WHERE uuid=?`
 	_, err := tx.Exec(q, status, statusString, needsDiskImport, UUID)
 
 	return err

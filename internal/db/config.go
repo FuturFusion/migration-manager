@@ -9,7 +9,7 @@ import (
 func (n *Node) ReadGlobalConfig(tx *sql.Tx) (map[string]string, error) {
 	ret := make(map[string]string)
 
-	q := `SELECT globalConfig FROM config WHERE id=0`
+	q := `SELECT global_config FROM config WHERE id=0`
 	row := tx.QueryRow(q)
 
 	marshalledConfig := ""
@@ -31,7 +31,7 @@ func (n *Node) ReadGlobalConfig(tx *sql.Tx) (map[string]string, error) {
 }
 
 func (n *Node) WriteGlobalConfig(tx *sql.Tx, config map[string]string) error {
-	q := `INSERT OR REPLACE INTO config (id, globalConfig) VALUES(0, ?)`
+	q := `INSERT OR REPLACE INTO config (id, global_config) VALUES(0, ?)`
 
 	marshalledConfig, err := json.Marshal(config)
 	if err != nil {

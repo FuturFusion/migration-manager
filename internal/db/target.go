@@ -16,7 +16,7 @@ func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 	}
 
 	// Add target to the database.
-	q := `INSERT INTO targets (name,endpoint,tlsclientkey,tlsclientcert,oidctokens,insecure,incusproject) VALUES(?,?,?,?,?,?,?)`
+	q := `INSERT INTO targets (name,endpoint,tls_client_key,tls_client_cert,oidc_tokens,insecure,incus_project) VALUES(?,?,?,?,?,?,?)`
 
 	marshalledOIDCTokens, err := json.Marshal(incusTarget.OIDCTokens)
 	if err != nil {
@@ -81,7 +81,7 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 		return err
 	}
 
-	q := `SELECT COUNT(uuid) FROM instances WHERE targetid=?`
+	q := `SELECT COUNT(uuid) FROM instances WHERE target_id=?`
 	row := tx.QueryRow(q, tID)
 
 	numInstances := 0
@@ -115,7 +115,7 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 
 func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 	// Update target in the database.
-	q := `UPDATE targets SET name=?,endpoint=?,tlsclientkey=?,tlsclientcert=?,oidctokens=?,insecure=?,incusproject=? WHERE id=?`
+	q := `UPDATE targets SET name=?,endpoint=?,tls_client_key=?,tls_client_cert=?,oidc_tokens=?,insecure=?,incus_project=? WHERE id=?`
 
 	incusTarget, ok := t.(*target.InternalIncusTarget)
 	if !ok {
@@ -153,7 +153,7 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, name string, id int) ([]target.Targe
 	ret := []target.Target{}
 
 	// Get all targets in the database.
-	q := `SELECT id,name,endpoint,tlsclientkey,tlsclientcert,oidctokens,insecure,incusproject FROM targets`
+	q := `SELECT id,name,endpoint,tls_client_key,tls_client_cert,oidc_tokens,insecure,incus_project FROM targets`
 	var rows *sql.Rows
 	var err error
 	if name != "" {

@@ -98,7 +98,7 @@ func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
 		return err
 	}
 
-	q := `SELECT COUNT(uuid) FROM instances WHERE sourceid=?`
+	q := `SELECT COUNT(uuid) FROM instances WHERE source_id=?`
 	row := tx.QueryRow(q, sID)
 
 	numInstances := 0
