@@ -10,7 +10,7 @@ type Network struct {
 
 	// An opaque integer identifier for the network
 	// Example: 123
-	DatabaseID int `json:"databaseID" yaml:"databaseID"`
+	DatabaseID int `json:"database_id" yaml:"database_id"`
 
 	// Any network-specific config options
 	// Example: {"network": "vmware", "ipv6.address": "none"}

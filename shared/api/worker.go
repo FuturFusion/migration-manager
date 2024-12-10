@@ -28,7 +28,7 @@ type WorkerCommand struct {
 
 	// Internal path to the instance
 	// Example: /SHF/vm/Migration Tests/DebianTest
-	InventoryPath string `json:"inventoryPath" yaml:"inventoryPath"`
+	InventoryPath string `json:"inventory_path" yaml:"inventory_path"`
 
 	// Source for the worker to fetch VM metadata and/or disk from
 	// Example: VMwareSource{...}
@@ -40,7 +40,7 @@ type WorkerCommand struct {
 
 	// The version of the operating system
 	// Example: 24.04
-	OSVersion string `json:"osVersion" yaml:"osVersion"`
+	OSVersion string `json:"os_version" yaml:"os_version"`
 }
 
 // WorkerResponse defines a response received from a worker.
@@ -53,5 +53,5 @@ type WorkerResponse struct {
 
 	// A free-form string to provide additional information about the command status
 	// Example: "Migration 25% complete"
-	StatusString string `json:"statusString" yaml:"statusString"`
+	StatusString string `json:"status_string" yaml:"status_string"`
 }

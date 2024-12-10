@@ -36,7 +36,7 @@ type CommonSource struct {
 
 	// An opaque integer identifier for the source
 	// Example: 123
-	DatabaseID int `json:"databaseID" yaml:"databaseID"`
+	DatabaseID int `json:"database_id" yaml:"database_id"`
 
 	// If true, disable TLS certificate validation
 	// Example: false

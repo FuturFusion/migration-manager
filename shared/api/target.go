@@ -14,20 +14,20 @@ type IncusTarget struct {
 
 	// An opaque integer identifier for the target
 	// Example: 123
-	DatabaseID int `json:"databaseID" yaml:"databaseID"`
+	DatabaseID int `json:"database_id" yaml:"database_id"`
 
 	// Hostname or IP address of the target endpoint
 	// Example: https://incus.local:8443
 	Endpoint string `json:"endpoint" yaml:"endpoint"`
 
 	// base64-encoded TLS client key for authentication
-	TLSClientKey string `json:"tlsClientKey" yaml:"tlsClientKey"`
+	TLSClientKey string `json:"tls_client_key" yaml:"tls_client_key"`
 
 	// base64-encoded TLS client certificate for authentication
-	TLSClientCert string `json:"tlsClientCert" yaml:"tlsClientCert"`
+	TLSClientCert string `json:"tls_client_cert" yaml:"tls_client_cert"`
 
 	// OpenID Connect tokens
-	OIDCTokens *oidc.Tokens[*oidc.IDTokenClaims] `json:"oidcTokens" yaml:"oidcTokens"`
+	OIDCTokens *oidc.Tokens[*oidc.IDTokenClaims] `json:"oidc_tokens" yaml:"oidc_tokens"`
 
 	// If true, disable TLS certificate validation
 	// Example: false
@@ -35,5 +35,5 @@ type IncusTarget struct {
 
 	// The Incus project to use
 	// Example: default
-	IncusProject string `json:"incusProject" yaml:"incusProject"`
+	IncusProject string `json:"incus_project" yaml:"incus_project"`
 }

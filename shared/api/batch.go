@@ -52,7 +52,7 @@ type Batch struct {
 
 	// An opaque integer identifier for the batch
 	// Example: 123
-	DatabaseID int `json:"databaseID" yaml:"databaseID"`
+	DatabaseID int `json:"database_id" yaml:"database_id"`
 
 	// The status of this batch
 	// Example: BATCHSTATUS_DEFINED
@@ -60,26 +60,26 @@ type Batch struct {
 
 	// A free-form string to provide additional information about the status
 	// Example: "4 of 5 instances migrated"
-	StatusString string `json:"statusString" yaml:"statusString"`
+	StatusString string `json:"status_string" yaml:"status_string"`
 
 	// The Incus storage pool that this batch should use for creating VMs and mounting ISO images
 	// Example: local
-	StoragePool string `json:"storagePool" yaml:"storagePool"`
+	StoragePool string `json:"storage_pool" yaml:"storage_pool"`
 
 	// A regular expression used to select instances to add to this batch
 	// Example: .*
-	IncludeRegex string `json:"includeRegex" yaml:"includeRegex"`
+	IncludeRegex string `json:"include_regex" yaml:"include_regex"`
 
 	// A regular expression used to exclude instances from this batch
 	// Example: Windows
-	ExcludeRegex string `json:"excludeRegex" yaml:"excludeRegex"`
+	ExcludeRegex string `json:"exclude_regex" yaml:"exclude_regex"`
 
 	// If specified, don't start the migration before this time
-	MigrationWindowStart time.Time `json:"migrationWindowStart" yaml:"migrationWindowStart"`
+	MigrationWindowStart time.Time `json:"migration_window_start" yaml:"migration_window_start"`
 
 	// If specified, don't start the migration after this time
-	MigrationWindowEnd time.Time `json:"migrationWindowEnd" yaml:"migrationWindowEnd"`
+	MigrationWindowEnd time.Time `json:"migration_window_end" yaml:"migration_window_end"`
 
 	// Default network to use for instances if not specified by their NIC(s) definition
-	DefaultNetwork string `json:"defaultNetwork" yaml:"defaultNetwork"`
+	DefaultNetwork string `json:"default_network" yaml:"default_network"`
 }
