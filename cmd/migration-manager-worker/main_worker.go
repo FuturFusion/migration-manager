@@ -10,6 +10,8 @@ import (
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
+
+	"github.com/FuturFusion/migration-manager/cmd/migration-manager-worker/worker"
 )
 
 type cmdWorker struct {
@@ -51,7 +53,7 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("This tool is designed to be run within an Incus VM\n")
 	}
 
-	w, err := newWorker(c.flagMMEndpoint, c.flagUUID)
+	w, err := worker.NewWorker(c.flagMMEndpoint, c.flagUUID)
 	if err != nil {
 		return err
 	}
@@ -74,15 +76,15 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 		select {
 		case sig := <-sigCh:
 			logger.Info("Received signal", logger.Ctx{"signal": sig})
-			if w.shutdownCtx.Err() != nil {
+			if w.ShutdownCtx.Err() != nil {
 				logger.Warn("Ignoring signal, shutdown already in progress", logger.Ctx{"signal": sig})
 			} else {
 				go func() {
-					w.shutdownDoneCh <- w.Stop(context.Background(), sig)
+					w.ShutdownDoneCh <- w.Stop(context.Background(), sig)
 				}()
 			}
 
-		case err = <-w.shutdownDoneCh:
+		case err = <-w.ShutdownDoneCh:
 			return err
 		}
 	}

@@ -1,4 +1,4 @@
-package main
+package cmds
 
 import (
 	"encoding/json"
@@ -13,11 +13,11 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-type cmdBatch struct {
-	global *cmdGlobal
+type CmdBatch struct {
+	Global *CmdGlobal
 }
 
-func (c *cmdBatch) Command() *cobra.Command {
+func (c *CmdBatch) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "batch"
 	cmd.Short = "Interact with migration batches"
@@ -28,31 +28,31 @@ func (c *cmdBatch) Command() *cobra.Command {
 `
 
 	// Add
-	batchAddCmd := cmdBatchAdd{global: c.global}
+	batchAddCmd := cmdBatchAdd{global: c.Global}
 	cmd.AddCommand(batchAddCmd.Command())
 
 	// List
-	batchListCmd := cmdBatchList{global: c.global}
+	batchListCmd := cmdBatchList{global: c.Global}
 	cmd.AddCommand(batchListCmd.Command())
 
 	// Remove
-	batchRemoveCmd := cmdBatchRemove{global: c.global}
+	batchRemoveCmd := cmdBatchRemove{global: c.Global}
 	cmd.AddCommand(batchRemoveCmd.Command())
 
 	// Show
-	batchShowCmd := cmdBatchShow{global: c.global}
+	batchShowCmd := cmdBatchShow{global: c.Global}
 	cmd.AddCommand(batchShowCmd.Command())
 
 	// Start
-	batchStartCmd := cmdBatchStart{global: c.global}
+	batchStartCmd := cmdBatchStart{global: c.Global}
 	cmd.AddCommand(batchStartCmd.Command())
 
 	// Stop
-	batchStopCmd := cmdBatchStop{global: c.global}
+	batchStopCmd := cmdBatchStop{global: c.Global}
 	cmd.AddCommand(batchStopCmd.Command())
 
 	// Update
-	batchUpdateCmd := cmdBatchUpdate{global: c.global}
+	batchUpdateCmd := cmdBatchUpdate{global: c.Global}
 	cmd.AddCommand(batchUpdateCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -64,7 +64,7 @@ func (c *cmdBatch) Command() *cobra.Command {
 
 // Add the batch.
 type cmdBatchAdd struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdBatchAdd) Command() *cobra.Command {
@@ -97,22 +97,22 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		StatusString: api.BATCHSTATUS_DEFINED.String(),
 	}
 
-	b.StoragePool, err = c.global.asker.AskString("What storage pool should be used for VMs and the migration ISO images? [local] ", "local", nil)
+	b.StoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? [local] ", "local", nil)
 	if err != nil {
 		return err
 	}
 
-	b.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: ", "", func(s string) error { return nil })
+	b.IncludeRegex, err = c.global.Asker.AskString("Regular expression to include instances: ", "", func(s string) error { return nil })
 	if err != nil {
 		return err
 	}
 
-	b.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: ", "", func(s string) error { return nil })
+	b.ExcludeRegex, err = c.global.Asker.AskString("Regular expression to exclude instances: ", "", func(s string) error { return nil })
 	if err != nil {
 		return err
 	}
 
-	windowStart, err := c.global.asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ", "", func(s string) error {
+	windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ", "", func(s string) error {
 		if s != "" {
 			_, err := time.Parse(time.DateTime, s)
 			return err
@@ -128,7 +128,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		b.MigrationWindowStart, _ = time.Parse(time.DateTime, windowStart)
 	}
 
-	windowEnd, err := c.global.asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ", "", func(s string) error {
+	windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ", "", func(s string) error {
 		if s != "" {
 			_, err := time.Parse(time.DateTime, s)
 			return err
@@ -144,7 +144,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		b.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
 	}
 
-	b.DefaultNetwork, err = c.global.asker.AskString("Default network for instances: ", "", func(s string) error { return nil })
+	b.DefaultNetwork, err = c.global.Asker.AskString("Default network for instances: ", "", func(s string) error { return nil })
 	if err != nil {
 		return err
 	}
@@ -166,7 +166,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 
 // List the batches.
 type cmdBatchList struct {
-	global *cmdGlobal
+	global *CmdGlobal
 
 	flagFormat string
 }
@@ -253,7 +253,7 @@ func parseReturnedBatch(b any) (any, error) {
 
 // Remove the batch.
 type cmdBatchRemove struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdBatchRemove) Command() *cobra.Command {
@@ -290,7 +290,7 @@ func (c *cmdBatchRemove) Run(cmd *cobra.Command, args []string) error {
 
 // Show the batch.
 type cmdBatchShow struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdBatchShow) Command() *cobra.Command {
@@ -391,7 +391,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 // Start the batch.
 type cmdBatchStart struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdBatchStart) Command() *cobra.Command {
@@ -428,7 +428,7 @@ func (c *cmdBatchStart) Run(cmd *cobra.Command, args []string) error {
 
 // Stop the batch.
 type cmdBatchStop struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdBatchStop) Command() *cobra.Command {
@@ -465,7 +465,7 @@ func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
 
 // Update the batch.
 type cmdBatchUpdate struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdBatchUpdate) Command() *cobra.Command {
@@ -508,22 +508,22 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 	case api.Batch:
 		origBatchName = bb.Name
 
-		bb.Name, err = c.global.asker.AskString("Batch name: ["+bb.Name+"] ", bb.Name, nil)
+		bb.Name, err = c.global.Asker.AskString("Batch name: ["+bb.Name+"] ", bb.Name, nil)
 		if err != nil {
 			return err
 		}
 
-		bb.StoragePool, err = c.global.asker.AskString("Storage pool: ["+bb.StoragePool+"] ", bb.StoragePool, nil)
+		bb.StoragePool, err = c.global.Asker.AskString("Storage pool: ["+bb.StoragePool+"] ", bb.StoragePool, nil)
 		if err != nil {
 			return err
 		}
 
-		bb.IncludeRegex, err = c.global.asker.AskString("Regular expression to include instances: ["+bb.IncludeRegex+"] ", bb.IncludeRegex, func(s string) error { return nil })
+		bb.IncludeRegex, err = c.global.Asker.AskString("Regular expression to include instances: ["+bb.IncludeRegex+"] ", bb.IncludeRegex, func(s string) error { return nil })
 		if err != nil {
 			return err
 		}
 
-		bb.ExcludeRegex, err = c.global.asker.AskString("Regular expression to exclude instances: ["+bb.ExcludeRegex+"] ", bb.ExcludeRegex, func(s string) error { return nil })
+		bb.ExcludeRegex, err = c.global.Asker.AskString("Regular expression to exclude instances: ["+bb.ExcludeRegex+"] ", bb.ExcludeRegex, func(s string) error { return nil })
 		if err != nil {
 			return err
 		}
@@ -533,7 +533,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 			windowStartValue = bb.MigrationWindowStart.Format(time.DateTime)
 		}
 
-		windowStart, err := c.global.asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ["+windowStartValue+"] ", windowStartValue, func(s string) error {
+		windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ["+windowStartValue+"] ", windowStartValue, func(s string) error {
 			if s != "" {
 				_, err := time.Parse(time.DateTime, s)
 				return err
@@ -554,7 +554,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 			windowEndValue = bb.MigrationWindowEnd.Format(time.DateTime)
 		}
 
-		windowEnd, err := c.global.asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ["+windowEndValue+"] ", windowEndValue, func(s string) error {
+		windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ["+windowEndValue+"] ", windowEndValue, func(s string) error {
 			if s != "" {
 				_, err := time.Parse(time.DateTime, s)
 				return err
@@ -570,7 +570,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 			bb.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
 		}
 
-		bb.DefaultNetwork, err = c.global.asker.AskString("Default network for instances: ["+bb.DefaultNetwork+"] ", bb.DefaultNetwork, func(s string) error { return nil })
+		bb.DefaultNetwork, err = c.global.Asker.AskString("Default network for instances: ["+bb.DefaultNetwork+"] ", bb.DefaultNetwork, func(s string) error { return nil })
 		if err != nil {
 			return err
 		}

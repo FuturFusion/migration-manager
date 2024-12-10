@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -38,11 +38,11 @@ type APIEndpointAction struct {
 }
 
 type DaemonConfig struct {
-	dbPathDir string
+	DbPathDir string
 
-	restServerIPAddr    string
-	restServerPort      int
-	restServerTLSConfig *tls.Config
+	RestServerIPAddr    string
+	RestServerPort      int
+	RestServerTLSConfig *tls.Config
 }
 
 type Daemon struct {
@@ -52,20 +52,20 @@ type Daemon struct {
 
 	db *db.Node
 
-	shutdownCtx    context.Context    // Canceled when shutdown starts.
-	shutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
-	shutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
+	ShutdownCtx    context.Context    // Canceled when shutdown starts.
+	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
+	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
 }
 
-func newDaemon(config *DaemonConfig) *Daemon {
+func NewDaemon(config *DaemonConfig) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	return &Daemon{
 		config:         config,
 		db:             &db.Node{},
-		shutdownCtx:    shutdownCtx,
-		shutdownCancel: shutdownCancel,
-		shutdownDoneCh: make(chan error),
+		ShutdownCtx:    shutdownCtx,
+		ShutdownCancel: shutdownCancel,
+		ShutdownDoneCh: make(chan error),
 	}
 }
 
@@ -75,14 +75,14 @@ func (d *Daemon) Start() error {
 	logger.Info("Starting up", logger.Ctx{"version": version.Version})
 
 	// Open the local sqlite database.
-	d.db, err = db.OpenDatabase(d.config.dbPathDir)
+	d.db, err = db.OpenDatabase(d.config.DbPathDir)
 	if err != nil {
 		logger.Errorf("Failed to open sqlite database: %s", err)
 		return err
 	}
 
 	// Read global config, if any, from the database.
-	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		d.globalConfig, err = d.db.ReadGlobalConfig(tx)
 
 		return err
@@ -95,9 +95,9 @@ func (d *Daemon) Start() error {
 	// Start the REST endpoint.
 	config := &endpoint.Config{
 		RestServer:     restServer(d),
-		Config:         d.config.restServerTLSConfig,
-		NetworkAddress: d.config.restServerIPAddr,
-		NetworkPort:    d.config.restServerPort,
+		Config:         d.config.RestServerTLSConfig,
+		NetworkAddress: d.config.RestServerIPAddr,
+		NetworkPort:    d.config.RestServerPort,
 	}
 
 	_, err = endpoint.Up(config)
@@ -175,7 +175,7 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 			return false
 		}
 
-		if d.shutdownCtx.Err() == context.Canceled && !allowedDuringShutdown() {
+		if d.ShutdownCtx.Err() == context.Canceled && !allowedDuringShutdown() {
 			_ = response.Unavailable(fmt.Errorf("Shutting down")).Render(w)
 			return
 		}
@@ -241,9 +241,9 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 }
 
 func (d *Daemon) getEndpoint() string {
-	if d.config.restServerTLSConfig == nil {
-		return fmt.Sprintf("http://%s:%d", d.config.restServerIPAddr, d.config.restServerPort)
+	if d.config.RestServerTLSConfig == nil {
+		return fmt.Sprintf("http://%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort)
 	}
 
-	return fmt.Sprintf("https://%s:%d", d.config.restServerIPAddr, d.config.restServerPort)
+	return fmt.Sprintf("https://%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort)
 }

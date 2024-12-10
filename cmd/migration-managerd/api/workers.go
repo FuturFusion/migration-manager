@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"context"
@@ -31,7 +31,7 @@ func (d *Daemon) runPeriodicTask(f func() bool, interval time.Duration) {
 			t := time.NewTimer(interval)
 
 			select {
-			case <-d.shutdownCtx.Done():
+			case <-d.ShutdownCtx.Done():
 				t.Stop()
 				return
 			case <-t.C:
@@ -46,7 +46,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 	// Ensure at least one target exists.
 	targets := []target.Target{}
-	err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 		targets, err = d.db.GetAllTargets(tx)
 		if err != nil {
@@ -74,7 +74,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 	// Get the list of configured sources.
 	sources := []source.Source{}
-	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 		sources, err = d.db.GetAllSources(tx)
 		if err != nil {
@@ -90,13 +90,13 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 	// Check each source for any net networks and any new, changed, or deleted instances.
 	for _, s := range sources {
-		err := s.Connect(d.shutdownCtx)
+		err := s.Connect(d.ShutdownCtx)
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
 			continue
 		}
 
-		networks, err := s.GetAllNetworks(d.shutdownCtx)
+		networks, err := s.GetAllNetworks(d.ShutdownCtx)
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
 			continue
@@ -105,14 +105,14 @@ func (d *Daemon) syncInstancesFromSources() bool {
 		// Iterate each network from this source.
 		for _, n := range networks {
 			// Check if a network already exists with the same name.
-			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				_, err := d.db.GetNetwork(tx, n.Name)
 				return err
 			})
 			// Only add the network if it doesn't yet exist
 			if err != nil {
 				logger.Info("Adding network "+n.Name+" from source "+s.GetName(), loggerCtx)
-				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					return d.db.AddNetwork(tx, &n)
 				})
 				if err != nil {
@@ -122,7 +122,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 			}
 		}
 
-		instances, err := s.GetAllVMs(d.shutdownCtx)
+		instances, err := s.GetAllVMs(d.ShutdownCtx)
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
 			continue
@@ -134,7 +134,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 		for _, i := range instances {
 			// Check if this instance is already in the database.
 			existingInstance := &instance.InternalInstance{}
-			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				inst, err := d.db.GetInstance(tx, i.GetUUID())
 				if err != nil {
 					return err
@@ -217,7 +217,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 				if instanceUpdated {
 					logger.Info("Syncing changes to instance "+i.GetName()+" ("+i.GetUUID().String()+") from source "+s.GetName(), loggerCtx)
 					existingInstance.LastUpdateFromSource = i.LastUpdateFromSource
-					err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 						err := d.db.UpdateInstance(tx, existingInstance)
 						if err != nil {
 							return err
@@ -235,7 +235,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 				logger.Info("Adding instance "+i.GetName()+" ("+i.GetUUID().String()+") from source "+s.GetName()+" to database", loggerCtx)
 				i.TargetID = targetID
 
-				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					err := d.db.AddInstance(tx, &i)
 					if err != nil {
 						return err
@@ -255,7 +255,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 		// Remove instances that no longer exist in this source.
 		allDBInstances := []instance.Instance{}
-		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			instances, err := d.db.GetAllInstances(tx)
 			if err != nil {
 				return err
@@ -273,7 +273,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 			_, instanceExists := currentInstancesFromSource[i.GetUUID()]
 			if !instanceExists {
 				logger.Info("Instance "+i.GetName()+" ("+i.GetUUID().String()+") removed from source "+s.GetName(), loggerCtx)
-				err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					err := d.db.DeleteInstance(tx, i.GetUUID())
 					if err != nil {
 						return err
@@ -297,7 +297,7 @@ func (d *Daemon) processReadyBatches() bool {
 
 	// Get any batches in the "ready" state.
 	batches := []batch.Batch{}
-	err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 		batches, err = d.db.GetAllBatchesByState(tx, api.BATCHSTATUS_READY)
 		if err != nil {
@@ -324,7 +324,7 @@ func (d *Daemon) processReadyBatches() bool {
 		if !b.GetMigrationWindowStart().IsZero() && !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(b.GetMigrationWindowStart()) {
 			logger.Error("Batch '"+b.GetName()+"' window end time is before its start time", loggerCtx)
 
-			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "Migration window end before start")
 				if err != nil {
 					return err
@@ -343,7 +343,7 @@ func (d *Daemon) processReadyBatches() bool {
 		if !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(time.Now().UTC()) {
 			logger.Error("Batch '"+b.GetName()+"' window end time has already passed", loggerCtx)
 
-			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
 				if err != nil {
 					return err
@@ -361,7 +361,7 @@ func (d *Daemon) processReadyBatches() bool {
 
 		// Get all instances for this batch.
 		instances := []instance.Instance{}
-		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			var err error
 			instances, err = d.db.GetAllInstancesForBatchID(tx, batchID)
 			if err != nil {
@@ -379,7 +379,7 @@ func (d *Daemon) processReadyBatches() bool {
 		if len(instances) == 0 {
 			logger.Error("Batch '"+b.GetName()+"' has no instances", loggerCtx)
 
-			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "No instances assigned")
 				if err != nil {
 					return err
@@ -398,7 +398,7 @@ func (d *Daemon) processReadyBatches() bool {
 		// No issues detected, move to "queued" status.
 		logger.Info("Updating batch '"+b.GetName()+"' status to 'Queued'", loggerCtx)
 
-		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_QUEUED.String())
 			if err != nil {
 				return err
@@ -431,7 +431,7 @@ func (d *Daemon) processQueuedBatches() bool {
 
 	// Get any batches in the "queued" state.
 	batches := []batch.Batch{}
-	err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 		batches, err = d.db.GetAllBatchesByState(tx, api.BATCHSTATUS_QUEUED)
 		if err != nil {
@@ -457,7 +457,7 @@ func (d *Daemon) processQueuedBatches() bool {
 		if !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(time.Now().UTC()) {
 			logger.Error("Batch '"+b.GetName()+"' window end time has already passed", loggerCtx)
 
-			err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
 				if err != nil {
 					return err
@@ -475,7 +475,7 @@ func (d *Daemon) processQueuedBatches() bool {
 
 		// Get all instances for this batch.
 		instances := []instance.Instance{}
-		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			var err error
 			instances, err = d.db.GetAllInstancesForBatchID(tx, batchID)
 			if err != nil {
@@ -497,7 +497,7 @@ func (d *Daemon) processQueuedBatches() bool {
 		// Move batch to "running" status.
 		logger.Info("Updating batch '"+b.GetName()+"' status to 'Running'", loggerCtx)
 
-		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_RUNNING.String())
 			if err != nil {
 				return err
@@ -518,7 +518,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	loggerCtx := logger.Ctx{"method": "spinUpMigrationEnv"}
 
 	// Update the instance status.
-	err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
 		if err != nil {
 			return err
@@ -533,7 +533,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 
 	// Get the source for this instance.
 	var s source.Source
-	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 		s, err = d.db.GetSourceByID(tx, inst.GetSourceID())
 		if err != nil {
@@ -544,7 +544,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	})
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
-		_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 			if err != nil {
 				return err
@@ -557,7 +557,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 
 	// Get the target for this instance.
 	var t target.Target
-	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 		t, err = d.db.GetTargetByID(tx, inst.GetTargetID())
 		if err != nil {
@@ -568,7 +568,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	})
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
-		_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 			if err != nil {
 				return err
@@ -580,10 +580,10 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	}
 
 	// Connect to the target.
-	err = t.Connect(d.shutdownCtx)
+	err = t.Connect(d.ShutdownCtx)
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
-		_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 			if err != nil {
 				return err
@@ -605,7 +605,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	creationErr := t.CreateNewVM(instanceDef, storagePool, d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
 	if creationErr != nil {
 		logger.Warn(creationErr.Error(), loggerCtx)
-		err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, creationErr.Error(), true)
 			if err != nil {
 				return err
@@ -621,7 +621,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	}
 
 	// Creation was successful, update the instance state to 'Idle'.
-	err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
 		if err != nil {
 			return err
@@ -638,7 +638,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	startErr := t.StartVM(inst.GetName())
 	if startErr != nil {
 		logger.Warn(startErr.Error(), loggerCtx)
-		err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, startErr.Error(), true)
 			if err != nil {
 				return err
@@ -657,7 +657,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	pushErr := t.PushFile(inst.GetName(), "./migration-manager-worker", "/root/")
 	if pushErr != nil {
 		logger.Warn(pushErr.Error(), loggerCtx)
-		err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, pushErr.Error(), true)
 			if err != nil {
 				return err
@@ -676,7 +676,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	workerStartErr := t.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getEndpoint(), "--uuid", inst.GetUUID().String()})
 	if workerStartErr != nil {
 		logger.Warn(workerStartErr.Error(), loggerCtx)
-		err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, workerStartErr.Error(), true)
 			if err != nil {
 				return err
@@ -697,7 +697,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 
 	// Get any instances in the "complete" state.
 	instances := []instance.Instance{}
-	err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 		instances, err = d.db.GetAllInstancesByState(tx, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
 		if err != nil {
@@ -715,7 +715,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		logger.Info("Finalizing migration steps for instance "+i.GetName(), loggerCtx)
 		// Get the target for this instance.
 		var t target.Target
-		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			var err error
 			t, err = d.db.GetTargetByID(tx, i.GetTargetID())
 			if err != nil {
@@ -726,7 +726,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		})
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
-			_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					return err
@@ -738,10 +738,10 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		}
 
 		// Connect to the target.
-		err = t.Connect(d.shutdownCtx)
+		err = t.Connect(d.ShutdownCtx)
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
-			_ = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					return err
@@ -756,7 +756,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		stopErr := t.StopVM(i.GetName(), true)
 		if stopErr != nil {
 			logger.Warn(stopErr.Error(), loggerCtx)
-			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, stopErr.Error(), true)
 				if err != nil {
 					return err
@@ -775,7 +775,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		apiDef, etag, err := t.GetInstance(i.GetName())
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
-			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					return err
@@ -793,7 +793,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		// Get the batch for this instance.
 		batchID := i.GetBatchID()
 		var dbBatch batch.Batch
-		batchErr := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		batchErr := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			var err error
 			dbBatch, err = d.db.GetBatchByID(tx, batchID)
 			if err != nil {
@@ -804,7 +804,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		})
 		if batchErr != nil {
 			logger.Warn(batchErr.Error(), loggerCtx)
-			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, batchErr.Error(), true)
 				if err != nil {
 					return err
@@ -821,7 +821,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 
 		// Get the default network to use for this instance.
 		var defaultNetwork api.Network
-		defNetErr := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		defNetErr := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			var err error
 			defaultNetwork, err = d.db.GetNetwork(tx, dbBatch.GetDefaultNetwork())
 			if err != nil {
@@ -832,7 +832,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		})
 		if defNetErr != nil {
 			logger.Warn(defNetErr.Error(), loggerCtx)
-			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, defNetErr.Error(), true)
 				if err != nil {
 					return err
@@ -854,7 +854,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 
 			// If the NIC has a network set, and it's not the default, fetch the network definition.
 			if nic.Network != "" && nic.Network != baseNetwork.Name {
-				netErr := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				netErr := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					var err error
 					baseNetwork, err = d.db.GetNetwork(tx, nic.Network)
 					if err != nil {
@@ -865,7 +865,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 				})
 				if netErr != nil {
 					logger.Warn(netErr.Error(), loggerCtx)
-					err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 						err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, netErr.Error(), true)
 						if err != nil {
 							return err
@@ -934,7 +934,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		op, updateErr := t.UpdateInstance(i.GetName(), apiDef.Writable(), etag)
 		if updateErr != nil {
 			logger.Warn(updateErr.Error(), loggerCtx)
-			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, updateErr.Error(), true)
 				if err != nil {
 					return err
@@ -952,7 +952,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		updateErr = op.Wait()
 		if updateErr != nil {
 			logger.Warn(updateErr.Error(), loggerCtx)
-			err := d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, updateErr.Error(), true)
 				if err != nil {
 					return err
@@ -968,7 +968,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		}
 
 		// Update the instance status.
-		err = d.db.Transaction(d.shutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_FINISHED, api.MIGRATIONSTATUS_FINISHED.String(), true)
 			if err != nil {
 				return err

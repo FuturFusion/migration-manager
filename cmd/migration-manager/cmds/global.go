@@ -1,0 +1,155 @@
+package cmds
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"os/user"
+	"path"
+
+	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v6/shared/ask"
+	"github.com/lxc/incus/v6/shared/util"
+	"github.com/spf13/cobra"
+
+	"github.com/FuturFusion/migration-manager/cmd/migration-manager/config"
+)
+
+type CmdGlobal struct {
+	Asker ask.Asker
+
+	config *config.Config
+	Cmd    *cobra.Command
+
+	FlagHelp    bool
+	FlagVersion bool
+}
+
+func (c *CmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
+	var err error
+
+	// If calling the help, skip pre-run
+	if cmd.Name() == "help" {
+		return nil
+	}
+
+	// Figure out the config directory and config path
+	var configDir string
+	if os.Getenv("MIGRATION_MANAGER_CONF") != "" {
+		configDir = os.Getenv("MIGRATION_MANAGER_CONF")
+	} else if os.Getenv("HOME") != "" && util.PathExists(os.Getenv("HOME")) {
+		configDir = path.Join(os.Getenv("HOME"), ".config", "migration-manager")
+	} else {
+		currentUser, err := user.Current()
+		if err != nil {
+			return err
+		}
+
+		if util.PathExists(currentUser.HomeDir) {
+			configDir = path.Join(currentUser.HomeDir, ".config", "migration-manager")
+		}
+	}
+
+	configDir = os.ExpandEnv(configDir)
+	configFile := path.Join(configDir, "config.yml")
+	if !util.PathExists(configDir) {
+		// Create the config dir if it doesn't exist
+		err = os.MkdirAll(configDir, 0o750)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Load the configuration
+	if util.PathExists(configFile) {
+		c.config, err = config.LoadConfig(configFile)
+		if err != nil {
+			return err
+		}
+
+		c.config.ConfigDir = configDir
+	} else {
+		c.config = config.NewConfig(configDir)
+	}
+
+	return c.CheckConfigStatus()
+}
+
+func (c *CmdGlobal) CheckConfigStatus() error {
+	if c.config.MMServer != "" {
+		return nil
+	}
+
+	fmt.Printf("No config found, performing first-time configuration...\n")
+
+	resp, err := c.Asker.AskString("Please enter the migration manager server URL: ", "", nil)
+	if err != nil {
+		return err
+	}
+
+	c.config.MMServer = resp
+
+	return c.config.SaveConfig()
+}
+
+func (c *CmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, maxArgs int) (bool, error) {
+	if len(args) < minArgs || (maxArgs != -1 && len(args) > maxArgs) {
+		_ = cmd.Help()
+
+		if len(args) == 0 {
+			return true, nil
+		}
+
+		return true, fmt.Errorf("Invalid number of arguments")
+	}
+
+	return false, nil
+}
+
+func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.ResponseRaw, error) {
+	u, err := url.Parse(c.config.MMServer)
+	if err != nil {
+		return nil, err
+	}
+
+	u.Path, err = url.JoinPath("/1.0/", endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	u.RawQuery = query
+
+	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var jsonResp api.ResponseRaw
+	err = json.Unmarshal(bodyBytes, &jsonResp)
+	if err != nil {
+		return nil, err
+	} else if jsonResp.Code != 0 {
+		return &jsonResp, fmt.Errorf("Received an error from the server: %s", jsonResp.Error)
+	}
+
+	return &jsonResp, nil
+}

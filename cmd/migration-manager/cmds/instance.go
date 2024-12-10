@@ -1,4 +1,4 @@
-package main
+package cmds
 
 import (
 	"encoding/json"
@@ -16,11 +16,11 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-type cmdInstance struct {
-	global *cmdGlobal
+type CmdInstance struct {
+	Global *CmdGlobal
 }
 
-func (c *cmdInstance) Command() *cobra.Command {
+func (c *CmdInstance) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "instance"
 	cmd.Short = "Interact with migration instances"
@@ -31,11 +31,11 @@ func (c *cmdInstance) Command() *cobra.Command {
 `
 
 	// List
-	instanceListCmd := cmdInstanceList{global: c.global}
+	instanceListCmd := cmdInstanceList{global: c.Global}
 	cmd.AddCommand(instanceListCmd.Command())
 
 	// Update
-	instanceUpdateCmd := cmdInstanceUpdate{global: c.global}
+	instanceUpdateCmd := cmdInstanceUpdate{global: c.Global}
 	cmd.AddCommand(instanceUpdateCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -47,7 +47,7 @@ func (c *cmdInstance) Command() *cobra.Command {
 
 // List the instances.
 type cmdInstanceList struct {
-	global *cmdGlobal
+	global *CmdGlobal
 
 	flagFormat  string
 	flagVerbose bool
@@ -217,7 +217,7 @@ func parseReturnedInstance(i any) (any, error) {
 
 // Update the instance.
 type cmdInstanceUpdate struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdInstanceUpdate) Command() *cobra.Command {
@@ -259,7 +259,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 	// Prompt for updates.
 	switch inst := i.(type) {
 	case api.Instance:
-		val, err := c.global.asker.AskInt("Number of vCPUs: ["+strconv.Itoa(inst.NumberCPUs)+"] ", 1, 1024, strconv.Itoa(inst.NumberCPUs), nil)
+		val, err := c.global.Asker.AskInt("Number of vCPUs: ["+strconv.Itoa(inst.NumberCPUs)+"] ", 1, 1024, strconv.Itoa(inst.NumberCPUs), nil)
 		if err != nil {
 			return err
 		}
@@ -269,7 +269,7 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 			inst.LastManualUpdate = time.Now().UTC()
 		}
 
-		val, err = c.global.asker.AskInt("Memory in MiB: ["+strconv.Itoa(inst.MemoryInMiB)+"] ", 1, 1024*1024*1024, strconv.Itoa(inst.MemoryInMiB), nil)
+		val, err = c.global.Asker.AskInt("Memory in MiB: ["+strconv.Itoa(inst.MemoryInMiB)+"] ", 1, 1024*1024*1024, strconv.Itoa(inst.MemoryInMiB), nil)
 		if err != nil {
 			return err
 		}

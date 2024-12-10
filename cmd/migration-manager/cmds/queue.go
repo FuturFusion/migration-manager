@@ -1,4 +1,4 @@
-package main
+package cmds
 
 import (
 	"encoding/json"
@@ -11,11 +11,11 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-type cmdQueue struct {
-	global *cmdGlobal
+type CmdQueue struct {
+	Global *CmdGlobal
 }
 
-func (c *cmdQueue) Command() *cobra.Command {
+func (c *CmdQueue) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "queue"
 	cmd.Short = "Display the migration queue"
@@ -26,7 +26,7 @@ func (c *cmdQueue) Command() *cobra.Command {
 `
 
 	// List
-	queueListCmd := cmdQueueList{global: c.global}
+	queueListCmd := cmdQueueList{global: c.Global}
 	cmd.AddCommand(queueListCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -38,7 +38,7 @@ func (c *cmdQueue) Command() *cobra.Command {
 
 // List the queues.
 type cmdQueueList struct {
-	global *cmdGlobal
+	global *CmdGlobal
 
 	flagFormat  string
 	flagVerbose bool

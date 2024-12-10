@@ -10,6 +10,8 @@ import (
 	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
+
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/api"
 )
 
 type cmdDaemon struct {
@@ -48,11 +50,11 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unknown command \"%s\" for \"%s\"", args[0], cmd.CommandPath())
 	}
 
-	config := &DaemonConfig{
-		dbPathDir:           c.flagDatabaseDir,
-		restServerIPAddr:    c.flagServerIP,
-		restServerPort:      c.flagServerPort,
-		restServerTLSConfig: nil,
+	config := &api.DaemonConfig{
+		DbPathDir:           c.flagDatabaseDir,
+		RestServerIPAddr:    c.flagServerIP,
+		RestServerPort:      c.flagServerPort,
+		RestServerTLSConfig: nil,
 	}
 
 	if c.flagTLSCert != "" {
@@ -62,11 +64,11 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		config.restServerTLSConfig = &tls.Config{}
-		config.restServerTLSConfig.Certificates = append(config.restServerTLSConfig.Certificates, cert)
+		config.RestServerTLSConfig = &tls.Config{}
+		config.RestServerTLSConfig.Certificates = append(config.RestServerTLSConfig.Certificates, cert)
 	}
 
-	d := newDaemon(config)
+	d := api.NewDaemon(config)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, unix.SIGPWR)
@@ -86,15 +88,15 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		select {
 		case sig := <-sigCh:
 			logger.Info("Received signal", logger.Ctx{"signal": sig})
-			if d.shutdownCtx.Err() != nil {
+			if d.ShutdownCtx.Err() != nil {
 				logger.Warn("Ignoring signal, shutdown already in progress", logger.Ctx{"signal": sig})
 			} else {
 				go func() {
-					d.shutdownDoneCh <- d.Stop(context.Background(), sig)
+					d.ShutdownDoneCh <- d.Stop(context.Background(), sig)
 				}()
 			}
 
-		case err = <-d.shutdownDoneCh:
+		case err = <-d.ShutdownDoneCh:
 			return err
 		}
 	}

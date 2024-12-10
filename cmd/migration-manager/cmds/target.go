@@ -1,4 +1,4 @@
-package main
+package cmds
 
 import (
 	"context"
@@ -16,11 +16,11 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-type cmdTarget struct {
-	global *cmdGlobal
+type CmdTarget struct {
+	Global *CmdGlobal
 }
 
-func (c *cmdTarget) Command() *cobra.Command {
+func (c *CmdTarget) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "target"
 	cmd.Short = "Interact with migration targets"
@@ -31,19 +31,19 @@ func (c *cmdTarget) Command() *cobra.Command {
 `
 
 	// Add
-	targetAddCmd := cmdTargetAdd{global: c.global}
+	targetAddCmd := cmdTargetAdd{global: c.Global}
 	cmd.AddCommand(targetAddCmd.Command())
 
 	// List
-	targetListCmd := cmdTargetList{global: c.global}
+	targetListCmd := cmdTargetList{global: c.Global}
 	cmd.AddCommand(targetListCmd.Command())
 
 	// Remove
-	targetRemoveCmd := cmdTargetRemove{global: c.global}
+	targetRemoveCmd := cmdTargetRemove{global: c.Global}
 	cmd.AddCommand(targetRemoveCmd.Command())
 
 	// Update
-	targetUpdateCmd := cmdTargetUpdate{global: c.global}
+	targetUpdateCmd := cmdTargetUpdate{global: c.Global}
 	cmd.AddCommand(targetUpdateCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -55,7 +55,7 @@ func (c *cmdTarget) Command() *cobra.Command {
 
 // Add the target.
 type cmdTargetAdd struct {
-	global *cmdGlobal
+	global *CmdGlobal
 
 	flagInsecure         bool
 	flagNoTestConnection bool
@@ -95,14 +95,14 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		Insecure: c.flagInsecure,
 	}
 
-	authType, err := c.global.asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
+	authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
 	if err != nil {
 		return err
 	}
 
 	// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
 	if authType == "tls" {
-		tlsCertPath, err := c.global.asker.AskString("Please enter path to client TLS certificate: ", "", nil)
+		tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
 		if err != nil {
 			return err
 		}
@@ -114,7 +114,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 
 		t.TLSClientCert = string(contents)
 
-		tlsKeyPath, err := c.global.asker.AskString("Please enter path to client TLS key: ", "", nil)
+		tlsKeyPath, err := c.global.Asker.AskString("Please enter path to client TLS key: ", "", nil)
 		if err != nil {
 			return err
 		}
@@ -127,7 +127,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		t.TLSClientKey = string(contents)
 	}
 
-	t.IncusProject, err = c.global.asker.AskString("What Incus project should this target use? [default] ", "default", nil)
+	t.IncusProject, err = c.global.Asker.AskString("What Incus project should this target use? [default] ", "default", nil)
 	if err != nil {
 		return err
 	}
@@ -170,7 +170,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 
 // List the targets.
 type cmdTargetList struct {
-	global *cmdGlobal
+	global *CmdGlobal
 
 	flagFormat string
 }
@@ -252,7 +252,7 @@ func parseReturnedTarget(t any) (any, error) {
 
 // Remove the target.
 type cmdTargetRemove struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdTargetRemove) Command() *cobra.Command {
@@ -289,7 +289,7 @@ func (c *cmdTargetRemove) Run(cmd *cobra.Command, args []string) error {
 
 // Update the target.
 type cmdTargetUpdate struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdTargetUpdate) Command() *cobra.Command {
@@ -332,17 +332,17 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	case api.IncusTarget:
 		origTargetName = incusTarget.Name
 
-		incusTarget.Name, err = c.global.asker.AskString("Target name: ["+incusTarget.Name+"] ", incusTarget.Name, nil)
+		incusTarget.Name, err = c.global.Asker.AskString("Target name: ["+incusTarget.Name+"] ", incusTarget.Name, nil)
 		if err != nil {
 			return err
 		}
 
-		incusTarget.Endpoint, err = c.global.asker.AskString("Endpoint: ["+incusTarget.Endpoint+"] ", incusTarget.Endpoint, nil)
+		incusTarget.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+incusTarget.Endpoint+"] ", incusTarget.Endpoint, nil)
 		if err != nil {
 			return err
 		}
 
-		updateAuth, err := c.global.asker.AskBool("Update configured authentication? [no] ", "no")
+		updateAuth, err := c.global.Asker.AskBool("Update configured authentication? [no] ", "no")
 		if err != nil {
 			return err
 		}
@@ -353,14 +353,14 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 			incusTarget.TLSClientCert = ""
 			incusTarget.OIDCTokens = nil
 
-			authType, err := c.global.asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
+			authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
 			if err != nil {
 				return err
 			}
 
 			// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
 			if authType == "tls" {
-				tlsCertPath, err := c.global.asker.AskString("Please enter path to client TLS certificate: ", "", nil)
+				tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
 				if err != nil {
 					return err
 				}
@@ -372,7 +372,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 
 				incusTarget.TLSClientCert = string(contents)
 
-				tlsKeyPath, err := c.global.asker.AskString("Please enter path to client TLS key: ", "", nil)
+				tlsKeyPath, err := c.global.Asker.AskString("Please enter path to client TLS key: ", "", nil)
 				if err != nil {
 					return err
 				}
@@ -391,12 +391,12 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 			isInsecure = "yes"
 		}
 
-		incusTarget.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
+		incusTarget.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err
 		}
 
-		incusTarget.IncusProject, err = c.global.asker.AskString("Project: ["+incusTarget.IncusProject+"] ", incusTarget.IncusProject, nil)
+		incusTarget.IncusProject, err = c.global.Asker.AskString("Project: ["+incusTarget.IncusProject+"] ", incusTarget.IncusProject, nil)
 		if err != nil {
 			return err
 		}

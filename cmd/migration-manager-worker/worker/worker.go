@@ -1,4 +1,4 @@
-package main
+package worker
 
 import (
 	"bytes"
@@ -30,12 +30,12 @@ type Worker struct {
 
 	lastUpdate time.Time
 
-	shutdownCtx    context.Context    // Canceled when shutdown starts.
-	shutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
-	shutdownDoneCh chan error         // Receives the result of the w.Stop() function and tells the daemon to end.
+	ShutdownCtx    context.Context    // Canceled when shutdown starts.
+	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
+	ShutdownDoneCh chan error         // Receives the result of the w.Stop() function and tells the daemon to end.
 }
 
-func newWorker(endpoint string, uuid string) (*Worker, error) {
+func NewWorker(endpoint string, uuid string) (*Worker, error) {
 	// Parse the provided URL for the migration manager endpoint.
 	parsedURL, err := url.Parse(endpoint)
 	if err != nil {
@@ -49,9 +49,9 @@ func newWorker(endpoint string, uuid string) (*Worker, error) {
 		source:         nil,
 		uuid:           uuid,
 		lastUpdate:     time.Now().UTC(),
-		shutdownCtx:    shutdownCtx,
-		shutdownCancel: shutdownCancel,
-		shutdownDoneCh: make(chan error),
+		ShutdownCtx:    shutdownCtx,
+		ShutdownCancel: shutdownCancel,
+		ShutdownDoneCh: make(chan error),
 	}
 
 	// Do a quick connectivity check to the endpoint.
@@ -84,7 +84,7 @@ func (w *Worker) Start() error {
 					case api.WORKERCOMMAND_FINALIZE_IMPORT:
 						done := w.finalizeImport(cmd)
 						if done {
-							w.shutdownCancel()
+							w.ShutdownCancel()
 							return
 						}
 
@@ -97,7 +97,7 @@ func (w *Worker) Start() error {
 			t := time.NewTimer(10 * time.Second)
 
 			select {
-			case <-w.shutdownCtx.Done():
+			case <-w.ShutdownCtx.Done():
 				t.Stop()
 				return
 			case <-t.C:
@@ -117,7 +117,7 @@ func (w *Worker) Stop(ctx context.Context, sig os.Signal) error {
 
 func (w *Worker) importDisks(cmd api.WorkerCommand) {
 	if w.source == nil {
-		err := w.connectSource(w.shutdownCtx, cmd.Source)
+		err := w.connectSource(w.ShutdownCtx, cmd.Source)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return
@@ -138,13 +138,13 @@ func (w *Worker) importDisks(cmd api.WorkerCommand) {
 
 func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
 	// Delete any existing migration snapshot that might be left over.
-	err := w.source.DeleteVMSnapshot(w.shutdownCtx, cmd.InventoryPath, internal.IncusSnapshotName)
+	err := w.source.DeleteVMSnapshot(w.ShutdownCtx, cmd.InventoryPath, internal.IncusSnapshotName)
 	if err != nil {
 		return err
 	}
 
 	// Do the actual import.
-	return w.source.ImportDisks(w.shutdownCtx, cmd.InventoryPath, func(status string, isImportant bool) {
+	return w.source.ImportDisks(w.ShutdownCtx, cmd.InventoryPath, func(status string, isImportant bool) {
 		logger.Info(status)
 
 		// Only send updates back to the server if important or once every 5 seconds.
@@ -162,7 +162,7 @@ func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
 // yet, false is returned.
 func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 	if w.source == nil {
-		err := w.connectSource(w.shutdownCtx, cmd.Source)
+		err := w.connectSource(w.ShutdownCtx, cmd.Source)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false
@@ -171,7 +171,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 
 	logger.Info("Shutting down source VM")
 
-	err := w.source.PowerOffVM(w.shutdownCtx, cmd.InventoryPath)
+	err := w.source.PowerOffVM(w.ShutdownCtx, cmd.InventoryPath)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return false
@@ -198,7 +198,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 			return false
 		}
 
-		err = worker.WindowsInjectDrivers(w.shutdownCtx, winVer, "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
+		err = worker.WindowsInjectDrivers(w.ShutdownCtx, winVer, "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false

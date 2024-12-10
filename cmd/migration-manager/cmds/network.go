@@ -1,4 +1,4 @@
-package main
+package cmds
 
 import (
 	"encoding/json"
@@ -12,11 +12,11 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-type cmdNetwork struct {
-	global *cmdGlobal
+type CmdNetwork struct {
+	Global *CmdGlobal
 }
 
-func (c *cmdNetwork) Command() *cobra.Command {
+func (c *CmdNetwork) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "network"
 	cmd.Short = "Interact with migration networks"
@@ -27,19 +27,19 @@ func (c *cmdNetwork) Command() *cobra.Command {
 `
 
 	// Add
-	networkAddCmd := cmdNetworkAdd{global: c.global}
+	networkAddCmd := cmdNetworkAdd{global: c.Global}
 	cmd.AddCommand(networkAddCmd.Command())
 
 	// List
-	networkListCmd := cmdNetworkList{global: c.global}
+	networkListCmd := cmdNetworkList{global: c.Global}
 	cmd.AddCommand(networkListCmd.Command())
 
 	// Remove
-	networkRemoveCmd := cmdNetworkRemove{global: c.global}
+	networkRemoveCmd := cmdNetworkRemove{global: c.Global}
 	cmd.AddCommand(networkRemoveCmd.Command())
 
 	// Update
-	networkUpdateCmd := cmdNetworkUpdate{global: c.global}
+	networkUpdateCmd := cmdNetworkUpdate{global: c.Global}
 	cmd.AddCommand(networkUpdateCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -51,7 +51,7 @@ func (c *cmdNetwork) Command() *cobra.Command {
 
 // Add the network.
 type cmdNetworkAdd struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdNetworkAdd) Command() *cobra.Command {
@@ -84,7 +84,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 		Name: args[0],
 	}
 
-	_, err = c.global.asker.AskString("Enter a JSON string with any network-specific configuration: ", "", func(s string) error {
+	_, err = c.global.Asker.AskString("Enter a JSON string with any network-specific configuration: ", "", func(s string) error {
 		if s != "" {
 			return json.Unmarshal([]byte(s), &n.Config)
 		}
@@ -112,7 +112,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 
 // List the networks.
 type cmdNetworkList struct {
-	global *cmdGlobal
+	global *CmdGlobal
 
 	flagFormat string
 }
@@ -194,7 +194,7 @@ func parseReturnedNetwork(n any) (any, error) {
 
 // Remove the network.
 type cmdNetworkRemove struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdNetworkRemove) Command() *cobra.Command {
@@ -231,7 +231,7 @@ func (c *cmdNetworkRemove) Run(cmd *cobra.Command, args []string) error {
 
 // Update the network.
 type cmdNetworkUpdate struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdNetworkUpdate) Command() *cobra.Command {
@@ -283,12 +283,12 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	n.Name, err = c.global.asker.AskString("Network name: ["+n.Name+"] ", n.Name, nil)
+	n.Name, err = c.global.Asker.AskString("Network name: ["+n.Name+"] ", n.Name, nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.global.asker.AskString("JSON config: ["+string(configString)+"] ", string(configString), func(s string) error {
+	_, err = c.global.Asker.AskString("JSON config: ["+string(configString)+"] ", string(configString), func(s string) error {
 		if s != "" {
 			return json.Unmarshal([]byte(s), &n.Config)
 		}

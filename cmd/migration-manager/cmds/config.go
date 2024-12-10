@@ -1,4 +1,4 @@
-package main
+package cmds
 
 import (
 	"encoding/json"
@@ -10,11 +10,11 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-type cmdConfig struct {
-	global *cmdGlobal
+type CmdConfig struct {
+	Global *CmdGlobal
 }
 
-func (c *cmdConfig) Command() *cobra.Command {
+func (c *CmdConfig) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "config"
 	cmd.Short = "Show/update server config"
@@ -23,11 +23,11 @@ func (c *cmdConfig) Command() *cobra.Command {
 `
 
 	// Show
-	configShowCmd := cmdConfigShow{global: c.global}
+	configShowCmd := cmdConfigShow{global: c.Global}
 	cmd.AddCommand(configShowCmd.Command())
 
 	// Update
-	configUpdateCmd := cmdConfigUpdate{global: c.global}
+	configUpdateCmd := cmdConfigUpdate{global: c.Global}
 	cmd.AddCommand(configUpdateCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -39,7 +39,7 @@ func (c *cmdConfig) Command() *cobra.Command {
 
 // Show the config.
 type cmdConfigShow struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdConfigShow) Command() *cobra.Command {
@@ -102,7 +102,7 @@ func parseReturnedServerUntrusted(n any) (api.ServerUntrusted, error) {
 
 // Update the config.
 type cmdConfigUpdate struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdConfigUpdate) Command() *cobra.Command {
@@ -141,12 +141,12 @@ func (c *cmdConfigUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Prompt for updates.
-	config.Config["core.boot_iso_image"], err = c.global.asker.AskString("Boot ISO image: ["+config.Config["core.boot_iso_image"]+"] ", config.Config["core.boot_iso_image"], nil)
+	config.Config["core.boot_iso_image"], err = c.global.Asker.AskString("Boot ISO image: ["+config.Config["core.boot_iso_image"]+"] ", config.Config["core.boot_iso_image"], nil)
 	if err != nil {
 		return err
 	}
 
-	config.Config["core.drivers_iso_image"], err = c.global.asker.AskString("Drivers ISO image: ["+config.Config["core.drivers_iso_image"]+"] ", config.Config["core.drivers_iso_image"], nil)
+	config.Config["core.drivers_iso_image"], err = c.global.Asker.AskString("Drivers ISO image: ["+config.Config["core.drivers_iso_image"]+"] ", config.Config["core.drivers_iso_image"], nil)
 	if err != nil {
 		return err
 	}

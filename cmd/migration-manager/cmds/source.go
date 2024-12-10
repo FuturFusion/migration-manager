@@ -1,4 +1,4 @@
-package main
+package cmds
 
 import (
 	"context"
@@ -20,11 +20,11 @@ import (
 
 var supportedTypes = []string{"vmware"}
 
-type cmdSource struct {
-	global *cmdGlobal
+type CmdSource struct {
+	Global *CmdGlobal
 }
 
-func (c *cmdSource) Command() *cobra.Command {
+func (c *CmdSource) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "source"
 	cmd.Short = "Interact with migration sources"
@@ -35,19 +35,19 @@ func (c *cmdSource) Command() *cobra.Command {
 `
 
 	// Add
-	sourceAddCmd := cmdSourceAdd{global: c.global}
+	sourceAddCmd := cmdSourceAdd{global: c.Global}
 	cmd.AddCommand(sourceAddCmd.Command())
 
 	// List
-	sourceListCmd := cmdSourceList{global: c.global}
+	sourceListCmd := cmdSourceList{global: c.Global}
 	cmd.AddCommand(sourceListCmd.Command())
 
 	// Remove
-	sourceRemoveCmd := cmdSourceRemove{global: c.global}
+	sourceRemoveCmd := cmdSourceRemove{global: c.Global}
 	cmd.AddCommand(sourceRemoveCmd.Command())
 
 	// Update
-	sourceUpdateCmd := cmdSourceUpdate{global: c.global}
+	sourceUpdateCmd := cmdSourceUpdate{global: c.Global}
 	cmd.AddCommand(sourceUpdateCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
@@ -59,7 +59,7 @@ func (c *cmdSource) Command() *cobra.Command {
 
 // Add the source.
 type cmdSourceAdd struct {
-	global *cmdGlobal
+	global *CmdGlobal
 
 	flagInsecure         bool
 	flagNoTestConnection bool
@@ -114,7 +114,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 	// Add the source.
 	switch sourceType {
 	case "vmware":
-		sourceUsername, err := c.global.asker.AskString("Please enter username for endpoint '"+sourceEndpoint+"': ", "", nil)
+		sourceUsername, err := c.global.Asker.AskString("Please enter username for endpoint '"+sourceEndpoint+"': ", "", nil)
 		if err != nil {
 			return err
 		}
@@ -173,7 +173,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 
 // List the sources.
 type cmdSourceList struct {
-	global *cmdGlobal
+	global *CmdGlobal
 
 	flagFormat string
 }
@@ -271,7 +271,7 @@ func parseReturnedSource(s any) (any, error) {
 
 // Remove the source.
 type cmdSourceRemove struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdSourceRemove) Command() *cobra.Command {
@@ -308,7 +308,7 @@ func (c *cmdSourceRemove) Run(cmd *cobra.Command, args []string) error {
 
 // Update the source.
 type cmdSourceUpdate struct {
-	global *cmdGlobal
+	global *CmdGlobal
 }
 
 func (c *cmdSourceUpdate) Command() *cobra.Command {
@@ -351,17 +351,17 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	case api.VMwareSource:
 		origSourceName = specificSource.Name
 
-		specificSource.Name, err = c.global.asker.AskString("Source name: ["+specificSource.Name+"] ", specificSource.Name, nil)
+		specificSource.Name, err = c.global.Asker.AskString("Source name: ["+specificSource.Name+"] ", specificSource.Name, nil)
 		if err != nil {
 			return err
 		}
 
-		specificSource.Endpoint, err = c.global.asker.AskString("Endpoint: ["+specificSource.Endpoint+"] ", specificSource.Endpoint, nil)
+		specificSource.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+specificSource.Endpoint+"] ", specificSource.Endpoint, nil)
 		if err != nil {
 			return err
 		}
 
-		specificSource.Username, err = c.global.asker.AskString("Username: ["+specificSource.Username+"] ", specificSource.Username, nil)
+		specificSource.Username, err = c.global.Asker.AskString("Username: ["+specificSource.Username+"] ", specificSource.Username, nil)
 		if err != nil {
 			return err
 		}
@@ -373,7 +373,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			isInsecure = "yes"
 		}
 
-		specificSource.Insecure, err = c.global.asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
+		specificSource.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err
 		}
