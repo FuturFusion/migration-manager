@@ -15,7 +15,7 @@ type InternalInstance struct {
 }
 
 // Returns a new Instance ready for use.
-func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID int, batchID int, name string, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInMiB int, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
+func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID int, batchID int, name string, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInBytes int64, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
 	return &InternalInstance{
 		Instance: api.Instance{
 			UUID:                  UUID,
@@ -34,7 +34,7 @@ func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID in
 			Disks:             disks,
 			NICs:              nics,
 			NumberCPUs:        numberCPUs,
-			MemoryInMiB:       memoryInMiB,
+			MemoryInBytes:     memoryInBytes,
 			UseLegacyBios:     useLegacyBios,
 			SecureBootEnabled: secureBootEnabled,
 			TPMPresent:        tpmPresent,

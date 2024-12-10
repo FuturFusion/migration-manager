@@ -206,8 +206,8 @@ func (d *Daemon) syncInstancesFromSources() bool {
 						instanceUpdated = true
 					}
 
-					if existingInstance.MemoryInMiB != i.MemoryInMiB {
-						existingInstance.MemoryInMiB = i.MemoryInMiB
+					if existingInstance.MemoryInBytes != i.MemoryInBytes {
+						existingInstance.MemoryInBytes = i.MemoryInBytes
 						instanceUpdated = true
 					}
 				} else {

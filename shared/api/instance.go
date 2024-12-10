@@ -116,9 +116,9 @@ type Instance struct {
 	// Example: 4
 	NumberCPUs int `json:"number_cpus" yaml:"number_cpus"`
 
-	// The amount of memory for this instance, in MiB
-	// Example: 4096
-	MemoryInMiB int `json:"memory_in_mib" yaml:"memory_in_mib"`
+	// The amount of memory for this instance, in bytes
+	// Example: 4294967296
+	MemoryInBytes int64 `json:"memory_in_bytes" yaml:"memory_in_bytes"`
 
 	// Does this instance boot with legacy BIOS rather than UEFI
 	// Example: false

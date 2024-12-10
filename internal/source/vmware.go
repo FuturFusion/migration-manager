@@ -229,7 +229,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 				Disks:             disks,
 				NICs:              nics,
 				NumberCPUs:        int(vmProps.Summary.Config.NumCpu),
-				MemoryInMiB:       int(vmProps.Summary.Config.MemorySizeMB),
+				MemoryInBytes:     int64(vmProps.Summary.Config.MemorySizeMB) * 1024 * 1024,
 				UseLegacyBios:     useLegacyBios,
 				SecureBootEnabled: secureBootEnabled,
 				TPMPresent:        tpmPresent,

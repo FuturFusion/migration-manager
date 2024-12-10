@@ -184,7 +184,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, i := range instances {
-		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(int64(i.MemoryInMiB*1024*1024), 2)}
+		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2)}
 		if c.flagVerbose {
 			lastUpdate := "Never"
 			if !i.LastManualUpdate.IsZero() {
@@ -269,13 +269,13 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 			inst.LastManualUpdate = time.Now().UTC()
 		}
 
-		val, err = c.global.Asker.AskInt("Memory in MiB: ["+strconv.Itoa(inst.MemoryInMiB)+"] ", 1, 1024*1024*1024, strconv.Itoa(inst.MemoryInMiB), nil)
+		val, err = c.global.Asker.AskInt("Memory in bytes: ["+strconv.FormatInt(inst.MemoryInBytes, 10)+"] ", 1, 1024*1024*1024*1024*1024, strconv.FormatInt(inst.MemoryInBytes, 10), nil)
 		if err != nil {
 			return err
 		}
 
-		if inst.MemoryInMiB != int(val) {
-			inst.MemoryInMiB = int(val)
+		if inst.MemoryInBytes != val {
+			inst.MemoryInBytes = val
 			inst.LastManualUpdate = time.Now().UTC()
 		}
 

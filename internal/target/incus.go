@@ -178,7 +178,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 
 	// Apply CPU and memory limits.
 	ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.NumberCPUs)
-	ret.Config["limits.memory"] = fmt.Sprintf("%dMiB", instanceDef.MemoryInMiB)
+	ret.Config["limits.memory"] = fmt.Sprintf("%dB", instanceDef.MemoryInBytes)
 
 	// Define the default disk settings.
 	defaultDiskDef := map[string]string{
