@@ -119,7 +119,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		sourcePassword := ask.AskPassword("Please enter password for endpoint '" + sourceEndpoint + "': ")
+		sourcePassword := askPasswordFunc("Please enter password for endpoint '" + sourceEndpoint + "': ")
 
 		s := api.VMwareSource{
 			CommonSource: api.CommonSource{

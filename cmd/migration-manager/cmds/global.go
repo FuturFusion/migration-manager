@@ -12,15 +12,21 @@ import (
 	"path"
 
 	"github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/ask"
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/config"
 )
 
+type Asker interface {
+	AskBool(question string, defaultAnswer string) (bool, error)
+	AskChoice(question string, choices []string, defaultAnswer string) (string, error)
+	AskInt(question string, minValue int64, maxValue int64, defaultAnswer string, validate func(int64) error) (int64, error)
+	AskString(question string, defaultAnswer string, validate func(string) error) (string, error)
+}
+
 type CmdGlobal struct {
-	Asker ask.Asker
+	Asker Asker
 
 	config *config.Config
 	Cmd    *cobra.Command
