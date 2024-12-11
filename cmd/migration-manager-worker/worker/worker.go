@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -206,20 +208,29 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 	}
 
 	// Linux-specific
+
+	// Get the disto's major version, if possible.
+	majorVersion := -1
+	// VMware API doesn't distinguish openSUSE and Ubuntu versions.
+	if !strings.Contains(strings.ToLower(cmd.OS), "opensuse") && !strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
+		majorVersionRegex := regexp.MustCompile(`^\w+?(\d+)(_64)?$`)
+		majorVersion, _ = strconv.Atoi(majorVersionRegex.FindStringSubmatch(cmd.OS)[1])
+	}
+
 	if strings.Contains(strings.ToLower(cmd.OS), "centos") {
-		err = worker.LinuxDoPostMigrationConfig("CentOS")
+		err = worker.LinuxDoPostMigrationConfig("CentOS", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "debian") {
-		err = worker.LinuxDoPostMigrationConfig("Debian")
+		err = worker.LinuxDoPostMigrationConfig("Debian", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "opensuse") {
-		err = worker.LinuxDoPostMigrationConfig("openSUSE")
+		err = worker.LinuxDoPostMigrationConfig("openSUSE", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "oracle") {
-		err = worker.LinuxDoPostMigrationConfig("Oracle")
+		err = worker.LinuxDoPostMigrationConfig("Oracle", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "rhel") {
-		err = worker.LinuxDoPostMigrationConfig("RHEL")
+		err = worker.LinuxDoPostMigrationConfig("RHEL", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "sles") {
-		err = worker.LinuxDoPostMigrationConfig("SUSE")
+		err = worker.LinuxDoPostMigrationConfig("SUSE", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
-		err = worker.LinuxDoPostMigrationConfig("Ubuntu")
+		err = worker.LinuxDoPostMigrationConfig("Ubuntu", majorVersion)
 	}
 
 	if err != nil {

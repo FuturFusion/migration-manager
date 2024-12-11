@@ -47,7 +47,7 @@ type LVSOutput struct {
 
 const chrootMountPath string = "/mnt/target/"
 
-func LinuxDoPostMigrationConfig(distro string) error {
+func LinuxDoPostMigrationConfig(distro string, majorVersion int) error {
 	logger.Info("Preparing to perform post-migration configuration of VM")
 
 	// Determine the root partition.
