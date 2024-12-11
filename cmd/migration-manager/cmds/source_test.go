@@ -334,3 +334,85 @@ func TestSourceList(t *testing.T) {
 		})
 	}
 }
+
+func TestSourceRemove(t *testing.T) {
+	tests := []struct {
+		name                        string
+		args                        []string
+		migrationManagerdHTTPStatus int
+		migrationManagerdResponse   string
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:                        "success",
+			migrationManagerdHTTPStatus: http.StatusOK,
+			migrationManagerdResponse: `{
+  "status_code": 200,
+  "status": "Success"
+}`,
+			args: []string{"source 1"},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                        "error - no name argument",
+			migrationManagerdHTTPStatus: http.StatusOK,
+			migrationManagerdResponse: `{
+  "status_code": 200,
+  "status": "Success"
+}`,
+
+			assertErr: require.NoError, // handled by root command, show usage
+		},
+		{
+			name:                        "error - too many arguments",
+			migrationManagerdHTTPStatus: http.StatusOK,
+			migrationManagerdResponse: `{
+  "status_code": 200,
+  "status": "Success"
+}`,
+			args: []string{"arg1", "arg2"},
+
+			assertErr: require.Error,
+		},
+		{
+			name:                        "error - invalid API response",
+			migrationManagerdHTTPStatus: http.StatusOK,
+			migrationManagerdResponse:   `{`, // invalid JSON
+			args:                        []string{"source 1"},
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			migrationManagerd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(tc.migrationManagerdHTTPStatus)
+				_, _ = w.Write([]byte(tc.migrationManagerdResponse))
+			}))
+			defer migrationManagerd.Close()
+
+			remove := cmdSourceRemove{
+				global: &CmdGlobal{
+					config: &config.Config{
+						MMServer: migrationManagerd.URL,
+					},
+				},
+			}
+
+			buf := bytes.Buffer{}
+
+			cmd := &cobra.Command{}
+			cmd.SetOutput(&buf)
+
+			err := remove.Run(cmd, tc.args)
+			tc.assertErr(t, err)
+
+			if testing.Verbose() {
+				t.Logf("\n%s", buf.String())
+			}
+		})
+	}
+}
