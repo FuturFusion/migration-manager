@@ -18,6 +18,8 @@ import (
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/config"
 )
 
+//go:generate go run github.com/matryer/moq -fmt goimports -out asker_mock_gen_test.go -rm . Asker
+
 type Asker interface {
 	AskBool(question string, defaultAnswer string) (bool, error)
 	AskChoice(question string, choices []string, defaultAnswer string) (string, error)
