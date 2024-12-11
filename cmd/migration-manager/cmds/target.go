@@ -232,7 +232,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 		data = append(data, []string{t.Name, t.Endpoint, authType, t.IncusProject, strconv.FormatBool(t.Insecure)})
 	}
 
-	return util.RenderTable(c.flagFormat, header, data, targets)
+	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, targets)
 }
 
 func parseReturnedTarget(t any) (any, error) {

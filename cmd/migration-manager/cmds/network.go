@@ -174,7 +174,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 		data = append(data, []string{n.Name, string(configString)})
 	}
 
-	return util.RenderTable(c.flagFormat, header, data, networks)
+	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, networks)
 }
 
 func parseReturnedNetwork(n any) (any, error) {

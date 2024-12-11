@@ -197,7 +197,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		data = append(data, row)
 	}
 
-	return util.RenderTable(c.flagFormat, header, data, instances)
+	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, instances)
 }
 
 func parseReturnedInstance(i any) (any, error) {

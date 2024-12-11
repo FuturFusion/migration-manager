@@ -106,7 +106,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 		data = append(data, row)
 	}
 
-	return util.RenderTable(c.flagFormat, header, data, queueEntries)
+	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, queueEntries)
 }
 
 func parseReturnedQueueEntry(i any) (any, error) {

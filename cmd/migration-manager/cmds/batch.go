@@ -233,7 +233,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.StoragePool, b.IncludeRegex, b.ExcludeRegex, startString, endString, b.DefaultNetwork})
 	}
 
-	return util.RenderTable(c.flagFormat, header, data, batches)
+	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, batches)
 }
 
 func parseReturnedBatch(b any) (any, error) {

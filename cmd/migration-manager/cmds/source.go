@@ -233,7 +233,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 		data = append(data, []string{vmwareSource.Name, "VMware", vmwareSource.Endpoint, vmwareSource.Username, strconv.FormatBool(vmwareSource.Insecure)})
 	}
 
-	return util.RenderTable(c.flagFormat, header, data, vmwareSources)
+	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, vmwareSources)
 }
 
 func parseReturnedSource(s any) (any, error) {
