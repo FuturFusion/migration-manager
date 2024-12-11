@@ -184,6 +184,16 @@ func (d *Daemon) syncInstancesFromSources() bool {
 					instanceUpdated = true
 				}
 
+				if existingInstance.NumberCPUs != i.NumberCPUs {
+					existingInstance.NumberCPUs = i.NumberCPUs
+					instanceUpdated = true
+				}
+
+				if existingInstance.MemoryInBytes != i.MemoryInBytes {
+					existingInstance.MemoryInBytes = i.MemoryInBytes
+					instanceUpdated = true
+				}
+
 				if existingInstance.UseLegacyBios != i.UseLegacyBios {
 					existingInstance.UseLegacyBios = i.UseLegacyBios
 					instanceUpdated = true
@@ -197,21 +207,6 @@ func (d *Daemon) syncInstancesFromSources() bool {
 				if existingInstance.TPMPresent != i.TPMPresent {
 					existingInstance.TPMPresent = i.TPMPresent
 					instanceUpdated = true
-				}
-
-				// Next, check fields that can be updated, but only sync if this instance hasn't been manually updated.
-				if existingInstance.LastManualUpdate.IsZero() {
-					if existingInstance.NumberCPUs != i.NumberCPUs {
-						existingInstance.NumberCPUs = i.NumberCPUs
-						instanceUpdated = true
-					}
-
-					if existingInstance.MemoryInBytes != i.MemoryInBytes {
-						existingInstance.MemoryInBytes = i.MemoryInBytes
-						instanceUpdated = true
-					}
-				} else {
-					logger.Debug("Instance "+i.GetName()+" ("+i.GetUUID().String()+") has been manually updated, skipping some automatic sync updates", loggerCtx)
 				}
 
 				if instanceUpdated {

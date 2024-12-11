@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
@@ -177,7 +176,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	// Render the table.
 	header := []string{"Name", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Num vCPUs", "Memory"}
 	if c.flagVerbose {
-		header = append(header, "UUID", "Inventory Path", "Last Sync", "Last Manual Update")
+		header = append(header, "UUID", "Inventory Path", "Last Sync")
 	}
 
 	data := [][]string{}
@@ -185,12 +184,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	for _, i := range instances {
 		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2)}
 		if c.flagVerbose {
-			lastUpdate := "Never"
-			if !i.LastManualUpdate.IsZero() {
-				lastUpdate = i.LastManualUpdate.String()
-			}
-
-			row = append(row, i.UUID.String(), i.InventoryPath, i.LastUpdateFromSource.String(), lastUpdate)
+			row = append(row, i.UUID.String(), i.InventoryPath, i.LastUpdateFromSource.String())
 		}
 
 		data = append(data, row)
@@ -265,7 +259,6 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 
 		if inst.NumberCPUs != int(val) {
 			inst.NumberCPUs = int(val)
-			inst.LastManualUpdate = time.Now().UTC()
 		}
 
 		val, err = c.global.Asker.AskInt("Memory in bytes: ["+strconv.FormatInt(inst.MemoryInBytes, 10)+"] ", 1, 1024*1024*1024*1024*1024, strconv.FormatInt(inst.MemoryInBytes, 10), nil)
@@ -275,7 +268,6 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 
 		if inst.MemoryInBytes != val {
 			inst.MemoryInBytes = val
-			inst.LastManualUpdate = time.Now().UTC()
 		}
 
 		i = inst
