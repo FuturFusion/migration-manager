@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 
 	"github.com/lxc/incus/v6/shared/ask"
@@ -72,7 +71,7 @@ func main() {
 	// Run the main command and handle errors
 	err := app.Execute()
 	if err != nil {
-		fmt.Printf("%s\n", err)
+		app.Printf("%s\n", err)
 		os.Exit(1)
 	}
 }

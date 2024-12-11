@@ -84,7 +84,7 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 		return nil
 	}
 
-	fmt.Printf("No config found, performing first-time configuration...\n")
+	c.Cmd.Printf("No config found, performing first-time configuration...\n")
 
 	resp, err := c.Asker.AskString("Please enter the migration manager server URL: ", "", nil)
 	if err != nil {

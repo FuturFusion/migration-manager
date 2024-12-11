@@ -2,7 +2,6 @@ package cmds
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -74,12 +73,12 @@ func (c *cmdConfigShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(config.Config) == 0 {
-		fmt.Printf("No server config defined.\n")
+		cmd.Printf("No server config defined.\n")
 		return nil
 	}
 
 	for k, v := range config.Config {
-		fmt.Printf("  %s: %s\n", k, v)
+		cmd.Printf("  %s: %s\n", k, v)
 	}
 
 	return nil
@@ -162,6 +161,6 @@ func (c *cmdConfigUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully updated server config.\n")
+	cmd.Printf("Successfully updated server config.\n")
 	return nil
 }
