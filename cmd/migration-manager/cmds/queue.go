@@ -53,8 +53,11 @@ func (c *cmdQueueList) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
-	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", "Format (csv|json|table|yaml|compact)")
+	cmd.Flags().StringVarP(&c.flagFormat, "format", "f", "table", `Format (csv|json|table|yaml|compact), use suffix ",noheader" to disable headers and ",header" to enable if demanded, e.g. csv,header`)
 	cmd.Flags().BoolVarP(&c.flagVerbose, "verbose", "", false, "Enable verbose output")
+	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
+		return validateFlagFormat(cmd.Flag("format").Value.String())
+	}
 
 	return cmd
 }
