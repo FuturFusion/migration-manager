@@ -149,6 +149,14 @@ func LinuxDoPostMigrationConfig(distro string, majorVersion int) error {
 		return err
 	}
 
+	// Setup incus-agent service override for older versions of RHEL.
+	if internalUtil.IsRHELOrDerivative(distro) && majorVersion <= 7 {
+		err := runScriptInChroot("add-incus-agent-override-for-old-systemd.sh")
+		if err != nil {
+			return err
+		}
+	}
+
 	logger.Info("Post-migration configuration complete!")
 	return nil
 }
