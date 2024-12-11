@@ -29,6 +29,9 @@ issues:
     # Most of the code of internal/migratekit was copied from the excellent project
     # https://github.com/vexxhost/migratekit, Apache-2.0 license.
     - internal/migratekit
+    # Copied from the Go standard library
+    # https://github.com/golang/go/blob/master/src/net/http/internal/testcert/testcert.go, BSD-3-Clause license
+    - internal/testcert
 linters-settings:
   gci:
     sections:
