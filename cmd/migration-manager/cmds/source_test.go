@@ -255,6 +255,44 @@ func TestSourceList(t *testing.T) {
 				`source 1`, // source1 is not VMware and therefore ignored
 			},
 		},
+		{
+			name:                        "error - invalid API response",
+			migrationManagerdHTTPStatus: http.StatusOK,
+			migrationManagerdResponse:   `{`, // invalid response
+
+			assertErr: require.Error,
+		},
+		{
+			name:                        "error - invalid JSON value for metadata",
+			migrationManagerdHTTPStatus: http.StatusOK,
+			migrationManagerdResponse: `{
+  "status_code": 200,
+  "status": "Success",
+  "metadata": ""
+}`, // metadata is not a list
+
+			assertErr: require.Error,
+		},
+		{
+			name:                        "error - invalid source type",
+			migrationManagerdHTTPStatus: http.StatusOK,
+			migrationManagerdResponse: `{
+  "status_code": 200,
+  "status": "Success",
+  "metadata": [
+    {
+      "type": -1,
+      "source": {
+        "name": "source 1",
+        "database_id": 1,
+        "insecure": false
+      }
+    }
+  ]
+}`, // invalid type
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {
