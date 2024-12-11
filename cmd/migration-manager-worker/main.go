@@ -56,6 +56,7 @@ func main() {
 	// Run the main command and handle errors
 	err := app.Execute()
 	if err != nil {
+		app.Printf("%s\n", err)
 		os.Exit(1)
 	}
 }
