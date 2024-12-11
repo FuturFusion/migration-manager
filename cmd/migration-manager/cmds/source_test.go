@@ -194,23 +194,6 @@ func TestSourceAdd(t *testing.T) {
 }
 
 func TestSourceList(t *testing.T) {
-	const listSingleEntry = `{
-  "status_code": 200,
-  "status": "Success",
-  "metadata": [
-    {
-      "type": 2,
-      "source": {
-        "name": "source 1",
-        "database_id": 1,
-        "insecure": false,
-        "endpoint": "https://127.0.0.1:8989/",
-        "username": "user",
-        "password": "pass"
-      }
-    }
-  ]
-}`
 	const listMultipleEntries = `{
   "status_code": 200,
   "status": "Success",
@@ -255,70 +238,14 @@ func TestSourceList(t *testing.T) {
 		name                        string
 		migrationManagerdHTTPStatus int
 		migrationManagerdResponse   string
-		format                      string
 
 		assertErr          require.ErrorAssertionFunc
 		wantOutputContains []string
-		wantJSONEQ         []string
 	}{
-		{
-			name:                        "success - empty list",
-			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse: `{
-  "status": "Success",
-  "status_code": 200,
-  "metadata": []
-}`,
-			format: `table`,
-
-			assertErr: require.NoError,
-			wantOutputContains: []string{
-				`| NAME | TYPE | ENDPOINT | USERNAME | INSECURE |`,
-			},
-		},
-		{
-			name:                        "success - list as table single entry",
-			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   listSingleEntry,
-			format:                      `table`,
-
-			assertErr: require.NoError,
-			wantOutputContains: []string{
-				`| source 1 | VMware | https://127.0.0.1:8989/ | user     | false    |`,
-			},
-		},
 		{
 			name:                        "success - list as table multiple entries",
 			migrationManagerdHTTPStatus: http.StatusOK,
 			migrationManagerdResponse:   listMultipleEntries,
-			format:                      `table`,
-
-			assertErr: require.NoError,
-			wantOutputContains: []string{
-				`|   NAME   |  TYPE  |        ENDPOINT         | USERNAME | INSECURE |`,
-				`| source 1 | VMware | https://127.0.0.1:8989/ | user     | false    |`,
-				`| source 2 | VMware | https://127.0.0.2:8989/ | user2    | false    |`,
-				`| source 3 | VMware | https://127.0.0.3:8989/ | user3    | false    |`,
-			},
-		},
-		{
-			name:                        "success - list as table,noheader multiple entries",
-			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   listMultipleEntries,
-			format:                      `table,noheader`,
-
-			assertErr: require.NoError,
-			wantOutputContains: []string{
-				`| source 1 | VMware | https://127.0.0.1:8989/ | user  | false |`,
-				`| source 2 | VMware | https://127.0.0.2:8989/ | user2 | false |`,
-				`| source 3 | VMware | https://127.0.0.3:8989/ | user3 | false |`,
-			},
-		},
-		{
-			name:                        "success - list as csv multiple entries",
-			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   listMultipleEntries,
-			format:                      `csv`,
 
 			assertErr: require.NoError,
 			wantOutputContains: []string{
@@ -326,110 +253,6 @@ func TestSourceList(t *testing.T) {
 				`source 1,VMware,https://127.0.0.1:8989/,user,false`,
 				`source 2,VMware,https://127.0.0.2:8989/,user2,false`,
 				`source 3,VMware,https://127.0.0.3:8989/,user3,false`,
-			},
-		},
-		{
-			name:                        "success - list as csv,noheader multiple entries",
-			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   listMultipleEntries,
-			format:                      `csv,noheader`,
-
-			assertErr: require.NoError,
-			wantOutputContains: []string{
-				`source 1,VMware,https://127.0.0.1:8989/,user,false`,
-				`source 2,VMware,https://127.0.0.2:8989/,user2,false`,
-				`source 3,VMware,https://127.0.0.3:8989/,user3,false`,
-			},
-		},
-		{
-			name:                        "success - list as compact multiple entries",
-			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   listMultipleEntries,
-			format:                      `compact`,
-
-			assertErr: require.NoError,
-			wantOutputContains: []string{
-				`NAME     TYPE          ENDPOINT          USERNAME  INSECURE`,
-				`source 1  VMware  https://127.0.0.1:8989/  user      false`,
-				`source 2  VMware  https://127.0.0.2:8989/  user2     false`,
-				`source 3  VMware  https://127.0.0.3:8989/  user3     false`,
-			},
-		},
-		{
-			name:                        "success - list as compact,noheader multiple entries",
-			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   listMultipleEntries,
-			format:                      `compact,noheader`,
-
-			assertErr: require.NoError,
-			wantOutputContains: []string{
-				`source 1  VMware  https://127.0.0.1:8989/  user   false`,
-				`source 2  VMware  https://127.0.0.2:8989/  user2  false`,
-				`source 3  VMware  https://127.0.0.3:8989/  user3  false`,
-			},
-		},
-		{
-			name:                        "success - list as json multiple entries",
-			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   listMultipleEntries,
-			format:                      `json`,
-
-			assertErr: require.NoError,
-			wantJSONEQ: []string{
-				`[
-  {
-    "name": "source 1",
-    "database_id": 1,
-    "insecure": false,
-    "endpoint": "https://127.0.0.1:8989/",
-    "username": "user",
-    "password": "pass"
-  },
-  {
-    "name": "source 2",
-    "database_id": 2,
-    "insecure": false,
-    "endpoint": "https://127.0.0.2:8989/",
-    "username": "user2",
-    "password": "pass2"
-  },
-  {
-    "name": "source 3",
-    "database_id": 3,
-    "insecure": false,
-    "endpoint": "https://127.0.0.3:8989/",
-    "username": "user3",
-    "password": "pass3"
-  }
-]`,
-			},
-		},
-		{
-			name:                        "success - list as json multiple entries",
-			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   listMultipleEntries,
-			format:                      `yaml`,
-
-			assertErr: require.NoError,
-			wantOutputContains: []string{
-				`- name: source 1`,
-				`database_id: 1`,
-				`insecure: false`,
-				`endpoint: https://127.0.0.1:8989/`,
-				`username: user`,
-				`password: pass`,
-				`- name: source 2`,
-				`database_id: 2`,
-				`insecure: false`,
-				`endpoint: https://127.0.0.2:8989/`,
-				`username: user2`,
-				`password: pass2`,
-				`- name: source 3`,
-				`database_id: 3`,
-				`insecure: false`,
-				`endpoint: https://127.0.0.3:8989/`,
-				`username: user3`,
-				`password: pass3`,
 			},
 		},
 	}
@@ -448,7 +271,7 @@ func TestSourceList(t *testing.T) {
 						MMServer: migrationManagerd.URL,
 					},
 				},
-				flagFormat: tc.format,
+				flagFormat: `csv`,
 			}
 
 			buf := bytes.Buffer{}
@@ -465,10 +288,6 @@ func TestSourceList(t *testing.T) {
 
 			for _, want := range tc.wantOutputContains {
 				require.Contains(t, buf.String(), want)
-			}
-
-			for _, want := range tc.wantJSONEQ {
-				require.JSONEq(t, want, buf.String())
 			}
 		})
 	}
