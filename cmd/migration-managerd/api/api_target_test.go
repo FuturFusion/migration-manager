@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"bytes"
@@ -353,7 +353,7 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, string) {
 
 	tmpDir := t.TempDir()
 
-	daemon := newDaemon(&DaemonConfig{})
+	daemon := NewDaemon(&DaemonConfig{})
 	daemon.db, err = db.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
