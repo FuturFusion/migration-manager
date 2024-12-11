@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -72,7 +73,7 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 	endpointURL.User = url.UserPassword(s.Username, s.Password)
 
-	s.govmomiClient, err = soapWithKeepalive(ctx, endpointURL, s.Insecure)
+	s.govmomiClient, err = soapWithKeepalive(ctx, endpointURL, s.Insecure, s.additionalRootCertificate)
 	if err != nil {
 		return err
 	}
@@ -345,4 +346,8 @@ func (s *InternalVMwareSource) getVMProperties(ctx context.Context, vm *object.V
 	var v mo.VirtualMachine
 	err := vm.Properties(ctx, vm.Reference(), []string{}, &v)
 	return v, err
+}
+
+func (s *InternalVMwareSource) WithAdditionalRootCertificate(rootCert *tls.Certificate) {
+	s.additionalRootCertificate = rootCert
 }

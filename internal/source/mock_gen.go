@@ -5,6 +5,7 @@ package source
 
 import (
 	"context"
+	"crypto/tls"
 	"sync"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -54,6 +55,9 @@ var _ Source = &SourceMock{}
 //			SetInsecureTLSFunc: func(insecure bool) error {
 //				panic("mock out the SetInsecureTLS method")
 //			},
+//			WithAdditionalRootCertificateFunc: func(rootCert *tls.Certificate)  {
+//				panic("mock out the WithAdditionalRootCertificate method")
+//			},
 //		}
 //
 //		// use mockedSource in code that requires Source
@@ -93,6 +97,9 @@ type SourceMock struct {
 
 	// SetInsecureTLSFunc mocks the SetInsecureTLS method.
 	SetInsecureTLSFunc func(insecure bool) error
+
+	// WithAdditionalRootCertificateFunc mocks the WithAdditionalRootCertificate method.
+	WithAdditionalRootCertificateFunc func(rootCert *tls.Certificate)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -155,18 +162,24 @@ type SourceMock struct {
 			// Insecure is the insecure argument value.
 			Insecure bool
 		}
+		// WithAdditionalRootCertificate holds details about calls to the WithAdditionalRootCertificate method.
+		WithAdditionalRootCertificate []struct {
+			// RootCert is the rootCert argument value.
+			RootCert *tls.Certificate
+		}
 	}
-	lockConnect          sync.RWMutex
-	lockDeleteVMSnapshot sync.RWMutex
-	lockDisconnect       sync.RWMutex
-	lockGetAllNetworks   sync.RWMutex
-	lockGetAllVMs        sync.RWMutex
-	lockGetDatabaseID    sync.RWMutex
-	lockGetName          sync.RWMutex
-	lockImportDisks      sync.RWMutex
-	lockIsConnected      sync.RWMutex
-	lockPowerOffVM       sync.RWMutex
-	lockSetInsecureTLS   sync.RWMutex
+	lockConnect                       sync.RWMutex
+	lockDeleteVMSnapshot              sync.RWMutex
+	lockDisconnect                    sync.RWMutex
+	lockGetAllNetworks                sync.RWMutex
+	lockGetAllVMs                     sync.RWMutex
+	lockGetDatabaseID                 sync.RWMutex
+	lockGetName                       sync.RWMutex
+	lockImportDisks                   sync.RWMutex
+	lockIsConnected                   sync.RWMutex
+	lockPowerOffVM                    sync.RWMutex
+	lockSetInsecureTLS                sync.RWMutex
+	lockWithAdditionalRootCertificate sync.RWMutex
 }
 
 // Connect calls ConnectFunc.
@@ -523,5 +536,37 @@ func (mock *SourceMock) SetInsecureTLSCalls() []struct {
 	mock.lockSetInsecureTLS.RLock()
 	calls = mock.calls.SetInsecureTLS
 	mock.lockSetInsecureTLS.RUnlock()
+	return calls
+}
+
+// WithAdditionalRootCertificate calls WithAdditionalRootCertificateFunc.
+func (mock *SourceMock) WithAdditionalRootCertificate(rootCert *tls.Certificate) {
+	if mock.WithAdditionalRootCertificateFunc == nil {
+		panic("SourceMock.WithAdditionalRootCertificateFunc: method is nil but Source.WithAdditionalRootCertificate was just called")
+	}
+	callInfo := struct {
+		RootCert *tls.Certificate
+	}{
+		RootCert: rootCert,
+	}
+	mock.lockWithAdditionalRootCertificate.Lock()
+	mock.calls.WithAdditionalRootCertificate = append(mock.calls.WithAdditionalRootCertificate, callInfo)
+	mock.lockWithAdditionalRootCertificate.Unlock()
+	mock.WithAdditionalRootCertificateFunc(rootCert)
+}
+
+// WithAdditionalRootCertificateCalls gets all the calls that were made to WithAdditionalRootCertificate.
+// Check the length with:
+//
+//	len(mockedSource.WithAdditionalRootCertificateCalls())
+func (mock *SourceMock) WithAdditionalRootCertificateCalls() []struct {
+	RootCert *tls.Certificate
+} {
+	var calls []struct {
+		RootCert *tls.Certificate
+	}
+	mock.lockWithAdditionalRootCertificate.RLock()
+	calls = mock.calls.WithAdditionalRootCertificate
+	mock.lockWithAdditionalRootCertificate.RUnlock()
 	return calls
 }

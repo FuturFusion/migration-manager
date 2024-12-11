@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"crypto/tls"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -27,6 +28,11 @@ type Source interface {
 	//
 	// Returns an error if called while connected to a source.
 	SetInsecureTLS(insecure bool) error
+
+	// WithAdditionalRootCertificate accepts an additional certificate, which
+	// is added to the default CertPool used to validate server certificates
+	// while connecting to the Source using TLS.
+	WithAdditionalRootCertificate(rootCert *tls.Certificate)
 
 	// Returns whether currently connected to the source or not.
 	IsConnected() bool

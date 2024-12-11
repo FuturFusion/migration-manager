@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -63,6 +64,8 @@ type cmdSourceAdd struct {
 
 	flagInsecure         bool
 	flagNoTestConnection bool
+
+	additionalRootCertificate *tls.Certificate
 }
 
 func (c *cmdSourceAdd) Command() *cobra.Command {
@@ -145,6 +148,10 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		err = json.Unmarshal(content, &internalSource)
 		if err != nil {
 			return err
+		}
+
+		if c.additionalRootCertificate != nil {
+			internalSource.WithAdditionalRootCertificate(c.additionalRootCertificate)
 		}
 
 		if !c.flagNoTestConnection {
