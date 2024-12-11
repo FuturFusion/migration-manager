@@ -199,14 +199,11 @@ func TestSourceList(t *testing.T) {
   "status": "Success",
   "metadata": [
     {
-      "type": 2,
+      "type": 1,
       "source": {
         "name": "source 1",
         "database_id": 1,
-        "insecure": false,
-        "endpoint": "https://127.0.0.1:8989/",
-        "username": "user",
-        "password": "pass"
+        "insecure": false
       }
     },
     {
@@ -239,8 +236,9 @@ func TestSourceList(t *testing.T) {
 		migrationManagerdHTTPStatus int
 		migrationManagerdResponse   string
 
-		assertErr          require.ErrorAssertionFunc
-		wantOutputContains []string
+		assertErr             require.ErrorAssertionFunc
+		wantOutputContains    []string
+		wantOutputNotContains []string
 	}{
 		{
 			name:                        "success - list as table multiple entries",
@@ -250,9 +248,11 @@ func TestSourceList(t *testing.T) {
 			assertErr: require.NoError,
 			wantOutputContains: []string{
 				`Name,Type,Endpoint,Username,Insecure`,
-				`source 1,VMware,https://127.0.0.1:8989/,user,false`,
 				`source 2,VMware,https://127.0.0.2:8989/,user2,false`,
 				`source 3,VMware,https://127.0.0.3:8989/,user3,false`,
+			},
+			wantOutputNotContains: []string{
+				`source 1`, // source1 is not VMware and therefore ignored
 			},
 		},
 	}
@@ -288,6 +288,10 @@ func TestSourceList(t *testing.T) {
 
 			for _, want := range tc.wantOutputContains {
 				require.Contains(t, buf.String(), want)
+			}
+
+			for _, want := range tc.wantOutputNotContains {
+				require.NotContains(t, buf.String(), want)
 			}
 		})
 	}
