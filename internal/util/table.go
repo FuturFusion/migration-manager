@@ -57,6 +57,7 @@ func RenderTable(w io.Writer, format string, header []string, data [][]string, r
 		if err != nil {
 			return err
 		}
+
 		err = w.WriteAll(data)
 		if err != nil {
 			return err

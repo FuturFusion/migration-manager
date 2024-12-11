@@ -3,7 +3,6 @@ package cmds
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -292,6 +291,6 @@ func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully updated instance '%s'.\n", UUIDString)
+	cmd.Printf("Successfully updated instance '%s'.\n", UUIDString)
 	return nil
 }

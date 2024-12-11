@@ -3,7 +3,6 @@ package cmds
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -106,7 +105,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully added new network '%s'.\n", n.Name)
+	cmd.Printf("Successfully added new network '%s'.\n", n.Name)
 	return nil
 }
 
@@ -225,7 +224,7 @@ func (c *cmdNetworkRemove) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully removed network '%s'.\n", name)
+	cmd.Printf("Successfully removed network '%s'.\n", name)
 	return nil
 }
 
@@ -312,6 +311,6 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully updated network '%s'.\n", newNetworkName)
+	cmd.Printf("Successfully updated network '%s'.\n", newNetworkName)
 	return nil
 }

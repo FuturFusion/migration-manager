@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"strconv"
@@ -164,7 +163,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully added new target '%s'.\n", t.Name)
+	cmd.Printf("Successfully added new target '%s'.\n", t.Name)
 	return nil
 }
 
@@ -283,7 +282,7 @@ func (c *cmdTargetRemove) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully removed target '%s'.\n", name)
+	cmd.Printf("Successfully removed target '%s'.\n", name)
 	return nil
 }
 
@@ -435,6 +434,6 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully updated target '%s'.\n", newTargetName)
+	cmd.Printf("Successfully updated target '%s'.\n", newTargetName)
 	return nil
 }

@@ -165,7 +165,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		fmt.Printf("Successfully added new source '%s'.\n", sourceName)
+		cmd.Printf("Successfully added new source '%s'.\n", sourceName)
 	}
 
 	return nil
@@ -302,7 +302,7 @@ func (c *cmdSourceRemove) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully removed source '%s'.\n", name)
+	cmd.Printf("Successfully removed source '%s'.\n", name)
 	return nil
 }
 
@@ -414,6 +414,6 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully updated source '%s'.\n", newSourceName)
+	cmd.Printf("Successfully updated source '%s'.\n", newSourceName)
 	return nil
 }

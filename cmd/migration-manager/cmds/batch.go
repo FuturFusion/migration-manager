@@ -3,7 +3,6 @@ package cmds
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -160,7 +159,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully added new batch '%s'.\n", b.Name)
+	cmd.Printf("Successfully added new batch '%s'.\n", b.Name)
 	return nil
 }
 
@@ -284,7 +283,7 @@ func (c *cmdBatchRemove) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully removed batch '%s'.\n", name)
+	cmd.Printf("Successfully removed batch '%s'.\n", name)
 	return nil
 }
 
@@ -355,35 +354,35 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Show the details
-	fmt.Printf("Batch: %s\n", b.Name)
-	fmt.Printf("  - Status:          %s\n", b.StatusString)
+	cmd.Printf("Batch: %s\n", b.Name)
+	cmd.Printf("  - Status:          %s\n", b.StatusString)
 	if b.StoragePool != "" {
-		fmt.Printf("  - Storage pool:    %s\n", b.StoragePool)
+		cmd.Printf("  - Storage pool:    %s\n", b.StoragePool)
 	}
 
 	if b.IncludeRegex != "" {
-		fmt.Printf("  - Include regex:   %s\n", b.IncludeRegex)
+		cmd.Printf("  - Include regex:   %s\n", b.IncludeRegex)
 	}
 
 	if b.ExcludeRegex != "" {
-		fmt.Printf("  - Exclude regex:   %s\n", b.ExcludeRegex)
+		cmd.Printf("  - Exclude regex:   %s\n", b.ExcludeRegex)
 	}
 
 	if !b.MigrationWindowStart.IsZero() {
-		fmt.Printf("  - Window start:    %s\n", b.MigrationWindowStart)
+		cmd.Printf("  - Window start:    %s\n", b.MigrationWindowStart)
 	}
 
 	if !b.MigrationWindowEnd.IsZero() {
-		fmt.Printf("  - Window end:      %s\n", b.MigrationWindowEnd)
+		cmd.Printf("  - Window end:      %s\n", b.MigrationWindowEnd)
 	}
 
 	if b.DefaultNetwork != "" {
-		fmt.Printf("  - Default network: %s\n", b.DefaultNetwork)
+		cmd.Printf("  - Default network: %s\n", b.DefaultNetwork)
 	}
 
-	fmt.Printf("\n  - Instances:\n")
+	cmd.Printf("\n  - Instances:\n")
 	for _, i := range instances {
-		fmt.Printf("    - %s (%s)\n", i.Name, i.MigrationStatusString)
+		cmd.Printf("    - %s (%s)\n", i.Name, i.MigrationStatusString)
 	}
 
 	return nil
@@ -422,7 +421,7 @@ func (c *cmdBatchStart) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully started batch '%s'.\n", name)
+	cmd.Printf("Successfully started batch '%s'.\n", name)
 	return nil
 }
 
@@ -459,7 +458,7 @@ func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully stopped batch '%s'.\n", name)
+	cmd.Printf("Successfully stopped batch '%s'.\n", name)
 	return nil
 }
 
@@ -589,6 +588,6 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Successfully updated batch '%s'.\n", newBatchName)
+	cmd.Printf("Successfully updated batch '%s'.\n", newBatchName)
 	return nil
 }
