@@ -53,7 +53,11 @@ func RenderTable(w io.Writer, format string, header []string, data [][]string, r
 		table.Render()
 	case TableFormatCSV:
 		w := csv.NewWriter(w)
-		err := w.WriteAll(data)
+		err := w.Write(header)
+		if err != nil {
+			return err
+		}
+		err = w.WriteAll(data)
 		if err != nil {
 			return err
 		}
