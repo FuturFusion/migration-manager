@@ -15,11 +15,12 @@ type InternalBatch struct {
 }
 
 // Returns a new Batch ready for use.
-func NewBatch(name string, storagePool string, includeRegex string, excludeRegex string, migrationWindowStart time.Time, migrationWindowEnd time.Time, defaultNetwork string) *InternalBatch {
+func NewBatch(name string, targetID int, storagePool string, includeRegex string, excludeRegex string, migrationWindowStart time.Time, migrationWindowEnd time.Time, defaultNetwork string) *InternalBatch {
 	return &InternalBatch{
 		Batch: api.Batch{
 			Name:                 name,
 			DatabaseID:           internal.INVALID_DATABASE_ID,
+			TargetID:             targetID,
 			Status:               api.BATCHSTATUS_DEFINED,
 			StatusString:         api.BATCHSTATUS_DEFINED.String(),
 			StoragePool:          storagePool,
@@ -42,6 +43,10 @@ func (b *InternalBatch) GetDatabaseID() (int, error) {
 	}
 
 	return b.DatabaseID, nil
+}
+
+func (b *InternalBatch) GetTargetID() int {
+	return b.TargetID
 }
 
 func (b *InternalBatch) CanBeModified() bool {
