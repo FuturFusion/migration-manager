@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -31,95 +30,109 @@ type Worker struct {
 	uuid     string
 
 	lastUpdate time.Time
-
-	ShutdownCtx    context.Context    // Canceled when shutdown starts.
-	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
-	ShutdownDoneCh chan error         // Receives the result of the w.Stop() function and tells the daemon to end.
+	idleSleep  time.Duration
 }
 
-func NewWorker(endpoint string, uuid string) (*Worker, error) {
+type WorkerOption func(*Worker) error
+
+func NewWorker(endpoint string, uuid string, opts ...WorkerOption) (*Worker, error) {
 	// Parse the provided URL for the migration manager endpoint.
 	parsedURL, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
 	}
 
-	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
+	wrkr := &Worker{
+		endpoint:   parsedURL,
+		source:     nil,
+		uuid:       uuid,
+		lastUpdate: time.Now().UTC(),
+		idleSleep:  10 * time.Second,
+	}
 
-	ret := &Worker{
-		endpoint:       parsedURL,
-		source:         nil,
-		uuid:           uuid,
-		lastUpdate:     time.Now().UTC(),
-		ShutdownCtx:    shutdownCtx,
-		ShutdownCancel: shutdownCancel,
-		ShutdownDoneCh: make(chan error),
+	for _, opt := range opts {
+		err := opt(wrkr)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Do a quick connectivity check to the endpoint.
-	_, err = ret.doHTTPRequestV1("", http.MethodGet, nil)
+	_, err = wrkr.doHTTPRequestV1("", http.MethodGet, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return ret, nil
+	return wrkr, nil
 }
 
-func (w *Worker) Start() error {
+func WithIdleSleep(sleep time.Duration) WorkerOption {
+	return func(w *Worker) error {
+		w.idleSleep = sleep
+		return nil
+	}
+}
+
+func WithSource(src source.Source) WorkerOption {
+	return func(w *Worker) error {
+		w.source = src
+		return nil
+	}
+}
+
+func (w *Worker) Run(ctx context.Context) {
 	logger.Info("Starting up", logger.Ctx{"version": version.Version})
 
-	go func() {
-		for {
+	for {
+		done := func() (done bool) {
 			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodGet, nil)
 			if err != nil {
 				logger.Errorf("%s", err.Error())
-			} else {
-				cmd, err := parseReturnedCommand(resp.Metadata)
-				if err != nil {
-					logger.Errorf("%s", err.Error())
-				} else {
-					switch cmd.Command {
-					case api.WORKERCOMMAND_IDLE:
-						logger.Debug("Received IDLE command, sleeping")
-					case api.WORKERCOMMAND_IMPORT_DISKS:
-						w.importDisks(cmd)
-					case api.WORKERCOMMAND_FINALIZE_IMPORT:
-						done := w.finalizeImport(cmd)
-						if done {
-							w.ShutdownCancel()
-							return
-						}
-
-					default:
-						logger.Errorf("Received unknown command (%d)", cmd.Command)
-					}
-				}
+				return false
 			}
 
-			t := time.NewTimer(10 * time.Second)
-
-			select {
-			case <-w.ShutdownCtx.Done():
-				t.Stop()
-				return
-			case <-t.C:
-				t.Stop()
+			cmd, err := parseReturnedCommand(resp.Metadata)
+			if err != nil {
+				logger.Errorf("%s", err.Error())
+				return false
 			}
+
+			switch cmd.Command {
+			case api.WORKERCOMMAND_IDLE:
+				logger.Debug("Received IDLE command, sleeping")
+				return false
+
+			case api.WORKERCOMMAND_IMPORT_DISKS:
+				w.importDisks(ctx, cmd)
+				return false
+
+			case api.WORKERCOMMAND_FINALIZE_IMPORT:
+				return w.finalizeImport(ctx, cmd)
+
+			default:
+				logger.Errorf("Received unknown command (%d)", cmd.Command)
+				return false
+			}
+		}()
+		if done {
+			return
 		}
-	}()
 
-	return nil
+		t := time.NewTimer(w.idleSleep)
+
+		select {
+		case <-ctx.Done():
+			t.Stop()
+			return
+		case <-t.C:
+			t.Stop()
+		}
+	}
 }
 
-func (w *Worker) Stop(ctx context.Context, sig os.Signal) error {
-	logger.Info("Worker stopped")
-
-	return nil
-}
-
-func (w *Worker) importDisks(cmd api.WorkerCommand) {
+func (w *Worker) importDisks(ctx context.Context, cmd api.WorkerCommand) {
 	if w.source == nil {
-		err := w.connectSource(w.ShutdownCtx, cmd.Source)
+		err := w.connectSource(ctx, cmd.SourceType, cmd.Source)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return
@@ -128,7 +141,7 @@ func (w *Worker) importDisks(cmd api.WorkerCommand) {
 
 	logger.Info("Performing disk import")
 
-	err := w.importDisksHelper(cmd)
+	err := w.importDisksHelper(ctx, cmd)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return
@@ -138,15 +151,15 @@ func (w *Worker) importDisks(cmd api.WorkerCommand) {
 	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Disk import completed successfully")
 }
 
-func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
+func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) error {
 	// Delete any existing migration snapshot that might be left over.
-	err := w.source.DeleteVMSnapshot(w.ShutdownCtx, cmd.InventoryPath, internal.IncusSnapshotName)
+	err := w.source.DeleteVMSnapshot(ctx, cmd.InventoryPath, internal.IncusSnapshotName)
 	if err != nil {
 		return err
 	}
 
 	// Do the actual import.
-	return w.source.ImportDisks(w.ShutdownCtx, cmd.InventoryPath, func(status string, isImportant bool) {
+	return w.source.ImportDisks(ctx, cmd.InventoryPath, func(status string, isImportant bool) {
 		logger.Info(status)
 
 		// Only send updates back to the server if important or once every 5 seconds.
@@ -162,9 +175,9 @@ func (w *Worker) importDisksHelper(cmd api.WorkerCommand) error {
 // and migration-manager-worker can shut down.
 // If there is an error or not all the finalizing work has been performed
 // yet, false is returned.
-func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
+func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (done bool) {
 	if w.source == nil {
-		err := w.connectSource(w.ShutdownCtx, cmd.Source)
+		err := w.connectSource(ctx, cmd.SourceType, cmd.Source)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false
@@ -173,7 +186,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 
 	logger.Info("Shutting down source VM")
 
-	err := w.source.PowerOffVM(w.ShutdownCtx, cmd.InventoryPath)
+	err := w.source.PowerOffVM(ctx, cmd.InventoryPath)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return false
@@ -183,7 +196,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 
 	logger.Info("Performing final disk sync")
 
-	err = w.importDisksHelper(cmd)
+	err = w.importDisksHelper(ctx, cmd)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return false
@@ -200,7 +213,7 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 			return false
 		}
 
-		err = worker.WindowsInjectDrivers(w.ShutdownCtx, winVer, "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
+		err = worker.WindowsInjectDrivers(ctx, winVer, "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false
@@ -214,7 +227,10 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 	// VMware API doesn't distinguish openSUSE and Ubuntu versions.
 	if !strings.Contains(strings.ToLower(cmd.OS), "opensuse") && !strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
 		majorVersionRegex := regexp.MustCompile(`^\w+?(\d+)(_64)?$`)
-		majorVersion, _ = strconv.Atoi(majorVersionRegex.FindStringSubmatch(cmd.OS)[1])
+		matches := majorVersionRegex.FindStringSubmatch(cmd.OS)
+		if len(matches) > 1 {
+			majorVersion, _ = strconv.Atoi(majorVersionRegex.FindStringSubmatch(cmd.OS)[1])
+		}
 	}
 
 	if strings.Contains(strings.ToLower(cmd.OS), "centos") {
@@ -248,14 +264,28 @@ func (w *Worker) finalizeImport(cmd api.WorkerCommand) (done bool) {
 	return true
 }
 
-func (w *Worker) connectSource(ctx context.Context, s api.VMwareSource) error {
-	w.source = source.NewVMwareSource(s.Name, s.Endpoint, s.Username, s.Password)
-	if s.Insecure {
-		err := w.source.SetInsecureTLS(true)
+func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, sourceRaw json.RawMessage) error {
+	var src source.Source
+
+	switch sourceType {
+	case api.SOURCETYPE_VMWARE:
+		vmwareSource := api.VMwareSource{}
+
+		err := json.Unmarshal(sourceRaw, &vmwareSource)
 		if err != nil {
 			return err
 		}
+
+		vmwareSrc := source.NewVMwareSource(vmwareSource.Name, vmwareSource.Endpoint, vmwareSource.Username, vmwareSource.Password)
+		vmwareSrc.Insecure = vmwareSource.Insecure
+
+		src = vmwareSrc
+
+	default:
+		return fmt.Errorf("Provided source type %q is not usable with `migration-manager-worker`", sourceType.String())
 	}
+
+	w.source = src
 
 	return w.source.Connect(ctx)
 }
@@ -265,7 +295,7 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusStri
 
 	content, err := json.Marshal(resp)
 	if err != nil {
-		logger.Errorf("Failed to send status back to migration manager: %s", err.Error())
+		logger.Errorf("Failed to marshal status response for migration manager: %s", err.Error())
 		return
 	}
 

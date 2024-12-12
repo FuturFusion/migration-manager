@@ -1,5 +1,9 @@
 package api
 
+import (
+	"encoding/json"
+)
+
 type WorkerCommandType int
 
 const (
@@ -30,9 +34,12 @@ type WorkerCommand struct {
 	// Example: /SHF/vm/Migration Tests/DebianTest
 	InventoryPath string `json:"inventory_path" yaml:"inventory_path"`
 
-	// Source for the worker to fetch VM metadata and/or disk from
-	// Example: VMwareSource{...}
-	Source VMwareSource `json:"source" yaml:"source"`
+	// SourceType declares the type of the worker and is used as a hint to
+	// correctly process the details provided in Source.
+	SourceType SourceType `json:"sourceType" yaml:"sourceType"`
+
+	// Source for the worker to fetch VM metadata and/or disk from.
+	Source json.RawMessage `json:"source" yaml:"source"`
 
 	// The name of the operating system
 	// Example: Ubuntu

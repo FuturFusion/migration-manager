@@ -206,7 +206,8 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	cmd := api.WorkerCommand{
 		Command:       api.WORKERCOMMAND_IDLE,
 		InventoryPath: i.InventoryPath,
-		Source:        api.VMwareSource{},
+		SourceType:    api.SOURCETYPE_UNKNOWN,
+		Source:        []byte(`{}`),
 		OS:            i.OS,
 		OSVersion:     i.OSVersion,
 	}
@@ -249,21 +250,24 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	if i.NeedsDiskImport && i.Disks[0].DifferentialSyncSupported {
 		// If we can do a background disk sync, kick it off.
 		cmd.Command = api.WORKERCOMMAND_IMPORT_DISKS
-		cmd.Source = s
+		cmd.SourceType = api.SOURCETYPE_VMWARE
+		cmd.Source, _ = json.Marshal(s)
 
 		i.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
 		i.MigrationStatusString = i.MigrationStatus.String()
 	} else if !b.GetMigrationWindowStart().IsZero() && b.GetMigrationWindowStart().Before(time.Now().UTC()) {
 		// If a migration window has been defined, and we have passed the start time, begin the final migration.
 		cmd.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
-		cmd.Source = s
+		cmd.SourceType = api.SOURCETYPE_VMWARE
+		cmd.Source, _ = json.Marshal(s)
 
 		i.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
 		i.MigrationStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
 	} else if b.GetMigrationWindowStart().IsZero() {
 		// If no migration window start time has been defined, go ahead and begin the final migration.
 		cmd.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
-		cmd.Source = s
+		cmd.SourceType = api.SOURCETYPE_VMWARE
+		cmd.Source, _ = json.Marshal(s)
 
 		i.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
 		i.MigrationStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
