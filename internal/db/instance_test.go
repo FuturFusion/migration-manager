@@ -18,7 +18,7 @@ import (
 var (
 	testSource       = source.NewCommonSource("TestSource")
 	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:8443")
-	testBatch        = batch.NewBatch("TestBatch", "", "", "", time.Time{}, time.Time{}, "network")
+	testBatch        = batch.NewBatch("TestBatch", 1, "", "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()
 	instanceA        = instance.NewInstance(instanceAUUID, "/path/one", 1, 1, -1, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{
 		{

@@ -94,6 +94,20 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 		return fmt.Errorf("%d instances refer to target '%s', can't delete", numInstances, name)
 	}
 
+	// Verify no batches refer to this target.
+	q = `SELECT COUNT(id) FROM batches WHERE target_id=?`
+	row = tx.QueryRow(q, tID)
+
+	numBatches := 0
+	err = row.Scan(&numBatches)
+	if err != nil {
+		return err
+	}
+
+	if numBatches > 0 {
+		return fmt.Errorf("%d batches refer to target '%s', can't delete", numBatches, name)
+	}
+
 	// Delete the target from the database.
 	q = `DELETE FROM targets WHERE name=?`
 	result, err := tx.Exec(q, name)

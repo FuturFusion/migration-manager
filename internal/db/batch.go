@@ -19,7 +19,7 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Add batch to the database.
-	q := `INSERT INTO batches (name,status,status_string,storage_pool,include_regex,exclude_regex,migration_window_start,migration_window_end,default_network) VALUES(?,?,?,?,?,?,?,?,?)`
+	q := `INSERT INTO batches (name,target_id,status,status_string,storage_pool,include_regex,exclude_regex,migration_window_start,migration_window_end,default_network) VALUES(?,?,?,?,?,?,?,?,?,?)`
 
 	marshalledMigrationWindowStart, err := internalBatch.MigrationWindowStart.MarshalText()
 	if err != nil {
@@ -31,7 +31,7 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 		return err
 	}
 
-	result, err := tx.Exec(q, internalBatch.Name, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DefaultNetwork)
+	result, err := tx.Exec(q, internalBatch.Name, internalBatch.TargetID, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DefaultNetwork)
 	if err != nil {
 		return err
 	}
@@ -157,7 +157,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Update batch in the database.
-	q = `UPDATE batches SET name=?,status=?,status_string=?,storage_pool=?,include_regex=?,exclude_regex=?,migration_window_start=?,migration_window_end=?,default_network=? WHERE id=?`
+	q = `UPDATE batches SET name=?,target_id=?,status=?,status_string=?,storage_pool=?,include_regex=?,exclude_regex=?,migration_window_start=?,migration_window_end=?,default_network=? WHERE id=?`
 
 	internalBatch, ok := b.(*batch.InternalBatch)
 	if !ok {
@@ -174,7 +174,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 		return err
 	}
 
-	result, err := tx.Exec(q, internalBatch.Name, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DefaultNetwork, internalBatch.DatabaseID)
+	result, err := tx.Exec(q, internalBatch.Name, internalBatch.TargetID, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DefaultNetwork, internalBatch.DatabaseID)
 	if err != nil {
 		return err
 	}
@@ -195,7 +195,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 	ret := []batch.Batch{}
 
 	// Get all batches in the database.
-	q := `SELECT id,name,status,status_string,storage_pool,include_regex,exclude_regex,migration_window_start,migration_window_end,default_network FROM batches`
+	q := `SELECT id,name,target_id,status,status_string,storage_pool,include_regex,exclude_regex,migration_window_start,migration_window_end,default_network FROM batches`
 	var rows *sql.Rows
 	var err error
 	if name != "" {
@@ -220,7 +220,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 		marshalledMigrationWindowStart := ""
 		marshalledMigrationWindowEnd := ""
 
-		err := rows.Scan(&newBatch.DatabaseID, &newBatch.Name, &newBatch.Status, &newBatch.StatusString, &newBatch.StoragePool, &newBatch.IncludeRegex, &newBatch.ExcludeRegex, &marshalledMigrationWindowStart, &marshalledMigrationWindowEnd, &newBatch.DefaultNetwork)
+		err := rows.Scan(&newBatch.DatabaseID, &newBatch.Name, &newBatch.TargetID, &newBatch.Status, &newBatch.StatusString, &newBatch.StoragePool, &newBatch.IncludeRegex, &newBatch.ExcludeRegex, &marshalledMigrationWindowStart, &marshalledMigrationWindowEnd, &newBatch.DefaultNetwork)
 		if err != nil {
 			return nil, err
 		}
@@ -294,12 +294,22 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 		return err
 	}
 
-	// Check if each existing instance should still be assigned to this batch.
+	// Update each instance for this batch.
 	for _, i := range instances {
+		// Check if the instance should still be assigned to this batch.
 		if !b.InstanceMatchesCriteria(i) {
 			if !i.IsMigrating() {
-				q := `UPDATE instances SET batch_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
-				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), i.GetUUID())
+				q := `UPDATE instances SET batch_id=?,target_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
+				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), i.GetUUID())
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			// Ensure the target ID is synced from the batch to this instance.
+			if !i.IsMigrating() {
+				q := `UPDATE instances SET target_id=? WHERE uuid=?`
+				_, err := tx.Exec(q, b.GetTargetID(), i.GetUUID())
 				if err != nil {
 					return err
 				}
@@ -317,8 +327,8 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	for _, i := range instances {
 		if b.InstanceMatchesCriteria(i) {
 			if i.CanBeModified() {
-				q := `UPDATE instances SET batch_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
-				_, err := tx.Exec(q, batchID, api.MIGRATIONSTATUS_ASSIGNED_BATCH, api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(), i.GetUUID())
+				q := `UPDATE instances SET batch_id=?,target_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
+				_, err := tx.Exec(q, batchID, b.GetTargetID(), api.MIGRATIONSTATUS_ASSIGNED_BATCH, api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(), i.GetUUID())
 				if err != nil {
 					return err
 				}
