@@ -20,7 +20,7 @@ var (
 	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:8443")
 	testBatch        = batch.NewBatch("TestBatch", "", "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()
-	instanceA        = instance.NewInstance(instanceAUUID, "/path/one", 2, 1, -1, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{
+	instanceA        = instance.NewInstance(instanceAUUID, "/path/one", 1, 1, -1, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{
 		{
 			Name:                      "disk",
 			DifferentialSyncSupported: true,
@@ -33,7 +33,7 @@ var (
 		},
 	}, 2, 2048, false, false, false)
 	instanceBUUID, _ = uuid.NewRandom()
-	instanceB        = instance.NewInstance(instanceBUUID, "/path/two", 2, 1, -1, "WindowsVM", "x86_64", "Windows", "11", []api.InstanceDiskInfo{
+	instanceB        = instance.NewInstance(instanceBUUID, "/path/two", 1, 1, -1, "WindowsVM", "x86_64", "Windows", "11", []api.InstanceDiskInfo{
 		{
 			Name:                      "disk",
 			DifferentialSyncSupported: false,
@@ -49,7 +49,7 @@ var (
 		},
 	}, 4, 4096, false, true, true)
 	instanceCUUID, _ = uuid.NewRandom()
-	instanceC        = instance.NewInstance(instanceCUUID, "/path/three", 2, 1, 1, "DebianVM", "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{
+	instanceC        = instance.NewInstance(instanceCUUID, "/path/three", 1, -1, 1, "DebianVM", "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{
 		{
 			Name:                      "disk1",
 			DifferentialSyncSupported: true,
@@ -73,20 +73,14 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback() }()
 
-	// Cannot add an instance with an invalid source and/or target.
+	// Cannot add an instance with an invalid source.
 	err = db.AddInstance(tx, instanceA)
 	require.Error(t, err)
 	err = db.AddSource(tx, testSource)
 	require.NoError(t, err)
-	err = db.AddInstance(tx, instanceA)
-	require.Error(t, err)
-	err = db.DeleteSource(tx, testSource.GetName())
-	require.NoError(t, err)
+
+	// Add dummy target.
 	err = db.AddTarget(tx, testTarget)
-	require.NoError(t, err)
-	err = db.AddInstance(tx, instanceA)
-	require.Error(t, err)
-	err = db.AddSource(tx, testSource)
 	require.NoError(t, err)
 
 	// Add dummy batch.

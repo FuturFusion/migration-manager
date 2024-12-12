@@ -70,7 +70,7 @@ func (n *Node) GetAllTargets(tx *sql.Tx) ([]target.Target, error) {
 }
 
 func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
-	// Verify no instances refer to this target and return a nicer error than 'FOREIGN KEY constraint failed' if so.
+	// Verify no instances refer to this target.
 	t, err := n.GetTarget(tx, name)
 	if err != nil {
 		return err
