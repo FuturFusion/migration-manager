@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 
 	"github.com/FuturFusion/migration-manager/internal"
@@ -13,6 +14,8 @@ type InternalCommonSource struct {
 	api.CommonSource `yaml:",inline"`
 
 	isConnected bool
+
+	additionalRootCertificate *tls.Certificate
 }
 
 // Returns a new CommonSource ready for use.
@@ -42,6 +45,10 @@ func (s *InternalCommonSource) SetInsecureTLS(insecure bool) error {
 
 	s.Insecure = insecure
 	return nil
+}
+
+func (s *InternalCommonSource) WithAdditionalRootCertificate(rootCert *tls.Certificate) {
+	s.additionalRootCertificate = rootCert
 }
 
 func (s *InternalCommonSource) IsConnected() bool {

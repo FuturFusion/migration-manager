@@ -28,7 +28,8 @@ func main() {
 	app.CompletionOptions = cobra.CompletionOptions{HiddenDefaultCmd: true}
 
 	// Global flags
-	globalCmd := cmds.CmdGlobal{Cmd: app, Asker: ask.NewAsker(bufio.NewReader(os.Stdin))}
+	asker := ask.NewAsker(bufio.NewReader(os.Stdin))
+	globalCmd := cmds.CmdGlobal{Cmd: app, Asker: &asker}
 
 	app.PersistentFlags().BoolVar(&globalCmd.FlagVersion, "version", false, "Print version number")
 	app.PersistentFlags().BoolVarP(&globalCmd.FlagHelp, "help", "h", false, "Print help")

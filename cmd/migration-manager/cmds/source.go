@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lxc/incus/v6/shared/ask"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/source"
@@ -63,6 +63,8 @@ type cmdSourceAdd struct {
 
 	flagInsecure         bool
 	flagNoTestConnection bool
+
+	additionalRootCertificate *tls.Certificate
 }
 
 func (c *cmdSourceAdd) Command() *cobra.Command {
@@ -119,7 +121,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		sourcePassword := ask.AskPassword("Please enter password for endpoint '" + sourceEndpoint + "': ")
+		sourcePassword := askPasswordFunc("Please enter password for endpoint '" + sourceEndpoint + "': ")
 
 		s := api.VMwareSource{
 			CommonSource: api.CommonSource{
@@ -145,6 +147,10 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		err = json.Unmarshal(content, &internalSource)
 		if err != nil {
 			return err
+		}
+
+		if c.additionalRootCertificate != nil {
+			internalSource.WithAdditionalRootCertificate(c.additionalRootCertificate)
 		}
 
 		if !c.flagNoTestConnection {
@@ -366,7 +372,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		specificSource.Password = ask.AskPassword("Password: ")
+		specificSource.Password = askPasswordFunc("Password: ")
 
 		isInsecure := "no"
 		if specificSource.Insecure {

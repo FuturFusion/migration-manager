@@ -28,6 +28,10 @@ const (
 
 // RenderTable renders tabular data in various formats.
 func RenderTable(w io.Writer, format string, header []string, data [][]string, raw any) error {
+	if w == nil {
+		return fmt.Errorf("Unable to render to nil writer")
+	}
+
 	fields := strings.SplitN(format, ",", 2)
 	format = fields[0]
 
@@ -59,11 +63,6 @@ func RenderTable(w io.Writer, format string, header []string, data [][]string, r
 		}
 
 		err = w.WriteAll(data)
-		if err != nil {
-			return err
-		}
-
-		err = w.Error()
 		if err != nil {
 			return err
 		}
