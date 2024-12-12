@@ -101,10 +101,15 @@ func (c *cmdInstanceOverrideAdd) Run(cmd *cobra.Command, args []string) error {
 
 	override.NumberCPUs = int(val)
 
-	override.MemoryInBytes, err = c.global.Asker.AskInt("Memory in bytes: ", 0, 1024*1024*1024*1024*1024, "0", nil)
+	memoryString, err := c.global.Asker.AskString("Memory: ", "0B", func(s string) error {
+		_, err := units.ParseByteSizeString(s)
+		return err
+	})
 	if err != nil {
 		return err
 	}
+
+	override.MemoryInBytes, _ = units.ParseByteSizeString(memoryString)
 
 	override.LastUpdate = time.Now().UTC()
 
@@ -289,15 +294,20 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 		}
 
 		if override.MemoryInBytes != 0 {
-			displayOverride = "[" + strconv.FormatInt(override.MemoryInBytes, 10) + "] "
+			displayOverride = "[" + units.GetByteSizeStringIEC(override.MemoryInBytes, 2) + "] "
 		} else {
 			displayOverride = ""
 		}
 
-		val, err = c.global.Asker.AskInt("Memory in bytes: "+displayOverride, 0, 1024*1024*1024*1024*1024, strconv.FormatInt(override.MemoryInBytes, 10), nil)
+		memoryString, err := c.global.Asker.AskString("Memory: "+displayOverride, fmt.Sprintf("%dB", override.MemoryInBytes), func(s string) error {
+			_, err := units.ParseByteSizeString(s)
+			return err
+		})
 		if err != nil {
 			return err
 		}
+
+		val, _ = units.ParseByteSizeString(memoryString)
 
 		if override.MemoryInBytes != val {
 			override.MemoryInBytes = val
