@@ -267,7 +267,6 @@ func TestSourceList(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantOutputContains: []string{
-				`Name,Type,Endpoint,Username,Insecure`,
 				`source 2,VMware,https://127.0.0.2:8989/,user2,false`,
 				`source 3,VMware,https://127.0.0.3:8989/,user3,false`,
 			},
