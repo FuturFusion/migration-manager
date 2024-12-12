@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lxc/incus/v6/shared/ask"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/source"
@@ -373,7 +372,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		specificSource.Password = ask.AskPassword("Password: ")
+		specificSource.Password = askPasswordFunc("Password: ")
 
 		isInsecure := "no"
 		if specificSource.Insecure {
