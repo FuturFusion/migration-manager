@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/logger"
-	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
@@ -21,9 +20,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/instance"
-	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
-	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware_nbdkit"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -31,13 +28,6 @@ import (
 type InternalVMwareSource struct {
 	InternalCommonSource         `yaml:",inline"`
 	InternalVMwareSourceSpecific `yaml:",inline"`
-}
-
-type InternalVMwareSourceSpecific struct {
-	api.VMwareSourceSpecific `yaml:",inline"`
-
-	govmomiClient *govmomi.Client
-	vddkConfig    *vmware_nbdkit.VddkConfig
 }
 
 // Returns a new VMwareSource ready for use.
@@ -83,12 +73,7 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 		return err
 	}
 
-	s.vddkConfig = &vmware_nbdkit.VddkConfig{
-		Debug:       false,
-		Endpoint:    endpointURL,
-		Thumbprint:  thumbprint,
-		Compression: nbdkit.CompressionMethod("none"),
-	}
+	s.setVDDKConfig(endpointURL, thumbprint)
 
 	s.isConnected = true
 	return nil
@@ -105,7 +90,7 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 	}
 
 	s.govmomiClient = nil
-	s.vddkConfig = nil
+	s.unsetVDDKConfig()
 	s.isConnected = false
 	return nil
 }
@@ -274,27 +259,6 @@ func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName stri
 	}
 
 	return nil
-}
-
-func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string, bool)) error {
-	vm, err := s.getVM(ctx, vmName)
-	if err != nil {
-		return err
-	}
-
-	NbdkitServers := vmware_nbdkit.NewNbdkitServers(s.vddkConfig, vm, statusCallback)
-
-	// Occasionally connecting to VMware via nbdkit is flaky, so retry a couple of times before returning an error.
-	for i := 0; i < 5; i++ {
-		err = NbdkitServers.MigrationCycle(ctx, false)
-		if err == nil {
-			break
-		}
-
-		time.Sleep(time.Second * 1)
-	}
-
-	return err
 }
 
 func (s *InternalVMwareSource) PowerOffVM(ctx context.Context, vmName string) error {
