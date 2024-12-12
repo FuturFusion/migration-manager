@@ -1,9 +1,11 @@
+//go:build linux
+// +build linux
+
 package util
 
 import (
 	"io"
 	"os"
-	"runtime"
 	"syscall"
 
 	"github.com/lxc/incus/v6/shared/util"
@@ -36,11 +38,7 @@ func FileCopy(source string, dest string) error {
 			return err
 		}
 
-		if runtime.GOOS != "windows" {
-			return os.Lchown(dest, uid, gid)
-		}
-
-		return nil
+		return os.Lchown(dest, uid, gid)
 	}
 
 	s, err := os.Open(source)
@@ -67,12 +65,9 @@ func FileCopy(source string, dest string) error {
 		return err
 	}
 
-	/* chown not supported on windows */
-	if runtime.GOOS != "windows" {
-		err = d.Chown(uid, gid)
-		if err != nil {
-			return err
-		}
+	err = d.Chown(uid, gid)
+	if err != nil {
+		return err
 	}
 
 	return d.Close()
