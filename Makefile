@@ -40,3 +40,12 @@ endif
 .PHONY: clean
 clean:
 	rm -f migration-manager migration-managerd migration-manager-worker
+	rm -rf dist/
+
+.PHONY: release-snapshot
+release-snapshot:
+ifeq ($(shell command -v goreleaser),)
+	echo "Please install goreleaser"
+	exit 1
+endif
+	goreleaser release --snapshot --clean
