@@ -154,7 +154,7 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 	return nil
 }
 
-func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalInstance, sourceName string, storagePool string) api.InstancesPost {
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalInstance, override mmapi.InstanceOverride, sourceName string, storagePool string) api.InstancesPost {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
@@ -178,7 +178,14 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 
 	// Apply CPU and memory limits.
 	ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.NumberCPUs)
+	if override.NumberCPUs != 0 {
+		ret.Config["limits.cpu"] = fmt.Sprintf("%d", override.NumberCPUs)
+	}
+
 	ret.Config["limits.memory"] = fmt.Sprintf("%dB", instanceDef.MemoryInBytes)
+	if override.MemoryInBytes != 0 {
+		ret.Config["limits.memory"] = fmt.Sprintf("%dB", override.MemoryInBytes)
+	}
 
 	// Define the default disk settings.
 	defaultDiskDef := map[string]string{

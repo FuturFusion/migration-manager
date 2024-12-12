@@ -526,6 +526,13 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 		return
 	}
 
+	// Get the override for this instance, if any.
+	var override api.InstanceOverride
+	_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		override, _ = d.db.GetInstanceOverride(tx, inst.GetUUID())
+		return nil
+	})
+
 	// Get the source for this instance.
 	var s source.Source
 	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -596,7 +603,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 		return
 	}
 
-	instanceDef := t.CreateVMDefinition(*internalInstance, s.GetName(), storagePool)
+	instanceDef := t.CreateVMDefinition(*internalInstance, override, s.GetName(), storagePool)
 	creationErr := t.CreateNewVM(instanceDef, storagePool, d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
 	if creationErr != nil {
 		logger.Warn(creationErr.Error(), loggerCtx)

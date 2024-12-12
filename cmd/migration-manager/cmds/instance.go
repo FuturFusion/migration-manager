@@ -3,6 +3,7 @@ package cmds
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -185,6 +186,30 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, i := range instances {
+		// Get the instance override, if any.
+		var override api.InstanceOverride
+		resp, err := c.global.doHTTPRequestV1("/instances/"+i.UUID.String()+"/override", http.MethodGet, "", nil)
+		if err == nil {
+			o, err := parseReturnedInstanceOverride(resp.Metadata)
+			if err != nil {
+				return err
+			}
+
+			var ok bool
+			override, ok = o.(api.InstanceOverride)
+			if !ok {
+				return fmt.Errorf("Invalid type for InstanceOverride")
+			}
+		}
+
+		if override.NumberCPUs != 0 {
+			i.NumberCPUs = override.NumberCPUs
+		}
+
+		if override.MemoryInBytes != 0 {
+			i.MemoryInBytes = override.MemoryInBytes
+		}
+
 		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2)}
 		if c.flagVerbose {
 			row = append(row, i.UUID.String(), i.InventoryPath, i.LastUpdateFromSource.String())

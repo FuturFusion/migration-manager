@@ -94,17 +94,22 @@ func (c *cmdInstanceOverrideAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	val, err := c.global.Asker.AskInt("Number of vCPUs [1] : ", 1, 1024, "1", nil)
+	val, err := c.global.Asker.AskInt("Number of vCPUs: ", 0, 1024, "0", nil)
 	if err != nil {
 		return err
 	}
 
 	override.NumberCPUs = int(val)
 
-	override.MemoryInBytes, err = c.global.Asker.AskInt("Memory in bytes: [1073741824] ", 1, 1024*1024*1024*1024*1024, "1073741824", nil)
+	memoryString, err := c.global.Asker.AskString("Memory: ", "0B", func(s string) error {
+		_, err := units.ParseByteSizeString(s)
+		return err
+	})
 	if err != nil {
 		return err
 	}
+
+	override.MemoryInBytes, _ = units.ParseByteSizeString(memoryString)
 
 	override.LastUpdate = time.Now().UTC()
 
@@ -206,9 +211,19 @@ func (c *cmdInstanceOverrideShow) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Invalid type for InstanceOverride")
 	}
 
+	numCPUSDisplay := strconv.Itoa(override.NumberCPUs)
+	if override.NumberCPUs == 0 {
+		numCPUSDisplay = "---"
+	}
+
+	memoryDisplay := units.GetByteSizeStringIEC(override.MemoryInBytes, 2)
+	if override.MemoryInBytes == 0 {
+		memoryDisplay = "---"
+	}
+
 	// Render the table.
 	header := []string{"UUID", "Last Update", "Comment", "Num vCPUs", "Memory"}
-	data := [][]string{{override.UUID.String(), override.LastUpdate.String(), override.Comment, strconv.Itoa(override.NumberCPUs), units.GetByteSizeStringIEC(override.MemoryInBytes, 2)}}
+	data := [][]string{{override.UUID.String(), override.LastUpdate.String(), override.Comment, numCPUSDisplay, memoryDisplay}}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, override)
 }
@@ -262,7 +277,14 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 			return err
 		}
 
-		val, err := c.global.Asker.AskInt("Number of vCPUs: ["+strconv.Itoa(override.NumberCPUs)+"] ", 1, 1024, strconv.Itoa(override.NumberCPUs), nil)
+		displayOverride := ""
+		if override.NumberCPUs != 0 {
+			displayOverride = "[" + strconv.Itoa(override.NumberCPUs) + "] "
+		} else {
+			displayOverride = ""
+		}
+
+		val, err := c.global.Asker.AskInt("Number of vCPUs: "+displayOverride, 0, 1024, strconv.Itoa(override.NumberCPUs), nil)
 		if err != nil {
 			return err
 		}
@@ -271,10 +293,21 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 			override.NumberCPUs = int(val)
 		}
 
-		val, err = c.global.Asker.AskInt("Memory in bytes: ["+strconv.FormatInt(override.MemoryInBytes, 10)+"] ", 1, 1024*1024*1024*1024*1024, strconv.FormatInt(override.MemoryInBytes, 10), nil)
+		if override.MemoryInBytes != 0 {
+			displayOverride = "[" + units.GetByteSizeStringIEC(override.MemoryInBytes, 2) + "] "
+		} else {
+			displayOverride = ""
+		}
+
+		memoryString, err := c.global.Asker.AskString("Memory: "+displayOverride, fmt.Sprintf("%dB", override.MemoryInBytes), func(s string) error {
+			_, err := units.ParseByteSizeString(s)
+			return err
+		})
 		if err != nil {
 			return err
 		}
+
+		val, _ = units.ParseByteSizeString(memoryString)
 
 		if override.MemoryInBytes != val {
 			override.MemoryInBytes = val
