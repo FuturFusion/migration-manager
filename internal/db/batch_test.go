@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	batchA = batch.NewBatch("BatchA", "pool1", "include", "exclude", time.Time{}, time.Time{}, "")
-	batchB = batch.NewBatch("BatchB", "pool2", "", "exclude", time.Now().UTC(), time.Time{}, "network-name")
-	batchC = batch.NewBatch("BatchC", "pool3", "include", "", time.Time{}, time.Now().UTC(), "another-network")
+	batchA = batch.NewBatch("BatchA", 1, "pool1", "include", "exclude", time.Time{}, time.Time{}, "")
+	batchB = batch.NewBatch("BatchB", 1, "pool2", "", "exclude", time.Now().UTC(), time.Time{}, "network-name")
+	batchC = batch.NewBatch("BatchC", 1, "pool3", "include", "", time.Time{}, time.Now().UTC(), "another-network")
 )
 
 func TestBatchDatabaseActions(t *testing.T) {
@@ -27,6 +27,12 @@ func TestBatchDatabaseActions(t *testing.T) {
 	tx, err := db.DB.Begin()
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback() }()
+
+	// Cannot add a batch with an invalid target.
+	err = db.AddBatch(tx, batchA)
+	require.Error(t, err)
+	err = db.AddTarget(tx, testTarget)
+	require.NoError(t, err)
 
 	// Add batchA.
 	err = db.AddBatch(tx, batchA)
@@ -44,6 +50,10 @@ func TestBatchDatabaseActions(t *testing.T) {
 	batches, err := db.GetAllBatches(tx)
 	require.NoError(t, err)
 	require.Len(t, batches, 3)
+
+	// Cannot delete a target if referenced by a batch.
+	err = db.DeleteTarget(tx, testTarget.GetName())
+	require.Error(t, err)
 
 	// Should get back batchA unchanged.
 	dbBatchA, err := db.GetBatch(tx, batchA.GetName())

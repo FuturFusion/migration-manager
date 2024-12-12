@@ -54,6 +54,10 @@ type Batch struct {
 	// Example: 123
 	DatabaseID int `json:"database_id" yaml:"database_id"`
 
+	// The destination target ID to be used by all instances in this batch
+	// Example: 1
+	TargetID int `json:"target_id" yaml:"target_id"`
+
 	// The status of this batch
 	// Example: BATCHSTATUS_DEFINED
 	Status BatchStatusType `json:"status" yaml:"status"`

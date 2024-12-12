@@ -70,7 +70,7 @@ func (n *Node) GetAllTargets(tx *sql.Tx) ([]target.Target, error) {
 }
 
 func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
-	// Verify no instances refer to this target and return a nicer error than 'FOREIGN KEY constraint failed' if so.
+	// Verify no instances refer to this target.
 	t, err := n.GetTarget(tx, name)
 	if err != nil {
 		return err
@@ -92,6 +92,20 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 
 	if numInstances > 0 {
 		return fmt.Errorf("%d instances refer to target '%s', can't delete", numInstances, name)
+	}
+
+	// Verify no batches refer to this target.
+	q = `SELECT COUNT(id) FROM batches WHERE target_id=?`
+	row = tx.QueryRow(q, tID)
+
+	numBatches := 0
+	err = row.Scan(&numBatches)
+	if err != nil {
+		return err
+	}
+
+	if numBatches > 0 {
+		return fmt.Errorf("%d batches refer to target '%s', can't delete", numBatches, name)
 	}
 
 	// Delete the target from the database.

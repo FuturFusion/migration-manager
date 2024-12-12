@@ -18,6 +18,9 @@ type Batch interface {
 	// via AddBatch() or retrieved via GetBatch()/GetAllBatches() will return an error.
 	GetDatabaseID() (int, error)
 
+	// Returns the target ID for this batch, if any.
+	GetTargetID() int
+
 	// Returns true if the batch can be modified.
 	CanBeModified() bool
 

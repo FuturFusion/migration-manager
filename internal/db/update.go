@@ -13,6 +13,7 @@ const freshSchema = `
 CREATE TABLE batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
+    target_id INTEGER NOT NULL,
     status INTEGER NOT NULL,
     status_string TEXT NOT NULL,
     storage_pool VARCHAR(255) NOT NULL,
@@ -21,7 +22,8 @@ CREATE TABLE batches (
     migration_window_start TEXT NOT NULL,
     migration_window_end TEXT NOT NULL,
     default_network VARCHAR(255) NOT NULL,
-    UNIQUE (name)
+    UNIQUE (name),
+    FOREIGN KEY(target_id) REFERENCES targets(id)
 );
 
 CREATE TABLE config (
@@ -50,8 +52,7 @@ CREATE TABLE instances (
     secure_boot_enabled INTEGER NOT NULL,
     tpm_present INTEGER NOT NULL,
     needs_disk_import INTEGER NOT NULL,
-    FOREIGN KEY(source_id) REFERENCES sources(id),
-    FOREIGN KEY(target_id) REFERENCES targets(id)
+    FOREIGN KEY(source_id) REFERENCES sources(id)
 );
 
 CREATE TABLE instance_overrides (
@@ -132,6 +133,7 @@ func updateFromV0(ctx context.Context, tx *sql.Tx) error {
 CREATE TABLE batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
+    target_id INTEGER NOT NULL,
     status INTEGER NOT NULL,
     status_string TEXT NOT NULL,
     storage_pool VARCHAR(255) NOT NULL,
@@ -140,7 +142,8 @@ CREATE TABLE batches (
     migration_window_start TEXT NOT NULL,
     migration_window_end TEXT NOT NULL,
     default_network VARCHAR(255) NOT NULL,
-    UNIQUE (name)
+    UNIQUE (name),
+    FOREIGN KEY(target_id) REFERENCES targets(id)
 );
 
 CREATE TABLE config (
@@ -169,8 +172,7 @@ CREATE TABLE instances (
     secure_boot_enabled INTEGER NOT NULL,
     tpm_present INTEGER NOT NULL,
     needs_disk_import INTEGER NOT NULL,
-    FOREIGN KEY(source_id) REFERENCES sources(id),
-    FOREIGN KEY(target_id) REFERENCES targets(id)
+    FOREIGN KEY(source_id) REFERENCES sources(id)
 );
 
 CREATE TABLE instance_overrides (

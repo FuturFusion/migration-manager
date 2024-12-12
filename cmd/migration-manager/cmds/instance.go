@@ -153,6 +153,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	// Get nice names for the targets.
 	targetsMap := make(map[int]string)
+	targetsMap[internal.INVALID_DATABASE_ID] = ""
 	resp, err = c.global.doHTTPRequestV1("/targets", http.MethodGet, "", nil)
 	if err != nil {
 		return err
