@@ -27,7 +27,15 @@ var instanceCmd = APIEndpoint{
 	Path: "instances/{uuid}",
 
 	Get: APIEndpointAction{Handler: instanceGet, AllowUntrusted: true},
-	Put: APIEndpointAction{Handler: instancePut, AllowUntrusted: true},
+}
+
+var instanceOverrideCmd = APIEndpoint{
+	Path: "instances/{uuid}/override",
+
+	Delete: APIEndpointAction{Handler: instanceOverrideDelete, AllowUntrusted: true},
+	Get:    APIEndpointAction{Handler: instanceOverrideGet, AllowUntrusted: true},
+	Post:   APIEndpointAction{Handler: instanceOverridePost, AllowUntrusted: true},
+	Put:    APIEndpointAction{Handler: instanceOverridePut, AllowUntrusted: true},
 }
 
 // swagger:operation GET /1.0/instances instances instances_get
@@ -147,11 +155,130 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseETag(true, i, i)
 }
 
-// swagger:operation PUT /1.0/instances/{uuid} instances instance_put
+// swagger:operation GET /1.0/instances/{uuid}/override instances instance_override_get
 //
-//	Update the instance
+//	Get the instance override
 //
-//	Updates the instance definition.
+//	Gets a specific instance override.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: InstanceOverride
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/InstanceOverride"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
+	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	var override api.InstanceOverride
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbOverride, err := d.db.GetInstanceOverride(tx, UUID)
+		if err != nil {
+			return err
+		}
+
+		override = dbOverride
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get override for instance '%s': %w", UUID, err))
+	}
+
+	return response.SyncResponseETag(true, override, override)
+}
+
+// swagger:operation GET /1.0/instances/{uuid}/override instances instance_override_post
+//
+//	Add an instance override
+//
+//	Creates a new instance override.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: override
+//	    description: Instance override
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/InstanceOverride"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func instanceOverridePost(d *Daemon, r *http.Request) response.Response {
+	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	var override api.InstanceOverride
+
+	// Decode into the new override.
+	err = json.NewDecoder(r.Body).Decode(&override)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	// Insert into database.
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		return d.db.AddInstanceOverride(tx, override)
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed creating override for instance %s: %w", UUID, err))
+	}
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+UUIDString+"/override")
+}
+
+// swagger:operation PUT /1.0/instances/{uuid}/override instances instance_override_put
+//
+//	Update the instance override
+//
+//	Updates the instance override definition.
 //
 //	---
 //	consumes:
@@ -161,10 +288,10 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 //	parameters:
 //	  - in: body
 //	    name: instance
-//	    description: Instance definition
+//	    description: Instance override definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/Instance"
+//	      $ref: "#/definitions/InstanceOverride"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -176,7 +303,7 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func instancePut(d *Daemon, r *http.Request) response.Response {
+func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
 	if err != nil {
 		return response.SmartError(err)
@@ -187,40 +314,79 @@ func instancePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	// Get the existing instance.
-	var i instance.Instance
+	// Get the existing instance override.
+	var override api.InstanceOverride
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbInstance, err := d.db.GetInstance(tx, UUID)
+		dbOverride, err := d.db.GetInstanceOverride(tx, UUID)
 		if err != nil {
 			return err
 		}
 
-		i = dbInstance
+		override = dbOverride
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
+		return response.BadRequest(fmt.Errorf("Failed to get override for instance '%s': %w", UUID, err))
 	}
 
 	// Validate ETag
-	err = util.EtagCheck(r, i)
+	err = util.EtagCheck(r, override)
 	if err != nil {
 		return response.PreconditionFailed(err)
 	}
 
-	// Decode into the existing instance.
-	err = json.NewDecoder(r.Body).Decode(&i)
+	// Decode into the existing instance override.
+	err = json.NewDecoder(r.Body).Decode(&override)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	// Update instance in the database.
+	// Update instance override in the database.
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateInstance(tx, i)
+		return d.db.UpdateInstanceOverride(tx, override)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating instance '%s': %w", i.GetUUID(), err))
+		return response.SmartError(fmt.Errorf("Failed updating override for instance '%s': %w", UUID, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+i.GetUUID().String())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+UUID.String()+"/override")
+}
+
+// swagger:operation DELETE /1.0/instances/{uuid}/override instances instance_override_delete
+//
+//	Delete an instance override
+//
+//	Removes the instance override.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
+	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		return d.db.DeleteInstanceOverride(tx, UUID)
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to delete override for instance '%s': %w", UUID, err))
+	}
+
+	return response.EmptySyncResponse
 }

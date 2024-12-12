@@ -24,6 +24,7 @@ var api10 = []APIEndpoint{
 	batchStopCmd,
 	batchesCmd,
 	instanceCmd,
+	instanceOverrideCmd,
 	instancesCmd,
 	networkCmd,
 	networksCmd,
