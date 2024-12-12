@@ -32,9 +32,9 @@ func (c *CmdInstance) Command() *cobra.Command {
 	instanceListCmd := cmdInstanceList{global: c.Global}
 	cmd.AddCommand(instanceListCmd.Command())
 
-	// Update
-	instanceUpdateCmd := cmdInstanceUpdate{global: c.Global}
-	cmd.AddCommand(instanceUpdateCmd.Command())
+	// Override
+	instanceOverrideCmd := CmdInstanceOverride{Global: c.Global}
+	cmd.AddCommand(instanceOverrideCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
@@ -206,83 +206,4 @@ func parseReturnedInstance(i any) (any, error) {
 	}
 
 	return ret, nil
-}
-
-// Update the instance.
-type cmdInstanceUpdate struct {
-	global *CmdGlobal
-}
-
-func (c *cmdInstanceUpdate) Command() *cobra.Command {
-	cmd := &cobra.Command{}
-	cmd.Use = "update <uuid>"
-	cmd.Short = "Update instance"
-	cmd.Long = `Description:
-  Update instance
-
-  Only a few fields can be updated, such as the number of vCPUs or memory. Updating
-  other values must be done on through the UI/API of the instance's Source.
-`
-
-	cmd.RunE = c.Run
-
-	return cmd
-}
-
-func (c *cmdInstanceUpdate) Run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
-	if exit {
-		return err
-	}
-
-	UUIDString := args[0]
-
-	// Get the existing instance.
-	resp, err := c.global.doHTTPRequestV1("/instances/"+UUIDString, http.MethodGet, "", nil)
-	if err != nil {
-		return err
-	}
-
-	i, err := parseReturnedInstance(resp.Metadata)
-	if err != nil {
-		return err
-	}
-
-	// Prompt for updates.
-	switch inst := i.(type) {
-	case api.Instance:
-		val, err := c.global.Asker.AskInt("Number of vCPUs: ["+strconv.Itoa(inst.NumberCPUs)+"] ", 1, 1024, strconv.Itoa(inst.NumberCPUs), nil)
-		if err != nil {
-			return err
-		}
-
-		if inst.NumberCPUs != int(val) {
-			inst.NumberCPUs = int(val)
-		}
-
-		val, err = c.global.Asker.AskInt("Memory in bytes: ["+strconv.FormatInt(inst.MemoryInBytes, 10)+"] ", 1, 1024*1024*1024*1024*1024, strconv.FormatInt(inst.MemoryInBytes, 10), nil)
-		if err != nil {
-			return err
-		}
-
-		if inst.MemoryInBytes != val {
-			inst.MemoryInBytes = val
-		}
-
-		i = inst
-	}
-
-	content, err := json.Marshal(i)
-	if err != nil {
-		return err
-	}
-
-	_, err = c.global.doHTTPRequestV1("/instances/"+UUIDString, http.MethodPut, "", content)
-	if err != nil {
-		return err
-	}
-
-	cmd.Printf("Successfully updated instance '%s'.\n", UUIDString)
-	return nil
 }
