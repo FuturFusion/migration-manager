@@ -69,8 +69,15 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 		return fmt.Errorf("Cannot delete instance '%s': Either assigned to a batch or currently migrating", i.GetName())
 	}
 
+	// Delete any corresponding override first.
+	q := `DELETE FROM instance_overrides WHERE uuid=?`
+	_, err = tx.Exec(q, UUID)
+	if err != nil {
+		return err
+	}
+
 	// Delete the instance from the database.
-	q := `DELETE FROM instances WHERE uuid=?`
+	q = `DELETE FROM instances WHERE uuid=?`
 	result, err := tx.Exec(q, UUID)
 	if err != nil {
 		return err

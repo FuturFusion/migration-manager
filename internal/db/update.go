@@ -54,6 +54,15 @@ CREATE TABLE instances (
     FOREIGN KEY(target_id) REFERENCES targets(id)
 );
 
+CREATE TABLE instance_overrides (
+    uuid TEXT PRIMARY KEY NOT NULL,
+    last_update TEXT NOT NULL,
+    comment TEXT NOT NULL,
+    number_cpus INTEGER NOT NULL,
+    memory_in_bytes INTEGER NOT NULL,
+    FOREIGN KEY(uuid) REFERENCES instances(uuid)
+);
+
 CREATE TABLE networks (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -162,6 +171,15 @@ CREATE TABLE instances (
     needs_disk_import INTEGER NOT NULL,
     FOREIGN KEY(source_id) REFERENCES sources(id),
     FOREIGN KEY(target_id) REFERENCES targets(id)
+);
+
+CREATE TABLE instance_overrides (
+    uuid TEXT PRIMARY KEY NOT NULL,
+    last_update TEXT NOT NULL,
+    comment TEXT NOT NULL,
+    number_cpus INTEGER NOT NULL,
+    memory_in_bytes INTEGER NOT NULL,
+    FOREIGN KEY(uuid) REFERENCES instances(uuid)
 );
 
 CREATE TABLE networks (
