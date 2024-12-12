@@ -3,7 +3,9 @@ package cmds
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -89,11 +91,38 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Get any defined targets.
+	targetMap, err := c.global.getTargetMap()
+	if err != nil {
+		return err
+	}
+
+	if len(targetMap) == 0 {
+		return fmt.Errorf("No targets have been defined, cannot add a batch.")
+	}
+
+	definedTargets := make([]string, len(targetMap))
+	for _, v := range targetMap {
+		definedTargets = append(definedTargets, v)
+	}
+
 	// Add the batch.
 	b := api.Batch{
 		Name:         args[0],
 		Status:       api.BATCHSTATUS_DEFINED,
 		StatusString: api.BATCHSTATUS_DEFINED.String(),
+	}
+
+	targetString, err := c.global.Asker.AskChoice(fmt.Sprintf("What target should be used by this batch? (Choices: '%s') ", strings.Join(definedTargets, "', '")), definedTargets, "")
+	if err != nil {
+		return err
+	}
+
+	for k, v := range targetMap {
+		if v == targetString {
+			b.TargetID = k
+			break
+		}
 	}
 
 	b.StoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? [local] ", "local", nil)
@@ -194,6 +223,12 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Get any defined targets.
+	targetMap, err := c.global.getTargetMap()
+	if err != nil {
+		return err
+	}
+
 	// Get the list of all batches.
 	resp, err := c.global.doHTTPRequestV1("/batches", http.MethodGet, "", nil)
 	if err != nil {
@@ -218,7 +253,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Status", "Status String", "Storage Pool", "Include Regex", "Exclude Regex", "Window Start", "Window End", "Default Network"}
+	header := []string{"Name", "Status", "Status String", "Target", "Storage Pool", "Include Regex", "Exclude Regex", "Window Start", "Window End", "Default Network"}
 	data := [][]string{}
 
 	for _, b := range batches {
@@ -232,7 +267,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 			endString = b.MigrationWindowEnd.String()
 		}
 
-		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.StoragePool, b.IncludeRegex, b.ExcludeRegex, startString, endString, b.DefaultNetwork})
+		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, targetMap[b.TargetID], b.StoragePool, b.IncludeRegex, b.ExcludeRegex, startString, endString, b.DefaultNetwork})
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, batches)
@@ -317,6 +352,12 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
+	// Get any defined targets.
+	targetMap, err := c.global.getTargetMap()
+	if err != nil {
+		return err
+	}
+
 	// Get the batch.
 	resp, err := c.global.doHTTPRequestV1("/batches/"+name, http.MethodGet, "", nil)
 	if err != nil {
@@ -359,6 +400,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	// Show the details
 	cmd.Printf("Batch: %s\n", b.Name)
 	cmd.Printf("  - Status:          %s\n", b.StatusString)
+	cmd.Printf("  - Target:          %s\n", targetMap[b.TargetID])
 	if b.StoragePool != "" {
 		cmd.Printf("  - Storage pool:    %s\n", b.StoragePool)
 	}
@@ -492,6 +534,21 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
+	// Get any defined targets.
+	targetMap, err := c.global.getTargetMap()
+	if err != nil {
+		return err
+	}
+
+	if len(targetMap) == 0 {
+		return fmt.Errorf("No targets have been defined, cannot update the batch.")
+	}
+
+	definedTargets := make([]string, len(targetMap))
+	for _, v := range targetMap {
+		definedTargets = append(definedTargets, v)
+	}
+
 	// Get the existing batch.
 	resp, err := c.global.doHTTPRequestV1("/batches/"+name, http.MethodGet, "", nil)
 	if err != nil {
@@ -513,6 +570,18 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		bb.Name, err = c.global.Asker.AskString("Batch name: ["+bb.Name+"] ", bb.Name, nil)
 		if err != nil {
 			return err
+		}
+
+		targetString, err := c.global.Asker.AskChoice(fmt.Sprintf("Target: ["+targetMap[bb.TargetID]+"] (Choices: '%s') ", strings.Join(definedTargets, "', '")), definedTargets, "")
+		if err != nil {
+			return err
+		}
+
+		for k, v := range targetMap {
+			if v == targetString {
+				bb.TargetID = k
+				break
+			}
 		}
 
 		bb.StoragePool, err = c.global.Asker.AskString("Storage pool: ["+bb.StoragePool+"] ", bb.StoragePool, nil)
@@ -593,4 +662,36 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 
 	cmd.Printf("Successfully updated batch '%s'.\n", newBatchName)
 	return nil
+}
+
+func (c *CmdGlobal) getTargetMap() (map[int]string, error) {
+	ret := make(map[int]string)
+
+	// Get the list of all targets.
+	resp, err := c.doHTTPRequestV1("/targets", http.MethodGet, "", nil)
+	if err != nil {
+		return ret, err
+	}
+
+	metadata, ok := resp.Metadata.([]any)
+	if !ok {
+		return ret, errors.New("Unexpected API response, invalid type for metadata")
+	}
+
+	// Loop through returned targets.
+	for _, anyTarget := range metadata {
+		newTarget, err := parseReturnedTarget(anyTarget)
+		if err != nil {
+			return ret, err
+		}
+
+		t, ok := newTarget.(api.IncusTarget)
+		if !ok {
+			continue
+		}
+
+		ret[t.DatabaseID] = t.Name
+	}
+
+	return ret, nil
 }
