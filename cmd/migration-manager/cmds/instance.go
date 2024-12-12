@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
@@ -179,7 +180,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Num vCPUs", "Memory"}
+	header := []string{"Name", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Num vCPUs", "Memory", "Disk", "NIC"}
 	if c.flagVerbose {
 		header = append(header, "UUID", "Inventory Path", "Last Sync")
 	}
@@ -211,7 +212,17 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			i.MemoryInBytes = override.MemoryInBytes
 		}
 
-		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2)}
+		disks := []string{}
+		for _, disk := range i.Disks {
+			disks = append(disks, disk.Name+" ("+units.GetByteSizeStringIEC(disk.SizeInBytes, 2)+")")
+		}
+
+		nics := []string{}
+		for _, nic := range i.NICs {
+			nics = append(nics, nic.Hwaddr+" ("+nic.Network+")")
+		}
+
+		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2), strings.Join(disks, "\n"), strings.Join(nics, "\n")}
 		if c.flagVerbose {
 			row = append(row, i.UUID.String(), i.InventoryPath, i.LastUpdateFromSource.String())
 		}
