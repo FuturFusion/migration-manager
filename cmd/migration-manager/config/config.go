@@ -8,14 +8,15 @@ import (
 )
 
 type Config struct {
-	ConfigDir string `yaml:"configDir"`
-
-	MMServer string `yaml:"mmServer"`
+	AllowInsecureTLS       bool   `yaml:"allow_insecure_tls"`
+	ConfigDir              string `yaml:"config_dir"`
+	MigrationManagerServer string `yaml:"migration_manager_server"`
 }
 
 func NewConfig(configDir string) *Config {
 	return &Config{
-		ConfigDir: configDir,
+		AllowInsecureTLS: false,
+		ConfigDir:        configDir,
 	}
 }
 
