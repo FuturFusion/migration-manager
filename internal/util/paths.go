@@ -5,25 +5,11 @@ import (
 	"path/filepath"
 )
 
-// CachePath returns the directory that Incus should its cache under. If INCUS_DIR is
-// set, this path is $INCUS_DIR/cache, otherwise it is /var/cache/incus.
-func CachePath(path ...string) string {
-	varDir := os.Getenv("INCUS_DIR")
-	logDir := "/var/cache/incus"
-	if varDir != "" {
-		logDir = filepath.Join(varDir, "cache")
-	}
-
-	items := []string{logDir}
-	items = append(items, path...)
-	return filepath.Join(items...)
-}
-
-// LogPath returns the directory that Incus should put logs under. If INCUS_DIR is
-// set, this path is $INCUS_DIR/logs, otherwise it is /var/log/incus.
+// LogPath returns the directory that migration manager should put logs under. If MIGRATION_MANAGER_DIR is
+// set, this path is $MIGRATION_MANAGER_DIR/logs, otherwise it is /var/log/migration-manager.
 func LogPath(path ...string) string {
-	varDir := os.Getenv("INCUS_DIR")
-	logDir := "/var/log/incus"
+	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
+	logDir := "/var/log/migration-manager"
 	if varDir != "" {
 		logDir = filepath.Join(varDir, "logs")
 	}
@@ -33,11 +19,11 @@ func LogPath(path ...string) string {
 	return filepath.Join(items...)
 }
 
-// RunPath returns the directory that Incus should put runtime data under.
-// If INCUS_DIR is set, this path is $INCUS_DIR/run, otherwise it is /run/incus.
+// RunPath returns the directory that migration manager should put runtime data under.
+// If MIGRATION_MANAGER_DIR is set, this path is $MIGRATION_MANAGER_DIR/run, otherwise it is /run/migration-manager.
 func RunPath(path ...string) string {
-	varDir := os.Getenv("INCUS_DIR")
-	runDir := "/run/incus"
+	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
+	runDir := "/run/migration-manager"
 	if varDir != "" {
 		runDir = filepath.Join(varDir, "run")
 	}
@@ -48,11 +34,11 @@ func RunPath(path ...string) string {
 }
 
 // VarPath returns the provided path elements joined by a slash and
-// appended to the end of $INCUS_DIR, which defaults to /var/lib/incus.
+// appended to the end of $MIGRATION_MANAGER_DIR, which defaults to /var/lib/migration-manager.
 func VarPath(path ...string) string {
-	varDir := os.Getenv("INCUS_DIR")
+	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
 	if varDir == "" {
-		varDir = "/var/lib/incus"
+		varDir = "/var/lib/migration-manager"
 	}
 
 	items := []string{varDir}
