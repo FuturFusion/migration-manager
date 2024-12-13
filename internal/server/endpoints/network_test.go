@@ -6,10 +6,9 @@ import (
 	"strings"
 	"testing"
 
+	localtls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	localtls "github.com/lxc/incus/v6/shared/tls"
 )
 
 // If no socket-based activation is detected, and a network address is set, a

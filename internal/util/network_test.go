@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/lxc/incus/v6/internal/ports"
-	internalUtil "github.com/lxc/incus/v6/internal/util"
+	"github.com/FuturFusion/migration-manager/internal/ports"
+	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )
 
 func TestCanonicalNetworkAddress(t *testing.T) {

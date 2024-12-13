@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	"github.com/armon/go-proxyproto"
-
-	"github.com/lxc/incus/v6/internal/server/util"
 	localtls "github.com/lxc/incus/v6/shared/tls"
+
+	"github.com/FuturFusion/migration-manager/internal/server/util"
 )
 
 // FancyTLSListener is a variation of the standard tls.Listener that supports

@@ -7,12 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lxc/incus/v6/internal/ports"
-	"github.com/lxc/incus/v6/internal/server/endpoints/listeners"
-	internalUtil "github.com/lxc/incus/v6/internal/util"
 	"github.com/lxc/incus/v6/shared/logger"
 	localtls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/lxc/incus/v6/shared/util"
+
+	"github.com/FuturFusion/migration-manager/internal/ports"
+	"github.com/FuturFusion/migration-manager/internal/server/endpoints/listeners"
+	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )
 
 // NetworkPublicKey returns the public key of the TLS certificate used by the

@@ -18,10 +18,11 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/lxc/incus/v6/internal/ports"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/logger"
 	localtls "github.com/lxc/incus/v6/shared/tls"
+
+	"github.com/FuturFusion/migration-manager/internal/ports"
 )
 
 // DebugJSON helper to log JSON.

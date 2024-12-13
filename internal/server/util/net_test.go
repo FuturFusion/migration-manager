@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/lxc/incus/v6/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/server/util"
 )
 
 // The connection returned by the dialer is paired with the one returned by the

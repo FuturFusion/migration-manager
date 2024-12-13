@@ -5,10 +5,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/lxc/incus/v6/shared/util"
 )
 
 // If no socket-based activation is detected, a new local unix socket will be
