@@ -37,7 +37,7 @@ func TestEndpoints_NetworkUpdateCert(t *testing.T) {
 	endpoints.NetworkUpdateCert(newCert)
 
 	address := endpoints.NetworkAddress()
-	assert.NoError(t, httpGetOverTLSSocket(address, newCert))
+	require.NoError(t, httpGetOverTLSSocket(address, newCert))
 
 	// The old cert does not work anymore
 	assert.Error(t, httpGetOverTLSSocket(address, oldCert))
@@ -106,8 +106,8 @@ func TestEndpoints_NetworkCreateTCPSocketIPv4(t *testing.T) {
 	ipv4Address := fmt.Sprintf("127.0.0.1:%s", parts[1])
 
 	// Check accessibility over IPv4 request
-	assert.NoError(t, httpGetOverTLSSocket(ipv4Address, certificate))
+	require.NoError(t, httpGetOverTLSSocket(ipv4Address, certificate))
 
 	// Check accessibility over IPv6 request
-	assert.Error(t, httpGetOverTLSSocket(ipv6Address, certificate))
+	require.Error(t, httpGetOverTLSSocket(ipv6Address, certificate))
 }

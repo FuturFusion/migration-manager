@@ -30,19 +30,19 @@ import (
 func newEndpoints(t *testing.T) (*endpoints.Endpoints, *endpoints.Config, func()) {
 	dir, err := os.MkdirTemp("", "incus-endpoints-test-")
 	require.NoError(t, err)
-	require.NoError(t, os.Mkdir(filepath.Join(dir, "guestapi"), 0755))
+	require.NoError(t, os.Mkdir(filepath.Join(dir, "guestapi"), 0o755))
 
 	config := &endpoints.Config{
-		Dir:            dir,
-		UnixSocket:     filepath.Join(dir, "unix.socket"),
-		RestServer:     newServer(),
-		Cert:           localtls.TestingKeyPair(),
+		Dir:        dir,
+		UnixSocket: filepath.Join(dir, "unix.socket"),
+		RestServer: newServer(),
+		Cert:       localtls.TestingKeyPair(),
 	}
 
-	endpoints := endpoints.Unstarted()
+	epts := endpoints.Unstarted()
 
 	cleanup := func() {
-		assert.NoError(t, endpoints.Down())
+		require.NoError(t, epts.Down())
 
 		// We need to kick the garbage collector because otherwise FDs
 		// will be left open and confuse the http.GetListeners() code
@@ -54,7 +54,7 @@ func newEndpoints(t *testing.T) (*endpoints.Endpoints, *endpoints.Config, func()
 		}
 	}
 
-	return endpoints, config, cleanup
+	return epts, config, cleanup
 }
 
 // Perform an HTTP GET "/" over the unix socket at the given path.
@@ -90,10 +90,10 @@ func newServer() *http.Server {
 
 // Set the environment-variable for socket-based activation using the given
 // file.
-func setupSocketBasedActivation(endpoints *endpoints.Endpoints, file *os.File) {
+func setupSocketBasedActivation(epts *endpoints.Endpoints, file *os.File) {
 	_ = os.Setenv("LISTEN_PID", strconv.Itoa(os.Getpid()))
 	_ = os.Setenv("LISTEN_FDS", "1")
-	endpoints.SystemdListenFDsStart(int(file.Fd()))
+	epts.SystemdListenFDsStart(int(file.Fd()))
 }
 
 // Assert that there are no socket-based activation variables in the
@@ -103,6 +103,6 @@ func assertNoSocketBasedActivation(t *testing.T) {
 	// confusing child processes or other logic.
 	for _, name := range []string{"LISTEN_PID", "LISTEN_FDS"} {
 		_, ok := os.LookupEnv(name)
-		assert.Equal(t, false, ok)
+		assert.False(t, ok)
 	}
 }

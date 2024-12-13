@@ -33,7 +33,7 @@ func TestInMemoryNetwork(t *testing.T) {
 	// Closing the server makes all further client reads and
 	// writes fail.
 	err = server.Close()
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	_, err = client.Read(buffer)
 	assert.Equal(t, io.EOF, err)
 	_, err = client.Write([]byte("hello"))

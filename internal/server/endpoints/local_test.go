@@ -19,11 +19,11 @@ func TestEndpoints_LocalCreateUnixSocket(t *testing.T) {
 	require.NoError(t, endpoints.Up(config))
 
 	path := endpoints.LocalSocketPath()
-	assert.NoError(t, httpGetOverUnixSocket(path))
+	require.NoError(t, httpGetOverUnixSocket(path))
 
 	// The unix socket file gets removed after shutdown.
 	cleanup()
-	assert.Equal(t, false, util.PathExists(path))
+	assert.False(t, util.PathExists(path))
 }
 
 // If socket-based activation is detected, it will be used for binding the API
@@ -46,7 +46,7 @@ func TestEndpoints_LocalSocketBasedActivation(t *testing.T) {
 	assertNoSocketBasedActivation(t)
 
 	path := endpoints.LocalSocketPath()
-	assert.NoError(t, httpGetOverUnixSocket(path))
+	require.NoError(t, httpGetOverUnixSocket(path))
 
 	// The unix socket file does not get removed after shutdown (thanks to
 	// this change in Go 1.6:
@@ -56,7 +56,7 @@ func TestEndpoints_LocalSocketBasedActivation(t *testing.T) {
 	// which prevents listeners created from file descriptors from removing
 	// their socket files on close).
 	cleanup()
-	assert.Equal(t, true, util.PathExists(path))
+	assert.True(t, util.PathExists(path))
 }
 
 // If a custom group for the unix socket is specified, but no such one exists,

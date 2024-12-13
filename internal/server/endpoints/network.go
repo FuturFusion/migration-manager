@@ -143,7 +143,7 @@ func (e *Endpoints) NetworkUpdateCert(cert *localtls.CertInfo) {
 
 // NetworkUpdateTrustedProxy updates the https trusted proxy used by the network endpoint.
 func (e *Endpoints) NetworkUpdateTrustedProxy(trustedProxy string) {
-	var proxies []net.IP
+	proxies := []net.IP{}
 	for _, p := range util.SplitNTrimSpace(trustedProxy, ",", -1, true) {
 		proxyIP := net.ParseIP(p)
 		if proxyIP == nil {
