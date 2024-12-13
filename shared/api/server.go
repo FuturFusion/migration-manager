@@ -10,7 +10,7 @@ const (
 // swagger:model
 type ServerPut struct {
 	// Server configuration map (refer to doc/server.md)
-	// Example: {"core.https_address": ":8443"}
+	// Example: {"core.https_address": ":6443"}
 	Config map[string]string `json:"config" yaml:"config"`
 }
 

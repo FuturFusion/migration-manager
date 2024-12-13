@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -88,18 +89,25 @@ func (c *CmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 }
 
 func (c *CmdGlobal) CheckConfigStatus() error {
-	if c.config.MMServer != "" {
+	if c.config.MigrationManagerServer != "" {
 		return nil
 	}
 
 	c.Cmd.Printf("No config found, performing first-time configuration...\n")
 
-	resp, err := c.Asker.AskString("Please enter the migration manager server URL: ", "", nil)
+	server, err := c.Asker.AskString("Please enter the migration manager server URL: ", "", nil)
 	if err != nil {
 		return err
 	}
 
-	c.config.MMServer = resp
+	c.config.MigrationManagerServer = server
+
+	insecure, err := c.Asker.AskBool("Allow insecure TLS connections to migration manager? ", "false")
+	if err != nil {
+		return err
+	}
+
+	c.config.AllowInsecureTLS = insecure
 
 	return c.config.SaveConfig()
 }
@@ -119,7 +127,7 @@ func (c *CmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 }
 
 func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.ResponseRaw, error) {
-	u, err := url.Parse(c.config.MMServer)
+	u, err := url.Parse(c.config.MigrationManagerServer)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +146,11 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.config.AllowInsecureTLS},
+	}
+
+	client := &http.Client{Transport: transport}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

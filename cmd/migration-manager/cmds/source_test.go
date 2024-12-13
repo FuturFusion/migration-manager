@@ -196,7 +196,7 @@ func TestSourceAdd(t *testing.T) {
 				global: &CmdGlobal{
 					Asker: asker,
 					config: &config.Config{
-						MMServer: migrationManagerd.URL,
+						MigrationManagerServer: migrationManagerd.URL,
 					},
 				},
 				flagInsecure:              tc.insecure,
@@ -325,7 +325,7 @@ func TestSourceList(t *testing.T) {
 			list := cmdSourceList{
 				global: &CmdGlobal{
 					config: &config.Config{
-						MMServer: migrationManagerd.URL,
+						MigrationManagerServer: migrationManagerd.URL,
 					},
 				},
 				flagFormat: `csv`,
@@ -416,7 +416,7 @@ func TestSourceRemove(t *testing.T) {
 			remove := cmdSourceRemove{
 				global: &CmdGlobal{
 					config: &config.Config{
-						MMServer: migrationManagerd.URL,
+						MigrationManagerServer: migrationManagerd.URL,
 					},
 				},
 			}
@@ -628,7 +628,7 @@ func TestSourceUpdate(t *testing.T) {
 				global: &CmdGlobal{
 					Asker: asker,
 					config: &config.Config{
-						MMServer: migrationManagerd.URL,
+						MigrationManagerServer: migrationManagerd.URL,
 					},
 				},
 			}

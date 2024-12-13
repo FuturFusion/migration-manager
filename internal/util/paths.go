@@ -1,0 +1,68 @@
+package util
+
+import (
+	"os"
+	"path/filepath"
+)
+
+// LogPath returns the directory that migration manager should put logs under. If MIGRATION_MANAGER_DIR is
+// set, this path is $MIGRATION_MANAGER_DIR/logs, otherwise it is /var/log/migration-manager.
+func LogPath(path ...string) string {
+	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
+	logDir := "/var/log/migration-manager"
+	if varDir != "" {
+		logDir = filepath.Join(varDir, "logs")
+	}
+
+	items := []string{logDir}
+	items = append(items, path...)
+	return filepath.Join(items...)
+}
+
+// RunPath returns the directory that migration manager should put runtime data under.
+// If MIGRATION_MANAGER_DIR is set, this path is $MIGRATION_MANAGER_DIR/run, otherwise it is /run/migration-manager.
+func RunPath(path ...string) string {
+	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
+	runDir := "/run/migration-manager"
+	if varDir != "" {
+		runDir = filepath.Join(varDir, "run")
+	}
+
+	items := []string{runDir}
+	items = append(items, path...)
+	return filepath.Join(items...)
+}
+
+// VarPath returns the provided path elements joined by a slash and
+// appended to the end of $MIGRATION_MANAGER_DIR, which defaults to /var/lib/migration-manager.
+func VarPath(path ...string) string {
+	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
+	if varDir == "" {
+		varDir = "/var/lib/migration-manager"
+	}
+
+	items := []string{varDir}
+	items = append(items, path...)
+	return filepath.Join(items...)
+}
+
+// IsDir returns true if the given path is a directory.
+func IsDir(name string) bool {
+	stat, err := os.Stat(name)
+	if err != nil {
+		return false
+	}
+
+	return stat.IsDir()
+}
+
+// IsUnixSocket returns true if the given path is either a Unix socket
+// or a symbolic link pointing at a Unix socket.
+func IsUnixSocket(path string) bool {
+	stat, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return (stat.Mode() & os.ModeSocket) == os.ModeSocket
+}
