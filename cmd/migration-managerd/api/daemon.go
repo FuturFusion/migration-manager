@@ -15,6 +15,8 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/server/endpoints"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/internal/server/sys"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
@@ -38,6 +40,8 @@ type APIEndpointAction struct {
 }
 
 type DaemonConfig struct {
+	Group string // Group name the local unix socket should be chown'ed to
+
 	DbPathDir string
 
 	RestServerIPAddr    string
@@ -46,11 +50,13 @@ type DaemonConfig struct {
 }
 
 type Daemon struct {
-	config *DaemonConfig
+	db *db.Node
+	os *sys.OS
+
+	config    *DaemonConfig
+	endpoints *endpoints.Endpoints
 
 	globalConfig map[string]string
-
-	db *db.Node
 
 	ShutdownCtx    context.Context    // Canceled when shutdown starts.
 	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
@@ -61,8 +67,9 @@ func NewDaemon(config *DaemonConfig) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	return &Daemon{
-		config:         config,
 		db:             &db.Node{},
+		os:             sys.DefaultOS(),
+		config:         config,
 		ShutdownCtx:    shutdownCtx,
 		ShutdownCancel: shutdownCancel,
 		ShutdownDoneCh: make(chan error),
@@ -92,17 +99,25 @@ func (d *Daemon) Start() error {
 		return err
 	}
 
-	// Start the REST endpoint.
-	config := &endpoints.Config{
-		RestServer:     restServer(d),
-		Config:         d.config.RestServerTLSConfig,
-		NetworkAddress: d.config.RestServerIPAddr,
-		NetworkPort:    d.config.RestServerPort,
+	/* Setup network endpoint certificate */
+	networkCert, err := util.LoadCert(d.os.VarDir)
+	if err != nil {
+		return err
 	}
 
-	_, err = endpoints.Up(config)
+	/* Setup the web server */
+	config := &endpoints.Config{
+		Dir:                  d.os.VarDir,
+		UnixSocket:           d.os.GetUnixSocket(),
+		Cert:                 networkCert,
+		RestServer:           restServer(d),
+		LocalUnixSocketGroup: d.config.Group,
+		LocalUnixSocketLabel: "system_u:object_r:container_runtime_t:s0",
+		NetworkAddress:       fmt.Sprintf("%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort),
+	}
+
+	d.endpoints, err = endpoints.Up(config)
 	if err != nil {
-		logger.Errorf("Failed to start REST endpoint: %s", err)
 		return err
 	}
 
@@ -118,6 +133,13 @@ func (d *Daemon) Start() error {
 }
 
 func (d *Daemon) Stop(ctx context.Context, sig os.Signal) error {
+	if d.endpoints != nil {
+		err := d.endpoints.Down()
+		if err != nil {
+			return err
+		}
+	}
+
 	logger.Info("Daemon stopped")
 
 	return nil
