@@ -1,4 +1,4 @@
-package endpoint
+package endpoints
 
 import (
 	"crypto/tls"
@@ -26,7 +26,7 @@ type Config struct {
 	NetworkPort int
 }
 
-type Endpoint struct {
+type Endpoints struct {
 	tomb      *tomb.Tomb   // Controls the HTTP servers shutdown.
 	mu        sync.RWMutex // Serialize access to internal state.
 	listener  net.Listener // Activer listeners by endpoint type.
@@ -34,7 +34,7 @@ type Endpoint struct {
 	tlsConfig *tls.Config  // Keypair and CA to use for TLS.
 }
 
-func Up(config *Config) (*Endpoint, error) {
+func Up(config *Config) (*Endpoints, error) {
 	if config.RestServer == nil {
 		return nil, fmt.Errorf("No REST server configured")
 	}
@@ -43,7 +43,7 @@ func Up(config *Config) (*Endpoint, error) {
 		logger.Warn("No TLS certificate configured")
 	}
 
-	endpoint := &Endpoint{}
+	endpoint := &Endpoints{}
 	err := endpoint.up(config)
 	if err != nil {
 		_ = endpoint.Down()
@@ -53,7 +53,7 @@ func Up(config *Config) (*Endpoint, error) {
 	return nil, nil
 }
 
-func (e *Endpoint) up(config *Config) error {
+func (e *Endpoints) up(config *Config) error {
 	var err error
 
 	e.mu.Lock()
@@ -82,7 +82,7 @@ func (e *Endpoint) up(config *Config) error {
 	return nil
 }
 
-func (e *Endpoint) Down() error {
+func (e *Endpoints) Down() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 

@@ -13,7 +13,7 @@ import (
 	"github.com/lxc/incus/v6/shared/logger"
 
 	"github.com/FuturFusion/migration-manager/internal/db"
-	"github.com/FuturFusion/migration-manager/internal/server/endpoint"
+	"github.com/FuturFusion/migration-manager/internal/server/endpoints"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
@@ -93,14 +93,14 @@ func (d *Daemon) Start() error {
 	}
 
 	// Start the REST endpoint.
-	config := &endpoint.Config{
+	config := &endpoints.Config{
 		RestServer:     restServer(d),
 		Config:         d.config.RestServerTLSConfig,
 		NetworkAddress: d.config.RestServerIPAddr,
 		NetworkPort:    d.config.RestServerPort,
 	}
 
-	_, err = endpoint.Up(config)
+	_, err = endpoints.Up(config)
 	if err != nil {
 		logger.Errorf("Failed to start REST endpoint: %s", err)
 		return err
