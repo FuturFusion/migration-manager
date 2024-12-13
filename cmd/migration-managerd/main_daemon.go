@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 
+	"github.com/FuturFusion/migration-manager/internal/ports"
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/api"
 )
 
@@ -37,7 +38,7 @@ func (c *cmdDaemon) Command() *cobra.Command {
 	cmd.RunE = c.Run
 	cmd.Flags().StringVar(&c.flagDatabaseDir, "database-dir", "./", "Directory to store sqlite database in")
 	cmd.Flags().StringVar(&c.flagServerIP, "server-ip", "0.0.0.0", "IP address to bind to")
-	cmd.Flags().IntVar(&c.flagServerPort, "server-port", 8443, "IP port to bind to")
+	cmd.Flags().IntVar(&c.flagServerPort, "server-port", ports.HTTPSDefaultPort, "IP port to bind to")
 	cmd.Flags().StringVar(&c.flagTLSCert, "tls-cert", "", "TLS certificate file to be used by server")
 	cmd.Flags().StringVar(&c.flagTLSKey, "tls-key", "", "TLS key file to be used by server")
 	cmd.MarkFlagsRequiredTogether("tls-cert", "tls-key")

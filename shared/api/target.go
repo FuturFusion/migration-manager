@@ -17,7 +17,7 @@ type IncusTarget struct {
 	DatabaseID int `json:"database_id" yaml:"database_id"`
 
 	// Hostname or IP address of the target endpoint
-	// Example: https://incus.local:8443
+	// Example: https://incus.local:6443
 	Endpoint string `json:"endpoint" yaml:"endpoint"`
 
 	// base64-encoded TLS client key for authentication
