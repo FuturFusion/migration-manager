@@ -68,8 +68,6 @@ func (e *Endpoints) NetworkUpdateAddress(address string) error {
 		return nil
 	}
 
-	clusterAddress := e.clusterAddress()
-
 	logger.Infof("Update network address")
 
 	e.mu.Lock()
@@ -81,12 +79,6 @@ func (e *Endpoints) NetworkUpdateAddress(address string) error {
 	// If turning off listening, we're done.
 	if address == "" {
 		return nil
-	}
-
-	// If the new address covers the cluster one, turn off the cluster
-	// listener.
-	if clusterAddress != "" && internalUtil.IsAddressCovered(clusterAddress, address) {
-		_ = e.closeListener(cluster)
 	}
 
 	// Attempt to setup the new listening socket
@@ -141,7 +133,7 @@ func (e *Endpoints) NetworkUpdateCert(cert *localtls.CertInfo) {
 	defer e.mu.Unlock()
 	e.cert = cert
 
-	for _, listenerKey := range []kind{network, cluster, vmvsock, storageBuckets, metrics} {
+	for _, listenerKey := range []kind{network} {
 		listener, found := e.listeners[listenerKey]
 		if found {
 			listener.(*listeners.FancyTLSListener).Config(cert)
@@ -164,7 +156,7 @@ func (e *Endpoints) NetworkUpdateTrustedProxy(trustedProxy string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	for _, kind := range []kind{network, cluster} {
+	for _, kind := range []kind{network} {
 		listener, ok := e.listeners[kind]
 		if !ok || listener == nil {
 			continue

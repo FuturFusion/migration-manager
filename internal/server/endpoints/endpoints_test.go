@@ -36,9 +36,7 @@ func newEndpoints(t *testing.T) (*endpoints.Endpoints, *endpoints.Config, func()
 		Dir:            dir,
 		UnixSocket:     filepath.Join(dir, "unix.socket"),
 		RestServer:     newServer(),
-		DevIncusServer: newServer(),
 		Cert:           localtls.TestingKeyPair(),
-		VsockServer:    newServer(),
 	}
 
 	endpoints := endpoints.Unstarted()
