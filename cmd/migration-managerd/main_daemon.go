@@ -18,10 +18,9 @@ type cmdDaemon struct {
 	global *cmdGlobal
 
 	// Common options
-	flagDatabaseDir string
-	flagGroup       string
-	flagServerIP    string
-	flagServerPort  int
+	flagGroup      string
+	flagServerIP   string
+	flagServerPort int
 }
 
 func (c *cmdDaemon) Command() *cobra.Command {
@@ -34,7 +33,6 @@ func (c *cmdDaemon) Command() *cobra.Command {
   This is the migration manager daemon command line.
 `
 	cmd.RunE = c.Run
-	cmd.Flags().StringVar(&c.flagDatabaseDir, "database-dir", "./", "Directory to store sqlite database in")
 	cmd.Flags().StringVar(&c.flagGroup, "group", "", "The group of users that will be allowed to talk to the migration manager")
 	cmd.Flags().StringVar(&c.flagServerIP, "server-ip", "0.0.0.0", "IP address to bind to")
 	cmd.Flags().IntVar(&c.flagServerPort, "server-port", ports.HTTPSDefaultPort, "IP port to bind to")
@@ -48,10 +46,9 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	config := &api.DaemonConfig{
-		Group:               c.flagGroup,
-		DbPathDir:           c.flagDatabaseDir,
-		RestServerIPAddr:    c.flagServerIP,
-		RestServerPort:      c.flagServerPort,
+		Group:            c.flagGroup,
+		RestServerIPAddr: c.flagServerIP,
+		RestServerPort:   c.flagServerPort,
 	}
 
 	d := api.NewDaemon(config)

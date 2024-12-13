@@ -10,12 +10,13 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/lxc/incus/v6/shared/logger"
+	"github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/server/endpoints"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
-	"github.com/FuturFusion/migration-manager/internal/util"
+	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
@@ -41,10 +42,8 @@ type APIEndpointAction struct {
 type DaemonConfig struct {
 	Group string // Group name the local unix socket should be chown'ed to
 
-	DbPathDir string
-
-	RestServerIPAddr    string
-	RestServerPort      int
+	RestServerIPAddr string
+	RestServerPort   int
 }
 
 type Daemon struct {
@@ -80,7 +79,15 @@ func (d *Daemon) Start() error {
 	logger.Info("Starting up", logger.Ctx{"version": version.Version})
 
 	// Open the local sqlite database.
-	d.db, err = db.OpenDatabase(d.config.DbPathDir)
+	if !util.PathExists(d.os.LocalDatabaseDir()) {
+		err := os.MkdirAll(d.os.LocalDatabaseDir(), 0o755)
+		if err != nil {
+			logger.Errorf("Failed to create database directory: %s", err)
+			return err
+		}
+	}
+
+	d.db, err = db.OpenDatabase(d.os.LocalDatabaseDir())
 	if err != nil {
 		logger.Errorf("Failed to open sqlite database: %s", err)
 		return err
@@ -98,7 +105,7 @@ func (d *Daemon) Start() error {
 	}
 
 	/* Setup network endpoint certificate */
-	networkCert, err := util.LoadCert(d.os.VarDir)
+	networkCert, err := internalUtil.LoadCert(d.os.VarDir)
 	if err != nil {
 		return err
 	}
