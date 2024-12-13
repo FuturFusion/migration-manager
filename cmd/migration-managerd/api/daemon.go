@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"crypto/tls"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -46,7 +45,6 @@ type DaemonConfig struct {
 
 	RestServerIPAddr    string
 	RestServerPort      int
-	RestServerTLSConfig *tls.Config
 }
 
 type Daemon struct {
@@ -263,9 +261,5 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 }
 
 func (d *Daemon) getEndpoint() string {
-	if d.config.RestServerTLSConfig == nil {
-		return fmt.Sprintf("http://%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort)
-	}
-
 	return fmt.Sprintf("https://%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort)
 }

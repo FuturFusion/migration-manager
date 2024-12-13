@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"os"
 	"os/signal"
@@ -23,8 +22,6 @@ type cmdDaemon struct {
 	flagGroup       string
 	flagServerIP    string
 	flagServerPort  int
-	flagTLSCert     string
-	flagTLSKey      string
 }
 
 func (c *cmdDaemon) Command() *cobra.Command {
@@ -41,9 +38,6 @@ func (c *cmdDaemon) Command() *cobra.Command {
 	cmd.Flags().StringVar(&c.flagGroup, "group", "", "The group of users that will be allowed to talk to the migration manager")
 	cmd.Flags().StringVar(&c.flagServerIP, "server-ip", "0.0.0.0", "IP address to bind to")
 	cmd.Flags().IntVar(&c.flagServerPort, "server-port", ports.HTTPSDefaultPort, "IP port to bind to")
-	cmd.Flags().StringVar(&c.flagTLSCert, "tls-cert", "", "TLS certificate file to be used by server")
-	cmd.Flags().StringVar(&c.flagTLSKey, "tls-key", "", "TLS key file to be used by server")
-	cmd.MarkFlagsRequiredTogether("tls-cert", "tls-key")
 
 	return cmd
 }
@@ -58,18 +52,6 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		DbPathDir:           c.flagDatabaseDir,
 		RestServerIPAddr:    c.flagServerIP,
 		RestServerPort:      c.flagServerPort,
-		RestServerTLSConfig: nil,
-	}
-
-	if c.flagTLSCert != "" {
-		cert, err := tls.LoadX509KeyPair(c.flagTLSCert, c.flagTLSKey)
-		if err != nil {
-			logger.Errorf("Failed to load TLS cert/key: %s", err)
-			return err
-		}
-
-		config.RestServerTLSConfig = &tls.Config{}
-		config.RestServerTLSConfig.Certificates = append(config.RestServerTLSConfig.Certificates, cert)
 	}
 
 	d := api.NewDaemon(config)
