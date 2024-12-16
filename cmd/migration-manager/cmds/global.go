@@ -2,15 +2,18 @@ package cmds
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/user"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/util"
@@ -18,6 +21,8 @@ import (
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/config"
 )
+
+const MIGRATION_MANAGER_UNIX_SOCKET = "/run/migration-manager/unix.socket"
 
 //go:generate go run github.com/matryer/moq -fmt goimports -out asker_mock_gen_test.go -rm . Asker
 
@@ -35,8 +40,9 @@ type CmdGlobal struct {
 	config *config.Config
 	Cmd    *cobra.Command
 
-	FlagHelp    bool
-	FlagVersion bool
+	FlagForceLocal bool
+	FlagHelp       bool
+	FlagVersion    bool
 }
 
 func (c *CmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
@@ -96,6 +102,14 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 
 	c.Cmd.Printf("No config found, performing first-time configuration...\n")
 
+	if util.PathExists(MIGRATION_MANAGER_UNIX_SOCKET) {
+		c.Cmd.Printf("Using local unix socket to communicate with migration manager.\n")
+
+		c.config.MigrationManagerServer = MIGRATION_MANAGER_UNIX_SOCKET
+
+		return c.config.SaveConfig()
+	}
+
 	server, err := c.Asker.AskString("Please enter the migration manager server URL: ", "", nil)
 	if err != nil {
 		return err
@@ -128,7 +142,18 @@ func (c *CmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 }
 
 func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.Response, error) {
-	u, err := url.Parse(c.config.MigrationManagerServer)
+	var u *url.URL
+	var err error
+	var client *http.Client
+
+	if !c.FlagForceLocal && strings.HasPrefix(c.config.MigrationManagerServer, "https://") {
+		u, err = url.Parse(c.config.MigrationManagerServer)
+		client = getHTTPSClient(c.config.AllowInsecureTLS)
+	} else {
+		u, err = url.Parse("http://unix.socket")
+		client = getUnixHTTPClient(MIGRATION_MANAGER_UNIX_SOCKET)
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -147,11 +172,6 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 
 	req.Header.Set("Content-Type", "application/json")
 
-	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.config.AllowInsecureTLS},
-	}
-
-	client := &http.Client{Transport: transport}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -178,4 +198,46 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 
 func responseToStruct(response *api.Response, targetStruct any) error {
 	return json.Unmarshal(response.Metadata, &targetStruct)
+}
+
+func getHTTPSClient(insecure bool) *http.Client {
+	// Define the https transport
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
+	}
+
+	// Define the https client
+	client := &http.Client{}
+
+	client.Transport = transport
+
+	return client
+}
+
+func getUnixHTTPClient(socketPath string) *http.Client {
+	// Setup a Unix socket dialer
+	unixDial := func(_ context.Context, network, addr string) (net.Conn, error) {
+		raddr, err := net.ResolveUnixAddr("unix", socketPath)
+		if err != nil {
+			return nil, err
+		}
+
+		return net.DialUnix("unix", nil, raddr)
+	}
+
+	// Define the http transport
+	transport := &http.Transport{
+		DialContext:           unixDial,
+		DisableKeepAlives:     true,
+		ExpectContinueTimeout: time.Second * 30,
+		ResponseHeaderTimeout: time.Second * 3600,
+		TLSHandshakeTimeout:   time.Second * 5,
+	}
+
+	// Define the http client
+	client := &http.Client{}
+
+	client.Transport = transport
+
+	return client
 }

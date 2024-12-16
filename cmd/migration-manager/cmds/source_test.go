@@ -181,7 +181,7 @@ func TestSourceAdd(t *testing.T) {
 				},
 			}
 
-			migrationManagerd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			migrationManagerd := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tc.migrationManagerdHTTPStatus)
 				_, _ = w.Write([]byte(tc.migrationManagerdResponse))
 			}))
@@ -192,6 +192,7 @@ func TestSourceAdd(t *testing.T) {
 					Asker: asker,
 					config: &config.Config{
 						MigrationManagerServer: migrationManagerd.URL,
+						AllowInsecureTLS:       true, // NewTLSServer() uses a self-signed TLS certificate.
 					},
 				},
 				flagInsecure:              tc.insecure,
@@ -311,7 +312,7 @@ func TestSourceList(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			migrationManagerd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			migrationManagerd := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tc.migrationManagerdHTTPStatus)
 				_, _ = w.Write([]byte(tc.migrationManagerdResponse))
 			}))
@@ -321,6 +322,7 @@ func TestSourceList(t *testing.T) {
 				global: &CmdGlobal{
 					config: &config.Config{
 						MigrationManagerServer: migrationManagerd.URL,
+						AllowInsecureTLS:       true, // NewTLSServer() uses a self-signed TLS certificate.
 					},
 				},
 				flagFormat: `csv`,
@@ -402,7 +404,7 @@ func TestSourceRemove(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			migrationManagerd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			migrationManagerd := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tc.migrationManagerdHTTPStatus)
 				_, _ = w.Write([]byte(tc.migrationManagerdResponse))
 			}))
@@ -412,6 +414,7 @@ func TestSourceRemove(t *testing.T) {
 				global: &CmdGlobal{
 					config: &config.Config{
 						MigrationManagerServer: migrationManagerd.URL,
+						AllowInsecureTLS:       true, // NewTLSServer() uses a self-signed TLS certificate.
 					},
 				},
 			}
@@ -607,7 +610,7 @@ func TestSourceUpdate(t *testing.T) {
 				},
 			}
 
-			migrationManagerd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			migrationManagerd := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				ret, _ := pop(t, &tc.migrationManagerdResponses)
 				w.WriteHeader(ret.status)
 				_, _ = w.Write([]byte(ret.body))
@@ -619,6 +622,7 @@ func TestSourceUpdate(t *testing.T) {
 					Asker: asker,
 					config: &config.Config{
 						MigrationManagerServer: migrationManagerd.URL,
+						AllowInsecureTLS:       true, // NewTLSServer() uses a self-signed TLS certificate.
 					},
 				},
 			}
