@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -91,7 +90,9 @@ func (w *Worker) Run(ctx context.Context) {
 				return false
 			}
 
-			cmd, err := parseReturnedCommand(resp.Metadata)
+			cmd := api.WorkerCommand{}
+
+			err = responseToStruct(resp, &cmd)
 			if err != nil {
 				logger.Errorf("%s", err.Error())
 				return false
@@ -320,7 +321,7 @@ func (w *Worker) sendErrorResponse(err error) {
 	}
 }
 
-func (w *Worker) doHTTPRequestV1(endpoint string, method string, content []byte) (*incusAPI.ResponseRaw, error) {
+func (w *Worker) doHTTPRequestV1(endpoint string, method string, content []byte) (*incusAPI.Response, error) {
 	var err error
 	w.endpoint.Path, err = url.JoinPath("/1.0/", endpoint)
 	if err != nil {
@@ -342,33 +343,19 @@ func (w *Worker) doHTTPRequestV1(endpoint string, method string, content []byte)
 
 	defer resp.Body.Close()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	decoder := json.NewDecoder(resp.Body)
+	response := incusAPI.Response{}
+
+	err = decoder.Decode(&response)
 	if err != nil {
 		return nil, err
+	} else if response.Code != 0 {
+		return &response, fmt.Errorf("Received an error from the endpoint: %s", response.Error)
 	}
 
-	var jsonResp incusAPI.ResponseRaw
-	err = json.Unmarshal(bodyBytes, &jsonResp)
-	if err != nil {
-		return nil, err
-	} else if jsonResp.Code != 0 {
-		return &jsonResp, fmt.Errorf("Received an error from the endpoint: %s", jsonResp.Error)
-	}
-
-	return &jsonResp, nil
+	return &response, nil
 }
 
-func parseReturnedCommand(c any) (api.WorkerCommand, error) {
-	reJsonified, err := json.Marshal(c)
-	if err != nil {
-		return api.WorkerCommand{}, err
-	}
-
-	ret := api.WorkerCommand{}
-	err = json.Unmarshal(reJsonified, &ret)
-	if err != nil {
-		return api.WorkerCommand{}, err
-	}
-
-	return ret, nil
+func responseToStruct(response *incusAPI.Response, targetStruct any) error {
+	return json.Unmarshal(response.Metadata, &targetStruct)
 }

@@ -1,9 +1,6 @@
 package cmds
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -86,22 +83,13 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	instances := []api.Instance{}
 
-	metadata, ok := resp.Metadata.([]any)
-	if !ok {
-		return errors.New("Unexpected API response, invalid type for metadata")
-	}
-
-	// Loop through returned instances.
-	for _, anyInstance := range metadata {
-		newInstance, err := parseReturnedInstance(anyInstance)
-		if err != nil {
-			return err
-		}
-
-		instances = append(instances, newInstance.(api.Instance))
+	err = responseToStruct(resp, &instances)
+	if err != nil {
+		return err
 	}
 
 	// Get nice names for the batches.
+	batches := []api.Batch{}
 	batchesMap := make(map[int]string)
 	batchesMap[internal.INVALID_DATABASE_ID] = ""
 	resp, err = c.global.doHTTPRequestV1("/batches", http.MethodGet, "", nil)
@@ -109,50 +97,34 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	metadata, ok = resp.Metadata.([]any)
-	if !ok {
-		return errors.New("Unexpected API response, invalid type for metadata")
+	err = responseToStruct(resp, &batches)
+	if err != nil {
+		return err
 	}
 
-	for _, anyBatch := range metadata {
-		newBatch, err := parseReturnedBatch(anyBatch)
-		if err != nil {
-			return err
-		}
-
-		b, ok := newBatch.(api.Batch)
-		if !ok {
-			return errors.New("Invalid type for batch")
-		}
-
+	for _, b := range batches {
 		batchesMap[b.DatabaseID] = b.Name
 	}
 
 	// Get nice names for the sources.
+	sources := []api.VMwareSource{}
 	sourcesMap := make(map[int]string)
 	resp, err = c.global.doHTTPRequestV1("/sources", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
 
-	metadata, ok = resp.Metadata.([]any)
-	if !ok {
-		return errors.New("Unexpected API response, invalid type for metadata")
+	err = responseToStruct(resp, &sources)
+	if err != nil {
+		return err
 	}
 
-	for _, anySource := range metadata {
-		newSource, err := parseReturnedSource(anySource)
-		if err != nil {
-			return err
-		}
-
-		switch s := newSource.(type) {
-		case api.VMwareSource:
-			sourcesMap[s.DatabaseID] = s.Name
-		}
+	for _, s := range sources {
+		sourcesMap[s.DatabaseID] = s.Name
 	}
 
 	// Get nice names for the targets.
+	targets := []api.IncusTarget{}
 	targetsMap := make(map[int]string)
 	targetsMap[internal.INVALID_DATABASE_ID] = ""
 	resp, err = c.global.doHTTPRequestV1("/targets", http.MethodGet, "", nil)
@@ -160,22 +132,12 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	metadata, ok = resp.Metadata.([]any)
-	if !ok {
-		return errors.New("Unexpected API response, invalid type for metadata")
+	err = responseToStruct(resp, &targets)
+	if err != nil {
+		return err
 	}
 
-	for _, anyTarget := range metadata {
-		newTarget, err := parseReturnedTarget(anyTarget)
-		if err != nil {
-			return err
-		}
-
-		t, ok := newTarget.(api.IncusTarget)
-		if !ok {
-			return errors.New("Invalid type for target")
-		}
-
+	for _, t := range targets {
 		targetsMap[t.DatabaseID] = t.Name
 	}
 
@@ -189,18 +151,12 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	for _, i := range instances {
 		// Get the instance override, if any.
-		var override api.InstanceOverride
+		override := api.InstanceOverride{}
 		resp, err := c.global.doHTTPRequestV1("/instances/"+i.UUID.String()+"/override", http.MethodGet, "", nil)
 		if err == nil {
-			o, err := parseReturnedInstanceOverride(resp.Metadata)
+			err = responseToStruct(resp, &override)
 			if err != nil {
 				return err
-			}
-
-			var ok bool
-			override, ok = o.(api.InstanceOverride)
-			if !ok {
-				return fmt.Errorf("Invalid type for InstanceOverride")
 			}
 		}
 
@@ -231,19 +187,4 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, instances)
-}
-
-func parseReturnedInstance(i any) (any, error) {
-	reJsonified, err := json.Marshal(i)
-	if err != nil {
-		return nil, err
-	}
-
-	ret := api.Instance{}
-	err = json.Unmarshal(reJsonified, &ret)
-	if err != nil {
-		return nil, err
-	}
-
-	return ret, nil
 }

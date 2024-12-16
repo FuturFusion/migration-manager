@@ -2,7 +2,6 @@ package cmds
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -237,19 +236,9 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 
 	batches := []api.Batch{}
 
-	metadata, ok := resp.Metadata.([]any)
-	if !ok {
-		return errors.New("Unexpected API response, invalid type for metadata")
-	}
-
-	// Loop through returned batches.
-	for _, anyBatch := range metadata {
-		newBatch, err := parseReturnedBatch(anyBatch)
-		if err != nil {
-			return err
-		}
-
-		batches = append(batches, newBatch.(api.Batch))
+	err = responseToStruct(resp, &batches)
+	if err != nil {
+		return err
 	}
 
 	// Render the table.
@@ -271,21 +260,6 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, batches)
-}
-
-func parseReturnedBatch(b any) (any, error) {
-	reJsonified, err := json.Marshal(b)
-	if err != nil {
-		return nil, err
-	}
-
-	ret := api.Batch{}
-	err = json.Unmarshal(reJsonified, &ret)
-	if err != nil {
-		return nil, err
-	}
-
-	return ret, nil
 }
 
 // Remove the batch.
@@ -364,14 +338,11 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	parsed, err := parseReturnedBatch(resp.Metadata)
+	b := api.Batch{}
+
+	err = responseToStruct(resp, &b)
 	if err != nil {
 		return err
-	}
-
-	b, ok := parsed.(api.Batch)
-	if !ok {
-		return errors.New("Invalid type for batch")
 	}
 
 	// Get all instances for this batch.
@@ -382,19 +353,9 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	instances := []api.Instance{}
 
-	metadata, ok := resp.Metadata.([]any)
-	if !ok {
-		return errors.New("Unexpected API response, invalid type for metadata")
-	}
-
-	// Loop through returned instances.
-	for _, anyInstance := range metadata {
-		newInstance, err := parseReturnedInstance(anyInstance)
-		if err != nil {
-			return err
-		}
-
-		instances = append(instances, newInstance.(api.Instance))
+	err = responseToStruct(resp, &instances)
+	if err != nil {
+		return err
 	}
 
 	// Show the details
@@ -555,100 +516,96 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	b, err := parseReturnedBatch(resp.Metadata)
+	b := api.Batch{}
+
+	err = responseToStruct(resp, &b)
 	if err != nil {
 		return err
 	}
 
 	// Prompt for updates.
-	origBatchName := ""
-	newBatchName := ""
-	switch bb := b.(type) {
-	case api.Batch:
-		origBatchName = bb.Name
+	origBatchName := b.Name
 
-		bb.Name, err = c.global.Asker.AskString("Batch name: ["+bb.Name+"] ", bb.Name, nil)
-		if err != nil {
-			return err
-		}
-
-		targetString, err := c.global.Asker.AskChoice(fmt.Sprintf("Target: ["+targetMap[bb.TargetID]+"] (Choices: '%s') ", strings.Join(definedTargets, "', '")), definedTargets, "")
-		if err != nil {
-			return err
-		}
-
-		for k, v := range targetMap {
-			if v == targetString {
-				bb.TargetID = k
-				break
-			}
-		}
-
-		bb.StoragePool, err = c.global.Asker.AskString("Storage pool: ["+bb.StoragePool+"] ", bb.StoragePool, nil)
-		if err != nil {
-			return err
-		}
-
-		bb.IncludeRegex, err = c.global.Asker.AskString("Regular expression to include instances: ["+bb.IncludeRegex+"] ", bb.IncludeRegex, func(s string) error { return nil })
-		if err != nil {
-			return err
-		}
-
-		bb.ExcludeRegex, err = c.global.Asker.AskString("Regular expression to exclude instances: ["+bb.ExcludeRegex+"] ", bb.ExcludeRegex, func(s string) error { return nil })
-		if err != nil {
-			return err
-		}
-
-		windowStartValue := ""
-		if !bb.MigrationWindowStart.IsZero() {
-			windowStartValue = bb.MigrationWindowStart.Format(time.DateTime)
-		}
-
-		windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ["+windowStartValue+"] ", windowStartValue, func(s string) error {
-			if s != "" {
-				_, err := time.Parse(time.DateTime, s)
-				return err
-			}
-
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		if windowStart != "" {
-			bb.MigrationWindowStart, _ = time.Parse(time.DateTime, windowStart)
-		}
-
-		windowEndValue := ""
-		if !bb.MigrationWindowEnd.IsZero() {
-			windowEndValue = bb.MigrationWindowEnd.Format(time.DateTime)
-		}
-
-		windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ["+windowEndValue+"] ", windowEndValue, func(s string) error {
-			if s != "" {
-				_, err := time.Parse(time.DateTime, s)
-				return err
-			}
-
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		if windowEnd != "" {
-			bb.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
-		}
-
-		bb.DefaultNetwork, err = c.global.Asker.AskString("Default network for instances: ["+bb.DefaultNetwork+"] ", bb.DefaultNetwork, func(s string) error { return nil })
-		if err != nil {
-			return err
-		}
-
-		newBatchName = bb.Name
-		b = bb
+	b.Name, err = c.global.Asker.AskString("Batch name: ["+b.Name+"] ", b.Name, nil)
+	if err != nil {
+		return err
 	}
+
+	targetString, err := c.global.Asker.AskChoice(fmt.Sprintf("Target: ["+targetMap[b.TargetID]+"] (Choices: '%s') ", strings.Join(definedTargets, "', '")), definedTargets, "")
+	if err != nil {
+		return err
+	}
+
+	for k, v := range targetMap {
+		if v == targetString {
+			b.TargetID = k
+			break
+		}
+	}
+
+	b.StoragePool, err = c.global.Asker.AskString("Storage pool: ["+b.StoragePool+"] ", b.StoragePool, nil)
+	if err != nil {
+		return err
+	}
+
+	b.IncludeRegex, err = c.global.Asker.AskString("Regular expression to include instances: ["+b.IncludeRegex+"] ", b.IncludeRegex, func(s string) error { return nil })
+	if err != nil {
+		return err
+	}
+
+	b.ExcludeRegex, err = c.global.Asker.AskString("Regular expression to exclude instances: ["+b.ExcludeRegex+"] ", b.ExcludeRegex, func(s string) error { return nil })
+	if err != nil {
+		return err
+	}
+
+	windowStartValue := ""
+	if !b.MigrationWindowStart.IsZero() {
+		windowStartValue = b.MigrationWindowStart.Format(time.DateTime)
+	}
+
+	windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ["+windowStartValue+"] ", windowStartValue, func(s string) error {
+		if s != "" {
+			_, err := time.Parse(time.DateTime, s)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if windowStart != "" {
+		b.MigrationWindowStart, _ = time.Parse(time.DateTime, windowStart)
+	}
+
+	windowEndValue := ""
+	if !b.MigrationWindowEnd.IsZero() {
+		windowEndValue = b.MigrationWindowEnd.Format(time.DateTime)
+	}
+
+	windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ["+windowEndValue+"] ", windowEndValue, func(s string) error {
+		if s != "" {
+			_, err := time.Parse(time.DateTime, s)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	if windowEnd != "" {
+		b.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
+	}
+
+	b.DefaultNetwork, err = c.global.Asker.AskString("Default network for instances: ["+b.DefaultNetwork+"] ", b.DefaultNetwork, func(s string) error { return nil })
+	if err != nil {
+		return err
+	}
+
+	newBatchName := b.Name
 
 	content, err := json.Marshal(b)
 	if err != nil {
@@ -673,23 +630,15 @@ func (c *CmdGlobal) getTargetMap() (map[int]string, error) {
 		return ret, err
 	}
 
-	metadata, ok := resp.Metadata.([]any)
-	if !ok {
-		return ret, errors.New("Unexpected API response, invalid type for metadata")
+	targets := []api.IncusTarget{}
+
+	err = responseToStruct(resp, &targets)
+	if err != nil {
+		return ret, err
 	}
 
 	// Loop through returned targets.
-	for _, anyTarget := range metadata {
-		newTarget, err := parseReturnedTarget(anyTarget)
-		if err != nil {
-			return ret, err
-		}
-
-		t, ok := newTarget.(api.IncusTarget)
-		if !ok {
-			continue
-		}
-
+	for _, t := range targets {
 		ret[t.DatabaseID] = t.Name
 	}
 

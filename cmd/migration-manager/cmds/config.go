@@ -67,7 +67,9 @@ func (c *cmdConfigShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	config, err := parseReturnedServerUntrusted(resp.Metadata)
+	config := api.ServerUntrusted{}
+
+	err = responseToStruct(resp, &config)
 	if err != nil {
 		return err
 	}
@@ -82,21 +84,6 @@ func (c *cmdConfigShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
-}
-
-func parseReturnedServerUntrusted(n any) (api.ServerUntrusted, error) {
-	reJsonified, err := json.Marshal(n)
-	if err != nil {
-		return api.ServerUntrusted{}, err
-	}
-
-	ret := api.ServerUntrusted{}
-	err = json.Unmarshal(reJsonified, &ret)
-	if err != nil {
-		return api.ServerUntrusted{}, err
-	}
-
-	return ret, nil
 }
 
 // Update the config.
@@ -130,7 +117,9 @@ func (c *cmdConfigUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	config, err := parseReturnedServerUntrusted(resp.Metadata)
+	config := api.ServerUntrusted{}
+
+	err = responseToStruct(resp, &config)
 	if err != nil {
 		return err
 	}

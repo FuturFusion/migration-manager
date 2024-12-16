@@ -3,7 +3,6 @@ package cmds
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -206,19 +205,9 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 
 	targets := []api.IncusTarget{}
 
-	metadata, ok := resp.Metadata.([]any)
-	if !ok {
-		return errors.New("Unexpected API response, invalid type for metadata")
-	}
-
-	// Loop through returned targets.
-	for _, anyTarget := range metadata {
-		newTarget, err := parseReturnedTarget(anyTarget)
-		if err != nil {
-			return err
-		}
-
-		targets = append(targets, newTarget.(api.IncusTarget))
+	err = responseToStruct(resp, &targets)
+	if err != nil {
+		return err
 	}
 
 	// Render the table.
@@ -235,21 +224,6 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, targets)
-}
-
-func parseReturnedTarget(t any) (any, error) {
-	reJsonified, err := json.Marshal(t)
-	if err != nil {
-		return nil, err
-	}
-
-	ret := api.IncusTarget{}
-	err = json.Unmarshal(reJsonified, &ret)
-	if err != nil {
-		return nil, err
-	}
-
-	return ret, nil
 }
 
 // Remove the target.
@@ -322,90 +296,86 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	t, err := parseReturnedTarget(resp.Metadata)
+	t := api.IncusTarget{}
+
+	err = responseToStruct(resp, &t)
 	if err != nil {
 		return err
 	}
 
 	// Prompt for updates.
-	origTargetName := ""
-	newTargetName := ""
-	switch incusTarget := t.(type) {
-	case api.IncusTarget:
-		origTargetName = incusTarget.Name
+	origTargetName := t.Name
 
-		incusTarget.Name, err = c.global.Asker.AskString("Target name: ["+incusTarget.Name+"] ", incusTarget.Name, nil)
+	t.Name, err = c.global.Asker.AskString("Target name: ["+t.Name+"] ", t.Name, nil)
+	if err != nil {
+		return err
+	}
+
+	t.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+t.Endpoint+"] ", t.Endpoint, nil)
+	if err != nil {
+		return err
+	}
+
+	updateAuth, err := c.global.Asker.AskBool("Update configured authentication? [no] ", "no")
+	if err != nil {
+		return err
+	}
+
+	if updateAuth {
+		// Clear out existing auth.
+		t.TLSClientKey = ""
+		t.TLSClientCert = ""
+		t.OIDCTokens = nil
+
+		authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
 		if err != nil {
 			return err
 		}
 
-		incusTarget.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+incusTarget.Endpoint+"] ", incusTarget.Endpoint, nil)
-		if err != nil {
-			return err
-		}
-
-		updateAuth, err := c.global.Asker.AskBool("Update configured authentication? [no] ", "no")
-		if err != nil {
-			return err
-		}
-
-		if updateAuth {
-			// Clear out existing auth.
-			incusTarget.TLSClientKey = ""
-			incusTarget.TLSClientCert = ""
-			incusTarget.OIDCTokens = nil
-
-			authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
+		// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
+		if authType == "tls" {
+			tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
 			if err != nil {
 				return err
 			}
 
-			// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
-			if authType == "tls" {
-				tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
-				if err != nil {
-					return err
-				}
-
-				contents, err := os.ReadFile(tlsCertPath)
-				if err != nil {
-					return err
-				}
-
-				incusTarget.TLSClientCert = string(contents)
-
-				tlsKeyPath, err := c.global.Asker.AskString("Please enter path to client TLS key: ", "", nil)
-				if err != nil {
-					return err
-				}
-
-				contents, err = os.ReadFile(tlsKeyPath)
-				if err != nil {
-					return err
-				}
-
-				incusTarget.TLSClientKey = string(contents)
+			contents, err := os.ReadFile(tlsCertPath)
+			if err != nil {
+				return err
 			}
-		}
 
-		isInsecure := "no"
-		if incusTarget.Insecure {
-			isInsecure = "yes"
-		}
+			t.TLSClientCert = string(contents)
 
-		incusTarget.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
-		if err != nil {
-			return err
-		}
+			tlsKeyPath, err := c.global.Asker.AskString("Please enter path to client TLS key: ", "", nil)
+			if err != nil {
+				return err
+			}
 
-		incusTarget.IncusProject, err = c.global.Asker.AskString("Project: ["+incusTarget.IncusProject+"] ", incusTarget.IncusProject, nil)
-		if err != nil {
-			return err
-		}
+			contents, err = os.ReadFile(tlsKeyPath)
+			if err != nil {
+				return err
+			}
 
-		newTargetName = incusTarget.Name
-		t = incusTarget
+			t.TLSClientKey = string(contents)
+		}
 	}
+
+	isInsecure := "no"
+	if t.Insecure {
+		isInsecure = "yes"
+	}
+
+	t.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
+	if err != nil {
+		return err
+	}
+
+	t.IncusProject, err = c.global.Asker.AskString("Project: ["+t.IncusProject+"] ", t.IncusProject, nil)
+	if err != nil {
+		return err
+	}
+
+	newTargetName := t.Name
 
 	content, err := json.Marshal(t)
 	if err != nil {
