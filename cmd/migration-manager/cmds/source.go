@@ -135,25 +135,15 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			},
 		}
 
-		content, err := json.Marshal(s)
-		if err != nil {
-			return err
-		}
+		internalSource := source.NewInternalVMwareSourceFrom(s)
 
 		// Verify we can connect to the source.
-		ctx := context.TODO()
-
-		internalSource := source.InternalVMwareSource{}
-		err = json.Unmarshal(content, &internalSource)
-		if err != nil {
-			return err
-		}
-
 		if c.additionalRootCertificate != nil {
 			internalSource.WithAdditionalRootCertificate(c.additionalRootCertificate)
 		}
 
 		if !c.flagNoTestConnection {
+			ctx := context.TODO()
 			err = internalSource.Connect(ctx)
 			if err != nil {
 				return err
@@ -161,7 +151,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		// Insert into database.
-		content, err = json.Marshal(internalSource)
+		content, err := json.Marshal(s)
 		if err != nil {
 			return err
 		}
@@ -387,27 +377,17 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		content, err := json.Marshal(specificSource)
-		if err != nil {
-			return err
-		}
+		internalSource := source.NewInternalVMwareSourceFrom(specificSource)
 
 		// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
 		ctx := context.TODO()
-
-		internalSource := source.InternalVMwareSource{}
-		err = json.Unmarshal(content, &internalSource)
-		if err != nil {
-			return err
-		}
-
 		err = internalSource.Connect(ctx)
 		if err != nil {
 			return err
 		}
 
 		newSourceName = specificSource.Name
-		s = internalSource
+		s = specificSource
 	default:
 		return fmt.Errorf("Unsupported source type %T; must be one of %q", s, supportedTypes)
 	}

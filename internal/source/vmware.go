@@ -51,6 +51,17 @@ func NewVMwareSource(name string, endpoint string, username string, password str
 	}
 }
 
+func NewInternalVMwareSourceFrom(apiSource api.VMwareSource) *InternalVMwareSource {
+	return &InternalVMwareSource{
+		InternalCommonSource: InternalCommonSource{
+			CommonSource: apiSource.CommonSource,
+		},
+		InternalVMwareSourceSpecific: InternalVMwareSourceSpecific{
+			VMwareSourceSpecific: apiSource.VMwareSourceSpecific,
+		},
+	}
+}
+
 func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 	if s.isConnected {
 		return fmt.Errorf("Already connected to endpoint '%s'", s.Endpoint)

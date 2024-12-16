@@ -276,10 +276,7 @@ func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, s
 			return err
 		}
 
-		vmwareSrc := source.NewVMwareSource(vmwareSource.Name, vmwareSource.Endpoint, vmwareSource.Username, vmwareSource.Password)
-		vmwareSrc.Insecure = vmwareSource.Insecure
-
-		src = vmwareSrc
+		src = source.NewInternalVMwareSourceFrom(vmwareSource)
 
 	default:
 		return fmt.Errorf("Provided source type %q is not usable with `migration-manager-worker`", sourceType.String())
