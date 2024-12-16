@@ -217,7 +217,7 @@ func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseETag(true, override, override)
 }
 
-// swagger:operation GET /1.0/instances/{uuid}/override instances instance_override_post
+// swagger:operation POST /1.0/instances/{uuid}/override instances instance_override_post
 //
 //	Add an instance override
 //
