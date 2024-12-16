@@ -17,7 +17,7 @@ var ErrNotUnixSocket = fmt.Errorf("Connection isn't a unix socket")
 
 // GetConnFromContext extracts the connection from the request context on a HTTP listener.
 func GetConnFromContext(ctx context.Context) net.Conn {
-	return ctx.Value(request.CtxConn).(net.Conn)
+	return ctx.Value(request.CtxConn).(net.Conn) //nolint: revive
 }
 
 // GetCredFromContext extracts the unix credentials from the request context on a HTTP listener.

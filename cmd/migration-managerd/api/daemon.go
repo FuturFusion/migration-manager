@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/user"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -14,8 +15,10 @@ import (
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/server/endpoints"
+	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
+	"github.com/FuturFusion/migration-manager/internal/server/ucred"
 	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
@@ -37,6 +40,67 @@ type APIEndpointAction struct {
 	Handler        func(d *Daemon, r *http.Request) response.Response
 	AccessHandler  func(d *Daemon, r *http.Request) response.Response
 	AllowUntrusted bool
+}
+
+// allowAuthenticated is an AccessHandler which allows only authenticated requests. This should be used in conjunction
+// with further access control within the handler (e.g. to filter resources the user is able to view/edit).
+func allowAuthenticated(d *Daemon, r *http.Request) response.Response {
+	err := d.checkTrustedClient(r)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
+}
+
+// Convenience function around Authenticate.
+func (d *Daemon) checkTrustedClient(r *http.Request) error {
+	trusted, _, _, err := d.Authenticate(nil, r)
+	if err != nil {
+		return err
+	}
+
+	if !trusted {
+		return fmt.Errorf("Not authorized")
+	}
+
+	return nil
+}
+
+// Authenticate validates an incoming http Request
+// It will check over what protocol it came, what type of request it is and
+// will validate the TLS certificate.
+//
+// This does not perform authorization, only validates authentication.
+// Returns whether trusted or not, the username (or certificate fingerprint) of the trusted client, and the type of
+// client that has been authenticated (unix or tls).
+func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
+	// Local unix socket queries.
+	if r.RemoteAddr == "@" && r.TLS == nil {
+		if w != nil {
+			cred, err := ucred.GetCredFromContext(r.Context())
+			if err != nil {
+				return false, "", "", err
+			}
+
+			u, err := user.LookupId(fmt.Sprintf("%d", cred.Uid))
+			if err != nil {
+				return true, fmt.Sprintf("uid=%d", cred.Uid), "unix", nil
+			}
+
+			return true, u.Username, "unix", nil
+		}
+
+		return true, "", "unix", nil
+	}
+
+	// Bad query, no TLS found.
+	if r.TLS == nil {
+		return false, "", "", fmt.Errorf("Bad/missing TLS on network query")
+	}
+
+	// Reject unauthorized.
+	return false, "", "", nil
 }
 
 type Daemon struct {
@@ -144,19 +208,30 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 		w.Header().Set("Content-Type", "application/json")
 
 		// Authentication
-		trusted := false // TODO
+		trusted, username, protocol, err := d.Authenticate(w, r)
+		if err != nil {
+			_ = response.Unauthorized(err).Render(w)
+			return
+		}
 
 		logCtx := logger.Ctx{"method": r.Method, "url": r.URL.RequestURI(), "ip": r.RemoteAddr}
 		logger.Debug("Handling API request", logCtx)
 
 		untrustedOk := (r.Method == "GET" && c.Get.AllowUntrusted) || (r.Method == "POST" && c.Post.AllowUntrusted)
-		if untrustedOk && r.Header.Get("X-Incus-authenticated") == "" {
+		if trusted {
+			logger.Debug("Handling API request", logCtx)
+
+			// Add authentication/authorization context data.
+			ctx := context.WithValue(r.Context(), request.CtxUsername, username)
+			ctx = context.WithValue(ctx, request.CtxProtocol, protocol)
+
+			r = r.WithContext(ctx)
+		} else if untrustedOk && r.Header.Get("X-MigrationManager-authenticated") == "" {
 			logger.Debug(fmt.Sprintf("Allowing untrusted %s", r.Method), logger.Ctx{"url": r.URL.RequestURI(), "ip": r.RemoteAddr})
 		} else {
 			logger.Warn("Rejecting request from untrusted client", logger.Ctx{"ip": r.RemoteAddr})
-			// TODO: enforce forbidden for untrusted clients
-			// _ = response.Forbidden(nil).Render(w)
-			// return
+			_ = response.Forbidden(nil).Render(w)
+			return
 		}
 
 		// Actually process the request
@@ -231,7 +306,7 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 		}
 
 		// Handle errors
-		err := resp.Render(w)
+		err = resp.Render(w)
 		if err != nil {
 			writeErr := response.SmartError(err).Render(w)
 			if writeErr != nil {
