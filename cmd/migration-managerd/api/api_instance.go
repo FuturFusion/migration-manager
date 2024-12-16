@@ -34,16 +34,16 @@ var instanceCmd = APIEndpoint{
 var instanceStateCmd = APIEndpoint{
 	Path: "instances/{uuid}/state",
 
-	Put: APIEndpointAction{Handler: instanceStatePut, AllowUntrusted: true},
+	Put: APIEndpointAction{Handler: instanceStatePut, AccessHandler: allowAuthenticated},
 }
 
 var instanceOverrideCmd = APIEndpoint{
 	Path: "instances/{uuid}/override",
 
-	Delete: APIEndpointAction{Handler: instanceOverrideDelete, AllowUntrusted: true},
+	Delete: APIEndpointAction{Handler: instanceOverrideDelete, AccessHandler: allowAuthenticated},
 	Get:    APIEndpointAction{Handler: instanceOverrideGet, AllowUntrusted: true},
-	Post:   APIEndpointAction{Handler: instanceOverridePost, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: instanceOverridePut, AllowUntrusted: true},
+	Post:   APIEndpointAction{Handler: instanceOverridePost, AccessHandler: allowAuthenticated},
+	Put:    APIEndpointAction{Handler: instanceOverridePut, AccessHandler: allowAuthenticated},
 }
 
 // swagger:operation GET /1.0/instances instances instances_get

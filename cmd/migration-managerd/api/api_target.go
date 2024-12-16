@@ -20,15 +20,15 @@ var targetsCmd = APIEndpoint{
 	Path: "targets",
 
 	Get:  APIEndpointAction{Handler: targetsGet, AllowUntrusted: true},
-	Post: APIEndpointAction{Handler: targetsPost, AllowUntrusted: true},
+	Post: APIEndpointAction{Handler: targetsPost, AccessHandler: allowAuthenticated},
 }
 
 var targetCmd = APIEndpoint{
 	Path: "targets/{name}",
 
-	Delete: APIEndpointAction{Handler: targetDelete, AllowUntrusted: true},
+	Delete: APIEndpointAction{Handler: targetDelete, AccessHandler: allowAuthenticated},
 	Get:    APIEndpointAction{Handler: targetGet, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: targetPut, AllowUntrusted: true},
+	Put:    APIEndpointAction{Handler: targetPut, AccessHandler: allowAuthenticated},
 }
 
 // swagger:operation GET /1.0/targets targets targets_get
