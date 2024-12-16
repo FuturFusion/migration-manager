@@ -20,6 +20,7 @@ const (
 	MIGRATIONSTATUS_IMPORT_COMPLETE
 	MIGRATIONSTATUS_FINISHED
 	MIGRATIONSTATUS_ERROR
+	MIGRATIONSTATUS_USER_DISABLED_MIGRATION
 )
 
 // Implement the stringer interface.
@@ -45,6 +46,8 @@ func (m MigrationStatusType) String() string {
 		return "Finished"
 	case MIGRATIONSTATUS_ERROR:
 		return "Error"
+	case MIGRATIONSTATUS_USER_DISABLED_MIGRATION:
+		return "User disabled migration"
 	default:
 		return fmt.Sprintf("MigrationStatusType(%d)", m)
 	}
