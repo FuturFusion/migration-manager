@@ -176,14 +176,9 @@ func TestSourceAdd(t *testing.T) {
 				AskStringFunc: func(question string, defaultAnswer string, validate func(string) error) (string, error) {
 					return tc.username, nil
 				},
-			}
-
-			askPasswordFuncOrig := askPasswordFunc
-			t.Cleanup(func() {
-				askPasswordFunc = askPasswordFuncOrig
-			})
-			askPasswordFunc = func(_ string) string {
-				return tc.password
+				AskPasswordFunc: func(question string) string {
+					return tc.password
+				},
 			}
 
 			migrationManagerd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -603,18 +598,13 @@ func TestSourceUpdate(t *testing.T) {
 				AskStringFunc: func(question string, defaultAnswer string, validate func(string) error) (string, error) {
 					return pop(t, &tc.askStringReturns)
 				},
+				AskPasswordFunc: func(question string) string {
+					ret, _ := pop(t, &tc.askStringReturns)
+					return ret
+				},
 				AskBoolFunc: func(question string, defaultAnswer string) (bool, error) {
 					return pop(t, &tc.askBoolReturns)
 				},
-			}
-
-			askPasswordFuncOrig := askPasswordFunc
-			t.Cleanup(func() {
-				askPasswordFunc = askPasswordFuncOrig
-			})
-			askPasswordFunc = func(_ string) string {
-				ret, _ := pop(t, &tc.askStringReturns)
-				return ret
 			}
 
 			migrationManagerd := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
