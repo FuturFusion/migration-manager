@@ -17,6 +17,7 @@ General structure
         /1.0/instances
             /1.0/instances/UUID
             /1.0/instances/UUID/override
+            /1.0/instances/UUID/state?migration_user_disabled=BOOL
         /1.0/networks
             /1.0/networks/NAME
         /1.0/sources
