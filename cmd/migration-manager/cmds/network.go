@@ -2,7 +2,6 @@ package cmds
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -148,19 +147,9 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 
 	networks := []api.Network{}
 
-	metadata, ok := resp.Metadata.([]any)
-	if !ok {
-		return errors.New("Unexpected API response, invalid type for metadata")
-	}
-
-	// Loop through returned networks.
-	for _, anyNetwork := range metadata {
-		newNetwork, err := parseReturnedNetwork(anyNetwork)
-		if err != nil {
-			return err
-		}
-
-		networks = append(networks, newNetwork.(api.Network))
+	err = responseToStruct(resp, &networks)
+	if err != nil {
+		return err
 	}
 
 	// Render the table.
@@ -177,21 +166,6 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, networks)
-}
-
-func parseReturnedNetwork(n any) (any, error) {
-	reJsonified, err := json.Marshal(n)
-	if err != nil {
-		return nil, err
-	}
-
-	ret := api.Network{}
-	err = json.Unmarshal(reJsonified, &ret)
-	if err != nil {
-		return nil, err
-	}
-
-	return ret, nil
 }
 
 // Remove the network.
@@ -264,35 +238,31 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	anyN, err := parseReturnedNetwork(resp.Metadata)
+	network := api.Network{}
+
+	err = responseToStruct(resp, &network)
 	if err != nil {
 		return err
 	}
 
-	n, ok := anyN.(api.Network)
-	if !ok {
-		return errors.New("Invalid type for network")
-	}
-
 	// Prompt for updates.
-	origNetworkName := n.Name
-	newNetworkName := ""
+	origNetworkName := network.Name
 	configString := []byte{}
-	if n.Config != nil {
-		configString, err = json.Marshal(n.Config)
+	if network.Config != nil {
+		configString, err = json.Marshal(network.Config)
 		if err != nil {
 			return err
 		}
 	}
 
-	n.Name, err = c.global.Asker.AskString("Network name: ["+n.Name+"] ", n.Name, nil)
+	network.Name, err = c.global.Asker.AskString("Network name: ["+network.Name+"] ", network.Name, nil)
 	if err != nil {
 		return err
 	}
 
 	_, err = c.global.Asker.AskString("JSON config: ["+string(configString)+"] ", string(configString), func(s string) error {
 		if s != "" {
-			return json.Unmarshal([]byte(s), &n.Config)
+			return json.Unmarshal([]byte(s), &network.Config)
 		}
 
 		return nil
@@ -301,10 +271,10 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	newNetworkName = n.Name
+	newNetworkName := network.Name
 
 	// Update the network.
-	content, err := json.Marshal(n)
+	content, err := json.Marshal(network)
 	if err != nil {
 		return err
 	}

@@ -33,8 +33,8 @@ var sourceCmd = APIEndpoint{
 }
 
 type sourcesResult struct {
-	Type   api.SourceType `json:"type" yaml:"type"`
-	Source source.Source  `json:"source" yaml:"source"`
+	Type   api.SourceType  `json:"type" yaml:"type"`
+	Source json.RawMessage `json:"source" yaml:"source"`
 }
 
 // swagger:operation GET /1.0/sources sources sources_get
@@ -84,11 +84,16 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 		}
 
 		for _, s := range sources {
+			encodedSource, err := json.Marshal(s)
+			if err != nil {
+				return err
+			}
+
 			switch s.(type) {
 			case *source.InternalCommonSource:
-				result = append(result, sourcesResult{Type: api.SOURCETYPE_COMMON, Source: s})
+				result = append(result, sourcesResult{Type: api.SOURCETYPE_COMMON, Source: encodedSource})
 			case *source.InternalVMwareSource:
-				result = append(result, sourcesResult{Type: api.SOURCETYPE_VMWARE, Source: s})
+				result = append(result, sourcesResult{Type: api.SOURCETYPE_VMWARE, Source: encodedSource})
 			default:
 				return fmt.Errorf("Unsupported source type %T", s)
 			}
@@ -274,11 +279,16 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	var ret sourcesResult
+	encodedSource, err := json.Marshal(s)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
 	switch s.(type) {
 	case *source.InternalCommonSource:
-		ret = sourcesResult{Type: api.SOURCETYPE_COMMON, Source: s}
+		ret = sourcesResult{Type: api.SOURCETYPE_COMMON, Source: encodedSource}
 	case *source.InternalVMwareSource:
-		ret = sourcesResult{Type: api.SOURCETYPE_VMWARE, Source: s}
+		ret = sourcesResult{Type: api.SOURCETYPE_VMWARE, Source: encodedSource}
 	default:
 		return response.BadRequest(fmt.Errorf("Unsupported source type %T", s))
 	}

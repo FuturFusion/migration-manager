@@ -1,8 +1,6 @@
 package cmds
 
 import (
-	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/spf13/cobra"
@@ -77,19 +75,9 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 
 	queueEntries := []api.QueueEntry{}
 
-	metadata, ok := resp.Metadata.([]any)
-	if !ok {
-		return errors.New("Unexpected API response, invalid type for metadata")
-	}
-
-	// Loop through returned entries.
-	for _, anyEntry := range metadata {
-		newEntry, err := parseReturnedQueueEntry(anyEntry)
-		if err != nil {
-			return err
-		}
-
-		queueEntries = append(queueEntries, newEntry.(api.QueueEntry))
+	err = responseToStruct(resp, &queueEntries)
+	if err != nil {
+		return err
 	}
 
 	// Render the table.
@@ -110,19 +98,4 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, queueEntries)
-}
-
-func parseReturnedQueueEntry(i any) (any, error) {
-	reJsonified, err := json.Marshal(i)
-	if err != nil {
-		return nil, err
-	}
-
-	ret := api.QueueEntry{}
-	err = json.Unmarshal(reJsonified, &ret)
-	if err != nil {
-		return nil, err
-	}
-
-	return ret, nil
 }

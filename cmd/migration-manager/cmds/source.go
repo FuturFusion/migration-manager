@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -19,6 +18,11 @@ import (
 )
 
 var supportedTypes = []string{"vmware"}
+
+type sourcesResult struct {
+	Type   api.SourceType  `json:"type" yaml:"type"`
+	Source json.RawMessage `json:"source" yaml:"source"`
+}
 
 type CmdSource struct {
 	Global *CmdGlobal
@@ -204,68 +208,35 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	vmwareSources := []api.VMwareSource{}
+	sources := []sourcesResult{}
 
-	metadata, ok := resp.Metadata.([]any)
-	if !ok {
-		return errors.New("Unexpected API response, invalid type for metadata")
-	}
-
-	// Loop through returned sources.
-	for _, anySource := range metadata {
-		newSource, err := parseReturnedSource(anySource)
-		if err != nil {
-			return err
-		}
-
-		switch s := newSource.(type) {
-		case api.VMwareSource:
-			vmwareSources = append(vmwareSources, s)
-		}
+	err = responseToStruct(resp, &sources)
+	if err != nil {
+		return err
 	}
 
 	// Render the table.
 	header := []string{"Name", "Type", "Endpoint", "Username", "Insecure"}
 	data := [][]string{}
 
-	for _, vmwareSource := range vmwareSources {
-		data = append(data, []string{vmwareSource.Name, "VMware", vmwareSource.Endpoint, vmwareSource.Username, strconv.FormatBool(vmwareSource.Insecure)})
-	}
+	for _, s := range sources {
+		switch s.Type {
+		case api.SOURCETYPE_VMWARE:
+			vmwareSource := api.VMwareSource{}
+			err := json.Unmarshal(s.Source, &vmwareSource)
+			if err != nil {
+				return err
+			}
 
-	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, vmwareSources)
-}
-
-func parseReturnedSource(s any) (any, error) {
-	rawSource, ok := s.(map[string]any)
-	if !ok {
-		return nil, errors.New("Invalid type for source")
-	}
-
-	reJsonified, err := json.Marshal(rawSource["source"])
-	if err != nil {
-		return nil, err
-	}
-
-	switch api.SourceType(rawSource["type"].(float64)) {
-	case api.SOURCETYPE_COMMON:
-		var src api.CommonSource
-		err = json.Unmarshal(reJsonified, &src)
-		if err != nil {
-			return nil, err
+			data = append(data, []string{vmwareSource.Name, "VMware", vmwareSource.Endpoint, vmwareSource.Username, strconv.FormatBool(vmwareSource.Insecure)})
+		case api.SOURCETYPE_COMMON:
+			// Nothing to output in this case
+		default:
+			return fmt.Errorf("Unsupported source type %d", s.Type)
 		}
-
-		return src, nil
-	case api.SOURCETYPE_VMWARE:
-		var src api.VMwareSource
-		err = json.Unmarshal(reJsonified, &src)
-		if err != nil {
-			return nil, err
-		}
-
-		return src, nil
-	default:
-		return nil, fmt.Errorf("Unsupported source type %f", rawSource["type"].(float64))
 	}
+
+	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, sources)
 }
 
 // Remove the source.
@@ -338,7 +309,10 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	s, err := parseReturnedSource(resp.Metadata)
+	respS := sourcesResult{}
+	vmwareSource := api.VMwareSource{}
+
+	err = responseToStruct(resp, &respS)
 	if err != nil {
 		return err
 	}
@@ -346,54 +320,58 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	// Prompt for updates, depending on the source type.
 	origSourceName := ""
 	newSourceName := ""
-	switch specificSource := s.(type) {
-	case api.VMwareSource:
-		origSourceName = specificSource.Name
-
-		specificSource.Name, err = c.global.Asker.AskString("Source name: ["+specificSource.Name+"] ", specificSource.Name, nil)
+	switch respS.Type {
+	case api.SOURCETYPE_VMWARE:
+		err := json.Unmarshal(respS.Source, &vmwareSource)
 		if err != nil {
 			return err
 		}
 
-		specificSource.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+specificSource.Endpoint+"] ", specificSource.Endpoint, nil)
+		origSourceName = vmwareSource.Name
+
+		vmwareSource.Name, err = c.global.Asker.AskString("Source name: ["+vmwareSource.Name+"] ", vmwareSource.Name, nil)
 		if err != nil {
 			return err
 		}
 
-		specificSource.Username, err = c.global.Asker.AskString("Username: ["+specificSource.Username+"] ", specificSource.Username, nil)
+		vmwareSource.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+vmwareSource.Endpoint+"] ", vmwareSource.Endpoint, nil)
 		if err != nil {
 			return err
 		}
 
-		specificSource.Password = askPasswordFunc("Password: ")
+		vmwareSource.Username, err = c.global.Asker.AskString("Username: ["+vmwareSource.Username+"] ", vmwareSource.Username, nil)
+		if err != nil {
+			return err
+		}
+
+		vmwareSource.Password = askPasswordFunc("Password: ")
 
 		isInsecure := "no"
-		if specificSource.Insecure {
+		if vmwareSource.Insecure {
 			isInsecure = "yes"
 		}
 
-		specificSource.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
+		vmwareSource.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err
 		}
 
-		internalSource := source.NewInternalVMwareSourceFrom(specificSource)
-
-		// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
-		ctx := context.TODO()
-		err = internalSource.Connect(ctx)
-		if err != nil {
-			return err
-		}
-
-		newSourceName = specificSource.Name
-		s = specificSource
+		newSourceName = vmwareSource.Name
 	default:
-		return fmt.Errorf("Unsupported source type %T; must be one of %q", s, supportedTypes)
+		return fmt.Errorf("Unsupported source type %d; must be one of %q", respS.Type, supportedTypes)
+	}
+
+	internalSource := source.NewInternalVMwareSourceFrom(vmwareSource)
+
+	// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
+	ctx := context.TODO()
+	err = internalSource.Connect(ctx)
+	if err != nil {
+		return err
 	}
 
 	// Update the source.
-	content, err := json.Marshal(s)
+	content, err := json.Marshal(vmwareSource)
 	if err != nil {
 		return err
 	}

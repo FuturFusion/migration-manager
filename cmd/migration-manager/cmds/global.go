@@ -5,7 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -126,7 +125,7 @@ func (c *CmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 	return false, nil
 }
 
-func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.ResponseRaw, error) {
+func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.Response, error) {
 	u, err := url.Parse(c.config.MigrationManagerServer)
 	if err != nil {
 		return nil, err
@@ -158,18 +157,19 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 
 	defer resp.Body.Close()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	decoder := json.NewDecoder(resp.Body)
+	response := api.Response{}
+
+	err = decoder.Decode(&response)
 	if err != nil {
 		return nil, err
+	} else if response.Code != 0 {
+		return &response, fmt.Errorf("Received an error from the server: %s", response.Error)
 	}
 
-	var jsonResp api.ResponseRaw
-	err = json.Unmarshal(bodyBytes, &jsonResp)
-	if err != nil {
-		return nil, err
-	} else if jsonResp.Code != 0 {
-		return &jsonResp, fmt.Errorf("Received an error from the server: %s", jsonResp.Error)
-	}
+	return &response, nil
+}
 
-	return &jsonResp, nil
+func responseToStruct(response *api.Response, targetStruct any) error {
+	return json.Unmarshal(response.Metadata, &targetStruct)
 }

@@ -201,14 +201,11 @@ func (c *cmdInstanceOverrideShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	o, err := parseReturnedInstanceOverride(resp.Metadata)
+	override := api.InstanceOverride{}
+
+	err = responseToStruct(resp, &override)
 	if err != nil {
 		return err
-	}
-
-	override, ok := o.(api.InstanceOverride)
-	if !ok {
-		return fmt.Errorf("Invalid type for InstanceOverride")
 	}
 
 	numCPUSDisplay := strconv.Itoa(override.NumberCPUs)
@@ -264,61 +261,58 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	o, err := parseReturnedInstanceOverride(resp.Metadata)
+	override := api.InstanceOverride{}
+
+	err = responseToStruct(resp, &override)
 	if err != nil {
 		return err
 	}
 
 	// Prompt for updates.
-	switch override := o.(type) {
-	case api.InstanceOverride:
-		override.Comment, err = c.global.Asker.AskString("Comment: ["+override.Comment+"] ", override.Comment, func(s string) error { return nil })
-		if err != nil {
-			return err
-		}
-
-		displayOverride := ""
-		if override.NumberCPUs != 0 {
-			displayOverride = "[" + strconv.Itoa(override.NumberCPUs) + "] "
-		} else {
-			displayOverride = ""
-		}
-
-		val, err := c.global.Asker.AskInt("Number of vCPUs: "+displayOverride, 0, 1024, strconv.Itoa(override.NumberCPUs), nil)
-		if err != nil {
-			return err
-		}
-
-		if override.NumberCPUs != int(val) {
-			override.NumberCPUs = int(val)
-		}
-
-		if override.MemoryInBytes != 0 {
-			displayOverride = "[" + units.GetByteSizeStringIEC(override.MemoryInBytes, 2) + "] "
-		} else {
-			displayOverride = ""
-		}
-
-		memoryString, err := c.global.Asker.AskString("Memory: "+displayOverride, fmt.Sprintf("%dB", override.MemoryInBytes), func(s string) error {
-			_, err := units.ParseByteSizeString(s)
-			return err
-		})
-		if err != nil {
-			return err
-		}
-
-		val, _ = units.ParseByteSizeString(memoryString)
-
-		if override.MemoryInBytes != val {
-			override.MemoryInBytes = val
-		}
-
-		override.LastUpdate = time.Now().UTC()
-
-		o = override
+	override.Comment, err = c.global.Asker.AskString("Comment: ["+override.Comment+"] ", override.Comment, func(s string) error { return nil })
+	if err != nil {
+		return err
 	}
 
-	content, err := json.Marshal(o)
+	displayOverride := ""
+	if override.NumberCPUs != 0 {
+		displayOverride = "[" + strconv.Itoa(override.NumberCPUs) + "] "
+	} else {
+		displayOverride = ""
+	}
+
+	val, err := c.global.Asker.AskInt("Number of vCPUs: "+displayOverride, 0, 1024, strconv.Itoa(override.NumberCPUs), nil)
+	if err != nil {
+		return err
+	}
+
+	if override.NumberCPUs != int(val) {
+		override.NumberCPUs = int(val)
+	}
+
+	if override.MemoryInBytes != 0 {
+		displayOverride = "[" + units.GetByteSizeStringIEC(override.MemoryInBytes, 2) + "] "
+	} else {
+		displayOverride = ""
+	}
+
+	memoryString, err := c.global.Asker.AskString("Memory: "+displayOverride, fmt.Sprintf("%dB", override.MemoryInBytes), func(s string) error {
+		_, err := units.ParseByteSizeString(s)
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	val, _ = units.ParseByteSizeString(memoryString)
+
+	if override.MemoryInBytes != val {
+		override.MemoryInBytes = val
+	}
+
+	override.LastUpdate = time.Now().UTC()
+
+	content, err := json.Marshal(override)
 	if err != nil {
 		return err
 	}
@@ -330,19 +324,4 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 
 	cmd.Printf("Successfully updated instance override '%s'.\n", UUIDString)
 	return nil
-}
-
-func parseReturnedInstanceOverride(i any) (any, error) {
-	reJsonified, err := json.Marshal(i)
-	if err != nil {
-		return nil, err
-	}
-
-	ret := api.InstanceOverride{}
-	err = json.Unmarshal(reJsonified, &ret)
-	if err != nil {
-		return nil, err
-	}
-
-	return ret, nil
 }
