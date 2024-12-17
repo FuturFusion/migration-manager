@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
 
@@ -32,6 +33,10 @@ func (c *CmdInstance) Command() *cobra.Command {
 	// List
 	instanceListCmd := cmdInstanceList{global: c.Global}
 	cmd.AddCommand(instanceListCmd.Command())
+
+	// Set migration state
+	instanceSetMigrationStateCmd := cmdInstanceSetMigrationState{global: c.Global}
+	cmd.AddCommand(instanceSetMigrationStateCmd.Command())
 
 	// Override
 	instanceOverrideCmd := CmdInstanceOverride{Global: c.Global}
@@ -199,6 +204,10 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			nics = append(nics, nic.Hwaddr+" ("+nic.Network+")")
 		}
 
+		if i.MigrationStatusString == "" {
+			i.MigrationStatusString = i.MigrationStatus.String()
+		}
+
 		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2), strings.Join(disks, "\n"), strings.Join(nics, "\n")}
 		if c.flagVerbose {
 			row = append(row, i.UUID.String(), i.InventoryPath, i.LastUpdateFromSource.String())
@@ -208,4 +217,51 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, instances)
+}
+
+// Disable instance for migration.
+type cmdInstanceSetMigrationState struct {
+	global *CmdGlobal
+
+	flagUserDisabled bool
+}
+
+func (c *cmdInstanceSetMigrationState) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "set-state <instance-uuid>"
+	cmd.Short = "Update instance migration state"
+	cmd.Long = `Description:
+  Set the migration state for the given instance
+`
+
+	cmd.RunE = c.Run
+	cmd.Flags().BoolVarP(&c.flagUserDisabled, "user-disabled", "", false, "Set migration state for instance to disabled by user")
+
+	return cmd
+}
+
+func (c *cmdInstanceSetMigrationState) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	instanceUUID, err := uuid.Parse(args[0])
+	if err != nil {
+		return err
+	}
+
+	// Set instance state.
+	_, err = c.global.doHTTPRequestV1(
+		fmt.Sprintf("/instances/%s/state", instanceUUID.String()),
+		http.MethodPut,
+		fmt.Sprintf("migration_user_disabled=%t", c.flagUserDisabled),
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

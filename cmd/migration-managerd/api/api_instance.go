@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	sharedAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
@@ -27,6 +29,12 @@ var instanceCmd = APIEndpoint{
 	Path: "instances/{uuid}",
 
 	Get: APIEndpointAction{Handler: instanceGet, AllowUntrusted: true},
+}
+
+var instanceStateCmd = APIEndpoint{
+	Path: "instances/{uuid}/state",
+
+	Put: APIEndpointAction{Handler: instanceStatePut, AllowUntrusted: true},
 }
 
 var instanceOverrideCmd = APIEndpoint{
@@ -389,4 +397,83 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 	}
 
 	return response.EmptySyncResponse
+}
+
+// swagger:operation PUT /1.0/instances/{uuid}/state instances instance_state_put
+//
+//	Mark an instance as not eligible for migration
+//
+//	As long as an instance is not yet assigned to a batch, it can be marked as
+//	not eligible for migration.
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - description: State
+//	    example: true
+//	    in: query
+//	    name: migration_user_disabled
+//	    type: boolean
+//	    required: true
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func instanceStatePut(d *Daemon, r *http.Request) response.Response {
+	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
+	if err != nil {
+		// TODO: can this code path even be reached?
+		return response.SmartError(err)
+	}
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.SmartError(sharedAPI.StatusErrorf(http.StatusBadRequest, "Invalid instance UUID %q", UUID))
+	}
+
+	migrationUserDisabledString := r.URL.Query().Get("migration_user_disabled")
+	migrationUserDisabled, err := strconv.ParseBool(migrationUserDisabledString)
+	if err != nil {
+		return response.SmartError(sharedAPI.StatusErrorf(http.StatusBadRequest, "Invalid value for migration_user_disabled %q", migrationUserDisabledString))
+	}
+
+	allowedSourceState := api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION
+	targetState := api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
+	if migrationUserDisabled {
+		allowedSourceState = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
+		targetState = api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION
+	}
+
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		// Get the instance.
+		i, err := d.db.GetInstance(tx, UUID)
+		if err != nil {
+			return sharedAPI.StatusErrorf(http.StatusBadRequest, "Failed to get instance %q: %v", UUID, err)
+		}
+
+		internalInstance, ok := i.(*instance.InternalInstance)
+		if !ok {
+			return fmt.Errorf("Unsupported instance type %T", i)
+		}
+
+		if internalInstance.MigrationStatus != allowedSourceState {
+			return sharedAPI.StatusErrorf(http.StatusBadRequest, "Set migration disabled for instance %q in state %q not allowed", UUID, internalInstance.MigrationStatus.String())
+		}
+
+		internalInstance.MigrationStatus = targetState
+		internalInstance.MigrationStatusString = targetState.String()
+
+		// Update into database.
+		return d.db.UpdateInstance(tx, internalInstance)
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed updating migration status for instance %s: %w", UUID, err))
+	}
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+UUIDString)
 }

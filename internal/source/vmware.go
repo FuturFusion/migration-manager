@@ -72,6 +72,10 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 		return err
 	}
 
+	if endpointURL == nil {
+		return fmt.Errorf("invalid endpoint: %s", s.Endpoint)
+	}
+
 	endpointURL.User = url.UserPassword(s.Username, s.Password)
 
 	s.govmomiClient, err = soapWithKeepalive(ctx, endpointURL, s.Insecure, s.additionalRootCertificate)

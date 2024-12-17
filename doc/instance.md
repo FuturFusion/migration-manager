@@ -10,17 +10,17 @@ Life Cycle
 
 ```
 Not Assigned Batch --> Assigned Batch --> Creating --> Background Import <-> Error
-                                             ^               ^
-                                             |               |
-                                             v               v
-                                           Error            Idle
+       ^                                     ^               ^
+       |                                     |               |
+       v                                     v               v
+User disabled migration                    Error            Idle
                                                              ^
                                                              |
                                                              V
                                              Error <-> Final Import --> Import Complete --> Finished
 ```
 
-When initially created, an instance will be in the **not assigned batch** state. This simply means that the instance doesn't belong to any batch and won't be part of any migration actions. While in this state, limited tweaking of the instance, such as CPU and memory limits may be performed.
+When initially created, an instance will be in the **not assigned batch** state. This simply means that the instance doesn't belong to any batch and won't be part of any migration actions. While in this state, limited tweaking of the instance, such as CPU and memory limits may be performed. Additionally the user might mark an instance as not eligible for migration by moving it into **user disabled migration** state.
 
 After a corresponding batch begins running, the state will be updated to **assigned batch**. Once this happens, the instance definition becomes read-only and cannot be changed.
 

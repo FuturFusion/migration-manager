@@ -50,7 +50,14 @@ func (b *InternalBatch) GetTargetID() int {
 }
 
 func (b *InternalBatch) CanBeModified() bool {
-	return b.Status == api.BATCHSTATUS_DEFINED || b.Status == api.BATCHSTATUS_FINISHED || b.Status == api.BATCHSTATUS_ERROR
+	switch b.Status {
+	case api.BATCHSTATUS_DEFINED,
+		api.BATCHSTATUS_FINISHED,
+		api.BATCHSTATUS_ERROR:
+		return true
+	default:
+		return false
+	}
 }
 
 func (b *InternalBatch) GetStatus() api.BatchStatusType {
@@ -74,6 +81,10 @@ func (b *InternalBatch) GetDefaultNetwork() string {
 }
 
 func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {
+	if i.GetMigrationStatus() == api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
+		return false
+	}
+
 	// Handle any exclusionary criteria first.
 	if b.ExcludeRegex != "" {
 		excludeRegex := regexp.MustCompile(b.ExcludeRegex)
