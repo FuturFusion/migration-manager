@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/lxc/incus/v6/shared/util"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
 	"github.com/FuturFusion/migration-manager/internal/server/ucred"
+	localUtil "github.com/FuturFusion/migration-manager/internal/server/util"
 	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
@@ -97,6 +99,17 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 	// Bad query, no TLS found.
 	if r.TLS == nil {
 		return false, "", "", fmt.Errorf("Bad/missing TLS on network query")
+	}
+
+	// Load the certificates.
+	trustCACertificates := false // FIXME -- not checking if client cert is signed by trusted CA
+
+	// Validate regular TLS certificates.
+	for _, i := range r.TLS.PeerCertificates {
+		trusted, username := localUtil.CheckTrustState(*i, d.config.TrustedTLSClientCertFingerprints, d.endpoints.NetworkCert(), trustCACertificates)
+		if trusted {
+			return true, username, api.AuthenticationMethodTLS, nil
+		}
 	}
 
 	// Reject unauthorized.
