@@ -11,7 +11,7 @@ import (
 // OS is a high-level facade for accessing operating-system level functionalities.
 type OS struct {
 	// Directories
-	LogDir string // Log directory (e.g. /var/log/migration-manager/).
+	LogDir string // Log directory (e.g. /var/log/).
 	RunDir string // Runtime directory (e.g. /run/migration-manager/).
 	VarDir string // Data directory (e.g. /var/lib/migration-manager/).
 }

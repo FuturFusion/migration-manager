@@ -6,10 +6,10 @@ import (
 )
 
 // LogPath returns the directory that migration manager should put logs under. If MIGRATION_MANAGER_DIR is
-// set, this path is $MIGRATION_MANAGER_DIR/logs, otherwise it is /var/log/migration-manager.
+// set, this path is $MIGRATION_MANAGER_DIR/logs, otherwise it is /var/log.
 func LogPath(path ...string) string {
 	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
-	logDir := "/var/log/migration-manager"
+	logDir := "/var/log"
 	if varDir != "" {
 		logDir = filepath.Join(varDir, "logs")
 	}

@@ -2,10 +2,12 @@ package main
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/spf13/cobra"
 
+	"github.com/FuturFusion/migration-manager/internal/server/sys"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
@@ -30,6 +32,9 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 }
 
 func main() {
+	sysInfo := sys.DefaultOS()
+	defaultLogFile := filepath.Join(sysInfo.LogDir, "migration-manager.log")
+
 	// daemon command (main)
 	daemonCmd := cmdDaemon{}
 	app := daemonCmd.Command()
@@ -45,7 +50,7 @@ func main() {
 	app.PersistentPreRunE = globalCmd.Run
 	app.PersistentFlags().BoolVar(&globalCmd.flagVersion, "version", false, "Print version number")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagHelp, "help", "h", false, "Print help")
-	app.PersistentFlags().StringVar(&globalCmd.flagLogFile, "logfile", "", "Path to the log file")
+	app.PersistentFlags().StringVar(&globalCmd.flagLogFile, "logfile", defaultLogFile, "Path to the log file")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagLogDebug, "debug", "d", false, "Show all debug messages")
 	app.PersistentFlags().BoolVarP(&globalCmd.flagLogVerbose, "verbose", "v", false, "Show all information messages")
 
