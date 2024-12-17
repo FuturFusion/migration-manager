@@ -25,6 +25,10 @@ func (c *CmdConfig) Command() *cobra.Command {
 	configShowCmd := cmdConfigShow{global: c.Global}
 	cmd.AddCommand(configShowCmd.Command())
 
+	// Trust
+	configTrustCmd := cmdConfigTrust{global: c.Global}
+	cmd.AddCommand(configTrustCmd.Command())
+
 	// Update
 	configUpdateCmd := cmdConfigUpdate{global: c.Global}
 	cmd.AddCommand(configUpdateCmd.Command())
