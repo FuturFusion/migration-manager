@@ -125,7 +125,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		sourcePassword := askPasswordFunc("Please enter password for endpoint '" + sourceEndpoint + "': ")
+		sourcePassword := c.global.Asker.AskPassword("Please enter password for endpoint '" + sourceEndpoint + "': ")
 
 		s := api.VMwareSource{
 			CommonSource: api.CommonSource{
@@ -344,7 +344,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		vmwareSource.Password = askPasswordFunc("Password: ")
+		vmwareSource.Password = c.global.Asker.AskPassword("Password: ")
 
 		isInsecure := "no"
 		if vmwareSource.Insecure {
