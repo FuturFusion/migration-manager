@@ -318,7 +318,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Get a list of all unassigned instances.
-	instances, err = n.GetAllInstancesForBatchID(tx, internal.INVALID_DATABASE_ID)
+	instances, err = n.getAllUnassignedInstances(tx)
 	if err != nil {
 		return err
 	}
@@ -337,6 +337,43 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	return nil
+}
+
+func (n *Node) getAllUnassignedInstances(tx *sql.Tx) ([]instance.Instance, error) {
+	ret := []instance.Instance{}
+	q := `SELECT uuid FROM instances WHERE batch_id IS NULL`
+	rows, err := tx.Query(q)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	for rows.Next() {
+		u := ""
+		err := rows.Scan(&u)
+		if err != nil {
+			return nil, err
+		}
+
+		instanceUUID, err := uuid.Parse(u)
+		if err != nil {
+			return nil, err
+		}
+
+		i, err := n.GetInstance(tx, instanceUUID)
+		if err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, i)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return ret, nil
 }
 
 func (n *Node) StartBatch(tx *sql.Tx, name string) error {

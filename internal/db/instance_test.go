@@ -10,6 +10,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -20,7 +21,7 @@ var (
 	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:6443")
 	testBatch        = batch.NewBatch("TestBatch", 1, "", "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()
-	instanceA        = instance.NewInstance(instanceAUUID, "/path/one", 1, 1, -1, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{
+	instanceA        = instance.NewInstance(instanceAUUID, "/path/one", 1, ptr.To(1), nil, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{
 		{
 			Name:                      "disk",
 			DifferentialSyncSupported: true,
@@ -33,7 +34,7 @@ var (
 		},
 	}, 2, 2048, false, false, false)
 	instanceBUUID, _ = uuid.NewRandom()
-	instanceB        = instance.NewInstance(instanceBUUID, "/path/two", 1, 1, -1, "WindowsVM", "x86_64", "Windows", "11", []api.InstanceDiskInfo{
+	instanceB        = instance.NewInstance(instanceBUUID, "/path/two", 1, ptr.To(1), nil, "WindowsVM", "x86_64", "Windows", "11", []api.InstanceDiskInfo{
 		{
 			Name:                      "disk",
 			DifferentialSyncSupported: false,
@@ -49,7 +50,7 @@ var (
 		},
 	}, 4, 4096, false, true, true)
 	instanceCUUID, _ = uuid.NewRandom()
-	instanceC        = instance.NewInstance(instanceCUUID, "/path/three", 1, -1, 1, "DebianVM", "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{
+	instanceC        = instance.NewInstance(instanceCUUID, "/path/three", 1, nil, ptr.To(1), "DebianVM", "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{
 		{
 			Name:                      "disk1",
 			DifferentialSyncSupported: true,

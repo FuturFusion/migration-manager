@@ -15,7 +15,7 @@ type InternalInstance struct {
 }
 
 // Returns a new Instance ready for use.
-func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID int, batchID int, name string, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInBytes int64, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
+func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID *int, batchID *int, name string, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInBytes int64, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
 	return &InternalInstance{
 		Instance: api.Instance{
 			UUID:                  UUID,
@@ -79,7 +79,7 @@ func (i *InternalInstance) IsMigrating() bool {
 	}
 }
 
-func (i *InternalInstance) GetBatchID() int {
+func (i *InternalInstance) GetBatchID() *int {
 	return i.BatchID
 }
 
@@ -87,7 +87,7 @@ func (i *InternalInstance) GetSourceID() int {
 	return i.SourceID
 }
 
-func (i *InternalInstance) GetTargetID() int {
+func (i *InternalInstance) GetTargetID() *int {
 	return i.TargetID
 }
 

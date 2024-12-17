@@ -13,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/logger"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/source"
@@ -202,7 +201,6 @@ func (d *Daemon) syncInstancesFromSources() bool {
 			} else {
 				// Add a new instance to the database.
 				logger.Info("Adding instance "+i.GetName()+" ("+i.GetUUID().String()+") from source "+s.GetName()+" to database", loggerCtx)
-				i.TargetID = internal.INVALID_DATABASE_ID
 
 				err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 					err := d.db.AddInstance(tx, &i)
@@ -497,7 +495,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, stora
 	var t target.Target
 	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
-		t, err = d.db.GetTargetByID(tx, inst.GetTargetID())
+		t, err = d.db.GetTargetByID(tx, *inst.GetTargetID())
 		return err
 	})
 	if err != nil {
@@ -583,7 +581,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	var t target.Target
 	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
-		t, err = d.db.GetTargetByID(tx, inst.GetTargetID())
+		t, err = d.db.GetTargetByID(tx, *inst.GetTargetID())
 		if err != nil {
 			return err
 		}
@@ -743,7 +741,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		var t target.Target
 		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			var err error
-			t, err = d.db.GetTargetByID(tx, i.GetTargetID())
+			t, err = d.db.GetTargetByID(tx, *i.GetTargetID())
 			if err != nil {
 				return err
 			}
@@ -817,7 +815,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		}
 
 		// Get the batch for this instance.
-		batchID := i.GetBatchID()
+		batchID := *i.GetBatchID()
 		var dbBatch batch.Batch
 		batchErr := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			var err error

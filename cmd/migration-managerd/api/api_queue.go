@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
@@ -193,7 +192,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Don't return info for instances that aren't in the migration queue.
-	if i.GetBatchID() == internal.INVALID_DATABASE_ID || !i.IsMigrating() {
+	if i.GetBatchID() == nil || !i.IsMigrating() {
 		return response.BadRequest(fmt.Errorf("Instance '%s' isn't in the migration queue", i.GetName()))
 	}
 
@@ -234,7 +233,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	// Fetch the batch for the instance.
 	var b batch.Batch
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbBatch, err := d.db.GetBatchByID(tx, i.GetBatchID())
+		dbBatch, err := d.db.GetBatchByID(tx, *i.GetBatchID())
 		if err != nil {
 			return err
 		}
@@ -243,7 +242,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch '%d': %w", i.GetBatchID(), err))
+		return response.BadRequest(fmt.Errorf("Failed to get batch '%d': %w", *i.GetBatchID(), err))
 	}
 
 	// Determine what action, if any, the worker should start.
@@ -345,7 +344,7 @@ func queuePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Don't update instances that aren't in the migration queue.
-	if i.GetBatchID() == internal.INVALID_DATABASE_ID || !i.IsMigrating() {
+	if i.GetBatchID() == nil || !i.IsMigrating() {
 		return response.BadRequest(fmt.Errorf("Instance '%s' isn't in the migration queue", i.GetName()))
 	}
 

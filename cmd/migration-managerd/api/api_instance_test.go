@@ -10,7 +10,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -125,7 +124,6 @@ func seedDBWithSingleInstance(t *testing.T, daemon *Daemon, migrationStatus api.
 				UUID:            uuid.MustParse(instanceUUID),
 				MigrationStatus: migrationStatus,
 				SourceID:        source.DatabaseID,
-				BatchID:         internal.INVALID_DATABASE_ID, // This is wired, but required since the DB schema does not allow NULL and the Go zero value (0) does not match.
 			},
 		})
 	})

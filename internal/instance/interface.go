@@ -24,13 +24,13 @@ type Instance interface {
 	IsMigrating() bool
 
 	// Returns the ID of the batch this instance is assigned to, if any.
-	GetBatchID() int
+	GetBatchID() *int
 
 	// Returns the source ID for this instance.
 	GetSourceID() int
 
 	// Returns the target ID for this instance.
-	GetTargetID() int
+	GetTargetID() *int
 
 	// Returns the migration status of this instance.
 	GetMigrationStatus() api.MigrationStatusType

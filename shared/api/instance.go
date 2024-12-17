@@ -83,11 +83,11 @@ type Instance struct {
 
 	// The destination target ID for this instance
 	// Example: 1
-	TargetID int `json:"target_id" yaml:"target_id"`
+	TargetID *int `json:"target_id,omitempty" yaml:"target_id,omitempty"`
 
 	// The batch ID for this instance
 	// Example: 1
-	BatchID int `json:"batch_id" yaml:"batch_id"`
+	BatchID *int `json:"batch_id,omitempty" yaml:"batch_id,omitempty"`
 
 	// The name of this instance
 	// Example: UbuntuServer
