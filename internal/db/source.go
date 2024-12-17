@@ -37,7 +37,7 @@ func (n *Node) AddSource(tx *sql.Tx, s source.Source) error {
 
 	result, err := tx.Exec(q, s.GetName(), sourceType, isInsecure, configString)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	// Set the new ID assigned to the source.
@@ -104,7 +104,7 @@ func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
 	numInstances := 0
 	err = row.Scan(&numInstances)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	if numInstances > 0 {
@@ -115,7 +115,7 @@ func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
 	q = `DELETE FROM sources WHERE name=?`
 	result, err := tx.Exec(q, name)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -159,7 +159,7 @@ func (n *Node) UpdateSource(tx *sql.Tx, s source.Source) error {
 
 	result, err := tx.Exec(q, s.GetName(), isInsecure, configString, id)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -199,7 +199,7 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]source.Sourc
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, mapDBError(err)
 	}
 
 	defer func() { _ = rows.Close() }()

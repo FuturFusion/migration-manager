@@ -71,9 +71,7 @@ func TestTargetsPost(t *testing.T) {
 
 			targetJSON: `{"name": "foo", "endpoint": "some endpoint", "insecure": true}`,
 
-			// TODO: Unique constraint violation leads to http.StatusInternalServerError
-			// shouldn't this be http.BadRequest or http.StatusConflict?
-			wantHTTPStatus: http.StatusInternalServerError,
+			wantHTTPStatus: http.StatusBadRequest,
 		},
 		{
 			name: "error - invalid JSON",
@@ -236,7 +234,6 @@ func TestTargetPut(t *testing.T) {
 			targetName: "foo",
 			targetJSON: `{"name": "foo", "endpoint": "some endpoint", "insecure": true}`,
 
-			// TODO: why is http.StatusCreated returned for an update operation?
 			wantHTTPStatus: http.StatusCreated,
 		},
 		{
@@ -257,7 +254,6 @@ func TestTargetPut(t *testing.T) {
 				return etag
 			}(),
 
-			// TODO: why is http.StatusCreated returned for an update operation?
 			wantHTTPStatus: http.StatusCreated,
 		},
 		{

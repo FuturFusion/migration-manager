@@ -213,5 +213,5 @@ CREATE TABLE targets (
 );
 `
 	_, err := tx.Exec(stmt)
-	return err
+	return mapDBError(err)
 }
