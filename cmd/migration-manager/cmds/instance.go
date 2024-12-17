@@ -199,6 +199,10 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			nics = append(nics, nic.Hwaddr+" ("+nic.Network+")")
 		}
 
+		if i.MigrationStatusString == "" {
+			i.MigrationStatusString = i.MigrationStatus.String()
+		}
+
 		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2), strings.Join(disks, "\n"), strings.Join(nics, "\n")}
 		if c.flagVerbose {
 			row = append(row, i.UUID.String(), i.InventoryPath, i.LastUpdateFromSource.String())

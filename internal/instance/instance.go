@@ -96,5 +96,9 @@ func (i *InternalInstance) GetMigrationStatus() api.MigrationStatusType {
 }
 
 func (i *InternalInstance) GetMigrationStatusString() string {
+	if i.MigrationStatusString == "" {
+		return i.MigrationStatus.String()
+	}
+
 	return i.MigrationStatusString
 }
