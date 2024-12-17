@@ -81,6 +81,10 @@ func (b *InternalBatch) GetDefaultNetwork() string {
 }
 
 func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {
+	if i.GetMigrationStatus() == api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
+		return false
+	}
+
 	// Handle any exclusionary criteria first.
 	if b.ExcludeRegex != "" {
 		excludeRegex := regexp.MustCompile(b.ExcludeRegex)
