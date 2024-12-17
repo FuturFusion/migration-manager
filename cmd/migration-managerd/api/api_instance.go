@@ -466,6 +466,7 @@ func instanceStatePut(d *Daemon, r *http.Request) response.Response {
 		}
 
 		internalInstance.MigrationStatus = targetState
+		internalInstance.MigrationStatusString = targetState.String()
 
 		// Update into database.
 		return d.db.UpdateInstance(tx, internalInstance)
