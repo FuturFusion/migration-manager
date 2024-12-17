@@ -31,6 +31,7 @@ func main() {
 	asker := ask.NewAsker(bufio.NewReader(os.Stdin))
 	globalCmd := cmds.CmdGlobal{Cmd: app, Asker: &asker}
 
+	app.PersistentFlags().BoolVar(&globalCmd.FlagForceLocal, "force-local", false, "Force using the local unix socket")
 	app.PersistentFlags().BoolVar(&globalCmd.FlagVersion, "version", false, "Print version number")
 	app.PersistentFlags().BoolVarP(&globalCmd.FlagHelp, "help", "h", false, "Print help")
 

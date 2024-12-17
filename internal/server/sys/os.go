@@ -33,7 +33,7 @@ func (s *OS) GetUnixSocket() string {
 		return path
 	}
 
-	return filepath.Join(s.VarDir, "unix.socket")
+	return filepath.Join(s.RunDir, "unix.socket")
 }
 
 // LocalDatabaseDir returns the path of the local database file.
