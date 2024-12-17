@@ -648,7 +648,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	}
 
 	// Start the worker binary.
-	workerStartErr := t.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getEndpoint(), "--uuid", inst.GetUUID().String()})
+	workerStartErr := t.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getEndpoint(), "--uuid", inst.GetUUID().String(), "--insecure"}) // FIXME -- currently ignoring TLS cert errors
 	if workerStartErr != nil {
 		logger.Warn(workerStartErr.Error(), loggerCtx)
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
