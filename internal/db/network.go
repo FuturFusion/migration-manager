@@ -19,7 +19,7 @@ func (n *Node) AddNetwork(tx *sql.Tx, net *api.Network) error {
 
 	result, err := tx.Exec(q, net.Name, marshalledconfig)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	// Set the new ID assigned to the network.
@@ -55,7 +55,7 @@ func (n *Node) DeleteNetwork(tx *sql.Tx, name string) error {
 	q := `DELETE FROM networks WHERE name=?`
 	result, err := tx.Exec(q, name)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -81,7 +81,7 @@ func (n *Node) UpdateNetwork(tx *sql.Tx, net api.Network) error {
 
 	result, err := tx.Exec(q, net.Name, marshalledconfig, net.DatabaseID)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -112,7 +112,7 @@ func (n *Node) getNetworksHelper(tx *sql.Tx, name string) ([]api.Network, error)
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, mapDBError(err)
 	}
 
 	defer func() { _ = rows.Close() }()

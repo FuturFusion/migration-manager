@@ -21,7 +21,7 @@ func (n *Node) AddInstanceOverride(tx *sql.Tx, override api.InstanceOverride) er
 
 	_, err = tx.Exec(q, override.UUID, marshalledLastUpdate, override.Comment, override.NumberCPUs, override.MemoryInBytes)
 
-	return err
+	return mapDBError(err)
 }
 
 func (n *Node) GetInstanceOverride(tx *sql.Tx, UUID uuid.UUID) (api.InstanceOverride, error) {
@@ -35,7 +35,7 @@ func (n *Node) GetInstanceOverride(tx *sql.Tx, UUID uuid.UUID) (api.InstanceOver
 
 	err := row.Scan(&marshalledLastUpdate, &ret.Comment, &ret.NumberCPUs, &ret.MemoryInBytes)
 	if err != nil {
-		return ret, err
+		return ret, mapDBError(err)
 	}
 
 	err = ret.LastUpdate.UnmarshalText([]byte(marshalledLastUpdate))
@@ -63,7 +63,7 @@ func (n *Node) DeleteInstanceOverride(tx *sql.Tx, UUID uuid.UUID) error {
 	q := `DELETE FROM instance_overrides WHERE uuid=?`
 	result, err := tx.Exec(q, UUID)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -87,7 +87,7 @@ func (n *Node) UpdateInstanceOverride(tx *sql.Tx, override api.InstanceOverride)
 	instanceName := ""
 	err := row.Scan(&batchID, &instanceName)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	if batchID != internal.INVALID_DATABASE_ID {
@@ -97,7 +97,7 @@ func (n *Node) UpdateInstanceOverride(tx *sql.Tx, override api.InstanceOverride)
 		batchName := ""
 		err := row.Scan(&batchName)
 		if err != nil {
-			return err
+			return mapDBError(err)
 		}
 
 		return fmt.Errorf("Cannot update override for instance '%s' while assigned to batch '%s'", instanceName, batchName)
@@ -113,7 +113,7 @@ func (n *Node) UpdateInstanceOverride(tx *sql.Tx, override api.InstanceOverride)
 
 	result, err := tx.Exec(q, marshalledLastUpdate, override.Comment, override.NumberCPUs, override.MemoryInBytes, override.UUID)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()

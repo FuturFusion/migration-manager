@@ -38,7 +38,7 @@ func (n *Node) AddInstance(tx *sql.Tx, i instance.Instance) error {
 
 	_, err = tx.Exec(q, internalInstance.UUID, internalInstance.InventoryPath, internalInstance.MigrationStatus, internalInstance.MigrationStatusString, marshalledLastUpdateFromSource, internalInstance.SourceID, internalInstance.TargetID, internalInstance.BatchID, internalInstance.Name, internalInstance.Architecture, internalInstance.OS, internalInstance.OSVersion, marshalledDisks, marshalledNICs, internalInstance.NumberCPUs, internalInstance.MemoryInBytes, internalInstance.UseLegacyBios, internalInstance.SecureBootEnabled, internalInstance.TPMPresent, internalInstance.NeedsDiskImport)
 
-	return err
+	return mapDBError(err)
 }
 
 func (n *Node) GetInstance(tx *sql.Tx, UUID uuid.UUID) (instance.Instance, error) {
@@ -73,14 +73,14 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 	q := `DELETE FROM instance_overrides WHERE uuid=?`
 	_, err = tx.Exec(q, UUID)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	// Delete the instance from the database.
 	q = `DELETE FROM instances WHERE uuid=?`
 	result, err := tx.Exec(q, UUID)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -103,7 +103,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	batchID := internal.INVALID_DATABASE_ID
 	err := row.Scan(&batchID)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	if batchID != internal.INVALID_DATABASE_ID {
@@ -113,7 +113,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 		batchName := ""
 		err := row.Scan(&batchName)
 		if err != nil {
-			return err
+			return mapDBError(err)
 		}
 
 		return fmt.Errorf("Cannot update instance '%s' while assigned to batch '%s'", i.GetName(), batchName)
@@ -144,7 +144,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 
 	result, err := tx.Exec(q, internalInstance.InventoryPath, internalInstance.MigrationStatus, internalInstance.MigrationStatusString, marshalledLastUpdateFromSource, internalInstance.SourceID, internalInstance.TargetID, internalInstance.BatchID, internalInstance.Name, internalInstance.Architecture, internalInstance.OS, internalInstance.OSVersion, marshalledDisks, marshalledNICs, internalInstance.NumberCPUs, internalInstance.MemoryInBytes, internalInstance.UseLegacyBios, internalInstance.SecureBootEnabled, internalInstance.TPMPresent, internalInstance.NeedsDiskImport, internalInstance.UUID)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -175,7 +175,7 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, mapDBError(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -237,5 +237,5 @@ func (n *Node) UpdateInstanceStatus(tx *sql.Tx, UUID uuid.UUID, status api.Migra
 	q := `UPDATE instances SET migration_status=?,migration_status_string=?,needs_disk_import=? WHERE uuid=?`
 	_, err := tx.Exec(q, status, statusString, needsDiskImport, UUID)
 
-	return err
+	return mapDBError(err)
 }

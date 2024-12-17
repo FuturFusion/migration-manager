@@ -33,7 +33,7 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 
 	result, err := tx.Exec(q, internalBatch.Name, internalBatch.TargetID, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DefaultNetwork)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	// Set the new ID assigned to the batch.
@@ -108,7 +108,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 		q := `UPDATE instances SET batch_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
 		_, err = tx.Exec(q, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), inst.GetUUID())
 		if err != nil {
-			return err
+			return mapDBError(err)
 		}
 	}
 
@@ -116,7 +116,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 	q := `DELETE FROM batches WHERE name=?`
 	result, err := tx.Exec(q, name)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -144,7 +144,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	origName := ""
 	err = row.Scan(&origName)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	dbBatch, err := n.GetBatch(tx, origName)
@@ -176,7 +176,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 
 	result, err := tx.Exec(q, internalBatch.Name, internalBatch.TargetID, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeRegex, internalBatch.ExcludeRegex, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DefaultNetwork, internalBatch.DatabaseID)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -210,7 +210,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, mapDBError(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -250,7 +250,7 @@ func (n *Node) GetAllInstancesForBatchID(tx *sql.Tx, id int) ([]instance.Instanc
 	q := `SELECT uuid FROM instances WHERE batch_id=?`
 	rows, err := tx.Query(q, id)
 	if err != nil {
-		return nil, err
+		return nil, mapDBError(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -302,7 +302,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 				q := `UPDATE instances SET batch_id=?,target_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
 				_, err := tx.Exec(q, internal.INVALID_DATABASE_ID, internal.INVALID_DATABASE_ID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), i.GetUUID())
 				if err != nil {
-					return err
+					return mapDBError(err)
 				}
 			}
 		} else {
@@ -311,7 +311,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 				q := `UPDATE instances SET target_id=? WHERE uuid=?`
 				_, err := tx.Exec(q, b.GetTargetID(), i.GetUUID())
 				if err != nil {
-					return err
+					return mapDBError(err)
 				}
 			}
 		}
@@ -330,7 +330,7 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 				q := `UPDATE instances SET batch_id=?,target_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
 				_, err := tx.Exec(q, batchID, b.GetTargetID(), api.MIGRATIONSTATUS_ASSIGNED_BATCH, api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(), i.GetUUID())
 				if err != nil {
-					return err
+					return mapDBError(err)
 				}
 			}
 		}
@@ -402,5 +402,5 @@ func (n *Node) UpdateBatchStatus(tx *sql.Tx, id int, status api.BatchStatusType,
 	q := `UPDATE batches SET status=?,status_string=? WHERE id=?`
 	_, err := tx.Exec(q, status, statusString, id)
 
-	return err
+	return mapDBError(err)
 }

@@ -71,9 +71,7 @@ func TestTargetsPost(t *testing.T) {
 
 			targetJSON: `{"name": "foo", "endpoint": "some endpoint", "insecure": true}`,
 
-			// TODO: Unique constraint violation leads to http.StatusInternalServerError
-			// shouldn't this be http.BadRequest or http.StatusConflict?
-			wantHTTPStatus: http.StatusInternalServerError,
+			wantHTTPStatus: http.StatusBadRequest,
 		},
 		{
 			name: "error - invalid JSON",

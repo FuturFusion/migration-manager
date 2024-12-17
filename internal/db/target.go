@@ -25,7 +25,7 @@ func (n *Node) AddTarget(tx *sql.Tx, t target.Target) error {
 
 	result, err := tx.Exec(q, incusTarget.Name, incusTarget.Endpoint, incusTarget.TLSClientKey, incusTarget.TLSClientCert, marshalledOIDCTokens, incusTarget.Insecure, incusTarget.IncusProject)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	// Set the new ID assigned to the target.
@@ -87,7 +87,7 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 	numInstances := 0
 	err = row.Scan(&numInstances)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	if numInstances > 0 {
@@ -101,7 +101,7 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 	numBatches := 0
 	err = row.Scan(&numBatches)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	if numBatches > 0 {
@@ -112,7 +112,7 @@ func (n *Node) DeleteTarget(tx *sql.Tx, name string) error {
 	q = `DELETE FROM targets WHERE name=?`
 	result, err := tx.Exec(q, name)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -148,7 +148,7 @@ func (n *Node) UpdateTarget(tx *sql.Tx, t target.Target) error {
 
 	result, err := tx.Exec(q, incusTarget.Name, incusTarget.Endpoint, incusTarget.TLSClientKey, incusTarget.TLSClientCert, marshalledOIDCTokens, incusTarget.Insecure, incusTarget.IncusProject, id)
 	if err != nil {
-		return err
+		return mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
@@ -182,7 +182,7 @@ func (n *Node) getTargetsHelper(tx *sql.Tx, name string, id int) ([]target.Targe
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, mapDBError(err)
 	}
 
 	defer func() { _ = rows.Close() }()

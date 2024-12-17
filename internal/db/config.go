@@ -19,7 +19,7 @@ func (n *Node) ReadGlobalConfig(tx *sql.Tx) (map[string]string, error) {
 			return ret, nil
 		}
 
-		return ret, err
+		return ret, mapDBError(err)
 	}
 
 	err = json.Unmarshal([]byte(marshalledConfig), &ret)
@@ -39,5 +39,5 @@ func (n *Node) WriteGlobalConfig(tx *sql.Tx, config map[string]string) error {
 	}
 
 	_, err = tx.Exec(q, marshalledConfig)
-	return err
+	return mapDBError(err)
 }
