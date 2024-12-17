@@ -392,3 +392,23 @@ func cleanupInstanceName(name string) string {
 	nonalpha := regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
 	return nonalpha.ReplaceAllString(name, "")
 }
+
+func (t *InternalIncusTarget) GetStoragePoolVolume(pool string, volType string, name string) (*api.StorageVolume, string, error) {
+	return t.incusClient.GetStoragePoolVolume(pool, volType, name)
+}
+
+func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) (incus.Operation, error) {
+	file, err := os.Open(isoFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() { _ = file.Close() }()
+
+	createArgs := incus.StorageVolumeBackupArgs{
+		BackupFile: file,
+		Name:       filepath.Base(isoFilePath),
+	}
+
+	return t.incusClient.CreateStoragePoolVolumeFromISO(pool, createArgs)
+}

@@ -90,4 +90,10 @@ type Target interface {
 
 	// Wrapper around Incus' UpdateInstance method.
 	UpdateInstance(name string, instanceDef api.InstancePut, ETag string) (incus.Operation, error)
+
+	// Wrapper around Incus' GetStoragePoolVolume method.
+	GetStoragePoolVolume(pool string, volType string, name string) (*api.StorageVolume, string, error)
+
+	// Wrapper around Incus' CreateStoragePoolVolumeFromISO.
+	CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) (incus.Operation, error)
 }

@@ -35,11 +35,6 @@ CREATE TABLE certificates (
 
 );
 
-CREATE TABLE config (
-    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    global_config TEXT NOT NULL
-);
-
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
     inventory_path VARCHAR(255) NOT NULL,
@@ -162,11 +157,6 @@ CREATE TABLE certificates (
     certificate TEXT NOT NULL,
     description VARCHAR(255) NOT NULL
 
-);
-
-CREATE TABLE config (
-    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-    global_config TEXT NOT NULL
 );
 
 CREATE TABLE instances (

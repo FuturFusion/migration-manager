@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -386,17 +387,6 @@ func (d *Daemon) processReadyBatches() bool {
 func (d *Daemon) processQueuedBatches() bool {
 	loggerCtx := logger.Ctx{"method": "processQueuedBatches"}
 
-	// Make sure global server config has been properly set.
-	if d.globalConfig["core.boot_iso_image"] == "" {
-		logger.Error("Server config 'core.boot_iso_image' isn't set.")
-		return false
-	}
-
-	if d.globalConfig["core.drivers_iso_image"] == "" {
-		logger.Error("Server config 'core.drivers_iso_image' isn't set.")
-		return false
-	}
-
 	// Get any batches in the "queued" state.
 	batches := []batch.Batch{}
 	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -457,6 +447,13 @@ func (d *Daemon) processQueuedBatches() bool {
 			continue
 		}
 
+		// Make sure the necessary ISO images exist in the Incus storage pool.
+		err = d.ensureISOImagesExistInStoragePool(instances[0], b.GetStoragePool())
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+
 		// Instantiate each new empty VM in Incus.
 		for _, inst := range instances {
 			go d.spinUpMigrationEnv(inst, b.GetStoragePool())
@@ -480,6 +477,58 @@ func (d *Daemon) processQueuedBatches() bool {
 	}
 
 	return false
+}
+
+func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, storagePool string) error {
+	loggerCtx := logger.Ctx{"method": "ensureISOImagesExistInStoragePool"}
+
+	// Determine the ISO names.
+	wokrerISOName, err := d.os.GetMigrationManagerISOName()
+	if err != nil {
+		return err
+	}
+
+	driverISOName, err := d.os.GetVirtioDriversISOName()
+	if err != nil {
+		return err
+	}
+
+	// Get the target.
+	var t target.Target
+	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+		var err error
+		t, err = d.db.GetTargetByID(tx, inst.GetTargetID())
+		return err
+	})
+	if err != nil {
+		return err
+	}
+
+	// Connect to the target.
+	err = t.Connect(d.ShutdownCtx)
+	if err != nil {
+		return err
+	}
+
+	// Verify needed ISO images are in the storage pool.
+	for _, iso := range []string{wokrerISOName, driverISOName} {
+		_, _, err = t.GetStoragePoolVolume(storagePool, "custom", iso)
+		if err != nil {
+			logger.Info("ISO image '"+iso+"' doesn't exist in storage pool '"+storagePool+"', importing...", loggerCtx)
+
+			op, err := t.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.AssetsDir(), iso))
+			if err != nil {
+				return err
+			}
+
+			err = op.Wait()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) {
@@ -576,8 +625,10 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 		return
 	}
 
+	wokrerISOName, _ := d.os.GetMigrationManagerISOName()
+	driverISOName, _ := d.os.GetVirtioDriversISOName()
 	instanceDef := t.CreateVMDefinition(*internalInstance, override, s.GetName(), storagePool)
-	creationErr := t.CreateNewVM(instanceDef, storagePool, d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
+	creationErr := t.CreateNewVM(instanceDef, storagePool, wokrerISOName, driverISOName)
 	if creationErr != nil {
 		logger.Warn(creationErr.Error(), loggerCtx)
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
