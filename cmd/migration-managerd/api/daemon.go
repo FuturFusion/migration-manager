@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"os"
@@ -56,8 +55,6 @@ type Daemon struct {
 	config    *DaemonConfig
 	endpoints *endpoints.Endpoints
 
-	globalConfig map[string]string
-
 	ShutdownCtx    context.Context    // Canceled when shutdown starts.
 	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
 	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
@@ -94,17 +91,6 @@ func (d *Daemon) Start() error {
 	d.db, err = db.OpenDatabase(d.os.LocalDatabaseDir())
 	if err != nil {
 		logger.Errorf("Failed to open sqlite database: %s", err)
-		return err
-	}
-
-	// Read global config, if any, from the database.
-	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		d.globalConfig, err = d.db.ReadGlobalConfig(tx)
-
-		return err
-	})
-	if err != nil {
-		logger.Errorf("Failed to read global config: %s", err)
 		return err
 	}
 

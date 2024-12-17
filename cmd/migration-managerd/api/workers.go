@@ -386,17 +386,6 @@ func (d *Daemon) processReadyBatches() bool {
 func (d *Daemon) processQueuedBatches() bool {
 	loggerCtx := logger.Ctx{"method": "processQueuedBatches"}
 
-	// Make sure global server config has been properly set.
-	if d.globalConfig["core.boot_iso_image"] == "" {
-		logger.Error("Server config 'core.boot_iso_image' isn't set.")
-		return false
-	}
-
-	if d.globalConfig["core.drivers_iso_image"] == "" {
-		logger.Error("Server config 'core.drivers_iso_image' isn't set.")
-		return false
-	}
-
 	// Get any batches in the "queued" state.
 	batches := []batch.Batch{}
 	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -577,7 +566,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	}
 
 	instanceDef := t.CreateVMDefinition(*internalInstance, override, s.GetName(), storagePool)
-	creationErr := t.CreateNewVM(instanceDef, storagePool, d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
+	creationErr := t.CreateNewVM(instanceDef, storagePool, "core.boot_iso_image", "core.drivers_iso_image")
 	if creationErr != nil {
 		logger.Warn(creationErr.Error(), loggerCtx)
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
