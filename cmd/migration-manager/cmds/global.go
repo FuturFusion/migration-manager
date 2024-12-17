@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"strings"
 
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/util"
@@ -163,6 +164,10 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 
 	err = decoder.Decode(&response)
 	if err != nil {
+		if strings.Contains(err.Error(), "invalid character 'C'") {
+			return nil, fmt.Errorf("Client sent an HTTP request to an HTTPS server")
+		}
+
 		return nil, err
 	} else if response.Code != 0 {
 		return &response, fmt.Errorf("Received an error from the server: %s", response.Error)
