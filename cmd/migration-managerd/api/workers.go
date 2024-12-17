@@ -565,8 +565,10 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 		return
 	}
 
+	wokrerISOName, _ := d.os.GetMigrationManagerISOName()
+	driverISOName, _ := d.os.GetVirtioDriversISOName()
 	instanceDef := t.CreateVMDefinition(*internalInstance, override, s.GetName(), storagePool)
-	creationErr := t.CreateNewVM(instanceDef, storagePool, "core.boot_iso_image", "core.drivers_iso_image")
+	creationErr := t.CreateNewVM(instanceDef, storagePool, wokrerISOName, driverISOName)
 	if creationErr != nil {
 		logger.Warn(creationErr.Error(), loggerCtx)
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
