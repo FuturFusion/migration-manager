@@ -69,7 +69,7 @@ func (r *syncResponse) Render(w http.ResponseWriter) error {
 	if r.location != "" {
 		w.Header().Set("Location", r.location)
 		if r.code == 0 {
-			r.code = 201
+			r.code = http.StatusCreated
 		}
 	}
 
@@ -159,58 +159,47 @@ type errorResponse struct {
 
 // BadRequest returns a bad request response (400) with the given error.
 func BadRequest(err error) Response {
-	return &errorResponse{http.StatusBadRequest, err.Error()}
+	return errorResponseFromError(http.StatusBadRequest, err)
 }
 
 // Forbidden returns a forbidden response (403) with the given error.
 func Forbidden(err error) Response {
-	message := "not authorized"
-	if err != nil {
-		message = err.Error()
-	}
-
-	return &errorResponse{http.StatusForbidden, message}
-}
-
-// InternalError returns an internal error response (500) with the given error.
-func InternalError(err error) Response {
-	return &errorResponse{http.StatusInternalServerError, err.Error()}
+	return errorResponseFromError(http.StatusForbidden, err)
 }
 
 // NotFound returns a not found response (404) with the given error.
 func NotFound(err error) Response {
-	message := "not found"
-	if err != nil {
-		message = err.Error()
-	}
-
-	return &errorResponse{http.StatusNotFound, message}
-}
-
-// NotImplemented returns a not implemented response (501) with the given error.
-func NotImplemented(err error) Response {
-	message := "not implemented"
-	if err != nil {
-		message = err.Error()
-	}
-
-	return &errorResponse{http.StatusNotImplemented, message}
+	return errorResponseFromError(http.StatusNotFound, err)
 }
 
 // PreconditionFailed returns a precondition failed response (412) with the
 // given error.
 func PreconditionFailed(err error) Response {
-	return &errorResponse{http.StatusPreconditionFailed, err.Error()}
+	return errorResponseFromError(http.StatusPreconditionFailed, err)
+}
+
+// InternalError returns an internal error response (500) with the given error.
+func InternalError(err error) Response {
+	return errorResponseFromError(http.StatusInternalServerError, err)
+}
+
+// NotImplemented returns a not implemented response (501) with the given error.
+func NotImplemented(err error) Response {
+	return errorResponseFromError(http.StatusNotImplemented, err)
 }
 
 // Unavailable return an unavailable response (503) with the given error.
 func Unavailable(err error) Response {
-	message := "unavailable"
+	return errorResponseFromError(http.StatusServiceUnavailable, err)
+}
+
+func errorResponseFromError(status int, err error) Response {
+	message := http.StatusText(status)
 	if err != nil {
-		message = err.Error()
+		message += ": " + err.Error()
 	}
 
-	return &errorResponse{http.StatusServiceUnavailable, message}
+	return &errorResponse{status, message}
 }
 
 func (r *errorResponse) String() string {

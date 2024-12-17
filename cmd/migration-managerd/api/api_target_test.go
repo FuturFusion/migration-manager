@@ -236,7 +236,6 @@ func TestTargetPut(t *testing.T) {
 			targetName: "foo",
 			targetJSON: `{"name": "foo", "endpoint": "some endpoint", "insecure": true}`,
 
-			// TODO: why is http.StatusCreated returned for an update operation?
 			wantHTTPStatus: http.StatusCreated,
 		},
 		{
@@ -257,7 +256,6 @@ func TestTargetPut(t *testing.T) {
 				return etag
 			}(),
 
-			// TODO: why is http.StatusCreated returned for an update operation?
 			wantHTTPStatus: http.StatusCreated,
 		},
 		{
