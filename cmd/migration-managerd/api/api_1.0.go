@@ -23,6 +23,8 @@ var api10 = []APIEndpoint{
 	batchStartCmd,
 	batchStopCmd,
 	batchesCmd,
+	certificateCmd,
+	certificatesCmd,
 	instanceCmd,
 	instanceStateCmd,
 	instanceOverrideCmd,
