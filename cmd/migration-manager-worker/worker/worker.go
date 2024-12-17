@@ -3,6 +3,7 @@ package worker
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -25,6 +26,7 @@ import (
 
 type Worker struct {
 	endpoint *url.URL
+	insecure bool
 	source   source.Source
 	uuid     string
 
@@ -43,6 +45,7 @@ func NewWorker(endpoint string, uuid string, opts ...WorkerOption) (*Worker, err
 
 	wrkr := &Worker{
 		endpoint:   parsedURL,
+		insecure:   false,
 		source:     nil,
 		uuid:       uuid,
 		lastUpdate: time.Now().UTC(),
@@ -75,6 +78,13 @@ func WithIdleSleep(sleep time.Duration) WorkerOption {
 func WithSource(src source.Source) WorkerOption {
 	return func(w *Worker) error {
 		w.source = src
+		return nil
+	}
+}
+
+func SetInsecure(insecure bool) WorkerOption {
+	return func(w *Worker) error {
+		w.insecure = insecure
 		return nil
 	}
 }
@@ -335,7 +345,11 @@ func (w *Worker) doHTTPRequestV1(endpoint string, method string, content []byte)
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: w.insecure},
+	}
+
+	client := &http.Client{Transport: transport}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

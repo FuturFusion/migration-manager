@@ -18,8 +18,9 @@ type cmdWorker struct {
 	global *cmdGlobal
 
 	// Common options
-	flagMMEndpoint string
-	flagUUID       string
+	flagMMEndpoint  string
+	flagUUID        string
+	flagInsecureTLS bool
 }
 
 func (c *cmdWorker) Command() *cobra.Command {
@@ -36,6 +37,7 @@ func (c *cmdWorker) Command() *cobra.Command {
 	must(cmd.MarkFlagRequired("endpoint"))
 	cmd.Flags().StringVar(&c.flagUUID, "uuid", "", "UUID of instance to migrate")
 	must(cmd.MarkFlagRequired("uuid"))
+	cmd.Flags().BoolVar(&c.flagInsecureTLS, "insecure", false, "Allow insecure TLS connections")
 
 	return cmd
 }
@@ -53,7 +55,7 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("This tool is designed to be run within an Incus VM\n")
 	}
 
-	w, err := worker.NewWorker(c.flagMMEndpoint, c.flagUUID)
+	w, err := worker.NewWorker(c.flagMMEndpoint, c.flagUUID, worker.SetInsecure(c.flagInsecureTLS))
 	if err != nil {
 		return err
 	}
