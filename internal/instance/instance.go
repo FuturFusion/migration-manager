@@ -58,7 +58,8 @@ func (i *InternalInstance) CanBeModified() bool {
 	switch i.MigrationStatus {
 	case api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 		api.MIGRATIONSTATUS_FINISHED,
-		api.MIGRATIONSTATUS_ERROR:
+		api.MIGRATIONSTATUS_ERROR,
+		api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION:
 		return true
 	default:
 		return false
