@@ -50,7 +50,14 @@ func (b *InternalBatch) GetTargetID() int {
 }
 
 func (b *InternalBatch) CanBeModified() bool {
-	return b.Status == api.BATCHSTATUS_DEFINED || b.Status == api.BATCHSTATUS_FINISHED || b.Status == api.BATCHSTATUS_ERROR
+	switch b.Status {
+	case api.BATCHSTATUS_DEFINED,
+		api.BATCHSTATUS_FINISHED,
+		api.BATCHSTATUS_ERROR:
+		return true
+	default:
+		return false
+	}
 }
 
 func (b *InternalBatch) GetStatus() api.BatchStatusType {

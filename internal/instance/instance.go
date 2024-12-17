@@ -55,11 +55,27 @@ func (i *InternalInstance) GetName() string {
 }
 
 func (i *InternalInstance) CanBeModified() bool {
-	return i.MigrationStatus == api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH || i.MigrationStatus == api.MIGRATIONSTATUS_FINISHED || i.MigrationStatus == api.MIGRATIONSTATUS_ERROR
+	switch i.MigrationStatus {
+	case api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+		api.MIGRATIONSTATUS_FINISHED,
+		api.MIGRATIONSTATUS_ERROR:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i *InternalInstance) IsMigrating() bool {
-	return i.MigrationStatus == api.MIGRATIONSTATUS_CREATING || i.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT || i.MigrationStatus == api.MIGRATIONSTATUS_IDLE || i.MigrationStatus == api.MIGRATIONSTATUS_FINAL_IMPORT || i.MigrationStatus == api.MIGRATIONSTATUS_IMPORT_COMPLETE
+	switch i.MigrationStatus {
+	case api.MIGRATIONSTATUS_CREATING,
+		api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
+		api.MIGRATIONSTATUS_IDLE,
+		api.MIGRATIONSTATUS_FINAL_IMPORT,
+		api.MIGRATIONSTATUS_IMPORT_COMPLETE:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i *InternalInstance) GetBatchID() int {
