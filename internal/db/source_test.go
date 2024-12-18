@@ -1,7 +1,6 @@
 package db_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -11,29 +10,30 @@ import (
 )
 
 var (
-	commonSourceA = api.Source{Name: "CommonSourceA", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
-	commonSourceB = api.Source{Name: "CommonSourceB", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
-	vmwareSourceA = newVMwareSource("vmware_source", false, "endpoint_url", "user", "pass")
-	vmwareSourceB = newVMwareSource("vmware_source2", true, "endpoint_ip", "another_user", "pass")
-)
-
-func newVMwareSource(name string, insecure bool, endpoint string, user string, password string) api.Source {
-	vmwareProperties := api.VMwareProperties{
-		Endpoint: endpoint,
-		Username: user,
-		Password: password,
-	}
-
-	src := api.Source{
-		Name:       name,
-		Insecure:   insecure,
+	commonSourceA = api.Source{Name: "CommonSourceA", SourceType: api.SOURCETYPE_COMMON, Properties: map[string]any{}}
+	commonSourceB = api.Source{Name: "CommonSourceB", SourceType: api.SOURCETYPE_COMMON, Properties: map[string]any{}}
+	vmwareSourceA = api.Source{
+		Name:       "vmware_source",
+		Insecure:   false,
 		SourceType: api.SOURCETYPE_VMWARE,
+		Properties: map[string]any{
+			"endpoint": "endpoint_url",
+			"username": "user",
+			"password": "pass",
+		},
 	}
 
-	src.Properties, _ = json.Marshal(vmwareProperties)
-
-	return src
-}
+	vmwareSourceB = api.Source{
+		Name:       "vmware_source2",
+		Insecure:   true,
+		SourceType: api.SOURCETYPE_VMWARE,
+		Properties: map[string]any{
+			"endpoint": "endpoint_ip",
+			"username": "another_user",
+			"password": "pass",
+		},
+	}
+)
 
 func TestSourceDatabaseActions(t *testing.T) {
 	// Create a new temporary database.

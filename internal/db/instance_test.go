@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	testSource       = api.Source{Name: "TestSource", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
+	testSource       = api.Source{Name: "TestSource", SourceType: api.SOURCETYPE_COMMON, Properties: map[string]any{}}
 	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:6443")
 	testBatch        = batch.NewBatch("TestBatch", 1, "", "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()

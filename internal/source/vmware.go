@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -22,6 +21,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/maps"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -37,19 +37,16 @@ func NewInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, e
 		return nil, errors.New("Source is not of type VMware")
 	}
 
-	var properties api.VMwareProperties
-
-	err := json.Unmarshal(apiSource.Properties, &properties)
-	if err != nil {
-		return nil, err
-	}
-
 	return &InternalVMwareSource{
 		InternalSource: InternalSource{
 			Source: apiSource,
 		},
 		InternalVMwareSourceSpecific: InternalVMwareSourceSpecific{
-			VMwareProperties: properties,
+			VMwareProperties: VMwareProperties{
+				Endpoint: maps.GetOrDefault(apiSource.Properties, "endpoint", ""),
+				Username: maps.GetOrDefault(apiSource.Properties, "username", ""),
+				Password: maps.GetOrDefault(apiSource.Properties, "password", ""),
+			},
 		},
 	}, nil
 }

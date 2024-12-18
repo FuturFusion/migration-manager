@@ -13,7 +13,12 @@ func (n *Node) AddSource(tx *sql.Tx, s api.Source) (api.Source, error) {
 	// Add source to the database.
 	q := `INSERT INTO sources (name,type,insecure,config) VALUES(?,?,?,?)`
 
-	result, err := tx.Exec(q, s.Name, s.SourceType, s.Insecure, s.Properties)
+	config, err := json.Marshal(s.Properties)
+	if err != nil {
+		return api.Source{}, err
+	}
+
+	result, err := tx.Exec(q, s.Name, s.SourceType, s.Insecure, config)
 	if err != nil {
 		return api.Source{}, mapDBError(err)
 	}
@@ -102,7 +107,12 @@ func (n *Node) UpdateSource(tx *sql.Tx, s api.Source) (api.Source, error) {
 	// Update source in the database.
 	q := `UPDATE sources SET name=?,insecure=?,config=? WHERE id=?`
 
-	result, err := tx.Exec(q, s.Name, s.Insecure, s.Properties, s.DatabaseID)
+	config, err := json.Marshal(s.Properties)
+	if err != nil {
+		return api.Source{}, err
+	}
+
+	result, err := tx.Exec(q, s.Name, s.Insecure, config, s.DatabaseID)
 	if err != nil {
 		return api.Source{}, mapDBError(err)
 	}
@@ -155,12 +165,18 @@ func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]api.Source, 
 			return nil, err
 		}
 
+		properties := map[string]any{}
+		err = json.Unmarshal([]byte(sourceConfig), &properties)
+		if err != nil {
+			return nil, err
+		}
+
 		ret = append(ret, api.Source{
 			DatabaseID: sourceID,
 			Name:       sourceName,
 			Insecure:   sourceInsecure,
 			SourceType: sourceType,
-			Properties: json.RawMessage(sourceConfig),
+			Properties: properties,
 		})
 	}
 

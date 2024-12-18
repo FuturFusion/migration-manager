@@ -12,14 +12,19 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware_nbdkit"
-	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type InternalVMwareSourceSpecific struct {
-	api.VMwareProperties `yaml:",inline"`
+	VMwareProperties `yaml:",inline"`
 
 	govmomiClient *govmomi.Client
 	vddkConfig    *vmware_nbdkit.VddkConfig
+}
+
+type VMwareProperties struct {
+	Endpoint string `json:"endpoint" yaml:"endpoint"`
+	Username string `json:"username" yaml:"username"`
+	Password string `json:"password" yaml:"password"`
 }
 
 func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string, bool)) error {

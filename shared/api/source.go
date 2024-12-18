@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
@@ -47,24 +46,5 @@ type Source struct {
 	SourceType SourceType `json:"source_type" yaml:"source_type"`
 
 	// Properties contains source type specific properties
-	// TODO: instead of json.RawMessage, we could also use map[string]any
-	// which might save us a decoding step.
-	Properties json.RawMessage `json:"properties" yaml:"properties"`
-}
-
-// VMwareProperties defines the set of VMware specific properties of an endpoint that the migration manager can connect to.
-//
-// swagger:model
-type VMwareProperties struct {
-	// Hostname or IP address of the source endpoint
-	// Example: vsphere.local
-	Endpoint string `json:"endpoint" yaml:"endpoint"`
-
-	// Username to authenticate against the endpoint
-	// Example: admin
-	Username string `json:"username" yaml:"username"`
-
-	// Password to authenticate against the endpoint
-	// Example: password
-	Password string `json:"password" yaml:"password"`
+	Properties map[string]any `json:"properties" yaml:"properties"`
 }

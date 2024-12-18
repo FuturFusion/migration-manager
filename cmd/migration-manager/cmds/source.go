@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/FuturFusion/migration-manager/internal/maps"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -122,21 +123,15 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 
 		sourcePassword := c.global.Asker.AskPassword("Please enter password for endpoint '" + sourceEndpoint + "': ")
 
-		vmwareProperties := api.VMwareProperties{
-			Endpoint: sourceEndpoint,
-			Username: sourceUsername,
-			Password: sourcePassword,
-		}
-
 		s := api.Source{
 			Name:       sourceName,
 			Insecure:   c.flagInsecure,
 			SourceType: api.SOURCETYPE_VMWARE,
-		}
-
-		s.Properties, err = json.Marshal(vmwareProperties)
-		if err != nil {
-			return err
+			Properties: map[string]any{
+				"endpoint": sourceEndpoint,
+				"username": sourceUsername,
+				"password": sourcePassword,
+			},
 		}
 
 		internalSource, err := source.NewInternalVMwareSourceFrom(s)
@@ -225,13 +220,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	for _, s := range sources {
 		switch s.SourceType {
 		case api.SOURCETYPE_VMWARE:
-			vmwareProperties := api.VMwareProperties{}
-			err := json.Unmarshal(s.Properties, &vmwareProperties)
-			if err != nil {
-				return err
-			}
-
-			data = append(data, []string{s.Name, "VMware", vmwareProperties.Endpoint, vmwareProperties.Username, strconv.FormatBool(s.Insecure)})
+			data = append(data, []string{s.Name, "VMware", s.Properties["endpoint"].(string), s.Properties["username"].(string), strconv.FormatBool(s.Insecure)})
 		case api.SOURCETYPE_COMMON:
 			// Nothing to output in this case
 		default:
@@ -313,7 +302,6 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	src := api.Source{}
-	vmwareProperties := api.VMwareProperties{}
 
 	err = responseToStruct(resp, &src)
 	if err != nil {
@@ -325,10 +313,6 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	newSourceName := ""
 	switch src.SourceType {
 	case api.SOURCETYPE_VMWARE:
-		err := json.Unmarshal(src.Properties, &vmwareProperties)
-		if err != nil {
-			return err
-		}
 
 		origSourceName = src.Name
 
@@ -337,17 +321,20 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		vmwareProperties.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+vmwareProperties.Endpoint+"] ", vmwareProperties.Endpoint, nil)
+		endpoint := maps.GetOrDefault(src.Properties, "endpoint", "")
+		username := maps.GetOrDefault(src.Properties, "username", "")
+
+		endpoint, err = c.global.Asker.AskString("Endpoint: ["+endpoint+"] ", endpoint, nil)
 		if err != nil {
 			return err
 		}
 
-		vmwareProperties.Username, err = c.global.Asker.AskString("Username: ["+vmwareProperties.Username+"] ", vmwareProperties.Username, nil)
+		username, err = c.global.Asker.AskString("Username: ["+username+"] ", username, nil)
 		if err != nil {
 			return err
 		}
 
-		vmwareProperties.Password = c.global.Asker.AskPassword("Password: ")
+		password := c.global.Asker.AskPassword("Password: ")
 
 		isInsecure := "no"
 		if src.Insecure {
@@ -359,9 +346,10 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		src.Properties, err = json.Marshal(vmwareProperties)
-		if err != nil {
-			return err
+		src.Properties = map[string]any{
+			"endpoint": endpoint,
+			"username": username,
+			"password": password,
 		}
 
 		newSourceName = src.Name
