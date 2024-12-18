@@ -45,17 +45,10 @@ func (d *Daemon) runPeriodicTask(f func() bool, interval time.Duration) {
 func (d *Daemon) syncInstancesFromSources() bool {
 	loggerCtx := logger.Ctx{"method": "syncInstancesFromSources"}
 
+	// TODO: context should be passed from the daemon to all the workers.
+	ctx := context.TODO()
 	// Get the list of configured sources.
-	sources := []api.Source{}
-	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		var err error
-		sources, err = d.db.GetAllSources(tx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	sources, err := d.source.GetAll(ctx)
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
 		return false
@@ -63,7 +56,13 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 	// Check each source for any net networks and any new, changed, or deleted instances.
 	for _, src := range sources {
-		s, err := source.NewInternalVMwareSourceFrom(src)
+		s, err := source.NewInternalVMwareSourceFrom(api.Source{
+			Name:       src.Name,
+			DatabaseID: src.ID,
+			Insecure:   src.Insecure,
+			SourceType: src.SourceType,
+			Properties: src.Properties,
+		})
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
 			continue
@@ -593,17 +592,9 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 		return nil
 	})
 
-	// Get the source for this instance.
-	var s api.Source
-	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		var err error
-		s, err = d.db.GetSourceByID(tx, inst.GetSourceID())
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	// TODO: Context should be passed from Daemon to all the workers.
+	ctx := context.TODO()
+	s, err := d.source.GetByID(ctx, inst.GetSourceID())
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
 		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {

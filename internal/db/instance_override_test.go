@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -24,12 +27,15 @@ func TestInstanceOverrideDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback() }()
 
+	sourceSvc := migration.NewSourceService(sqlite.NewSource(tx))
+	targetSvc := migration.NewTargetService(sqlite.NewTarget(tx))
+
 	// Cannot add an override if there's no corresponding instance.
 	err = db.AddInstanceOverride(tx, overrideA)
 	require.Error(t, err)
 
 	// Add the corresponding instance.
-	_, err = db.AddSource(tx, testSource)
+	_, err = sourceSvc.Create(ctx, testSource)
 	require.NoError(t, err)
 	err = db.AddTarget(tx, testTarget)
 	require.NoError(t, err)

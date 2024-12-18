@@ -17,6 +17,8 @@ import (
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/target"
@@ -357,6 +359,8 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 		TrustedTLSClientCertFingerprints: []string{testcert.LocalhostCertFingerprint},
 	})
 	daemon.db, err = db.OpenDatabase(tmpDir)
+	daemon.source = migration.NewSourceService(sqlite.NewSource(daemon.db.DB))
+	daemon.target = migration.NewTargetService(sqlite.NewTarget(daemon.db.DB))
 	require.NoError(t, err)
 
 	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, logger.Log, daemon.config.TrustedTLSClientCertFingerprints, nil)

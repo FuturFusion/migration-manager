@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -10,14 +11,16 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 var (
-	testSource       = api.Source{Name: "TestSource", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
-	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:6443")
+	testSource       = migration.Source{Name: "TestSource", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
+	testTarget       = migration.Target{Name: "TestTarget", Endpoint: "https://localhost:6443"}
 	testBatch        = batch.NewBatch("TestBatch", 1, "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()
 	instanceA        = instance.NewInstance(instanceAUUID, "/path/UbuntuVM", "annotation", 1, ptr.To(1), nil, 123, "x86_64", "hw version", "Ubuntu", "24.04", nil, []api.InstanceDiskInfo{
@@ -73,10 +76,13 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback() }()
 
+	sourceSvc := migration.NewSourceService(sqlite.NewSource(tx))
+	targetSvc := migration.NewTargetService(sqlite.NewTarget(tx))
+
 	// Cannot add an instance with an invalid source.
 	err = db.AddInstance(tx, instanceA)
 	require.Error(t, err)
-	_, err = db.AddSource(tx, testSource)
+	_, err = sourceSvc.Create(context.TODO(), testSource)
 	require.NoError(t, err)
 
 	// Add dummy target.
@@ -100,7 +106,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Cannot delete a source or target if referenced by an instance.
-	err = db.DeleteSource(tx, testSource.Name)
+	err = sourceSvc.DeleteByName(context.TODO(), testSource.Name)
 	require.Error(t, err)
 	err = db.DeleteTarget(tx, testTarget.GetName())
 	require.Error(t, err)
@@ -159,7 +165,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Error(t, err)
 
 	// Can't delete a source that has at least one associated instance.
-	err = db.DeleteSource(tx, testSource.Name)
+	err = sourceSvc.DeleteByName(context.TODO(), testSource.Name)
 	require.Error(t, err)
 
 	// Can't delete a target that has at least one associated instance.
