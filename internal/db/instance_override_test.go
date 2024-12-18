@@ -29,7 +29,7 @@ func TestInstanceOverrideDatabaseActions(t *testing.T) {
 	require.Error(t, err)
 
 	// Add the corresponding instance.
-	err = db.AddSource(tx, testSource)
+	_, err = db.AddSource(tx, testSource)
 	require.NoError(t, err)
 	err = db.AddTarget(tx, testTarget)
 	require.NoError(t, err)

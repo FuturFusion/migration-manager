@@ -47,11 +47,11 @@ func TestSourceDatabaseActions(t *testing.T) {
 	defer func() { _ = tx.Rollback() }()
 
 	// Add commonSourceA.
-	err = db.AddSource(tx, &commonSourceA)
+	commonSourceA, err = db.AddSource(tx, commonSourceA)
 	require.NoError(t, err)
 
 	// Add commonSourceB.
-	err = db.AddSource(tx, &commonSourceB)
+	commonSourceB, err = db.AddSource(tx, commonSourceB)
 	require.NoError(t, err)
 
 	// Quick mid-addition state check.
@@ -65,11 +65,11 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.Equal(t, commonSourceB, dbCommonSourceB)
 
 	// Add vmwareSourceA.
-	err = db.AddSource(tx, &vmwareSourceA)
+	vmwareSourceA, err = db.AddSource(tx, vmwareSourceA)
 	require.NoError(t, err)
 
 	// Add vmwareSourceB.
-	err = db.AddSource(tx, &vmwareSourceB)
+	vmwareSourceB, err = db.AddSource(tx, vmwareSourceB)
 	require.NoError(t, err)
 
 	// Ensure we have four entries
@@ -85,7 +85,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	// Test updating a source.
 	vmwareSourceB.Name = "FooBar"
 	// vmwareSourceB.Username = "aNewUser"
-	err = db.UpdateSource(tx, &vmwareSourceB)
+	vmwareSourceB, err = db.UpdateSource(tx, vmwareSourceB)
 	require.NoError(t, err)
 	dbVMWareSourceB, err := db.GetSource(tx, vmwareSourceB.Name)
 	require.NoError(t, err)
@@ -107,11 +107,11 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.Error(t, err)
 
 	// Can't update a source that doesn't exist.
-	err = db.UpdateSource(tx, &commonSourceA)
+	commonSourceA, err = db.UpdateSource(tx, commonSourceA)
 	require.Error(t, err)
 
 	// Can't add a duplicate source.
-	err = db.AddSource(tx, &commonSourceB)
+	commonSourceB, err = db.AddSource(tx, commonSourceB)
 	require.Error(t, err)
 
 	err = tx.Commit()
