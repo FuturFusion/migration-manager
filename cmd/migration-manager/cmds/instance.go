@@ -1,8 +1,6 @@
 package cmds
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -109,7 +107,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get nice names for the sources.
-	sources := []sourcesResult{}
+	sources := []api.Source{}
 	sourcesMap := make(map[int]string)
 	resp, err = c.global.doHTTPRequestV1("/sources", http.MethodGet, "", nil)
 	if err != nil {
@@ -122,26 +120,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, s := range sources {
-		switch s.Type {
-		case api.SOURCETYPE_VMWARE:
-			vmwareSource := api.VMwareSource{}
-			err := json.Unmarshal(s.Source, &vmwareSource)
-			if err != nil {
-				return err
-			}
-
-			sourcesMap[vmwareSource.DatabaseID] = vmwareSource.Name
-		case api.SOURCETYPE_COMMON:
-			commonSource := api.CommonSource{}
-			err := json.Unmarshal(s.Source, &commonSource)
-			if err != nil {
-				return err
-			}
-
-			sourcesMap[commonSource.DatabaseID] = commonSource.Name
-		default:
-			return fmt.Errorf("Unsupported source type %d", s.Type)
-		}
+		sourcesMap[s.DatabaseID] = s.Name
 	}
 
 	// Get nice names for the targets.

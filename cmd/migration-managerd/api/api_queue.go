@@ -213,19 +213,16 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Fetch the source for the instance.
-	var s api.VMwareSource
+	var s api.Source
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbSource, err := d.db.GetSourceByID(tx, i.SourceID)
 		if err != nil {
 			return err
 		}
 
-		encodedSource, err := json.Marshal(dbSource)
-		if err != nil {
-			return err
-		}
+		s = dbSource
 
-		return json.Unmarshal(encodedSource, &s)
+		return nil
 	})
 	if err != nil {
 		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", UUID, err))

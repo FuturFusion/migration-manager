@@ -46,7 +46,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 	loggerCtx := logger.Ctx{"method": "syncInstancesFromSources"}
 
 	// Get the list of configured sources.
-	sources := []source.Source{}
+	sources := []api.Source{}
 	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 		sources, err = d.db.GetAllSources(tx)
@@ -62,8 +62,14 @@ func (d *Daemon) syncInstancesFromSources() bool {
 	}
 
 	// Check each source for any net networks and any new, changed, or deleted instances.
-	for _, s := range sources {
-		err := s.Connect(d.ShutdownCtx)
+	for _, src := range sources {
+		s, err := source.NewInternalVMwareSourceFrom(src)
+		if err != nil {
+			logger.Warn(err.Error(), loggerCtx)
+			continue
+		}
+
+		err = s.Connect(d.ShutdownCtx)
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
 			continue
@@ -507,7 +513,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	})
 
 	// Get the source for this instance.
-	var s source.Source
+	var s api.Source
 	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 		var err error
 		s, err = d.db.GetSourceByID(tx, inst.GetSourceID())
@@ -576,7 +582,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 		return
 	}
 
-	instanceDef := t.CreateVMDefinition(*internalInstance, override, s.GetName(), storagePool)
+	instanceDef := t.CreateVMDefinition(*internalInstance, override, s.Name, storagePool)
 	creationErr := t.CreateNewVM(instanceDef, storagePool, d.globalConfig["core.boot_iso_image"], d.globalConfig["core.drivers_iso_image"])
 	if creationErr != nil {
 		logger.Warn(creationErr.Error(), loggerCtx)

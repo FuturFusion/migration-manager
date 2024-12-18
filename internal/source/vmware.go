@@ -3,6 +3,8 @@ package source
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -26,40 +28,30 @@ import (
 )
 
 type InternalVMwareSource struct {
-	InternalCommonSource         `yaml:",inline"`
+	InternalSource               `yaml:",inline"`
 	InternalVMwareSourceSpecific `yaml:",inline"`
 }
 
-// Returns a new VMwareSource ready for use.
-func NewVMwareSource(name string, endpoint string, username string, password string) *InternalVMwareSource {
-	return &InternalVMwareSource{
-		InternalCommonSource: InternalCommonSource{
-			CommonSource: api.CommonSource{
-				Name:       name,
-				DatabaseID: internal.INVALID_DATABASE_ID,
-				Insecure:   false,
-			},
-			isConnected: false,
-		},
-		InternalVMwareSourceSpecific: InternalVMwareSourceSpecific{
-			VMwareSourceSpecific: api.VMwareSourceSpecific{
-				Endpoint: endpoint,
-				Username: username,
-				Password: password,
-			},
-		},
+func NewInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, error) {
+	if apiSource.SourceType != api.SOURCETYPE_VMWARE {
+		return nil, errors.New("Source is not of type VMware")
 	}
-}
 
-func NewInternalVMwareSourceFrom(apiSource api.VMwareSource) *InternalVMwareSource {
+	var properties api.VMwareProperties
+
+	err := json.Unmarshal(apiSource.Properties, &properties)
+	if err != nil {
+		return nil, err
+	}
+
 	return &InternalVMwareSource{
-		InternalCommonSource: InternalCommonSource{
-			CommonSource: apiSource.CommonSource,
+		InternalSource: InternalSource{
+			Source: apiSource,
 		},
 		InternalVMwareSourceSpecific: InternalVMwareSourceSpecific{
-			VMwareSourceSpecific: apiSource.VMwareSourceSpecific,
+			VMwareProperties: properties,
 		},
-	}
+	}, nil
 }
 
 func (s *InternalVMwareSource) Connect(ctx context.Context) error {
