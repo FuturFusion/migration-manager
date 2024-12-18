@@ -23,6 +23,7 @@ require (
 	github.com/tidwall/gjson v1.18.0
 	github.com/vmware/govmomi v0.46.2
 	github.com/zitadel/oidc/v3 v3.33.1
+	golang.org/x/oauth2 v0.24.0
 	golang.org/x/sys v0.28.0
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v3 v3.0.1
@@ -30,7 +31,9 @@ require (
 )
 
 require (
+	github.com/bmatcuk/doublestar/v4 v4.7.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/go-chi/chi/v5 v5.1.0 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -43,9 +46,11 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mitchellh/colorstring v0.0.0-20190213212951-d06e56a500db // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
+	github.com/muhlemmer/httpforwarded v0.1.0 // indirect
 	github.com/pkg/sftp v1.13.7 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/rs/cors v1.11.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
@@ -58,7 +63,6 @@ require (
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/net v0.32.0 // indirect
-	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
