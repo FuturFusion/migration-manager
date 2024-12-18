@@ -124,7 +124,8 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 
 	// Insert into database.
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.AddSource(tx, &s)
+		s, err = d.db.AddSource(tx, s)
+		return err
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", s.Name, err))
@@ -303,7 +304,8 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 
 	// Update source in the database.
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateSource(tx, &s)
+		s, err = d.db.UpdateSource(tx, s)
+		return err
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", s.Name, err))

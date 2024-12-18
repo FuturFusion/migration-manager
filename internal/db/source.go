@@ -9,25 +9,24 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-// FIXME: return source instead of pointer.
-func (n *Node) AddSource(tx *sql.Tx, s *api.Source) error {
+func (n *Node) AddSource(tx *sql.Tx, s api.Source) (api.Source, error) {
 	// Add source to the database.
 	q := `INSERT INTO sources (name,type,insecure,config) VALUES(?,?,?,?)`
 
 	result, err := tx.Exec(q, s.Name, s.SourceType, s.Insecure, s.Properties)
 	if err != nil {
-		return mapDBError(err)
+		return api.Source{}, mapDBError(err)
 	}
 
 	// Set the new ID assigned to the source.
 	lastInsertID, err := result.LastInsertId()
 	if err != nil {
-		return err
+		return api.Source{}, err
 	}
 
 	s.DatabaseID = int(lastInsertID)
 
-	return nil
+	return s, nil
 }
 
 func (n *Node) GetSource(tx *sql.Tx, name string) (api.Source, error) {
@@ -99,26 +98,25 @@ func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
 	return nil
 }
 
-// FIXME: return source instead of pointer.
-func (n *Node) UpdateSource(tx *sql.Tx, s *api.Source) error {
+func (n *Node) UpdateSource(tx *sql.Tx, s api.Source) (api.Source, error) {
 	// Update source in the database.
 	q := `UPDATE sources SET name=?,insecure=?,config=? WHERE id=?`
 
 	result, err := tx.Exec(q, s.Name, s.Insecure, s.Properties, s.DatabaseID)
 	if err != nil {
-		return mapDBError(err)
+		return api.Source{}, mapDBError(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return api.Source{}, err
 	}
 
 	if affectedRows == 0 {
-		return fmt.Errorf("Source with ID %d doesn't exist, can't update", s.DatabaseID)
+		return api.Source{}, fmt.Errorf("Source with ID %d doesn't exist, can't update", s.DatabaseID)
 	}
 
-	return nil
+	return s, nil
 }
 
 func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]api.Source, error) {

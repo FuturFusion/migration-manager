@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	testSource       = &api.Source{Name: "TestSource", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
+	testSource       = api.Source{Name: "TestSource", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
 	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:6443")
 	testBatch        = batch.NewBatch("TestBatch", 1, "", "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()
@@ -75,7 +75,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Cannot add an instance with an invalid source.
 	err = db.AddInstance(tx, instanceA)
 	require.Error(t, err)
-	err = db.AddSource(tx, testSource)
+	_, err = db.AddSource(tx, testSource)
 	require.NoError(t, err)
 
 	// Add dummy target.
