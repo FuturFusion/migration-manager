@@ -8,15 +8,16 @@ import (
 	"github.com/mattn/go-sqlite3"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo"
 )
 
 type source struct {
-	db dbtx
+	db repo.DBTX
 }
 
 var _ migration.SourceRepo = &source{}
 
-func NewSource(db dbtx) *source {
+func NewSource(db repo.DBTX) *source {
 	return &source{
 		db: db,
 	}
