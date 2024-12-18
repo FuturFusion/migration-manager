@@ -215,30 +215,28 @@ func TestSourceList(t *testing.T) {
   "status": "Success",
   "metadata": [
     {
-      "type": 1,
-      "source": {
-        "name": "source 1",
-        "database_id": 1,
-        "insecure": false
-      }
+      "name": "source 1",
+      "database_id": 1,
+      "insecure": false,
+      "source_type": 1
     },
     {
-      "type": 2,
-      "source": {
-        "name": "source 2",
-        "database_id": 2,
-        "insecure": false,
+      "name": "source 2",
+      "database_id": 2,
+      "insecure": false,
+      "source_type": 2,
+      "properties": {
         "endpoint": "https://127.0.0.2:8989/",
         "username": "user2",
         "password": "pass2"
       }
     },
     {
-      "type": 2,
-      "source": {
-        "name": "source 3",
-        "database_id": 3,
-        "insecure": false,
+      "name": "source 3",
+      "database_id": 3,
+      "insecure": false,
+      "source_type": 2,
+      "properties": {
         "endpoint": "https://127.0.0.3:8989/",
         "username": "user3",
         "password": "pass3"
@@ -296,12 +294,10 @@ func TestSourceList(t *testing.T) {
   "status": "Success",
   "metadata": [
     {
-      "type": -1,
-      "source": {
-        "name": "source 1",
-        "database_id": 1,
-        "insecure": false
-      }
+      "name": "source 1",
+      "database_id": 1,
+      "insecure": false,
+      "source_type": -1
     }
   ]
 }`, // invalid type
@@ -464,11 +460,11 @@ func TestSourceUpdate(t *testing.T) {
   "status_code": 200,
   "status": "Success",
   "metadata": {
-    "type": 2,
-    "source": {
-      "name": "source 1",
-      "database_id": 1,
-      "insecure": true,
+    "name": "source 1",
+    "database_id": 1,
+    "insecure": true,
+    "source_type": 2,
+    "properties": {
       "endpoint": "https://old.endpoint/",
       "username": "old user",
       "password": "old pass"
@@ -562,12 +558,9 @@ func TestSourceUpdate(t *testing.T) {
   "status_code": 200,
   "status": "Success",
   "metadata": {
-    "type": 1,
-    "source": {
-      "name": "source 1",
-      "database_id": 1,
-      "insecure": true
-    }
+    "name": "source 1",
+    "database_id": 1,
+    "insecure": true
   }
 }`, // metadata.type is not 2 (VMWare)
 				}},

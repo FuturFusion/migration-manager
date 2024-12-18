@@ -19,11 +19,6 @@ import (
 
 var supportedTypes = []string{"vmware"}
 
-type sourcesResult struct {
-	Type   api.SourceType  `json:"type" yaml:"type"`
-	Source json.RawMessage `json:"source" yaml:"source"`
-}
-
 type CmdSource struct {
 	Global *CmdGlobal
 }
@@ -127,19 +122,27 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 
 		sourcePassword := c.global.Asker.AskPassword("Please enter password for endpoint '" + sourceEndpoint + "': ")
 
-		s := api.VMwareSource{
-			CommonSource: api.CommonSource{
-				Name:     sourceName,
-				Insecure: c.flagInsecure,
-			},
-			VMwareSourceSpecific: api.VMwareSourceSpecific{
-				Endpoint: sourceEndpoint,
-				Username: sourceUsername,
-				Password: sourcePassword,
-			},
+		vmwareProperties := api.VMwareProperties{
+			Endpoint: sourceEndpoint,
+			Username: sourceUsername,
+			Password: sourcePassword,
 		}
 
-		internalSource := source.NewInternalVMwareSourceFrom(s)
+		s := api.Source{
+			Name:       sourceName,
+			Insecure:   c.flagInsecure,
+			SourceType: api.SOURCETYPE_VMWARE,
+		}
+
+		s.Properties, err = json.Marshal(vmwareProperties)
+		if err != nil {
+			return err
+		}
+
+		internalSource, err := source.NewInternalVMwareSourceFrom(s)
+		if err != nil {
+			return err
+		}
 
 		// Verify we can connect to the source.
 		if c.additionalRootCertificate != nil {
@@ -208,7 +211,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	sources := []sourcesResult{}
+	sources := []api.Source{}
 
 	err = responseToStruct(resp, &sources)
 	if err != nil {
@@ -220,19 +223,19 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, s := range sources {
-		switch s.Type {
+		switch s.SourceType {
 		case api.SOURCETYPE_VMWARE:
-			vmwareSource := api.VMwareSource{}
-			err := json.Unmarshal(s.Source, &vmwareSource)
+			vmwareProperties := api.VMwareProperties{}
+			err := json.Unmarshal(s.Properties, &vmwareProperties)
 			if err != nil {
 				return err
 			}
 
-			data = append(data, []string{vmwareSource.Name, "VMware", vmwareSource.Endpoint, vmwareSource.Username, strconv.FormatBool(vmwareSource.Insecure)})
+			data = append(data, []string{s.Name, "VMware", vmwareProperties.Endpoint, vmwareProperties.Username, strconv.FormatBool(s.Insecure)})
 		case api.SOURCETYPE_COMMON:
 			// Nothing to output in this case
 		default:
-			return fmt.Errorf("Unsupported source type %d", s.Type)
+			return fmt.Errorf("Unsupported source type %d", s.SourceType)
 		}
 	}
 
@@ -309,10 +312,10 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	respS := sourcesResult{}
-	vmwareSource := api.VMwareSource{}
+	src := api.Source{}
+	vmwareProperties := api.VMwareProperties{}
 
-	err = responseToStruct(resp, &respS)
+	err = responseToStruct(resp, &src)
 	if err != nil {
 		return err
 	}
@@ -320,48 +323,56 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	// Prompt for updates, depending on the source type.
 	origSourceName := ""
 	newSourceName := ""
-	switch respS.Type {
+	switch src.SourceType {
 	case api.SOURCETYPE_VMWARE:
-		err := json.Unmarshal(respS.Source, &vmwareSource)
+		err := json.Unmarshal(src.Properties, &vmwareProperties)
 		if err != nil {
 			return err
 		}
 
-		origSourceName = vmwareSource.Name
+		origSourceName = src.Name
 
-		vmwareSource.Name, err = c.global.Asker.AskString("Source name: ["+vmwareSource.Name+"] ", vmwareSource.Name, nil)
+		src.Name, err = c.global.Asker.AskString("Source name: ["+src.Name+"] ", src.Name, nil)
 		if err != nil {
 			return err
 		}
 
-		vmwareSource.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+vmwareSource.Endpoint+"] ", vmwareSource.Endpoint, nil)
+		vmwareProperties.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+vmwareProperties.Endpoint+"] ", vmwareProperties.Endpoint, nil)
 		if err != nil {
 			return err
 		}
 
-		vmwareSource.Username, err = c.global.Asker.AskString("Username: ["+vmwareSource.Username+"] ", vmwareSource.Username, nil)
+		vmwareProperties.Username, err = c.global.Asker.AskString("Username: ["+vmwareProperties.Username+"] ", vmwareProperties.Username, nil)
 		if err != nil {
 			return err
 		}
 
-		vmwareSource.Password = c.global.Asker.AskPassword("Password: ")
+		vmwareProperties.Password = c.global.Asker.AskPassword("Password: ")
 
 		isInsecure := "no"
-		if vmwareSource.Insecure {
+		if src.Insecure {
 			isInsecure = "yes"
 		}
 
-		vmwareSource.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
+		src.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err
 		}
 
-		newSourceName = vmwareSource.Name
+		src.Properties, err = json.Marshal(vmwareProperties)
+		if err != nil {
+			return err
+		}
+
+		newSourceName = src.Name
 	default:
-		return fmt.Errorf("Unsupported source type %d; must be one of %q", respS.Type, supportedTypes)
+		return fmt.Errorf("Unsupported source type %d; must be one of %q", src.SourceType, supportedTypes)
 	}
 
-	internalSource := source.NewInternalVMwareSourceFrom(vmwareSource)
+	internalSource, err := source.NewInternalVMwareSourceFrom(src)
+	if err != nil {
+		return err
+	}
 
 	// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
 	ctx := context.TODO()
@@ -371,7 +382,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Update the source.
-	content, err := json.Marshal(vmwareSource)
+	content, err := json.Marshal(src)
 	if err != nil {
 		return err
 	}
