@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,6 +30,63 @@ var queueCmd = APIEndpoint{
 
 	Get: APIEndpointAction{Handler: queueGet, AllowUntrusted: true},
 	Put: APIEndpointAction{Handler: queuePut, AccessHandler: allowAuthenticated},
+}
+
+// Given a secret token, check if it corresponds to the secret for the instance state being updated.
+func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
+	// Only allow PUT methods.
+	if r.Method != http.MethodPut {
+		return false
+	}
+
+	// Limit to just queue status updates
+	pathParts := strings.Split(r.URL.Path, "/")
+	if len(pathParts) < 4 {
+		return false
+	}
+
+	if pathParts[2] != "queue" {
+		return false
+	}
+
+	// Ensure we got a valid instance UUID.
+	instanceUUID, err := uuid.Parse(pathParts[3])
+	if err != nil {
+		return false
+	}
+
+	// Get the secret token.
+	err = r.ParseForm()
+	if err != nil {
+		return false
+	}
+
+	secretUUID, err := uuid.Parse(r.Form.Get("secret"))
+	if err != nil {
+		return false
+	}
+
+	// Get the instance.
+	var i *instance.InternalInstance
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbInstance, err := d.db.GetInstance(tx, instanceUUID)
+		if err != nil {
+			return err
+		}
+
+		internalInstance, ok := dbInstance.(*instance.InternalInstance)
+		if !ok {
+			return fmt.Errorf("Wasn't given an InternalInstance?")
+		}
+
+		i = internalInstance
+		return nil
+	})
+	if err != nil {
+		return false
+	}
+
+	return secretUUID == i.GetSecretToken()
 }
 
 // swagger:operation GET /1.0/queue queue queueRoot_get

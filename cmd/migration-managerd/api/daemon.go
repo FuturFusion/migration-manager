@@ -143,6 +143,11 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 		}
 	}
 
+	// migration-manager-worker with an access token.
+	if d.workerAccessTokenValid(r) {
+		return true, "migration-manager-worker", api.AuthenticationMethodTLS, nil
+	}
+
 	// Reject unauthorized.
 	return false, "", "", nil
 }
