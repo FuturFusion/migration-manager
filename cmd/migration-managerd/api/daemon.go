@@ -12,7 +12,6 @@ import (
 	"github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/db"
-	"github.com/FuturFusion/migration-manager/internal/server/certificate"
 	"github.com/FuturFusion/migration-manager/internal/server/endpoints"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
@@ -50,8 +49,6 @@ type Daemon struct {
 	db *db.Node
 	os *sys.OS
 
-	clientCerts *certificate.Cache
-
 	config    *DaemonConfig
 	endpoints *endpoints.Endpoints
 
@@ -66,7 +63,6 @@ func NewDaemon(config *DaemonConfig) *Daemon {
 	return &Daemon{
 		db:             &db.Node{},
 		os:             sys.DefaultOS(),
-		clientCerts:    &certificate.Cache{},
 		config:         config,
 		ShutdownCtx:    shutdownCtx,
 		ShutdownCancel: shutdownCancel,

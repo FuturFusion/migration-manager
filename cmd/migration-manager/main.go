@@ -46,10 +46,6 @@ func main() {
 	batchCmd := cmds.CmdBatch{Global: &globalCmd}
 	app.AddCommand(batchCmd.Command())
 
-	// config sub-command
-	configCmd := cmds.CmdConfig{Global: &globalCmd}
-	app.AddCommand(configCmd.Command())
-
 	// instance sub-command
 	instanceCmd := cmds.CmdInstance{Global: &globalCmd}
 	app.AddCommand(instanceCmd.Command())
