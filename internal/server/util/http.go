@@ -157,11 +157,13 @@ type ContextAwareRequest interface {
 // (i.e. it has a valid time span and it belongs to the given list of trusted
 // certificates).
 // Returns whether or not the certificate is trusted, and the fingerprint of the certificate.
-func CheckTrustState(cert x509.Certificate, trustedCerts map[string]x509.Certificate, networkCert *localtls.CertInfo, trustCACertificates bool) (bool, string) {
+func CheckTrustState(cert x509.Certificate, trustedCertFingerprints []string, networkCert *localtls.CertInfo, trustCACertificates bool) (bool, string) {
 	// Extra validity check (should have been caught by TLS stack)
 	if time.Now().Before(cert.NotBefore) || time.Now().After(cert.NotAfter) {
 		return false, ""
 	}
+
+	certFingerprint := localtls.CertFingerprint(&cert)
 
 	if networkCert != nil && trustCACertificates {
 		ca := networkCert.CA()
@@ -183,14 +185,14 @@ func CheckTrustState(cert x509.Certificate, trustedCerts map[string]x509.Certifi
 			}
 
 			// Certificate not revoked, so trust it as is signed by CA cert.
-			return true, localtls.CertFingerprint(&cert)
+			return true, certFingerprint
 		}
 	}
 
-	// Check whether client certificate is in trust store.
-	for fingerprint, v := range trustedCerts {
-		if bytes.Equal(cert.Raw, v.Raw) {
-			logger.Debug("Matched trusted cert", logger.Ctx{"fingerprint": fingerprint, "subject": v.Subject})
+	// Check whether client certificate fingerprint is trusted.
+	for _, fingerprint := range trustedCertFingerprints {
+		if certFingerprint == fingerprint {
+			logger.Debug("Matched trusted cert", logger.Ctx{"fingerprint": fingerprint, "subject": cert.Subject})
 			return true, fingerprint
 		}
 	}

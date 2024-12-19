@@ -248,3 +248,13 @@ func writeJSON(w http.ResponseWriter, body any) error {
 
 	return err
 }
+
+// Unauthorized return an unauthorized response (401) with the given error.
+func Unauthorized(err error) Response {
+	message := "unauthorized"
+	if err != nil {
+		message = err.Error()
+	}
+
+	return &errorResponse{http.StatusUnauthorized, message}
+}

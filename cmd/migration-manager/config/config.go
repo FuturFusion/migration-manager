@@ -11,6 +11,8 @@ type Config struct {
 	AllowInsecureTLS       bool   `yaml:"allow_insecure_tls"`
 	ConfigDir              string `yaml:"config_dir"`
 	MigrationManagerServer string `yaml:"migration_manager_server"`
+	TLSClientCertFile      string `yaml:"tls_client_cert_file"`
+	TLSClientKeyFile       string `yaml:"tls_client_key_file"`
 }
 
 func NewConfig(configDir string) *Config {

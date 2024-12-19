@@ -91,11 +91,11 @@ func TestInstanceStatePut(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, srvURL := daemonSetup(t, []APIEndpoint{instanceStateCmd})
+			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{instanceStateCmd})
 			seedDBWithSingleInstance(t, daemon, tc.migrationStatus)
 
 			// Execute test
-			statusCode, body := probeAPI(t, http.MethodPut, srvURL+fmt.Sprintf("/1.0/instances/%s/state?migration_user_disabled=%s", tc.instanceUUID, tc.migrationUserDisabled), http.NoBody, nil)
+			statusCode, body := probeAPI(t, client, http.MethodPut, srvURL+fmt.Sprintf("/1.0/instances/%s/state?migration_user_disabled=%s", tc.instanceUUID, tc.migrationUserDisabled), http.NoBody, nil)
 
 			// Assert results
 			t.Log(body)

@@ -1,14 +1,13 @@
 package api
 
 import (
-	"context"
-	"net"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/lxc/incus/v6/shared/logger"
 
+	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 )
 
@@ -70,15 +69,7 @@ func restServer(d *Daemon) *http.Server {
 
 	return &http.Server{
 		Handler:     router,
-		ConnContext: SaveConnectionInContext,
+		ConnContext: request.SaveConnectionInContext,
 		IdleTimeout: 30 * time.Second,
 	}
-}
-
-type contextKey string
-
-// SaveConnectionInContext can be set as the ConnContext field of a http.Server to set the connection
-// in the request context for later use.
-func SaveConnectionInContext(ctx context.Context, connection net.Conn) context.Context {
-	return context.WithValue(ctx, contextKey("conn"), connection)
 }

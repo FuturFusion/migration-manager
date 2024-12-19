@@ -28,7 +28,7 @@ var queueCmd = APIEndpoint{
 	Path: "queue/{uuid}",
 
 	Get: APIEndpointAction{Handler: queueGet, AllowUntrusted: true},
-	Put: APIEndpointAction{Handler: queuePut, AllowUntrusted: true},
+	Put: APIEndpointAction{Handler: queuePut, AccessHandler: allowAuthenticated},
 }
 
 // swagger:operation GET /1.0/queue queue queueRoot_get

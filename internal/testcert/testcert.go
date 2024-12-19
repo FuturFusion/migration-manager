@@ -62,4 +62,6 @@ xiUZS4SoaJq6ZvcBYS62Yr1t8n09iG47YL8ibgtmH3L+svaotvpVxVK+d7BLevA/
 ZboOWVe3icTy64BT3OQhmg==
 -----END RSA TESTING KEY-----`))
 
+var LocalhostCertFingerprint = "ab601914436e58babb17b9166155caf97bd7e5f8deb9b659bcdb66c58b49f323"
+
 func testingKey(s string) string { return strings.ReplaceAll(s, "TESTING KEY", "PRIVATE KEY") }

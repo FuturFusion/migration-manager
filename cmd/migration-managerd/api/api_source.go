@@ -19,15 +19,15 @@ var sourcesCmd = APIEndpoint{
 	Path: "sources",
 
 	Get:  APIEndpointAction{Handler: sourcesGet, AllowUntrusted: true},
-	Post: APIEndpointAction{Handler: sourcesPost, AllowUntrusted: true},
+	Post: APIEndpointAction{Handler: sourcesPost, AccessHandler: allowAuthenticated},
 }
 
 var sourceCmd = APIEndpoint{
 	Path: "sources/{name}",
 
-	Delete: APIEndpointAction{Handler: sourceDelete, AllowUntrusted: true},
+	Delete: APIEndpointAction{Handler: sourceDelete, AccessHandler: allowAuthenticated},
 	Get:    APIEndpointAction{Handler: sourceGet, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: sourcePut, AllowUntrusted: true},
+	Put:    APIEndpointAction{Handler: sourcePut, AccessHandler: allowAuthenticated},
 }
 
 // swagger:operation GET /1.0/sources sources sources_get

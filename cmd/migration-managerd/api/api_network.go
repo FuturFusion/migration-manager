@@ -19,15 +19,15 @@ var networksCmd = APIEndpoint{
 	Path: "networks",
 
 	Get:  APIEndpointAction{Handler: networksGet, AllowUntrusted: true},
-	Post: APIEndpointAction{Handler: networksPost, AllowUntrusted: true},
+	Post: APIEndpointAction{Handler: networksPost, AccessHandler: allowAuthenticated},
 }
 
 var networkCmd = APIEndpoint{
 	Path: "networks/{name}",
 
-	Delete: APIEndpointAction{Handler: networkDelete, AllowUntrusted: true},
+	Delete: APIEndpointAction{Handler: networkDelete, AccessHandler: allowAuthenticated},
 	Get:    APIEndpointAction{Handler: networkGet, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: networkPut, AllowUntrusted: true},
+	Put:    APIEndpointAction{Handler: networkPut, AccessHandler: allowAuthenticated},
 }
 
 // swagger:operation GET /1.0/networks networks networks_get

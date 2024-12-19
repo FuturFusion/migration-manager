@@ -124,6 +124,35 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 
 	c.config.AllowInsecureTLS = insecure
 
+	authType, err := c.Asker.AskChoice("What type of authentication should be used (none, tls)? [none] ", []string{"none", "tls"}, "none")
+	if err != nil {
+		return err
+	}
+
+	if authType == "tls" {
+		c.config.TLSClientCertFile, err = c.Asker.AskString("Please enter path to client TLS certificate: ", "", func(s string) error {
+			if !util.PathExists(s) {
+				return fmt.Errorf("Cannot read file")
+			}
+
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		c.config.TLSClientKeyFile, err = c.Asker.AskString("Please enter path to client TLS key: ", "", func(s string) error {
+			if !util.PathExists(s) {
+				return fmt.Errorf("Cannot read file")
+			}
+
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	return c.config.SaveConfig()
 }
 
@@ -148,14 +177,21 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 
 	if !c.FlagForceLocal && strings.HasPrefix(c.config.MigrationManagerServer, "https://") {
 		u, err = url.Parse(c.config.MigrationManagerServer)
-		client = getHTTPSClient(c.config.AllowInsecureTLS)
+		if err != nil {
+			return nil, err
+		}
+
+		client, err = getHTTPSClient(c.config.AllowInsecureTLS, c.config.TLSClientCertFile, c.config.TLSClientKeyFile)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		u, err = url.Parse("http://unix.socket")
-		client = getUnixHTTPClient(MIGRATION_MANAGER_UNIX_SOCKET)
-	}
+		if err != nil {
+			return nil, err
+		}
 
-	if err != nil {
-		return nil, err
+		client = getUnixHTTPClient(MIGRATION_MANAGER_UNIX_SOCKET)
 	}
 
 	u.Path, err = url.JoinPath("/1.0/", endpoint)
@@ -200,10 +236,24 @@ func responseToStruct(response *api.Response, targetStruct any) error {
 	return json.Unmarshal(response.Metadata, &targetStruct)
 }
 
-func getHTTPSClient(insecure bool) *http.Client {
+func getHTTPSClient(insecure bool, tlsCertFile string, tlsKeyFile string) (*http.Client, error) {
+	var err error
+	cert := tls.Certificate{}
+
+	// If a client TLS certificate is configured, use it
+	if util.PathExists(tlsCertFile) {
+		cert, err = tls.LoadX509KeyPair(tlsCertFile, tlsKeyFile)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Define the https transport
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecure},
+		TLSClientConfig: &tls.Config{
+			Certificates:       []tls.Certificate{cert},
+			InsecureSkipVerify: insecure,
+		},
 	}
 
 	// Define the https client
@@ -211,7 +261,7 @@ func getHTTPSClient(insecure bool) *http.Client {
 
 	client.Transport = transport
 
-	return client
+	return client, nil
 }
 
 func getUnixHTTPClient(socketPath string) *http.Client {

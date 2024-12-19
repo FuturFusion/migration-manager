@@ -21,15 +21,15 @@ var batchesCmd = APIEndpoint{
 	Path: "batches",
 
 	Get:  APIEndpointAction{Handler: batchesGet, AllowUntrusted: true},
-	Post: APIEndpointAction{Handler: batchesPost, AllowUntrusted: true},
+	Post: APIEndpointAction{Handler: batchesPost, AccessHandler: allowAuthenticated},
 }
 
 var batchCmd = APIEndpoint{
 	Path: "batches/{name}",
 
-	Delete: APIEndpointAction{Handler: batchDelete, AllowUntrusted: true},
+	Delete: APIEndpointAction{Handler: batchDelete, AccessHandler: allowAuthenticated},
 	Get:    APIEndpointAction{Handler: batchGet, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: batchPut, AllowUntrusted: true},
+	Put:    APIEndpointAction{Handler: batchPut, AccessHandler: allowAuthenticated},
 }
 
 var batchInstancesCmd = APIEndpoint{
@@ -41,13 +41,13 @@ var batchInstancesCmd = APIEndpoint{
 var batchStartCmd = APIEndpoint{
 	Path: "batches/{name}/start",
 
-	Post: APIEndpointAction{Handler: batchStartPost, AllowUntrusted: true},
+	Post: APIEndpointAction{Handler: batchStartPost, AccessHandler: allowAuthenticated},
 }
 
 var batchStopCmd = APIEndpoint{
 	Path: "batches/{name}/stop",
 
-	Post: APIEndpointAction{Handler: batchStopPost, AllowUntrusted: true},
+	Post: APIEndpointAction{Handler: batchStopPost, AccessHandler: allowAuthenticated},
 }
 
 // swagger:operation GET /1.0/batches batches batches_get
