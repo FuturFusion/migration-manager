@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/target"
@@ -349,7 +350,7 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, string) {
 
 	tmpDir := t.TempDir()
 
-	daemon := NewDaemon(&DaemonConfig{})
+	daemon := NewDaemon(&config.DaemonConfig{})
 	daemon.db, err = db.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 

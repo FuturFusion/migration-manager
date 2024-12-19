@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/api"
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/ports"
 )
 
@@ -45,13 +46,18 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unknown command \"%s\" for \"%s\"", args[0], cmd.CommandPath())
 	}
 
-	config := &api.DaemonConfig{
+	cfg := &config.DaemonConfig{
 		Group:            c.flagGroup,
 		RestServerIPAddr: c.flagServerIP,
 		RestServerPort:   c.flagServerPort,
 	}
 
-	d := api.NewDaemon(config)
+	err := cfg.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	d := api.NewDaemon(cfg)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, unix.SIGPWR)
@@ -62,7 +68,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	chIgnore := make(chan os.Signal, 1)
 	signal.Notify(chIgnore, unix.SIGHUP)
 
-	err := d.Start()
+	err = d.Start()
 	if err != nil {
 		return err
 	}

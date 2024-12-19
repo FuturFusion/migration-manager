@@ -26,15 +26,6 @@ CREATE TABLE batches (
     FOREIGN KEY(target_id) REFERENCES targets(id)
 );
 
-CREATE TABLE certificates (
-    fingerprint VARCHAR(255) PRIMARY KEY NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    type VARCHAR(255) NOT NULL,
-    certificate TEXT NOT NULL,
-    description VARCHAR(255) NOT NULL
-
-);
-
 CREATE TABLE instances (
     uuid TEXT PRIMARY KEY NOT NULL,
     inventory_path VARCHAR(255) NOT NULL,
@@ -150,15 +141,6 @@ CREATE TABLE batches (
     default_network VARCHAR(255) NOT NULL,
     UNIQUE (name),
     FOREIGN KEY(target_id) REFERENCES targets(id)
-);
-
-CREATE TABLE certificates (
-    fingerprint VARCHAR(255) PRIMARY KEY NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    type VARCHAR(255) NOT NULL,
-    certificate TEXT NOT NULL,
-    description VARCHAR(255) NOT NULL
-
 );
 
 CREATE TABLE instances (

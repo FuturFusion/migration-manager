@@ -11,8 +11,8 @@ import (
 	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/lxc/incus/v6/shared/util"
 
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
-	"github.com/FuturFusion/migration-manager/internal/server/certificate"
 	"github.com/FuturFusion/migration-manager/internal/server/endpoints"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
@@ -39,20 +39,11 @@ type APIEndpointAction struct {
 	AllowUntrusted bool
 }
 
-type DaemonConfig struct {
-	Group string // Group name the local unix socket should be chown'ed to
-
-	RestServerIPAddr string
-	RestServerPort   int
-}
-
 type Daemon struct {
 	db *db.Node
 	os *sys.OS
 
-	clientCerts *certificate.Cache
-
-	config    *DaemonConfig
+	config    *config.DaemonConfig
 	endpoints *endpoints.Endpoints
 
 	ShutdownCtx    context.Context    // Canceled when shutdown starts.
@@ -60,14 +51,13 @@ type Daemon struct {
 	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
 }
 
-func NewDaemon(config *DaemonConfig) *Daemon {
+func NewDaemon(cfg *config.DaemonConfig) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	return &Daemon{
 		db:             &db.Node{},
 		os:             sys.DefaultOS(),
-		clientCerts:    &certificate.Cache{},
-		config:         config,
+		config:         cfg,
 		ShutdownCtx:    shutdownCtx,
 		ShutdownCancel: shutdownCancel,
 		ShutdownDoneCh: make(chan error),
@@ -101,7 +91,7 @@ func (d *Daemon) Start() error {
 	}
 
 	/* Setup the web server */
-	config := &endpoints.Config{
+	cfg := &endpoints.Config{
 		Dir:                  d.os.VarDir,
 		UnixSocket:           d.os.GetUnixSocket(),
 		Cert:                 networkCert,
@@ -111,7 +101,7 @@ func (d *Daemon) Start() error {
 		NetworkAddress:       fmt.Sprintf("%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort),
 	}
 
-	d.endpoints, err = endpoints.Up(config)
+	d.endpoints, err = endpoints.Up(cfg)
 	if err != nil {
 		return err
 	}

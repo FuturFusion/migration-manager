@@ -12,8 +12,6 @@ General structure
             /1.0/batches/NAME/instances
             /1.0/batches/NAME/start
             /1.0/batches/NAME/stop
-        /1.0/certificates
-            /1.0/certificates/FINGERPRINT
         /1.0/queue
             /1.0/queue/UUID?secret=TOKEN
         /1.0/instances
