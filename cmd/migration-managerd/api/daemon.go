@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/logger"
+	localtls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
@@ -105,8 +106,13 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 	trustCACertificates := false // FIXME -- not checking if client cert is signed by trusted CA
 
 	// Validate regular TLS certificates.
+	var networkCert *localtls.CertInfo
+	if d.endpoints != nil {
+		networkCert = d.endpoints.NetworkCert()
+	}
+
 	for _, i := range r.TLS.PeerCertificates {
-		trusted, username := localUtil.CheckTrustState(*i, d.config.TrustedTLSClientCertFingerprints, d.endpoints.NetworkCert(), trustCACertificates)
+		trusted, username := localUtil.CheckTrustState(*i, d.config.TrustedTLSClientCertFingerprints, networkCert, trustCACertificates)
 		if trusted {
 			return true, username, api.AuthenticationMethodTLS, nil
 		}
