@@ -29,6 +29,7 @@ type Worker struct {
 	insecure bool
 	source   source.Source
 	uuid     string
+	token    string
 
 	lastUpdate time.Time
 	idleSleep  time.Duration
@@ -36,7 +37,7 @@ type Worker struct {
 
 type WorkerOption func(*Worker) error
 
-func NewWorker(endpoint string, uuid string, opts ...WorkerOption) (*Worker, error) {
+func NewWorker(endpoint string, uuid string, token string, opts ...WorkerOption) (*Worker, error) {
 	// Parse the provided URL for the migration manager endpoint.
 	parsedURL, err := url.Parse(endpoint)
 	if err != nil {
@@ -48,6 +49,7 @@ func NewWorker(endpoint string, uuid string, opts ...WorkerOption) (*Worker, err
 		insecure:   false,
 		source:     nil,
 		uuid:       uuid,
+		token:      token,
 		lastUpdate: time.Now().UTC(),
 		idleSleep:  10 * time.Second,
 	}
@@ -60,7 +62,7 @@ func NewWorker(endpoint string, uuid string, opts ...WorkerOption) (*Worker, err
 	}
 
 	// Do a quick connectivity check to the endpoint.
-	_, err = wrkr.doHTTPRequestV1("", http.MethodGet, nil)
+	_, err = wrkr.doHTTPRequestV1("", http.MethodGet, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +96,7 @@ func (w *Worker) Run(ctx context.Context) {
 
 	for {
 		done := func() (done bool) {
-			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodGet, nil)
+			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodGet, "", nil)
 			if err != nil {
 				logger.Errorf("%s", err.Error())
 				return false
@@ -306,7 +308,7 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusStri
 		return
 	}
 
-	_, err = w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodPut, content)
+	_, err = w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodPut, "secret="+w.token, content)
 	if err != nil {
 		logger.Errorf("Failed to send status back to migration manager: %s", err.Error())
 		return
@@ -323,19 +325,21 @@ func (w *Worker) sendErrorResponse(err error) {
 		return
 	}
 
-	_, err = w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodPut, content)
+	_, err = w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodPut, "secret="+w.token, content)
 	if err != nil {
 		logger.Errorf("Failed to send error back to migration manager: %s", err.Error())
 		return
 	}
 }
 
-func (w *Worker) doHTTPRequestV1(endpoint string, method string, content []byte) (*incusAPI.Response, error) {
+func (w *Worker) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*incusAPI.Response, error) {
 	var err error
 	w.endpoint.Path, err = url.JoinPath("/1.0/", endpoint)
 	if err != nil {
 		return nil, err
 	}
+
+	w.endpoint.RawQuery = query
 
 	req, err := http.NewRequest(method, w.endpoint.String(), bytes.NewBuffer(content))
 	if err != nil {

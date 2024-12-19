@@ -12,10 +12,13 @@ type InternalInstance struct {
 	api.Instance `yaml:",inline"`
 
 	NeedsDiskImport bool
+	SecretToken     uuid.UUID
 }
 
 // Returns a new Instance ready for use.
 func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID *int, batchID *int, name string, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInBytes int64, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
+	secretToken, _ := uuid.NewRandom()
+
 	return &InternalInstance{
 		Instance: api.Instance{
 			UUID:                  UUID,
@@ -39,6 +42,7 @@ func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID *i
 			TPMPresent:            tpmPresent,
 		},
 		NeedsDiskImport: true,
+		SecretToken:     secretToken,
 	}
 }
 
@@ -101,4 +105,8 @@ func (i *InternalInstance) GetMigrationStatusString() string {
 	}
 
 	return i.MigrationStatusString
+}
+
+func (i *InternalInstance) GetSecretToken() uuid.UUID {
+	return i.SecretToken
 }

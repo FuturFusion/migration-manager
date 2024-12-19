@@ -47,6 +47,7 @@ CREATE TABLE instances (
     secure_boot_enabled INTEGER NOT NULL,
     tpm_present INTEGER NOT NULL,
     needs_disk_import INTEGER NOT NULL,
+    secret_token TEXT NOT NULL,
     FOREIGN KEY(source_id) REFERENCES sources(id),
     FOREIGN KEY(target_id) REFERENCES targets(id),
     FOREIGN KEY(batch_id) REFERENCES batches(id)
@@ -164,6 +165,7 @@ CREATE TABLE instances (
     secure_boot_enabled INTEGER NOT NULL,
     tpm_present INTEGER NOT NULL,
     needs_disk_import INTEGER NOT NULL,
+    secret_token TEXT NOT NULL,
     FOREIGN KEY(source_id) REFERENCES sources(id),
     FOREIGN KEY(target_id) REFERENCES targets(id),
     FOREIGN KEY(batch_id) REFERENCES batches(id)
