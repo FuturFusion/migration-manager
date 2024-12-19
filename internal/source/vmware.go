@@ -203,6 +203,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			}
 		}
 
+		secretToken, _ := uuid.NewRandom()
 		ret = append(ret, instance.InternalInstance{
 			Instance: api.Instance{
 				UUID:                  UUID,
@@ -224,6 +225,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 				TPMPresent:            tpmPresent,
 			},
 			NeedsDiskImport: true,
+			SecretToken:     secretToken,
 		})
 	}
 

@@ -37,4 +37,7 @@ type Instance interface {
 
 	// Returns the free-form string migration status of this instance.
 	GetMigrationStatusString() string
+
+	// Returns a secret token that can be used by the worker to authenticate when updating the state for this instance.
+	GetSecretToken() uuid.UUID
 }
