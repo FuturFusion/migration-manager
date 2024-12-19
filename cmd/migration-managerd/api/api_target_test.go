@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"database/sql"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/target"
+	"github.com/FuturFusion/migration-manager/internal/testcert"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -39,11 +41,11 @@ func TestTargetsGet(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, srvURL := daemonSetup(t, []APIEndpoint{targetsCmd})
+			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{targetsCmd})
 			seedDBWithSingleTarget(t, daemon)
 
 			// Execute test
-			statusCode, body := probeAPI(t, http.MethodGet, srvURL+"/1.0/targets", http.NoBody, nil)
+			statusCode, body := probeAPI(t, client, http.MethodGet, srvURL+"/1.0/targets", http.NoBody, nil)
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
@@ -86,11 +88,11 @@ func TestTargetsPost(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, srvURL := daemonSetup(t, []APIEndpoint{targetsCmd})
+			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{targetsCmd})
 			seedDBWithSingleTarget(t, daemon)
 
 			// Execute test
-			statusCode, _ := probeAPI(t, http.MethodPost, srvURL+"/1.0/targets", bytes.NewBufferString(tc.targetJSON), nil)
+			statusCode, _ := probeAPI(t, client, http.MethodPost, srvURL+"/1.0/targets", bytes.NewBufferString(tc.targetJSON), nil)
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
@@ -145,11 +147,11 @@ func TestTargetDelete(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
+			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
 			seedDBWithSingleTarget(t, daemon)
 
 			// Execute test
-			statusCode, _ := probeAPI(t, http.MethodDelete, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), http.NoBody, nil)
+			statusCode, _ := probeAPI(t, client, http.MethodDelete, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), http.NoBody, nil)
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
@@ -206,11 +208,11 @@ func TestTargetGet(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
+			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
 			seedDBWithSingleTarget(t, daemon)
 
 			// Execute test
-			statusCode, body := probeAPI(t, http.MethodGet, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), http.NoBody, nil)
+			statusCode, body := probeAPI(t, client, http.MethodGet, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), http.NoBody, nil)
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
@@ -306,7 +308,7 @@ func TestTargetPut(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
+			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
 			seedDBWithSingleTarget(t, daemon)
 
 			headers := map[string]string{
@@ -314,7 +316,7 @@ func TestTargetPut(t *testing.T) {
 			}
 
 			// Execute test
-			statusCode, _ := probeAPI(t, http.MethodPut, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), bytes.NewBufferString(tc.targetJSON), headers)
+			statusCode, _ := probeAPI(t, client, http.MethodPut, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), bytes.NewBufferString(tc.targetJSON), headers)
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
@@ -322,7 +324,7 @@ func TestTargetPut(t *testing.T) {
 	}
 }
 
-func probeAPI(t *testing.T, method string, url string, requestBody io.Reader, headers map[string]string) (statusCode int, responseBody string) {
+func probeAPI(t *testing.T, client *http.Client, method string, url string, requestBody io.Reader, headers map[string]string) (statusCode int, responseBody string) {
 	t.Helper()
 
 	req, err := http.NewRequest(method, url, requestBody)
@@ -332,7 +334,7 @@ func probeAPI(t *testing.T, method string, url string, requestBody io.Reader, he
 		req.Header.Set(key, value)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := client.Do(req)
 	require.NoError(t, err)
 
 	defer resp.Body.Close()
@@ -343,14 +345,16 @@ func probeAPI(t *testing.T, method string, url string, requestBody io.Reader, he
 	return resp.StatusCode, string(body)
 }
 
-func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, string) {
+func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, string) {
 	t.Helper()
 
 	var err error
 
 	tmpDir := t.TempDir()
 
-	daemon := NewDaemon(&config.DaemonConfig{})
+	daemon := NewDaemon(&config.DaemonConfig{
+		TrustedTLSClientCertFingerprints: []string{testcert.LocalhostCertFingerprint},
+	})
 	daemon.db, err = db.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
@@ -359,10 +363,21 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, string) {
 		daemon.createCmd(router, "1.0", cmd)
 	}
 
-	srv := httptest.NewServer(router)
+	// Setup a HTTPS server and configure it to request client TLS certificates.
+	srv := httptest.NewTLSServer(router)
+	srv.TLS.ClientAuth = tls.RequestClientCert
+
+	// Get a HTTPS client for the test server and configure to use a test client certificate.
+	cert, err := tls.X509KeyPair(testcert.LocalhostCert, testcert.LocalhostKey)
+	require.NoError(t, err)
+	client := srv.Client()
+	transport, ok := client.Transport.(*http.Transport)
+	require.True(t, ok)
+	transport.TLSClientConfig.Certificates = []tls.Certificate{cert}
+
 	t.Cleanup(srv.Close)
 
-	return daemon, srv.URL
+	return daemon, client, srv.URL
 }
 
 func seedDBWithSingleTarget(t *testing.T, daemon *Daemon) {
