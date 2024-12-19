@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -65,7 +64,7 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 		return err
 	}
 
-	if i.GetBatchID() != internal.INVALID_DATABASE_ID || i.IsMigrating() {
+	if i.GetBatchID() != nil || i.IsMigrating() {
 		return fmt.Errorf("Cannot delete instance '%s': Either assigned to a batch or currently migrating", i.GetName())
 	}
 
@@ -100,15 +99,15 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	q := `SELECT batch_id FROM instances WHERE uuid=?`
 	row := tx.QueryRow(q, i.GetUUID())
 
-	batchID := internal.INVALID_DATABASE_ID
+	var batchID *int
 	err := row.Scan(&batchID)
 	if err != nil {
 		return mapDBError(err)
 	}
 
-	if batchID != internal.INVALID_DATABASE_ID {
+	if batchID != nil {
 		q = `SELECT name FROM batches WHERE id=?`
-		row = tx.QueryRow(q, batchID)
+		row = tx.QueryRow(q, *batchID)
 
 		batchName := ""
 		err := row.Scan(&batchName)

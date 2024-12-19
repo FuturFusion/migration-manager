@@ -11,7 +11,6 @@ import (
 	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -98,7 +97,6 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	// Get nice names for the batches.
 	batches := []api.Batch{}
 	batchesMap := make(map[int]string)
-	batchesMap[internal.INVALID_DATABASE_ID] = ""
 	resp, err = c.global.doHTTPRequestV1("/batches", http.MethodGet, "", nil)
 	if err != nil {
 		return err
@@ -152,7 +150,6 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	// Get nice names for the targets.
 	targets := []api.IncusTarget{}
 	targetsMap := make(map[int]string)
-	targetsMap[internal.INVALID_DATABASE_ID] = ""
 	resp, err = c.global.doHTTPRequestV1("/targets", http.MethodGet, "", nil)
 	if err != nil {
 		return err
@@ -208,7 +205,8 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			i.MigrationStatusString = i.MigrationStatus.String()
 		}
 
-		row := []string{i.Name, sourcesMap[i.SourceID], targetsMap[i.TargetID], batchesMap[i.BatchID], i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2), strings.Join(disks, "\n"), strings.Join(nics, "\n")}
+		row := []string{i.Name, sourcesMap[i.SourceID], getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2), strings.Join(disks, "\n"), strings.Join(nics, "\n")}
+
 		if c.flagVerbose {
 			row = append(row, i.UUID.String(), i.InventoryPath, i.LastUpdateFromSource.String())
 		}
@@ -264,4 +262,12 @@ func (c *cmdInstanceSetMigrationState) Run(cmd *cobra.Command, args []string) er
 	}
 
 	return nil
+}
+
+func getFrom(lookupMap map[int]string, key *int) string {
+	if key == nil {
+		return ""
+	}
+
+	return lookupMap[*key]
 }

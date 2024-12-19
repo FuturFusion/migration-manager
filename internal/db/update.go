@@ -42,8 +42,8 @@ CREATE TABLE instances (
     migration_status_string TEXT NOT NULL,
     last_update_from_source TEXT NOT NULL,
     source_id INTEGER NOT NULL,
-    target_id INTEGER NOT NULL,
-    batch_id INTEGER NOT NULL,
+    target_id INTEGER NULL,
+    batch_id INTEGER NULL,
     name VARCHAR(255) NOT NULL,
     architecture VARCHAR(255) NOT NULL,
     os VARCHAR(255) NOT NULL,
@@ -56,7 +56,9 @@ CREATE TABLE instances (
     secure_boot_enabled INTEGER NOT NULL,
     tpm_present INTEGER NOT NULL,
     needs_disk_import INTEGER NOT NULL,
-    FOREIGN KEY(source_id) REFERENCES sources(id)
+    FOREIGN KEY(source_id) REFERENCES sources(id),
+    FOREIGN KEY(target_id) REFERENCES targets(id),
+    FOREIGN KEY(batch_id) REFERENCES batches(id)
 );
 
 CREATE TABLE instance_overrides (
@@ -166,8 +168,8 @@ CREATE TABLE instances (
     migration_status_string TEXT NOT NULL,
     last_update_from_source TEXT NOT NULL,
     source_id INTEGER NOT NULL,
-    target_id INTEGER NOT NULL,
-    batch_id INTEGER NOT NULL,
+    target_id INTEGER NULL,
+    batch_id INTEGER NULL,
     name VARCHAR(255) NOT NULL,
     architecture VARCHAR(255) NOT NULL,
     os VARCHAR(255) NOT NULL,
@@ -180,7 +182,9 @@ CREATE TABLE instances (
     secure_boot_enabled INTEGER NOT NULL,
     tpm_present INTEGER NOT NULL,
     needs_disk_import INTEGER NOT NULL,
-    FOREIGN KEY(source_id) REFERENCES sources(id)
+    FOREIGN KEY(source_id) REFERENCES sources(id),
+    FOREIGN KEY(target_id) REFERENCES targets(id),
+    FOREIGN KEY(batch_id) REFERENCES batches(id)
 );
 
 CREATE TABLE instance_overrides (

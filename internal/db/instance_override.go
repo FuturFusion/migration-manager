@@ -6,7 +6,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -55,7 +54,7 @@ func (n *Node) DeleteInstanceOverride(tx *sql.Tx, UUID uuid.UUID) error {
 		return err
 	}
 
-	if i.GetBatchID() != internal.INVALID_DATABASE_ID || i.IsMigrating() {
+	if i.GetBatchID() != nil || i.IsMigrating() {
 		return fmt.Errorf("Cannot delete override for instance '%s': Either assigned to a batch or currently migrating", i.GetName())
 	}
 
@@ -83,14 +82,14 @@ func (n *Node) UpdateInstanceOverride(tx *sql.Tx, override api.InstanceOverride)
 	q := `SELECT batch_id,name FROM instances WHERE uuid=?`
 	row := tx.QueryRow(q, override.UUID)
 
-	batchID := internal.INVALID_DATABASE_ID
+	var batchID *int
 	instanceName := ""
 	err := row.Scan(&batchID, &instanceName)
 	if err != nil {
 		return mapDBError(err)
 	}
 
-	if batchID != internal.INVALID_DATABASE_ID {
+	if batchID != nil {
 		q = `SELECT name FROM batches WHERE id=?`
 		row = tx.QueryRow(q, batchID)
 
