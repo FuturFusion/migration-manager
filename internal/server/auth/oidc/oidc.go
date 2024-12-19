@@ -9,13 +9,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/util"
 	"github.com/zitadel/oidc/v3/pkg/client"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	httphelper "github.com/zitadel/oidc/v3/pkg/http"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"github.com/zitadel/oidc/v3/pkg/op"
-
-	"github.com/lxc/incus/v6/shared/util"
 )
 
 // Verifier holds all information needed to verify an access token offline.
@@ -147,8 +146,11 @@ func (o *Verifier) Auth(ctx context.Context, w http.ResponseWriter, r *http.Requ
 	}
 
 	user, ok := claims.Claims["email"]
-	if ok && user != nil && user.(string) != "" {
-		return user.(string), nil
+	if ok && user != nil {
+		v, ok := user.(string)
+		if ok && v != "" {
+			return v, nil
+		}
 	}
 
 	return claims.Subject, nil
@@ -301,9 +303,9 @@ func (o *Verifier) VerifyAccessToken(ctx context.Context, token string) (*oidc.A
 
 // WriteHeaders writes the OIDC configuration as HTTP headers so the client can initatiate the device code flow.
 func (o *Verifier) WriteHeaders(w http.ResponseWriter) error {
-	w.Header().Set("X-Incus-OIDC-issuer", o.issuer)
-	w.Header().Set("X-Incus-OIDC-clientid", o.clientID)
-	w.Header().Set("X-Incus-OIDC-audience", o.audience)
+	w.Header().Set("X-MigrationManager-OIDC-issuer", o.issuer)
+	w.Header().Set("X-MigrationManager-OIDC-clientid", o.clientID)
+	w.Header().Set("X-MigrationManager-OIDC-audience", o.audience)
 
 	return nil
 }
