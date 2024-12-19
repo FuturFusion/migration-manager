@@ -10,35 +10,23 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-type InternalCommonSource struct {
-	api.CommonSource `yaml:",inline"`
+type InternalSource struct {
+	api.Source `yaml:",inline"`
 
 	isConnected bool
 
 	additionalRootCertificate *tls.Certificate
 }
 
-// Returns a new CommonSource ready for use.
-func NewCommonSource(name string) *InternalCommonSource {
-	return &InternalCommonSource{
-		CommonSource: api.CommonSource{
-			Name:       name,
-			DatabaseID: internal.INVALID_DATABASE_ID,
-			Insecure:   false,
-		},
-		isConnected: false,
-	}
+func (s *InternalSource) Connect(ctx context.Context) error {
+	return fmt.Errorf("Not implemented by Source")
 }
 
-func (s *InternalCommonSource) Connect(ctx context.Context) error {
+func (s *InternalSource) Disconnect(ctx context.Context) error {
 	return fmt.Errorf("Not implemented by CommonSource")
 }
 
-func (s *InternalCommonSource) Disconnect(ctx context.Context) error {
-	return fmt.Errorf("Not implemented by CommonSource")
-}
-
-func (s *InternalCommonSource) SetInsecureTLS(insecure bool) error {
+func (s *InternalSource) SetInsecureTLS(insecure bool) error {
 	if s.isConnected {
 		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
 	}
@@ -47,19 +35,19 @@ func (s *InternalCommonSource) SetInsecureTLS(insecure bool) error {
 	return nil
 }
 
-func (s *InternalCommonSource) WithAdditionalRootCertificate(rootCert *tls.Certificate) {
+func (s *InternalSource) WithAdditionalRootCertificate(rootCert *tls.Certificate) {
 	s.additionalRootCertificate = rootCert
 }
 
-func (s *InternalCommonSource) IsConnected() bool {
+func (s *InternalSource) IsConnected() bool {
 	return s.isConnected
 }
 
-func (s *InternalCommonSource) GetName() string {
+func (s *InternalSource) GetName() string {
 	return s.Name
 }
 
-func (s *InternalCommonSource) GetDatabaseID() (int, error) {
+func (s *InternalSource) GetDatabaseID() (int, error) {
 	if s.DatabaseID == internal.INVALID_DATABASE_ID {
 		return internal.INVALID_DATABASE_ID, fmt.Errorf("Source has not been added to database, so it doesn't have an ID")
 	}
@@ -67,22 +55,22 @@ func (s *InternalCommonSource) GetDatabaseID() (int, error) {
 	return s.DatabaseID, nil
 }
 
-func (s *InternalCommonSource) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
+func (s *InternalSource) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
 	return nil, fmt.Errorf("Not implemented by CommonSource")
 }
 
-func (s *InternalCommonSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
+func (s *InternalSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
 	return nil, fmt.Errorf("Not implemented by CommonSource")
 }
 
-func (s *InternalCommonSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
+func (s *InternalSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
 	return fmt.Errorf("Not implemented by CommonSource")
 }
 
-func (s *InternalCommonSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string, bool)) error {
+func (s *InternalSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string, bool)) error {
 	return fmt.Errorf("Not implemented by CommonSource")
 }
 
-func (s *InternalCommonSource) PowerOffVM(ctx context.Context, vmName string) error {
+func (s *InternalSource) PowerOffVM(ctx context.Context, vmName string) error {
 	return fmt.Errorf("Not implemented by CommonSource")
 }

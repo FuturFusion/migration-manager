@@ -11,13 +11,12 @@ import (
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
-	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 var (
-	testSource       = source.NewCommonSource("TestSource")
+	testSource       = api.Source{Name: "TestSource", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
 	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:6443")
 	testBatch        = batch.NewBatch("TestBatch", 1, "", "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()
@@ -77,7 +76,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Cannot add an instance with an invalid source.
 	err = db.AddInstance(tx, instanceA)
 	require.Error(t, err)
-	err = db.AddSource(tx, testSource)
+	_, err = db.AddSource(tx, testSource)
 	require.NoError(t, err)
 
 	// Add dummy target.
@@ -101,7 +100,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Cannot delete a source or target if referenced by an instance.
-	err = db.DeleteSource(tx, testSource.GetName())
+	err = db.DeleteSource(tx, testSource.Name)
 	require.Error(t, err)
 	err = db.DeleteTarget(tx, testTarget.GetName())
 	require.Error(t, err)
@@ -161,7 +160,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Error(t, err)
 
 	// Can't delete a source that has at least one associated instance.
-	err = db.DeleteSource(tx, testSource.GetName())
+	err = db.DeleteSource(tx, testSource.Name)
 	require.Error(t, err)
 
 	// Can't delete a target that has at least one associated instance.

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -11,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
-	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -108,13 +108,13 @@ func seedDBWithSingleInstance(t *testing.T, daemon *Daemon, migrationStatus api.
 	t.Helper()
 
 	err := daemon.db.Transaction(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		source := &source.InternalCommonSource{
-			CommonSource: api.CommonSource{
-				Name: "source",
-			},
+		source := api.Source{
+			Name:       "source",
+			SourceType: api.SOURCETYPE_COMMON,
+			Properties: json.RawMessage(`{}`),
 		}
 
-		err := daemon.db.AddSource(tx, source)
+		source, err := daemon.db.AddSource(tx, source)
 		if err != nil {
 			return err
 		}

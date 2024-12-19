@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
-	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 var headers = []string{
@@ -39,42 +38,39 @@ var entries = [][]string{
 	},
 }
 
-var raw = []api.VMwareSource{
+type someJSON struct {
+	Name       string `json:"name" yaml:"name"`
+	DatabaseID int    `json:"database_id" yaml:"database_id"`
+	Insecure   bool   `json:"insecure" yaml:"insecure"`
+	Endpoint   string `json:"endpoint" yaml:"endpoint"`
+	Username   string `json:"username" yaml:"username"`
+	Password   string `json:"password" yaml:"password"`
+}
+
+var raw = []someJSON{
 	{
-		CommonSource: api.CommonSource{
-			Name:       "source 1",
-			DatabaseID: 1,
-			Insecure:   false,
-		},
-		VMwareSourceSpecific: api.VMwareSourceSpecific{
-			Endpoint: "https://127.0.0.1:8989/",
-			Username: "user",
-			Password: "pass",
-		},
+		Name:       "source 1",
+		DatabaseID: 1,
+		Insecure:   false,
+		Endpoint:   "https://127.0.0.1:8989/",
+		Username:   "user",
+		Password:   "pass",
 	},
 	{
-		CommonSource: api.CommonSource{
-			Name:       "source 2",
-			DatabaseID: 2,
-			Insecure:   true,
-		},
-		VMwareSourceSpecific: api.VMwareSourceSpecific{
-			Endpoint: "https://127.0.0.2:8989/",
-			Username: "user2",
-			Password: "pass2",
-		},
+		Name:       "source 2",
+		DatabaseID: 2,
+		Insecure:   true,
+		Endpoint:   "https://127.0.0.2:8989/",
+		Username:   "user2",
+		Password:   "pass2",
 	},
 	{
-		CommonSource: api.CommonSource{
-			Name:       "source 3",
-			DatabaseID: 3,
-			Insecure:   false,
-		},
-		VMwareSourceSpecific: api.VMwareSourceSpecific{
-			Endpoint: "https://127.0.0.3:8989/",
-			Username: "user3",
-			Password: "pass3",
-		},
+		Name:       "source 3",
+		DatabaseID: 3,
+		Insecure:   false,
+		Endpoint:   "https://127.0.0.3:8989/",
+		Username:   "user3",
+		Password:   "pass3",
 	},
 }
 

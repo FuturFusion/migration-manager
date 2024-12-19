@@ -7,13 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 
 	"github.com/gorilla/mux"
 
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
-	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -30,11 +28,6 @@ var sourceCmd = APIEndpoint{
 	Delete: APIEndpointAction{Handler: sourceDelete, AllowUntrusted: true},
 	Get:    APIEndpointAction{Handler: sourceGet, AllowUntrusted: true},
 	Put:    APIEndpointAction{Handler: sourcePut, AllowUntrusted: true},
-}
-
-type sourcesResult struct {
-	Type   api.SourceType  `json:"type" yaml:"type"`
-	Source json.RawMessage `json:"source" yaml:"source"`
 }
 
 // swagger:operation GET /1.0/sources sources sources_get
@@ -69,35 +62,20 @@ type sourcesResult struct {
 //	          type: array
 //	          description: List of sources
 //	          items:
-//	            $ref: "#/definitions/CommonSource"
-//	            $ref: "#/definitions/VMwareSource"
+//	            $ref: "#/definitions/Source"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func sourcesGet(d *Daemon, r *http.Request) response.Response {
-	result := []sourcesResult{}
+	result := []api.Source{}
 	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		sources, err := d.db.GetAllSources(tx)
 		if err != nil {
 			return err
 		}
 
-		for _, s := range sources {
-			encodedSource, err := json.Marshal(s)
-			if err != nil {
-				return err
-			}
-
-			switch s.(type) {
-			case *source.InternalCommonSource:
-				result = append(result, sourcesResult{Type: api.SOURCETYPE_COMMON, Source: encodedSource})
-			case *source.InternalVMwareSource:
-				result = append(result, sourcesResult{Type: api.SOURCETYPE_VMWARE, Source: encodedSource})
-			default:
-				return fmt.Errorf("Unsupported source type %T", s)
-			}
-		}
+		result = sources
 
 		return nil
 	})
@@ -110,75 +88,53 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 
 // swagger:operation POST /1.0/sources sources sources_post
 //
-//		Add a source
+//	Add a source
 //
-//		Creates a new source.
+//	Creates a new source.
 //
-//		---
-//		consumes:
-//		  - application/json
-//		produces:
-//		  - application/json
-//		parameters:
-//		  - in: query
-//		    name: type
-//		    description: Source type
-//	         type: int
-//		    required: true
-//		    example: 2
-//		  - in: body
-//		    name: source
-//		    description: Source configuration
-//		    required: true
-//		    schema:
-//		      $ref: "#/definitions/CommonSource"
-//		      $ref: "#/definitions/VMwareSource"
-//		responses:
-//		  "200":
-//		    $ref: "#/responses/EmptySyncResponse"
-//		  "400":
-//		    $ref: "#/responses/BadRequest"
-//		  "403":
-//		    $ref: "#/responses/Forbidden"
-//		  "500":
-//		    $ref: "#/responses/InternalServerError"
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: source
+//	    description: Source configuration
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/Source"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func sourcesPost(d *Daemon, r *http.Request) response.Response {
-	var s source.Source
-
-	// Get source type parameter.
-	sourceType, err := strconv.Atoi(r.FormValue("type"))
-	if err != nil {
-		return response.BadRequest(fmt.Errorf("Source type must be an integer"))
-	}
-
-	// Setup the correct source type for unmarshaling.
-	switch api.SourceType(sourceType) {
-	case api.SOURCETYPE_COMMON:
-		s = &source.InternalCommonSource{}
-	case api.SOURCETYPE_VMWARE:
-		s = &source.InternalVMwareSource{}
-	default:
-		return response.BadRequest(fmt.Errorf("Unsupported source type %d", sourceType))
-	}
+	var s api.Source
 
 	// Decode into the new source.
-	err = json.NewDecoder(r.Body).Decode(&s)
+	err := json.NewDecoder(r.Body).Decode(&s)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
 	// Insert into database.
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.AddSource(tx, s)
+		s, err = d.db.AddSource(tx, s)
+		return err
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", s.GetName(), err))
+		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", s.Name, err))
 	}
 
 	// Trigger a scan of this new source for instances.
 	_ = d.syncInstancesFromSources()
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+s.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+s.Name)
 }
 
 // swagger:operation DELETE /1.0/sources/{name} sources source_delete
@@ -248,8 +204,7 @@ func sourceDelete(d *Daemon, r *http.Request) response.Response {
 //	          description: Status code
 //	          example: 200
 //	        metadata:
-//	          $ref: "#/definitions/CommonSource"
-//	          $ref: "#/definitions/VMwareSource"
+//	          $ref: "#/definitions/Source"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -264,7 +219,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Source name cannot be empty"))
 	}
 
-	var s source.Source
+	var s api.Source
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbSource, err := d.db.GetSource(tx, name)
 		if err != nil {
@@ -278,22 +233,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", name, err))
 	}
 
-	var ret sourcesResult
-	encodedSource, err := json.Marshal(s)
-	if err != nil {
-		return response.BadRequest(err)
-	}
-
-	switch s.(type) {
-	case *source.InternalCommonSource:
-		ret = sourcesResult{Type: api.SOURCETYPE_COMMON, Source: encodedSource}
-	case *source.InternalVMwareSource:
-		ret = sourcesResult{Type: api.SOURCETYPE_VMWARE, Source: encodedSource}
-	default:
-		return response.BadRequest(fmt.Errorf("Unsupported source type %T", s))
-	}
-
-	return response.SyncResponseETag(true, ret, s)
+	return response.SyncResponseETag(true, s, s)
 }
 
 // swagger:operation PUT /1.0/sources/{name} sources source_put
@@ -313,8 +253,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 //	    description: Source definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/CommonSource"
-//	      $ref: "#/definitions/VMwareSource"
+//	      $ref: "#/definitions/Source"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -337,7 +276,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Get the existing source.
-	var s source.Source
+	var s api.Source
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbSource, err := d.db.GetSource(tx, name)
 		if err != nil {
@@ -365,11 +304,12 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 
 	// Update source in the database.
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateSource(tx, s)
+		s, err = d.db.UpdateSource(tx, s)
+		return err
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", s.GetName(), err))
+		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", s.Name, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+s.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+s.Name)
 }

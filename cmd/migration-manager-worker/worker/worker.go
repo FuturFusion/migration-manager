@@ -276,24 +276,23 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 }
 
 func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, sourceRaw json.RawMessage) error {
-	var src source.Source
+	var src api.Source
 
-	switch sourceType {
+	err := json.Unmarshal(sourceRaw, &src)
+	if err != nil {
+		return err
+	}
+
+	switch src.SourceType {
 	case api.SOURCETYPE_VMWARE:
-		vmwareSource := api.VMwareSource{}
-
-		err := json.Unmarshal(sourceRaw, &vmwareSource)
+		w.source, err = source.NewInternalVMwareSourceFrom(src)
 		if err != nil {
 			return err
 		}
 
-		src = source.NewInternalVMwareSourceFrom(vmwareSource)
-
 	default:
 		return fmt.Errorf("Provided source type %q is not usable with `migration-manager-worker`", sourceType.String())
 	}
-
-	w.source = src
 
 	return w.source.Connect(ctx)
 }

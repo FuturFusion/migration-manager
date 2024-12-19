@@ -16,7 +16,7 @@ import (
 )
 
 type InternalVMwareSourceSpecific struct {
-	api.VMwareSourceSpecific `yaml:",inline"`
+	api.VMwareProperties `yaml:",inline"`
 
 	govmomiClient *govmomi.Client
 	vddkConfig    *vmware_nbdkit.VddkConfig
