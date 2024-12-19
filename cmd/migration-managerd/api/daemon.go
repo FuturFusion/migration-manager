@@ -45,6 +45,31 @@ type APIEndpointAction struct {
 	AllowUntrusted bool
 }
 
+type Daemon struct {
+	db *db.Node
+	os *sys.OS
+
+	config    *config.DaemonConfig
+	endpoints *endpoints.Endpoints
+
+	ShutdownCtx    context.Context    // Canceled when shutdown starts.
+	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
+	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
+}
+
+func NewDaemon(cfg *config.DaemonConfig) *Daemon {
+	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
+
+	return &Daemon{
+		db:             &db.Node{},
+		os:             sys.DefaultOS(),
+		config:         cfg,
+		ShutdownCtx:    shutdownCtx,
+		ShutdownCancel: shutdownCancel,
+		ShutdownDoneCh: make(chan error),
+	}
+}
+
 // allowAuthenticated is an AccessHandler which allows only authenticated requests. This should be used in conjunction
 // with further access control within the handler (e.g. to filter resources the user is able to view/edit).
 func allowAuthenticated(d *Daemon, r *http.Request) response.Response {
@@ -120,31 +145,6 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 
 	// Reject unauthorized.
 	return false, "", "", nil
-}
-
-type Daemon struct {
-	db *db.Node
-	os *sys.OS
-
-	config    *config.DaemonConfig
-	endpoints *endpoints.Endpoints
-
-	ShutdownCtx    context.Context    // Canceled when shutdown starts.
-	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
-	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
-}
-
-func NewDaemon(cfg *config.DaemonConfig) *Daemon {
-	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
-
-	return &Daemon{
-		db:             &db.Node{},
-		os:             sys.DefaultOS(),
-		config:         cfg,
-		ShutdownCtx:    shutdownCtx,
-		ShutdownCancel: shutdownCancel,
-		ShutdownDoneCh: make(chan error),
-	}
 }
 
 func (d *Daemon) Start() error {
