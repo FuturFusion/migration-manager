@@ -63,7 +63,7 @@ func TestNewWorker(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := worker.NewWorker(tc.endpoint, uuid)
+			_, err := worker.NewWorker(tc.endpoint, uuid, "")
 			tc.assertErr(t, err)
 		})
 	}
@@ -329,7 +329,7 @@ func TestRun(t *testing.T) {
 				},
 			}
 
-			worker, err := worker.NewWorker(ts.URL, uuid,
+			worker, err := worker.NewWorker(ts.URL, uuid, "",
 				// Inject source into worker.
 				worker.WithSource(source),
 				// No need to wait for a long time during tests.
