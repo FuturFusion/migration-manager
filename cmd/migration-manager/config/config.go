@@ -4,15 +4,18 @@ import (
 	"os"
 	"path"
 
+	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	AllowInsecureTLS       bool   `yaml:"allow_insecure_tls"`
-	ConfigDir              string `yaml:"config_dir"`
-	MigrationManagerServer string `yaml:"migration_manager_server"`
-	TLSClientCertFile      string `yaml:"tls_client_cert_file"`
-	TLSClientKeyFile       string `yaml:"tls_client_key_file"`
+	AllowInsecureTLS       bool                              `yaml:"allow_insecure_tls"`
+	AuthType               string                            `yaml:"auth_type"`
+	ConfigDir              string                            `yaml:"config_dir"`
+	MigrationManagerServer string                            `yaml:"migration_manager_server"`
+	OIDCTokens             *oidc.Tokens[*oidc.IDTokenClaims] `yaml:"oidc_tokens"`
+	TLSClientCertFile      string                            `yaml:"tls_client_cert_file"`
+	TLSClientKeyFile       string                            `yaml:"tls_client_key_file"`
 }
 
 func NewConfig(configDir string) *Config {

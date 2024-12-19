@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -32,15 +33,12 @@ var api10 = []APIEndpoint{
 	targetsCmd,
 }
 
-// swagger:operation GET /1.0?public server server_get_untrusted
+// swagger:operation GET /1.0 server server_get_untrusted
 //
 //	Get the server environment
 //
 //	Shows a small subset of the server environment and configuration
 //	which is required by untrusted clients to reach a server.
-//
-//	The `?public` part of the URL isn't required, it's simply used to
-//	separate the two behaviors of this endpoint.
 //
 //	---
 //	produces:
@@ -73,7 +71,17 @@ func api10Get(d *Daemon, r *http.Request) response.Response {
 		APIStatus:   api.APIStatus,
 		APIVersion:  api.APIVersion,
 		Auth:        "untrusted",
-		AuthMethods: []string{},
+		AuthMethods: []string{"oidc", "tls"},
+	}
+
+	// Return the authentication method, if any, that the client is using.
+	ctx := r.Context()
+	auth := ctx.Value(request.CtxProtocol)
+	if auth != nil {
+		v, ok := auth.(string)
+		if ok {
+			srv.Auth = v
+		}
 	}
 
 	return response.SyncResponseETag(true, srv, nil)

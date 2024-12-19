@@ -16,6 +16,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
 	"github.com/FuturFusion/migration-manager/internal/server/endpoints"
 	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
@@ -48,6 +49,8 @@ type APIEndpointAction struct {
 type Daemon struct {
 	db *db.Node
 	os *sys.OS
+
+	oidcVerifier *oidc.Verifier
 
 	config    *config.DaemonConfig
 	endpoints *endpoints.Endpoints
@@ -130,6 +133,16 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 	// Load the certificates.
 	trustCACertificates := false // FIXME -- not checking if client cert is signed by trusted CA
 
+	// Check for JWT token signed by an OpenID Connect provider.
+	if d.oidcVerifier != nil && d.oidcVerifier.IsRequest(r) {
+		userName, err := d.oidcVerifier.Auth(d.ShutdownCtx, w, r)
+		if err != nil {
+			return false, "", "", err
+		}
+
+		return true, userName, api.AuthenticationMethodOIDC, nil
+	}
+
 	// Validate regular TLS certificates.
 	var networkCert *localtls.CertInfo
 	if d.endpoints != nil {
@@ -176,6 +189,14 @@ func (d *Daemon) Start() error {
 	networkCert, err := internalUtil.LoadCert(d.os.VarDir)
 	if err != nil {
 		return err
+	}
+
+	// Setup OIDC authentication.
+	if d.config.OidcIssuer != "" && d.config.OidcClientID != "" {
+		d.oidcVerifier, err = oidc.NewVerifier(d.config.OidcIssuer, d.config.OidcClientID, d.config.OidcScope, d.config.OidcAudience, d.config.OidcClaim)
+		if err != nil {
+			return err
+		}
 	}
 
 	/* Setup the web server */
@@ -234,8 +255,16 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 		// Authentication
 		trusted, username, protocol, err := d.Authenticate(w, r)
 		if err != nil {
-			_ = response.Unauthorized(err).Render(w)
-			return
+			_, ok := err.(*oidc.AuthError)
+			if ok {
+				// Ensure the OIDC headers are set if needed.
+				if d.oidcVerifier != nil {
+					_ = d.oidcVerifier.WriteHeaders(w)
+				}
+
+				_ = response.Unauthorized(err).Render(w)
+				return
+			}
 		}
 
 		logCtx := logger.Ctx{"method": r.Method, "url": r.URL.RequestURI(), "ip": r.RemoteAddr}
@@ -253,6 +282,10 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 		} else if untrustedOk && r.Header.Get("X-MigrationManager-authenticated") == "" {
 			logger.Debug(fmt.Sprintf("Allowing untrusted %s", r.Method), logger.Ctx{"url": r.URL.RequestURI(), "ip": r.RemoteAddr})
 		} else {
+			if d.oidcVerifier != nil {
+				_ = d.oidcVerifier.WriteHeaders(w)
+			}
+
 			logger.Warn("Rejecting request from untrusted client", logger.Ctx{"ip": r.RemoteAddr})
 			_ = response.Forbidden(nil).Render(w)
 			return
@@ -327,6 +360,11 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 			resp = handleRequest(c.Patch)
 		default:
 			resp = response.NotFound(fmt.Errorf("Method %q not found", r.Method))
+		}
+
+		// If sending out Forbidden, make sure we have OIDC headers.
+		if resp.Code() == http.StatusForbidden && d.oidcVerifier != nil {
+			_ = d.oidcVerifier.WriteHeaders(w)
 		}
 
 		// Handle errors

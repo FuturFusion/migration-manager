@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/config"
+	"github.com/FuturFusion/migration-manager/cmd/migration-manager/oidc"
 )
 
 const MIGRATION_MANAGER_UNIX_SOCKET = "/run/migration-manager/unix.socket"
@@ -124,12 +125,14 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 
 	c.config.AllowInsecureTLS = insecure
 
-	authType, err := c.Asker.AskChoice("What type of authentication should be used (none, tls)? [none] ", []string{"none", "tls"}, "none")
+	c.config.AuthType, err = c.Asker.AskChoice("What type of authentication should be used (none, oidc, tls)? [none] ", []string{"none", "oidc", "tls"}, "none")
 	if err != nil {
 		return err
 	}
 
-	if authType == "tls" {
+	if c.config.AuthType == "none" {
+		c.config.AuthType = "untrusted"
+	} else if c.config.AuthType == "tls" {
 		c.config.TLSClientCertFile, err = c.Asker.AskString("Please enter path to client TLS certificate: ", "", func(s string) error {
 			if !util.PathExists(s) {
 				return fmt.Errorf("Cannot read file")
@@ -153,6 +156,22 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 		}
 	}
 
+	// Verify a simple connection to the migration manager.
+	resp, err := c.doHTTPRequestV1("", http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+
+	serverInfo := api.ServerUntrusted{}
+	err = responseToStruct(resp, &serverInfo)
+	if err != nil {
+		return err
+	}
+
+	if serverInfo.Auth != c.config.AuthType {
+		return fmt.Errorf("Received authentication mismatch: got '%s', expected '%s'", serverInfo.Auth, c.config.AuthType)
+	}
+
 	return c.config.SaveConfig()
 }
 
@@ -174,6 +193,7 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 	var u *url.URL
 	var err error
 	var client *http.Client
+	var resp *http.Response
 
 	if !c.FlagForceLocal && strings.HasPrefix(c.config.MigrationManagerServer, "https://") {
 		u, err = url.Parse(c.config.MigrationManagerServer)
@@ -208,11 +228,22 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := client.Do(req)
+	if c.config.AuthType == "oidc" {
+		oidcClient := oidc.NewOIDCClient(c.config.OIDCTokens, c.config.AllowInsecureTLS)
+
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
+		resp, err = oidcClient.Do(req) // nolint: bodyclose
+
+		c.config.OIDCTokens = oidcClient.GetOIDCTokens()
+	} else {
+		resp, err = client.Do(req) // nolint: bodyclose
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
+	// Linter isn't smart enough to determine resp.Body will be closed...
 	defer resp.Body.Close()
 
 	decoder := json.NewDecoder(resp.Body)
