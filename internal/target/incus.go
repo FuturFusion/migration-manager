@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -159,7 +158,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
 	ret := api.InstancesPost{
-		Name: cleanupInstanceName(instanceDef.Name),
+		Name: instanceDef.GetName(),
 		Source: api.InstanceSource{
 			Type: "none",
 		},
@@ -281,7 +280,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool 
 	}
 
 	reverter.Add(func() {
-		_, _ = t.incusClient.DeleteInstance(cleanupInstanceName(apiDef.Name))
+		_, _ = t.incusClient.DeleteInstance(apiDef.Name)
 	})
 
 	err = op.Wait()
@@ -295,7 +294,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool 
 }
 
 func (t *InternalIncusTarget) DeleteVM(name string) error {
-	op, err := t.incusClient.DeleteInstance(cleanupInstanceName(name))
+	op, err := t.incusClient.DeleteInstance(name)
 	if err != nil {
 		return err
 	}
@@ -311,7 +310,7 @@ func (t *InternalIncusTarget) StartVM(name string) error {
 		Stateful: false,
 	}
 
-	op, err := t.incusClient.UpdateInstanceState(cleanupInstanceName(name), req, "")
+	op, err := t.incusClient.UpdateInstanceState(name, req, "")
 	if err != nil {
 		return err
 	}
@@ -327,7 +326,7 @@ func (t *InternalIncusTarget) StopVM(name string, force bool) error {
 		Stateful: false,
 	}
 
-	op, err := t.incusClient.UpdateInstanceState(cleanupInstanceName(name), req, "")
+	op, err := t.incusClient.UpdateInstanceState(name, req, "")
 	if err != nil {
 		return err
 	}
@@ -351,7 +350,7 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 
 	// It can take a while for incus-agent to start when booting a VM, so retry for up to two minutes.
 	for i := 0; i < 120; i++ {
-		err = t.incusClient.CreateInstanceFile(cleanupInstanceName(instanceName), filepath.Join(destDir, file), args)
+		err = t.incusClient.CreateInstanceFile(instanceName, filepath.Join(destDir, file), args)
 
 		if err == nil {
 			// Pause a second before returning to allow things time to settle.
@@ -375,22 +374,16 @@ func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []stri
 
 	args := incus.InstanceExecArgs{}
 
-	_, err := t.incusClient.ExecInstance(cleanupInstanceName(instanceName), req, &args)
+	_, err := t.incusClient.ExecInstance(instanceName, req, &args)
 	return err
 }
 
 func (t *InternalIncusTarget) GetInstance(name string) (*api.Instance, string, error) {
-	return t.incusClient.GetInstance(cleanupInstanceName(name))
+	return t.incusClient.GetInstance(name)
 }
 
 func (t *InternalIncusTarget) UpdateInstance(name string, instanceDef api.InstancePut, ETag string) (incus.Operation, error) {
-	return t.incusClient.UpdateInstance(cleanupInstanceName(name), instanceDef, ETag)
-}
-
-func cleanupInstanceName(name string) string {
-	// An instance name can only contain alphanumeric and hyphen characters.
-	nonalpha := regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
-	return nonalpha.ReplaceAllString(name, "")
+	return t.incusClient.UpdateInstance(name, instanceDef, ETag)
 }
 
 func (t *InternalIncusTarget) GetStoragePoolVolume(pool string, volType string, name string) (*api.StorageVolume, string, error) {

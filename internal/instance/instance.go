@@ -16,7 +16,7 @@ type InternalInstance struct {
 }
 
 // Returns a new Instance ready for use.
-func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID *int, batchID *int, name string, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInBytes int64, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
+func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID *int, batchID *int, arch string, os string, osVersion string, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, numberCPUs int, memoryInBytes int64, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
 	secretToken, _ := uuid.NewRandom()
 
 	return &InternalInstance{
@@ -29,7 +29,6 @@ func NewInstance(UUID uuid.UUID, inventoryPath string, sourceID int, targetID *i
 			SourceID:              sourceID,
 			TargetID:              targetID,
 			BatchID:               batchID,
-			Name:                  name,
 			Architecture:          arch,
 			OS:                    os,
 			OSVersion:             osVersion,
@@ -55,7 +54,7 @@ func (i *InternalInstance) GetInventoryPath() string {
 }
 
 func (i *InternalInstance) GetName() string {
-	return i.Name
+	return i.Instance.GetName()
 }
 
 func (i *InternalInstance) CanBeModified() bool {

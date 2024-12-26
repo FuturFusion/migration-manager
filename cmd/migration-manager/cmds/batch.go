@@ -388,7 +388,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	cmd.Printf("\n  - Instances:\n")
 	for _, i := range instances {
-		cmd.Printf("    - %s (%s)\n", i.Name, i.MigrationStatusString)
+		cmd.Printf("    - %s (%s)\n", i.InventoryPath, i.MigrationStatusString)
 	}
 
 	return nil

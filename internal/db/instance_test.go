@@ -20,7 +20,7 @@ var (
 	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:6443")
 	testBatch        = batch.NewBatch("TestBatch", 1, "", "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()
-	instanceA        = instance.NewInstance(instanceAUUID, "/path/one", 1, ptr.To(1), nil, "UbuntuVM", "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{
+	instanceA        = instance.NewInstance(instanceAUUID, "/path/UbuntuVM", 1, ptr.To(1), nil, "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{
 		{
 			Name:                      "disk",
 			DifferentialSyncSupported: true,
@@ -33,7 +33,7 @@ var (
 		},
 	}, 2, 2048, false, false, false)
 	instanceBUUID, _ = uuid.NewRandom()
-	instanceB        = instance.NewInstance(instanceBUUID, "/path/two", 1, ptr.To(1), nil, "WindowsVM", "x86_64", "Windows", "11", []api.InstanceDiskInfo{
+	instanceB        = instance.NewInstance(instanceBUUID, "/path/WindowsVM", 1, ptr.To(1), nil, "x86_64", "Windows", "11", []api.InstanceDiskInfo{
 		{
 			Name:                      "disk",
 			DifferentialSyncSupported: false,
@@ -49,7 +49,7 @@ var (
 		},
 	}, 4, 4096, false, true, true)
 	instanceCUUID, _ = uuid.NewRandom()
-	instanceC        = instance.NewInstance(instanceCUUID, "/path/three", 1, nil, ptr.To(1), "DebianVM", "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{
+	instanceC        = instance.NewInstance(instanceCUUID, "/path/DebianVM", 1, nil, ptr.To(1), "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{
 		{
 			Name:                      "disk1",
 			DifferentialSyncSupported: true,
@@ -117,7 +117,6 @@ func TestInstanceDatabaseActions(t *testing.T) {
 
 	// Test updating an instance.
 	instanceB.InventoryPath = "/foo/bar"
-	instanceB.Name = "FooBar"
 	instanceB.NumberCPUs = 8
 	instanceB.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
 	instanceB.MigrationStatusString = instanceB.MigrationStatus.String()

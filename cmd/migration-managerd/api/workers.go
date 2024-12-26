@@ -133,11 +133,6 @@ func (d *Daemon) syncInstancesFromSources() bool {
 				instanceUpdated := false
 
 				// First, check any fields that cannot be changed through the migration manager
-				if existingInstance.Name != i.Name {
-					existingInstance.Name = i.Name
-					instanceUpdated = true
-				}
-
 				if existingInstance.Architecture != i.Architecture {
 					existingInstance.Architecture = i.Architecture
 					instanceUpdated = true
