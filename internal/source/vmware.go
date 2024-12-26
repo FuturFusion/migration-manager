@@ -212,7 +212,6 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource:  time.Now().UTC(),
 				SourceID:              s.DatabaseID,
-				Name:                  vmProps.Summary.Config.Name,
 				Architecture:          arch,
 				OS:                    strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
 				OSVersion:             vmProps.Summary.Config.GuestFullName,

@@ -14,7 +14,8 @@ type Instance interface {
 	// Returns the inventory path for this instance.
 	GetInventoryPath() string
 
-	// Returns the name of this instance.
+	// Returns the name of the instance, which may not be unique among all instances for a given source.
+	// If a unique, human-readable identifier is needed, use the GetInventoryPath() method.
 	GetName() string
 
 	// Returns true if the instance can be modified.

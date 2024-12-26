@@ -2,6 +2,8 @@ package api
 
 import (
 	"fmt"
+	"path/filepath"
+	"regexp"
 	"time"
 
 	"github.com/google/uuid"
@@ -89,10 +91,6 @@ type Instance struct {
 	// Example: 1
 	BatchID *int `json:"batch_id,omitempty" yaml:"batch_id,omitempty"`
 
-	// The name of this instance
-	// Example: UbuntuServer
-	Name string `json:"name" yaml:"name"`
-
 	// The architecture of this instance
 	// Example: x86_64
 	Architecture string `json:"architecture" yaml:"architecture"`
@@ -130,6 +128,17 @@ type Instance struct {
 	// Is a TPM device present for this instance
 	// Example: false
 	TPMPresent bool `json:"tpm_present" yaml:"tpm_present"`
+}
+
+// Returns the name of the instance, which may not be unique among all instances for a given source.
+// If a unique, human-readable identifier is needed, use the InventoryPath property.
+func (i *Instance) GetName() string {
+	// Get the last part of the inventory path to use as a base for the instance name.
+	base := filepath.Base(i.InventoryPath)
+
+	// An instance name can only contain alphanumeric and hyphen characters.
+	nonalpha := regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
+	return nonalpha.ReplaceAllString(base, "")
 }
 
 // InstanceDiskInfo defines disk information for an Instance.

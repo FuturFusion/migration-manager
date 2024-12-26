@@ -256,7 +256,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 
 	// If the instance is already doing something, don't start something else.
 	if i.MigrationStatus != api.MIGRATIONSTATUS_IDLE {
-		return response.BadRequest(fmt.Errorf("Instance '%s' isn't idle: %s (%s)", i.Name, i.MigrationStatus.String(), i.MigrationStatusString))
+		return response.BadRequest(fmt.Errorf("Instance '%s' isn't idle: %s (%s)", i.GetInventoryPath(), i.MigrationStatus.String(), i.MigrationStatusString))
 	}
 
 	// Setup the default "idle" command

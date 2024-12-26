@@ -145,9 +145,9 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Num vCPUs", "Memory", "Disk", "NIC"}
+	header := []string{"Inventory Path", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Num vCPUs", "Memory", "Disk", "NIC"}
 	if c.flagVerbose {
-		header = append(header, "UUID", "Inventory Path", "Last Sync")
+		header = append(header, "UUID", "Last Sync")
 	}
 
 	data := [][]string{}
@@ -185,10 +185,10 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			i.MigrationStatusString = i.MigrationStatus.String()
 		}
 
-		row := []string{i.Name, sourcesMap[i.SourceID], getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2), strings.Join(disks, "\n"), strings.Join(nics, "\n")}
+		row := []string{i.InventoryPath, sourcesMap[i.SourceID], getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2), strings.Join(disks, "\n"), strings.Join(nics, "\n")}
 
 		if c.flagVerbose {
-			row = append(row, i.UUID.String(), i.InventoryPath, i.LastUpdateFromSource.String())
+			row = append(row, i.UUID.String(), i.LastUpdateFromSource.String())
 		}
 
 		data = append(data, row)
