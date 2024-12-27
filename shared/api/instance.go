@@ -67,6 +67,10 @@ type Instance struct {
 	// Example: /SHF/vm/Migration Tests/DebianTest
 	InventoryPath string `json:"inventory_path" yaml:"inventory_path"`
 
+	// Description of this instance
+	// Example: "Oracle Database"
+	Annotation string `json:"annotation" yaml:"annotation"`
+
 	// The migration status of this instance
 	// Example: MIGRATIONSTATUS_RUNNING
 	MigrationStatus MigrationStatusType `json:"migration_status" yaml:"migration_status"`
@@ -91,9 +95,17 @@ type Instance struct {
 	// Example: 1
 	BatchID *int `json:"batch_id,omitempty" yaml:"batch_id,omitempty"`
 
+	// Guest tools version, if known
+	// Example: 12352
+	GuestToolsVersion int `json:"guest_tools_version" yaml:"guest_tools_version"`
+
 	// The architecture of this instance
 	// Example: x86_64
 	Architecture string `json:"architecture" yaml:"architecture"`
+
+	// The hardware version of the instance
+	// Example: vmx-21
+	HardwareVersion string `json:"hardware_version" yaml:"hardware_version"`
 
 	// The name of the operating system
 	// Example: Ubuntu
@@ -103,19 +115,23 @@ type Instance struct {
 	// Example: 24.04
 	OSVersion string `json:"os_version" yaml:"os_version"`
 
+	// Generic devices for this instance
+	Devices []InstanceDeviceInfo `json:"devices" yaml:"devices"`
+
 	// Disk(s) for this instance
 	Disks []InstanceDiskInfo `json:"disks" yaml:"disks"`
 
 	// NIC(s) for this instance
 	NICs []InstanceNICInfo `json:"nics" yaml:"nics"`
 
-	// The number of vCPUs for this instance
-	// Example: 4
-	NumberCPUs int `json:"number_cpus" yaml:"number_cpus"`
+	// Snapshot(s) for this instance
+	Snapshots []InstanceSnapshotInfo `json:"snapshots" yaml:"snapshots"`
 
-	// The amount of memory for this instance, in bytes
-	// Example: 4294967296
-	MemoryInBytes int64 `json:"memory_in_bytes" yaml:"memory_in_bytes"`
+	// vCPUs configuration for this instance
+	CPU InstanceCPUInfo `json:"cpu" yaml:"cpu"`
+
+	// Memory configuration for this instance
+	Memory InstanceMemoryInfo `json:"memory" yaml:"memory"`
 
 	// Does this instance boot with legacy BIOS rather than UEFI
 	// Example: false
@@ -141,6 +157,40 @@ func (i *Instance) GetName() string {
 	return nonalpha.ReplaceAllString(base, "")
 }
 
+// InstanceCPUInfo defines CPU information for an Instance.
+//
+// swagger:model
+type InstanceCPUInfo struct {
+	// The number of vCPUs for this instance
+	// Example: 4
+	NumberCPUs int `json:"number_cpus" yaml:"number_cpus"`
+
+	// List of nodes (if any), that limit what CPU(s) may be used by the instance
+	// Example: [0,1,2,3]
+	CPUAffinity []int32 `json:"cpu_affinity" yaml:"cpu_affinity"`
+
+	// Number of cores per socket
+	// Example: 4
+	NumberOfCoresPerSocket int `json:"number_of_cores_per_socket" yaml:"number_of_cores_per_socket"`
+}
+
+// InstanceDeviceInfo defines generic device information for an Instance. Disks and NICs have specific structs tailored to their needs.
+//
+// swagger:model
+type InstanceDeviceInfo struct {
+	// The type of device
+	// Example: PS2
+	Type string `json:"type" yaml:"type"`
+
+	// Device display label
+	// Example: Keyboard
+	Label string `json:"label" yaml:"label"`
+
+	// Device summary description
+	// Example: Keyboard
+	Summary string `json:"summary" yaml:"summary"`
+}
+
 // InstanceDiskInfo defines disk information for an Instance.
 //
 // swagger:model
@@ -148,6 +198,14 @@ type InstanceDiskInfo struct {
 	// The name of this disk
 	// Example: sda
 	Name string `json:"name" yaml:"name"`
+
+	// The type of this disk (HDD or CDROM)
+	// Example: HDD
+	Type string `json:"type" yaml:"type"`
+
+	// The virtualized controller model
+	// Example: SCSI
+	ControllerModel string `json:"controller_model" yaml:"controller_model"`
 
 	// Flag that indicates if differential sync is supported
 	// For VMware sources, this requires setting a VM's `ctkEnabled` and `scsix:x.ctkEnabled` options
@@ -157,6 +215,23 @@ type InstanceDiskInfo struct {
 	// The size of this disk, in bytes
 	// Example: 1073741824
 	SizeInBytes int64 `json:"size_in_bytes" yaml:"size_in_bytes"`
+
+	// Is this disk shared with multiple VMs
+	// Example: false
+	IsShared bool `json:"is_shared" yaml:"is_shared"`
+}
+
+// InstanceMemoryInfo defines memory information for an Instance.
+//
+// swagger:model
+type InstanceMemoryInfo struct {
+	// The amount of memory for this instance, in bytes
+	// Example: 4294967296
+	MemoryInBytes int64 `json:"memory_in_bytes" yaml:"memory_in_bytes"`
+
+	// Memory reservation, in bytes
+	// Example: 4294967296
+	MemoryReservationInBytes int64 `json:"memory_reservation_in_bytes" yaml:"memory_reservation_in_bytes"`
 }
 
 // InstancNICInfo defines network information for an Instance.
@@ -167,7 +242,32 @@ type InstanceNICInfo struct {
 	// Example: default
 	Network string `json:"network" yaml:"network"`
 
+	// The virtualized adapter model
+	// Example: E1000e
+	AdapterModel string `json:"adapter_model" yaml:"adapter_model"`
+
 	// The MAC address for this NIC
 	// Example: 00:16:3e:05:6c:38
 	Hwaddr string `json:"hwaddr" yaml:"hwaddr"`
+}
+
+// InstancSnapshotInfo defines snapshot information for an Instance.
+//
+// swagger:model
+type InstanceSnapshotInfo struct {
+	// The name of this snapshot
+	// Example: snapshot1
+	Name string `json:"name" yaml:"name"`
+
+	// Description of this snapshot
+	// Example: "First snapshot"
+	Description string `json:"description" yaml:"description"`
+
+	// Creation time of this snapshot
+	// Example: 2024-11-12 16:15:00 +0000 UTC
+	CreationTime time.Time `json:"creation_time" yaml:"creation_time"`
+
+	// Unique identifier of this snapshot
+	// Example: 123
+	ID int `json:"id" yaml:"id"`
 }

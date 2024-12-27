@@ -132,9 +132,23 @@ func (d *Daemon) syncInstancesFromSources() bool {
 				// An instance already exists in the database; update with any changes from the source.
 				instanceUpdated := false
 
-				// First, check any fields that cannot be changed through the migration manager
+				if existingInstance.Annotation != i.Annotation {
+					existingInstance.Annotation = i.Annotation
+					instanceUpdated = true
+				}
+
+				if existingInstance.GuestToolsVersion != i.GuestToolsVersion {
+					existingInstance.GuestToolsVersion = i.GuestToolsVersion
+					instanceUpdated = true
+				}
+
 				if existingInstance.Architecture != i.Architecture {
 					existingInstance.Architecture = i.Architecture
+					instanceUpdated = true
+				}
+
+				if existingInstance.HardwareVersion != i.HardwareVersion {
+					existingInstance.HardwareVersion = i.HardwareVersion
 					instanceUpdated = true
 				}
 
@@ -148,6 +162,11 @@ func (d *Daemon) syncInstancesFromSources() bool {
 					instanceUpdated = true
 				}
 
+				if !slices.Equal(existingInstance.Devices, i.Devices) {
+					existingInstance.Devices = i.Devices
+					instanceUpdated = true
+				}
+
 				if !slices.Equal(existingInstance.Disks, i.Disks) {
 					existingInstance.Disks = i.Disks
 					instanceUpdated = true
@@ -158,13 +177,33 @@ func (d *Daemon) syncInstancesFromSources() bool {
 					instanceUpdated = true
 				}
 
-				if existingInstance.NumberCPUs != i.NumberCPUs {
-					existingInstance.NumberCPUs = i.NumberCPUs
+				if !slices.Equal(existingInstance.Snapshots, i.Snapshots) {
+					existingInstance.Snapshots = i.Snapshots
 					instanceUpdated = true
 				}
 
-				if existingInstance.MemoryInBytes != i.MemoryInBytes {
-					existingInstance.MemoryInBytes = i.MemoryInBytes
+				if existingInstance.CPU.NumberCPUs != i.CPU.NumberCPUs {
+					existingInstance.CPU.NumberCPUs = i.CPU.NumberCPUs
+					instanceUpdated = true
+				}
+
+				if !slices.Equal(existingInstance.CPU.CPUAffinity, i.CPU.CPUAffinity) {
+					existingInstance.CPU.CPUAffinity = i.CPU.CPUAffinity
+					instanceUpdated = true
+				}
+
+				if existingInstance.CPU.NumberOfCoresPerSocket != i.CPU.NumberOfCoresPerSocket {
+					existingInstance.CPU.NumberOfCoresPerSocket = i.CPU.NumberOfCoresPerSocket
+					instanceUpdated = true
+				}
+
+				if existingInstance.Memory.MemoryInBytes != i.Memory.MemoryInBytes {
+					existingInstance.Memory.MemoryInBytes = i.Memory.MemoryInBytes
+					instanceUpdated = true
+				}
+
+				if existingInstance.Memory.MemoryReservationInBytes != i.Memory.MemoryReservationInBytes {
+					existingInstance.Memory.MemoryReservationInBytes = i.Memory.MemoryReservationInBytes
 					instanceUpdated = true
 				}
 

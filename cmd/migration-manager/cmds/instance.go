@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -145,9 +146,9 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Inventory Path", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Num vCPUs", "Memory", "Disk", "NIC"}
+	header := []string{"Inventory Path", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Disks", "NICs", "Num vCPUs", "Memory"}
 	if c.flagVerbose {
-		header = append(header, "UUID", "Last Sync")
+		header = []string{"UUID", "Inventory Path", "Annotation", "Source", "Target", "Batch", "Migration Status", "Migration Status String", "Last Update from Source", "Guest Tools Version", "Architecture", "Hardware Version", "OS", "OS Version", "Devices", "Disks", "NICs", "Snapshots", "Num vCPUs", "CPU Affinity", "Cores Per Socket", "Memory", "Memory Reservation", "Use Legacy BIOS", "Secure Boot Enabled", "TPM Present"}
 	}
 
 	data := [][]string{}
@@ -164,31 +165,47 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		if override.NumberCPUs != 0 {
-			i.NumberCPUs = override.NumberCPUs
+			i.CPU.NumberCPUs = override.NumberCPUs
 		}
 
 		if override.MemoryInBytes != 0 {
-			i.MemoryInBytes = override.MemoryInBytes
+			i.Memory.MemoryInBytes = override.MemoryInBytes
 		}
 
 		disks := []string{}
 		for _, disk := range i.Disks {
-			disks = append(disks, disk.Name+" ("+units.GetByteSizeStringIEC(disk.SizeInBytes, 2)+")")
+			disks = append(disks, disk.Type+": "+disk.Name+" ("+disk.ControllerModel+", "+units.GetByteSizeStringIEC(disk.SizeInBytes, 2)+")")
 		}
 
 		nics := []string{}
 		for _, nic := range i.NICs {
-			nics = append(nics, nic.Hwaddr+" ("+nic.Network+")")
+			nics = append(nics, nic.Hwaddr+" ("+nic.AdapterModel+", "+nic.Network+")")
 		}
 
 		if i.MigrationStatusString == "" {
 			i.MigrationStatusString = i.MigrationStatus.String()
 		}
 
-		row := []string{i.InventoryPath, sourcesMap[i.SourceID], getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatusString, i.OS, i.OSVersion, strconv.Itoa(i.NumberCPUs), units.GetByteSizeStringIEC(i.MemoryInBytes, 2), strings.Join(disks, "\n"), strings.Join(nics, "\n")}
+		row := []string{i.InventoryPath, sourcesMap[i.SourceID], getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatusString, i.OS, i.OSVersion, strings.Join(disks, "\n"), strings.Join(nics, "\n"), strconv.Itoa(i.CPU.NumberCPUs), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2)}
 
 		if c.flagVerbose {
-			row = append(row, i.UUID.String(), i.LastUpdateFromSource.String())
+			devices := []string{}
+			for _, device := range i.Devices {
+				devices = append(devices, device.Type+": "+device.Label)
+			}
+
+			snapshots := []string{}
+			for _, snapshot := range i.Snapshots {
+				snapshots = append(snapshots, snapshot.Name+" ("+snapshot.CreationTime.String()+")")
+			}
+
+			CPUAffinity := ""
+			if len(i.CPU.CPUAffinity) > 0 {
+				v, _ := json.Marshal(i.CPU.CPUAffinity)
+				CPUAffinity = string(v)
+			}
+
+			row = []string{i.UUID.String(), i.InventoryPath, i.Annotation, sourcesMap[i.SourceID], getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatus.String(), i.MigrationStatusString, i.LastUpdateFromSource.String(), strconv.Itoa(i.GuestToolsVersion), i.Architecture, i.HardwareVersion, i.OS, i.OSVersion, strings.Join(devices, "\n"), strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(i.CPU.NumberCPUs), CPUAffinity, strconv.Itoa(i.CPU.NumberOfCoresPerSocket), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), units.GetByteSizeStringIEC(i.Memory.MemoryReservationInBytes, 2), strconv.FormatBool(i.UseLegacyBios), strconv.FormatBool(i.SecureBootEnabled), strconv.FormatBool(i.TPMPresent)}
 		}
 
 		data = append(data, row)
