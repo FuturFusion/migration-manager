@@ -172,6 +172,11 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	ret.Architecture = instanceDef.Architecture
 	ret.Config["image.architecture"] = instanceDef.Architecture
 	ret.Config["image.description"] = "Auto-imported from VMware"
+
+	if instanceDef.Annotation != "" {
+		ret.Config["image.description"] = instanceDef.Annotation
+	}
+
 	ret.Config["image.os"] = instanceDef.OS
 	ret.Config["image.release"] = instanceDef.OSVersion
 
@@ -244,6 +249,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	ret.Description = ret.Config["image.description"]
 
 	// Set the migration source as a user tag to allow easy filtering.
+	ret.Config["user.migration.source_type"] = "VMware"
 	ret.Config["user.migration.source"] = sourceName
 
 	// Handle Windows-specific configuration.
