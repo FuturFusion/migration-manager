@@ -7,7 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -170,6 +172,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			tpmPresent = true
 		}
 
+		// Determine if a TPM is present.
+		if *vmProps.Summary.Config.TpmPresent {
+			tpmPresent = true
+		}
+
 		// Handle VMs without UEFI and/or secure boot.
 		if vmProps.Config.Firmware == "bios" {
 			useLegacyBios = true
@@ -180,27 +187,151 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			secureBootEnabled = false
 		}
 
-		// Process any disks and networks attached to the VM.
-		disks := []api.InstanceDiskInfo{}
-		nics := []api.InstanceNICInfo{}
-		for _, device := range object.VirtualDeviceList(vmProps.Config.Hardware.Device) {
-			switch md := device.(type) {
-			case *types.VirtualDisk:
-				b, ok := md.Backing.(types.BaseVirtualDeviceFileBackingInfo)
-				if !ok {
-					continue
-				}
+		// Get list of all devices attached to the VM.
+		vmDevices := object.VirtualDeviceList(vmProps.Config.Hardware.Device)
 
-				disks = append(disks, api.InstanceDiskInfo{Name: b.GetVirtualDeviceFileBackingInfo().FileName, DifferentialSyncSupported: *vmProps.Config.ChangeTrackingEnabled, SizeInBytes: md.CapacityInBytes})
-			case types.BaseVirtualEthernetCard:
-				networkName := ""
-				backing, ok := md.GetVirtualEthernetCard().VirtualDevice.Backing.(*types.VirtualEthernetCardNetworkBackingInfo)
-				if ok {
-					networkName = backing.Network.Value
-				}
+		// Get information about non-disk or NIC devices.
+		devices := []api.InstanceDeviceInfo{}
 
-				nics = append(nics, api.InstanceNICInfo{Network: networkName, Hwaddr: md.GetVirtualEthernetCard().MacAddress})
+		// Devices attached to a PCI controller.
+		for _, device := range vmDevices.SelectByType((*types.VirtualIDEController)(nil)) {
+			controller, ok := device.(*types.VirtualPCIController)
+			if !ok {
+				continue
 			}
+
+			devices = append(devices, getDeviceInfo(vmDevices, controller.Device, "PCI")...)
+		}
+
+		// Devices attached to a PS2 controller.
+		for _, device := range vmDevices.SelectByType((*types.VirtualPS2Controller)(nil)) {
+			controller, ok := device.(*types.VirtualPS2Controller)
+			if !ok {
+				continue
+			}
+
+			devices = append(devices, getDeviceInfo(vmDevices, controller.Device, "PS2")...)
+		}
+
+		// Devices attached to a Super IO controller.
+		for _, device := range vmDevices.SelectByType((*types.VirtualSIOController)(nil)) {
+			controller, ok := device.(*types.VirtualSIOController)
+			if !ok {
+				continue
+			}
+
+			devices = append(devices, getDeviceInfo(vmDevices, controller.Device, "Super IO")...)
+		}
+
+		// Devices attached to a USB controller.
+		for _, device := range vmDevices.SelectByType((*types.VirtualUSBController)(nil)) {
+			controller, ok := device.(*types.VirtualUSBController)
+			if !ok {
+				continue
+			}
+
+			devices = append(devices, getDeviceInfo(vmDevices, controller.Device, "USB")...)
+		}
+
+		// Devices attached to a USBXHCI controller.
+		for _, device := range vmDevices.SelectByType((*types.VirtualUSBXHCIController)(nil)) {
+			controller, ok := device.(*types.VirtualUSBXHCIController)
+			if !ok {
+				continue
+			}
+
+			devices = append(devices, getDeviceInfo(vmDevices, controller.Device, "USB xHCI")...)
+		}
+
+		// Get information about each disk.
+		disks := []api.InstanceDiskInfo{}
+
+		// Disk(s) attached to an IDE controller.
+		for _, device := range vmDevices.SelectByType((*types.VirtualIDEController)(nil)) {
+			switch controller := device.(type) {
+			case *types.VirtualIDEController:
+				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "IDE", *vmProps.Config.ChangeTrackingEnabled)...)
+			}
+		}
+
+		// Disk(s) attached to a SCSI controller.
+		for _, device := range vmDevices.SelectByType((*types.VirtualSCSIController)(nil)) {
+			switch controller := device.(type) {
+			case *types.VirtualSCSIController:
+				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "SCSI", *vmProps.Config.ChangeTrackingEnabled)...)
+			case *types.ParaVirtualSCSIController:
+				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "ParaSCSI", *vmProps.Config.ChangeTrackingEnabled)...)
+			case *types.VirtualLsiLogicSASController:
+				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "LsiLogicSAS", *vmProps.Config.ChangeTrackingEnabled)...)
+			case *types.VirtualLsiLogicController:
+				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "LsiLogic", *vmProps.Config.ChangeTrackingEnabled)...)
+			}
+		}
+
+		// Disk(s) attached to a SATA controller.
+		for _, device := range vmDevices.SelectByType((*types.VirtualSATAController)(nil)) {
+			switch controller := device.(type) {
+			case *types.VirtualSATAController:
+				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "SATA", *vmProps.Config.ChangeTrackingEnabled)...)
+			case *types.VirtualAHCIController:
+				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "AHCI", *vmProps.Config.ChangeTrackingEnabled)...)
+			}
+		}
+
+		// Disk(s) attached to a NVME controller.
+		for _, device := range vmDevices.SelectByType((*types.VirtualNVMEController)(nil)) {
+			switch controller := device.(type) {
+			case *types.VirtualNVMEController:
+				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "NVME", *vmProps.Config.ChangeTrackingEnabled)...)
+			}
+		}
+
+		// Get information about each NIC.
+		nics := []api.InstanceNICInfo{}
+		for _, device := range vmDevices.SelectByType((*types.VirtualEthernetCard)(nil)) {
+			nic := device.(types.BaseVirtualEthernetCard).GetVirtualEthernetCard()
+
+			nics = append(nics, api.InstanceNICInfo{
+				Network:      nic.Backing.(*types.VirtualEthernetCardNetworkBackingInfo).Network.Value,
+				AdapterModel: strings.TrimPrefix(reflect.TypeOf(device).String(), "*types.Virtual"),
+				Hwaddr:       nic.MacAddress,
+			})
+		}
+
+		// Process any snapshots currently defined for the VM.
+		snapshots := []api.InstanceSnapshotInfo{}
+		if vmProps.Snapshot != nil {
+			for _, snapshot := range vmProps.Snapshot.RootSnapshotList {
+				snapshots = append(snapshots, api.InstanceSnapshotInfo{
+					Name:         snapshot.Name,
+					Description:  snapshot.Description,
+					CreationTime: snapshot.CreateTime,
+					ID:           int(snapshot.Id),
+				})
+			}
+		}
+
+		cpuAffinity := []int32{}
+		if vmProps.Config.CpuAffinity != nil {
+			cpuAffinity = vmProps.Config.CpuAffinity.AffinitySet
+		}
+
+		numberOfCoresPerSocket := vmProps.Config.Hardware.NumCPU
+		if *vmProps.Config.Hardware.AutoCoresPerSocket {
+			// Get the VM's current power state.
+			state, err := vm.PowerState(ctx)
+
+			// NumCoresPerSocket is only valid when VM isn't powered off.
+			if err == nil && state != types.VirtualMachinePowerStatePoweredOff {
+				numberOfCoresPerSocket = vmProps.Config.Hardware.NumCoresPerSocket
+			}
+		} else if vmProps.Config.Hardware.NumCoresPerSocket > 0 {
+			numberOfCoresPerSocket = vmProps.Config.Hardware.NumCoresPerSocket
+		}
+
+		guestToolsVersion, err := strconv.Atoi(vmProps.Guest.ToolsVersion)
+		if err != nil {
+			guestToolsVersion = 0
 		}
 
 		secretToken, _ := uuid.NewRandom()
@@ -208,20 +339,32 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			Instance: api.Instance{
 				UUID:                  UUID,
 				InventoryPath:         vm.InventoryPath,
+				Annotation:            vmProps.Config.Annotation,
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource:  time.Now().UTC(),
 				SourceID:              s.DatabaseID,
+				GuestToolsVersion:     guestToolsVersion,
 				Architecture:          arch,
+				HardwareVersion:       vmProps.Summary.Config.HwVersion,
 				OS:                    strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
 				OSVersion:             vmProps.Summary.Config.GuestFullName,
+				Devices:               devices,
 				Disks:                 disks,
 				NICs:                  nics,
-				NumberCPUs:            int(vmProps.Summary.Config.NumCpu),
-				MemoryInBytes:         int64(vmProps.Summary.Config.MemorySizeMB) * 1024 * 1024,
-				UseLegacyBios:         useLegacyBios,
-				SecureBootEnabled:     secureBootEnabled,
-				TPMPresent:            tpmPresent,
+				Snapshots:             snapshots,
+				CPU: api.InstanceCPUInfo{
+					NumberCPUs:             int(vmProps.Config.Hardware.NumCPU),
+					CPUAffinity:            cpuAffinity,
+					NumberOfCoresPerSocket: int(numberOfCoresPerSocket),
+				},
+				Memory: api.InstanceMemoryInfo{
+					MemoryInBytes:            int64(vmProps.Summary.Config.MemorySizeMB) * 1024 * 1024,
+					MemoryReservationInBytes: int64(vmProps.Summary.Config.MemoryReservation) * 1024 * 1024,
+				},
+				UseLegacyBios:     useLegacyBios,
+				SecureBootEnabled: secureBootEnabled,
+				TPMPresent:        tpmPresent,
 			},
 			NeedsDiskImport: true,
 			SecretToken:     secretToken,
@@ -229,6 +372,70 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 	}
 
 	return ret, nil
+}
+
+func getDeviceInfo(vmDevices object.VirtualDeviceList, deviceKeys []int32, controllerType string) []api.InstanceDeviceInfo {
+	ret := []api.InstanceDeviceInfo{}
+
+	for _, key := range deviceKeys {
+		baseDevice := vmDevices.FindByKey(key)
+		if baseDevice == nil {
+			continue
+		}
+
+		ret = append(ret, api.InstanceDeviceInfo{
+			Type:    controllerType,
+			Label:   baseDevice.GetVirtualDevice().DeviceInfo.GetDescription().Label,
+			Summary: baseDevice.GetVirtualDevice().DeviceInfo.GetDescription().Summary,
+		})
+	}
+
+	return ret
+}
+
+func getDiskInfo(vmDevices object.VirtualDeviceList, deviceKeys []int32, controllerType string, cte bool) []api.InstanceDiskInfo {
+	ret := []api.InstanceDiskInfo{}
+
+	for _, key := range deviceKeys {
+		baseDevice := vmDevices.FindByKey(key)
+		if baseDevice == nil {
+			continue
+		}
+
+		// FIXME -- TODO handle non-FileBacked devices
+		switch disk := baseDevice.(type) {
+		case *types.VirtualDisk:
+			fileBacking, ok := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
+			if !ok {
+				continue
+			}
+
+			ret = append(ret, api.InstanceDiskInfo{
+				Name:                      fileBacking.GetVirtualDeviceFileBackingInfo().FileName,
+				Type:                      "HDD",
+				ControllerModel:           controllerType,
+				DifferentialSyncSupported: cte,
+				SizeInBytes:               disk.CapacityInBytes,
+				IsShared:                  false, // FIXME -- TODO dig into datastore to get this info
+			})
+		case *types.VirtualCdrom:
+			fileBacking, ok := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
+			if !ok {
+				continue
+			}
+
+			ret = append(ret, api.InstanceDiskInfo{
+				Name:                      fileBacking.GetVirtualDeviceFileBackingInfo().FileName,
+				Type:                      "CDROM",
+				ControllerModel:           controllerType,
+				DifferentialSyncSupported: false,
+				SizeInBytes:               0,     // FIXME -- TODO dig into datastore to get this info
+				IsShared:                  false, // FIXME -- TODO dig into datastore to get this info
+			})
+		}
+	}
+
+	return ret
 }
 
 func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {

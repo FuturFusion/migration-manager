@@ -172,16 +172,21 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	ret.Architecture = instanceDef.Architecture
 	ret.Config["image.architecture"] = instanceDef.Architecture
 	ret.Config["image.description"] = "Auto-imported from VMware"
+
+	if instanceDef.Annotation != "" {
+		ret.Config["image.description"] = instanceDef.Annotation
+	}
+
 	ret.Config["image.os"] = instanceDef.OS
 	ret.Config["image.release"] = instanceDef.OSVersion
 
 	// Apply CPU and memory limits.
-	ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.NumberCPUs)
+	ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.CPU.NumberCPUs)
 	if override.NumberCPUs != 0 {
 		ret.Config["limits.cpu"] = fmt.Sprintf("%d", override.NumberCPUs)
 	}
 
-	ret.Config["limits.memory"] = fmt.Sprintf("%dB", instanceDef.MemoryInBytes)
+	ret.Config["limits.memory"] = fmt.Sprintf("%dB", instanceDef.Memory.MemoryInBytes)
 	if override.MemoryInBytes != 0 {
 		ret.Config["limits.memory"] = fmt.Sprintf("%dB", override.MemoryInBytes)
 	}
@@ -194,10 +199,16 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	}
 
 	// Add empty disk(s) from VM definition that will be synced later.
-	for i, disk := range instanceDef.Disks {
+	numDisks := 0
+	for _, disk := range instanceDef.Disks {
+		// Currently we only attach normal drives.
+		if disk.Type != "HDD" {
+			continue
+		}
+
 		diskKey := "root"
-		if i != 0 {
-			diskKey = fmt.Sprintf("disk%d", i)
+		if numDisks != 0 {
+			diskKey = fmt.Sprintf("disk%d", numDisks)
 		}
 
 		ret.Devices[diskKey] = make(map[string]string)
@@ -207,9 +218,11 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 
 		ret.Devices[diskKey]["size"] = fmt.Sprintf("%dB", disk.SizeInBytes)
 
-		if i != 0 {
+		if numDisks != 0 {
 			ret.Devices[diskKey]["path"] = diskKey
 		}
+
+		numDisks++
 	}
 
 	// Add TPM if needed.
@@ -236,6 +249,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef instance.InternalIn
 	ret.Description = ret.Config["image.description"]
 
 	// Set the migration source as a user tag to allow easy filtering.
+	ret.Config["user.migration.source_type"] = "VMware"
 	ret.Config["user.migration.source"] = sourceName
 
 	// Handle Windows-specific configuration.

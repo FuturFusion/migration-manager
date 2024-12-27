@@ -20,7 +20,7 @@ var (
 	testTarget       = target.NewIncusTarget("TestTarget", "https://localhost:6443")
 	testBatch        = batch.NewBatch("TestBatch", 1, "", "", "", time.Time{}, time.Time{}, "network")
 	instanceAUUID, _ = uuid.NewRandom()
-	instanceA        = instance.NewInstance(instanceAUUID, "/path/UbuntuVM", 1, ptr.To(1), nil, "x86_64", "Ubuntu", "24.04", []api.InstanceDiskInfo{
+	instanceA        = instance.NewInstance(instanceAUUID, "/path/UbuntuVM", "annotation", 1, ptr.To(1), nil, 123, "x86_64", "hw version", "Ubuntu", "24.04", nil, []api.InstanceDiskInfo{
 		{
 			Name:                      "disk",
 			DifferentialSyncSupported: true,
@@ -31,9 +31,9 @@ var (
 			Network: "net",
 			Hwaddr:  "mac",
 		},
-	}, 2, 2048, false, false, false)
+	}, nil, 2, []int32{}, 2, 4294967296, 4294967296, false, false, false)
 	instanceBUUID, _ = uuid.NewRandom()
-	instanceB        = instance.NewInstance(instanceBUUID, "/path/WindowsVM", 1, ptr.To(1), nil, "x86_64", "Windows", "11", []api.InstanceDiskInfo{
+	instanceB        = instance.NewInstance(instanceBUUID, "/path/WindowsVM", "annotation", 1, ptr.To(1), nil, 123, "x86_64", "hw version", "Windows", "11", nil, []api.InstanceDiskInfo{
 		{
 			Name:                      "disk",
 			DifferentialSyncSupported: false,
@@ -47,9 +47,9 @@ var (
 			Network: "net2",
 			Hwaddr:  "mac2",
 		},
-	}, 4, 4096, false, true, true)
+	}, nil, 2, []int32{0, 1}, 2, 4294967296, 4294967296, false, true, true)
 	instanceCUUID, _ = uuid.NewRandom()
-	instanceC        = instance.NewInstance(instanceCUUID, "/path/DebianVM", 1, nil, ptr.To(1), "arm64", "Debian", "bookworm", []api.InstanceDiskInfo{
+	instanceC        = instance.NewInstance(instanceCUUID, "/path/DebianVM", "annotation", 1, nil, ptr.To(1), 123, "arm64", "hw version", "Debian", "bookworm", nil, []api.InstanceDiskInfo{
 		{
 			Name:                      "disk1",
 			DifferentialSyncSupported: true,
@@ -59,7 +59,7 @@ var (
 			DifferentialSyncSupported: true,
 			SizeInBytes:               321,
 		},
-	}, nil, 4, 4096, true, false, true)
+	}, nil, nil, 4, []int32{0, 1, 2, 3}, 2, 4294967296, 4294967296, true, false, true)
 )
 
 func TestInstanceDatabaseActions(t *testing.T) {
@@ -117,7 +117,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 
 	// Test updating an instance.
 	instanceB.InventoryPath = "/foo/bar"
-	instanceB.NumberCPUs = 8
+	instanceB.CPU.NumberCPUs = 8
 	instanceB.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
 	instanceB.MigrationStatusString = instanceB.MigrationStatus.String()
 	err = db.UpdateInstance(tx, instanceB)
