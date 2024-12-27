@@ -171,6 +171,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			tpmPresent = true
 		}
 
+		// Determine if a TPM is present.
+		if *vmProps.Summary.Config.TpmPresent {
+			tpmPresent = true
+		}
+
 		// Handle VMs without UEFI and/or secure boot.
 		if vmProps.Config.Firmware == "bios" {
 			useLegacyBios = true

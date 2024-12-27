@@ -100,7 +100,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("No targets have been defined, cannot add a batch.")
 	}
 
-	definedTargets := make([]string, len(targetMap))
+	definedTargets := []string{}
 	for _, v := range targetMap {
 		definedTargets = append(definedTargets, v)
 	}

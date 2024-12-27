@@ -268,7 +268,6 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 		}
 
 		logCtx := logger.Ctx{"method": r.Method, "url": r.URL.RequestURI(), "ip": r.RemoteAddr}
-		logger.Debug("Handling API request", logCtx)
 
 		untrustedOk := (r.Method == "GET" && c.Get.AllowUntrusted) || (r.Method == "POST" && c.Post.AllowUntrusted)
 		if trusted {
