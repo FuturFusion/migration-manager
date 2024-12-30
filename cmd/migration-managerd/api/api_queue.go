@@ -13,6 +13,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -20,13 +21,14 @@ import (
 var queueRootCmd = APIEndpoint{
 	Path: "queue",
 
-	Get: APIEndpointAction{Handler: queueRootGet, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: queueRootGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
 var queueCmd = APIEndpoint{
 	Path: "queue/{uuid}",
 
-	Get: APIEndpointAction{Handler: queueGet, AllowUntrusted: true},
+	// Endpoints used by the migration worker which authenticates via a randomly-generated UUID unique to each instance.
+	Get: APIEndpointAction{Handler: queueGet, AccessHandler: allowAuthenticated},
 	Put: APIEndpointAction{Handler: queuePut, AccessHandler: allowAuthenticated},
 }
 

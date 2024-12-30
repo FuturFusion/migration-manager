@@ -11,11 +11,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/testcert"
@@ -355,6 +357,9 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 		TrustedTLSClientCertFingerprints: []string{testcert.LocalhostCertFingerprint},
 	})
 	daemon.db, err = db.OpenDatabase(tmpDir)
+	require.NoError(t, err)
+
+	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, logger.Log, daemon.config.TrustedTLSClientCertFingerprints, nil)
 	require.NoError(t, err)
 
 	router := http.NewServeMux()

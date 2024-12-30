@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -18,22 +19,22 @@ import (
 var instancesCmd = APIEndpoint{
 	Path: "instances",
 
-	Get: APIEndpointAction{Handler: instancesGet, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: instancesGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
 var instanceCmd = APIEndpoint{
 	Path: "instances/{uuid}",
 
-	Get: APIEndpointAction{Handler: instanceGet, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: instanceGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
 var instanceOverrideCmd = APIEndpoint{
 	Path: "instances/{uuid}/override",
 
-	Delete: APIEndpointAction{Handler: instanceOverrideDelete, AccessHandler: allowAuthenticated},
-	Get:    APIEndpointAction{Handler: instanceOverrideGet, AllowUntrusted: true},
-	Post:   APIEndpointAction{Handler: instanceOverridePost, AccessHandler: allowAuthenticated},
-	Put:    APIEndpointAction{Handler: instanceOverridePut, AccessHandler: allowAuthenticated},
+	Delete: APIEndpointAction{Handler: instanceOverrideDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
+	Get:    APIEndpointAction{Handler: instanceOverrideGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Post:   APIEndpointAction{Handler: instanceOverridePost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanCreate)},
+	Put:    APIEndpointAction{Handler: instanceOverridePut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 // swagger:operation GET /1.0/instances instances instances_get

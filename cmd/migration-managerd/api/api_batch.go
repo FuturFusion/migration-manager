@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -17,34 +18,34 @@ import (
 var batchesCmd = APIEndpoint{
 	Path: "batches",
 
-	Get:  APIEndpointAction{Handler: batchesGet, AllowUntrusted: true},
-	Post: APIEndpointAction{Handler: batchesPost, AccessHandler: allowAuthenticated},
+	Get:  APIEndpointAction{Handler: batchesGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Post: APIEndpointAction{Handler: batchesPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanCreate)},
 }
 
 var batchCmd = APIEndpoint{
 	Path: "batches/{name}",
 
-	Delete: APIEndpointAction{Handler: batchDelete, AccessHandler: allowAuthenticated},
-	Get:    APIEndpointAction{Handler: batchGet, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: batchPut, AccessHandler: allowAuthenticated},
+	Delete: APIEndpointAction{Handler: batchDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
+	Get:    APIEndpointAction{Handler: batchGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Put:    APIEndpointAction{Handler: batchPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 var batchInstancesCmd = APIEndpoint{
 	Path: "batches/{name}/instances",
 
-	Get: APIEndpointAction{Handler: batchInstancesGet, AllowUntrusted: true},
+	Get: APIEndpointAction{Handler: batchInstancesGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
 var batchStartCmd = APIEndpoint{
 	Path: "batches/{name}/start",
 
-	Post: APIEndpointAction{Handler: batchStartPost, AccessHandler: allowAuthenticated},
+	Post: APIEndpointAction{Handler: batchStartPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanCreate)},
 }
 
 var batchStopCmd = APIEndpoint{
 	Path: "batches/{name}/stop",
 
-	Post: APIEndpointAction{Handler: batchStopPost, AccessHandler: allowAuthenticated},
+	Post: APIEndpointAction{Handler: batchStopPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
 }
 
 // swagger:operation GET /1.0/batches batches batches_get

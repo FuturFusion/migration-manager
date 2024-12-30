@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -15,16 +16,16 @@ import (
 var sourcesCmd = APIEndpoint{
 	Path: "sources",
 
-	Get:  APIEndpointAction{Handler: sourcesGet, AllowUntrusted: true},
-	Post: APIEndpointAction{Handler: sourcesPost, AccessHandler: allowAuthenticated},
+	Get:  APIEndpointAction{Handler: sourcesGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Post: APIEndpointAction{Handler: sourcesPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanCreate)},
 }
 
 var sourceCmd = APIEndpoint{
 	Path: "sources/{name}",
 
-	Delete: APIEndpointAction{Handler: sourceDelete, AccessHandler: allowAuthenticated},
-	Get:    APIEndpointAction{Handler: sourceGet, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: sourcePut, AccessHandler: allowAuthenticated},
+	Delete: APIEndpointAction{Handler: sourceDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
+	Get:    APIEndpointAction{Handler: sourceGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Put:    APIEndpointAction{Handler: sourcePut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 // swagger:operation GET /1.0/sources sources sources_get
