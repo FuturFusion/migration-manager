@@ -146,9 +146,9 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Inventory Path", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Disks", "NICs", "Num vCPUs", "Memory"}
+	header := []string{"UUID", "Source", "Inventory Path", "OS Version", "CPU", "Memory", "Migration Status"}
 	if c.flagVerbose {
-		header = []string{"UUID", "Inventory Path", "Annotation", "Source", "Target", "Batch", "Migration Status", "Migration Status String", "Last Update from Source", "Guest Tools Version", "Architecture", "Hardware Version", "OS", "OS Version", "Devices", "Disks", "NICs", "Snapshots", "Num vCPUs", "CPU Affinity", "Cores Per Socket", "Memory", "Memory Reservation", "Use Legacy BIOS", "Secure Boot Enabled", "TPM Present"}
+		header = []string{"UUID", "Inventory Path", "Annotation", "Source", "Target", "Batch", "Migration Status", "Migration Status String", "Last Update from Source", "Guest Tools Version", "Architecture", "Hardware Version", "OS", "OS Version", "Devices", "Disks", "NICs", "Snapshots", "CPU", "CPU Affinity", "Cores Per Socket", "Memory", "Memory Reservation", "Use Legacy BIOS", "Secure Boot Enabled", "TPM Present"}
 	}
 
 	data := [][]string{}
@@ -172,26 +172,26 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			i.Memory.MemoryInBytes = override.MemoryInBytes
 		}
 
-		disks := []string{}
-		for _, disk := range i.Disks {
-			disks = append(disks, disk.Type+": "+disk.Name+" ("+disk.ControllerModel+", "+units.GetByteSizeStringIEC(disk.SizeInBytes, 2)+")")
-		}
-
-		nics := []string{}
-		for _, nic := range i.NICs {
-			nics = append(nics, nic.Hwaddr+" ("+nic.AdapterModel+", "+nic.Network+")")
-		}
-
 		if i.MigrationStatusString == "" {
 			i.MigrationStatusString = i.MigrationStatus.String()
 		}
 
-		row := []string{i.InventoryPath, sourcesMap[i.SourceID], getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatusString, i.OS, i.OSVersion, strings.Join(disks, "\n"), strings.Join(nics, "\n"), strconv.Itoa(i.CPU.NumberCPUs), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2)}
+		row := []string{i.UUID.String(), sourcesMap[i.SourceID], i.InventoryPath, i.OSVersion, strconv.Itoa(i.CPU.NumberCPUs), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), i.MigrationStatusString}
 
 		if c.flagVerbose {
 			devices := []string{}
 			for _, device := range i.Devices {
 				devices = append(devices, device.Type+": "+device.Label)
+			}
+
+			disks := []string{}
+			for _, disk := range i.Disks {
+				disks = append(disks, disk.Type+": "+disk.Name+" ("+disk.ControllerModel+", "+units.GetByteSizeStringIEC(disk.SizeInBytes, 2)+")")
+			}
+
+			nics := []string{}
+			for _, nic := range i.NICs {
+				nics = append(nics, nic.Hwaddr+" ("+nic.AdapterModel+", "+nic.Network+")")
 			}
 
 			snapshots := []string{}
