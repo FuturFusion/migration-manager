@@ -15,6 +15,9 @@ const (
 type ObjectType string
 
 const (
+	// ObjectTypeUser represents a user.
+	ObjectTypeUser ObjectType = "user"
+
 	// ObjectTypeServer represents a server.
 	ObjectTypeServer ObjectType = "server"
 )

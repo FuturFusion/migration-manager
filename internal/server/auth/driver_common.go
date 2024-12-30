@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -68,4 +69,9 @@ func (c *commonAuthorizer) requestDetails(r *http.Request) (*RequestDetails, err
 
 func (c *commonAuthorizer) Driver() string {
 	return c.driverName
+}
+
+// StopService is a no-op.
+func (c *commonAuthorizer) StopService(ctx context.Context) error {
+	return nil
 }

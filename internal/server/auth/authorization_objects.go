@@ -58,6 +58,7 @@ type objectValidator struct {
 }
 
 var objectValidators = map[ObjectType]objectValidator{
+	ObjectTypeUser:   {minIdentifierElements: 1, maxIdentifierElements: 1},
 	ObjectTypeServer: {minIdentifierElements: 1, maxIdentifierElements: 1},
 }
 
@@ -90,6 +91,12 @@ func NewObject(objectType ObjectType, identifierElements ...string) (Object, err
 	}
 
 	return Object(builder.String()), nil
+}
+
+// ObjectUser represents a user.
+func ObjectUser(userName string) Object {
+	object, _ := NewObject(ObjectTypeUser, userName)
+	return object
 }
 
 // ObjectServer represents a server.

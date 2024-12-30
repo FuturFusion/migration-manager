@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v6/shared/revert"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
@@ -181,7 +182,7 @@ func (d *Daemon) Start() error {
 	d.target = migration.NewTargetService(sqlite.NewTarget(d.db.DB))
 
 	// Set default authorizer.
-	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints, nil)
+	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)
 	if err != nil {
 		return err
 	}
@@ -191,6 +192,14 @@ func (d *Daemon) Start() error {
 		d.oidcVerifier, err = oidc.NewVerifier(d.config.OidcIssuer, d.config.OidcClientID, d.config.OidcScope, d.config.OidcAudience, d.config.OidcClaim)
 		if err != nil {
 			return err
+		}
+	}
+
+	// Setup OpenFGA authorization.
+	if d.config.OpenfgaAPIURL != "" && d.config.OpenfgaAPIToken != "" && d.config.OpenfgaStoreID != "" {
+		err = d.setupOpenFGA(d.config.OpenfgaAPIURL, d.config.OpenfgaAPIToken, d.config.OpenfgaStoreID)
+		if err != nil {
+			return fmt.Errorf("Failed to configure OpenFGA: %w", err)
 		}
 	}
 
@@ -269,6 +278,52 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	slog.Info("Daemon stopped")
 
 	return err
+}
+
+// Setup OpenFGA.
+func (d *Daemon) setupOpenFGA(apiURL string, apiToken string, storeID string) error {
+	var err error
+
+	if d.authorizer != nil {
+		err := d.authorizer.StopService(d.ShutdownCtx)
+		if err != nil {
+			slog.Error("Failed to stop authorizer service", logger.Err(err))
+		}
+	}
+
+	if apiURL == "" || apiToken == "" || storeID == "" {
+		// Reset to default authorizer.
+		d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	cfg := map[string]any{
+		"openfga.api.url":   apiURL,
+		"openfga.api.token": apiToken,
+		"openfga.store.id":  storeID,
+	}
+
+	rvt := revert.New()
+	defer rvt.Fail()
+
+	rvt.Add(func() {
+		// Reset to default authorizer.
+		d.authorizer, _ = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)
+	})
+
+	openfgaAuthorizer, err := auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverOpenFGA, slog.Default(), d.config.TrustedTLSClientCertFingerprints, auth.WithConfig(cfg))
+	if err != nil {
+		return err
+	}
+
+	d.authorizer = openfgaAuthorizer
+
+	rvt.Success()
+	return nil
 }
 
 func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpoint) {

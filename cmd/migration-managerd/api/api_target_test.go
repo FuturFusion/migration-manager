@@ -360,7 +360,7 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 	daemon.target = migration.NewTargetService(sqlite.NewTarget(daemon.db.DB))
 	require.NoError(t, err)
 
-	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, logger, daemon.config.TrustedTLSClientCertFingerprints, nil)
+	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, logger, daemon.config.TrustedTLSClientCertFingerprints)
 	require.NoError(t, err)
 
 	router := http.NewServeMux()
