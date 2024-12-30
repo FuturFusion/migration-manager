@@ -4,8 +4,7 @@ DETECTED_LIBNBD_VERSION = $(shell dpkg-query --showformat='$${Version}' -W libnb
 default: build
 
 .PHONY: build
-build: build-dependencies
-	go build ./cmd/migration-manager
+build: build-dependencies migration-manager
 	go build ./cmd/migration-managerd
 	go build ./cmd/migration-manager-worker
 
@@ -15,6 +14,10 @@ build-dependencies:
 		echo "Please install libnbd-dev with version >= 1.20"; \
 		exit 1; \
 	fi
+
+.PHONY: migration-manager
+migration-manager:
+	CGO_ENABLED=0 go build ./cmd/migration-manager
 
 .PHONY: test
 test: build-dependencies
