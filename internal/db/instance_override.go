@@ -11,14 +11,14 @@ import (
 
 func (n *Node) AddInstanceOverride(tx *sql.Tx, override api.InstanceOverride) error {
 	// Add the override to the database.
-	q := `INSERT INTO instance_overrides (uuid,last_update,comment,number_cpus,memory_in_bytes) VALUES(?,?,?,?,?)`
+	q := `INSERT INTO instance_overrides (uuid,last_update,comment,number_cpus,memory_in_bytes,disable_migration) VALUES(?,?,?,?,?,?)`
 
 	marshalledLastUpdate, err := override.LastUpdate.MarshalText()
 	if err != nil {
 		return err
 	}
 
-	_, err = tx.Exec(q, override.UUID, marshalledLastUpdate, override.Comment, override.NumberCPUs, override.MemoryInBytes)
+	_, err = tx.Exec(q, override.UUID, marshalledLastUpdate, override.Comment, override.NumberCPUs, override.MemoryInBytes, override.DisableMigration)
 
 	return mapDBError(err)
 }
@@ -27,12 +27,12 @@ func (n *Node) GetInstanceOverride(tx *sql.Tx, UUID uuid.UUID) (api.InstanceOver
 	ret := api.InstanceOverride{}
 
 	// Get the override from the database.
-	q := `SELECT last_update,comment,number_cpus,memory_in_bytes FROM instance_overrides WHERE uuid=?`
+	q := `SELECT last_update,comment,number_cpus,memory_in_bytes,disable_migration FROM instance_overrides WHERE uuid=?`
 	row := tx.QueryRow(q, UUID)
 
 	marshalledLastUpdate := ""
 
-	err := row.Scan(&marshalledLastUpdate, &ret.Comment, &ret.NumberCPUs, &ret.MemoryInBytes)
+	err := row.Scan(&marshalledLastUpdate, &ret.Comment, &ret.NumberCPUs, &ret.MemoryInBytes, &ret.DisableMigration)
 	if err != nil {
 		return ret, mapDBError(err)
 	}
@@ -103,14 +103,14 @@ func (n *Node) UpdateInstanceOverride(tx *sql.Tx, override api.InstanceOverride)
 	}
 
 	// Update override in the database.
-	q = `UPDATE instance_overrides SET last_update=?,comment=?,number_cpus=?,memory_in_bytes=? WHERE uuid=?`
+	q = `UPDATE instance_overrides SET last_update=?,comment=?,number_cpus=?,memory_in_bytes=?,disable_migration=? WHERE uuid=?`
 
 	marshalledLastUpdate, err := override.LastUpdate.MarshalText()
 	if err != nil {
 		return err
 	}
 
-	result, err := tx.Exec(q, marshalledLastUpdate, override.Comment, override.NumberCPUs, override.MemoryInBytes, override.UUID)
+	result, err := tx.Exec(q, marshalledLastUpdate, override.Comment, override.NumberCPUs, override.MemoryInBytes, override.DisableMigration, override.UUID)
 	if err != nil {
 		return mapDBError(err)
 	}

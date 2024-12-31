@@ -29,4 +29,8 @@ type InstanceOverride struct {
 	// The overridden amount of memory for this instance, in bytes; a value of 0 indicates no override
 	// Example: 4294967296
 	MemoryInBytes int64 `json:"memory_in_bytes" yaml:"memory_in_bytes"`
+
+	// If true, migration of this instance will be disabled.
+	// Example: true
+	DisableMigration bool `json:"disable_migration" yaml:"disable_migration"`
 }

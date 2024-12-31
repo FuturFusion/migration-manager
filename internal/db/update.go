@@ -63,6 +63,7 @@ CREATE TABLE instance_overrides (
     comment TEXT NOT NULL,
     number_cpus INTEGER NOT NULL,
     memory_in_bytes INTEGER NOT NULL,
+    disable_migration INTEGER NOT NULL,
     FOREIGN KEY(uuid) REFERENCES instances(uuid)
 );
 
@@ -185,6 +186,7 @@ CREATE TABLE instance_overrides (
     comment TEXT NOT NULL,
     number_cpus INTEGER NOT NULL,
     memory_in_bytes INTEGER NOT NULL,
+    disable_migration INTEGER NOT NULL,
     FOREIGN KEY(uuid) REFERENCES instances(uuid)
 );
 
