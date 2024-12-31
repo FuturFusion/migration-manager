@@ -1,6 +1,7 @@
 package config
 
 import (
+	"crypto/x509"
 	"os"
 	"path"
 
@@ -9,19 +10,18 @@ import (
 )
 
 type Config struct {
-	AllowInsecureTLS       bool                              `yaml:"allow_insecure_tls"`
-	AuthType               string                            `yaml:"auth_type"`
-	ConfigDir              string                            `yaml:"config_dir"`
-	MigrationManagerServer string                            `yaml:"migration_manager_server"`
-	OIDCTokens             *oidc.Tokens[*oidc.IDTokenClaims] `yaml:"oidc_tokens"`
-	TLSClientCertFile      string                            `yaml:"tls_client_cert_file"`
-	TLSClientKeyFile       string                            `yaml:"tls_client_key_file"`
+	AuthType                   string                            `yaml:"auth_type"`
+	ConfigDir                  string                            `yaml:"config_dir"`
+	MigrationManagerServer     string                            `yaml:"migration_manager_server"`
+	MigrationManagerServerCert *x509.Certificate                 `yaml:"migration_manager_server_cert"`
+	OIDCTokens                 *oidc.Tokens[*oidc.IDTokenClaims] `yaml:"oidc_tokens"`
+	TLSClientCertFile          string                            `yaml:"tls_client_cert_file"`
+	TLSClientKeyFile           string                            `yaml:"tls_client_key_file"`
 }
 
 func NewConfig(configDir string) *Config {
 	return &Config{
-		AllowInsecureTLS: false,
-		ConfigDir:        configDir,
+		ConfigDir: configDir,
 	}
 }
 

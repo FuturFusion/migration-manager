@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -16,11 +17,13 @@ import (
 	"time"
 
 	"github.com/lxc/incus/v6/shared/api"
+	localtls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/config"
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/oidc"
+	internalUtil "github.com/FuturFusion/migration-manager/cmd/migration-manager/util"
 )
 
 const MIGRATION_MANAGER_UNIX_SOCKET = "/run/migration-manager/unix.socket"
@@ -111,19 +114,43 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 		return c.config.SaveConfig()
 	}
 
-	server, err := c.Asker.AskString("Please enter the migration manager server URL: ", "", nil)
+	server, err := c.Asker.AskString("Please enter the migration manager server URL: ", "", func(s string) error {
+		if !strings.HasPrefix(s, "https://") {
+			return fmt.Errorf("Server URL must start with 'https://'")
+		}
+
+		// Try connecting to the given server. Verifies that the URL is correct while it's easy to prompt the user for a correction.
+		// If we get a certificate verification error, grab the certificate to prompt the user for a TOFU-style use.
+		resp, err := http.Get(s)
+		if err != nil {
+			switch actualErr := err.(*url.Error).Unwrap().(type) {
+			case *tls.CertificateVerificationError:
+				c.config.MigrationManagerServerCert = actualErr.UnverifiedCertificates[0]
+				return nil
+			}
+
+			return err
+		}
+
+		resp.Body.Close()
+		return nil
+	})
 	if err != nil {
 		return err
 	}
 
 	c.config.MigrationManagerServer = server
 
-	insecure, err := c.Asker.AskBool("Allow insecure TLS connections to migration manager? ", "false")
-	if err != nil {
-		return err
-	}
+	if c.config.MigrationManagerServerCert != nil {
+		trustedCert, err := c.Asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? ", localtls.CertFingerprint(c.config.MigrationManagerServerCert)), "false")
+		if err != nil {
+			return err
+		}
 
-	c.config.AllowInsecureTLS = insecure
+		if !trustedCert {
+			return fmt.Errorf("Aborting due to untrusted server TLS certificate")
+		}
+	}
 
 	c.config.AuthType, err = c.Asker.AskChoice("What type of authentication should be used (none, oidc, tls)? [none] ", []string{"none", "oidc", "tls"}, "none")
 	if err != nil {
@@ -201,7 +228,7 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 			return nil, err
 		}
 
-		client, err = getHTTPSClient(c.config.AllowInsecureTLS, c.config.TLSClientCertFile, c.config.TLSClientKeyFile)
+		client, err = getHTTPSClient(c.config.MigrationManagerServerCert, c.config.TLSClientCertFile, c.config.TLSClientKeyFile)
 		if err != nil {
 			return nil, err
 		}
@@ -229,7 +256,7 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 	req.Header.Set("Content-Type", "application/json")
 
 	if c.config.AuthType == "oidc" {
-		oidcClient := oidc.NewOIDCClient(c.config.OIDCTokens, c.config.AllowInsecureTLS)
+		oidcClient := oidc.NewOIDCClient(c.config.OIDCTokens, c.config.MigrationManagerServerCert)
 
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
 		resp, err = oidcClient.Do(req) // nolint: bodyclose
@@ -267,7 +294,7 @@ func responseToStruct(response *api.Response, targetStruct any) error {
 	return json.Unmarshal(response.Metadata, &targetStruct)
 }
 
-func getHTTPSClient(insecure bool, tlsCertFile string, tlsKeyFile string) (*http.Client, error) {
+func getHTTPSClient(serverCert *x509.Certificate, tlsCertFile string, tlsKeyFile string) (*http.Client, error) {
 	var err error
 	cert := tls.Certificate{}
 
@@ -280,11 +307,10 @@ func getHTTPSClient(insecure bool, tlsCertFile string, tlsKeyFile string) (*http
 	}
 
 	// Define the https transport
+	tlsConfig := internalUtil.GetTOFUServerConfig(serverCert)
+	tlsConfig.Certificates = []tls.Certificate{cert}
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			Certificates:       []tls.Certificate{cert},
-			InsecureSkipVerify: insecure,
-		},
+		TLSClientConfig: tlsConfig,
 	}
 
 	// Define the https client
