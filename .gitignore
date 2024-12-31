@@ -7,9 +7,7 @@
 *.dll
 *.so
 *.dylib
-/migration-manager
-/migration-managerd
-/migration-manager-worker
+bin/
 
 # Test binary, built with `go test -c`
 *.test
