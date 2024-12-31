@@ -5,8 +5,8 @@ default: build
 
 .PHONY: build
 build: build-dependencies migration-manager
-	go build ./cmd/migration-managerd
-	go build ./cmd/migration-manager-worker
+	go build -o ./bin/migration-managerd ./cmd/migration-managerd
+	go build -o ./bin/migration-manager-worker ./cmd/migration-manager-worker
 
 .PHONY: build-dependencies
 build-dependencies:
@@ -17,7 +17,13 @@ build-dependencies:
 
 .PHONY: migration-manager
 migration-manager:
-	CGO_ENABLED=0 go build ./cmd/migration-manager
+	mkdir -p ./bin/
+	CGO_ENABLED=0 GOARCH=amd64 go build -o ./bin/migration-manager.linux.amd64 ./cmd/migration-manager
+	CGO_ENABLED=0 GOARCH=arm64 go build -o ./bin/migration-manager.linux.arm64 ./cmd/migration-manager
+	GOOS=darwin GOARCH=amd64 go build -o ./bin/migration-manager.macos.amd64 ./cmd/migration-manager
+	GOOS=darwin GOARCH=arm64 go build -o ./bin/migration-manager.macos.arm64 ./cmd/migration-manager
+	GOOS=windows GOARCH=amd64 go build -o ./bin/migration-manager.windows.amd64.exe ./cmd/migration-manager
+	GOOS=windows GOARCH=arm64 go build -o ./bin/migration-manager.windows.arm64.exe ./cmd/migration-manager
 
 .PHONY: test
 test: build-dependencies
@@ -42,8 +48,7 @@ endif
 
 .PHONY: clean
 clean:
-	rm -f migration-manager migration-managerd migration-manager-worker
-	rm -rf dist/
+	rm -rf dist/ bin/
 
 .PHONY: release-snapshot
 release-snapshot:
