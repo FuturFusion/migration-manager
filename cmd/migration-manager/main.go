@@ -52,7 +52,15 @@ func main() {
 
 	// network sub-command
 	networkCmd := cmds.CmdNetwork{Global: &globalCmd}
-	app.AddCommand(networkCmd.Command())
+	networkCmdHidden := networkCmd.Command()
+	networkCmdHidden.Hidden = true // Don't show network command by default.
+	app.AddCommand(networkCmdHidden)
+
+	// query sub-command
+	queryCmd := cmds.CmdQuery{Global: &globalCmd}
+	queryCmdHidden := queryCmd.Command()
+	queryCmdHidden.Hidden = true // Don't show query command by default.
+	app.AddCommand(queryCmdHidden)
 
 	// queue sub-command
 	queueCmd := cmds.CmdQueue{Global: &globalCmd}

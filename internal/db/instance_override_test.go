@@ -11,7 +11,7 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-var overrideA = api.InstanceOverride{UUID: instanceAUUID, LastUpdate: time.Now().UTC(), Comment: "A comment", NumberCPUs: 8, MemoryInBytes: 4096}
+var overrideA = api.InstanceOverride{UUID: instanceAUUID, LastUpdate: time.Now().UTC(), Comment: "A comment", NumberCPUs: 8, MemoryInBytes: 4096, DisableMigration: true}
 
 func TestInstanceOverrideDatabaseActions(t *testing.T) {
 	// Create a new temporary database.
@@ -47,6 +47,7 @@ func TestInstanceOverrideDatabaseActions(t *testing.T) {
 
 	// Test updating an override.
 	overrideA.Comment = "An update"
+	overrideA.DisableMigration = false
 	err = db.UpdateInstanceOverride(tx, overrideA)
 	require.NoError(t, err)
 	dbOverrideA, err = db.GetInstanceOverride(tx, instanceA.GetUUID())

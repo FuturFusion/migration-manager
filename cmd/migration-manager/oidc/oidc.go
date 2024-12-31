@@ -3,7 +3,7 @@ package oidc
 import (
 	"context"
 	"crypto/rand"
-	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,6 +19,8 @@ import (
 	httphelper "github.com/zitadel/oidc/v3/pkg/http"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"golang.org/x/oauth2"
+
+	internalUtil "github.com/FuturFusion/migration-manager/cmd/migration-manager/util"
 )
 
 // ErrOIDCExpired is returned when the token is expired and we can't retry the request ourselves.
@@ -68,11 +70,9 @@ type OidcClient struct {
 
 // OidcClient is a structure encapsulating an HTTP client, OIDC transport, and a token for OpenID Connect (OIDC) operations.
 // NewOIDCClient constructs a new OidcClient, ensuring the token field is non-nil to prevent panics during authentication.
-func NewOIDCClient(tokens *oidc.Tokens[*oidc.IDTokenClaims], insecure bool) *OidcClient {
+func NewOIDCClient(tokens *oidc.Tokens[*oidc.IDTokenClaims], serverCert *x509.Certificate) *OidcClient {
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: insecure,
-		},
+		TLSClientConfig: internalUtil.GetTOFUServerConfig(serverCert),
 	}
 
 	client := OidcClient{

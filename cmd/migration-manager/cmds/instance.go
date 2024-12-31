@@ -2,12 +2,10 @@ package cmds
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
 
@@ -32,10 +30,6 @@ func (c *CmdInstance) Command() *cobra.Command {
 	// List
 	instanceListCmd := cmdInstanceList{global: c.Global}
 	cmd.AddCommand(instanceListCmd.Command())
-
-	// Set migration state
-	instanceSetMigrationStateCmd := cmdInstanceSetMigrationState{global: c.Global}
-	cmd.AddCommand(instanceSetMigrationStateCmd.Command())
 
 	// Override
 	instanceOverrideCmd := CmdInstanceOverride{Global: c.Global}
@@ -146,9 +140,9 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Inventory Path", "Source", "Target", "Batch", "Migration Status", "OS", "OS Version", "Disks", "NICs", "Num vCPUs", "Memory"}
+	header := []string{"UUID", "Source", "Inventory Path", "OS Version", "CPU", "Memory", "Migration Status"}
 	if c.flagVerbose {
-		header = []string{"UUID", "Inventory Path", "Annotation", "Source", "Target", "Batch", "Migration Status", "Migration Status String", "Last Update from Source", "Guest Tools Version", "Architecture", "Hardware Version", "OS", "OS Version", "Devices", "Disks", "NICs", "Snapshots", "Num vCPUs", "CPU Affinity", "Cores Per Socket", "Memory", "Memory Reservation", "Use Legacy BIOS", "Secure Boot Enabled", "TPM Present"}
+		header = []string{"UUID", "Inventory Path", "Annotation", "Source", "Target", "Batch", "Migration Status", "Migration Status String", "Last Update from Source", "Guest Tools Version", "Architecture", "Hardware Version", "OS", "OS Version", "Devices", "Disks", "NICs", "Snapshots", "CPU", "CPU Affinity", "Cores Per Socket", "Memory", "Memory Reservation", "Use Legacy BIOS", "Secure Boot Enabled", "TPM Present"}
 	}
 
 	data := [][]string{}
@@ -172,26 +166,26 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			i.Memory.MemoryInBytes = override.MemoryInBytes
 		}
 
-		disks := []string{}
-		for _, disk := range i.Disks {
-			disks = append(disks, disk.Type+": "+disk.Name+" ("+disk.ControllerModel+", "+units.GetByteSizeStringIEC(disk.SizeInBytes, 2)+")")
-		}
-
-		nics := []string{}
-		for _, nic := range i.NICs {
-			nics = append(nics, nic.Hwaddr+" ("+nic.AdapterModel+", "+nic.Network+")")
-		}
-
 		if i.MigrationStatusString == "" {
 			i.MigrationStatusString = i.MigrationStatus.String()
 		}
 
-		row := []string{i.InventoryPath, sourcesMap[i.SourceID], getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatusString, i.OS, i.OSVersion, strings.Join(disks, "\n"), strings.Join(nics, "\n"), strconv.Itoa(i.CPU.NumberCPUs), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2)}
+		row := []string{i.UUID.String(), sourcesMap[i.SourceID], i.InventoryPath, i.OSVersion, strconv.Itoa(i.CPU.NumberCPUs), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), i.MigrationStatusString}
 
 		if c.flagVerbose {
 			devices := []string{}
 			for _, device := range i.Devices {
 				devices = append(devices, device.Type+": "+device.Label)
+			}
+
+			disks := []string{}
+			for _, disk := range i.Disks {
+				disks = append(disks, disk.Type+": "+disk.Name+" ("+disk.ControllerModel+", "+units.GetByteSizeStringIEC(disk.SizeInBytes, 2)+")")
+			}
+
+			nics := []string{}
+			for _, nic := range i.NICs {
+				nics = append(nics, nic.Hwaddr+" ("+nic.AdapterModel+", "+nic.Network+")")
 			}
 
 			snapshots := []string{}
@@ -212,53 +206,6 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, instances)
-}
-
-// Disable instance for migration.
-type cmdInstanceSetMigrationState struct {
-	global *CmdGlobal
-
-	flagUserDisabled bool
-}
-
-func (c *cmdInstanceSetMigrationState) Command() *cobra.Command {
-	cmd := &cobra.Command{}
-	cmd.Use = "set-state <instance-uuid>"
-	cmd.Short = "Update instance migration state"
-	cmd.Long = `Description:
-  Set the migration state for the given instance
-`
-
-	cmd.RunE = c.Run
-	cmd.Flags().BoolVarP(&c.flagUserDisabled, "user-disabled", "", false, "Set migration state for instance to disabled by user")
-
-	return cmd
-}
-
-func (c *cmdInstanceSetMigrationState) Run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
-	if exit {
-		return err
-	}
-
-	instanceUUID, err := uuid.Parse(args[0])
-	if err != nil {
-		return err
-	}
-
-	// Set instance state.
-	_, err = c.global.doHTTPRequestV1(
-		fmt.Sprintf("/instances/%s/state", instanceUUID.String()),
-		http.MethodPut,
-		fmt.Sprintf("migration_user_disabled=%t", c.flagUserDisabled),
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func getFrom(lookupMap map[int]string, key *int) string {

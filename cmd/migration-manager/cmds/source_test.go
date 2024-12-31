@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"net/http"
@@ -187,12 +188,13 @@ func TestSourceAdd(t *testing.T) {
 			}))
 			defer migrationManagerd.Close()
 
+			serverCert, _ := x509.ParseCertificate(migrationManagerd.TLS.Certificates[0].Certificate[0])
 			add := cmdSourceAdd{
 				global: &CmdGlobal{
 					Asker: asker,
 					config: &config.Config{
-						MigrationManagerServer: migrationManagerd.URL,
-						AllowInsecureTLS:       true, // NewTLSServer() uses a self-signed TLS certificate.
+						MigrationManagerServer:     migrationManagerd.URL,
+						MigrationManagerServerCert: serverCert,
 					},
 				},
 				flagInsecure:              tc.insecure,
@@ -314,11 +316,12 @@ func TestSourceList(t *testing.T) {
 			}))
 			defer migrationManagerd.Close()
 
+			serverCert, _ := x509.ParseCertificate(migrationManagerd.TLS.Certificates[0].Certificate[0])
 			list := cmdSourceList{
 				global: &CmdGlobal{
 					config: &config.Config{
-						MigrationManagerServer: migrationManagerd.URL,
-						AllowInsecureTLS:       true, // NewTLSServer() uses a self-signed TLS certificate.
+						MigrationManagerServer:     migrationManagerd.URL,
+						MigrationManagerServerCert: serverCert,
 					},
 				},
 				flagFormat: `csv`,
@@ -406,11 +409,12 @@ func TestSourceRemove(t *testing.T) {
 			}))
 			defer migrationManagerd.Close()
 
+			serverCert, _ := x509.ParseCertificate(migrationManagerd.TLS.Certificates[0].Certificate[0])
 			remove := cmdSourceRemove{
 				global: &CmdGlobal{
 					config: &config.Config{
-						MigrationManagerServer: migrationManagerd.URL,
-						AllowInsecureTLS:       true, // NewTLSServer() uses a self-signed TLS certificate.
+						MigrationManagerServer:     migrationManagerd.URL,
+						MigrationManagerServerCert: serverCert,
 					},
 				},
 			}
@@ -610,12 +614,13 @@ func TestSourceUpdate(t *testing.T) {
 			}))
 			defer migrationManagerd.Close()
 
+			serverCert, _ := x509.ParseCertificate(migrationManagerd.TLS.Certificates[0].Certificate[0])
 			update := cmdSourceUpdate{
 				global: &CmdGlobal{
 					Asker: asker,
 					config: &config.Config{
-						MigrationManagerServer: migrationManagerd.URL,
-						AllowInsecureTLS:       true, // NewTLSServer() uses a self-signed TLS certificate.
+						MigrationManagerServer:     migrationManagerd.URL,
+						MigrationManagerServerCert: serverCert,
 					},
 				},
 			}

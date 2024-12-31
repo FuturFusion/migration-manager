@@ -94,6 +94,11 @@ func (c *cmdInstanceOverrideAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? ", "false")
+	if err != nil {
+		return err
+	}
+
 	val, err := c.global.Asker.AskInt("Number of vCPUs: ", 0, 1024, "0", nil)
 	if err != nil {
 		return err
@@ -210,17 +215,17 @@ func (c *cmdInstanceOverrideShow) Run(cmd *cobra.Command, args []string) error {
 
 	numCPUSDisplay := strconv.Itoa(override.NumberCPUs)
 	if override.NumberCPUs == 0 {
-		numCPUSDisplay = "---"
+		numCPUSDisplay = ""
 	}
 
 	memoryDisplay := units.GetByteSizeStringIEC(override.MemoryInBytes, 2)
 	if override.MemoryInBytes == 0 {
-		memoryDisplay = "---"
+		memoryDisplay = ""
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Last Update", "Comment", "Num vCPUs", "Memory"}
-	data := [][]string{{override.UUID.String(), override.LastUpdate.String(), override.Comment, numCPUSDisplay, memoryDisplay}}
+	header := []string{"UUID", "Last Update", "Comment", "Migration Disabled", "Num vCPUs", "Memory"}
+	data := [][]string{{override.UUID.String(), override.LastUpdate.String(), override.Comment, strconv.FormatBool(override.DisableMigration), numCPUSDisplay, memoryDisplay}}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, override)
 }
@@ -270,6 +275,11 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 
 	// Prompt for updates.
 	override.Comment, err = c.global.Asker.AskString("Comment: ["+override.Comment+"] ", override.Comment, func(s string) error { return nil })
+	if err != nil {
+		return err
+	}
+
+	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? ("+strconv.FormatBool(override.DisableMigration)+") ", strconv.FormatBool(override.DisableMigration))
 	if err != nil {
 		return err
 	}
