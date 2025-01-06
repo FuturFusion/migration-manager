@@ -14,13 +14,13 @@ Not Assigned Batch --> Assigned Batch --> Creating --> Background Import <-> Err
        |                                     |               |
        v                                     v               v
 User disabled migration                    Error            Idle
-                                                             ^
+(controlled through overrides)                               ^
                                                              |
                                                              V
                                              Error <-> Final Import --> Import Complete --> Finished
 ```
 
-When initially created, an instance will be in the **not assigned batch** state. This simply means that the instance doesn't belong to any batch and won't be part of any migration actions. While in this state, limited tweaking of the instance, such as CPU and memory limits may be performed. Additionally the user might mark an instance as not eligible for migration by moving it into **user disabled migration** state.
+When initially created, an instance will be in the **not assigned batch** state. This simply means that the instance doesn't belong to any batch and won't be part of any migration actions. While in this state, limited tweaking of the instance, such as CPU and memory limits may be performed. Additionally the user might mark an instance with an override as not eligible for migration, which will be reflected in the instance state being **user disabled migration**.
 
 After a corresponding batch begins running, the state will be updated to **assigned batch**. Once this happens, the instance definition becomes read-only and cannot be changed.
 
