@@ -2,8 +2,11 @@ package batch
 
 import (
 	"fmt"
-	"regexp"
+	"path/filepath"
 	"time"
+
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -15,7 +18,7 @@ type InternalBatch struct {
 }
 
 // Returns a new Batch ready for use.
-func NewBatch(name string, targetID int, storagePool string, includeRegex string, excludeRegex string, migrationWindowStart time.Time, migrationWindowEnd time.Time, defaultNetwork string) *InternalBatch {
+func NewBatch(name string, targetID int, storagePool string, includeExpression string, migrationWindowStart time.Time, migrationWindowEnd time.Time, defaultNetwork string) *InternalBatch {
 	return &InternalBatch{
 		Batch: api.Batch{
 			Name:                 name,
@@ -24,8 +27,7 @@ func NewBatch(name string, targetID int, storagePool string, includeRegex string
 			Status:               api.BATCHSTATUS_DEFINED,
 			StatusString:         api.BATCHSTATUS_DEFINED.String(),
 			StoragePool:          storagePool,
-			IncludeRegex:         includeRegex,
-			ExcludeRegex:         excludeRegex,
+			IncludeExpression:    includeExpression,
 			MigrationWindowStart: migrationWindowStart,
 			MigrationWindowEnd:   migrationWindowEnd,
 			DefaultNetwork:       defaultNetwork,
@@ -80,26 +82,58 @@ func (b *InternalBatch) GetDefaultNetwork() string {
 	return b.DefaultNetwork
 }
 
-func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) bool {
+func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) (bool, error) {
 	if i.GetMigrationStatus() == api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
-		return false
+		return false, nil
 	}
 
-	// Handle any exclusionary criteria first.
-	if b.ExcludeRegex != "" {
-		excludeRegex := regexp.MustCompile(b.ExcludeRegex)
-		if excludeRegex.Match([]byte(i.GetInventoryPath())) {
-			return false
-		}
+	includeExpr, err := b.CompileIncludeExpression(i)
+	if err != nil {
+		return false, fmt.Errorf("Failed to compile include expression %q: %v", b.IncludeExpression, err)
 	}
 
-	// Handle any inclusionary criteria second.
-	if b.IncludeRegex != "" {
-		includeRegex := regexp.MustCompile(b.IncludeRegex)
-		if !includeRegex.Match([]byte(i.GetInventoryPath())) {
-			return false
-		}
+	output, err := expr.Run(includeExpr, i)
+	if err != nil {
+		return false, fmt.Errorf("Failed to run include expression %q with instance %v: %v", b.IncludeExpression, i, err)
 	}
 
-	return true
+	result, ok := output.(bool)
+	if !ok {
+		return false, fmt.Errorf("Include expression %q does not evaluate to boolean result: %v", b.IncludeExpression, output)
+	}
+
+	return result, nil
+}
+
+func (b *InternalBatch) CompileIncludeExpression(i instance.Instance) (*vm.Program, error) {
+	customFunctions := []expr.Option{
+		expr.Function("path_base", func(params ...any) (any, error) {
+			if len(params) != 1 {
+				return nil, fmt.Errorf("invalid number of arguments, expected 1, got: %d", len(params))
+			}
+
+			path, ok := params[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("invalid argument type, expected string, got: %T", params[0])
+			}
+
+			return filepath.Base(path), nil
+		}),
+
+		expr.Function("path_dir", func(params ...any) (any, error) {
+			if len(params) != 1 {
+				return nil, fmt.Errorf("invalid number of arguments, expected 1, got: %d", len(params))
+			}
+
+			path, ok := params[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("invalid argument type, expected string, got: %T", params[0])
+			}
+
+			return filepath.Dir(path), nil
+		}),
+	}
+	options := append([]expr.Option{expr.Env(i)}, customFunctions...)
+
+	return expr.Compile(b.IncludeExpression, options...)
 }

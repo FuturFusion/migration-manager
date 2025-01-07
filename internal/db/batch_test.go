@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	batchA = batch.NewBatch("BatchA", 1, "pool1", "include", "exclude", time.Time{}, time.Time{}, "")
-	batchB = batch.NewBatch("BatchB", 1, "pool2", "", "exclude", time.Now().UTC(), time.Time{}, "network-name")
-	batchC = batch.NewBatch("BatchC", 1, "pool3", "include", "", time.Time{}, time.Now().UTC(), "another-network")
+	batchA = batch.NewBatch("BatchA", 1, "pool1", "include", time.Time{}, time.Time{}, "")
+	batchB = batch.NewBatch("BatchB", 1, "pool2", "", time.Now().UTC(), time.Time{}, "network-name")
+	batchC = batch.NewBatch("BatchC", 1, "pool3", "include", time.Time{}, time.Now().UTC(), "another-network")
 )
 
 func TestBatchDatabaseActions(t *testing.T) {
@@ -62,7 +62,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 
 	// Test updating a batch.
 	batchB.Name = "FooBar"
-	batchB.IncludeRegex = "a-new-regex"
+	batchB.IncludeExpression = "true"
 	batchB.Status = api.BATCHSTATUS_RUNNING
 	err = db.UpdateBatch(tx, batchB)
 	require.NoError(t, err)
