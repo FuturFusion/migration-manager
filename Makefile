@@ -79,6 +79,10 @@ docker-test: build-dev-container
 docker-static-analysis: build-dev-container
 	${DOCKER_RUN} make static-analysis
 
+.PHONY: docker-release-snapshot
+docker-release-snapshot: build-dev-container
+	${DOCKER_RUN} make release-snapshot
+
 .PHONY: enter-dev-container
 enter-dev-container:
 	@docker exec -it -w /workspaces/migration-manager ${USER}_migration_manager_devcontainer /bin/bash
