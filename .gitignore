@@ -27,3 +27,6 @@ go.work.sum
 
 # Goreleaser releases
 dist/
+
+# Cache directory to accelerate go execution in docker
+.devcontainer/build-cache/

@@ -1,0 +1,68 @@
+{
+  "name": "Migration Manager",
+  "dockerFile": "Dockerfile",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "766b.go-outliner",
+        "ms-azuretools.vscode-docker",
+        "ms-vscode.makefile-tools",
+        "github.vscode-github-actions",
+        "davidanson.vscode-markdownlint",
+        "shardulm94.trailing-spaces",
+        "Gruntfuggly.todo-tree"
+      ],
+      "settings": {
+        "files.insertFinalNewline": true,
+        "go.goroot": "/usr/local/go",
+        "go.gopath": "/go",
+        "go.lintTool": "golangci-lint",
+        "go.lintOnSave": "package",
+        "go.lintFlags": [ "--fast" ],
+        "go.useLanguageServer": true,
+        "goOutliner.extendExplorerTab": true,
+        "gopls": {
+          "formatting.gofumpt": true,
+          "formatting.local": "github.com/FuturFusion/migration-manager",
+          "ui.diagnostic.staticcheck": false
+        },
+        "[go]": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        },
+        "[go.mod]": {
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        },
+        "search.exclude": {
+          "**/.git": true,
+          "**/.build_cache": true,
+          "**/bin": true,
+          "**/dist": true
+        }
+      }
+    }
+  },
+
+  "postCreateCommand": "go mod download",
+
+  "runArgs": [
+    "-u",
+    "vscode",
+    "--cap-add=SYS_PTRACE",
+    "--security-opt",
+    "seccomp=unconfined",
+    "-v", "${env:HOME}/.ssh:/home/vscode/.ssh:ro",
+    "-v", "${localWorkspaceFolder}/.devcontainer/build-cache/go:/go",
+    "-v", "${localWorkspaceFolder}/.devcontainer/build-cache/cache:/home/vscode/.cache",
+    "--name", "${localEnv:USER}_migration_manager_devcontainer"
+  ],
+
+  "remoteUser": "vscode"
+}

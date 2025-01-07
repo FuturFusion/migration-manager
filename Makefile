@@ -44,11 +44,12 @@ endif
 	go-licenses check --disallowed_types=forbidden,unknown,restricted --ignore libguestfs.org/libnbd ./...
 	shellcheck --shell sh internal/worker/scripts/*.sh
 	golangci-lint run ./...
-	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '.sh'") scripts/lint
+	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '\.sh\$'") scripts/lint
 
 .PHONY: clean
 clean:
-	rm -rf dist/ bin/
+	chmod -R u+w .devcontainer/build-cache/go/pkg/mod/
+	rm -rf dist/ bin/ .devcontainer/build-cache/go/* .devcontainer/build-cache/cache/*
 
 .PHONY: release-snapshot
 release-snapshot:
@@ -57,3 +58,27 @@ ifeq ($(shell command -v goreleaser),)
 	exit 1
 endif
 	goreleaser release --snapshot --clean
+
+.PHONY: build-dev-container
+build-dev-container:
+	mkdir -p .devcontainer/build-cache/go
+	mkdir -p .devcontainer/build-cache/cache
+	docker build -t migration-manager-dev ./.devcontainer/
+
+DOCKER_RUN := docker run -it -v .:/home/vscode/src -v ./.devcontainer/build-cache/go:/go -v ./.devcontainer/build-cache/cache:/home/vscode/.cache -w /home/vscode/src -u 1000:1000 migration-manager-dev
+
+.PHONY: docker-build
+docker-build: build-dev-container
+	${DOCKER_RUN} make build
+
+.PHONY: docker-test
+docker-test: build-dev-container
+	${DOCKER_RUN} go test ./... -v -cover
+
+.PHONY: docker-static-analysis
+docker-static-analysis: build-dev-container
+	${DOCKER_RUN} make static-analysis
+
+.PHONY: enter-dev-container
+enter-dev-container:
+	@docker exec -it -w /workspaces/migration-manager ${USER}_migration_manager_devcontainer /bin/bash
