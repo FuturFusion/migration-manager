@@ -8,7 +8,6 @@ import (
 	"os/user"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/logger"
 	localtls "github.com/lxc/incus/v6/shared/tls"
@@ -238,7 +237,7 @@ func (d *Daemon) Stop(ctx context.Context, sig os.Signal) error {
 	return nil
 }
 
-func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint) {
+func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpoint) {
 	var uri string
 	if c.Path == "" {
 		uri = fmt.Sprintf("/%s", apiVersion)

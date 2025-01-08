@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -358,7 +357,7 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 	daemon.db, err = db.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
-	router := mux.NewRouter()
+	router := http.NewServeMux()
 	for _, cmd := range endpoints {
 		daemon.createCmd(router, "1.0", cmd)
 	}

@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
-
-	"github.com/gorilla/mux"
 
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
@@ -152,17 +149,14 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func targetDelete(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		// TODO: can this code path even be reached?
 		return response.BadRequest(fmt.Errorf("Target name cannot be empty"))
 	}
 
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		return d.db.DeleteTarget(tx, name)
 	})
 	if err != nil {
@@ -207,10 +201,7 @@ func targetDelete(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func targetGet(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		// TODO: can this code path even be reached?
@@ -218,7 +209,7 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	var t target.Target
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbTarget, err := d.db.GetTarget(tx, name)
 		if err != nil {
 			return err
@@ -264,10 +255,7 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func targetPut(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		// TODO: can this code path even be reached?
@@ -276,7 +264,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 
 	// Get the existing target.
 	var t target.Target
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbTarget, err := d.db.GetTarget(tx, name)
 		if err != nil {
 			return err

@@ -6,10 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
@@ -128,10 +126,7 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func instanceGet(d *Daemon, r *http.Request) response.Response {
-	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
@@ -190,10 +185,7 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
-	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
@@ -245,10 +237,7 @@ func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func instanceOverridePost(d *Daemon, r *http.Request) response.Response {
-	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
@@ -314,10 +303,7 @@ func instanceOverridePost(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
-	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
@@ -398,10 +384,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
-	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {

@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
-
-	"github.com/gorilla/mux"
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -179,16 +176,13 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchDelete(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
 	}
 
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		return d.db.DeleteBatch(tx, name)
 	})
 	if err != nil {
@@ -233,17 +227,14 @@ func batchDelete(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchGet(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
 	}
 
 	var b batch.Batch
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbBatch, err := d.db.GetBatch(tx, name)
 		if err != nil {
 			return err
@@ -289,10 +280,7 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchPut(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
@@ -300,7 +288,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 
 	// Get the existing batch.
 	var b batch.Batch
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbBatch, err := d.db.GetBatch(tx, name)
 		if err != nil {
 			return err
@@ -382,17 +370,14 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
 	}
 
 	var b batch.Batch
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbBatch, err := d.db.GetBatch(tx, name)
 		if err != nil {
 			return err
@@ -445,16 +430,13 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchStartPost(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
 	}
 
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		err := d.db.StartBatch(tx, name)
 		if err != nil {
 			return err
@@ -488,16 +470,13 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchStopPost(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
 	}
 
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		err := d.db.StopBatch(tx, name)
 		if err != nil {
 			return err
