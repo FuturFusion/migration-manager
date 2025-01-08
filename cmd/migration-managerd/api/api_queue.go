@@ -301,7 +301,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Determine what action, if any, the worker should start.
-	if i.NeedsDiskImport && i.Disks[0].DifferentialSyncSupported {
+	if i.NeedsDiskImport && disksSupportDifferentialSync(i.Disks) {
 		// If we can do a background disk sync, kick it off.
 		cmd.Command = api.WORKERCOMMAND_IMPORT_DISKS
 		cmd.SourceType = api.SOURCETYPE_VMWARE
@@ -336,6 +336,16 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseETag(true, cmd, cmd)
+}
+
+func disksSupportDifferentialSync(disks []api.InstanceDiskInfo) bool {
+	for _, disk := range disks {
+		if disk.Type == "HDD" && disk.DifferentialSyncSupported {
+			return true
+		}
+	}
+
+	return false
 }
 
 // swagger:operation PUT /1.0/queue/{uuid} queue queue_put
