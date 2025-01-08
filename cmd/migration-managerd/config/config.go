@@ -13,8 +13,9 @@ import (
 type DaemonConfig struct {
 	Group string `yaml:"-"` // Group name the local unix socket should be chown'ed to
 
-	RestServerIPAddr string `yaml:"-"`
-	RestServerPort   int    `yaml:"-"`
+	RestServerIPAddr   string `yaml:"-"`
+	RestServerPort     int    `yaml:"-"`
+	RestWorkerEndpoint string `yaml:"-"`
 
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `yaml:"trusted_tls_client_cert_fingerprints"`
