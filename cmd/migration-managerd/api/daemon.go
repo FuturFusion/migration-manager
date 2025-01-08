@@ -383,6 +383,10 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 	}
 }
 
-func (d *Daemon) getEndpoint() string {
+func (d *Daemon) getWorkerEndpoint() string {
+	if d.config.RestWorkerEndpoint != "" {
+		return d.config.RestWorkerEndpoint
+	}
+
 	return fmt.Sprintf("https://%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort)
 }
