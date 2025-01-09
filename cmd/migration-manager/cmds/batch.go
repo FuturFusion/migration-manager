@@ -129,12 +129,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	b.IncludeRegex, err = c.global.Asker.AskString("Regular expression to include instances: ", "", func(s string) error { return nil })
-	if err != nil {
-		return err
-	}
-
-	b.ExcludeRegex, err = c.global.Asker.AskString("Regular expression to exclude instances: ", "", func(s string) error { return nil })
+	b.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances: ", "", func(s string) error { return nil })
 	if err != nil {
 		return err
 	}
@@ -242,7 +237,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Status", "Status String", "Target", "Storage Pool", "Include Regex", "Exclude Regex", "Window Start", "Window End", "Default Network"}
+	header := []string{"Name", "Status", "Status String", "Target", "Storage Pool", "Include Expression", "Window Start", "Window End", "Default Network"}
 	data := [][]string{}
 
 	for _, b := range batches {
@@ -256,7 +251,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 			endString = b.MigrationWindowEnd.String()
 		}
 
-		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, targetMap[b.TargetID], b.StoragePool, b.IncludeRegex, b.ExcludeRegex, startString, endString, b.DefaultNetwork})
+		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, targetMap[b.TargetID], b.StoragePool, b.IncludeExpression, startString, endString, b.DefaultNetwork})
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, batches)
@@ -366,12 +361,8 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 		cmd.Printf("  - Storage pool:    %s\n", b.StoragePool)
 	}
 
-	if b.IncludeRegex != "" {
-		cmd.Printf("  - Include regex:   %s\n", b.IncludeRegex)
-	}
-
-	if b.ExcludeRegex != "" {
-		cmd.Printf("  - Exclude regex:   %s\n", b.ExcludeRegex)
+	if b.IncludeExpression != "" {
+		cmd.Printf("  - Include expression:   %s\n", b.IncludeExpression)
 	}
 
 	if !b.MigrationWindowStart.IsZero() {
@@ -548,12 +539,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	b.IncludeRegex, err = c.global.Asker.AskString("Regular expression to include instances: ["+b.IncludeRegex+"] ", b.IncludeRegex, func(s string) error { return nil })
-	if err != nil {
-		return err
-	}
-
-	b.ExcludeRegex, err = c.global.Asker.AskString("Regular expression to exclude instances: ["+b.ExcludeRegex+"] ", b.ExcludeRegex, func(s string) error { return nil })
+	b.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances: ["+b.IncludeExpression+"] ", b.IncludeExpression, func(s string) error { return nil })
 	if err != nil {
 		return err
 	}

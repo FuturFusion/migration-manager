@@ -70,13 +70,10 @@ type Batch struct {
 	// Example: local
 	StoragePool string `json:"storage_pool" yaml:"storage_pool"`
 
-	// A regular expression used to select instances to add to this batch
-	// Example: .*
-	IncludeRegex string `json:"include_regex" yaml:"include_regex"`
-
-	// A regular expression used to exclude instances from this batch
-	// Example: Windows
-	ExcludeRegex string `json:"exclude_regex" yaml:"exclude_regex"`
+	// A Expression used to select instances to add to this batch
+	// Language reference: https://expr-lang.org/docs/language-definition
+	// Example: GetInventoryPath() matches "^foobar/.*"
+	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
 
 	// If specified, don't start the migration before this time
 	MigrationWindowStart time.Time `json:"migration_window_start" yaml:"migration_window_start"`

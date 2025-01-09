@@ -139,6 +139,11 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
+	_, err = b.CompileIncludeExpression(batch.InstanceWithDetails{})
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
 	// Insert into database.
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		return d.db.AddBatch(tx, &b)
@@ -310,6 +315,11 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 
 	// Decode into the existing batch.
 	err = json.NewDecoder(r.Body).Decode(&b)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	_, err = b.(*batch.InternalBatch).CompileIncludeExpression(batch.InstanceWithDetails{})
 	if err != nil {
 		return response.BadRequest(err)
 	}
