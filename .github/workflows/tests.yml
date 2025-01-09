@@ -25,7 +25,9 @@ jobs:
         go:
           - oldstable
           - stable
-          - tip
+          # Disabled for now, since tip is not really important for us as of now.exclude:
+          # This saves us some minutes on CI.
+          # - tip
     steps:
       - name: Checkout
         uses: actions/checkout@v4
