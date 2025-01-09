@@ -6,12 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -219,10 +217,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func queueGet(d *Daemon, r *http.Request) response.Response {
-	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
@@ -378,10 +373,7 @@ func disksSupportDifferentialSync(disks []api.InstanceDiskInfo) bool {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func queuePut(d *Daemon, r *http.Request) response.Response {
-	UUIDString, err := url.PathUnescape(mux.Vars(r)["uuid"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {

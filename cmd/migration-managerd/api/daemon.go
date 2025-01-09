@@ -8,7 +8,6 @@ import (
 	"os/user"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/logger"
 	localtls "github.com/lxc/incus/v6/shared/tls"
@@ -29,7 +28,6 @@ import (
 
 // APIEndpoint represents a URL in our API.
 type APIEndpoint struct {
-	Name   string // Name for this endpoint.
 	Path   string // Path pattern for this endpoint.
 	Get    APIEndpointAction
 	Head   APIEndpointAction
@@ -239,7 +237,7 @@ func (d *Daemon) Stop(ctx context.Context, sig os.Signal) error {
 	return nil
 }
 
-func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint) {
+func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpoint) {
 	var uri string
 	if c.Path == "" {
 		uri = fmt.Sprintf("/%s", apiVersion)
@@ -249,7 +247,7 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 		uri = fmt.Sprintf("/%s", c.Path)
 	}
 
-	route := restAPI.HandleFunc(uri, func(w http.ResponseWriter, r *http.Request) {
+	restAPI.HandleFunc(uri, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
 		// Authentication
@@ -375,12 +373,6 @@ func (d *Daemon) createCmd(restAPI *mux.Router, apiVersion string, c APIEndpoint
 			}
 		}
 	})
-
-	// If the endpoint has a canonical name then record it so it can be used to build URLS
-	// and accessed in the context of the request by the handler function.
-	if c.Name != "" {
-		route.Name(c.Name)
-	}
 }
 
 func (d *Daemon) getWorkerEndpoint() string {

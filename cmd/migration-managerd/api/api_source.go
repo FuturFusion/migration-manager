@@ -6,9 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
-
-	"github.com/gorilla/mux"
 
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
@@ -156,16 +153,13 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func sourceDelete(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		return response.BadRequest(fmt.Errorf("Source name cannot be empty"))
 	}
 
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		return d.db.DeleteSource(tx, name)
 	})
 	if err != nil {
@@ -210,17 +204,14 @@ func sourceDelete(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func sourceGet(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		return response.BadRequest(fmt.Errorf("Source name cannot be empty"))
 	}
 
 	var s api.Source
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbSource, err := d.db.GetSource(tx, name)
 		if err != nil {
 			return err
@@ -266,10 +257,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func sourcePut(d *Daemon, r *http.Request) response.Response {
-	name, err := url.PathUnescape(mux.Vars(r)["name"])
-	if err != nil {
-		return response.SmartError(err)
-	}
+	name := r.PathValue("name")
 
 	if name == "" {
 		return response.BadRequest(fmt.Errorf("Source name cannot be empty"))
@@ -277,7 +265,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 
 	// Get the existing source.
 	var s api.Source
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbSource, err := d.db.GetSource(tx, name)
 		if err != nil {
 			return err

@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/lxc/incus/v6/shared/logger"
 
 	"github.com/FuturFusion/migration-manager/internal/server/request"
@@ -46,13 +45,16 @@ import (
 //	            type: string
 //	          example: ["/1.0"]
 func restServer(d *Daemon) *http.Server {
-	router := mux.NewRouter()
-	router.StrictSlash(false) // Don't redirect to URL with trailing slash.
-	router.SkipClean(true)
-	router.UseEncodedPath() // Allow encoded values in path segments.
+	router := http.NewServeMux()
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
+		if r.URL.Path != "/" {
+			logger.Info("Sending top level 404", logger.Ctx{"url": r.URL, "method": r.Method, "remote": r.RemoteAddr})
+			_ = response.NotFound(nil).Render(w)
+			return
+		}
 
 		_ = response.SyncResponse(true, []string{"/1.0"}).Render(w)
 	})
@@ -60,12 +62,6 @@ func restServer(d *Daemon) *http.Server {
 	for _, c := range api10 {
 		d.createCmd(router, "1.0", c)
 	}
-
-	router.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		logger.Info("Sending top level 404", logger.Ctx{"url": r.URL, "method": r.Method, "remote": r.RemoteAddr})
-		w.Header().Set("Content-Type", "application/json")
-		_ = response.NotFound(nil).Render(w)
-	})
 
 	return &http.Server{
 		Handler:     router,
