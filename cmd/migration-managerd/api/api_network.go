@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -15,16 +16,16 @@ import (
 var networksCmd = APIEndpoint{
 	Path: "networks",
 
-	Get:  APIEndpointAction{Handler: networksGet, AllowUntrusted: true},
-	Post: APIEndpointAction{Handler: networksPost, AccessHandler: allowAuthenticated},
+	Get:  APIEndpointAction{Handler: networksGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Post: APIEndpointAction{Handler: networksPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanCreate)},
 }
 
 var networkCmd = APIEndpoint{
 	Path: "networks/{name}",
 
-	Delete: APIEndpointAction{Handler: networkDelete, AccessHandler: allowAuthenticated},
-	Get:    APIEndpointAction{Handler: networkGet, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: networkPut, AccessHandler: allowAuthenticated},
+	Delete: APIEndpointAction{Handler: networkDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
+	Get:    APIEndpointAction{Handler: networkGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Put:    APIEndpointAction{Handler: networkPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 // swagger:operation GET /1.0/networks networks networks_get

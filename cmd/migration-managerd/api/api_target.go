@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/target"
@@ -16,16 +17,16 @@ import (
 var targetsCmd = APIEndpoint{
 	Path: "targets",
 
-	Get:  APIEndpointAction{Handler: targetsGet, AllowUntrusted: true},
-	Post: APIEndpointAction{Handler: targetsPost, AccessHandler: allowAuthenticated},
+	Get:  APIEndpointAction{Handler: targetsGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Post: APIEndpointAction{Handler: targetsPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanCreate)},
 }
 
 var targetCmd = APIEndpoint{
 	Path: "targets/{name}",
 
-	Delete: APIEndpointAction{Handler: targetDelete, AccessHandler: allowAuthenticated},
-	Get:    APIEndpointAction{Handler: targetGet, AllowUntrusted: true},
-	Put:    APIEndpointAction{Handler: targetPut, AccessHandler: allowAuthenticated},
+	Delete: APIEndpointAction{Handler: targetDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
+	Get:    APIEndpointAction{Handler: targetGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Put:    APIEndpointAction{Handler: targetPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 // swagger:operation GET /1.0/targets targets targets_get

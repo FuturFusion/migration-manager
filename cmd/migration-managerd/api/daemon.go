@@ -15,6 +15,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
 	"github.com/FuturFusion/migration-manager/internal/server/endpoints"
 	"github.com/FuturFusion/migration-manager/internal/server/request"
@@ -48,6 +49,7 @@ type Daemon struct {
 	db *db.Node
 	os *sys.OS
 
+	authorizer   auth.Authorizer
 	oidcVerifier *oidc.Verifier
 
 	config    *config.DaemonConfig
@@ -80,6 +82,23 @@ func allowAuthenticated(d *Daemon, r *http.Request) response.Response {
 	}
 
 	return response.EmptySyncResponse
+}
+
+// allowPermission is a wrapper to check access against a given object. Currently server is the only supported object.
+func allowPermission(objectType auth.ObjectType, entitlement auth.Entitlement) func(d *Daemon, r *http.Request) response.Response { // nolint:unparam
+	return func(d *Daemon, r *http.Request) response.Response {
+		if objectType != auth.ObjectTypeServer {
+			return response.InternalError(fmt.Errorf("Unsupported object: %s", objectType))
+		}
+
+		// Validate whether the user has the needed permission
+		err := d.authorizer.CheckPermission(r.Context(), r, auth.ObjectServer(), entitlement)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		return response.EmptySyncResponse
+	}
 }
 
 // Convenience function around Authenticate.
@@ -185,6 +204,12 @@ func (d *Daemon) Start() error {
 
 	/* Setup network endpoint certificate */
 	networkCert, err := internalUtil.LoadCert(d.os.VarDir)
+	if err != nil {
+		return err
+	}
+
+	// Set default authorizer.
+	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, logger.Log, d.config.TrustedTLSClientCertFingerprints, nil)
 	if err != nil {
 		return err
 	}
