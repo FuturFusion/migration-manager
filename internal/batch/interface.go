@@ -3,7 +3,6 @@ package batch
 import (
 	"time"
 
-	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -25,7 +24,7 @@ type Batch interface {
 	CanBeModified() bool
 
 	// Returns true if the instance matches inclusion/exclusion criteria for this batch.
-	InstanceMatchesCriteria(i instance.Instance) (bool, error)
+	InstanceMatchesCriteria(i InstanceWithDetails) (bool, error)
 
 	// Returns the status of this batch.
 	GetStatus() api.BatchStatusType

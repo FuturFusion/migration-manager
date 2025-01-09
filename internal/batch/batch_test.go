@@ -3,11 +3,9 @@ package batch_test
 import (
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
-	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -35,49 +33,49 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 		},
 		{
 			name:       "Inventory path exact match",
-			expression: `GetInventoryPath() == "a/b/c"`,
+			expression: `InventoryPath == "/a/b/c"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "Inventory path regex match",
-			expression: `GetInventoryPath() matches "^a/[^/]+/c*"`,
+			expression: `InventoryPath matches "^/a/[^/]+/c*"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "Name exact match",
-			expression: `GetName() == "c"`,
+			expression: `Name == "c"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "boolean or expression",
-			expression: `GetInventoryPath() matches "^e/f/.*" || GetName() == "c"`,
+			expression: `InventoryPath matches "^/e/f/.*" || Name == "c"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "boolean and expression",
-			expression: `GetInventoryPath() == "a/b/c" && CanBeModified()`,
+			expression: `InventoryPath == "/a/b/c" && TPMPresent`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "exclude regex",
-			expression: `!(GetInventoryPath() matches "^a/e/.*$")`,
+			expression: `!(InventoryPath matches "^/a/e/.*$")`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "custom path_base function exact match",
-			expression: `path_base(GetInventoryPath()) == "c"`,
+			expression: `path_base(InventoryPath) == "c"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
@@ -98,7 +96,7 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 		},
 		{
 			name:       "custom path_dir function exact match",
-			expression: `path_dir(GetInventoryPath()) == "a/b"`,
+			expression: `path_dir(InventoryPath) == "/a/b"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
@@ -117,26 +115,47 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 			assertErr:  require.Error,
 			wantResult: false,
 		},
+		{
+			name:       "complex expression",
+			expression: `Source.Name in ["vcenter01", "vcenter02", "vcenter03"] && (InventoryPath startsWith "/a/b" || InventoryPath startsWith "/e/f") && CPU.NumberCPUs <= 4 && Memory.MemoryInBytes <= 1024*1024*1024*8 && len(Disks) == 1 && !Disks[0].IsShared && OS in ["Ubuntu 22.04", "Ubuntu 24.04"]`,
+
+			assertErr:  require.NoError,
+			wantResult: true,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			batch := batch.InternalBatch{
+			currentBatch := batch.InternalBatch{
 				Batch: api.Batch{
 					Name:              "test batch",
 					IncludeExpression: tc.expression,
 				},
 			}
 
-			instance := &instance.InternalInstance{
-				Instance: api.Instance{
-					UUID:            uuid.MustParse("16a9d016-8c43-4bf7-b75e-dcc542ce510a"),
-					InventoryPath:   "a/b/c",
-					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+			instance := batch.InstanceWithDetails{
+				Name:          "c",
+				InventoryPath: "/a/b/c",
+				OS:            "Ubuntu 22.04",
+				CPU: api.InstanceCPUInfo{
+					NumberCPUs: 2,
+				},
+				Memory: api.InstanceMemoryInfo{
+					MemoryInBytes: 1024 * 1024 * 1024 * 4,
+				},
+				Disks: []api.InstanceDiskInfo{
+					{
+						Name:     "disk",
+						IsShared: false,
+					},
+				},
+				TPMPresent: true,
+				Source: batch.Source{
+					Name: "vcenter01",
 				},
 			}
 
-			res, err := batch.InstanceMatchesCriteria(instance)
+			res, err := currentBatch.InstanceMatchesCriteria(instance)
 			tc.assertErr(t, err)
 
 			require.Equal(t, tc.wantResult, res)

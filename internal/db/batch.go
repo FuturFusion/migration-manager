@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -297,7 +298,16 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 	// Update each instance for this batch.
 	for _, i := range instances {
 		// Check if the instance should still be assigned to this batch.
-		isMatch, err := b.InstanceMatchesCriteria(i)
+		if i.GetMigrationStatus() == api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
+			continue
+		}
+
+		instWithDetails, err := n.getInstanceWithDetails(tx, i)
+		if err != nil {
+			return err
+		}
+
+		isMatch, err := b.InstanceMatchesCriteria(instWithDetails)
 		if err != nil {
 			return err
 		}
@@ -330,7 +340,16 @@ func (n *Node) UpdateInstancesAssignedToBatch(tx *sql.Tx, b batch.Batch) error {
 
 	// Check if any unassigned instances should be assigned to this batch.
 	for _, i := range instances {
-		isMatch, err := b.InstanceMatchesCriteria(i)
+		if i.GetMigrationStatus() == api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
+			continue
+		}
+
+		instWithDetails, err := n.getInstanceWithDetails(tx, i)
+		if err != nil {
+			return err
+		}
+
+		isMatch, err := b.InstanceMatchesCriteria(instWithDetails)
 		if err != nil {
 			return err
 		}
@@ -384,6 +403,48 @@ func (n *Node) getAllUnassignedInstances(tx *sql.Tx) ([]instance.Instance, error
 	}
 
 	return ret, nil
+}
+
+func (n *Node) getInstanceWithDetails(tx *sql.Tx, ii instance.Instance) (batch.InstanceWithDetails, error) {
+	i, ok := ii.(*instance.InternalInstance)
+	if !ok {
+		return batch.InstanceWithDetails{}, errors.New("Invalid instance provided")
+	}
+
+	source, err := n.GetSourceByID(tx, i.SourceID)
+	if err != nil {
+		return batch.InstanceWithDetails{}, err
+	}
+
+	override, err := n.GetInstanceOverride(tx, i.UUID)
+	if err != nil {
+		return batch.InstanceWithDetails{}, err
+	}
+
+	return batch.InstanceWithDetails{
+		Name:              ii.GetName(),
+		InventoryPath:     i.InventoryPath,
+		Annotation:        i.Annotation,
+		GuestToolsVersion: i.GuestToolsVersion,
+		Architecture:      i.Architecture,
+		HardwareVersion:   i.HardwareVersion,
+		OS:                i.OS,
+		OSVersion:         i.OSVersion,
+		Devices:           i.Devices,
+		Disks:             i.Disks,
+		NICs:              i.NICs,
+		Snapshots:         i.Snapshots,
+		CPU:               i.CPU,
+		Memory:            i.Memory,
+		UseLegacyBios:     i.UseLegacyBios,
+		SecureBootEnabled: i.SecureBootEnabled,
+		TPMPresent:        i.TPMPresent,
+		Source: batch.Source{
+			Name:       source.Name,
+			SourceType: source.SourceType.String(),
+		},
+		Overrides: override,
+	}, nil
 }
 
 func (n *Node) StartBatch(tx *sql.Tx, name string) error {

@@ -138,7 +138,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = b.CompileIncludeExpression(&instance.InternalInstance{})
+	_, err = b.CompileIncludeExpression(batch.InstanceWithDetails{})
 	if err != nil {
 		return response.BadRequest(err)
 	}
@@ -318,7 +318,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = b.(*batch.InternalBatch).CompileIncludeExpression(&instance.InternalInstance{})
+	_, err = b.(*batch.InternalBatch).CompileIncludeExpression(batch.InstanceWithDetails{})
 	if err != nil {
 		return response.BadRequest(err)
 	}

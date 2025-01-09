@@ -9,7 +9,6 @@ import (
 	"github.com/expr-lang/expr/vm"
 
 	"github.com/FuturFusion/migration-manager/internal"
-	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -82,11 +81,42 @@ func (b *InternalBatch) GetDefaultNetwork() string {
 	return b.DefaultNetwork
 }
 
-func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) (bool, error) {
-	if i.GetMigrationStatus() == api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
-		return false, nil
-	}
+type InstanceWithDetails struct {
+	Name              string
+	InventoryPath     string
+	Annotation        string
+	GuestToolsVersion int
+	Architecture      string
+	HardwareVersion   string
+	OS                string
+	OSVersion         string
+	Devices           []api.InstanceDeviceInfo
+	Disks             []api.InstanceDiskInfo
+	NICs              []api.InstanceNICInfo
+	Snapshots         []api.InstanceSnapshotInfo
+	CPU               api.InstanceCPUInfo
+	Memory            api.InstanceMemoryInfo
+	UseLegacyBios     bool
+	SecureBootEnabled bool
+	TPMPresent        bool
 
+	Source    Source
+	Overrides api.InstanceOverride
+}
+
+type Source struct {
+	Name       string
+	SourceType string
+}
+
+type Overrides struct {
+	Comment          string
+	NumberCPUs       int
+	MemoryInBytes    int64
+	DisableMigration bool
+}
+
+func (b *InternalBatch) InstanceMatchesCriteria(i InstanceWithDetails) (bool, error) {
 	includeExpr, err := b.CompileIncludeExpression(i)
 	if err != nil {
 		return false, fmt.Errorf("Failed to compile include expression %q: %v", b.IncludeExpression, err)
@@ -105,7 +135,7 @@ func (b *InternalBatch) InstanceMatchesCriteria(i instance.Instance) (bool, erro
 	return result, nil
 }
 
-func (b *InternalBatch) CompileIncludeExpression(i instance.Instance) (*vm.Program, error) {
+func (b *InternalBatch) CompileIncludeExpression(i InstanceWithDetails) (*vm.Program, error) {
 	customFunctions := []expr.Option{
 		expr.Function("path_base", func(params ...any) (any, error) {
 			if len(params) != 1 {
