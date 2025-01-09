@@ -30,10 +30,11 @@ var queueCmd = APIEndpoint{
 	Put: APIEndpointAction{Handler: queuePut, AccessHandler: allowAuthenticated},
 }
 
-// Given a secret token, check if it corresponds to the secret for the instance state being updated.
+// Authenticate a migration worker. Allow a GET for an existing instance so the worker can get its instructions,
+// and for PUT require the secret token to be valid when the worker reports back.
 func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
-	// Only allow PUT methods.
-	if r.Method != http.MethodPut {
+	// Only allow GET and PUT methods.
+	if r.Method != http.MethodGet && r.Method != http.MethodPut {
 		return false
 	}
 
@@ -49,17 +50,6 @@ func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
 
 	// Ensure we got a valid instance UUID.
 	instanceUUID, err := uuid.Parse(pathParts[3])
-	if err != nil {
-		return false
-	}
-
-	// Get the secret token.
-	err = r.ParseForm()
-	if err != nil {
-		return false
-	}
-
-	secretUUID, err := uuid.Parse(r.Form.Get("secret"))
 	if err != nil {
 		return false
 	}
@@ -84,7 +74,23 @@ func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
 		return false
 	}
 
-	return secretUUID == i.GetSecretToken()
+	if r.Method == http.MethodPut {
+		// Get the secret token.
+		err = r.ParseForm()
+		if err != nil {
+			return false
+		}
+
+		secretUUID, err := uuid.Parse(r.Form.Get("secret"))
+		if err != nil {
+			return false
+		}
+
+		return secretUUID == i.GetSecretToken()
+	}
+
+	// Allow a GET for a valid instance.
+	return r.Method == http.MethodGet
 }
 
 // swagger:operation GET /1.0/queue queue queueRoot_get
