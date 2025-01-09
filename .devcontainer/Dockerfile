@@ -14,7 +14,7 @@ RUN apt update && \
 # Build libnbd deb packages.
 RUN mkdir -p /tmp/debs && \
     cd /tmp/debs && \
-    dget -u http://archive.ubuntu.com/ubuntu/pool/universe/libn/libnbd/libnbd_${LIBNBD_DEB_VERSION}.dsc && \
+    dget -u https://deb.debian.org/debian/pool/main/libn/libnbd/libnbd_${LIBNBD_DEB_VERSION}.dsc && \
     cd libnbd-${LIBNBD_VERSION} && \
     debuild -b -uc -us
 
