@@ -48,8 +48,7 @@ endif
 
 .PHONY: clean
 clean:
-	chmod -R u+w .devcontainer/build-cache/go/pkg/mod/
-	rm -rf dist/ bin/ .devcontainer/build-cache/go/* .devcontainer/build-cache/cache/*
+	rm -rf dist/ bin/
 
 .PHONY: release-snapshot
 release-snapshot:
@@ -61,11 +60,9 @@ endif
 
 .PHONY: build-dev-container
 build-dev-container:
-	mkdir -p .devcontainer/build-cache/go
-	mkdir -p .devcontainer/build-cache/cache
 	docker build -t migration-manager-dev ./.devcontainer/
 
-DOCKER_RUN := docker run -it -v .:/home/vscode/src -v ./.devcontainer/build-cache/go:/go -v ./.devcontainer/build-cache/cache:/home/vscode/.cache -w /home/vscode/src -u 1000:1000 migration-manager-dev
+DOCKER_RUN := docker run -it -v .:/home/vscode/src --mount source=migration_manager_devcontainer_goroot,target=/go,type=volume --mount source=migration_manager_devcontainer_cache,target=/home/vscode/.cache,type=volume -w /home/vscode/src -u 1000:1000 migration-manager-dev
 
 .PHONY: docker-build
 docker-build: build-dev-container

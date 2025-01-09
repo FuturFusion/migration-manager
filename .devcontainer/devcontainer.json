@@ -42,7 +42,6 @@
         },
         "search.exclude": {
           "**/.git": true,
-          "**/.build_cache": true,
           "**/bin": true,
           "**/dist": true
         }
@@ -52,6 +51,11 @@
 
   "postCreateCommand": "go mod download",
 
+  "mounts": [
+    "source=migration_manager_devcontainer_cache,target=/home/vscode/.cache,type=volume",
+    "source=migration_manager_devcontainer_goroot,target=/go,type=volume"
+  ],
+
   "runArgs": [
     "-u",
     "vscode",
@@ -59,8 +63,6 @@
     "--security-opt",
     "seccomp=unconfined",
     "-v", "${env:HOME}/.ssh:/home/vscode/.ssh:ro",
-    "-v", "${localWorkspaceFolder}/.devcontainer/build-cache/go:/go",
-    "-v", "${localWorkspaceFolder}/.devcontainer/build-cache/cache:/home/vscode/.cache",
     "--name", "${localEnv:USER}_migration_manager_devcontainer"
   ],
 
