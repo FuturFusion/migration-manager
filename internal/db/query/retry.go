@@ -4,14 +4,16 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/Rican7/retry/jitter"
 	"github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/mattn/go-sqlite3"
+
+	"github.com/FuturFusion/migration-manager/internal/logger"
 )
 
 const maxRetries = 250
@@ -41,16 +43,16 @@ func Retry(ctx context.Context, f func(ctx context.Context) error) error {
 
 		// Process actual errors.
 		if !IsRetriableError(err) {
-			logger.Debug("Database error", logger.Ctx{"err": err})
+			slog.Debug("Database error", logger.Err(err))
 			break
 		}
 
 		if i == maxRetries {
-			logger.Warn("Database error, giving up", logger.Ctx{"attempt": i, "err": err})
+			slog.Warn("Database error, giving up", slog.Int("attempt", i), logger.Err(err))
 			break
 		}
 
-		logger.Debug("Database error, retrying", logger.Ctx{"attempt": i, "err": err})
+		slog.Debug("Database error, retrying", slog.Int("attempt", i), logger.Err(err))
 		time.Sleep(jitter.Deviation(nil, 0.8)(100 * time.Millisecond))
 	}
 

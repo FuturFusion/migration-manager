@@ -4,6 +4,7 @@ package endpoints
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -11,7 +12,6 @@ import (
 	"strconv"
 
 	incus "github.com/lxc/incus/v6/client"
-	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
 )
@@ -69,7 +69,7 @@ func socketUnixRemoveStale(path string) error {
 		return nil
 	}
 
-	logger.Debugf("Detected stale unix socket, deleting")
+	slog.Debug("Detected stale unix socket, deleting")
 	err := os.Remove(path)
 	if err != nil {
 		return fmt.Errorf("could not delete stale local socket: %w", err)

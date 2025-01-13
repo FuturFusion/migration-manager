@@ -6,11 +6,11 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -348,6 +348,8 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 
 	var err error
 
+	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
+
 	tmpDir := t.TempDir()
 
 	daemon := NewDaemon(&config.DaemonConfig{
@@ -358,7 +360,7 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 	daemon.target = migration.NewTargetService(sqlite.NewTarget(daemon.db.DB))
 	require.NoError(t, err)
 
-	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, logger.Log, daemon.config.TrustedTLSClientCertFingerprints, nil)
+	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, logger, daemon.config.TrustedTLSClientCertFingerprints, nil)
 	require.NoError(t, err)
 
 	router := http.NewServeMux()

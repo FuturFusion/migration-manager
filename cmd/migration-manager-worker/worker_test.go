@@ -11,10 +11,10 @@ import (
 	"time"
 
 	incusAPI "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager-worker/worker"
+	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -260,7 +260,7 @@ func TestRun(t *testing.T) {
 
 	// Enable logging if tests are executed in verbose mode.
 	if testing.Verbose() {
-		err := logger.InitLogger("", "", true, true, nil)
+		err := logger.InitLogger("", true, true)
 		require.NoError(t, err)
 	}
 

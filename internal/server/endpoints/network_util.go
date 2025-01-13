@@ -2,10 +2,9 @@ package endpoints
 
 import (
 	"bytes"
+	"log/slog"
 	"net"
 	"regexp"
-
-	"github.com/lxc/incus/v6/shared/logger"
 )
 
 type networkServerErrorLogWriter struct {
@@ -21,7 +20,7 @@ func (d networkServerErrorLogWriter) Write(p []byte) (int, error) {
 		return 0, nil
 	}
 
-	logger.Info(strippedLog)
+	slog.Info(strippedLog) //nolint:sloglint
 	return len(p), nil
 }
 

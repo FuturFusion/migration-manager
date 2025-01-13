@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -14,10 +15,10 @@ import (
 	"time"
 
 	incusAPI "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/logger"
 	"golang.org/x/sys/unix"
 
 	"github.com/FuturFusion/migration-manager/internal"
+	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/internal/worker"
@@ -92,13 +93,13 @@ func SetInsecure(insecure bool) WorkerOption {
 }
 
 func (w *Worker) Run(ctx context.Context) {
-	logger.Info("Starting up", logger.Ctx{"version": version.Version})
+	slog.Info("Starting up", slog.String("version", version.Version))
 
 	for {
 		done := func() (done bool) {
 			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodGet, "", nil)
 			if err != nil {
-				logger.Errorf("%s", err.Error())
+				slog.Error("HTTP request failed", logger.Err(err))
 				return false
 			}
 
@@ -106,13 +107,13 @@ func (w *Worker) Run(ctx context.Context) {
 
 			err = responseToStruct(resp, &cmd)
 			if err != nil {
-				logger.Errorf("%s", err.Error())
+				slog.Error("Failed to unmarshal http response", logger.Err(err))
 				return false
 			}
 
 			switch cmd.Command {
 			case api.WORKERCOMMAND_IDLE:
-				logger.Debug("Received IDLE command, sleeping")
+				slog.Debug("Received IDLE command, sleeping")
 				return false
 
 			case api.WORKERCOMMAND_IMPORT_DISKS:
@@ -123,7 +124,7 @@ func (w *Worker) Run(ctx context.Context) {
 				return w.finalizeImport(ctx, cmd)
 
 			default:
-				logger.Errorf("Received unknown command (%d)", cmd.Command)
+				slog.Error("Received unknown command", slog.Any("command", cmd.Command))
 				return false
 			}
 		}()
@@ -152,7 +153,7 @@ func (w *Worker) importDisks(ctx context.Context, cmd api.WorkerCommand) {
 		}
 	}
 
-	logger.Info("Performing disk import")
+	slog.Info("Performing disk import")
 
 	err := w.importDisksHelper(ctx, cmd)
 	if err != nil {
@@ -160,7 +161,7 @@ func (w *Worker) importDisks(ctx context.Context, cmd api.WorkerCommand) {
 		return
 	}
 
-	logger.Info("Disk import completed successfully")
+	slog.Info("Disk import completed successfully")
 	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Disk import completed successfully")
 }
 
@@ -173,7 +174,7 @@ func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) e
 
 	// Do the actual import.
 	return w.source.ImportDisks(ctx, cmd.InventoryPath, func(status string, isImportant bool) {
-		logger.Info(status)
+		slog.Info(status) //nolint:sloglint
 
 		// Only send updates back to the server if important or once every 5 seconds.
 		if isImportant || time.Since(w.lastUpdate).Seconds() >= 5 {
@@ -197,7 +198,7 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 		}
 	}
 
-	logger.Info("Shutting down source VM")
+	slog.Info("Shutting down source VM")
 
 	err := w.source.PowerOffVM(ctx, cmd.InventoryPath)
 	if err != nil {
@@ -205,9 +206,9 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 		return false
 	}
 
-	logger.Info("Source VM shutdown complete")
+	slog.Info("Source VM shutdown complete")
 
-	logger.Info("Performing final disk sync")
+	slog.Info("Performing final disk sync")
 
 	err = w.importDisksHelper(ctx, cmd)
 	if err != nil {
@@ -215,7 +216,7 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 		return false
 	}
 
-	logger.Info("Performing final migration tasks")
+	slog.Info("Performing final migration tasks")
 	w.sendStatusResponse(api.WORKERRESPONSE_RUNNING, "Performing final migration tasks")
 
 	// Windows-specific
@@ -270,7 +271,7 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 	// When the worker is done, the VM will be forced off, so call sync() to ensure all data is saved to disk.
 	unix.Sync()
 
-	logger.Info("Final migration tasks completed successfully")
+	slog.Info("Final migration tasks completed successfully")
 	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Final migration tasks completed successfully")
 
 	// When we've finished the import, shutdown the worker.
@@ -304,30 +305,30 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusStri
 
 	content, err := json.Marshal(resp)
 	if err != nil {
-		logger.Errorf("Failed to marshal status response for migration manager: %s", err.Error())
+		slog.Error("Failed to marshal status response for migration manager", logger.Err(err))
 		return
 	}
 
 	_, err = w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodPut, "secret="+w.token, content)
 	if err != nil {
-		logger.Errorf("Failed to send status back to migration manager: %s", err.Error())
+		slog.Error("Failed to send status back to migration manager", logger.Err(err))
 		return
 	}
 }
 
 func (w *Worker) sendErrorResponse(err error) {
-	logger.Errorf("%s", err.Error())
+	slog.Error("worker error", logger.Err(err))
 	resp := api.WorkerResponse{Status: api.WORKERRESPONSE_FAILED, StatusString: err.Error()}
 
 	content, err := json.Marshal(resp)
 	if err != nil {
-		logger.Errorf("Failed to send error back to migration manager: %s", err.Error())
+		slog.Error("Failed to send error back to migration manager", logger.Err(err))
 		return
 	}
 
 	_, err = w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodPut, "secret="+w.token, content)
 	if err != nil {
-		logger.Errorf("Failed to send error back to migration manager: %s", err.Error())
+		slog.Error("Failed to send error back to migration manager", logger.Err(err))
 		return
 	}
 }

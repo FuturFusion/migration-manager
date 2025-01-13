@@ -3,11 +3,11 @@ package endpoints
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"strings"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/logger"
 	localtls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/lxc/incus/v6/shared/util"
 
@@ -68,7 +68,7 @@ func (e *Endpoints) NetworkUpdateAddress(address string) error {
 		return nil
 	}
 
-	logger.Infof("Update network address")
+	slog.Info("Update network address")
 
 	e.mu.Lock()
 	defer e.mu.Unlock()

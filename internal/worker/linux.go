@@ -5,12 +5,12 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
-	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
 
@@ -48,7 +48,7 @@ type LVSOutput struct {
 const chrootMountPath string = "/mnt/target/"
 
 func LinuxDoPostMigrationConfig(distro string, majorVersion int) error {
-	logger.Info("Preparing to perform post-migration configuration of VM")
+	slog.Info("Preparing to perform post-migration configuration of VM")
 
 	// Determine the root partition.
 	rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition()
@@ -157,7 +157,7 @@ func LinuxDoPostMigrationConfig(distro string, majorVersion int) error {
 		}
 	}
 
-	logger.Info("Post-migration configuration complete!")
+	slog.Info("Post-migration configuration complete!")
 	return nil
 }
 

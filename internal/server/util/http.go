@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -19,9 +20,9 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/logger"
 	localtls "github.com/lxc/incus/v6/shared/tls"
 
+	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/ports"
 )
 
@@ -32,7 +33,7 @@ func DebugJSON(title string, r *bytes.Buffer, l logger.Logger) {
 	pretty := &bytes.Buffer{}
 	err := json.Indent(pretty, r.Bytes(), "\t", "\t")
 	if err != nil {
-		l.Debug("Error indenting JSON", logger.Ctx{"err": err})
+		l.Debug("Error indenting JSON", "err", err)
 		return
 	}
 
@@ -192,7 +193,7 @@ func CheckTrustState(cert x509.Certificate, trustedCertFingerprints []string, ne
 	// Check whether client certificate fingerprint is trusted.
 	for _, fingerprint := range trustedCertFingerprints {
 		if certFingerprint == fingerprint {
-			logger.Debug("Matched trusted cert", logger.Ctx{"fingerprint": fingerprint, "subject": cert.Subject})
+			slog.Debug("Matched trusted cert", slog.String("fingerprint", fingerprint), slog.Any("subject", cert.Subject))
 			return true, fingerprint
 		}
 	}

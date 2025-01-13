@@ -3,18 +3,19 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/user"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/logger"
 	localtls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
@@ -196,20 +197,20 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 func (d *Daemon) Start() error {
 	var err error
 
-	logger.Info("Starting up", logger.Ctx{"version": version.Version})
+	slog.Info("Starting up", slog.String("version", version.Version))
 
 	// Open the local sqlite database.
 	if !util.PathExists(d.os.LocalDatabaseDir()) {
 		err := os.MkdirAll(d.os.LocalDatabaseDir(), 0o755)
 		if err != nil {
-			logger.Errorf("Failed to create database directory: %s", err)
+			slog.Error("Failed to create database directory", logger.Err(err))
 			return err
 		}
 	}
 
 	d.db, err = db.OpenDatabase(d.os.LocalDatabaseDir())
 	if err != nil {
-		logger.Errorf("Failed to open sqlite database: %s", err)
+		slog.Error("Failed to open sqlite database", logger.Err(err))
 		return err
 	}
 
@@ -220,7 +221,7 @@ func (d *Daemon) Start() error {
 	}
 
 	// Set default authorizer.
-	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, logger.Log, d.config.TrustedTLSClientCertFingerprints, nil)
+	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints, nil)
 	if err != nil {
 		return err
 	}
@@ -255,7 +256,7 @@ func (d *Daemon) Start() error {
 	d.runPeriodicTask(d.processQueuedBatches, 10*time.Second)
 	d.runPeriodicTask(d.finalizeCompleteInstances, 10*time.Second)
 
-	logger.Info("Daemon started")
+	slog.Info("Daemon started")
 
 	return nil
 }
@@ -268,7 +269,7 @@ func (d *Daemon) Stop(ctx context.Context, sig os.Signal) error {
 		}
 	}
 
-	logger.Info("Daemon stopped")
+	slog.Info("Daemon stopped")
 
 	return nil
 }
@@ -301,11 +302,9 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 			}
 		}
 
-		logCtx := logger.Ctx{"method": r.Method, "url": r.URL.RequestURI(), "ip": r.RemoteAddr}
-
 		untrustedOk := (r.Method == "GET" && c.Get.AllowUntrusted) || (r.Method == "POST" && c.Post.AllowUntrusted)
 		if trusted {
-			logger.Debug("Handling API request", logCtx)
+			slog.Debug("Handling API request", slog.String("method", r.Method), slog.String("url", r.URL.RequestURI()), slog.String("ip", r.RemoteAddr))
 
 			// Add authentication/authorization context data.
 			ctx := context.WithValue(r.Context(), request.CtxUsername, username)
@@ -313,13 +312,13 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 
 			r = r.WithContext(ctx)
 		} else if untrustedOk && r.Header.Get("X-MigrationManager-authenticated") == "" {
-			logger.Debug(fmt.Sprintf("Allowing untrusted %s", r.Method), logger.Ctx{"url": r.URL.RequestURI(), "ip": r.RemoteAddr})
+			slog.Debug("Allowing untrusted", slog.String("method", r.Method), slog.Any("url", r.URL), slog.String("ip", r.RemoteAddr))
 		} else {
 			if d.oidcVerifier != nil {
 				_ = d.oidcVerifier.WriteHeaders(w)
 			}
 
-			logger.Warn("Rejecting request from untrusted client", logger.Ctx{"ip": r.RemoteAddr})
+			slog.Warn("Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr))
 			_ = response.Forbidden(nil).Render(w)
 			return
 		}
@@ -405,7 +404,7 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 		if err != nil {
 			writeErr := response.SmartError(err).Render(w)
 			if writeErr != nil {
-				logger.Error("Failed writing error for HTTP response", logger.Ctx{"url": uri, "err": err, "writeErr": writeErr})
+				slog.Error("Failed writing error for HTTP response", slog.String("url", uri), logger.Err(err), slog.Any("write_err", writeErr))
 			}
 		}
 	})

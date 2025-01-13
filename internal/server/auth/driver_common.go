@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/lxc/incus/v6/shared/logger"
-
+	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/server/request"
 )
 
@@ -25,7 +24,7 @@ func (c *commonAuthorizer) init(driverName string, l logger.Logger) error {
 		return fmt.Errorf("Cannot initialize authorizer: nil logger provided")
 	}
 
-	l = l.AddContext(logger.Ctx{"driver": driverName})
+	l = l.With("driver", driverName)
 
 	c.driverName = driverName
 	c.logger = l

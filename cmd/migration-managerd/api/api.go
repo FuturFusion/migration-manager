@@ -1,10 +1,9 @@
 package api
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
-
-	"github.com/lxc/incus/v6/shared/logger"
 
 	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
@@ -51,7 +50,7 @@ func restServer(d *Daemon) *http.Server {
 		w.Header().Set("Content-Type", "application/json")
 
 		if r.URL.Path != "/" {
-			logger.Info("Sending top level 404", logger.Ctx{"url": r.URL, "method": r.Method, "remote": r.RemoteAddr})
+			slog.Info("Sending top level 404", slog.Any("url", r.URL), slog.String("method", r.Method), slog.String("remote", r.RemoteAddr))
 			_ = response.NotFound(nil).Render(w)
 			return
 		}

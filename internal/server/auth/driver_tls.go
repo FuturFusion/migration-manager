@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/logger"
 )
 
 // TLS represents a TLS authorizer.
@@ -33,7 +32,7 @@ func (t *TLS) CheckPermission(ctx context.Context, r *http.Request, object Objec
 	}
 
 	if details.Protocol != api.AuthenticationMethodTLS {
-		t.logger.Warn("Authentication protocol is not compatible with authorization driver", logger.Ctx{"protocol": details.Protocol})
+		t.logger.Warn("Authentication protocol is not compatible with authorization driver", "protocol", details.Protocol)
 		// Return nil. If the server has been configured with an authentication method but no associated authorization driver,
 		// the default is to give these authenticated users admin privileges.
 		return nil
