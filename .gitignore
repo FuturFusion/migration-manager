@@ -33,3 +33,6 @@ go.work.sum
 
 # Goreleaser releases
 dist/
+
+# UI(js) files
+node_modules/
