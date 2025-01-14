@@ -5,8 +5,8 @@ default: build
 
 .PHONY: build
 build: build-dependencies migration-manager
-	go build -o ./bin/migration-managerd ./cmd/migration-managerd
-	go build -o ./bin/migration-manager-worker ./cmd/migration-manager-worker
+	$(GO) build -o ./bin/migration-managerd ./cmd/migration-managerd
+	$(GO) build -o ./bin/migration-manager-worker ./cmd/migration-manager-worker
 
 .PHONY: build-dependencies
 build-dependencies:
@@ -18,16 +18,22 @@ build-dependencies:
 .PHONY: migration-manager
 migration-manager:
 	mkdir -p ./bin/
-	CGO_ENABLED=0 GOARCH=amd64 go build -o ./bin/migration-manager.linux.amd64 ./cmd/migration-manager
-	CGO_ENABLED=0 GOARCH=arm64 go build -o ./bin/migration-manager.linux.arm64 ./cmd/migration-manager
-	GOOS=darwin GOARCH=amd64 go build -o ./bin/migration-manager.macos.amd64 ./cmd/migration-manager
-	GOOS=darwin GOARCH=arm64 go build -o ./bin/migration-manager.macos.arm64 ./cmd/migration-manager
-	GOOS=windows GOARCH=amd64 go build -o ./bin/migration-manager.windows.amd64.exe ./cmd/migration-manager
-	GOOS=windows GOARCH=arm64 go build -o ./bin/migration-manager.windows.arm64.exe ./cmd/migration-manager
+	CGO_ENABLED=0 GOARCH=amd64 $(GO) build -o ./bin/migration-manager.linux.amd64 ./cmd/migration-manager
+	CGO_ENABLED=0 GOARCH=arm64 $(GO) build -o ./bin/migration-manager.linux.arm64 ./cmd/migration-manager
+	GOOS=darwin GOARCH=amd64 $(GO) build -o ./bin/migration-manager.macos.amd64 ./cmd/migration-manager
+	GOOS=darwin GOARCH=arm64 $(GO) build -o ./bin/migration-manager.macos.arm64 ./cmd/migration-manager
+	GOOS=windows GOARCH=amd64 $(GO) build -o ./bin/migration-manager.windows.amd64.exe ./cmd/migration-manager
+	GOOS=windows GOARCH=arm64 $(GO) build -o ./bin/migration-manager.windows.arm64.exe ./cmd/migration-manager
+
+.PHONY: build-all-packages
+build-all-packages:
+	$(GO) mod tidy
+	$(GO) build ./...
+	$(GO) test -c -o /dev/null ./...
 
 .PHONY: test
 test: build-dependencies
-	go test ./... -v -cover
+	$(GO) test ./... -v -cover
 
 .PHONY: static-analysis
 static-analysis: build-dependencies
@@ -62,15 +68,19 @@ endif
 build-dev-container:
 	docker build -t migration-manager-dev ./.devcontainer/
 
-DOCKER_RUN := docker run -it -v .:/home/vscode/src --mount source=migration_manager_devcontainer_goroot,target=/go,type=volume --mount source=migration_manager_devcontainer_cache,target=/home/vscode/.cache,type=volume -w /home/vscode/src -u 1000:1000 migration-manager-dev
+DOCKER_RUN := docker run -i -v .:/home/vscode/src --mount source=migration_manager_devcontainer_goroot,target=/go,type=volume --mount source=migration_manager_devcontainer_cache,target=/home/vscode/.cache,type=volume -w /home/vscode/src -u 1000:1000 migration-manager-dev
 
 .PHONY: docker-build
 docker-build: build-dev-container
 	${DOCKER_RUN} make build
 
+.PHONY: docker-build-all-packages
+docker-build-all-packages: build-dev-container
+	${DOCKER_RUN} make build-all-packages
+
 .PHONY: docker-test
 docker-test: build-dev-container
-	${DOCKER_RUN} go test ./... -v -cover
+	${DOCKER_RUN} make test
 
 .PHONY: docker-static-analysis
 docker-static-analysis: build-dev-container
