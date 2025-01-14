@@ -45,20 +45,20 @@ func (c *cmdDaemon) Command() *cobra.Command {
 
 func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	if len(args) > 1 || (len(args) == 1 && args[0] != "migration-managerd" && args[0] != "") {
-		return fmt.Errorf("unknown command \"%s\" for \"%s\"", args[0], cmd.CommandPath())
+		return fmt.Errorf(`unknown command "%s" for "%s"`, args[0], cmd.CommandPath())
 	}
 
-	cfg := &config.DaemonConfig{
-		Group:              c.flagGroup,
-		RestServerIPAddr:   c.flagServerIP,
-		RestServerPort:     c.flagServerPort,
-		RestWorkerEndpoint: c.flagWorkerEndpoint,
-	}
+	cfg := &config.DaemonConfig{}
 
 	err := cfg.LoadConfig()
 	if err != nil {
 		return err
 	}
+
+	cfg.Group = c.flagGroup
+	cfg.RestServerIPAddr = c.flagServerIP
+	cfg.RestServerPort = c.flagServerPort
+	cfg.RestWorkerEndpoint = c.flagWorkerEndpoint
 
 	d := api.NewDaemon(cfg)
 

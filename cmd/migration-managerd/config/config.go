@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path"
+	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 
@@ -29,7 +30,7 @@ type DaemonConfig struct {
 }
 
 func (c *DaemonConfig) LoadConfig() error {
-	contents, err := os.ReadFile(path.Join(util.VarPath(), "config.yml"))
+	contents, err := os.ReadFile(filepath.Join(util.VarPath(), "config.yml"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
