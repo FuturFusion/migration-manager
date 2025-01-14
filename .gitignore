@@ -8,6 +8,12 @@
 *.so
 *.dylib
 bin/
+/migration-manager
+/migration-manager-worker
+/migration-managerd
+/cmd/migration-manager/migration-manager
+/cmd/migration-manager-worker/migration-manager-worker
+/cmd/migration-managerd/migration-managerd
 
 # Test binary, built with `go test -c`
 *.test
