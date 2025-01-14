@@ -31,6 +31,10 @@ build-all-packages:
 	$(GO) build ./...
 	$(GO) test -c -o /dev/null ./...
 
+.PHONY: build-ui
+build-ui:
+	$(MAKE) -C ui
+
 .PHONY: test
 test: build-dependencies
 	$(GO) test ./... -v -cover
