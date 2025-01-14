@@ -163,6 +163,7 @@ func (b *InternalBatch) CompileIncludeExpression(i InstanceWithDetails) (*vm.Pro
 			return filepath.Dir(path), nil
 		}),
 	}
+
 	options := append([]expr.Option{expr.Env(i)}, customFunctions...)
 
 	return expr.Compile(b.IncludeExpression, options...)

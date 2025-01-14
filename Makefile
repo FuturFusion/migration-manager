@@ -50,7 +50,7 @@ endif
 	go-licenses check --disallowed_types=forbidden,unknown,restricted --ignore libguestfs.org/libnbd ./...
 	shellcheck --shell sh internal/worker/scripts/*.sh
 	golangci-lint run ./...
-	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '\.sh\$'") scripts/lint
+	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '\.sh$$' ") scripts/lint
 
 .PHONY: clean
 clean:
