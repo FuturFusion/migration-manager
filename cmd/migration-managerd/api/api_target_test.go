@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
@@ -21,9 +20,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
-	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/testcert"
-	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func TestTargetsGet(t *testing.T) {
@@ -248,13 +245,11 @@ func TestTargetPut(t *testing.T) {
 			targetName: "foo",
 			targetJSON: `{"name": "foo", "endpoint": "some endpoint", "insecure": true}`,
 			targetEtag: func() string {
-				etag, err := util.EtagHash(target.InternalIncusTarget{
-					IncusTarget: api.IncusTarget{
-						Name:       "foo",
-						DatabaseID: 1,
-						Endpoint:   "bar",
-						Insecure:   true,
-					},
+				etag, err := util.EtagHash(migration.Target{
+					ID:       1,
+					Name:     "foo",
+					Endpoint: "bar",
+					Insecure: true,
 				})
 				require.NoError(t, err)
 				return etag
@@ -390,15 +385,13 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 
 func seedDBWithSingleTarget(t *testing.T, daemon *Daemon) {
 	t.Helper()
+	ctx := context.TODO()
 
-	err := daemon.db.Transaction(context.Background(), func(ctx context.Context, tx *sql.Tx) error {
-		return daemon.db.AddTarget(tx, &target.InternalIncusTarget{
-			IncusTarget: api.IncusTarget{
-				Name:     "foo",
-				Endpoint: "bar",
-				Insecure: true,
-			},
-		})
-	})
+	_, err := daemon.target.Create(ctx, migration.Target{
+		Name:     "foo",
+		Endpoint: "bar",
+		Insecure: true,
+	},
+	)
 	require.NoError(t, err)
 }

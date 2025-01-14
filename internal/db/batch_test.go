@@ -1,6 +1,7 @@
 package db_test
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -8,6 +9,8 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -18,6 +21,8 @@ var (
 )
 
 func TestBatchDatabaseActions(t *testing.T) {
+	ctx := context.TODO()
+
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
 	db, err := dbdriver.OpenDatabase(tmpDir)
@@ -28,10 +33,12 @@ func TestBatchDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = tx.Rollback() }()
 
+	targetSvc := migration.NewTargetService(sqlite.NewTarget(tx))
+
 	// Cannot add a batch with an invalid target.
 	err = db.AddBatch(tx, batchA)
 	require.Error(t, err)
-	err = db.AddTarget(tx, testTarget)
+	_, err = targetSvc.Create(ctx, testTarget)
 	require.NoError(t, err)
 
 	// Add batchA.
@@ -52,7 +59,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 	require.Len(t, batches, 3)
 
 	// Cannot delete a target if referenced by a batch.
-	err = db.DeleteTarget(tx, testTarget.GetName())
+	err = targetSvc.DeleteByName(ctx, testTarget.Name)
 	require.Error(t, err)
 
 	// Should get back batchA unchanged.

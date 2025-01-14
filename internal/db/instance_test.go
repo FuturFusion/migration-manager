@@ -14,7 +14,6 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
-	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -66,6 +65,8 @@ var (
 )
 
 func TestInstanceDatabaseActions(t *testing.T) {
+	ctx := context.TODO()
+
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
 	db, err := dbdriver.OpenDatabase(tmpDir)
@@ -86,7 +87,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add dummy target.
-	err = db.AddTarget(tx, testTarget)
+	_, err = targetSvc.Create(ctx, testTarget)
 	require.NoError(t, err)
 
 	// Add dummy batch.
@@ -108,7 +109,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Cannot delete a source or target if referenced by an instance.
 	err = sourceSvc.DeleteByName(context.TODO(), testSource.Name)
 	require.Error(t, err)
-	err = db.DeleteTarget(tx, testTarget.GetName())
+	err = targetSvc.DeleteByName(ctx, testTarget.Name)
 	require.Error(t, err)
 
 	// Ensure we have three instances.
@@ -169,7 +170,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Error(t, err)
 
 	// Can't delete a target that has at least one associated instance.
-	err = db.DeleteTarget(tx, testTarget.GetName())
+	err = targetSvc.DeleteByName(ctx, testTarget.Name)
 	require.Error(t, err)
 
 	err = tx.Commit()

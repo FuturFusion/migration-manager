@@ -17,6 +17,8 @@ import (
 var overrideA = api.InstanceOverride{UUID: instanceAUUID, LastUpdate: time.Now().UTC(), Comment: "A comment", NumberCPUs: 8, MemoryInBytes: 4096, DisableMigration: true}
 
 func TestInstanceOverrideDatabaseActions(t *testing.T) {
+	ctx := context.TODO()
+
 	// Create a new temporary database.
 	tmpDir := t.TempDir()
 	db, err := dbdriver.OpenDatabase(tmpDir)
@@ -37,7 +39,7 @@ func TestInstanceOverrideDatabaseActions(t *testing.T) {
 	// Add the corresponding instance.
 	_, err = sourceSvc.Create(ctx, testSource)
 	require.NoError(t, err)
-	err = db.AddTarget(tx, testTarget)
+	_, err = targetSvc.Create(ctx, testTarget)
 	require.NoError(t, err)
 	err = db.AddInstance(tx, instanceA)
 	require.NoError(t, err)

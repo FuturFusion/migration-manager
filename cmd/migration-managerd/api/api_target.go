@@ -1,16 +1,15 @@
 package api
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
+	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/transaction"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
-	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -59,7 +58,7 @@ var targetCmd = APIEndpoint{
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of sources
+//	          description: List of targets
 //	          items:
 //	            $ref: "#/definitions/IncusTarget"
 //	  "403":
@@ -67,18 +66,23 @@ var targetCmd = APIEndpoint{
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func targetsGet(d *Daemon, r *http.Request) response.Response {
-	result := []target.Target{}
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		targets, err := d.db.GetAllTargets(tx)
-		if err != nil {
-			return err
-		}
-
-		result = targets
-		return nil
-	})
+	targets, err := d.target.GetAll(r.Context())
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	result := make([]api.IncusTarget, 0, len(targets))
+	for _, target := range targets {
+		result = append(result, api.IncusTarget{
+			DatabaseID:    target.ID,
+			Name:          target.Name,
+			Endpoint:      target.Endpoint,
+			TLSClientKey:  target.TLSClientKey,
+			TLSClientCert: target.TLSClientCert,
+			OIDCTokens:    target.OIDCTokens,
+			Insecure:      target.Insecure,
+			IncusProject:  target.IncusProject,
+		})
 	}
 
 	return response.SyncResponse(true, result)
@@ -112,23 +116,28 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func targetsPost(d *Daemon, r *http.Request) response.Response {
-	var t target.InternalIncusTarget
+	var target api.IncusTarget
 
 	// Decode into the new target.
-	err := json.NewDecoder(r.Body).Decode(&t)
+	err := json.NewDecoder(r.Body).Decode(&target)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	// Insert into database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.AddTarget(tx, &t)
+	_, err = d.target.Create(r.Context(), migration.Target{
+		Name:          target.Name,
+		Endpoint:      target.Endpoint,
+		TLSClientKey:  target.TLSClientKey,
+		TLSClientCert: target.TLSClientCert,
+		OIDCTokens:    target.OIDCTokens,
+		Insecure:      target.Insecure,
+		IncusProject:  target.IncusProject,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", t.GetName(), err))
+		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", target.Name, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+t.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+target.Name)
 }
 
 // swagger:operation DELETE /1.0/targets/{name} targets target_delete
@@ -152,16 +161,9 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 func targetDelete(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		// TODO: can this code path even be reached?
-		return response.BadRequest(fmt.Errorf("Target name cannot be empty"))
-	}
-
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.DeleteTarget(tx, name)
-	})
+	err := d.target.DeleteByName(r.Context(), name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to delete target '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
 	return response.EmptySyncResponse
@@ -204,26 +206,25 @@ func targetDelete(d *Daemon, r *http.Request) response.Response {
 func targetGet(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		// TODO: can this code path even be reached?
-		return response.BadRequest(fmt.Errorf("Target name cannot be empty"))
-	}
-
-	var t target.Target
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbTarget, err := d.db.GetTarget(tx, name)
-		if err != nil {
-			return err
-		}
-
-		t = dbTarget
-		return nil
-	})
+	target, err := d.target.GetByName(r.Context(), name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get target '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
-	return response.SyncResponseETag(true, t, t)
+	return response.SyncResponseETag(
+		true,
+		api.IncusTarget{
+			DatabaseID:    target.ID,
+			Name:          target.Name,
+			Endpoint:      target.Endpoint,
+			TLSClientKey:  target.TLSClientKey,
+			TLSClientCert: target.TLSClientCert,
+			OIDCTokens:    target.OIDCTokens,
+			Insecure:      target.Insecure,
+			IncusProject:  target.IncusProject,
+		},
+		target,
+	)
 }
 
 // swagger:operation PUT /1.0/targets/{name} targets target_put
@@ -258,45 +259,47 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 func targetPut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		// TODO: can this code path even be reached?
-		return response.BadRequest(fmt.Errorf("Target name cannot be empty"))
-	}
+	var target api.IncusTarget
 
-	// Get the existing target.
-	var t target.Target
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbTarget, err := d.db.GetTarget(tx, name)
-		if err != nil {
-			return err
-		}
-
-		t = dbTarget
-		return nil
-	})
-	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get target '%s': %w", name, err))
-	}
-
-	// Validate ETag
-	err = util.EtagCheck(r, t)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
-
-	// Decode into the existing target.
-	err = json.NewDecoder(r.Body).Decode(&t)
+	err := json.NewDecoder(r.Body).Decode(&target)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	// Update target in the database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateTarget(tx, t)
-	})
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+		}
+	}()
+
+	currentTarget, err := d.target.GetByName(ctx, target.Name)
+
+	// Validate ETag
+	err = util.EtagCheck(r, currentTarget)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", t.GetName(), err))
+		return response.PreconditionFailed(err)
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+t.GetName())
+	_, err = d.target.UpdateByName(ctx, migration.Target{
+		ID:            target.DatabaseID,
+		Name:          name,
+		Endpoint:      target.Endpoint,
+		TLSClientKey:  target.TLSClientKey,
+		TLSClientCert: target.TLSClientCert,
+		OIDCTokens:    target.OIDCTokens,
+		Insecure:      target.Insecure,
+		IncusProject:  target.IncusProject,
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", name, err))
+	}
+
+	err = trans.Commit()
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+	}
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+target.Name)
 }
