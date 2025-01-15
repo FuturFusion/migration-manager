@@ -79,9 +79,6 @@ func NewDaemon(cfg *config.DaemonConfig) *Daemon {
 		ShutdownDoneCh: make(chan error),
 	}
 
-	d.source = migration.NewSourceService(sqlite.NewSource(d.db.DB))
-	d.target = migration.NewTargetService(sqlite.NewTarget(d.db.DB))
-
 	return d
 }
 
@@ -213,6 +210,9 @@ func (d *Daemon) Start() error {
 		slog.Error("Failed to open sqlite database", logger.Err(err))
 		return err
 	}
+
+	d.source = migration.NewSourceService(sqlite.NewSource(d.db.DB))
+	d.target = migration.NewTargetService(sqlite.NewTarget(d.db.DB))
 
 	/* Setup network endpoint certificate */
 	networkCert, err := internalUtil.LoadCert(d.os.VarDir)
