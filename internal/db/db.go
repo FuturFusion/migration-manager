@@ -5,9 +5,8 @@ package db
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 	"path/filepath"
-
-	"github.com/lxc/incus/v6/shared/logger"
 
 	"github.com/FuturFusion/migration-manager/internal/db/query"
 	"github.com/FuturFusion/migration-manager/internal/db/sqlite"
@@ -70,7 +69,7 @@ func EnsureSchema(db *sql.DB, dir string) (int, error) {
 	schema.File(filepath.Join(dir, "patch.local.sql")) // Optional custom queries
 	schema.Hook(func(ctx context.Context, version int, tx *sql.Tx) error {
 		if !backupDone {
-			logger.Infof("Updating the database schema. Backup made as \"local.db.bak\"")
+			slog.Info(`Updating the database schema. Backup made as "local.db.bak"`)
 			path := filepath.Join(dir, "local.db")
 			err := util.FileCopy(path, path+".bak")
 			if err != nil {
@@ -81,9 +80,9 @@ func EnsureSchema(db *sql.DB, dir string) (int, error) {
 		}
 
 		if version == -1 {
-			logger.Debugf("Running pre-update queries from file for local DB schema")
+			slog.Debug("Running pre-update queries from file for local DB schema")
 		} else {
-			logger.Debugf("Updating DB schema from %d to %d", version, version+1)
+			slog.Debug("Updating DB schema", slog.Int("from_version", version), slog.Int("to_version", version+1))
 		}
 
 		return nil

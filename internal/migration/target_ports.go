@@ -12,7 +12,7 @@ type TargetService interface {
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/target_repo_mock_gen.go -rm . TargetRepo
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i TargetRepo -t logrus -o ./repo/middleware/target_logrus_gen.go
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i TargetRepo -t ../logger/slog.gotmpl -o ./repo/middleware/target_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i TargetRepo -t prometheus -o ./repo/middleware/target_prometheus_gen.go
 
 type TargetRepo interface {

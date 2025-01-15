@@ -4,10 +4,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 
-	"github.com/lxc/incus/v6/shared/logger"
 	localtls "github.com/lxc/incus/v6/shared/tls"
 )
 
@@ -83,7 +83,7 @@ func ServerTLSConfig(cert *localtls.CertInfo) *tls.Config {
 		config.RootCAs = pool
 		config.ClientCAs = pool
 
-		logger.Infof("Incus is in CA mode, only CA-signed certificates will be allowed")
+		slog.Info("Incus is in CA mode, only CA-signed certificates will be allowed")
 	}
 
 	return config

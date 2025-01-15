@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/lxc/incus/v6/shared/logger"
+	"github.com/FuturFusion/migration-manager/internal/logger"
 )
 
 const (

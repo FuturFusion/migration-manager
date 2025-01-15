@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -13,9 +14,10 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/lxc/distrobuilder/shared"
 	"github.com/lxc/distrobuilder/windows"
-	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
+
+	"github.com/FuturFusion/migration-manager/internal/logger"
 )
 
 type BitLockerState int
@@ -88,7 +90,7 @@ func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error
 }
 
 func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartition string, recoveryPartition string) error {
-	logger.Info("Preparing to inject Windows drivers into VM")
+	slog.Info("Preparing to inject Windows drivers into VM")
 
 	// Mount the virtio drivers image.
 	err := DoMount(driversMountDevice, driversMountPath, nil)
@@ -157,7 +159,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 		return err
 	}
 
-	logger.Info("Successfully injected drivers!")
+	slog.Info("Successfully injected drivers!")
 	return nil
 }
 
@@ -168,12 +170,7 @@ func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 		return err
 	}
 
-	log, err := shared.GetLogger(false)
-	if err != nil {
-		return fmt.Errorf("Failed to get logger: %w\n", err)
-	}
-
-	repackUtuil := windows.NewRepackUtil(cacheDir, ctx, log)
+	repackUtuil := windows.NewRepackUtil(cacheDir, ctx, logger.SlogBackedLogrus())
 
 	reWim, err := shared.FindFirstMatch(windowsRecoveryMountPath, "Recovery/WindowsRE", "winre.wim")
 	if err != nil {

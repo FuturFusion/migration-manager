@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 
-	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 
@@ -79,9 +79,9 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	for {
 		select {
 		case sig := <-sigCh:
-			logger.Info("Received signal", logger.Ctx{"signal": sig})
+			slog.Info("Received signal", slog.Any("signal", sig))
 			if d.ShutdownCtx.Err() != nil {
-				logger.Warn("Ignoring signal, shutdown already in progress", logger.Ctx{"signal": sig})
+				slog.Warn("Ignoring signal, shutdown already in progress", slog.Any("signal", sig))
 			} else {
 				go func() {
 					d.ShutdownDoneCh <- d.Stop(context.Background(), sig)

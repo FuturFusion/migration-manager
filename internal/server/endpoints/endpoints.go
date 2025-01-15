@@ -2,16 +2,17 @@ package endpoints
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/logger"
 	localtls "github.com/lxc/incus/v6/shared/tls"
 	tomb "gopkg.in/tomb.v2"
 
 	"github.com/FuturFusion/migration-manager/internal/linux"
+	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/server/endpoints/listeners"
 )
 
@@ -162,7 +163,7 @@ func (e *Endpoints) up(config *Config) error {
 	if config.NetworkAddress != "" {
 		listener, ok := e.listeners[network]
 		if ok {
-			logger.Infof("Replacing inherited TCP socket with configured one")
+			slog.Info("Replacing inherited TCP socket with configured one")
 			_ = listener.Close()
 			e.inherited[network] = false
 		}
@@ -173,13 +174,13 @@ func (e *Endpoints) up(config *Config) error {
 		e.listeners[network], networkAddressErr = networkCreateListener(config.NetworkAddress, e.cert)
 
 		if networkAddressErr != nil {
-			logger.Error("Cannot currently listen on https socket, re-trying once in 30s...", logger.Ctx{"err": networkAddressErr})
+			slog.Error("Cannot currently listen on https socket, re-trying once in 30s...", logger.Err(networkAddressErr))
 
 			go func() {
 				time.Sleep(30 * time.Second)
 				err := e.NetworkUpdateAddress(config.NetworkAddress)
 				if err != nil {
-					logger.Error("Still unable to listen on https socket", logger.Ctx{"err": err})
+					slog.Error("Still unable to listen on https socket", logger.Err(err))
 				}
 			}()
 		}
@@ -225,12 +226,15 @@ func (e *Endpoints) serve(kind kind) {
 		return
 	}
 
-	ctx := logger.Ctx{"type": kind.String(), "socket": listener.Addr()}
+	log := slog.With(
+		slog.Any("type", kind),
+		slog.Any("socket", listener.Addr()),
+	)
 	if e.inherited[kind] {
-		ctx["inherited"] = true
+		log = slog.With(slog.Bool("inherited", true))
 	}
 
-	logger.Info("Binding socket", ctx)
+	log.Info("Binding socket")
 
 	server := e.servers[kind]
 
@@ -255,7 +259,7 @@ func (e *Endpoints) closeListener(kind kind) error {
 
 	delete(e.listeners, kind)
 
-	logger.Info("Closing socket", logger.Ctx{"type": kind.String(), "socket": listener.Addr()})
+	slog.Info("Closing socket", slog.Any("type", kind), slog.Any("socket", listener.Addr()))
 
 	return listener.Close()
 }

@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
-	"github.com/lxc/incus/v6/shared/logger"
 	"github.com/spf13/cobra"
 
+	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
@@ -21,7 +21,7 @@ type cmdGlobal struct {
 }
 
 func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
-	err := logger.InitLogger(c.flagLogFile, "", c.flagLogVerbose, c.flagLogDebug, nil)
+	err := logger.InitLogger(c.flagLogFile, c.flagLogVerbose, c.flagLogDebug)
 	if err != nil {
 		return err
 	}
