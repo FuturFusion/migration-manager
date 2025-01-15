@@ -76,7 +76,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all instances.
-	resp, err := c.global.doHTTPRequestV1("/instances", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/instances", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	// Get nice names for the batches.
 	batches := []api.Batch{}
 	batchesMap := make(map[int]string)
-	resp, err = c.global.doHTTPRequestV1("/batches", http.MethodGet, "", nil)
+	resp, err = c.global.doHTTPRequestV1("/batches", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	// Get nice names for the sources.
 	sources := []api.Source{}
 	sourcesMap := make(map[int]string)
-	resp, err = c.global.doHTTPRequestV1("/sources", http.MethodGet, "", nil)
+	resp, err = c.global.doHTTPRequestV1("/sources", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	// Get nice names for the targets.
 	targets := []api.IncusTarget{}
 	targetsMap := make(map[int]string)
-	resp, err = c.global.doHTTPRequestV1("/targets", http.MethodGet, "", nil)
+	resp, err = c.global.doHTTPRequestV1("/targets", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,9 +28,15 @@ var queueRootCmd = APIEndpoint{
 var queueCmd = APIEndpoint{
 	Path: "queue/{uuid}",
 
+	Get: APIEndpointAction{Handler: queueGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+}
+
+var queueWorkerCmd = APIEndpoint{
+	Path: "queue/{uuid}/worker",
+
 	// Endpoints used by the migration worker which authenticates via a randomly-generated UUID unique to each instance.
-	Get: APIEndpointAction{Handler: queueGet, AccessHandler: allowAuthenticated},
-	Put: APIEndpointAction{Handler: queuePut, AccessHandler: allowAuthenticated},
+	Get: APIEndpointAction{Handler: queueWorkerGet, AccessHandler: allowAuthenticated},
+	Put: APIEndpointAction{Handler: queueWorkerPut, AccessHandler: allowAuthenticated},
 }
 
 // Authenticate a migration worker. Allow a GET for an existing instance so the worker can get its instructions,
@@ -99,6 +106,49 @@ func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
 //
 //	Get the current migration queue
 //
+//	Returns a list of all migrations underway (URLs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Migration queue instances
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of migration items in the queue
+//                items:
+//                  type: string
+//                example: |-
+//                  [
+//                    "/1.0/queue/26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad",
+//                    "/1.0/queue/9aad7f16-0d2e-440e-872f-4e9df2d53367"
+//                  ]
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/queue?recursion=1 queue queueRoot_get_recursion
+//
+//	Get the current migration queue
+//
 //	Returns a list of all migrations underway (structs).
 //
 //	---
@@ -133,11 +183,17 @@ func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func queueRootGet(d *Daemon, r *http.Request) response.Response {
-	result := []api.QueueEntry{}
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
+	queueItems := []api.QueueEntry{}
 
 	// Get all batches.
 	var batches []batch.Batch
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbBatches, err := d.db.GetAllBatches(tx)
 		if err != nil {
 			return err
@@ -176,7 +232,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 		}
 
 		for _, i := range instances {
-			result = append(result, api.QueueEntry{
+			queueItems = append(queueItems, api.QueueEntry{
 				InstanceUUID:          i.GetUUID(),
 				InstanceName:          i.GetName(),
 				MigrationStatus:       i.GetMigrationStatus(),
@@ -187,10 +243,114 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 		}
 	}
 
+	if recursion == 1 {
+		return response.SyncResponse(true, queueItems)
+	}
+
+	result := make([]string, 0, len(queueItems))
+	for _, q := range queueItems {
+		result = append(result, fmt.Sprintf("/%s/queue/%s", api.APIVersion, q.InstanceUUID))
+	}
+
 	return response.SyncResponse(true, result)
 }
 
 // swagger:operation GET /1.0/queue/{uuid} queue queue_get
+//
+//	Get migration entry from queue
+//
+//	Returns details about the specified queue entry.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Queue entry
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/QueueEntry"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func queueGet(d *Daemon, r *http.Request) response.Response {
+	UUIDString := r.PathValue("uuid")
+
+	UUID, err := uuid.Parse(UUIDString)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	// Get the instance.
+	var i *instance.InternalInstance
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbInstance, err := d.db.GetInstance(tx, UUID)
+		if err != nil {
+			return err
+		}
+
+		internalInstance, ok := dbInstance.(*instance.InternalInstance)
+		if !ok {
+			return fmt.Errorf("Wasn't given an InternalInstance?")
+		}
+
+		i = internalInstance
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
+	}
+
+	// Don't return info for instances that aren't in the migration queue.
+	if i.GetBatchID() == nil || !i.IsMigrating() {
+		return response.BadRequest(fmt.Errorf("Instance '%s' isn't in the migration queue", i.GetName()))
+	}
+
+	// Get the corresponding batch.
+	var b batch.Batch
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbBatch, err := d.db.GetBatchByID(tx, *i.GetBatchID())
+		if err != nil {
+			return err
+		}
+
+		b = dbBatch
+		return nil
+	})
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get batch: %w", err))
+	}
+
+	batchID, _ := b.GetDatabaseID()
+	ret := api.QueueEntry{
+		InstanceUUID:          i.GetUUID(),
+		InstanceName:          i.GetName(),
+		MigrationStatus:       i.GetMigrationStatus(),
+		MigrationStatusString: i.GetMigrationStatusString(),
+		BatchID:               batchID,
+		BatchName:             b.GetName(),
+	}
+
+	return response.SyncResponseETag(true, ret, ret)
+}
+
+// swagger:operation GET /1.0/queue/{uuid}/worker queue queue_worker_get
 //
 //	Get worker command for instance
 //
@@ -224,7 +384,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func queueGet(d *Daemon, r *http.Request) response.Response {
+func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
@@ -341,7 +501,7 @@ func disksSupportDifferentialSync(disks []api.InstanceDiskInfo) bool {
 	return false
 }
 
-// swagger:operation PUT /1.0/queue/{uuid} queue queue_put
+// swagger:operation PUT /1.0/queue/{uuid}/worker queue queue_worker_put
 //
 //	Sets worker response for instance
 //
@@ -370,7 +530,7 @@ func disksSupportDifferentialSync(disks []api.InstanceDiskInfo) bool {
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func queuePut(d *Daemon, r *http.Request) response.Response {
+func queueWorkerPut(d *Daemon, r *http.Request) response.Response {
 	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)

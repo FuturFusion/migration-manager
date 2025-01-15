@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -52,6 +53,49 @@ var batchStopCmd = APIEndpoint{
 //
 //	Get the batches
 //
+//	Returns a list of batches (URLs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API batches
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of batches
+//                items:
+//                  type: string
+//                example: |-
+//                  [
+//                    "/1.0/batches/foo",
+//                    "/1.0/batches/bar"
+//                  ]
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/batches?recursion=1 batches batches_get_recursion
+//
+//	Get the batches
+//
 //	Returns a list of batches (structs).
 //
 //	---
@@ -78,7 +122,7 @@ var batchStopCmd = APIEndpoint{
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of sources
+//	          description: List of batches
 //	          items:
 //	            $ref: "#/definitions/Batch"
 //	  "403":
@@ -86,18 +130,33 @@ var batchStopCmd = APIEndpoint{
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchesGet(d *Daemon, r *http.Request) response.Response {
-	result := []batch.Batch{}
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		batches, err := d.db.GetAllBatches(tx)
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
+	batches := []batch.Batch{}
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbBatches, err := d.db.GetAllBatches(tx)
 		if err != nil {
 			return err
 		}
 
-		result = batches
+		batches = dbBatches
 		return nil
 	})
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	if recursion == 1 {
+		return response.SyncResponse(true, batches)
+	}
+
+	result := make([]string, 0, len(batches))
+	for _, b := range batches {
+		result = append(result, fmt.Sprintf("/%s/batches/%s", api.APIVersion, b.GetName()))
 	}
 
 	return response.SyncResponse(true, result)
@@ -347,6 +406,49 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 //
 //	Get instances for the batch
 //
+//	Returns a list of instances assigned to this batch (URLs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API instances
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of instances
+//                items:
+//                  type: string
+//                example: |-
+//                  [
+//                    "/1.0/instances/foo",
+//                    "/1.0/instances/bar"
+//                  ]
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/batches/{name}/instances?recursion=1 batches batches_instances_get_recursion
+//
+//	Get instances for the batch
+//
 //	Returns a list of instances assigned to this batch (structs).
 //
 //	---
@@ -373,7 +475,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of sources
+//	          description: List of instances
 //	          items:
 //	            $ref: "#/definitions/Instance"
 //	  "403":
@@ -387,8 +489,14 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
 	}
 
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	var b batch.Batch
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		dbBatch, err := d.db.GetBatch(tx, name)
 		if err != nil {
 			return err
@@ -401,14 +509,14 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Failed to get batch '%s': %w", name, err))
 	}
 
-	result := []instance.Instance{}
+	instances := []instance.Instance{}
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
 		id, err := b.GetDatabaseID()
 		if err != nil {
 			return err
 		}
 
-		result, err = d.db.GetAllInstancesForBatchID(tx, id)
+		instances, err = d.db.GetAllInstancesForBatchID(tx, id)
 		if err != nil {
 			return err
 		}
@@ -417,6 +525,15 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 	})
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	if recursion == 1 {
+		return response.SyncResponse(true, instances)
+	}
+
+	result := make([]string, 0, len(instances))
+	for _, i := range instances {
+		result = append(result, fmt.Sprintf("/%s/instances/%s", api.APIVersion, i.GetUUID()))
 	}
 
 	return response.SyncResponse(true, result)

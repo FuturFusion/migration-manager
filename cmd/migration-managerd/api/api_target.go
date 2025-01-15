@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/transaction"
@@ -29,6 +30,49 @@ var targetCmd = APIEndpoint{
 }
 
 // swagger:operation GET /1.0/targets targets targets_get
+//
+//	Get the targets
+//
+//	Returns a list of targets (URLs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API targets
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of targets
+//                items:
+//                  type: string
+//                example: |-
+//                  [
+//                    "/1.0/targets/foo",
+//                    "/1.0/targets/bar"
+//                  ]
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/targets?recursion=1 targets targets_get_recursion
 //
 //	Get the targets
 //
@@ -66,23 +110,38 @@ var targetCmd = APIEndpoint{
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func targetsGet(d *Daemon, r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	targets, err := d.target.GetAll(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]api.IncusTarget, 0, len(targets))
+	if recursion == 1 {
+		result := make([]api.IncusTarget, 0, len(targets))
+		for _, target := range targets {
+			result = append(result, api.IncusTarget{
+				DatabaseID:    target.ID,
+				Name:          target.Name,
+				Endpoint:      target.Endpoint,
+				TLSClientKey:  target.TLSClientKey,
+				TLSClientCert: target.TLSClientCert,
+				OIDCTokens:    target.OIDCTokens,
+				Insecure:      target.Insecure,
+				IncusProject:  target.IncusProject,
+			})
+		}
+
+		return response.SyncResponse(true, result)
+	}
+
+	result := make([]string, 0, len(targets))
 	for _, target := range targets {
-		result = append(result, api.IncusTarget{
-			DatabaseID:    target.ID,
-			Name:          target.Name,
-			Endpoint:      target.Endpoint,
-			TLSClientKey:  target.TLSClientKey,
-			TLSClientCert: target.TLSClientCert,
-			OIDCTokens:    target.OIDCTokens,
-			Insecure:      target.Insecure,
-			IncusProject:  target.IncusProject,
-		})
+		result = append(result, fmt.Sprintf("/%s/targets/%s", api.APIVersion, target.Name))
 	}
 
 	return response.SyncResponse(true, result)

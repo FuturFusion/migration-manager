@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
@@ -29,6 +30,49 @@ var networkCmd = APIEndpoint{
 }
 
 // swagger:operation GET /1.0/networks networks networks_get
+//
+//	Get the networks
+//
+//	Returns a list of networks (URLs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API networks
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of networks
+//                items:
+//                  type: string
+//                example: |-
+//                  [
+//                    "/1.0/networks/foo",
+//                    "/1.0/networks/bar"
+//                  ]
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/networks?recursion=1 networks networks_get_recursion
 //
 //	Get the networks
 //
@@ -58,7 +102,7 @@ var networkCmd = APIEndpoint{
 //	          example: 200
 //	        metadata:
 //	          type: array
-//	          description: List of sources
+//	          description: List of networks
 //	          items:
 //	            $ref: "#/definitions/Network"
 //	  "403":
@@ -66,18 +110,33 @@ var networkCmd = APIEndpoint{
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func networksGet(d *Daemon, r *http.Request) response.Response {
-	result := []api.Network{}
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		networks, err := d.db.GetAllNetworks(tx)
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
+	networks := []api.Network{}
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbNetworks, err := d.db.GetAllNetworks(tx)
 		if err != nil {
 			return err
 		}
 
-		result = networks
+		networks = dbNetworks
 		return nil
 	})
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	if recursion == 1 {
+		return response.SyncResponse(true, networks)
+	}
+
+	result := make([]string, 0, len(networks))
+	for _, n := range networks {
+		result = append(result, fmt.Sprintf("/%s/networks/%s", api.APIVersion, n.Name))
 	}
 
 	return response.SyncResponse(true, result)

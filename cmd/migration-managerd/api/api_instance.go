@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 
@@ -38,6 +39,49 @@ var instanceOverrideCmd = APIEndpoint{
 }
 
 // swagger:operation GET /1.0/instances instances instances_get
+//
+//	Get the instances
+//
+//	Returns a list of instances (URLs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API instances
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of instances
+//                items:
+//                  type: string
+//                example: |-
+//                  [
+//                    "/1.0/instances/26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad",
+//                    "/1.0/instances/9aad7f16-0d2e-440e-872f-4e9df2d53367"
+//                  ]
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/instances?recursion=1 instances instances_get_recursion
 //
 //	Get the instances
 //
@@ -75,18 +119,33 @@ var instanceOverrideCmd = APIEndpoint{
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func instancesGet(d *Daemon, r *http.Request) response.Response {
-	result := []instance.Instance{}
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		instances, err := d.db.GetAllInstances(tx)
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
+	instances := []instance.Instance{}
+	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
+		dbInstances, err := d.db.GetAllInstances(tx)
 		if err != nil {
 			return err
 		}
 
-		result = instances
+		instances = dbInstances
 		return nil
 	})
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	if recursion == 1 {
+		return response.SyncResponse(true, instances)
+	}
+
+	result := make([]string, 0, len(instances))
+	for _, i := range instances {
+		result = append(result, fmt.Sprintf("/%s/instances/%s", api.APIVersion, i.GetUUID()))
 	}
 
 	return response.SyncResponse(true, result)

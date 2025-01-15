@@ -140,7 +140,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all networks.
-	resp, err := c.global.doHTTPRequestV1("/networks", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/networks", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
