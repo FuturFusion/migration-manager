@@ -16,6 +16,8 @@ import (
 	"github.com/lxc/distrobuilder/windows"
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
+
+	"github.com/FuturFusion/migration-manager/internal/logger"
 )
 
 type BitLockerState int
@@ -168,13 +170,7 @@ func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 		return err
 	}
 
-	// Distrobuilder does require a logrus Logger.
-	log, err := shared.GetLogger(false)
-	if err != nil {
-		return fmt.Errorf("Failed to get logger: %w\n", err)
-	}
-
-	repackUtuil := windows.NewRepackUtil(cacheDir, ctx, log)
+	repackUtuil := windows.NewRepackUtil(cacheDir, ctx, logger.SlogBackedLogrus())
 
 	reWim, err := shared.FindFirstMatch(windowsRecoveryMountPath, "Recovery/WindowsRE", "winre.wim")
 	if err != nil {
