@@ -78,6 +78,10 @@ DOCKER_RUN := docker run -i -v .:/home/vscode/src --mount source=migration_manag
 docker-build: build-dev-container
 	${DOCKER_RUN} make build
 
+.PHONY: docker-build-ui
+docker-build-ui: build-dev-container
+	${DOCKER_RUN} make build-ui
+
 .PHONY: docker-build-all-packages
 docker-build-all-packages: build-dev-container
 	${DOCKER_RUN} make build-all-packages
