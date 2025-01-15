@@ -12,7 +12,7 @@ type SourceService interface {
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/source_repo_mock_gen.go -rm . SourceRepo
-//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i SourceRepo -t logrus -o ./repo/middleware/source_logrus_gen.go
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i SourceRepo -t ../logger/slog.gotmpl -o ./repo/middleware/source_slog_gen.go
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i SourceRepo -t prometheus -o ./repo/middleware/source_prometheus_gen.go
 
 type SourceRepo interface {
