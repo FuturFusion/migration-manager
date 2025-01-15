@@ -25,7 +25,7 @@ var api10 = []APIEndpoint{
 	networkCmd,
 	networksCmd,
 	queueRootCmd,
-	queueCmd,
+	queueWorkerCmd,
 	sourceCmd,
 	sourcesCmd,
 	targetCmd,

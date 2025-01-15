@@ -96,7 +96,7 @@ func (w *Worker) Run(ctx context.Context) {
 
 	for {
 		done := func() (done bool) {
-			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodGet, "", nil)
+			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid+"/worker", http.MethodGet, "", nil)
 			if err != nil {
 				logger.Errorf("%s", err.Error())
 				return false
@@ -308,7 +308,7 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusStri
 		return
 	}
 
-	_, err = w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodPut, "secret="+w.token, content)
+	_, err = w.doHTTPRequestV1("/queue/"+w.uuid+"/worker", http.MethodPut, "secret="+w.token, content)
 	if err != nil {
 		logger.Errorf("Failed to send status back to migration manager: %s", err.Error())
 		return
@@ -325,7 +325,7 @@ func (w *Worker) sendErrorResponse(err error) {
 		return
 	}
 
-	_, err = w.doHTTPRequestV1("/queue/"+w.uuid, http.MethodPut, "secret="+w.token, content)
+	_, err = w.doHTTPRequestV1("/queue/"+w.uuid+"/worker", http.MethodPut, "secret="+w.token, content)
 	if err != nil {
 		logger.Errorf("Failed to send error back to migration manager: %s", err.Error())
 		return

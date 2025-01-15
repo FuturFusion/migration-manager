@@ -24,12 +24,12 @@ var queueRootCmd = APIEndpoint{
 	Get: APIEndpointAction{Handler: queueRootGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
-var queueCmd = APIEndpoint{
-	Path: "queue/{uuid}",
+var queueWorkerCmd = APIEndpoint{
+	Path: "queue/{uuid}/worker",
 
 	// Endpoints used by the migration worker which authenticates via a randomly-generated UUID unique to each instance.
-	Get: APIEndpointAction{Handler: queueGet, AccessHandler: allowAuthenticated},
-	Put: APIEndpointAction{Handler: queuePut, AccessHandler: allowAuthenticated},
+	Get: APIEndpointAction{Handler: queueWorkerGet, AccessHandler: allowAuthenticated},
+	Put: APIEndpointAction{Handler: queueWorkerPut, AccessHandler: allowAuthenticated},
 }
 
 // Authenticate a migration worker. Allow a GET for an existing instance so the worker can get its instructions,
@@ -190,7 +190,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponse(true, result)
 }
 
-// swagger:operation GET /1.0/queue/{uuid} queue queue_get
+// swagger:operation GET /1.0/queue/{uuid}/worker queue queue_worker_get
 //
 //	Get worker command for instance
 //
@@ -224,7 +224,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func queueGet(d *Daemon, r *http.Request) response.Response {
+func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
@@ -341,7 +341,7 @@ func disksSupportDifferentialSync(disks []api.InstanceDiskInfo) bool {
 	return false
 }
 
-// swagger:operation PUT /1.0/queue/{uuid} queue queue_put
+// swagger:operation PUT /1.0/queue/{uuid}/worker queue queue_worker_put
 //
 //	Sets worker response for instance
 //
@@ -370,7 +370,7 @@ func disksSupportDifferentialSync(disks []api.InstanceDiskInfo) bool {
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func queuePut(d *Daemon, r *http.Request) response.Response {
+func queueWorkerPut(d *Daemon, r *http.Request) response.Response {
 	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
