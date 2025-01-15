@@ -45,17 +45,10 @@ func (d *Daemon) runPeriodicTask(f func() bool, interval time.Duration) {
 func (d *Daemon) syncInstancesFromSources() bool {
 	loggerCtx := logger.Ctx{"method": "syncInstancesFromSources"}
 
+	// TODO: context should be passed from the daemon to all the workers.
+	ctx := context.TODO()
 	// Get the list of configured sources.
-	sources := []api.Source{}
-	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		var err error
-		sources, err = d.db.GetAllSources(tx)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	sources, err := d.source.GetAll(ctx)
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
 		return false
@@ -63,7 +56,13 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 	// Check each source for any net networks and any new, changed, or deleted instances.
 	for _, src := range sources {
-		s, err := source.NewInternalVMwareSourceFrom(src)
+		s, err := source.NewInternalVMwareSourceFrom(api.Source{
+			Name:       src.Name,
+			DatabaseID: src.ID,
+			Insecure:   src.Insecure,
+			SourceType: src.SourceType,
+			Properties: src.Properties,
+		})
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
 			continue
@@ -532,29 +531,40 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, stora
 	}
 
 	// Get the target.
-	var t target.Target
-	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		var err error
-		t, err = d.db.GetTargetByID(tx, *inst.GetTargetID())
-		return err
-	})
+	ctx := context.TODO()
+	t, err := d.target.GetByID(ctx, *inst.GetTargetID())
 	if err != nil {
 		return err
 	}
 
+	// TODO: The methods on the target.InternalIncusTarget should be moved to migration
+	// which would then make this conversion obsolete.
+	it := target.InternalIncusTarget{
+		IncusTarget: api.IncusTarget{
+			DatabaseID:    t.ID,
+			Name:          t.Name,
+			Endpoint:      t.Endpoint,
+			TLSClientKey:  t.TLSClientKey,
+			TLSClientCert: t.TLSClientCert,
+			OIDCTokens:    t.OIDCTokens,
+			Insecure:      t.Insecure,
+			IncusProject:  t.IncusProject,
+		},
+	}
+
 	// Connect to the target.
-	err = t.Connect(d.ShutdownCtx)
+	err = it.Connect(d.ShutdownCtx)
 	if err != nil {
 		return err
 	}
 
 	// Verify needed ISO images are in the storage pool.
 	for _, iso := range []string{wokrerISOName, driverISOName} {
-		_, _, err = t.GetStoragePoolVolume(storagePool, "custom", iso)
+		_, _, err = it.GetStoragePoolVolume(storagePool, "custom", iso)
 		if err != nil {
 			logger.Info("ISO image '"+iso+"' doesn't exist in storage pool '"+storagePool+"', importing...", loggerCtx)
 
-			op, err := t.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.AssetsDir(), iso))
+			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.AssetsDir(), iso))
 			if err != nil {
 				return err
 			}
@@ -593,17 +603,9 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 		return nil
 	})
 
-	// Get the source for this instance.
-	var s api.Source
-	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		var err error
-		s, err = d.db.GetSourceByID(tx, inst.GetSourceID())
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	// TODO: Context should be passed from Daemon to all the workers.
+	ctx := context.TODO()
+	s, err := d.source.GetByID(ctx, inst.GetSourceID())
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
 		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -618,16 +620,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	}
 
 	// Get the target for this instance.
-	var t target.Target
-	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		var err error
-		t, err = d.db.GetTargetByID(tx, *inst.GetTargetID())
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	t, err := d.target.GetByID(ctx, *inst.GetTargetID())
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
 		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -641,8 +634,23 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 		return
 	}
 
+	// TODO: The methods on the target.InternalIncusTarget should be moved to migration
+	// which would then make this conversion obsolete.
+	it := target.InternalIncusTarget{
+		IncusTarget: api.IncusTarget{
+			DatabaseID:    t.ID,
+			Name:          t.Name,
+			Endpoint:      t.Endpoint,
+			TLSClientKey:  t.TLSClientKey,
+			TLSClientCert: t.TLSClientCert,
+			OIDCTokens:    t.OIDCTokens,
+			Insecure:      t.Insecure,
+			IncusProject:  t.IncusProject,
+		},
+	}
+
 	// Connect to the target.
-	err = t.Connect(d.ShutdownCtx)
+	err = it.Connect(d.ShutdownCtx)
 	if err != nil {
 		logger.Warn(err.Error(), loggerCtx)
 		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -665,8 +673,8 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 
 	wokrerISOName, _ := d.os.GetMigrationManagerISOName()
 	driverISOName, _ := d.os.GetVirtioDriversISOName()
-	instanceDef := t.CreateVMDefinition(*internalInstance, override, s.Name, storagePool)
-	creationErr := t.CreateNewVM(instanceDef, storagePool, wokrerISOName, driverISOName)
+	instanceDef := it.CreateVMDefinition(*internalInstance, override, s.Name, storagePool)
+	creationErr := it.CreateNewVM(instanceDef, storagePool, wokrerISOName, driverISOName)
 	if creationErr != nil {
 		logger.Warn(creationErr.Error(), loggerCtx)
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -699,7 +707,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	}
 
 	// Start the instance.
-	startErr := t.StartVM(inst.GetName())
+	startErr := it.StartVM(inst.GetName())
 	if startErr != nil {
 		logger.Warn(startErr.Error(), loggerCtx)
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -718,7 +726,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	}
 
 	// Inject the worker binary.
-	pushErr := t.PushFile(inst.GetName(), "./migration-manager-worker", "/root/")
+	pushErr := it.PushFile(inst.GetName(), "./migration-manager-worker", "/root/")
 	if pushErr != nil {
 		logger.Warn(pushErr.Error(), loggerCtx)
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -737,7 +745,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	}
 
 	// Start the worker binary.
-	workerStartErr := t.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getWorkerEndpoint(), "--uuid", inst.GetUUID().String(), "--token", inst.GetSecretToken().String()})
+	workerStartErr := it.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getWorkerEndpoint(), "--uuid", inst.GetUUID().String(), "--token", inst.GetSecretToken().String()})
 	if workerStartErr != nil {
 		logger.Warn(workerStartErr.Error(), loggerCtx)
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -778,16 +786,8 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 	for _, i := range instances {
 		logger.Info("Finalizing migration steps for instance "+i.GetName(), loggerCtx)
 		// Get the target for this instance.
-		var t target.Target
-		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			var err error
-			t, err = d.db.GetTargetByID(tx, *i.GetTargetID())
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
+		ctx := context.TODO()
+		t, err := d.target.GetByID(ctx, *i.GetTargetID())
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
 			_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -801,8 +801,23 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			continue
 		}
 
+		// TODO: The methods on the target.InternalIncusTarget should be moved to migration
+		// which would then make this conversion obsolete.
+		it := target.InternalIncusTarget{
+			IncusTarget: api.IncusTarget{
+				DatabaseID:    t.ID,
+				Name:          t.Name,
+				Endpoint:      t.Endpoint,
+				TLSClientKey:  t.TLSClientKey,
+				TLSClientCert: t.TLSClientCert,
+				OIDCTokens:    t.OIDCTokens,
+				Insecure:      t.Insecure,
+				IncusProject:  t.IncusProject,
+			},
+		}
+
 		// Connect to the target.
-		err = t.Connect(d.ShutdownCtx)
+		err = it.Connect(d.ShutdownCtx)
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
 			_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -817,7 +832,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		}
 
 		// Stop the instance.
-		stopErr := t.StopVM(i.GetName(), true)
+		stopErr := it.StopVM(i.GetName(), true)
 		if stopErr != nil {
 			logger.Warn(stopErr.Error(), loggerCtx)
 			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -836,7 +851,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		}
 
 		// Get the instance definition.
-		apiDef, etag, err := t.GetInstance(i.GetName())
+		apiDef, etag, err := it.GetInstance(i.GetName())
 		if err != nil {
 			logger.Warn(err.Error(), loggerCtx)
 			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -992,7 +1007,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		apiDef.Config["volatile.uuid.generation"] = i.GetUUID().String()
 
 		// Update the instance in Incus.
-		op, updateErr := t.UpdateInstance(i.GetName(), apiDef.Writable(), etag)
+		op, updateErr := it.UpdateInstance(i.GetName(), apiDef.Writable(), etag)
 		if updateErr != nil {
 			logger.Warn(updateErr.Error(), loggerCtx)
 			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -1043,7 +1058,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		}
 
 		// Power on the completed instance.
-		startErr := t.StartVM(i.GetName())
+		startErr := it.StartVM(i.GetName())
 		if startErr != nil {
 			logger.Warn(startErr.Error(), loggerCtx)
 			continue

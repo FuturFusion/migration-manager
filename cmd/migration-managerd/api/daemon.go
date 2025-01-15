@@ -15,6 +15,8 @@ import (
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
 	"github.com/FuturFusion/migration-manager/internal/server/endpoints"
@@ -52,7 +54,11 @@ type Daemon struct {
 	authorizer   auth.Authorizer
 	oidcVerifier *oidc.Verifier
 
-	config    *config.DaemonConfig
+	source migration.SourceService
+	target migration.TargetService
+
+	config *config.DaemonConfig
+
 	endpoints *endpoints.Endpoints
 
 	ShutdownCtx    context.Context    // Canceled when shutdown starts.
@@ -63,7 +69,7 @@ type Daemon struct {
 func NewDaemon(cfg *config.DaemonConfig) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
-	return &Daemon{
+	d := &Daemon{
 		db:             &db.Node{},
 		os:             sys.DefaultOS(),
 		config:         cfg,
@@ -71,6 +77,11 @@ func NewDaemon(cfg *config.DaemonConfig) *Daemon {
 		ShutdownCancel: shutdownCancel,
 		ShutdownDoneCh: make(chan error),
 	}
+
+	d.source = migration.NewSourceService(sqlite.NewSource(d.db.DB))
+	d.target = migration.NewTargetService(sqlite.NewTarget(d.db.DB))
+
+	return d
 }
 
 // allowAuthenticated is an AccessHandler which allows only authenticated requests. This should be used in conjunction

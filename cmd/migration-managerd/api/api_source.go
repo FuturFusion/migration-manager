@@ -1,12 +1,12 @@
 package api
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 
+	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/transaction"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
@@ -66,19 +66,20 @@ var sourceCmd = APIEndpoint{
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func sourcesGet(d *Daemon, r *http.Request) response.Response {
-	result := []api.Source{}
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		sources, err := d.db.GetAllSources(tx)
-		if err != nil {
-			return err
-		}
-
-		result = sources
-
-		return nil
-	})
+	sources, err := d.source.GetAll(r.Context())
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	result := make([]api.Source, 0, len(sources))
+	for _, source := range sources {
+		result = append(result, api.Source{
+			DatabaseID: source.ID,
+			Name:       source.Name,
+			Insecure:   source.Insecure,
+			SourceType: source.SourceType,
+			Properties: source.Properties,
+		})
 	}
 
 	return response.SyncResponse(true, result)
@@ -112,27 +113,27 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func sourcesPost(d *Daemon, r *http.Request) response.Response {
-	var s api.Source
+	var source api.Source
 
-	// Decode into the new source.
-	err := json.NewDecoder(r.Body).Decode(&s)
+	err := json.NewDecoder(r.Body).Decode(&source)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	// Insert into database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		s, err = d.db.AddSource(tx, s)
-		return err
+	_, err = d.source.Create(r.Context(), migration.Source{
+		Name:       source.Name,
+		Insecure:   source.Insecure,
+		SourceType: source.SourceType,
+		Properties: source.Properties,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", s.Name, err))
+		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", source.Name, err))
 	}
 
 	// Trigger a scan of this new source for instances.
 	_ = d.syncInstancesFromSources()
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+s.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+source.Name)
 }
 
 // swagger:operation DELETE /1.0/sources/{name} sources source_delete
@@ -156,15 +157,9 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 func sourceDelete(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Source name cannot be empty"))
-	}
-
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.DeleteSource(tx, name)
-	})
+	err := d.source.DeleteByName(r.Context(), name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to delete source '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
 	return response.EmptySyncResponse
@@ -207,25 +202,22 @@ func sourceDelete(d *Daemon, r *http.Request) response.Response {
 func sourceGet(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Source name cannot be empty"))
-	}
-
-	var s api.Source
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbSource, err := d.db.GetSource(tx, name)
-		if err != nil {
-			return err
-		}
-
-		s = dbSource
-		return nil
-	})
+	source, err := d.source.GetByName(r.Context(), name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
-	return response.SyncResponseETag(true, s, s)
+	return response.SyncResponseETag(
+		true,
+		api.Source{
+			DatabaseID: source.ID,
+			Name:       source.Name,
+			Insecure:   source.Insecure,
+			SourceType: source.SourceType,
+			Properties: source.Properties,
+		},
+		source,
+	)
 }
 
 // swagger:operation PUT /1.0/sources/{name} sources source_put
@@ -260,45 +252,47 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 func sourcePut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Source name cannot be empty"))
-	}
+	var source api.Source
 
-	// Get the existing source.
-	var s api.Source
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbSource, err := d.db.GetSource(tx, name)
-		if err != nil {
-			return err
-		}
-
-		s = dbSource
-		return nil
-	})
-	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", name, err))
-	}
-
-	// Validate ETag
-	err = util.EtagCheck(r, s)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
-
-	// Decode into the existing source.
-	err = json.NewDecoder(r.Body).Decode(&s)
+	err := json.NewDecoder(r.Body).Decode(&source)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	// Update source in the database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		s, err = d.db.UpdateSource(tx, s)
-		return err
-	})
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+		}
+	}()
+
+	currentSource, err := d.target.GetByName(ctx, source.Name)
+
+	// Validate ETag
+	err = util.EtagCheck(r, currentSource)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", s.Name, err))
+		return response.PreconditionFailed(err)
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+s.Name)
+	_, err = d.source.UpdateByName(r.Context(), migration.Source{
+		ID:         source.DatabaseID,
+		Name:       name,
+		Insecure:   source.Insecure,
+		SourceType: source.SourceType,
+		Properties: source.Properties,
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", name, err))
+	}
+
+	err = trans.Commit()
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+	}
+
+	// Trigger a scan of this new source for instances.
+	_ = d.syncInstancesFromSources()
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+source.Name)
 }

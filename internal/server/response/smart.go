@@ -7,6 +7,8 @@ import (
 	"os"
 
 	"github.com/lxc/incus/v6/shared/api"
+
+	"github.com/FuturFusion/migration-manager/internal/migration"
 )
 
 var httpResponseErrors = map[int][]error{
@@ -19,6 +21,15 @@ var httpResponseErrors = map[int][]error{
 func SmartError(err error) Response {
 	if err == nil {
 		return EmptySyncResponse
+	}
+
+	var validationErr migration.ErrValidation
+	if errors.As(err, &validationErr) {
+		return &errorResponse{http.StatusBadRequest, err.Error()}
+	}
+
+	if errors.Is(err, migration.ErrConstraintViolation) || errors.Is(err, migration.ErrNotFound) {
+		return &errorResponse{http.StatusBadRequest, err.Error()}
 	}
 
 	statusCode, found := api.StatusErrorMatch(err)

@@ -9,39 +9,6 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-func (n *Node) AddSource(tx *sql.Tx, s api.Source) (api.Source, error) {
-	// Add source to the database.
-	q := `INSERT INTO sources (name,type,insecure,config) VALUES(?,?,?,?)`
-
-	result, err := tx.Exec(q, s.Name, s.SourceType, s.Insecure, s.Properties)
-	if err != nil {
-		return api.Source{}, mapDBError(err)
-	}
-
-	// Set the new ID assigned to the source.
-	lastInsertID, err := result.LastInsertId()
-	if err != nil {
-		return api.Source{}, err
-	}
-
-	s.DatabaseID = int(lastInsertID)
-
-	return s, nil
-}
-
-func (n *Node) GetSource(tx *sql.Tx, name string) (api.Source, error) {
-	ret, err := n.getSourcesHelper(tx, name, internal.INVALID_DATABASE_ID)
-	if err != nil {
-		return api.Source{}, err
-	}
-
-	if len(ret) != 1 {
-		return api.Source{}, fmt.Errorf("No source exists with name '%s'", name)
-	}
-
-	return ret[0], nil
-}
-
 func (n *Node) GetSourceByID(tx *sql.Tx, id int) (api.Source, error) {
 	ret, err := n.getSourcesHelper(tx, "", id)
 	if err != nil {
@@ -53,70 +20,6 @@ func (n *Node) GetSourceByID(tx *sql.Tx, id int) (api.Source, error) {
 	}
 
 	return ret[0], nil
-}
-
-func (n *Node) GetAllSources(tx *sql.Tx) ([]api.Source, error) {
-	return n.getSourcesHelper(tx, "", internal.INVALID_DATABASE_ID)
-}
-
-func (n *Node) DeleteSource(tx *sql.Tx, name string) error {
-	// Verify no instances refer to this source and return a nicer error than 'FOREIGN KEY constraint failed' if so.
-	s, err := n.GetSource(tx, name)
-	if err != nil {
-		return err
-	}
-
-	q := `SELECT COUNT(uuid) FROM instances WHERE source_id=?`
-	row := tx.QueryRow(q, s.DatabaseID)
-
-	numInstances := 0
-	err = row.Scan(&numInstances)
-	if err != nil {
-		return mapDBError(err)
-	}
-
-	if numInstances > 0 {
-		return fmt.Errorf("%d instances refer to source '%s', can't delete", numInstances, name)
-	}
-
-	// Delete the source from the database.
-	q = `DELETE FROM sources WHERE name=?`
-	result, err := tx.Exec(q, name)
-	if err != nil {
-		return mapDBError(err)
-	}
-
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if affectedRows == 0 {
-		return fmt.Errorf("Source with name '%s' doesn't exist, can't delete", name)
-	}
-
-	return nil
-}
-
-func (n *Node) UpdateSource(tx *sql.Tx, s api.Source) (api.Source, error) {
-	// Update source in the database.
-	q := `UPDATE sources SET name=?,insecure=?,config=? WHERE id=?`
-
-	result, err := tx.Exec(q, s.Name, s.Insecure, s.Properties, s.DatabaseID)
-	if err != nil {
-		return api.Source{}, mapDBError(err)
-	}
-
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return api.Source{}, err
-	}
-
-	if affectedRows == 0 {
-		return api.Source{}, fmt.Errorf("Source with ID %d doesn't exist, can't update", s.DatabaseID)
-	}
-
-	return s, nil
 }
 
 func (n *Node) getSourcesHelper(tx *sql.Tx, name string, id int) ([]api.Source, error) {
