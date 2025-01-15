@@ -206,7 +206,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all sources.
-	resp, err := c.global.doHTTPRequestV1("/sources", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/sources", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}

@@ -224,7 +224,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all batches.
-	resp, err := c.global.doHTTPRequestV1("/batches", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/batches", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -341,7 +341,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get all instances for this batch.
-	resp, err = c.global.doHTTPRequestV1("/batches/"+name+"/instances", http.MethodGet, "", nil)
+	resp, err = c.global.doHTTPRequestV1("/batches/"+name+"/instances", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -611,7 +611,7 @@ func (c *CmdGlobal) getTargetMap() (map[int]string, error) {
 	ret := make(map[int]string)
 
 	// Get the list of all targets.
-	resp, err := c.doHTTPRequestV1("/targets", http.MethodGet, "", nil)
+	resp, err := c.doHTTPRequestV1("/targets", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return ret, err
 	}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/transaction"
@@ -29,6 +30,49 @@ var sourceCmd = APIEndpoint{
 }
 
 // swagger:operation GET /1.0/sources sources sources_get
+//
+//	Get the sources
+//
+//	Returns a list of sources (URLs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API sources
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of sources
+//                items:
+//                  type: string
+//                example: |-
+//                  [
+//                    "/1.0/sources/foo",
+//                    "/1.0/sources/bar"
+//                  ]
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+
+// swagger:operation GET /1.0/sources?recursion=1 sources sources_get_recursion
 //
 //	Get the sources
 //
@@ -66,20 +110,35 @@ var sourceCmd = APIEndpoint{
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func sourcesGet(d *Daemon, r *http.Request) response.Response {
+	// Parse the recursion field.
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
+
 	sources, err := d.source.GetAll(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]api.Source, 0, len(sources))
+	if recursion == 1 {
+		result := make([]api.Source, 0, len(sources))
+		for _, source := range sources {
+			result = append(result, api.Source{
+				DatabaseID: source.ID,
+				Name:       source.Name,
+				Insecure:   source.Insecure,
+				SourceType: source.SourceType,
+				Properties: source.Properties,
+			})
+		}
+
+		return response.SyncResponse(true, result)
+	}
+
+	result := make([]string, 0, len(sources))
 	for _, source := range sources {
-		result = append(result, api.Source{
-			DatabaseID: source.ID,
-			Name:       source.Name,
-			Insecure:   source.Insecure,
-			SourceType: source.SourceType,
-			Properties: source.Properties,
-		})
+		result = append(result, fmt.Sprintf("/%s/sources/%s", api.APIVersion, source.Name))
 	}
 
 	return response.SyncResponse(true, result)

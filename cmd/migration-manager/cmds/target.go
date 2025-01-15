@@ -198,7 +198,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all targets.
-	resp, err := c.global.doHTTPRequestV1("/targets", http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/targets", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
