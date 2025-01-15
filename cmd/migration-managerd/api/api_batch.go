@@ -203,20 +203,23 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	// Insert into database.
 	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.AddBatch(tx, &b)
-	})
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating batch %q: %w", b.GetName(), err))
-	}
+		// Insert into database.
+		dbErr := d.db.AddBatch(tx, &b)
+		if dbErr != nil {
+			return fmt.Errorf("Failed creating batch %q: %w", b.GetName(), dbErr)
+		}
 
-	// Add any instances to this batch that match selection criteria.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateInstancesAssignedToBatch(tx, &b)
+		// Add any instances to this batch that match selection criteria.
+		dbErr = d.db.UpdateInstancesAssignedToBatch(tx, &b)
+		if dbErr != nil {
+			return fmt.Errorf("Failed to assign instances to batch %q: %w", b.GetName(), dbErr)
+		}
+
+		return nil
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to assign instances to batch %q: %w", b.GetName(), err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+b.GetName())
