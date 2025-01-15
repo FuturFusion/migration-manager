@@ -103,3 +103,27 @@ jobs:
       - name: Unit tests (all)
         run: |
           make test
+
+      - name: Set Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install UI dependencies
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: install
+          dir: ui
+
+      - name: Build UI
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: build
+          dir: ui
+
+      - name: Upload UI artifact
+        if: matrix.go == 'stable'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ runner.os }}
+          path: ui/dist/
