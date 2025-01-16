@@ -1,8 +1,11 @@
 package api
 
 import (
+	"errors"
+	"io/fs"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/FuturFusion/migration-manager/internal/server/request"
@@ -46,6 +49,14 @@ import (
 func restServer(d *Daemon) *http.Server {
 	router := http.NewServeMux()
 
+	uiDir := uiHTTPDir{http.Dir(filepath.Join(d.os.AssetsDir(), "ui"))}
+	fileServer := http.FileServer(uiDir)
+
+	router.Handle("/ui/", http.StripPrefix("/ui/", fileServer))
+	router.HandleFunc("/ui", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/ui/", http.StatusMovedPermanently)
+	})
+
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
@@ -67,4 +78,18 @@ func restServer(d *Daemon) *http.Server {
 		ConnContext: request.SaveConnectionInContext,
 		IdleTimeout: 30 * time.Second,
 	}
+}
+
+type uiHTTPDir struct {
+	http.FileSystem
+}
+
+// Open is part of the http.FileSystem interface.
+func (httpFS uiHTTPDir) Open(name string) (http.File, error) {
+	fsFile, err := httpFS.FileSystem.Open(name)
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		return httpFS.FileSystem.Open("index.html")
+	}
+
+	return fsFile, err
 }

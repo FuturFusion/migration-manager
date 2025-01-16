@@ -30,6 +30,12 @@ RUN echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | tee /etc/apt/s
     apt update && \
     apt install -y libfuse3-3 ocaml-4.13.1 libxml2 vim sudo shellcheck man less goreleaser
 
+# Install tools for building UI.
+RUN curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash - && \
+    apt update && \
+    apt install nodejs && \
+    npm install --global yarn
+
 # Copy libnbd deb packages from build container and install the packages.
 RUN mkdir -p /tmp/debs
 COPY --from=build /tmp/debs/*.deb /tmp/debs

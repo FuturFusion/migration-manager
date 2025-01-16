@@ -31,6 +31,10 @@ build-all-packages:
 	$(GO) build ./...
 	$(GO) test -c -o /dev/null ./...
 
+.PHONY: build-ui
+build-ui:
+	$(MAKE) -C ui
+
 .PHONY: test
 test: build-dependencies
 	$(GO) test ./... -v -cover
@@ -73,6 +77,10 @@ DOCKER_RUN := docker run -i -v .:/home/vscode/src --mount source=migration_manag
 .PHONY: docker-build
 docker-build: build-dev-container
 	${DOCKER_RUN} make build
+
+.PHONY: docker-build-ui
+docker-build-ui: build-dev-container
+	${DOCKER_RUN} make build-ui
 
 .PHONY: docker-build-all-packages
 docker-build-all-packages: build-dev-container
