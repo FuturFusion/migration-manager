@@ -38,7 +38,7 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 	query := args[0]
 
 	// Run the query.
-	resp, err := c.Global.doHTTPRequestV1(query, c.flagRequest, "", []byte(c.flagData))
+	resp, err := c.Global.makeHTTPRequest(query, c.flagRequest, []byte(c.flagData))
 	if err != nil {
 		return err
 	}
