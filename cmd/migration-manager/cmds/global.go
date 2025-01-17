@@ -216,37 +216,34 @@ func (c *CmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 	return false, nil
 }
 
-func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.Response, error) {
-	var u *url.URL
+func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, content []byte) (*api.Response, error) {
 	var err error
 	var client *http.Client
 	var resp *http.Response
 
+	u, err := url.Parse(requestString)
+	if err != nil {
+		return nil, err
+	}
+
 	if !c.FlagForceLocal && strings.HasPrefix(c.config.MigrationManagerServer, "https://") {
-		u, err = url.Parse(c.config.MigrationManagerServer)
+		serverHost, err := url.Parse(c.config.MigrationManagerServer)
 		if err != nil {
 			return nil, err
 		}
+
+		u.Scheme = serverHost.Scheme
+		u.Host = serverHost.Host
 
 		client, err = getHTTPSClient(c.config.MigrationManagerServerCert, c.config.TLSClientCertFile, c.config.TLSClientKeyFile)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		u, err = url.Parse("http://unix.socket")
-		if err != nil {
-			return nil, err
-		}
-
+		u.Scheme = "http"
+		u.Host = "unix.socket"
 		client = getUnixHTTPClient(MIGRATION_MANAGER_UNIX_SOCKET)
 	}
-
-	u.Path, err = url.JoinPath("/1.0/", endpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	u.RawQuery = query
 
 	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))
 	if err != nil {
@@ -288,6 +285,19 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 	}
 
 	return &response, nil
+}
+
+func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.Response, error) {
+	p, err := url.JoinPath("/1.0/", endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	if query != "" {
+		return c.makeHTTPRequest(fmt.Sprintf("%s?%s", p, query), method, content)
+	}
+
+	return c.makeHTTPRequest(p, method, content)
 }
 
 func responseToStruct(response *api.Response, targetStruct any) error {

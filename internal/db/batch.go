@@ -417,7 +417,7 @@ func (n *Node) getInstanceWithDetails(tx *sql.Tx, ii instance.Instance) (batch.I
 	}
 
 	override, err := n.GetInstanceOverride(tx, i.UUID)
-	if err != nil {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return batch.InstanceWithDetails{}, err
 	}
 

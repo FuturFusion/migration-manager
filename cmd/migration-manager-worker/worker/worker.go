@@ -286,6 +286,10 @@ func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, s
 		return err
 	}
 
+	if sourceType != src.SourceType {
+		return fmt.Errorf("Source type mismatch; expecting %s but got %s", sourceType.String(), src.SourceType.String())
+	}
+
 	switch src.SourceType {
 	case api.SOURCETYPE_VMWARE:
 		w.source, err = source.NewInternalVMwareSourceFrom(src)
