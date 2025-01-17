@@ -57,6 +57,34 @@ func restServer(d *Daemon) *http.Server {
 		http.Redirect(w, r, "/ui/", http.StatusMovedPermanently)
 	})
 
+	// OIDC browser login
+	router.HandleFunc("/oidc/login", func(w http.ResponseWriter, r *http.Request) {
+		if d.oidcVerifier == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		d.oidcVerifier.Login(w, r)
+	})
+
+	router.HandleFunc("/oidc/callback", func(w http.ResponseWriter, r *http.Request) {
+		if d.oidcVerifier == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		d.oidcVerifier.Callback(w, r)
+	})
+
+	router.HandleFunc("/oidc/logout", func(w http.ResponseWriter, r *http.Request) {
+		if d.oidcVerifier == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		d.oidcVerifier.Logout(w, r)
+	})
+
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 

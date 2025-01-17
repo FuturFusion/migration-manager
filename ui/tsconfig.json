@@ -4,6 +4,8 @@
     "paths": {
       "api/*": ["src/api/*"],
       "components/*": ["src/components/*"],
+      "context/*": ["src/context/*"],
+      "pages/*": ["src/pages/*"],
       "types/*": ["src/types/*"],
       "*": ["types/*.d.ts"],
     },
