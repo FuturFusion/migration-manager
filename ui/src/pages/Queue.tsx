@@ -1,13 +1,18 @@
-import { useQuery } from '@tanstack/react-query'
-import DataTable from 'components/DataTable'
-import { fetchQueue } from 'api/queue'
+import { useQuery } from '@tanstack/react-query';
+import DataTable from 'components/DataTable';
+import { fetchQueue } from 'api/queue';
 
 const Queue = () => {
+  const refetchInterval = 10000; // 10 seconds
   const {
     data: queue = [],
     error,
     isLoading,
-  } = useQuery({ queryKey: ['queue'], queryFn: fetchQueue })
+  } = useQuery({
+    queryKey: ['queue'],
+    queryFn: fetchQueue,
+    refetchInterval: refetchInterval,
+  })
 
   const headers = ["Name", "Batch", "Status", "Status string"];
   const rows = queue.map((item) => {
