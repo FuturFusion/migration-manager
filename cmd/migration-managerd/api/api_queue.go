@@ -433,9 +433,17 @@ func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Fetch the source for the instance.
-	s, err := d.source.GetByID(r.Context(), i.SourceID)
+	ms, err := d.source.GetByID(r.Context(), i.SourceID)
 	if err != nil {
 		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", UUID, err))
+	}
+
+	s := api.Source{
+		DatabaseID: ms.ID,
+		Name:       ms.Name,
+		Insecure:   ms.Insecure,
+		SourceType: ms.SourceType,
+		Properties: ms.Properties,
 	}
 
 	// Fetch the batch for the instance.
