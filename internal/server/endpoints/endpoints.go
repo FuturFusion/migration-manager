@@ -116,7 +116,7 @@ func Up(config *Config) (*Endpoints, error) {
 type Endpoints struct {
 	tomb      *tomb.Tomb            // Controls the HTTP servers shutdown.
 	mu        sync.RWMutex          // Serialize access to internal state.
-	listeners map[kind]net.Listener // Activer listeners by endpoint type.
+	listeners map[kind]net.Listener // Active listeners by endpoint type.
 	servers   map[kind]*http.Server // HTTP servers by endpoint type.
 	cert      *localtls.CertInfo    // Keypair and CA to use for TLS.
 	inherited map[kind]bool         // Store whether the listener came through socket activation
