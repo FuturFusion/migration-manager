@@ -4,11 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"strings"
 	"time"
-
-	"github.com/FuturFusion/migration-manager/internal/logger"
 )
 
 // Transaction executes the given function within a database transaction with a 30s context timeout.
@@ -46,7 +43,7 @@ func Transaction(ctx context.Context, db *sql.DB, f func(context.Context, *sql.T
 func rollback(tx *sql.Tx, reason error) error {
 	err := Retry(context.TODO(), func(_ context.Context) error { return tx.Rollback() })
 	if err != nil {
-		slog.Warn("Failed to rollback transaction after error", slog.Any("reason", reason), logger.Err(err))
+		return fmt.Errorf("Failed to rollback transaction after reason: %w, error: %v", reason, err)
 	}
 
 	return reason

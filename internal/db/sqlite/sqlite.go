@@ -15,7 +15,7 @@ func init() {
 // Open the local database object.
 func Open(dir string) (*sql.DB, error) {
 	path := filepath.Join(dir, "local.db")
-	timeout := 5 // TODO - make this command-line configurable?
+	timeout := 5 // TODO: make this command-line configurable?
 
 	// These are used to tune the transaction BEGIN behavior instead of using the
 	// similar "locking_mode" pragma (locking for the whole database connection).

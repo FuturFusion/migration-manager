@@ -214,7 +214,7 @@ func (d *Daemon) Start() error {
 	d.source = migration.NewSourceService(sqlite.NewSource(d.db.DB))
 	d.target = migration.NewTargetService(sqlite.NewTarget(d.db.DB))
 
-	/* Setup network endpoint certificate */
+	// Setup network endpoint certificate
 	networkCert, err := internalUtil.LoadCert(d.os.VarDir)
 	if err != nil {
 		return err
@@ -234,7 +234,7 @@ func (d *Daemon) Start() error {
 		}
 	}
 
-	/* Setup the web server */
+	// Setup the web server
 	cfg := &endpoints.Config{
 		Dir:                  d.os.VarDir,
 		UnixSocket:           d.os.GetUnixSocket(),
@@ -261,7 +261,7 @@ func (d *Daemon) Start() error {
 	return nil
 }
 
-func (d *Daemon) Stop(ctx context.Context, sig os.Signal) error {
+func (d *Daemon) Stop() error {
 	if d.endpoints != nil {
 		err := d.endpoints.Down()
 		if err != nil {

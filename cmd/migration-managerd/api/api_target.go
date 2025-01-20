@@ -7,10 +7,10 @@ import (
 	"strconv"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
-	"github.com/FuturFusion/migration-manager/internal/migration/repo/transaction"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 

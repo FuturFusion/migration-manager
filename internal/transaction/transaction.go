@@ -3,20 +3,18 @@ package transaction
 import (
 	"context"
 	"database/sql"
-
-	"github.com/FuturFusion/migration-manager/internal/migration/repo"
 )
 
 type db interface {
 	BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, error)
-	repo.DBTX
+	DBTX
 }
 
 type transaction struct {
 	db db
 }
 
-var _ repo.DBTX = transaction{}
+var _ DBTX = transaction{}
 
 func Enable(db db) transaction {
 	return transaction{
@@ -63,7 +61,7 @@ func (t transaction) QueryRowContext(ctx context.Context, query string, args ...
 	return db.QueryRowContext(ctx, query, args...)
 }
 
-func (t transaction) getDBTX(ctx context.Context) (repo.DBTX, error) {
+func (t transaction) getDBTX(ctx context.Context) (DBTX, error) {
 	tc, ok := ctx.Value(tcKey{}).(*transactionContainer)
 	if !ok {
 		// No transaction started, use regular DB connection.

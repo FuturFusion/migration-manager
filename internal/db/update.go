@@ -116,11 +116,7 @@ func Schema() *schema.Schema {
    version.
 
    DO NOT USE this mechanism for one-time actions which do not involve
-   changes to the database schema. Use patches instead (see patches.go).
-
-   REMEMBER to run "make update-schema" after you add a new update function to
-   this slice. That will refresh the schema declaration in db/schema.go and
-   include the effect of applying your patch as well.
+   changes to the database schema.
 
    Only append to the updates list, never remove entries and never re-order them.
 */

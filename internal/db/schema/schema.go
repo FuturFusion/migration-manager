@@ -148,11 +148,13 @@ func (s *Schema) Ensure(db *sql.DB) (int, error) {
 			if err != nil {
 				return fmt.Errorf("cannot apply fresh schema: %w", err)
 			}
-		} else {
-			err = ensureUpdatesAreApplied(ctx, tx, current, s.updates, s.hook)
-			if err != nil {
-				return err
-			}
+
+			return nil
+		}
+
+		err = ensureUpdatesAreApplied(ctx, tx, current, s.updates, s.hook)
+		if err != nil {
+			return err
 		}
 
 		return nil

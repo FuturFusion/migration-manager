@@ -85,7 +85,7 @@ func TestEndpoints_LocalAlreadyRunning(t *testing.T) {
 	defer cleanup2()
 
 	err := endpoints2.Up(config2)
-	assert.EqualError(t, err, "Local endpoint: Incus is already running")
+	assert.EqualError(t, err, "Local endpoint: migration-managerd is already running")
 }
 
 // Create a UnixListener using a random and unique file name.

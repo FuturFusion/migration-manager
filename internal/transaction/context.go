@@ -4,14 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-
-	"github.com/FuturFusion/migration-manager/internal/migration/repo"
 )
 
 type tcKey struct{}
 
 type tx interface {
-	repo.DBTX
+	DBTX
 	Commit() error
 	Rollback() error
 }
