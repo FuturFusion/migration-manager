@@ -56,7 +56,7 @@ func CheckAlreadyRunning(path string) error {
 
 	// If the connection succeeded it means there's another daemon running.
 	if err == nil {
-		return fmt.Errorf("Incus is already running")
+		return fmt.Errorf("migration-managerd is already running")
 	}
 
 	return nil
