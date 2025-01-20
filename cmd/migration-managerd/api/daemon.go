@@ -261,7 +261,7 @@ func (d *Daemon) Start() error {
 	return nil
 }
 
-func (d *Daemon) Stop(ctx context.Context, sig os.Signal) error {
+func (d *Daemon) Stop() error {
 	if d.endpoints != nil {
 		err := d.endpoints.Down()
 		if err != nil {
