@@ -2,6 +2,8 @@ package migration
 
 import "context"
 
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg migration_test -out source_service_mock_gen_test.go -rm . SourceService
+
 type SourceService interface {
 	Create(ctx context.Context, source Source) (Source, error)
 	GetAll(ctx context.Context) (Sources, error)

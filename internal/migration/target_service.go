@@ -53,7 +53,7 @@ func (s targetService) UpdateByName(ctx context.Context, newTarget Target) (Targ
 
 func (s targetService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
-		return errors.New("Source name cannot be empty")
+		return errors.New("Instance name cannot be empty")
 	}
 
 	return s.repo.DeleteByName(ctx, name)

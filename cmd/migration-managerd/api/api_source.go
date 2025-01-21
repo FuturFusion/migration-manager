@@ -342,7 +342,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		Properties: source.Properties,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", name, err))
+		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", name, err))
 	}
 
 	err = trans.Commit()

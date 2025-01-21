@@ -17,8 +17,8 @@ func TestSourceService_Create(t *testing.T) {
 	tests := []struct {
 		name             string
 		source           migration.Source
-		repoUpsertSource migration.Source
-		repoUpsertErr    error
+		repoCreateSource migration.Source
+		repoCreateErr    error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -31,7 +31,7 @@ func TestSourceService_Create(t *testing.T) {
 				SourceType: api.SOURCETYPE_COMMON,
 				Properties: json.RawMessage(`{}`),
 			},
-			repoUpsertSource: migration.Source{
+			repoCreateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
 				Insecure:   false,
@@ -55,7 +55,7 @@ func TestSourceService_Create(t *testing.T) {
 }
 `),
 			},
-			repoUpsertSource: migration.Source{
+			repoCreateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
 				Insecure:   false,
@@ -193,6 +193,19 @@ func TestSourceService_Create(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "error - repo",
+			source: migration.Source{
+				ID:         1,
+				Name:       "one",
+				Insecure:   false,
+				SourceType: api.SOURCETYPE_COMMON,
+				Properties: json.RawMessage(`{}`),
+			},
+			repoCreateErr: errors.New("boom!"),
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {
@@ -200,7 +213,7 @@ func TestSourceService_Create(t *testing.T) {
 			// Setup
 			repo := &mock.SourceRepoMock{
 				CreateFunc: func(ctx context.Context, in migration.Source) (migration.Source, error) {
-					return tc.repoUpsertSource, tc.repoUpsertErr
+					return tc.repoCreateSource, tc.repoCreateErr
 				},
 			}
 
@@ -211,7 +224,7 @@ func TestSourceService_Create(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpsertSource, source)
+			require.Equal(t, tc.repoCreateSource, source)
 		})
 	}
 }
@@ -267,6 +280,54 @@ func TestSourceService_GetAll(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Len(t, sources, tc.count)
+		})
+	}
+}
+
+func TestSourceService_GetAllNames(t *testing.T) {
+	tests := []struct {
+		name            string
+		repoGetAllNames []string
+		repoGetAllErr   error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllNames: []string{
+				"sourceA", "sourceB",
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:          "error - repo",
+			repoGetAllErr: errors.New("boom!"),
+
+			assertErr: require.Error,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.SourceRepoMock{
+				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
+					return tc.repoGetAllNames, tc.repoGetAllErr
+				},
+			}
+
+			sourceSvc := migration.NewSourceService(repo)
+
+			// Run test
+			inventoryNames, err := sourceSvc.GetAllNames(context.Background())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, inventoryNames, tc.count)
 		})
 	}
 }
@@ -372,12 +433,12 @@ func TestSourceService_GetByName(t *testing.T) {
 	}
 }
 
-func TestSourceService_Upsert(t *testing.T) {
+func TestSourceService_UpdateByName(t *testing.T) {
 	tests := []struct {
 		name             string
 		source           migration.Source
-		repoUpsertSource migration.Source
-		repoUpsertErr    error
+		repoUpdateSource migration.Source
+		repoUpdateErr    error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -390,7 +451,7 @@ func TestSourceService_Upsert(t *testing.T) {
 				SourceType: api.SOURCETYPE_COMMON,
 				Properties: json.RawMessage(`{}`),
 			},
-			repoUpsertSource: migration.Source{
+			repoUpdateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
 				Insecure:   false,
@@ -414,7 +475,7 @@ func TestSourceService_Upsert(t *testing.T) {
 }
 `),
 			},
-			repoUpsertSource: migration.Source{
+			repoUpdateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
 				Insecure:   false,
@@ -552,6 +613,19 @@ func TestSourceService_Upsert(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "error - repo",
+			source: migration.Source{
+				ID:         1,
+				Name:       "one",
+				Insecure:   false,
+				SourceType: api.SOURCETYPE_COMMON,
+				Properties: json.RawMessage(`{}`),
+			},
+			repoUpdateErr: errors.New("boom!"),
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {
@@ -559,7 +633,7 @@ func TestSourceService_Upsert(t *testing.T) {
 			// Setup
 			repo := &mock.SourceRepoMock{
 				UpdateByNameFunc: func(ctx context.Context, in migration.Source) (migration.Source, error) {
-					return tc.repoUpsertSource, tc.repoUpsertErr
+					return tc.repoUpdateSource, tc.repoUpdateErr
 				},
 			}
 
@@ -570,7 +644,7 @@ func TestSourceService_Upsert(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpsertSource, source)
+			require.Equal(t, tc.repoUpdateSource, source)
 		})
 	}
 }

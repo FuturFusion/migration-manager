@@ -331,6 +331,9 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 	}()
 
 	currentTarget, err := d.target.GetByName(ctx, target.Name)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get target %q: %w", name, err))
+	}
 
 	// Validate ETag
 	err = util.EtagCheck(r, currentTarget)
@@ -348,7 +351,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		Insecure:      target.Insecure,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", name, err))
+		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", name, err))
 	}
 
 	err = trans.Commit()

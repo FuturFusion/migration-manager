@@ -25,7 +25,7 @@ func NewTarget(db repo.DBTX) *target {
 }
 
 func (t target) Create(ctx context.Context, in migration.Target) (migration.Target, error) {
-	const sqlUpsert = `
+	const sqlInsert = `
 INSERT INTO targets (name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure)
 VALUES(:name, :endpoint, :tls_client_key, :tls_client_cert, :oidc_tokens, :insecure)
 RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure;
@@ -36,7 +36,7 @@ RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, inse
 		return migration.Target{}, err
 	}
 
-	row := t.db.QueryRowContext(ctx, sqlUpsert,
+	row := t.db.QueryRowContext(ctx, sqlInsert,
 		sql.Named("name", in.Name),
 		sql.Named("endpoint", in.Endpoint),
 		sql.Named("tls_client_key", in.TLSClientKey),
@@ -52,7 +52,7 @@ RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, inse
 }
 
 func (t target) GetAll(ctx context.Context) (migration.Targets, error) {
-	const sqlGetAll = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure FROM targets ORDER BY name`
+	const sqlGetAll = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure FROM targets ORDER BY name;`
 
 	rows, err := t.db.QueryContext(ctx, sqlGetAll)
 	if err != nil {
@@ -79,9 +79,9 @@ func (t target) GetAll(ctx context.Context) (migration.Targets, error) {
 }
 
 func (t target) GetByID(ctx context.Context, id int) (migration.Target, error) {
-	const sqlGetByName = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure FROM targets WHERE id=:id`
+	const sqlGetByID = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure FROM targets WHERE id=:id;`
 
-	row := t.db.QueryRowContext(ctx, sqlGetByName, sql.Named("id", id))
+	row := t.db.QueryRowContext(ctx, sqlGetByID, sql.Named("id", id))
 	if row.Err() != nil {
 		return migration.Target{}, row.Err()
 	}
@@ -90,7 +90,7 @@ func (t target) GetByID(ctx context.Context, id int) (migration.Target, error) {
 }
 
 func (t target) GetByName(ctx context.Context, name string) (migration.Target, error) {
-	const sqlGetByName = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure FROM targets WHERE name=:name`
+	const sqlGetByName = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure FROM targets WHERE name=:name;`
 
 	row := t.db.QueryRowContext(ctx, sqlGetByName, sql.Named("name", name))
 	if row.Err() != nil {
@@ -101,7 +101,7 @@ func (t target) GetByName(ctx context.Context, name string) (migration.Target, e
 }
 
 func (t target) UpdateByName(ctx context.Context, in migration.Target) (migration.Target, error) {
-	const sqlUpsert = `
+	const sqlUpdate = `
 UPDATE targets SET name=:name, endpoint=:endpoint, tls_client_key=:tls_client_key, tls_client_cert=:tls_client_cert, oidc_tokens=:oidc_tokens, insecure=:insecure
 WHERE name=:name
 RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure;
@@ -112,7 +112,7 @@ RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, inse
 		return migration.Target{}, err
 	}
 
-	row := t.db.QueryRowContext(ctx, sqlUpsert,
+	row := t.db.QueryRowContext(ctx, sqlUpdate,
 		sql.Named("name", in.Name),
 		sql.Named("endpoint", in.Endpoint),
 		sql.Named("tls_client_key", in.TLSClientKey),
@@ -130,7 +130,15 @@ RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, inse
 func scanTarget(row interface{ Scan(dest ...any) error }) (migration.Target, error) {
 	var target migration.Target
 	var marshalledOIDCTokens []byte
-	err := row.Scan(&target.ID, &target.Name, &target.Endpoint, &target.TLSClientKey, &target.TLSClientCert, &marshalledOIDCTokens, &target.Insecure)
+	err := row.Scan(
+		&target.ID,
+		&target.Name,
+		&target.Endpoint,
+		&target.TLSClientKey,
+		&target.TLSClientCert,
+		&marshalledOIDCTokens,
+		&target.Insecure,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return migration.Target{}, migration.ErrNotFound
@@ -155,7 +163,7 @@ func scanTarget(row interface{ Scan(dest ...any) error }) (migration.Target, err
 }
 
 func (t target) DeleteByName(ctx context.Context, name string) error {
-	const sqlDelete = `DELETE FROM targets WHERE name=:name`
+	const sqlDelete = `DELETE FROM targets WHERE name=:name;`
 
 	result, err := t.db.ExecContext(ctx, sqlDelete, sql.Named("name", name))
 	if err != nil {

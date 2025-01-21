@@ -15,8 +15,8 @@ func TestTargetService_Create(t *testing.T) {
 	tests := []struct {
 		name             string
 		target           migration.Target
-		repoUpsertTarget migration.Target
-		repoUpsertErr    error
+		repoCreateTarget migration.Target
+		repoCreateErr    error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -30,7 +30,7 @@ func TestTargetService_Create(t *testing.T) {
 				TLSClientCert: "cert",
 				Insecure:      false,
 			},
-			repoUpsertTarget: migration.Target{
+			repoCreateTarget: migration.Target{
 				ID:            1,
 				Name:          "one",
 				Endpoint:      "endpoint.url",
@@ -80,6 +80,20 @@ func TestTargetService_Create(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "error - repo",
+			target: migration.Target{
+				ID:            1,
+				Name:          "one",
+				Endpoint:      "endpoint.url",
+				TLSClientKey:  "key",
+				TLSClientCert: "cert",
+				Insecure:      false,
+			},
+			repoCreateErr: errors.New("boom!"),
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {
@@ -87,7 +101,7 @@ func TestTargetService_Create(t *testing.T) {
 			// Setup
 			repo := &mock.TargetRepoMock{
 				CreateFunc: func(ctx context.Context, in migration.Target) (migration.Target, error) {
-					return tc.repoUpsertTarget, tc.repoUpsertErr
+					return tc.repoCreateTarget, tc.repoCreateErr
 				},
 			}
 
@@ -98,7 +112,7 @@ func TestTargetService_Create(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpsertTarget, target)
+			require.Equal(t, tc.repoCreateTarget, target)
 		})
 	}
 }
@@ -158,6 +172,54 @@ func TestTargetService_GetAll(t *testing.T) {
 	}
 }
 
+func TestTargetService_GetAllNames(t *testing.T) {
+	tests := []struct {
+		name            string
+		repoGetAllNames []string
+		repoGetAllErr   error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllNames: []string{
+				"targetA", "targetB",
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:          "error - repo",
+			repoGetAllErr: errors.New("boom!"),
+
+			assertErr: require.Error,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.TargetRepoMock{
+				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
+					return tc.repoGetAllNames, tc.repoGetAllErr
+				},
+			}
+
+			targetSvc := migration.NewTargetService(repo)
+
+			// Run test
+			inventoryNames, err := targetSvc.GetAllNames(context.Background())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, inventoryNames, tc.count)
+		})
+	}
+}
+
 func TestTargetService_GetByName(t *testing.T) {
 	tests := []struct {
 		name                string
@@ -213,12 +275,61 @@ func TestTargetService_GetByName(t *testing.T) {
 	}
 }
 
+func TestTargetService_GetByID(t *testing.T) {
+	tests := []struct {
+		name              string
+		idArg             int
+		repoGetByIDTarget migration.Target
+		repoGetByIDErr    error
+
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:  "success",
+			idArg: 1,
+			repoGetByIDTarget: migration.Target{
+				ID:   1,
+				Name: "one",
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:           "error - repo",
+			idArg:          1,
+			repoGetByIDErr: errors.New("boom!"),
+
+			assertErr: require.Error,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.TargetRepoMock{
+				GetByIDFunc: func(ctx context.Context, id int) (migration.Target, error) {
+					return tc.repoGetByIDTarget, tc.repoGetByIDErr
+				},
+			}
+
+			targetSvc := migration.NewTargetService(repo)
+
+			// Run test
+			target, err := targetSvc.GetByID(context.Background(), tc.idArg)
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Equal(t, tc.repoGetByIDTarget, target)
+		})
+	}
+}
+
 func TestTargetService_UpdateByName(t *testing.T) {
 	tests := []struct {
 		name             string
 		target           migration.Target
-		repoUpsertTarget migration.Target
-		repoUpsertErr    error
+		repoUpdateTarget migration.Target
+		repoUpdateErr    error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -232,7 +343,7 @@ func TestTargetService_UpdateByName(t *testing.T) {
 				TLSClientCert: "cert",
 				Insecure:      false,
 			},
-			repoUpsertTarget: migration.Target{
+			repoUpdateTarget: migration.Target{
 				ID:            1,
 				Name:          "one",
 				Endpoint:      "endpoint.url",
@@ -282,6 +393,20 @@ func TestTargetService_UpdateByName(t *testing.T) {
 
 			assertErr: require.Error,
 		},
+		{
+			name: "error - repo",
+			target: migration.Target{
+				ID:            1,
+				Name:          "one",
+				Endpoint:      "endpoint.url",
+				TLSClientKey:  "key",
+				TLSClientCert: "cert",
+				Insecure:      false,
+			},
+			repoUpdateErr: errors.New("boom!"),
+
+			assertErr: require.Error,
+		},
 	}
 
 	for _, tc := range tests {
@@ -289,7 +414,7 @@ func TestTargetService_UpdateByName(t *testing.T) {
 			// Setup
 			repo := &mock.TargetRepoMock{
 				UpdateByNameFunc: func(ctx context.Context, in migration.Target) (migration.Target, error) {
-					return tc.repoUpsertTarget, tc.repoUpsertErr
+					return tc.repoUpdateTarget, tc.repoUpdateErr
 				},
 			}
 
@@ -300,7 +425,7 @@ func TestTargetService_UpdateByName(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpsertTarget, target)
+			require.Equal(t, tc.repoUpdateTarget, target)
 		})
 	}
 }
