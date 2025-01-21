@@ -1,16 +1,16 @@
 package api
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -116,27 +116,32 @@ func networksGet(d *Daemon, r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	networks := []api.Network{}
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbNetworks, err := d.db.GetAllNetworks(tx)
+	if recursion == 1 {
+		networks, err := d.network.GetAll(r.Context())
 		if err != nil {
-			return err
+			return response.SmartError(err)
 		}
 
-		networks = dbNetworks
-		return nil
-	})
+		result := make([]api.Network, 0, len(networks))
+		for _, network := range networks {
+			result = append(result, api.Network{
+				DatabaseID: network.ID,
+				Name:       network.Name,
+				Config:     network.Config,
+			})
+		}
+
+		return response.SyncResponse(true, result)
+	}
+
+	networkNames, err := d.network.GetAllNames(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	if recursion == 1 {
-		return response.SyncResponse(true, networks)
-	}
-
-	result := make([]string, 0, len(networks))
-	for _, n := range networks {
-		result = append(result, fmt.Sprintf("/%s/networks/%s", api.APIVersion, n.Name))
+	result := make([]string, 0, len(networkNames))
+	for _, name := range networkNames {
+		result = append(result, fmt.Sprintf("/%s/networks/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)
@@ -170,23 +175,24 @@ func networksGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func networksPost(d *Daemon, r *http.Request) response.Response {
-	var n api.Network
+	var network api.Network
 
 	// Decode into the new network.
-	err := json.NewDecoder(r.Body).Decode(&n)
+	err := json.NewDecoder(r.Body).Decode(&network)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	// Insert into database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.AddNetwork(tx, &n)
+	_, err = d.network.Create(r.Context(), migration.Network{
+		ID:     network.DatabaseID,
+		Name:   network.Name,
+		Config: network.Config,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating network %q: %w", n.Name, err))
+		return response.SmartError(fmt.Errorf("Failed creating network %q: %w", network.Name, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+n.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+network.Name)
 }
 
 // swagger:operation DELETE /1.0/networks/{name} networks network_delete
@@ -210,15 +216,9 @@ func networksPost(d *Daemon, r *http.Request) response.Response {
 func networkDelete(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Network name cannot be empty"))
-	}
-
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.DeleteNetwork(tx, name)
-	})
+	err := d.network.DeleteByName(r.Context(), name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to delete network '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
 	return response.EmptySyncResponse
@@ -261,25 +261,20 @@ func networkDelete(d *Daemon, r *http.Request) response.Response {
 func networkGet(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Network name cannot be empty"))
-	}
-
-	var n api.Network
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbNetwork, err := d.db.GetNetwork(tx, name)
-		if err != nil {
-			return err
-		}
-
-		n = dbNetwork
-		return nil
-	})
+	network, err := d.network.GetByName(r.Context(), name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get network '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
-	return response.SyncResponseETag(true, n, n)
+	return response.SyncResponseETag(
+		true,
+		api.Network{
+			DatabaseID: network.ID,
+			Name:       network.Name,
+			Config:     network.Config,
+		},
+		network,
+	)
 }
 
 // swagger:operation PUT /1.0/networks/{name} networks network_put
@@ -314,44 +309,42 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 func networkPut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Network name cannot be empty"))
-	}
+	var network api.Network
 
-	// Get the existing network.
-	var n api.Network
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbNetwork, err := d.db.GetNetwork(tx, name)
-		if err != nil {
-			return err
-		}
-
-		n = dbNetwork
-		return nil
-	})
-	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get network '%s': %w", name, err))
-	}
-
-	// Validate ETag
-	err = util.EtagCheck(r, n)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
-
-	// Decode into the existing network.
-	err = json.NewDecoder(r.Body).Decode(&n)
+	err := json.NewDecoder(r.Body).Decode(&network)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	// Update network in the database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateNetwork(tx, n)
-	})
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+		}
+	}()
+
+	currentNetwork, err := d.network.GetByName(ctx, network.Name)
+
+	// Validate ETag
+	err = util.EtagCheck(r, currentNetwork)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", n.Name, err))
+		return response.PreconditionFailed(err)
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+n.Name)
+	_, err = d.network.UpdateByName(ctx, migration.Network{
+		ID:     network.DatabaseID,
+		Name:   name,
+		Config: network.Config,
+	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", name, err))
+	}
+
+	err = trans.Commit()
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+	}
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+network.Name)
 }

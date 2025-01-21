@@ -53,8 +53,9 @@ type Daemon struct {
 	authorizer   auth.Authorizer
 	oidcVerifier *oidc.Verifier
 
-	source migration.SourceService
-	target migration.TargetService
+	source  migration.SourceService
+	target  migration.TargetService
+	network migration.NetworkService
 
 	server   *http.Server
 	errgroup *errgroup.Group
@@ -180,6 +181,7 @@ func (d *Daemon) Start() error {
 
 	d.source = migration.NewSourceService(sqlite.NewSource(d.db.DB))
 	d.target = migration.NewTargetService(sqlite.NewTarget(d.db.DB))
+	d.network = migration.NewNetworkService(sqlite.NewNetwork(d.db.DB))
 
 	// Set default authorizer.
 	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)
