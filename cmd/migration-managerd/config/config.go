@@ -3,8 +3,6 @@ package config
 import (
 	"errors"
 	"os"
-	"path"
-	"path/filepath"
 
 	"gopkg.in/yaml.v3"
 
@@ -30,7 +28,7 @@ type DaemonConfig struct {
 }
 
 func (c *DaemonConfig) LoadConfig() error {
-	contents, err := os.ReadFile(filepath.Join(util.VarPath(), "config.yml"))
+	contents, err := os.ReadFile(util.VarPath("config.yml"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil
@@ -48,5 +46,5 @@ func (c *DaemonConfig) SaveConfig() error {
 		return err
 	}
 
-	return os.WriteFile(path.Join(path.Join(util.VarPath(), "config.yml")), contents, 0o644)
+	return os.WriteFile(util.VarPath("config.yml"), contents, 0o644)
 }

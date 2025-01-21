@@ -590,7 +590,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, stora
 		if err != nil {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
-			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.AssetsDir(), iso))
+			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.CacheDir, iso))
 			if err != nil {
 				return err
 			}

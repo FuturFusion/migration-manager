@@ -44,14 +44,9 @@ func (s *OS) LocalDatabaseDir() string {
 	return filepath.Join(s.VarDir, "database")
 }
 
-// AssetsDir returns the path of the local assets directory.
-func (s *OS) AssetsDir() string {
-	return filepath.Join(s.VarDir, "assets")
-}
-
 // Returns the name of the migration manger worker ISO image.
 func (s *OS) GetMigrationManagerISOName() (string, error) {
-	files, err := filepath.Glob(fmt.Sprintf("%s/migration-manager-minimal-boot*.iso", s.AssetsDir()))
+	files, err := filepath.Glob(fmt.Sprintf("%s/migration-manager-minimal-boot*.iso", s.CacheDir))
 	if err != nil {
 		return "", err
 	}
@@ -65,7 +60,7 @@ func (s *OS) GetMigrationManagerISOName() (string, error) {
 
 // Returns the name of the virtio drivers ISO image.
 func (s *OS) GetVirtioDriversISOName() (string, error) {
-	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win-*.iso", s.AssetsDir()))
+	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win-*.iso", s.CacheDir))
 	if err != nil {
 		return "", err
 	}
