@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"os/user"
 	"path/filepath"
 	"time"
 
@@ -26,7 +25,6 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
-	"github.com/FuturFusion/migration-manager/internal/server/ucred"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
@@ -134,20 +132,6 @@ func (d *Daemon) checkTrustedClient(r *http.Request) error {
 func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
 	// Local unix socket queries.
 	if r.RemoteAddr == "@" && r.TLS == nil {
-		if w != nil {
-			cred, err := ucred.GetCredFromContext(r.Context())
-			if err != nil {
-				return false, "", "", err
-			}
-
-			u, err := user.LookupId(fmt.Sprintf("%d", cred.Uid))
-			if err != nil {
-				return true, fmt.Sprintf("uid=%d", cred.Uid), "unix", nil
-			}
-
-			return true, u.Username, "unix", nil
-		}
-
 		return true, "", "unix", nil
 	}
 
