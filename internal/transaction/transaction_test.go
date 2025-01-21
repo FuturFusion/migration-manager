@@ -120,6 +120,116 @@ func TestCommit(t *testing.T) {
 	require.Len(t, dummies, 1)
 }
 
+func TestTransactionInTransactionCommit(t *testing.T) {
+	// Setup DB.
+	tmpDir := t.TempDir()
+
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	setupDB(t, db)
+
+	// DB Connection with transaction support.
+	dbWithTransaction := transaction.Enable(db)
+	dummySvc := dummy{
+		db: dbWithTransaction,
+	}
+
+	ctx := context.Background()
+
+	ctx, trans := transaction.Begin(ctx)
+	defer func() {
+		err = trans.Rollback()
+		require.NoError(t, err)
+	}()
+
+	// Add dummy in transaction.
+	err = dummySvc.create(ctx)
+	require.NoError(t, err)
+
+	ctx, innerTrans := transaction.Begin(ctx)
+	defer func() {
+		err = innerTrans.Rollback()
+		require.NoError(t, err)
+	}()
+
+	// Add dummy in inner transaction.
+	err = dummySvc.create(ctx)
+	require.NoError(t, err)
+
+	// Commit inner transaction.
+	err = innerTrans.Commit()
+	require.NoError(t, err)
+
+	// Commit transaction.
+	err = trans.Commit()
+	require.NoError(t, err)
+
+	// Query DB outside of transaction
+	ids, err := dummySvc.getAll(context.Background())
+	require.Len(t, ids, 2)
+}
+
+func TestTransactionInTransactionRollback(t *testing.T) {
+	// Setup DB.
+	tmpDir := t.TempDir()
+
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	setupDB(t, db)
+
+	// DB Connection with transaction support.
+	dbWithTransaction := transaction.Enable(db)
+	dummySvc := dummy{
+		db: dbWithTransaction,
+	}
+
+	ctx := context.Background()
+
+	ctx, trans := transaction.Begin(ctx)
+	defer func() {
+		err = trans.Rollback()
+		require.NoError(t, err)
+	}()
+
+	// Add dummy in transaction.
+	err = dummySvc.create(ctx)
+	require.NoError(t, err)
+
+	ctx, innerTrans := transaction.Begin(ctx)
+	defer func() {
+		err = innerTrans.Rollback()
+		require.NoError(t, err)
+	}()
+
+	// Add dummy in inner transaction.
+	err = dummySvc.create(ctx)
+	require.NoError(t, err)
+
+	// Commit inner transaction.
+	err = innerTrans.Rollback()
+	require.NoError(t, err)
+
+	// Commit transaction.
+	err = trans.Rollback()
+	require.NoError(t, err)
+
+	// Query DB outside of transaction
+	ids, err := dummySvc.getAll(context.Background())
+	require.Empty(t, ids)
+}
+
 func setupDB(t *testing.T, db *sql.DB) {
 	t.Helper()
 
