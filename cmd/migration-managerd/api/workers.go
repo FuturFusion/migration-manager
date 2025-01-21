@@ -16,6 +16,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/logger"
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -88,20 +89,22 @@ func (d *Daemon) syncInstancesFromSources() bool {
 			log := log.With(slog.String("network", n.Name))
 
 			// Check if a network already exists with the same name.
-			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-				_, err := d.db.GetNetwork(tx, n.Name)
-				return err
-			})
-			// Only add the network if it doesn't yet exist
-			if err != nil {
+			_, err = d.network.GetByName(ctx, n.Name)
+			if errors.Is(err, migration.ErrNotFound) {
 				log.Info("Adding network from source")
-				err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					return d.db.AddNetwork(tx, &n)
+				_, err = d.network.Create(ctx, migration.Network{
+					Name:   n.Name,
+					Config: n.Config,
 				})
 				if err != nil {
 					log.Warn("Failed to add network", logger.Err(err))
-					continue
 				}
+
+				continue
+			}
+
+			if err != nil {
+				log.Warn("Failed to get network", logger.Err(err))
 			}
 		}
 
@@ -958,16 +961,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		}
 
 		// Get the default network to use for this instance.
-		var defaultNetwork api.Network
-		defNetErr := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			var err error
-			defaultNetwork, err = d.db.GetNetwork(tx, dbBatch.GetDefaultNetwork())
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
+		defaultNetwork, defNetErr := d.network.GetByName(ctx, dbBatch.GetDefaultNetwork())
 		if defNetErr != nil {
 			log.Warn("Failed to get network", logger.Err(defNetErr))
 			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
@@ -994,15 +988,8 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 
 			// If the NIC has a network set, and it's not the default, fetch the network definition.
 			if nic.Network != "" && nic.Network != baseNetwork.Name {
-				netErr := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					var err error
-					baseNetwork, err = d.db.GetNetwork(tx, nic.Network)
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
+				var netErr error
+				baseNetwork, netErr = d.network.GetByName(ctx, nic.Network)
 				if netErr != nil {
 					log.Warn("Failed to get network", logger.Err(netErr))
 					err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
