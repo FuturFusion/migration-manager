@@ -349,7 +349,21 @@ func (t *InternalIncusTarget) StopVM(name string, force bool) error {
 }
 
 func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir string) error {
-	f, err := os.Open(file)
+	fi, err := os.Lstat(file)
+	if err != nil {
+		return err
+	}
+
+	// Resolve symlinks if needed.
+	actualFile := file
+	if fi.Mode()&os.ModeSymlink != 0 {
+		actualFile, err = os.Readlink(file)
+		if err != nil {
+			return err
+		}
+	}
+
+	f, err := os.Open(actualFile)
 	if err != nil {
 		return err
 	}
@@ -364,7 +378,7 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 
 	// It can take a while for incus-agent to start when booting a VM, so retry for up to two minutes.
 	for i := 0; i < 120; i++ {
-		err = t.incusClient.CreateInstanceFile(instanceName, filepath.Join(destDir, file), args)
+		err = t.incusClient.CreateInstanceFile(instanceName, filepath.Join(destDir, filepath.Base(file)), args)
 
 		if err == nil {
 			// Pause a second before returning to allow things time to settle.
@@ -373,7 +387,7 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 		}
 
 		time.Sleep(time.Second * 1)
-		args.Content, _ = os.Open(file)
+		args.Content, _ = os.Open(actualFile)
 	}
 
 	return err
