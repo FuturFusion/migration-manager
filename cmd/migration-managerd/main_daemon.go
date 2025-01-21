@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
@@ -83,7 +85,9 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 				slog.Warn("Ignoring signal, shutdown already in progress", slog.Any("signal", sig))
 			} else {
 				go func() {
-					d.ShutdownDoneCh <- d.Stop()
+					shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+					defer shutdownCancel()
+					d.ShutdownDoneCh <- d.Stop(shutdownCtx)
 				}()
 			}
 

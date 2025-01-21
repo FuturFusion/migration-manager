@@ -35,10 +35,8 @@ issues:
     - internal/testcert
   exclude-files:
     # These tests were copied from Incus
+    # FIXME: remove as well?
     - internal/server/util/net_test.go
-    - internal/server/endpoints/endpoints_test.go
-    - internal/server/endpoints/local_test.go
-    - internal/server/endpoints/network_test.go
 linters-settings:
   gci:
     sections:

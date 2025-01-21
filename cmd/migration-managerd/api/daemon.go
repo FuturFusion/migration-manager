@@ -2,14 +2,19 @@ package api
 
 import (
 	"context"
+	"crypto/x509"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os/user"
+	"path/filepath"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/api"
-	localtls "github.com/lxc/incus/v6/shared/tls"
+	incustls "github.com/lxc/incus/v6/shared/tls"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
@@ -18,13 +23,10 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
-	"github.com/FuturFusion/migration-manager/internal/server/endpoints"
 	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
 	"github.com/FuturFusion/migration-manager/internal/server/ucred"
-	localUtil "github.com/FuturFusion/migration-manager/internal/server/util"
-	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
@@ -56,9 +58,9 @@ type Daemon struct {
 	source migration.SourceService
 	target migration.TargetService
 
-	config *config.DaemonConfig
-
-	endpoints *endpoints.Endpoints
+	server   *http.Server
+	errgroup *errgroup.Group
+	config   *config.DaemonConfig
 
 	ShutdownCtx    context.Context    // Canceled when shutdown starts.
 	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
@@ -155,7 +157,7 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 	}
 
 	// Load the certificates.
-	trustCACertificates := false // FIXME -- not checking if client cert is signed by trusted CA
+	trustCACertificates := false // FIXME: not checking if client cert is signed by trusted CA
 
 	// Check for JWT token signed by an OpenID Connect provider.
 	if d.oidcVerifier != nil && d.oidcVerifier.IsRequest(r) {
@@ -167,14 +169,8 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 		return true, userName, api.AuthenticationMethodOIDC, nil
 	}
 
-	// Validate regular TLS certificates.
-	var networkCert *localtls.CertInfo
-	if d.endpoints != nil {
-		networkCert = d.endpoints.NetworkCert()
-	}
-
-	for _, i := range r.TLS.PeerCertificates {
-		trusted, username := localUtil.CheckTrustState(*i, d.config.TrustedTLSClientCertFingerprints, networkCert, trustCACertificates)
+	for _, cert := range r.TLS.PeerCertificates {
+		trusted, username := checkTrustState(*cert, d.config.TrustedTLSClientCertFingerprints, nil, trustCACertificates)
 		if trusted {
 			return true, username, api.AuthenticationMethodTLS, nil
 		}
@@ -187,6 +183,56 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 
 	// Reject unauthorized.
 	return false, "", "", nil
+}
+
+// checkTrustState checks whether the given client certificate is trusted
+// (i.e. it has a valid time span and it belongs to the given list of trusted
+// certificates).
+// Returns whether or not the certificate is trusted, and the fingerprint of the certificate.
+// FIXME: networkCert checks (signature, crl) from internal/server/util.CheckTrustState are currently missing.
+func checkTrustState(cert x509.Certificate, trustedCertFingerprints []string, serverCert *x509.Certificate, trustCACertificates bool) (bool, string) {
+	// Extra validity check (should have been caught by TLS stack)
+	if time.Now().Before(cert.NotBefore) || time.Now().After(cert.NotAfter) {
+		return false, ""
+	}
+
+	certFingerprint := incustls.CertFingerprint(&cert)
+
+	if serverCert != nil && trustCACertificates {
+		panic("not implemented yet")
+		// FIXME: how to check the certificate
+		// 	ca := serverCert.CA()
+
+		// 	if ca != nil && cert.CheckSignatureFrom(ca) == nil {
+		// 		// Check whether the certificate has been revoked.
+		// 		crl := serverCert.CRL()
+
+		// 		if crl != nil {
+		// 			if crl.CheckSignatureFrom(ca) != nil {
+		// 				return false, "" // CRL not signed by CA
+		// 			}
+
+		// 			for _, revoked := range crl.RevokedCertificateEntries {
+		// 				if cert.SerialNumber.Cmp(revoked.SerialNumber) == 0 {
+		// 					return false, "" // Certificate is revoked, so not trusted anymore.
+		// 				}
+		// 			}
+		// 		}
+
+		// 		// Certificate not revoked, so trust it as is signed by CA cert.
+		// 		return true, certFingerprint
+		// 	}
+	}
+
+	// Check whether client certificate fingerprint is trusted.
+	for _, fingerprint := range trustedCertFingerprints {
+		if certFingerprint == fingerprint {
+			slog.Debug("Matched trusted cert", slog.String("fingerprint", fingerprint), slog.Any("subject", cert.Subject))
+			return true, fingerprint
+		}
+	}
+
+	return false, ""
 }
 
 func (d *Daemon) Start() error {
@@ -204,12 +250,6 @@ func (d *Daemon) Start() error {
 	d.source = migration.NewSourceService(sqlite.NewSource(d.db.DB))
 	d.target = migration.NewTargetService(sqlite.NewTarget(d.db.DB))
 
-	// Setup network endpoint certificate
-	networkCert, err := internalUtil.LoadCert(d.os.VarDir)
-	if err != nil {
-		return err
-	}
-
 	// Set default authorizer.
 	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints, nil)
 	if err != nil {
@@ -224,21 +264,47 @@ func (d *Daemon) Start() error {
 		}
 	}
 
-	// Setup the web server
-	cfg := &endpoints.Config{
-		Dir:                  d.os.VarDir,
-		UnixSocket:           d.os.GetUnixSocket(),
-		Cert:                 networkCert,
-		RestServer:           restServer(d),
-		LocalUnixSocketGroup: d.config.Group,
-		LocalUnixSocketLabel: "system_u:object_r:container_runtime_t:s0",
-		NetworkAddress:       fmt.Sprintf("%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort),
-	}
+	// Setup web server
+	d.server = restServer(d)
+	d.server.Addr = fmt.Sprintf("%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort)
 
-	d.endpoints, err = endpoints.Up(cfg)
-	if err != nil {
+	group, errgroupCtx := errgroup.WithContext(context.Background())
+	d.errgroup = group
+
+	group.Go(func() error {
+		// TODO: Check if the socket file already exists. If it does, return an error,
+		// because this indicates, that an other instance of the operations-center
+		// is already running.
+		unixListener, err := net.Listen("unix", d.os.GetUnixSocket())
+		if err != nil {
+			return err
+		}
+
+		slog.Info("Start unix socket listener", slog.Any("addr", unixListener.Addr()))
+
+		err = d.server.Serve(unixListener)
+		if errors.Is(err, http.ErrServerClosed) {
+			// Ignore error from graceful shutdown.
+			return nil
+		}
+
 		return err
-	}
+	})
+
+	group.Go(func() error {
+		slog.Info("Start http listener", slog.Any("addr", d.server.Addr))
+
+		certFile := filepath.Join(d.os.VarDir, "server.crt")
+		keyFile := filepath.Join(d.os.VarDir, "server.key")
+
+		err := d.server.ListenAndServeTLS(certFile, keyFile)
+		if errors.Is(err, http.ErrServerClosed) {
+			// Ignore error from graceful shutdown.
+			return nil
+		}
+
+		return err
+	})
 
 	// Start background workers
 	d.runPeriodicTask(d.syncInstancesFromSources, 10*time.Minute)
@@ -246,22 +312,33 @@ func (d *Daemon) Start() error {
 	d.runPeriodicTask(d.processQueuedBatches, 10*time.Second)
 	d.runPeriodicTask(d.finalizeCompleteInstances, 10*time.Second)
 
+	select {
+	case <-errgroupCtx.Done():
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer shutdownCancel()
+		return d.Stop(shutdownCtx)
+	case <-time.After(500 * time.Millisecond):
+		// Grace period we wait for potential immediate errors from serving the http server.
+		// TODO: More clean way would be to check if the listeners are reachable (http, unix socket).
+	}
+
 	slog.Info("Daemon started")
 
 	return nil
 }
 
-func (d *Daemon) Stop() error {
-	if d.endpoints != nil {
-		err := d.endpoints.Down()
-		if err != nil {
-			return err
-		}
-	}
+func (d *Daemon) Stop(ctx context.Context) error {
+	d.ShutdownCancel()
+
+	shutdownErr := d.server.Shutdown(ctx)
+
+	errgroupWaitErr := d.errgroup.Wait()
+
+	err := errors.Join(shutdownErr, errgroupWaitErr)
 
 	slog.Info("Daemon stopped")
 
-	return nil
+	return err
 }
 
 func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpoint) {
