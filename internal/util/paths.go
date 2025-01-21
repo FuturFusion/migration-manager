@@ -5,6 +5,20 @@ import (
 	"path/filepath"
 )
 
+// CachePath returns the directory that migration manager should use for caching assets. If MIGRATION_MANAGER_DIR is
+// set, this path is $MIGRATION_MANAGER_DIR/cache, otherwise it is /var/cache/migration-manager.
+func CachePath(path ...string) string {
+	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
+	cacheDir := "/var/cache/migration-manager"
+	if varDir != "" {
+		cacheDir = filepath.Join(varDir, "cache")
+	}
+
+	items := []string{cacheDir}
+	items = append(items, path...)
+	return filepath.Join(items...)
+}
+
 // LogPath returns the directory that migration manager should put logs under. If MIGRATION_MANAGER_DIR is
 // set, this path is $MIGRATION_MANAGER_DIR/logs, otherwise it is /var/log.
 func LogPath(path ...string) string {

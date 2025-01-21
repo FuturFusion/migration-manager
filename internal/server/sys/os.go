@@ -11,17 +11,19 @@ import (
 // OS is a high-level facade for accessing operating-system level functionalities.
 type OS struct {
 	// Directories
-	LogDir string // Log directory (e.g. /var/log/).
-	RunDir string // Runtime directory (e.g. /run/migration-manager/).
-	VarDir string // Data directory (e.g. /var/lib/migration-manager/).
+	CacheDir string // Cache directory (e.g., /var/cache/migration-manager/)
+	LogDir   string // Log directory (e.g. /var/log/).
+	RunDir   string // Runtime directory (e.g. /run/migration-manager/).
+	VarDir   string // Data directory (e.g. /var/lib/migration-manager/).
 }
 
 // DefaultOS returns a fresh uninitialized OS instance with default values.
 func DefaultOS() *OS {
 	newOS := &OS{
-		LogDir: util.LogPath(),
-		RunDir: util.RunPath(),
-		VarDir: util.VarPath(),
+		CacheDir: util.CachePath(),
+		LogDir:   util.LogPath(),
+		RunDir:   util.RunPath(),
+		VarDir:   util.VarPath(),
 	}
 
 	return newOS
