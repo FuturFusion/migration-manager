@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 )
 
 type tcKey struct{}
@@ -17,6 +18,29 @@ type tx interface {
 type Transaction interface {
 	Commit() error
 	Rollback() error
+}
+
+func Do(ctx context.Context, f func(ctx context.Context) error) (err error) {
+	ctx, trans := Begin(ctx)
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			err = fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err)
+			return
+		}
+	}()
+
+	err = f(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = trans.Commit()
+	if err != nil {
+		return fmt.Errorf("Failed commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 func Begin(ctx context.Context) (context.Context, Transaction) {
@@ -40,6 +64,10 @@ func (t *transactionContainer) Commit() error {
 		return nil
 	}
 
+	defer func() {
+		t.tx = nil
+	}()
+
 	return t.tx.Commit()
 }
 
@@ -47,6 +75,10 @@ func (t *transactionContainer) Rollback() error {
 	if t.tx == nil {
 		return nil
 	}
+
+	defer func() {
+		t.tx = nil
+	}()
 
 	err := t.tx.Rollback()
 	if !errors.Is(err, sql.ErrTxDone) {

@@ -3,6 +3,7 @@ package transaction_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -228,6 +229,123 @@ func TestTransactionInTransactionRollback(t *testing.T) {
 	// Query DB outside of transaction
 	ids, err := dummySvc.getAll(context.Background())
 	require.Empty(t, ids)
+}
+
+func TestDo_commit(t *testing.T) {
+	// Setup DB.
+	tmpDir := t.TempDir()
+
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	setupDB(t, db)
+
+	// DB Connection with transaction support.
+	dbWithTransaction := transaction.Enable(db)
+	dummySvc := dummy{
+		db: dbWithTransaction,
+	}
+
+	ctx := context.Background()
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		// Add dummy in transaction.
+		return dummySvc.create(ctx)
+	})
+	require.NoError(t, err)
+
+	// Query DB outside of transaction
+	ids, err := dummySvc.getAll(context.Background())
+	require.Len(t, ids, 1)
+}
+
+func TestDo_rollback(t *testing.T) {
+	// Setup DB.
+	tmpDir := t.TempDir()
+
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	setupDB(t, db)
+
+	// DB Connection with transaction support.
+	dbWithTransaction := transaction.Enable(db)
+	dummySvc := dummy{
+		db: dbWithTransaction,
+	}
+
+	ctx := context.Background()
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		// Add dummy in transaction.
+		err := dummySvc.create(ctx)
+		require.NoError(t, err)
+
+		return errors.New("boom!")
+	})
+	require.Error(t, err)
+
+	// Query DB outside of transaction
+	ids, err := dummySvc.getAll(context.Background())
+	require.Empty(t, ids)
+}
+
+func TestDo_sequence(t *testing.T) {
+	// Setup DB.
+	tmpDir := t.TempDir()
+
+	db, err := sqlite.Open(tmpDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	setupDB(t, db)
+
+	// DB Connection with transaction support.
+	dbWithTransaction := transaction.Enable(db)
+	dummySvc := dummy{
+		db: dbWithTransaction,
+	}
+
+	ctx := context.Background()
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		// Add dummy in transaction.
+		return dummySvc.create(ctx)
+	})
+	require.NoError(t, err)
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		// Rollbacked add dummy in transaction.
+		err := dummySvc.create(ctx)
+		require.NoError(t, err)
+
+		return errors.New("boom!")
+	})
+	require.Error(t, err)
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		// Add dummy in transaction.
+		return dummySvc.create(ctx)
+	})
+	require.NoError(t, err)
+
+	// Query DB outside of transaction
+	ids, err := dummySvc.getAll(context.Background())
+	require.Len(t, ids, 2)
 }
 
 func setupDB(t *testing.T, db *sql.DB) {
