@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/tls"
 	"errors"
 	"io/fs"
 	"log/slog"
@@ -105,6 +106,9 @@ func restServer(d *Daemon) *http.Server {
 		Handler:     router,
 		ConnContext: request.SaveConnectionInContext,
 		IdleTimeout: 30 * time.Second,
+		TLSConfig: &tls.Config{
+			ClientAuth: tls.RequestClientCert,
+		},
 	}
 }
 
