@@ -5,13 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"os/user"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/api"
 	localtls "github.com/lxc/incus/v6/shared/tls"
-	"github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
@@ -197,14 +195,6 @@ func (d *Daemon) Start() error {
 	slog.Info("Starting up", slog.String("version", version.Version))
 
 	// Open the local sqlite database.
-	if !util.PathExists(d.os.LocalDatabaseDir()) {
-		err := os.MkdirAll(d.os.LocalDatabaseDir(), 0o755)
-		if err != nil {
-			slog.Error("Failed to create database directory", logger.Err(err))
-			return err
-		}
-	}
-
 	d.db, err = db.OpenDatabase(d.os.LocalDatabaseDir())
 	if err != nil {
 		slog.Error("Failed to open sqlite database", logger.Err(err))
