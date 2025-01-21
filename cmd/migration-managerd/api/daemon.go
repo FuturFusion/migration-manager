@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	"github.com/lxc/incus/v6/shared/api"
-	incustls "github.com/lxc/incus/v6/shared/tls"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
@@ -25,6 +23,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
+	tlsutil "github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
@@ -154,7 +153,7 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 	}
 
 	for _, cert := range r.TLS.PeerCertificates {
-		trusted, username := checkTrustState(*cert, d.config.TrustedTLSClientCertFingerprints, nil, trustCACertificates)
+		trusted, username := tlsutil.CheckTrustState(*cert, d.config.TrustedTLSClientCertFingerprints, nil, trustCACertificates)
 		if trusted {
 			return true, username, api.AuthenticationMethodTLS, nil
 		}
@@ -167,56 +166,6 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 
 	// Reject unauthorized.
 	return false, "", "", nil
-}
-
-// checkTrustState checks whether the given client certificate is trusted
-// (i.e. it has a valid time span and it belongs to the given list of trusted
-// certificates).
-// Returns whether or not the certificate is trusted, and the fingerprint of the certificate.
-// FIXME: networkCert checks (signature, crl) from internal/server/util.CheckTrustState are currently missing.
-func checkTrustState(cert x509.Certificate, trustedCertFingerprints []string, serverCert *x509.Certificate, trustCACertificates bool) (bool, string) {
-	// Extra validity check (should have been caught by TLS stack)
-	if time.Now().Before(cert.NotBefore) || time.Now().After(cert.NotAfter) {
-		return false, ""
-	}
-
-	certFingerprint := incustls.CertFingerprint(&cert)
-
-	if serverCert != nil && trustCACertificates {
-		panic("not implemented yet")
-		// FIXME: how to check the certificate
-		// 	ca := serverCert.CA()
-
-		// 	if ca != nil && cert.CheckSignatureFrom(ca) == nil {
-		// 		// Check whether the certificate has been revoked.
-		// 		crl := serverCert.CRL()
-
-		// 		if crl != nil {
-		// 			if crl.CheckSignatureFrom(ca) != nil {
-		// 				return false, "" // CRL not signed by CA
-		// 			}
-
-		// 			for _, revoked := range crl.RevokedCertificateEntries {
-		// 				if cert.SerialNumber.Cmp(revoked.SerialNumber) == 0 {
-		// 					return false, "" // Certificate is revoked, so not trusted anymore.
-		// 				}
-		// 			}
-		// 		}
-
-		// 		// Certificate not revoked, so trust it as is signed by CA cert.
-		// 		return true, certFingerprint
-		// 	}
-	}
-
-	// Check whether client certificate fingerprint is trusted.
-	for _, fingerprint := range trustedCertFingerprints {
-		if certFingerprint == fingerprint {
-			slog.Debug("Matched trusted cert", slog.String("fingerprint", fingerprint), slog.Any("subject", cert.Subject))
-			return true, fingerprint
-		}
-	}
-
-	return false, ""
 }
 
 func (d *Daemon) Start() error {
