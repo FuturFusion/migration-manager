@@ -29,7 +29,7 @@ func DefaultOS() *OS {
 	return newOS
 }
 
-// GetUnixSocket returns the full path to the unix.socket file that this daemon is listening on. Used by tests.
+// GetUnixSocket returns the full path to the unix.socket file that this daemon is listening on.
 func (s *OS) GetUnixSocket() string {
 	path := os.Getenv("MIGRATION_MANAGER_SOCKET")
 	if path != "" {

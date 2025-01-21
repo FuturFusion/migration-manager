@@ -24,9 +24,8 @@ import (
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/config"
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/oidc"
 	internalUtil "github.com/FuturFusion/migration-manager/cmd/migration-manager/util"
+	"github.com/FuturFusion/migration-manager/internal/server/sys"
 )
-
-const MIGRATION_MANAGER_UNIX_SOCKET = "/run/migration-manager/unix.socket"
 
 //go:generate go run github.com/matryer/moq -fmt goimports -out asker_mock_gen_test.go -rm . Asker
 
@@ -42,6 +41,7 @@ type CmdGlobal struct {
 	Asker Asker
 
 	config *config.Config
+	os     *sys.OS
 	Cmd    *cobra.Command
 
 	FlagForceLocal bool
@@ -56,6 +56,8 @@ func (c *CmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 	if cmd.Name() == "help" {
 		return nil
 	}
+
+	c.os = sys.DefaultOS()
 
 	// Figure out the config directory and config path
 	var configDir string
@@ -106,10 +108,10 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 
 	c.Cmd.Printf("No config found, performing first-time configuration...\n")
 
-	if util.PathExists(MIGRATION_MANAGER_UNIX_SOCKET) {
+	if util.PathExists(c.os.GetUnixSocket()) {
 		c.Cmd.Printf("Using local unix socket to communicate with migration manager.\n")
 
-		c.config.MigrationManagerServer = MIGRATION_MANAGER_UNIX_SOCKET
+		c.config.MigrationManagerServer = c.os.GetUnixSocket()
 
 		return c.config.SaveConfig()
 	}
@@ -242,7 +244,7 @@ func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, content
 	} else {
 		u.Scheme = "http"
 		u.Host = "unix.socket"
-		client = getUnixHTTPClient(MIGRATION_MANAGER_UNIX_SOCKET)
+		client = getUnixHTTPClient(c.os.GetUnixSocket())
 	}
 
 	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))
