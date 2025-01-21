@@ -7,6 +7,7 @@ import "context"
 type TargetService interface {
 	Create(ctx context.Context, target Target) (Target, error)
 	GetAll(ctx context.Context) (Targets, error)
+	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Target, error)
 	GetByName(ctx context.Context, name string) (Target, error)
 	UpdateByName(ctx context.Context, target Target) (Target, error)
@@ -20,6 +21,7 @@ type TargetService interface {
 type TargetRepo interface {
 	Create(ctx context.Context, target Target) (Target, error)
 	GetAll(ctx context.Context) (Targets, error)
+	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Target, error)
 	GetByName(ctx context.Context, name string) (Target, error)
 	UpdateByName(ctx context.Context, target Target) (Target, error)

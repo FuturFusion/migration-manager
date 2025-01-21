@@ -83,6 +83,25 @@ func (_d TargetRepoWithSlog) GetAll(ctx context.Context) (t1 _sourceMigration.Ta
 	return _d._base.GetAll(ctx)
 }
 
+// GetAllNames implements _sourceMigration.TargetRepo
+func (_d TargetRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+	).Debug("TargetRepoWithSlog: calling GetAllNames")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("sa1", sa1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("TargetRepoWithSlog: method GetAllNames returned an error")
+		} else {
+			log.Debug("TargetRepoWithSlog: method GetAllNames finished")
+		}
+	}()
+	return _d._base.GetAllNames(ctx)
+}
+
 // GetByID implements _sourceMigration.TargetRepo
 func (_d TargetRepoWithSlog) GetByID(ctx context.Context, id int) (t1 _sourceMigration.Target, err error) {
 	_d._log.With(

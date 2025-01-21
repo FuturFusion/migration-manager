@@ -7,6 +7,7 @@ import "context"
 type SourceService interface {
 	Create(ctx context.Context, source Source) (Source, error)
 	GetAll(ctx context.Context) (Sources, error)
+	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Source, error)
 	GetByName(ctx context.Context, name string) (Source, error)
 	UpdateByName(ctx context.Context, source Source) (Source, error)
@@ -20,6 +21,7 @@ type SourceService interface {
 type SourceRepo interface {
 	Create(ctx context.Context, source Source) (Source, error)
 	GetAll(ctx context.Context) (Sources, error)
+	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Source, error)
 	GetByName(ctx context.Context, name string) (Source, error)
 	UpdateByName(ctx context.Context, source Source) (Source, error)

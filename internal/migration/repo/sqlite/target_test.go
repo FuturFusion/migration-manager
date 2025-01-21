@@ -57,8 +57,18 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, targets, 3)
 
+	// Ensure we have three entries
+	targetNames, err := target.GetAllNames(ctx)
+	require.NoError(t, err)
+	require.Len(t, targetNames, 3)
+	require.ElementsMatch(t, []string{"Target A", "Target B", "Target C"}, targetNames)
+
 	// Should get back incusTargetA unchanged.
 	dbIncusTargetA, err := target.GetByName(ctx, incusTargetA.Name)
+	require.NoError(t, err)
+	require.Equal(t, incusTargetA, dbIncusTargetA)
+
+	dbIncusTargetA, err = target.GetByID(ctx, incusTargetA.ID)
 	require.NoError(t, err)
 	require.Equal(t, incusTargetA, dbIncusTargetA)
 

@@ -116,12 +116,12 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	sources, err := d.source.GetAll(r.Context())
-	if err != nil {
-		return response.SmartError(err)
-	}
-
 	if recursion == 1 {
+		sources, err := d.source.GetAll(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
 		result := make([]api.Source, 0, len(sources))
 		for _, source := range sources {
 			result = append(result, api.Source{
@@ -136,9 +136,14 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	result := make([]string, 0, len(sources))
-	for _, source := range sources {
-		result = append(result, fmt.Sprintf("/%s/sources/%s", api.APIVersion, source.Name))
+	sourceNames, err := d.source.GetAllNames(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	result := make([]string, 0, len(sourceNames))
+	for _, name := range sourceNames {
+		result = append(result, fmt.Sprintf("/%s/sources/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)

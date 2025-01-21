@@ -78,6 +78,34 @@ func (t target) GetAll(ctx context.Context) (migration.Targets, error) {
 	return targets, nil
 }
 
+func (t target) GetAllNames(ctx context.Context) ([]string, error) {
+	const sqlGetAllNames = `SELECT name FROM targets ORDER BY name`
+
+	rows, err := t.db.QueryContext(ctx, sqlGetAllNames)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var targetNames []string
+	for rows.Next() {
+		var targetName string
+		err := rows.Scan(&targetName)
+		if err != nil {
+			return nil, err
+		}
+
+		targetNames = append(targetNames, targetName)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return targetNames, nil
+}
+
 func (t target) GetByID(ctx context.Context, id int) (migration.Target, error) {
 	const sqlGetByID = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure FROM targets WHERE id=:id;`
 

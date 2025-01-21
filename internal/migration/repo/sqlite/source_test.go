@@ -72,6 +72,11 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, sources, 4)
 
+	sourceNames, err := source.GetAllNames(ctx)
+	require.NoError(t, err)
+	require.Len(t, sourceNames, 4)
+	require.ElementsMatch(t, []string{"CommonSourceA", "CommonSourceB", "vmware_source", "vmware_source2"}, sourceNames)
+
 	// Should get back vmwareSourceA unchanged.
 	dbVMWareSourceA, err := source.GetByName(ctx, vmwareSourceA.Name)
 	require.NoError(t, err)

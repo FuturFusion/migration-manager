@@ -70,6 +70,34 @@ func (s source) GetAll(ctx context.Context) (migration.Sources, error) {
 	return sources, nil
 }
 
+func (s source) GetAllNames(ctx context.Context) ([]string, error) {
+	const sqlGetAllNames = `SELECT name FROM sources ORDER BY name;`
+
+	rows, err := s.db.QueryContext(ctx, sqlGetAllNames)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var sourceNames []string
+	for rows.Next() {
+		var sourceName string
+		err := rows.Scan(&sourceName)
+		if err != nil {
+			return nil, err
+		}
+
+		sourceNames = append(sourceNames, sourceName)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return sourceNames, nil
+}
+
 func (s source) GetByID(ctx context.Context, id int) (migration.Source, error) {
 	const sqlGetByID = `SELECT id, name, type, insecure, config FROM sources WHERE id=:id;`
 

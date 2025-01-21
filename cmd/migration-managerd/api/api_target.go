@@ -116,12 +116,12 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	targets, err := d.target.GetAll(r.Context())
-	if err != nil {
-		return response.SmartError(err)
-	}
-
 	if recursion == 1 {
+		targets, err := d.target.GetAll(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
 		result := make([]api.IncusTarget, 0, len(targets))
 		for _, target := range targets {
 			result = append(result, api.IncusTarget{
@@ -138,9 +138,14 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	result := make([]string, 0, len(targets))
-	for _, target := range targets {
-		result = append(result, fmt.Sprintf("/%s/targets/%s", api.APIVersion, target.Name))
+	targetNames, err := d.target.GetAllNames(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	result := make([]string, 0, len(targetNames))
+	for _, name := range targetNames {
+		result = append(result, fmt.Sprintf("/%s/targets/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)

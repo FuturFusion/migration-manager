@@ -29,6 +29,9 @@ var _ migration.TargetRepo = &TargetRepoMock{}
 //			GetAllFunc: func(ctx context.Context) (migration.Targets, error) {
 //				panic("mock out the GetAll method")
 //			},
+//			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
+//				panic("mock out the GetAllNames method")
+//			},
 //			GetByIDFunc: func(ctx context.Context, id int) (migration.Target, error) {
 //				panic("mock out the GetByID method")
 //			},
@@ -53,6 +56,9 @@ type TargetRepoMock struct {
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Targets, error)
+
+	// GetAllNamesFunc mocks the GetAllNames method.
+	GetAllNamesFunc func(ctx context.Context) ([]string, error)
 
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id int) (migration.Target, error)
@@ -84,6 +90,11 @@ type TargetRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetAllNames holds details about calls to the GetAllNames method.
+		GetAllNames []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// GetByID holds details about calls to the GetByID method.
 		GetByID []struct {
 			// Ctx is the ctx argument value.
@@ -109,6 +120,7 @@ type TargetRepoMock struct {
 	lockCreate       sync.RWMutex
 	lockDeleteByName sync.RWMutex
 	lockGetAll       sync.RWMutex
+	lockGetAllNames  sync.RWMutex
 	lockGetByID      sync.RWMutex
 	lockGetByName    sync.RWMutex
 	lockUpdateByName sync.RWMutex
@@ -215,6 +227,38 @@ func (mock *TargetRepoMock) GetAllCalls() []struct {
 	mock.lockGetAll.RLock()
 	calls = mock.calls.GetAll
 	mock.lockGetAll.RUnlock()
+	return calls
+}
+
+// GetAllNames calls GetAllNamesFunc.
+func (mock *TargetRepoMock) GetAllNames(ctx context.Context) ([]string, error) {
+	if mock.GetAllNamesFunc == nil {
+		panic("TargetRepoMock.GetAllNamesFunc: method is nil but TargetRepo.GetAllNames was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetAllNames.Lock()
+	mock.calls.GetAllNames = append(mock.calls.GetAllNames, callInfo)
+	mock.lockGetAllNames.Unlock()
+	return mock.GetAllNamesFunc(ctx)
+}
+
+// GetAllNamesCalls gets all the calls that were made to GetAllNames.
+// Check the length with:
+//
+//	len(mockedTargetRepo.GetAllNamesCalls())
+func (mock *TargetRepoMock) GetAllNamesCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetAllNames.RLock()
+	calls = mock.calls.GetAllNames
+	mock.lockGetAllNames.RUnlock()
 	return calls
 }
 

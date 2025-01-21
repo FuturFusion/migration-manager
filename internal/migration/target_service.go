@@ -30,6 +30,10 @@ func (s targetService) GetAll(ctx context.Context) (Targets, error) {
 	return s.repo.GetAll(ctx)
 }
 
+func (s targetService) GetAllNames(ctx context.Context) ([]string, error) {
+	return s.repo.GetAllNames(ctx)
+}
+
 func (s targetService) GetByID(ctx context.Context, id int) (Target, error) {
 	return s.repo.GetByID(ctx, id)
 }
