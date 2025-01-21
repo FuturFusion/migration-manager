@@ -132,7 +132,6 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 				TLSClientCert: target.TLSClientCert,
 				OIDCTokens:    target.OIDCTokens,
 				Insecure:      target.Insecure,
-				IncusProject:  target.IncusProject,
 			})
 		}
 
@@ -190,7 +189,6 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 		TLSClientCert: target.TLSClientCert,
 		OIDCTokens:    target.OIDCTokens,
 		Insecure:      target.Insecure,
-		IncusProject:  target.IncusProject,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", target.Name, err))
@@ -280,7 +278,6 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 			TLSClientCert: target.TLSClientCert,
 			OIDCTokens:    target.OIDCTokens,
 			Insecure:      target.Insecure,
-			IncusProject:  target.IncusProject,
 		},
 		target,
 	)
@@ -349,7 +346,6 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		TLSClientCert: target.TLSClientCert,
 		OIDCTokens:    target.OIDCTokens,
 		Insecure:      target.Insecure,
-		IncusProject:  target.IncusProject,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", name, err))

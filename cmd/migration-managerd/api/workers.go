@@ -505,7 +505,7 @@ func (d *Daemon) processQueuedBatches() bool {
 		}
 
 		// Make sure the necessary ISO images exist in the Incus storage pool.
-		err = d.ensureISOImagesExistInStoragePool(instances[0], b.GetStoragePool())
+		err = d.ensureISOImagesExistInStoragePool(instances[0], b.GetTargetProject(), b.GetStoragePool())
 		if err != nil {
 			log.Warn("Failed to ensure ISO images exist in storage pool", logger.Err(err))
 			continue
@@ -513,7 +513,7 @@ func (d *Daemon) processQueuedBatches() bool {
 
 		// Instantiate each new empty VM in Incus.
 		for _, inst := range instances {
-			go d.spinUpMigrationEnv(inst, b.GetStoragePool())
+			go d.spinUpMigrationEnv(inst, b.GetTargetProject(), b.GetStoragePool())
 		}
 
 		// Move batch to "running" status.
@@ -536,7 +536,7 @@ func (d *Daemon) processQueuedBatches() bool {
 	return false
 }
 
-func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, storagePool string) error {
+func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, project string, storagePool string) error {
 	log := slog.With(
 		slog.String("method", "ensureISOImagesExistInStoragePool"),
 		slog.String("instance", inst.GetInventoryPath()),
@@ -572,12 +572,17 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, stora
 			TLSClientCert: t.TLSClientCert,
 			OIDCTokens:    t.OIDCTokens,
 			Insecure:      t.Insecure,
-			IncusProject:  t.IncusProject,
 		},
 	}
 
 	// Connect to the target.
 	err = it.Connect(d.ShutdownCtx)
+	if err != nil {
+		return err
+	}
+
+	// Set the project.
+	err = it.SetProject(project)
 	if err != nil {
 		return err
 	}
@@ -605,7 +610,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, stora
 	return nil
 }
 
-func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) {
+func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, project string, storagePool string) {
 	log := slog.With(
 		slog.String("method", "spinUpMigrationEnv"),
 		slog.String("instance", inst.GetInventoryPath()),
@@ -674,7 +679,6 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 			TLSClientCert: t.TLSClientCert,
 			OIDCTokens:    t.OIDCTokens,
 			Insecure:      t.Insecure,
-			IncusProject:  t.IncusProject,
 		},
 	}
 
@@ -682,6 +686,21 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	err = it.Connect(d.ShutdownCtx)
 	if err != nil {
 		log.Warn("Failed to connect to target", slog.String("target", it.GetName()), logger.Err(err))
+		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		return
+	}
+
+	// Set the project.
+	err = it.SetProject(project)
+	if err != nil {
+		log.Warn("Failed to set target project", slog.String("project", project), logger.Err(err))
 		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 			if err != nil {
@@ -844,14 +863,57 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 				TLSClientCert: t.TLSClientCert,
 				OIDCTokens:    t.OIDCTokens,
 				Insecure:      t.Insecure,
-				IncusProject:  t.IncusProject,
 			},
+		}
+
+		// Get the batch for this instance.
+		batchID := *i.GetBatchID()
+		var dbBatch batch.Batch
+		batchErr := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+			var err error
+			dbBatch, err = d.db.GetBatchByID(tx, batchID)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if batchErr != nil {
+			log.Warn("Failed to get batch by ID", slog.Int("batch_id", batchID), logger.Err(batchErr))
+			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, batchErr.Error(), true)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			if err != nil {
+				log.Warn("Failed to update instance status", logger.Err(err))
+			}
+
+			continue
 		}
 
 		// Connect to the target.
 		err = it.Connect(d.ShutdownCtx)
 		if err != nil {
-			log.Warn("Failed to connect", logger.Err(err))
+			log.Warn("Failed to connect to target", slog.String("target", it.GetName()), logger.Err(err))
+			_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+				if err != nil {
+					return err
+				}
+
+				return nil
+			})
+			continue
+		}
+
+		// Set the project.
+		err = it.SetProject(dbBatch.GetTargetProject())
+		if err != nil {
+			log.Warn("Failed to set target project", slog.String("project", dbBatch.GetTargetProject()), logger.Err(err))
 			_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
@@ -888,35 +950,6 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			log.Warn("Failed to get instance", logger.Err(err))
 			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			})
-			if err != nil {
-				log.Warn("Failed to update instance status", logger.Err(err))
-			}
-
-			continue
-		}
-
-		// Get the batch for this instance.
-		batchID := *i.GetBatchID()
-		var dbBatch batch.Batch
-		batchErr := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			var err error
-			dbBatch, err = d.db.GetBatchByID(tx, batchID)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
-		if batchErr != nil {
-			log.Warn("Failed to get batch by ID", slog.Int("batch_id", batchID), logger.Err(batchErr))
-			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, batchErr.Error(), true)
 				if err != nil {
 					return err
 				}

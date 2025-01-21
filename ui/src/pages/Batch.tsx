@@ -9,9 +9,9 @@ const Batch = () => {
     isLoading,
   } = useQuery({ queryKey: ['batches'], queryFn: fetchBatches })
 
-  const headers = ["Name", "Status", "Target", "Storage pool", "Include expression", "Window start", "Window end", "Default network"];
+  const headers = ["Name", "Status", "Target", "Project", "Storage pool", "Include expression", "Window start", "Window end", "Default network"];
   const rows = batches.map((item) => {
-    return [item.name, item.status_string, item.target_id, item.storage_pool, item.include_expression, item.migration_window_start, item.migration_window_end, item.default_network];
+    return [item.name, item.status_string, item.target_id, item.target_project, item.storage_pool, item.include_expression, item.migration_window_start, item.migration_window_end, item.default_network];
   });
 
   if (isLoading) {

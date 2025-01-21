@@ -29,7 +29,6 @@ func TestTargetService_Create(t *testing.T) {
 				TLSClientKey:  "key",
 				TLSClientCert: "cert",
 				Insecure:      false,
-				IncusProject:  "project",
 			},
 			repoUpsertTarget: migration.Target{
 				ID:            1,
@@ -38,7 +37,6 @@ func TestTargetService_Create(t *testing.T) {
 				TLSClientKey:  "key",
 				TLSClientCert: "cert",
 				Insecure:      false,
-				IncusProject:  "project",
 			},
 
 			assertErr: require.NoError,
@@ -52,7 +50,6 @@ func TestTargetService_Create(t *testing.T) {
 				TLSClientKey:  "key",
 				TLSClientCert: "cert",
 				Insecure:      false,
-				IncusProject:  "project",
 			},
 
 			assertErr: require.Error,
@@ -66,7 +63,6 @@ func TestTargetService_Create(t *testing.T) {
 				TLSClientKey:  "key",
 				TLSClientCert: "cert",
 				Insecure:      false,
-				IncusProject:  "project",
 			},
 
 			assertErr: require.Error,
@@ -80,7 +76,6 @@ func TestTargetService_Create(t *testing.T) {
 				TLSClientKey:  "key",
 				TLSClientCert: "cert",
 				Insecure:      false,
-				IncusProject:  "project",
 			},
 
 			assertErr: require.Error,
@@ -236,7 +231,6 @@ func TestTargetService_UpdateByName(t *testing.T) {
 				TLSClientKey:  "key",
 				TLSClientCert: "cert",
 				Insecure:      false,
-				IncusProject:  "project",
 			},
 			repoUpsertTarget: migration.Target{
 				ID:            1,
@@ -245,7 +239,6 @@ func TestTargetService_UpdateByName(t *testing.T) {
 				TLSClientKey:  "key",
 				TLSClientCert: "cert",
 				Insecure:      false,
-				IncusProject:  "project",
 			},
 
 			assertErr: require.NoError,
@@ -259,7 +252,6 @@ func TestTargetService_UpdateByName(t *testing.T) {
 				TLSClientKey:  "key",
 				TLSClientCert: "cert",
 				Insecure:      false,
-				IncusProject:  "project",
 			},
 
 			assertErr: require.Error,
@@ -273,7 +265,6 @@ func TestTargetService_UpdateByName(t *testing.T) {
 				TLSClientKey:  "key",
 				TLSClientCert: "cert",
 				Insecure:      false,
-				IncusProject:  "project",
 			},
 
 			assertErr: require.Error,
@@ -287,7 +278,6 @@ func TestTargetService_UpdateByName(t *testing.T) {
 				TLSClientKey:  "key",
 				TLSClientCert: "cert",
 				Insecure:      false,
-				IncusProject:  "project",
 			},
 
 			assertErr: require.Error,

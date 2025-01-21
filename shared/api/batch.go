@@ -58,6 +58,10 @@ type Batch struct {
 	// Example: 1
 	TargetID int `json:"target_id" yaml:"target_id"`
 
+	// The target project to use
+	// Example: default
+	TargetProject string `json:"target_project" yaml:"target_project"`
+
 	// The status of this batch
 	// Example: BATCHSTATUS_DEFINED
 	Status BatchStatusType `json:"status" yaml:"status"`

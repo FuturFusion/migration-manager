@@ -20,6 +20,9 @@ type Batch interface {
 	// Returns the target ID for this batch, if any.
 	GetTargetID() int
 
+	// Returns the target project for this batch; if not specified returns "default".
+	GetTargetProject() string
+
 	// Returns true if the batch can be modified.
 	CanBeModified() bool
 
