@@ -4,10 +4,8 @@ go 1.22.7
 
 require (
 	github.com/Rican7/retry v0.3.1
-	github.com/armon/go-proxyproto v0.1.0
 	github.com/expr-lang/expr v1.16.9
 	github.com/flosch/pongo2/v4 v4.0.2
-	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.14.0
 	github.com/hexdigest/gowrap v1.4.1
@@ -26,8 +24,8 @@ require (
 	github.com/vmware/govmomi v0.46.2
 	github.com/zitadel/oidc/v3 v3.33.1
 	golang.org/x/oauth2 v0.24.0
+	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0
-	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v3 v3.0.1
 	libguestfs.org/libnbd v1.20.0
 )
@@ -74,8 +72,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.33.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
-	golang.org/x/net v0.32.0 // indirect
-	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	golang.org/x/tools v0.28.0 // indirect

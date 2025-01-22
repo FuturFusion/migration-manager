@@ -36,3 +36,6 @@ dist/
 
 # UI(js) files
 node_modules/
+
+.envrc
+/tmp

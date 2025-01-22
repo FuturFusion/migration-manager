@@ -33,12 +33,6 @@ issues:
     # Copied from the Go standard library
     # https://github.com/golang/go/blob/master/src/net/http/internal/testcert/testcert.go, BSD-3-Clause license
     - internal/testcert
-  exclude-files:
-    # These tests were copied from Incus
-    - internal/server/util/net_test.go
-    - internal/server/endpoints/endpoints_test.go
-    - internal/server/endpoints/local_test.go
-    - internal/server/endpoints/network_test.go
 linters-settings:
   gci:
     sections:
