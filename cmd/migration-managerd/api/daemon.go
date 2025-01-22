@@ -139,9 +139,6 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 		return false, "", "", fmt.Errorf("Bad/missing TLS on network query")
 	}
 
-	// Load the certificates.
-	trustCACertificates := false // FIXME: not checking if client cert is signed by trusted CA
-
 	// Check for JWT token signed by an OpenID Connect provider.
 	if d.oidcVerifier != nil && d.oidcVerifier.IsRequest(r) {
 		userName, err := d.oidcVerifier.Auth(d.ShutdownCtx, w, r)
@@ -153,7 +150,7 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 	}
 
 	for _, cert := range r.TLS.PeerCertificates {
-		trusted, username := tlsutil.CheckTrustState(*cert, d.config.TrustedTLSClientCertFingerprints, nil, trustCACertificates)
+		trusted, username := tlsutil.CheckTrustState(*cert, d.config.TrustedTLSClientCertFingerprints)
 		if trusted {
 			return true, username, api.AuthenticationMethodTLS, nil
 		}
