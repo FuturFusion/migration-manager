@@ -11,20 +11,24 @@ import (
 const (
 	// DriverTLS is the default TLS authorization driver. It is not compatible with OIDC authentication.
 	DriverTLS string = "tls"
+
+	// DriverOpenFGA provides fine-grained authorization. It is compatible with any authentication method.
+	DriverOpenFGA string = "openfga"
 )
 
 // ErrUnknownDriver is the "Unknown driver" error.
 var ErrUnknownDriver = fmt.Errorf("Unknown driver")
 
 var authorizers = map[string]func() authorizer{
-	DriverTLS: func() authorizer { return &TLS{} },
+	DriverTLS:     func() authorizer { return &TLS{} },
+	DriverOpenFGA: func() authorizer { return &FGA{} },
 }
 
 type authorizer interface {
 	Authorizer
 
 	init(driverName string, l logger.Logger) error
-	load(ctx context.Context, certificateFingerprints []string, opts map[string]any) error
+	load(ctx context.Context, certificateFingerprints []string, opts Opts) error
 }
 
 // PermissionChecker is a type alias for a function that returns whether a user has required permissions on an object.
@@ -34,12 +38,31 @@ type PermissionChecker func(object Object) bool
 // Authorizer is the primary external API for this package.
 type Authorizer interface {
 	Driver() string
+	StopService(ctx context.Context) error
 
 	CheckPermission(ctx context.Context, r *http.Request, object Object, entitlement Entitlement) error
 }
 
+// Opts is used as part of the LoadAuthorizer function so that only the relevant configuration fields are passed into a
+// particular driver.
+type Opts struct {
+	config map[string]any
+}
+
+// WithConfig can be passed into LoadAuthorizer to pass in driver specific configuration.
+func WithConfig(c map[string]any) func(*Opts) {
+	return func(o *Opts) {
+		o.config = c
+	}
+}
+
 // LoadAuthorizer instantiates, configures, and initializes an Authorizer.
-func LoadAuthorizer(ctx context.Context, driver string, l logger.Logger, certificateFingerprints []string, opts map[string]any) (Authorizer, error) {
+func LoadAuthorizer(ctx context.Context, driver string, l logger.Logger, certificateFingerprints []string, options ...func(opts *Opts)) (Authorizer, error) {
+	opts := &Opts{}
+	for _, o := range options {
+		o(opts)
+	}
+
 	driverFunc, ok := authorizers[driver]
 	if !ok {
 		return nil, ErrUnknownDriver
@@ -51,7 +74,7 @@ func LoadAuthorizer(ctx context.Context, driver string, l logger.Logger, certifi
 		return nil, fmt.Errorf("Failed to initialize authorizer: %w", err)
 	}
 
-	err = d.load(ctx, certificateFingerprints, opts)
+	err = d.load(ctx, certificateFingerprints, *opts)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load authorizer: %w", err)
 	}

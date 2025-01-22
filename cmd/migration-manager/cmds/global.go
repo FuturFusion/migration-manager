@@ -255,12 +255,10 @@ func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, content
 	req.Header.Set("Content-Type", "application/json")
 
 	if c.config.AuthType == "oidc" {
-		oidcClient := oidc.NewOIDCClient(c.config.OIDCTokens, c.config.MigrationManagerServerCert)
+		oidcClient := oidc.NewOIDCClient(path.Join(c.config.ConfigDir, "oidc-tokens.json"), c.config.MigrationManagerServerCert)
 
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
 		resp, err = oidcClient.Do(req) // nolint: bodyclose
-
-		c.config.OIDCTokens = oidcClient.GetOIDCTokens()
 	} else {
 		resp, err = client.Do(req) // nolint: bodyclose
 	}

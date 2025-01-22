@@ -14,7 +14,7 @@ type TLS struct {
 	certificateFingerprints []string
 }
 
-func (t *TLS) load(ctx context.Context, certificateFingerprints []string, opts map[string]any) error {
+func (t *TLS) load(ctx context.Context, certificateFingerprints []string, opts Opts) error {
 	t.certificateFingerprints = certificateFingerprints
 	return nil
 }

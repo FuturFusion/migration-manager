@@ -5,18 +5,16 @@ import (
 	"os"
 	"path"
 
-	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	AuthType                   string                            `yaml:"auth_type"`
-	ConfigDir                  string                            `yaml:"config_dir"`
-	MigrationManagerServer     string                            `yaml:"migration_manager_server"`
-	MigrationManagerServerCert *x509.Certificate                 `yaml:"migration_manager_server_cert"`
-	OIDCTokens                 *oidc.Tokens[*oidc.IDTokenClaims] `yaml:"oidc_tokens"`
-	TLSClientCertFile          string                            `yaml:"tls_client_cert_file"`
-	TLSClientKeyFile           string                            `yaml:"tls_client_key_file"`
+	AuthType                   string            `yaml:"auth_type"`
+	ConfigDir                  string            `yaml:"config_dir"`
+	MigrationManagerServer     string            `yaml:"migration_manager_server"`
+	MigrationManagerServerCert *x509.Certificate `yaml:"migration_manager_server_cert"`
+	TLSClientCertFile          string            `yaml:"tls_client_cert_file"`
+	TLSClientKeyFile           string            `yaml:"tls_client_key_file"`
 }
 
 func NewConfig(configDir string) *Config {
@@ -47,10 +45,5 @@ func (c *Config) SaveConfig() error {
 		return err
 	}
 
-	err = os.WriteFile(path.Join(c.ConfigDir, "config.yml"), contents, 0o644)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return os.WriteFile(path.Join(c.ConfigDir, "config.yml"), contents, 0o644)
 }

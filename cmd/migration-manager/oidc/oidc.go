@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -66,17 +67,19 @@ type OidcClient struct {
 	httpClient    *http.Client
 	oidcTransport *oidcTransport
 	tokens        *oidc.Tokens[*oidc.IDTokenClaims]
+	tokensFile    string
 }
 
 // OidcClient is a structure encapsulating an HTTP client, OIDC transport, and a token for OpenID Connect (OIDC) operations.
 // NewOIDCClient constructs a new OidcClient, ensuring the token field is non-nil to prevent panics during authentication.
-func NewOIDCClient(tokens *oidc.Tokens[*oidc.IDTokenClaims], serverCert *x509.Certificate) *OidcClient {
+func NewOIDCClient(tokensFile string, serverCert *x509.Certificate) *OidcClient {
 	transport := &http.Transport{
 		TLSClientConfig: internalUtil.GetTOFUServerConfig(serverCert),
 	}
 
 	client := OidcClient{
-		tokens:        tokens,
+		tokens:        loadTokensFromFile(tokensFile),
+		tokensFile:    tokensFile,
 		httpClient:    &http.Client{Transport: transport},
 		oidcTransport: &oidcTransport{},
 	}
@@ -87,6 +90,31 @@ func NewOIDCClient(tokens *oidc.Tokens[*oidc.IDTokenClaims], serverCert *x509.Ce
 	}
 
 	return &client
+}
+
+func loadTokensFromFile(tokensFile string) *oidc.Tokens[*oidc.IDTokenClaims] {
+	ret := new(oidc.Tokens[*oidc.IDTokenClaims])
+
+	contents, err := os.ReadFile(tokensFile)
+	if err != nil {
+		return nil
+	}
+
+	err = json.Unmarshal(contents, &ret)
+	if err != nil {
+		return nil
+	}
+
+	return ret
+}
+
+func saveTokensToFile(tokensFile string, tokens *oidc.Tokens[*oidc.IDTokenClaims]) error {
+	contents, err := json.Marshal(tokens)
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(tokensFile, contents, 0o644)
 }
 
 // GetAccessToken returns the Access Token from the OidcClient's tokens, or an empty string if no tokens are present.
@@ -152,6 +180,11 @@ func (o *OidcClient) Do(req *http.Request) (*http.Response, error) {
 	}
 
 	resp, err = o.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	err = saveTokensToFile(o.tokensFile, o.tokens)
 	if err != nil {
 		return nil, err
 	}
