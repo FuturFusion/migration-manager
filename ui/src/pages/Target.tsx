@@ -9,13 +9,13 @@ const Target = () => {
     isLoading,
   } = useQuery({ queryKey: ['targets'], queryFn: fetchTargets })
 
-  const headers = ["Name", "Endpoint", "Auth Type", "Project", "Insecure"];
+  const headers = ["Name", "Endpoint", "Auth Type", "Insecure"];
   const rows = targets.map((item) => {
     let authType = "OIDC";
     if (item.tls_client_key != "") {
       authType = "TLS";
     }
-    return [item.name, item.endpoint, authType, item.incus_project, item.insecure];
+    return [item.name, item.endpoint, authType, item.insecure];
   });
 
   if (isLoading) {

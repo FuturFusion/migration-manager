@@ -125,11 +125,6 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		t.TLSClientKey = string(contents)
 	}
 
-	t.IncusProject, err = c.global.Asker.AskString("What Incus project should this target use? [default] ", "default", nil)
-	if err != nil {
-		return err
-	}
-
 	content, err := json.Marshal(t)
 	if err != nil {
 		return err
@@ -211,7 +206,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Endpoint", "Auth Type", "Project", "Insecure"}
+	header := []string{"Name", "Endpoint", "Auth Type", "Insecure"}
 	data := [][]string{}
 
 	for _, t := range targets {
@@ -220,7 +215,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 			authType = "TLS"
 		}
 
-		data = append(data, []string{t.Name, t.Endpoint, authType, t.IncusProject, strconv.FormatBool(t.Insecure)})
+		data = append(data, []string{t.Name, t.Endpoint, authType, strconv.FormatBool(t.Insecure)})
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, targets)
@@ -366,11 +361,6 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	t.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
-	if err != nil {
-		return err
-	}
-
-	t.IncusProject, err = c.global.Asker.AskString("Project: ["+t.IncusProject+"] ", t.IncusProject, nil)
 	if err != nil {
 		return err
 	}

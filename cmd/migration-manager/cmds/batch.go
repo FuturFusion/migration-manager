@@ -124,6 +124,11 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	b.TargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? [default] ", "default", nil)
+	if err != nil {
+		return err
+	}
+
 	b.StoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? [local] ", "local", nil)
 	if err != nil {
 		return err
@@ -237,7 +242,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Status", "Status String", "Target", "Storage Pool", "Include Expression", "Window Start", "Window End", "Default Network"}
+	header := []string{"Name", "Status", "Status String", "Target", "Project", "Storage Pool", "Include Expression", "Window Start", "Window End", "Default Network"}
 	data := [][]string{}
 
 	for _, b := range batches {
@@ -251,7 +256,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 			endString = b.MigrationWindowEnd.String()
 		}
 
-		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, targetMap[b.TargetID], b.StoragePool, b.IncludeExpression, startString, endString, b.DefaultNetwork})
+		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, targetMap[b.TargetID], b.TargetProject, b.StoragePool, b.IncludeExpression, startString, endString, b.DefaultNetwork})
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, batches)
@@ -355,26 +360,30 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	// Show the details
 	cmd.Printf("Batch: %s\n", b.Name)
-	cmd.Printf("  - Status:          %s\n", b.StatusString)
-	cmd.Printf("  - Target:          %s\n", targetMap[b.TargetID])
+	cmd.Printf("  - Status:             %s\n", b.StatusString)
+	cmd.Printf("  - Target:             %s\n", targetMap[b.TargetID])
+	if b.TargetProject != "" {
+		cmd.Printf("  - Project:            %s\n", b.TargetProject)
+	}
+
 	if b.StoragePool != "" {
-		cmd.Printf("  - Storage pool:    %s\n", b.StoragePool)
+		cmd.Printf("  - Storage pool:       %s\n", b.StoragePool)
 	}
 
 	if b.IncludeExpression != "" {
-		cmd.Printf("  - Include expression:   %s\n", b.IncludeExpression)
+		cmd.Printf("  - Include expression: %s\n", b.IncludeExpression)
 	}
 
 	if !b.MigrationWindowStart.IsZero() {
-		cmd.Printf("  - Window start:    %s\n", b.MigrationWindowStart)
+		cmd.Printf("  - Window start:       %s\n", b.MigrationWindowStart)
 	}
 
 	if !b.MigrationWindowEnd.IsZero() {
-		cmd.Printf("  - Window end:      %s\n", b.MigrationWindowEnd)
+		cmd.Printf("  - Window end:         %s\n", b.MigrationWindowEnd)
 	}
 
 	if b.DefaultNetwork != "" {
-		cmd.Printf("  - Default network: %s\n", b.DefaultNetwork)
+		cmd.Printf("  - Default network:    %s\n", b.DefaultNetwork)
 	}
 
 	cmd.Printf("\n  - Instances:\n")
@@ -532,6 +541,11 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 			b.TargetID = k
 			break
 		}
+	}
+
+	b.TargetProject, err = c.global.Asker.AskString("Project: ["+b.TargetProject+"] ", b.TargetProject, nil)
+	if err != nil {
+		return err
 	}
 
 	b.StoragePool, err = c.global.Asker.AskString("Storage pool: ["+b.StoragePool+"] ", b.StoragePool, nil)

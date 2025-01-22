@@ -36,7 +36,6 @@ func NewIncusTarget(name string, endpoint string) *InternalIncusTarget {
 			TLSClientCert: "",
 			OIDCTokens:    nil,
 			Insecure:      false,
-			IncusProject:  "default",
 		},
 		isConnected: false,
 	}
@@ -66,7 +65,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		return fmt.Errorf("Failed to connect to endpoint '%s': %s", t.Endpoint, err)
 	}
 
-	t.incusClient = client.UseProject(t.IncusProject)
+	t.incusClient = client
 
 	// Do a quick check to see if our authentication was accepted by the server.
 	srv, _, err := t.incusClient.GetServer()
@@ -147,8 +146,7 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 		return fmt.Errorf("Cannot change project before connecting")
 	}
 
-	t.IncusProject = project
-	t.incusClient = t.incusClient.UseProject(t.IncusProject)
+	t.incusClient = t.incusClient.UseProject(project)
 
 	return nil
 }

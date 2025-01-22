@@ -14,7 +14,6 @@ type Target struct {
 	TLSClientCert string
 	OIDCTokens    *oidc.Tokens[*oidc.IDTokenClaims]
 	Insecure      bool
-	IncusProject  string
 }
 
 func (t Target) Validate() error {

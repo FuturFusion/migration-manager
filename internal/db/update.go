@@ -14,6 +14,7 @@ CREATE TABLE batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
     target_id INTEGER NOT NULL,
+    target_project VARCHAR(255) NOT NULL,
     status INTEGER NOT NULL,
     status_string TEXT NOT NULL,
     storage_pool VARCHAR(255) NOT NULL,
@@ -90,7 +91,6 @@ CREATE TABLE targets (
     tls_client_cert TEXT NOT NULL,
     oidc_tokens TEXT NOT NULL,
     insecure BOOLEAN,
-    incus_project VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 
@@ -132,6 +132,7 @@ CREATE TABLE batches (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
     target_id INTEGER NOT NULL,
+    target_project VARCHAR(255) NOT NULL,
     status INTEGER NOT NULL,
     status_string TEXT NOT NULL,
     storage_pool VARCHAR(255) NOT NULL,
@@ -208,7 +209,6 @@ CREATE TABLE targets (
     tls_client_cert TEXT NOT NULL,
     oidc_tokens TEXT NOT NULL,
     insecure BOOLEAN,
-    incus_project VARCHAR(255) NOT NULL,
     UNIQUE (name)
 );
 `

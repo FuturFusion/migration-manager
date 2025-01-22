@@ -21,7 +21,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 
 	incusTargetA := migration.Target{Name: "Target A", Endpoint: "https://localhost:6443", TLSClientKey: "PRIVATE_KEY", TLSClientCert: "PUBLIC_CERT"}
 	incusTargetB := migration.Target{Name: "Target B", Endpoint: "https://incus.local:6443", OIDCTokens: token}
-	incusTargetC := migration.Target{Name: "Target C", Endpoint: "https://10.10.10.10:6443", Insecure: true, IncusProject: "my-other-project"}
+	incusTargetC := migration.Target{Name: "Target C", Endpoint: "https://10.10.10.10:6443", Insecure: true}
 
 	ctx := context.Background()
 
@@ -67,7 +67,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.Equal(t, incusTargetC, dbIncusTargetC)
 
 	// Test updating a target.
-	incusTargetB.IncusProject = "new-project"
+	incusTargetB.Endpoint = "https://127.0.0.1:6443"
 	dbIncusTargetB, err := target.UpdateByName(ctx, incusTargetB)
 	require.Equal(t, incusTargetB, dbIncusTargetB)
 	require.NoError(t, err)

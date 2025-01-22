@@ -32,8 +32,4 @@ type IncusTarget struct {
 	// If true, disable TLS certificate validation
 	// Example: false
 	Insecure bool `json:"insecure" yaml:"insecure"`
-
-	// The Incus project to use
-	// Example: default
-	IncusProject string `json:"incus_project" yaml:"incus_project"`
 }
