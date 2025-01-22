@@ -11,23 +11,25 @@ import (
 // OS is a high-level facade for accessing operating-system level functionalities.
 type OS struct {
 	// Directories
-	LogDir string // Log directory (e.g. /var/log/).
-	RunDir string // Runtime directory (e.g. /run/migration-manager/).
-	VarDir string // Data directory (e.g. /var/lib/migration-manager/).
+	CacheDir string // Cache directory (e.g., /var/cache/migration-manager/)
+	LogDir   string // Log directory (e.g. /var/log/).
+	RunDir   string // Runtime directory (e.g. /run/migration-manager/).
+	VarDir   string // Data directory (e.g. /var/lib/migration-manager/).
 }
 
 // DefaultOS returns a fresh uninitialized OS instance with default values.
 func DefaultOS() *OS {
 	newOS := &OS{
-		LogDir: util.LogPath(),
-		RunDir: util.RunPath(),
-		VarDir: util.VarPath(),
+		CacheDir: util.CachePath(),
+		LogDir:   util.LogPath(),
+		RunDir:   util.RunPath(),
+		VarDir:   util.VarPath(),
 	}
 
 	return newOS
 }
 
-// GetUnixSocket returns the full path to the unix.socket file that this daemon is listening on. Used by tests.
+// GetUnixSocket returns the full path to the unix.socket file that this daemon is listening on.
 func (s *OS) GetUnixSocket() string {
 	path := os.Getenv("MIGRATION_MANAGER_SOCKET")
 	if path != "" {
@@ -42,14 +44,9 @@ func (s *OS) LocalDatabaseDir() string {
 	return filepath.Join(s.VarDir, "database")
 }
 
-// AssetsDir returns the path of the local assets directory.
-func (s *OS) AssetsDir() string {
-	return filepath.Join(s.VarDir, "assets")
-}
-
 // Returns the name of the migration manger worker ISO image.
 func (s *OS) GetMigrationManagerISOName() (string, error) {
-	files, err := filepath.Glob(fmt.Sprintf("%s/migration-manager-minimal-boot*.iso", s.AssetsDir()))
+	files, err := filepath.Glob(fmt.Sprintf("%s/migration-manager-minimal-boot*.iso", s.CacheDir))
 	if err != nil {
 		return "", err
 	}
@@ -63,7 +60,7 @@ func (s *OS) GetMigrationManagerISOName() (string, error) {
 
 // Returns the name of the virtio drivers ISO image.
 func (s *OS) GetVirtioDriversISOName() (string, error) {
-	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win-*.iso", s.AssetsDir()))
+	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win-*.iso", s.CacheDir))
 	if err != nil {
 		return "", err
 	}

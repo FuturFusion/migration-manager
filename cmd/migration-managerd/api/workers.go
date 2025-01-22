@@ -590,7 +590,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, stora
 		if err != nil {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
-			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.AssetsDir(), iso))
+			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.CacheDir, iso))
 			if err != nil {
 				return err
 			}
@@ -755,9 +755,10 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, storagePool string) 
 	}
 
 	// Inject the worker binary.
-	pushErr := it.PushFile(inst.GetName(), "./migration-manager-worker", "/root/")
+	workerBinaryName := filepath.Join(d.os.VarDir, "migration-manager-worker")
+	pushErr := it.PushFile(inst.GetName(), workerBinaryName, "/root/")
 	if pushErr != nil {
-		log.Warn("Failed to push file to instance", logger.Err(pushErr))
+		log.Warn("Failed to push file to instance", slog.String("filename", workerBinaryName), logger.Err(pushErr))
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
 			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, pushErr.Error(), true)
 			if err != nil {
