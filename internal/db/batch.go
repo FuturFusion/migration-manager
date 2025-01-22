@@ -416,11 +416,6 @@ func (n *Node) getInstanceWithDetails(tx *sql.Tx, ii instance.Instance) (batch.I
 		return batch.InstanceWithDetails{}, err
 	}
 
-	override, err := n.GetInstanceOverride(tx, i.UUID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return batch.InstanceWithDetails{}, err
-	}
-
 	return batch.InstanceWithDetails{
 		Name:              ii.GetName(),
 		InventoryPath:     i.InventoryPath,
@@ -443,7 +438,7 @@ func (n *Node) getInstanceWithDetails(tx *sql.Tx, ii instance.Instance) (batch.I
 			Name:       source.Name,
 			SourceType: source.SourceType.String(),
 		},
-		Overrides: override,
+		Overrides: i.Overrides,
 	}, nil
 }
 

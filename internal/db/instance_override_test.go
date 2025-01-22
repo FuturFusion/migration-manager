@@ -53,6 +53,11 @@ func TestInstanceOverrideDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, overrideA, dbOverrideA)
 
+	// The Instance's returned overrides should match what we set.
+	dbInstanceA, err := db.GetInstance(tx, instanceA.GetUUID())
+	require.NoError(t, err)
+	require.Equal(t, dbInstanceA.GetOverrides(), overrideA)
+
 	// Test updating an override.
 	overrideA.Comment = "An update"
 	overrideA.DisableMigration = false

@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -268,6 +269,13 @@ func (n *Node) getInstancesHelper(tx *sql.Tx, UUID uuid.UUID) ([]instance.Instan
 		if err != nil {
 			return nil, err
 		}
+
+		overrides, err := n.GetInstanceOverride(tx, newInstance.UUID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+
+		newInstance.Overrides = overrides
 
 		ret = append(ret, newInstance)
 	}

@@ -144,6 +144,10 @@ type Instance struct {
 	// Is a TPM device present for this instance
 	// Example: false
 	TPMPresent bool `json:"tpm_present" yaml:"tpm_present"`
+
+	// Overrides, if any, for this instance
+	// Example: {..., NumberCPUs: 16, ...}
+	Overrides InstanceOverride `json:"overrides" yaml:"overrides"`
 }
 
 // Returns the name of the instance, which may not be unique among all instances for a given source.

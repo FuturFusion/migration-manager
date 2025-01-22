@@ -148,22 +148,12 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, i := range instances {
-		// Get the instance override, if any.
-		override := api.InstanceOverride{}
-		resp, err := c.global.doHTTPRequestV1("/instances/"+i.UUID.String()+"/override", http.MethodGet, "", nil)
-		if err == nil {
-			err = responseToStruct(resp, &override)
-			if err != nil {
-				return err
-			}
+		if i.Overrides.NumberCPUs != 0 {
+			i.CPU.NumberCPUs = i.Overrides.NumberCPUs
 		}
 
-		if override.NumberCPUs != 0 {
-			i.CPU.NumberCPUs = override.NumberCPUs
-		}
-
-		if override.MemoryInBytes != 0 {
-			i.Memory.MemoryInBytes = override.MemoryInBytes
+		if i.Overrides.MemoryInBytes != 0 {
+			i.Memory.MemoryInBytes = i.Overrides.MemoryInBytes
 		}
 
 		if i.MigrationStatusString == "" {

@@ -630,13 +630,6 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, project string, stor
 		return
 	}
 
-	// Get the override for this instance, if any.
-	var override api.InstanceOverride
-	_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		override, _ = d.db.GetInstanceOverride(tx, inst.GetUUID())
-		return nil
-	})
-
 	// TODO: Context should be passed from Daemon to all the workers.
 	ctx := context.TODO()
 	s, err := d.source.GetByID(ctx, inst.GetSourceID())
@@ -721,7 +714,7 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, project string, stor
 
 	wokrerISOName, _ := d.os.GetMigrationManagerISOName()
 	driverISOName, _ := d.os.GetVirtioDriversISOName()
-	instanceDef := it.CreateVMDefinition(*internalInstance, override, s.Name, storagePool)
+	instanceDef := it.CreateVMDefinition(*internalInstance, s.Name, storagePool)
 	creationErr := it.CreateNewVM(instanceDef, storagePool, wokrerISOName, driverISOName)
 	if creationErr != nil {
 		log.Warn("Failed to create new VM", slog.String("instance", instanceDef.Name), logger.Err(creationErr))

@@ -121,3 +121,7 @@ func (i *InternalInstance) GetMigrationStatusString() string {
 func (i *InternalInstance) GetSecretToken() uuid.UUID {
 	return i.SecretToken
 }
+
+func (i *InternalInstance) GetOverrides() api.InstanceOverride {
+	return i.Overrides
+}
