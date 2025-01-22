@@ -7,7 +7,6 @@ import (
 	"github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/instance"
-	mmapi "github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Interface definition for all migration manager targets.
@@ -65,7 +64,7 @@ type Target interface {
 	SetProject(project string) error
 
 	// Creates a VM definition for use with the Incus REST API.
-	CreateVMDefinition(instanceDef instance.InternalInstance, override mmapi.InstanceOverride, sourceName string, storagePool string) api.InstancesPost
+	CreateVMDefinition(instanceDef instance.InternalInstance, sourceName string, storagePool string) api.InstancesPost
 
 	// Creates a new VM from the pre-populated API definition.
 	CreateNewVM(apiDef api.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error

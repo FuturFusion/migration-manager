@@ -41,4 +41,7 @@ type Instance interface {
 
 	// Returns a secret token that can be used by the worker to authenticate when updating the state for this instance.
 	GetSecretToken() uuid.UUID
+
+	// Returns the overrides for this instance, if any.
+	GetOverrides() api.InstanceOverride
 }
