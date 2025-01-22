@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import DataTable from 'components/DataTable';
 import { fetchSources } from 'api/sources';
+import DataTable from 'components/DataTable';
 import { VMwareProperties } from 'types/source';
 
 enum SourceType {
@@ -21,10 +21,25 @@ const Source = () => {
   const rows = sources.map((item) => {
     if (item.source_type == SourceType.VMware) {
       const props = item.properties as VMwareProperties;
-      return [item.name, "VMware", props.endpoint, props.username, item.insecure];
+      return [
+        {
+          content: item.name
+        },
+        {
+          content: "VMware"
+        },
+        {
+          content: props.endpoint
+        },
+        {
+          content: props.username
+        },
+        {
+          content: item.insecure.toString()
+        }];
     }
 
-    return ["", "", "", "", ""];
+    return [{content:""},{content:""},{content:""},{content:""},{content:""}];
   });
 
   if (isLoading) {

@@ -1,9 +1,13 @@
-import { FC } from 'react';
+import { FC, ReactNode } from 'react';
 import { Table } from 'react-bootstrap';
+
+interface DataTableRow {
+  content: ReactNode | string;
+}
 
 interface Props {
   headers: string[];
-  rows: Object[][];
+  rows: DataTableRow[][];
 }
 
 const DataTable: FC<Props> = ({ headers, rows}) => {
@@ -26,7 +30,7 @@ const DataTable: FC<Props> = ({ headers, rows}) => {
     const dataRows = rows.map((rowItem, rowIndex) => {
       const row = rowItem.map((item, index) => {
         return (
-          <td key={ index }>{ item.toString() }</td>
+          <td key={ index }>{ item.content }</td>
         );
       });
 

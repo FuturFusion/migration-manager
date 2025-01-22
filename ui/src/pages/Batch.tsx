@@ -1,17 +1,55 @@
 import { useQuery } from '@tanstack/react-query'
-import DataTable from 'components/DataTable.tsx'
+import { Link } from "react-router";
 import { fetchBatches } from 'api/batches'
+import BatchActions from 'components/BatchActions';
+import DataTable from 'components/DataTable.tsx'
+import { formatDate } from 'util/date';
 
 const Batch = () => {
+  const refetchInterval = 10000; // 10 seconds
   const {
     data: batches = [],
     error,
     isLoading,
-  } = useQuery({ queryKey: ['batches'], queryFn: fetchBatches })
+  } = useQuery({
+    queryKey: ['batches'],
+    queryFn: fetchBatches,
+    refetchInterval: refetchInterval,
+  })
 
-  const headers = ["Name", "Status", "Target", "Project", "Storage pool", "Include expression", "Window start", "Window end", "Default network"];
+  const headers = ["Name", "Status", "Target", "Project", "Storage pool", "Include expression", "Window start", "Window end", "Default network", "Actions"];
   const rows = batches.map((item) => {
-    return [item.name, item.status_string, item.target_id, item.target_project, item.storage_pool, item.include_expression, item.migration_window_start, item.migration_window_end, item.default_network];
+    return [
+      {
+        content: <Link to={`/ui/batches/${item.name}`} className="data-table-link">{item.name}</Link>
+      },
+      {
+        content: item.status_string
+      },
+      {
+        content: item.target_id
+      },
+      {
+        content: item.target_project
+      },
+      {
+        content: item.storage_pool
+      },
+      {
+        content: item.include_expression
+      },
+      {
+        content: formatDate(item.migration_window_start.toString())
+      },
+      {
+        content: formatDate(item.migration_window_end.toString())
+      },
+      {
+        content: item.default_network
+      },
+      {
+        content: <BatchActions batch={item} />
+      }];
   });
 
   if (isLoading) {

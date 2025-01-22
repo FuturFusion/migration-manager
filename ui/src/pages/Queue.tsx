@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import DataTable from 'components/DataTable';
 import { fetchQueue } from 'api/queue';
+import DataTable from 'components/DataTable';
 
 const Queue = () => {
   const refetchInterval = 10000; // 10 seconds
@@ -16,7 +16,19 @@ const Queue = () => {
 
   const headers = ["Name", "Batch", "Status", "Status string"];
   const rows = queue.map((item) => {
-    return [item.instance_name, item.batch_name, item.migration_status, item.migration_status_string];
+    return [
+      {
+        content: item.instance_name
+      },
+      {
+        content: item.batch_name
+      },
+      {
+        content: item.migration_status
+      },
+      {
+        content: item.migration_status_string
+      }];
   });
 
   if (isLoading) {

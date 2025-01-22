@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import DataTable from 'components/DataTable'
 import { fetchTargets } from 'api/targets'
+import DataTable from 'components/DataTable'
 
 const Target = () => {
   const {
@@ -15,7 +15,20 @@ const Target = () => {
     if (item.tls_client_key != "") {
       authType = "TLS";
     }
-    return [item.name, item.endpoint, authType, item.insecure];
+
+    return [
+      {
+        content: item.name
+      },
+      {
+        content: item.endpoint
+      },
+      {
+        content: authType
+      },
+      {
+        content: item.insecure.toString()
+      }];
   });
 
   if (isLoading) {
