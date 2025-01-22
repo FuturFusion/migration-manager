@@ -28,7 +28,7 @@ ARG USER_GID=1000
 # Install necessary tools.
 RUN echo 'deb [trusted=yes] https://repo.goreleaser.com/apt/ /' | tee /etc/apt/sources.list.d/goreleaser.list && \
     apt update && \
-    apt install -y libfuse3-3 ocaml-4.13.1 libxml2 vim sudo shellcheck man less goreleaser
+    apt install -y libfuse3-3 ocaml-4.13.1 libxml2 vim sudo shellcheck man less goreleaser jq fish zsh
 
 # Install tools for building UI.
 RUN curl -sL https://deb.nodesource.com/setup_22.x | sudo -E bash - && \
