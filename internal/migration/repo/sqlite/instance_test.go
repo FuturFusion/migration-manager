@@ -321,10 +321,15 @@ func TestInstanceOverridesDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, overridesA, dbOverridesA)
 
-	// Test updating an override.
-	overrideA.Comment = "An update"
-	overrideA.DisableMigration = false
-	overrideA, err = instance.UpdateOverrideByID(ctx, overrideA)
+	// The Instance's returned overrides should match what we set.
+	dbInstanceA, err := instance.GetByID(ctx, instanceA.UUID)
+	require.NoError(t, err)
+	require.Equal(t, *dbInstanceA.Overrides, overridesA)
+
+	// Test updating an overrides.
+	overridesA.Comment = "An update"
+	overridesA.DisableMigration = false
+	overridesA, err = instance.UpdateOverridesByID(ctx, overridesA)
 	require.NoError(t, err)
 	dbOverridesA, err = instance.GetOverridesByID(ctx, instanceA.UUID)
 	require.NoError(t, err)

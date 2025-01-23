@@ -34,6 +34,7 @@ type Instance struct {
 	UseLegacyBios         bool
 	SecureBootEnabled     bool
 	TPMPresent            bool
+	Overrides             *Overrides
 	NeedsDiskImport       bool
 	SecretToken           uuid.UUID
 }

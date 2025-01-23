@@ -11,6 +11,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -27,175 +28,199 @@ func NewInstance(db repo.DBTX) *instance {
 }
 
 func (i instance) Create(ctx context.Context, in migration.Instance) (migration.Instance, error) {
-	const sqlInsert = `
+	var instance migration.Instance
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+
+		const sqlInsert = `
 INSERT INTO instances (uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token)
-VALUES(:uuid, :inventory_path, :annotation, :migration_status, :migration_status_string, :last_update_from_source, :source_id, :target_id, :batch_id, :guest_tools_version, :architecture, :hardware_version, :os, :os_version, :devices, :disks, :nics, :snapshots, :cpu, :memory, :use_legacy_bios, :secure_boot_enabled, :tpm_present, :needs_disk_import, :secret_token)
+VALUES (:uuid, :inventory_path, :annotation, :migration_status, :migration_status_string, :last_update_from_source, :source_id, :target_id, :batch_id, :guest_tools_version, :architecture, :hardware_version, :os, :os_version, :devices, :disks, :nics, :snapshots, :cpu, :memory, :use_legacy_bios, :secure_boot_enabled, :tpm_present, :needs_disk_import, :secret_token)
 RETURNING uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token;
 `
 
-	marshalledLastUpdateFromSource, err := in.LastUpdateFromSource.MarshalText()
+		marshalledLastUpdateFromSource, err := in.LastUpdateFromSource.MarshalText()
+		if err != nil {
+			return err
+		}
+
+		marshalledDevices, err := json.Marshal(in.Devices)
+		if err != nil {
+			return err
+		}
+
+		marshalledDisks, err := json.Marshal(in.Disks)
+		if err != nil {
+			return err
+		}
+
+		marshalledNICs, err := json.Marshal(in.NICs)
+		if err != nil {
+			return err
+		}
+
+		marshalledSnapshots, err := json.Marshal(in.Snapshots)
+		if err != nil {
+			return err
+		}
+
+		marshalledCPU, err := json.Marshal(in.CPU)
+		if err != nil {
+			return err
+		}
+
+		marshalledMemory, err := json.Marshal(in.Memory)
+		if err != nil {
+			return err
+		}
+
+		row := i.db.QueryRowContext(ctx, sqlInsert,
+			sql.Named("uuid", in.UUID),
+			sql.Named("inventory_path", in.InventoryPath),
+			sql.Named("annotation", in.Annotation),
+			sql.Named("migration_status", in.MigrationStatus),
+			sql.Named("migration_status_string", in.MigrationStatusString),
+			sql.Named("last_update_from_source", marshalledLastUpdateFromSource),
+			sql.Named("source_id", in.SourceID),
+			sql.Named("target_id", in.TargetID),
+			sql.Named("batch_id", in.BatchID),
+			sql.Named("guest_tools_version", in.GuestToolsVersion),
+			sql.Named("architecture", in.Architecture),
+			sql.Named("hardware_version", in.HardwareVersion),
+			sql.Named("os", in.OS),
+			sql.Named("os_version", in.OSVersion),
+			sql.Named("devices", marshalledDevices),
+			sql.Named("disks", marshalledDisks),
+			sql.Named("nics", marshalledNICs),
+			sql.Named("snapshots", marshalledSnapshots),
+			sql.Named("cpu", marshalledCPU),
+			sql.Named("memory", marshalledMemory),
+			sql.Named("use_legacy_bios", in.UseLegacyBios),
+			sql.Named("secure_boot_enabled", in.SecureBootEnabled),
+			sql.Named("tpm_present", in.TPMPresent),
+			sql.Named("needs_disk_import", in.NeedsDiskImport),
+			sql.Named("secret_token", in.SecretToken),
+		)
+		if row.Err() != nil {
+			return row.Err()
+		}
+
+		instance, err = i.scanInstance(ctx, row)
+		return err
+	})
 	if err != nil {
 		return migration.Instance{}, err
 	}
 
-	marshalledDevices, err := json.Marshal(in.Devices)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	marshalledDisks, err := json.Marshal(in.Disks)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	marshalledNICs, err := json.Marshal(in.NICs)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	marshalledSnapshots, err := json.Marshal(in.Snapshots)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	marshalledCPU, err := json.Marshal(in.CPU)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	marshalledMemory, err := json.Marshal(in.Memory)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	row := i.db.QueryRowContext(ctx, sqlInsert,
-		sql.Named("uuid", in.UUID),
-		sql.Named("inventory_path", in.InventoryPath),
-		sql.Named("annotation", in.Annotation),
-		sql.Named("migration_status", in.MigrationStatus),
-		sql.Named("migration_status_string", in.MigrationStatusString),
-		sql.Named("last_update_from_source", marshalledLastUpdateFromSource),
-		sql.Named("source_id", in.SourceID),
-		sql.Named("target_id", in.TargetID),
-		sql.Named("batch_id", in.BatchID),
-		sql.Named("guest_tools_version", in.GuestToolsVersion),
-		sql.Named("architecture", in.Architecture),
-		sql.Named("hardware_version", in.HardwareVersion),
-		sql.Named("os", in.OS),
-		sql.Named("os_version", in.OSVersion),
-		sql.Named("devices", marshalledDevices),
-		sql.Named("disks", marshalledDisks),
-		sql.Named("nics", marshalledNICs),
-		sql.Named("snapshots", marshalledSnapshots),
-		sql.Named("cpu", marshalledCPU),
-		sql.Named("memory", marshalledMemory),
-		sql.Named("use_legacy_bios", in.UseLegacyBios),
-		sql.Named("secure_boot_enabled", in.SecureBootEnabled),
-		sql.Named("tpm_present", in.TPMPresent),
-		sql.Named("needs_disk_import", in.NeedsDiskImport),
-		sql.Named("secret_token", in.SecretToken),
-	)
-	if row.Err() != nil {
-		return migration.Instance{}, row.Err()
-	}
-
-	return scanInstance(row)
+	return instance, nil
 }
 
 func (i instance) GetAll(ctx context.Context) (migration.Instances, error) {
-	const sqlGetAll = `
+	var instances migration.Instances
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlGetAll = `
 SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
 FROM instances
 ORDER BY inventory_path;
 `
 
-	rows, err := i.db.QueryContext(ctx, sqlGetAll)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var instances migration.Instances
-	for rows.Next() {
-		instance, err := scanInstance(rows)
+		rows, err := i.db.QueryContext(ctx, sqlGetAll)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		instances = append(instances, instance)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, rows.Err()
+		for rows.Next() {
+			instance, err := i.scanInstance(ctx, rows)
+			if err != nil {
+				return err
+			}
+
+			instances = append(instances, instance)
+		}
+
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return instances, nil
 }
 
 func (i instance) GetAllByBatchID(ctx context.Context, batchID int) (migration.Instances, error) {
-	const sqlGetAllByState = `
+	var instances migration.Instances
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlGetAllByState = `
 SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
 FROM instances
 WHERE batch_id=:batch_id
 ORDER BY inventory_path;
 `
 
-	rows, err := i.db.QueryContext(ctx, sqlGetAllByState,
-		sql.Named("batch_id", batchID),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var instances migration.Instances
-	for rows.Next() {
-		instance, err := scanInstance(rows)
+		rows, err := i.db.QueryContext(ctx, sqlGetAllByState,
+			sql.Named("batch_id", batchID),
+		)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		instances = append(instances, instance)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, rows.Err()
+		for rows.Next() {
+			instance, err := i.scanInstance(ctx, rows)
+			if err != nil {
+				return err
+			}
+
+			instances = append(instances, instance)
+		}
+
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return instances, nil
 }
 
 func (i instance) GetAllByState(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error) {
-	const sqlGetAllByState = `
+	var instances migration.Instances
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlGetAllByState = `
 SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
 FROM instances
 WHERE migration_status=:migration_status
 ORDER BY inventory_path;
 `
 
-	rows, err := i.db.QueryContext(ctx, sqlGetAllByState,
-		sql.Named("migration_status", status),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var instances migration.Instances
-	for rows.Next() {
-		instance, err := scanInstance(rows)
+		rows, err := i.db.QueryContext(ctx, sqlGetAllByState,
+			sql.Named("migration_status", status),
+		)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		instances = append(instances, instance)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, rows.Err()
+		for rows.Next() {
+			instance, err := i.scanInstance(ctx, rows)
+			if err != nil {
+				return err
+			}
+
+			instances = append(instances, instance)
+		}
+
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return instances, nil
@@ -230,126 +255,152 @@ func (i instance) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
 }
 
 func (i instance) GetAllUnassigned(ctx context.Context) (migration.Instances, error) {
-	const sqlGetAll = `
+	var instances migration.Instances
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlGetAll = `
 SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
 FROM instances
 WHERE batch_id IS NULL
 ORDER BY inventory_path;
 `
 
-	rows, err := i.db.QueryContext(ctx, sqlGetAll)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() { _ = rows.Close() }()
-
-	var instances migration.Instances
-	for rows.Next() {
-		instance, err := scanInstance(rows)
+		rows, err := i.db.QueryContext(ctx, sqlGetAll)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
-		instances = append(instances, instance)
-	}
+		defer func() { _ = rows.Close() }()
 
-	if rows.Err() != nil {
-		return nil, rows.Err()
+		for rows.Next() {
+			instance, err := i.scanInstance(ctx, rows)
+			if err != nil {
+				return err
+			}
+
+			instances = append(instances, instance)
+		}
+
+		return rows.Err()
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return instances, nil
 }
 
 func (i instance) GetByID(ctx context.Context, id uuid.UUID) (migration.Instance, error) {
-	const sqlGetByUUID = `SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token FROM instances WHERE uuid=:uuid;`
+	var instance migration.Instance
 
-	row := i.db.QueryRowContext(ctx, sqlGetByUUID, sql.Named("uuid", id))
-	if row.Err() != nil {
-		return migration.Instance{}, row.Err()
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+
+		const sqlGetByUUID = `SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token FROM instances WHERE uuid=:uuid;`
+
+		row := i.db.QueryRowContext(ctx, sqlGetByUUID, sql.Named("uuid", id))
+		if row.Err() != nil {
+			return row.Err()
+		}
+
+		instance, err = i.scanInstance(ctx, row)
+		return err
+	})
+	if err != nil {
+		return migration.Instance{}, err
 	}
 
-	return scanInstance(row)
+	return instance, nil
 }
 
 func (i instance) UpdateByID(ctx context.Context, in migration.Instance) (migration.Instance, error) {
-	const sqlUpdate = `
+	var instance migration.Instance
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		const sqlUpdate = `
 UPDATE instances
 SET inventory_path=:inventory_path, annotation=:annotation, migration_status=:migration_status, migration_status_string=:migration_status_string, last_update_from_source=:last_update_from_source, source_id=:source_id, target_id=:target_id, batch_id=:batch_id, guest_tools_version=:guest_tools_version, architecture=:architecture, hardware_version=:hardware_version, os=:os, os_version=:os_version, devices=:devices, disks=:disks, nics=:nics, snapshots=:snapshots, cpu=:cpu, memory=:memory, use_legacy_bios=:use_legacy_bios, secure_boot_enabled=:secure_boot_enabled, tpm_present=:tpm_present, needs_disk_import=:needs_disk_import, secret_token=:secret_token
 WHERE uuid=:uuid
 RETURNING uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token;
 `
 
-	marshalledLastUpdateFromSource, err := in.LastUpdateFromSource.MarshalText()
+		marshalledLastUpdateFromSource, err := in.LastUpdateFromSource.MarshalText()
+		if err != nil {
+			return err
+		}
+
+		marshalledDevices, err := json.Marshal(in.Devices)
+		if err != nil {
+			return err
+		}
+
+		marshalledDisks, err := json.Marshal(in.Disks)
+		if err != nil {
+			return err
+		}
+
+		marshalledNICs, err := json.Marshal(in.NICs)
+		if err != nil {
+			return err
+		}
+
+		marshalledSnapshots, err := json.Marshal(in.Snapshots)
+		if err != nil {
+			return err
+		}
+
+		marshalledCPU, err := json.Marshal(in.CPU)
+		if err != nil {
+			return err
+		}
+
+		marshalledMemory, err := json.Marshal(in.Memory)
+		if err != nil {
+			return err
+		}
+
+		row := i.db.QueryRowContext(ctx, sqlUpdate,
+			sql.Named("uuid", in.UUID),
+			sql.Named("inventory_path", in.InventoryPath),
+			sql.Named("annotation", in.Annotation),
+			sql.Named("migration_status", in.MigrationStatus),
+			sql.Named("migration_status_string", in.MigrationStatusString),
+			sql.Named("last_update_from_source", marshalledLastUpdateFromSource),
+			sql.Named("source_id", in.SourceID),
+			sql.Named("target_id", in.TargetID),
+			sql.Named("batch_id", in.BatchID),
+			sql.Named("guest_tools_version", in.GuestToolsVersion),
+			sql.Named("architecture", in.Architecture),
+			sql.Named("hardware_version", in.HardwareVersion),
+			sql.Named("os", in.OS),
+			sql.Named("os_version", in.OSVersion),
+			sql.Named("devices", marshalledDevices),
+			sql.Named("disks", marshalledDisks),
+			sql.Named("nics", marshalledNICs),
+			sql.Named("snapshots", marshalledSnapshots),
+			sql.Named("cpu", marshalledCPU),
+			sql.Named("memory", marshalledMemory),
+			sql.Named("use_legacy_bios", in.UseLegacyBios),
+			sql.Named("secure_boot_enabled", in.SecureBootEnabled),
+			sql.Named("tpm_present", in.TPMPresent),
+			sql.Named("needs_disk_import", in.NeedsDiskImport),
+			sql.Named("secret_token", in.SecretToken),
+		)
+		if row.Err() != nil {
+			return row.Err()
+		}
+
+		instance, err = i.scanInstance(ctx, row)
+		return err
+	})
 	if err != nil {
 		return migration.Instance{}, err
 	}
 
-	marshalledDevices, err := json.Marshal(in.Devices)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	marshalledDisks, err := json.Marshal(in.Disks)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	marshalledNICs, err := json.Marshal(in.NICs)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	marshalledSnapshots, err := json.Marshal(in.Snapshots)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	marshalledCPU, err := json.Marshal(in.CPU)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	marshalledMemory, err := json.Marshal(in.Memory)
-	if err != nil {
-		return migration.Instance{}, err
-	}
-
-	row := i.db.QueryRowContext(ctx, sqlUpdate,
-		sql.Named("uuid", in.UUID),
-		sql.Named("inventory_path", in.InventoryPath),
-		sql.Named("annotation", in.Annotation),
-		sql.Named("migration_status", in.MigrationStatus),
-		sql.Named("migration_status_string", in.MigrationStatusString),
-		sql.Named("last_update_from_source", marshalledLastUpdateFromSource),
-		sql.Named("source_id", in.SourceID),
-		sql.Named("target_id", in.TargetID),
-		sql.Named("batch_id", in.BatchID),
-		sql.Named("guest_tools_version", in.GuestToolsVersion),
-		sql.Named("architecture", in.Architecture),
-		sql.Named("hardware_version", in.HardwareVersion),
-		sql.Named("os", in.OS),
-		sql.Named("os_version", in.OSVersion),
-		sql.Named("devices", marshalledDevices),
-		sql.Named("disks", marshalledDisks),
-		sql.Named("nics", marshalledNICs),
-		sql.Named("snapshots", marshalledSnapshots),
-		sql.Named("cpu", marshalledCPU),
-		sql.Named("memory", marshalledMemory),
-		sql.Named("use_legacy_bios", in.UseLegacyBios),
-		sql.Named("secure_boot_enabled", in.SecureBootEnabled),
-		sql.Named("tpm_present", in.TPMPresent),
-		sql.Named("needs_disk_import", in.NeedsDiskImport),
-		sql.Named("secret_token", in.SecretToken),
-	)
-	if row.Err() != nil {
-		return migration.Instance{}, row.Err()
-	}
-
-	return scanInstance(row)
+	return instance, nil
 }
 
-func scanInstance(row interface{ Scan(dest ...any) error }) (migration.Instance, error) {
+func (i instance) scanInstance(ctx context.Context, row interface{ Scan(dest ...any) error }) (migration.Instance, error) {
 	var instance migration.Instance
 	var marshalledLastUpdateFromSource string
 	var marshalledDevices string
@@ -436,6 +487,17 @@ func scanInstance(row interface{ Scan(dest ...any) error }) (migration.Instance,
 		return migration.Instance{}, err
 	}
 
+	overrides, err := i.GetOverridesByID(ctx, instance.UUID)
+	if errors.Is(err, migration.ErrNotFound) {
+		return instance, nil
+	}
+
+	if err != nil {
+		return migration.Instance{}, err
+	}
+
+	instance.Overrides = &overrides
+
 	return instance, nil
 }
 
@@ -476,7 +538,7 @@ WHERE uuid=:uuid
 		return migration.Instance{}, row.Err()
 	}
 
-	return scanInstance(row)
+	return i.scanInstance(ctx, row)
 }
 
 func (i instance) CreateOverrides(ctx context.Context, overrides migration.Overrides) (migration.Overrides, error) {
