@@ -3,6 +3,7 @@ package migration
 import (
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -156,6 +157,15 @@ func (i Instance) IsMigrating() bool {
 	default:
 		return false
 	}
+}
+
+// The mapping of OS version strings to OS types is determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
+func (i *Instance) GetOSType() api.OSType {
+	if strings.HasPrefix(i.OSVersion, "win") {
+		return api.OSTYPE_WINDOWS
+	}
+
+	return api.OSTYPE_LINUX
 }
 
 type Instances []Instance
