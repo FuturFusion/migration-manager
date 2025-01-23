@@ -25,6 +25,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
 	tlsutil "github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
@@ -181,11 +182,13 @@ func (d *Daemon) Start() error {
 		return err
 	}
 
-	d.network = migration.NewNetworkService(sqlite.NewNetwork(d.db.DB))
-	d.target = migration.NewTargetService(sqlite.NewTarget(d.db.DB))
-	d.source = migration.NewSourceService(sqlite.NewSource(d.db.DB))
-	d.instance = migration.NewInstanceService(sqlite.NewInstance(d.db.DB), d.source)
-	d.batch = migration.NewBatchService(sqlite.NewBatch(d.db.DB), d.instance)
+	dbWithTransaction := transaction.Enable(d.db.DB)
+
+	d.network = migration.NewNetworkService(sqlite.NewNetwork(dbWithTransaction))
+	d.target = migration.NewTargetService(sqlite.NewTarget(dbWithTransaction))
+	d.source = migration.NewSourceService(sqlite.NewSource(dbWithTransaction))
+	d.instance = migration.NewInstanceService(sqlite.NewInstance(dbWithTransaction), d.source)
+	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance)
 
 	// Set default authorizer.
 	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)
