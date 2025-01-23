@@ -331,7 +331,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	currentSource, err := d.target.GetByName(ctx, source.Name)
+	currentSource, err := d.source.GetByName(ctx, source.Name)
 	if err != nil {
 		return response.BadRequest(fmt.Errorf("Failed to get source %q: %w", source.Name, err))
 	}
