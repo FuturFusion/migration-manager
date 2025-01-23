@@ -142,22 +142,22 @@ func (_d NetworkRepoWithSlog) GetByName(ctx context.Context, name string) (n1 _s
 	return _d._base.GetByName(ctx, name)
 }
 
-// UpdateByName implements _sourceMigration.NetworkRepo
-func (_d NetworkRepoWithSlog) UpdateByName(ctx context.Context, network _sourceMigration.Network) (n1 _sourceMigration.Network, err error) {
+// UpdateByID implements _sourceMigration.NetworkRepo
+func (_d NetworkRepoWithSlog) UpdateByID(ctx context.Context, network _sourceMigration.Network) (n1 _sourceMigration.Network, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("network", network),
-	).Debug("NetworkRepoWithSlog: calling UpdateByName")
+	).Debug("NetworkRepoWithSlog: calling UpdateByID")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("n1", n1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("NetworkRepoWithSlog: method UpdateByName returned an error")
+			log.Error("NetworkRepoWithSlog: method UpdateByID returned an error")
 		} else {
-			log.Debug("NetworkRepoWithSlog: method UpdateByName finished")
+			log.Debug("NetworkRepoWithSlog: method UpdateByID finished")
 		}
 	}()
-	return _d._base.UpdateByName(ctx, network)
+	return _d._base.UpdateByID(ctx, network)
 }

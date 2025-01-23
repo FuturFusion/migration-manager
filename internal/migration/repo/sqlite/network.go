@@ -125,10 +125,10 @@ func (n network) GetByName(ctx context.Context, name string) (migration.Network,
 	return scanNetwork(row)
 }
 
-func (n network) UpdateByName(ctx context.Context, in migration.Network) (migration.Network, error) {
+func (n network) UpdateByID(ctx context.Context, in migration.Network) (migration.Network, error) {
 	const sqlUpsert = `
 UPDATE networks SET name=:name, config=:config
-WHERE name=:name
+WHERE id=:id
 RETURNING id, name, config;
 `
 
@@ -140,6 +140,7 @@ RETURNING id, name, config;
 	row := n.db.QueryRowContext(ctx, sqlUpsert,
 		sql.Named("name", in.Name),
 		sql.Named("config", config),
+		sql.Named("id", in.ID),
 	)
 	if row.Err() != nil {
 		return migration.Network{}, row.Err()

@@ -38,8 +38,8 @@ var _ migration.NetworkRepo = &NetworkRepoMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (migration.Network, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateByNameFunc: func(ctx context.Context, network migration.Network) (migration.Network, error) {
-//				panic("mock out the UpdateByName method")
+//			UpdateByIDFunc: func(ctx context.Context, network migration.Network) (migration.Network, error) {
+//				panic("mock out the UpdateByID method")
 //			},
 //		}
 //
@@ -66,8 +66,8 @@ type NetworkRepoMock struct {
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (migration.Network, error)
 
-	// UpdateByNameFunc mocks the UpdateByName method.
-	UpdateByNameFunc func(ctx context.Context, network migration.Network) (migration.Network, error)
+	// UpdateByIDFunc mocks the UpdateByID method.
+	UpdateByIDFunc func(ctx context.Context, network migration.Network) (migration.Network, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -109,8 +109,8 @@ type NetworkRepoMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// UpdateByName holds details about calls to the UpdateByName method.
-		UpdateByName []struct {
+		// UpdateByID holds details about calls to the UpdateByID method.
+		UpdateByID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Network is the network argument value.
@@ -123,7 +123,7 @@ type NetworkRepoMock struct {
 	lockGetAllNames  sync.RWMutex
 	lockGetByID      sync.RWMutex
 	lockGetByName    sync.RWMutex
-	lockUpdateByName sync.RWMutex
+	lockUpdateByID   sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -334,10 +334,10 @@ func (mock *NetworkRepoMock) GetByNameCalls() []struct {
 	return calls
 }
 
-// UpdateByName calls UpdateByNameFunc.
-func (mock *NetworkRepoMock) UpdateByName(ctx context.Context, network migration.Network) (migration.Network, error) {
-	if mock.UpdateByNameFunc == nil {
-		panic("NetworkRepoMock.UpdateByNameFunc: method is nil but NetworkRepo.UpdateByName was just called")
+// UpdateByID calls UpdateByIDFunc.
+func (mock *NetworkRepoMock) UpdateByID(ctx context.Context, network migration.Network) (migration.Network, error) {
+	if mock.UpdateByIDFunc == nil {
+		panic("NetworkRepoMock.UpdateByIDFunc: method is nil but NetworkRepo.UpdateByID was just called")
 	}
 	callInfo := struct {
 		Ctx     context.Context
@@ -346,17 +346,17 @@ func (mock *NetworkRepoMock) UpdateByName(ctx context.Context, network migration
 		Ctx:     ctx,
 		Network: network,
 	}
-	mock.lockUpdateByName.Lock()
-	mock.calls.UpdateByName = append(mock.calls.UpdateByName, callInfo)
-	mock.lockUpdateByName.Unlock()
-	return mock.UpdateByNameFunc(ctx, network)
+	mock.lockUpdateByID.Lock()
+	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
+	mock.lockUpdateByID.Unlock()
+	return mock.UpdateByIDFunc(ctx, network)
 }
 
-// UpdateByNameCalls gets all the calls that were made to UpdateByName.
+// UpdateByIDCalls gets all the calls that were made to UpdateByID.
 // Check the length with:
 //
-//	len(mockedNetworkRepo.UpdateByNameCalls())
-func (mock *NetworkRepoMock) UpdateByNameCalls() []struct {
+//	len(mockedNetworkRepo.UpdateByIDCalls())
+func (mock *NetworkRepoMock) UpdateByIDCalls() []struct {
 	Ctx     context.Context
 	Network migration.Network
 } {
@@ -364,8 +364,8 @@ func (mock *NetworkRepoMock) UpdateByNameCalls() []struct {
 		Ctx     context.Context
 		Network migration.Network
 	}
-	mock.lockUpdateByName.RLock()
-	calls = mock.calls.UpdateByName
-	mock.lockUpdateByName.RUnlock()
+	mock.lockUpdateByID.RLock()
+	calls = mock.calls.UpdateByID
+	mock.lockUpdateByID.RUnlock()
 	return calls
 }

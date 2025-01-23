@@ -38,8 +38,8 @@ var _ migration.TargetService = &TargetServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (migration.Target, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateByNameFunc: func(ctx context.Context, target migration.Target) (migration.Target, error) {
-//				panic("mock out the UpdateByName method")
+//			UpdateByIDFunc: func(ctx context.Context, target migration.Target) (migration.Target, error) {
+//				panic("mock out the UpdateByID method")
 //			},
 //		}
 //
@@ -66,8 +66,8 @@ type TargetServiceMock struct {
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (migration.Target, error)
 
-	// UpdateByNameFunc mocks the UpdateByName method.
-	UpdateByNameFunc func(ctx context.Context, target migration.Target) (migration.Target, error)
+	// UpdateByIDFunc mocks the UpdateByID method.
+	UpdateByIDFunc func(ctx context.Context, target migration.Target) (migration.Target, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -109,8 +109,8 @@ type TargetServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// UpdateByName holds details about calls to the UpdateByName method.
-		UpdateByName []struct {
+		// UpdateByID holds details about calls to the UpdateByID method.
+		UpdateByID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Target is the target argument value.
@@ -123,7 +123,7 @@ type TargetServiceMock struct {
 	lockGetAllNames  sync.RWMutex
 	lockGetByID      sync.RWMutex
 	lockGetByName    sync.RWMutex
-	lockUpdateByName sync.RWMutex
+	lockUpdateByID   sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -334,10 +334,10 @@ func (mock *TargetServiceMock) GetByNameCalls() []struct {
 	return calls
 }
 
-// UpdateByName calls UpdateByNameFunc.
-func (mock *TargetServiceMock) UpdateByName(ctx context.Context, target migration.Target) (migration.Target, error) {
-	if mock.UpdateByNameFunc == nil {
-		panic("TargetServiceMock.UpdateByNameFunc: method is nil but TargetService.UpdateByName was just called")
+// UpdateByID calls UpdateByIDFunc.
+func (mock *TargetServiceMock) UpdateByID(ctx context.Context, target migration.Target) (migration.Target, error) {
+	if mock.UpdateByIDFunc == nil {
+		panic("TargetServiceMock.UpdateByIDFunc: method is nil but TargetService.UpdateByID was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -346,17 +346,17 @@ func (mock *TargetServiceMock) UpdateByName(ctx context.Context, target migratio
 		Ctx:    ctx,
 		Target: target,
 	}
-	mock.lockUpdateByName.Lock()
-	mock.calls.UpdateByName = append(mock.calls.UpdateByName, callInfo)
-	mock.lockUpdateByName.Unlock()
-	return mock.UpdateByNameFunc(ctx, target)
+	mock.lockUpdateByID.Lock()
+	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
+	mock.lockUpdateByID.Unlock()
+	return mock.UpdateByIDFunc(ctx, target)
 }
 
-// UpdateByNameCalls gets all the calls that were made to UpdateByName.
+// UpdateByIDCalls gets all the calls that were made to UpdateByID.
 // Check the length with:
 //
-//	len(mockedTargetService.UpdateByNameCalls())
-func (mock *TargetServiceMock) UpdateByNameCalls() []struct {
+//	len(mockedTargetService.UpdateByIDCalls())
+func (mock *TargetServiceMock) UpdateByIDCalls() []struct {
 	Ctx    context.Context
 	Target migration.Target
 } {
@@ -364,8 +364,8 @@ func (mock *TargetServiceMock) UpdateByNameCalls() []struct {
 		Ctx    context.Context
 		Target migration.Target
 	}
-	mock.lockUpdateByName.RLock()
-	calls = mock.calls.UpdateByName
-	mock.lockUpdateByName.RUnlock()
+	mock.lockUpdateByID.RLock()
+	calls = mock.calls.UpdateByID
+	mock.lockUpdateByID.RUnlock()
 	return calls
 }

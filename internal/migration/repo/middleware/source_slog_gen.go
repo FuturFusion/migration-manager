@@ -142,22 +142,22 @@ func (_d SourceRepoWithSlog) GetByName(ctx context.Context, name string) (s1 _so
 	return _d._base.GetByName(ctx, name)
 }
 
-// UpdateByName implements _sourceMigration.SourceRepo
-func (_d SourceRepoWithSlog) UpdateByName(ctx context.Context, source _sourceMigration.Source) (s1 _sourceMigration.Source, err error) {
+// UpdateByID implements _sourceMigration.SourceRepo
+func (_d SourceRepoWithSlog) UpdateByID(ctx context.Context, source _sourceMigration.Source) (s1 _sourceMigration.Source, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("source", source),
-	).Debug("SourceRepoWithSlog: calling UpdateByName")
+	).Debug("SourceRepoWithSlog: calling UpdateByID")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("s1", s1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("SourceRepoWithSlog: method UpdateByName returned an error")
+			log.Error("SourceRepoWithSlog: method UpdateByID returned an error")
 		} else {
-			log.Debug("SourceRepoWithSlog: method UpdateByName finished")
+			log.Debug("SourceRepoWithSlog: method UpdateByID finished")
 		}
 	}()
-	return _d._base.UpdateByName(ctx, source)
+	return _d._base.UpdateByID(ctx, source)
 }

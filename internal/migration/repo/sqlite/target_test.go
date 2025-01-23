@@ -78,7 +78,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 
 	// Test updating a target.
 	incusTargetB.Endpoint = "https://127.0.0.1:6443"
-	dbIncusTargetB, err := target.UpdateByName(ctx, incusTargetB)
+	dbIncusTargetB, err := target.UpdateByID(ctx, incusTargetB)
 	require.Equal(t, incusTargetB, dbIncusTargetB)
 	require.NoError(t, err)
 	dbIncusTargetB, err = target.GetByName(ctx, incusTargetB.Name)
@@ -101,7 +101,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.Error(t, err)
 
 	// Can't update a target that doesn't exist.
-	_, err = target.UpdateByName(ctx, incusTargetA)
+	_, err = target.UpdateByID(ctx, incusTargetA)
 	require.Error(t, err)
 
 	// Can't add a duplicate target.

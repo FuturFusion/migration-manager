@@ -67,7 +67,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 
 	// Test updating a network.
 	networkB.Config = map[string]string{"key": "value"}
-	networkB, err = network.UpdateByName(ctx, networkB)
+	networkB, err = network.UpdateByID(ctx, networkB)
 	require.NoError(t, err)
 	dbNetworkB, err := network.GetByName(ctx, networkB.Name)
 	require.NoError(t, err)
@@ -89,7 +89,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.Error(t, err)
 
 	// Can't update a network that doesn't exist.
-	networkA, err = network.UpdateByName(ctx, networkA)
+	networkA, err = network.UpdateByID(ctx, networkA)
 	require.Error(t, err)
 
 	// Can't add a duplicate network.
