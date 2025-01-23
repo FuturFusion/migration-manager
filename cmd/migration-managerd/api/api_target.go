@@ -335,7 +335,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	currentTarget, err := d.target.GetByName(ctx, target.Name)
+	currentTarget, err := d.target.GetByName(ctx, name)
 	if err != nil {
 		return response.BadRequest(fmt.Errorf("Failed to get target %q: %w", name, err))
 	}
@@ -346,9 +346,9 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = d.target.UpdateByName(ctx, migration.Target{
-		ID:            target.DatabaseID,
-		Name:          name,
+	_, err = d.target.UpdateByID(ctx, migration.Target{
+		ID:            currentTarget.ID,
+		Name:          target.Name,
 		Endpoint:      target.Endpoint,
 		TLSClientKey:  target.TLSClientKey,
 		TLSClientCert: target.TLSClientCert,
@@ -356,7 +356,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		Insecure:      target.Insecure,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", name, err))
+		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", target.Name, err))
 	}
 
 	err = trans.Commit()
