@@ -1,11 +1,13 @@
+import Button from 'react-bootstrap/Button';
 import { useQuery } from '@tanstack/react-query'
-import { Link } from "react-router";
-import { fetchBatches } from 'api/batches'
+import { Link, useNavigate } from 'react-router';
+import { fetchBatches } from 'api/batches';
 import BatchActions from 'components/BatchActions';
-import DataTable from 'components/DataTable.tsx'
+import DataTable from 'components/DataTable.tsx';
 import { formatDate } from 'util/date';
 
 const Batch = () => {
+  const navigate = useNavigate();
   const refetchInterval = 10000; // 10 seconds
   const {
     data: batches = [],
@@ -61,7 +63,18 @@ const Batch = () => {
     );
   }
 
-  return <DataTable headers={headers} rows={rows} />;
+  return (
+    <>
+      <div className="container">
+        <div className="row">
+          <div className="col-12">
+          <Button variant="success" className="float-end" onClick={() => navigate('/ui/batches/create')}>Create batch</Button>
+          </div>
+        </div>
+      </div>
+      <DataTable headers={headers} rows={rows} />
+    </>
+  );
 };
 
 export default Batch;

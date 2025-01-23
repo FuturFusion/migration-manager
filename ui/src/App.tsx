@@ -4,6 +4,7 @@ import Notification from 'components/Notification';
 import Sidebar from 'components/Sidebar';
 import { useAuth } from 'context/auth';
 import Batch from 'pages/Batch';
+import BatchCreate from 'pages/BatchCreate';
 import BatchDetail from 'pages/BatchDetail';
 import Home from 'pages/Home';
 import Instance from 'pages/Instance';
@@ -35,6 +36,7 @@ function App() {
           <Route path="/ui/targets" element={<Target />} />
           <Route path="/ui/instances" element={<Instance />} />
           <Route path="/ui/batches" element={<Batch />} />
+          <Route path="/ui/batches/create" element={<BatchCreate />} />
           <Route path="/ui/batches/:name" element={<BatchDetail />} />
           <Route path="/ui/batches/:name/:activeTab" element={<BatchDetail />} />
           <Route path="/ui/queue" element={<Queue />} />
