@@ -1,8 +1,6 @@
 package api
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,10 +8,11 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -125,27 +124,58 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	instances := []instance.Instance{}
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbInstances, err := d.db.GetAllInstances(tx)
+	if recursion == 1 {
+		instances, err := d.instance.GetAll(r.Context())
 		if err != nil {
-			return err
+			return response.SmartError(err)
 		}
 
-		instances = dbInstances
-		return nil
-	})
+		result := make([]api.Instance, 0, len(instances))
+		for _, instance := range instances {
+			apiInstance := api.Instance{
+				UUID:                  instance.UUID,
+				InventoryPath:         instance.InventoryPath,
+				Annotation:            instance.Annotation,
+				MigrationStatus:       instance.MigrationStatus,
+				MigrationStatusString: instance.MigrationStatusString,
+				LastUpdateFromSource:  instance.LastUpdateFromSource,
+				SourceID:              instance.SourceID,
+				TargetID:              instance.TargetID,
+				BatchID:               instance.BatchID,
+				GuestToolsVersion:     instance.GuestToolsVersion,
+				Architecture:          instance.Architecture,
+				HardwareVersion:       instance.HardwareVersion,
+				OS:                    instance.OS,
+				OSVersion:             instance.OSVersion,
+				Devices:               instance.Devices,
+				Disks:                 instance.Disks,
+				NICs:                  instance.NICs,
+				Snapshots:             instance.Snapshots,
+				CPU:                   instance.CPU,
+				Memory:                instance.Memory,
+				UseLegacyBios:         instance.UseLegacyBios,
+				SecureBootEnabled:     instance.SecureBootEnabled,
+				TPMPresent:            instance.TPMPresent,
+			}
+
+			if instance.Overrides != nil {
+				apiInstance.Overrides = api.InstanceOverride(*instance.Overrides)
+			}
+
+			result = append(result, apiInstance)
+		}
+
+		return response.SyncResponse(true, result)
+	}
+
+	instanceUUIDs, err := d.instance.GetAllUUIDs(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	if recursion == 1 {
-		return response.SyncResponse(true, instances)
-	}
-
-	result := make([]string, 0, len(instances))
-	for _, i := range instances {
-		result = append(result, fmt.Sprintf("/%s/instances/%s", api.APIVersion, i.GetUUID()))
+	result := make([]string, 0, len(instanceUUIDs))
+	for _, UUID := range instanceUUIDs {
+		result = append(result, fmt.Sprintf("/%s/instances/%s", api.APIVersion, UUID))
 	}
 
 	return response.SyncResponse(true, result)
@@ -193,21 +223,46 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	var i instance.Instance
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbInstance, err := d.db.GetInstance(tx, UUID)
-		if err != nil {
-			return err
-		}
-
-		i = dbInstance
-		return nil
-	})
+	instance, err := d.instance.GetByID(r.Context(), UUID)
 	if err != nil {
 		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
 	}
 
-	return response.SyncResponseETag(true, i, i)
+	apiInstance := api.Instance{
+		UUID:                  instance.UUID,
+		InventoryPath:         instance.InventoryPath,
+		Annotation:            instance.Annotation,
+		MigrationStatus:       instance.MigrationStatus,
+		MigrationStatusString: instance.MigrationStatusString,
+		LastUpdateFromSource:  instance.LastUpdateFromSource,
+		SourceID:              instance.SourceID,
+		TargetID:              instance.TargetID,
+		BatchID:               instance.BatchID,
+		GuestToolsVersion:     instance.GuestToolsVersion,
+		Architecture:          instance.Architecture,
+		HardwareVersion:       instance.HardwareVersion,
+		OS:                    instance.OS,
+		OSVersion:             instance.OSVersion,
+		Devices:               instance.Devices,
+		Disks:                 instance.Disks,
+		NICs:                  instance.NICs,
+		Snapshots:             instance.Snapshots,
+		CPU:                   instance.CPU,
+		Memory:                instance.Memory,
+		UseLegacyBios:         instance.UseLegacyBios,
+		SecureBootEnabled:     instance.SecureBootEnabled,
+		TPMPresent:            instance.TPMPresent,
+	}
+
+	if instance.Overrides != nil {
+		apiInstance.Overrides = api.InstanceOverride(*instance.Overrides)
+	}
+
+	return response.SyncResponseETag(
+		true,
+		apiInstance,
+		instance,
+	)
 }
 
 // swagger:operation GET /1.0/instances/{uuid}/override instances instance_override_get
@@ -252,21 +307,23 @@ func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	var override api.InstanceOverride
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbOverride, err := d.db.GetInstanceOverride(tx, UUID)
-		if err != nil {
-			return err
-		}
-
-		override = dbOverride
-		return nil
-	})
+	override, err := d.instance.GetOverridesByID(r.Context(), UUID)
 	if err != nil {
 		return response.BadRequest(fmt.Errorf("Failed to get override for instance '%s': %w", UUID, err))
 	}
 
-	return response.SyncResponseETag(true, override, override)
+	return response.SyncResponseETag(
+		true,
+		api.InstanceOverride{
+			UUID:             override.UUID,
+			LastUpdate:       override.LastUpdate,
+			Comment:          override.Comment,
+			NumberCPUs:       override.NumberCPUs,
+			MemoryInBytes:    override.MemoryInBytes,
+			DisableMigration: override.DisableMigration,
+		},
+		override,
+	)
 }
 
 // swagger:operation POST /1.0/instances/{uuid}/override instances instance_override_post
@@ -312,19 +369,13 @@ func instanceOverridePost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	// If migration is disabled, need to update the actual instance status.
-	if override.DisableMigration {
-		err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-			return d.db.UpdateInstanceStatus(tx, UUID, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION.String(), true)
-		})
-		if err != nil {
-			return response.BadRequest(fmt.Errorf("Failed to update status for instance '%s': %w", UUID, err))
-		}
-	}
-
-	// Insert into database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.AddInstanceOverride(tx, override)
+	_, err = d.instance.CreateOverrides(r.Context(), migration.Overrides{
+		UUID:             override.UUID,
+		LastUpdate:       override.LastUpdate,
+		Comment:          override.Comment,
+		NumberCPUs:       override.NumberCPUs,
+		MemoryInBytes:    override.MemoryInBytes,
+		DisableMigration: override.DisableMigration,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating override for instance %s: %w", UUID, err))
@@ -370,59 +421,51 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	// Get the existing instance override.
-	var override api.InstanceOverride
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbOverride, err := d.db.GetInstanceOverride(tx, UUID)
-		if err != nil {
-			return err
-		}
-
-		override = dbOverride
-		return nil
-	})
-	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get override for instance '%s': %w", UUID, err))
-	}
-
-	currentMigrationStatus := override.DisableMigration
-
-	// Validate ETag
-	err = util.EtagCheck(r, override)
-	if err != nil {
-		return response.PreconditionFailed(err)
-	}
-
 	// Decode into the existing instance override.
+	var override api.InstanceOverride
 	err = json.NewDecoder(r.Body).Decode(&override)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	// If migration status has changed, need to update the actual instance status.
-	if currentMigrationStatus != override.DisableMigration {
-		newStatus := api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION
-		if !override.DisableMigration {
-			newStatus = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
 		}
+	}()
 
-		err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-			return d.db.UpdateInstanceStatus(tx, UUID, newStatus, newStatus.String(), true)
-		})
-		if err != nil {
-			return response.BadRequest(fmt.Errorf("Failed to update status for instance '%s': %w", UUID, err))
-		}
+	// Get the existing instance override.
+	currentOverrides, err := d.instance.GetOverridesByID(ctx, UUID)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get override for instance %q: %w", UUID, err))
 	}
 
-	// Update instance override in the database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateInstanceOverride(tx, override)
+	// Validate ETag
+	err = util.EtagCheck(r, currentOverrides)
+	if err != nil {
+		return response.PreconditionFailed(err)
+	}
+
+	_, err = d.instance.UpdateOverridesByID(ctx, migration.Overrides{
+		UUID:             override.UUID,
+		LastUpdate:       override.LastUpdate,
+		Comment:          override.Comment,
+		NumberCPUs:       override.NumberCPUs,
+		MemoryInBytes:    override.MemoryInBytes,
+		DisableMigration: override.DisableMigration,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating override for instance '%s': %w", UUID, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+UUID.String()+"/override")
+	err = trans.Commit()
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
+	}
+
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+UUIDString+"/override")
 }
 
 // swagger:operation DELETE /1.0/instances/{uuid}/override instances instance_override_delete
@@ -451,36 +494,9 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	// Get the existing instance override.
-	var override api.InstanceOverride
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbOverride, err := d.db.GetInstanceOverride(tx, UUID)
-		if err != nil {
-			return err
-		}
-
-		override = dbOverride
-		return nil
-	})
+	err = d.instance.DeleteOverridesByID(r.Context(), UUID)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get override for instance '%s': %w", UUID, err))
-	}
-
-	// When deleting an override, be sure to reset migration status if needed.
-	if override.DisableMigration {
-		err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-			return d.db.UpdateInstanceStatus(tx, UUID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), true)
-		})
-		if err != nil {
-			return response.BadRequest(fmt.Errorf("Failed to update status for instance '%s': %w", UUID, err))
-		}
-	}
-
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.DeleteInstanceOverride(tx, UUID)
-	})
-	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to delete override for instance '%s': %w", UUID, err))
+		return response.SmartError(err)
 	}
 
 	return response.EmptySyncResponse
