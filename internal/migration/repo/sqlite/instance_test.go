@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -194,6 +196,8 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Cannot add an instance with an invalid source.
 	_, err = instance.Create(ctx, instanceA)
 	require.Error(t, err)
+
+	// Add dummy source.
 	_, err = sourceSvc.Create(ctx, testSource)
 	require.NoError(t, err)
 
@@ -362,4 +366,62 @@ func TestInstanceOverridesDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	err = instance.DeleteByID(ctx, instanceA.UUID)
 	require.Error(t, err)
+}
+
+func TestInstanceGetAll(t *testing.T) {
+	ctx := context.Background()
+
+	// Create a new temporary database.
+	tmpDir := t.TempDir()
+	db, err := dbdriver.Open(tmpDir)
+	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		err = db.Close()
+		require.NoError(t, err)
+	})
+
+	_, err = dbschema.EnsureSchema(db, tmpDir)
+	require.NoError(t, err)
+
+	dbWithTransaction := transaction.Enable(db)
+
+	sourceSvc := migration.NewSourceService(sqlite.NewSource(dbWithTransaction))
+	targetSvc := migration.NewTargetService(sqlite.NewTarget(dbWithTransaction))
+
+	instance := sqlite.NewInstance(dbWithTransaction)
+
+	// Add dummy source.
+	_, err = sourceSvc.Create(ctx, testSource)
+	require.NoError(t, err)
+
+	// Add dummy target.
+	_, err = targetSvc.Create(ctx, testTarget)
+	require.NoError(t, err)
+
+	const maxInstances = 100
+
+	// Add instanceA.
+	for i := 0; i < maxInstances; i++ {
+		instanceN := instanceA
+		instanceN.UUID = uuid.Must(uuid.NewRandom())
+		instanceN.InventoryPath = fmt.Sprintf("/%d", i)
+
+		_, err = instance.Create(ctx, instanceN)
+		require.NoError(t, err)
+
+		overrideN := overridesA
+		overrideN.UUID = instanceN.UUID
+		_, err = instance.CreateOverrides(ctx, overrideN)
+		require.NoError(t, err)
+	}
+
+	ctx2 := context.Background()
+	_ = transaction.Do(ctx2, func(ctx context.Context) error {
+		instances, err := instance.GetAll(ctx2)
+		require.NoError(t, err)
+		require.Len(t, instances, maxInstances)
+
+		return nil
+	})
 }
