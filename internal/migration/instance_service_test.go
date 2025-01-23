@@ -2,7 +2,6 @@ package migration_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/mock"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
+	"github.com/FuturFusion/migration-manager/internal/testing/boom"
 	"github.com/FuturFusion/migration-manager/internal/testing/queue"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -61,7 +61,7 @@ func TestInstanceService_Create(t *testing.T) {
 				InventoryPath: "",
 			},
 			randomUUIDValues: []queue.Item[uuid.UUID]{
-				{Value: uuid.Nil, Err: errors.New("boom!")},
+				{Value: uuid.Nil, Err: boom.Error},
 			},
 
 			assertErr: require.Error,
@@ -73,7 +73,7 @@ func TestInstanceService_Create(t *testing.T) {
 			},
 			randomUUIDValues: []queue.Item[uuid.UUID]{
 				{Value: uuidA},
-				{Value: uuid.Nil, Err: errors.New("boom!")},
+				{Value: uuid.Nil, Err: boom.Error},
 			},
 
 			assertErr: require.Error,
@@ -100,9 +100,9 @@ func TestInstanceService_Create(t *testing.T) {
 				{Value: uuidA},
 				{Value: uuidB},
 			},
-			repoCreateErr: errors.New("boom!"),
+			repoCreateErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -164,9 +164,9 @@ func TestInstanceService_GetAll(t *testing.T) {
 		},
 		{
 			name:          "error - repo",
-			repoGetAllErr: errors.New("boom!"),
+			repoGetAllErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -219,9 +219,9 @@ func TestInstanceService_GetAllByState(t *testing.T) {
 		},
 		{
 			name:                 "error - repo",
-			repoGetAllByStateErr: errors.New("boom!"),
+			repoGetAllByStateErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -274,9 +274,9 @@ func TestInstanceService_GetAllByBatchID(t *testing.T) {
 		},
 		{
 			name:                   "error - repo",
-			repoGetAllByBatchIDErr: errors.New("boom!"),
+			repoGetAllByBatchIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -322,9 +322,9 @@ func TestInstanceService_GetAllInventoryPaths(t *testing.T) {
 		},
 		{
 			name:          "error - repo",
-			repoGetAllErr: errors.New("boom!"),
+			repoGetAllErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -377,9 +377,9 @@ func TestInstanceService_GetAllUnassigned(t *testing.T) {
 		},
 		{
 			name:                    "error - repo",
-			repoGetAllUnassignedErr: errors.New("boom!"),
+			repoGetAllUnassignedErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -427,9 +427,9 @@ func TestInstanceService_GetByID(t *testing.T) {
 		{
 			name:           "error - repo",
 			uuidArg:        uuidA,
-			repoGetByIDErr: errors.New("boom!"),
+			repoGetByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -505,9 +505,9 @@ func TestInstanceService_GetByIDWithDetails(t *testing.T) {
 		{
 			name:           "error - repo.GetByID",
 			uuidArg:        uuidA,
-			repoGetByIDErr: errors.New("boom!"),
+			repoGetByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:    "error - repo.GetOverridesByID",
@@ -517,9 +517,9 @@ func TestInstanceService_GetByIDWithDetails(t *testing.T) {
 				InventoryPath: "/inventory/path/A",
 				SourceID:      1,
 			},
-			repoGetOverridesByIDErr: errors.New("boom!"),
+			repoGetOverridesByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:    "error - sourceSvc.GetByID",
@@ -534,9 +534,9 @@ func TestInstanceService_GetByIDWithDetails(t *testing.T) {
 				NumberCPUs:    2,
 				MemoryInBytes: 4 * 1024 * 1024 * 1024,
 			},
-			sourceSvcGetByIDErr: errors.New("boom!"),
+			sourceSvcGetByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -656,9 +656,9 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SourceID:        1,
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 			},
-			repoGetByIDErr: errors.New("boom!"),
+			repoGetByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - already assigned to batch",
@@ -692,9 +692,9 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SourceID:        1,
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 			},
-			repoUpdateByIDErr: errors.New("boom!"),
+			repoUpdateByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -763,9 +763,9 @@ func TestInstanceService_UnassignFromBatch(t *testing.T) {
 		},
 		{
 			name:           "error - repo.GetByID",
-			repoGetByIDErr: errors.New("boom!"),
+			repoGetByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:    "error - repo.UpdateByID",
@@ -779,9 +779,9 @@ func TestInstanceService_UnassignFromBatch(t *testing.T) {
 				MigrationStatus:       api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(),
 			},
-			repoUpdateByIDErr: errors.New("boom!"),
+			repoUpdateByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -854,9 +854,9 @@ func TestInstanceService_UpdateStatusByID(t *testing.T) {
 		},
 		{
 			name:                    "error - repo",
-			repoUpdateStatusByIDErr: errors.New("boom!"),
+			repoUpdateStatusByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -905,9 +905,9 @@ func TestInstanceService_DeleteByID(t *testing.T) {
 		{
 			name:           "error - repo.GetByID",
 			uuidArg:        uuidA,
-			repoGetByIDErr: errors.New("boom!"),
+			repoGetByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:    "error - batch ID set",
@@ -933,16 +933,16 @@ func TestInstanceService_DeleteByID(t *testing.T) {
 		{
 			name:                       "error - repo.DeleteOverridesByID",
 			uuidArg:                    uuidA,
-			repoDeleteOverridesByIDErr: errors.New("boom!"),
+			repoDeleteOverridesByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:              "error - repo.DeleteByID",
 			uuidArg:           uuidA,
-			repoDeleteByIDErr: errors.New("boom!"),
+			repoDeleteByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -1051,9 +1051,9 @@ func TestInstanceService_CreateOverrides(t *testing.T) {
 				MemoryInBytes:    8 * 1024 * 1024 * 1024,
 				DisableMigration: true,
 			},
-			repoUpdateStatusByIDErr: errors.New("boom!"),
+			repoUpdateStatusByIDErr: boom.Error,
 
-			assertErr:  require.Error,
+			assertErr:  boom.ErrorIs,
 			wantStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
 		},
 		{
@@ -1066,9 +1066,9 @@ func TestInstanceService_CreateOverrides(t *testing.T) {
 				MemoryInBytes:    8 * 1024 * 1024 * 1024,
 				DisableMigration: false,
 			},
-			repoCreateOverridesErr: errors.New("boom!"),
+			repoCreateOverridesErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -1123,9 +1123,9 @@ func TestInstanceService_GetOverridesByID(t *testing.T) {
 		{
 			name:                    "error - repo",
 			uuidArg:                 uuidA,
-			repoGetOverridesByIDErr: errors.New("boom!"),
+			repoGetOverridesByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -1275,9 +1275,9 @@ func TestInstanceService_UpdateOverridesByID(t *testing.T) {
 				MemoryInBytes:    8 * 1024 * 1024 * 1024,
 				DisableMigration: false,
 			},
-			repoGetOverridesByIDErr: errors.New("boom!"),
+			repoGetOverridesByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - repo.UpdateStatusByID",
@@ -1297,9 +1297,9 @@ func TestInstanceService_UpdateOverridesByID(t *testing.T) {
 				MemoryInBytes:    8 * 1024 * 1024 * 1024,
 				DisableMigration: true,
 			},
-			repoUpdateStatusByIDErr: errors.New("boom!"),
+			repoUpdateStatusByIDErr: boom.Error,
 
-			assertErr:  require.Error,
+			assertErr:  boom.ErrorIs,
 			wantStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 		},
 		{
@@ -1320,9 +1320,9 @@ func TestInstanceService_UpdateOverridesByID(t *testing.T) {
 				MemoryInBytes:    8 * 1024 * 1024 * 1024,
 				DisableMigration: false,
 			},
-			repoUpdateOverridesByIDErr: errors.New("boom!"),
+			repoUpdateOverridesByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -1383,9 +1383,9 @@ func TestInstanceService_DeleteOverridesByID(t *testing.T) {
 		{
 			name:                    "error - repo.GetOverridesByID",
 			uuidArg:                 uuidA,
-			repoGetOverridesByIDErr: errors.New("boom!"),
+			repoGetOverridesByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:    "error - repo.UpdateStatusByID",
@@ -1393,16 +1393,16 @@ func TestInstanceService_DeleteOverridesByID(t *testing.T) {
 			repoGetOverridesByIDOverrides: migration.Overrides{
 				DisableMigration: true,
 			},
-			repoUpdateStatusByIDErr: errors.New("boom!"),
+			repoUpdateStatusByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:                       "error - repo",
 			uuidArg:                    uuidA,
-			repoDeleteOverridesByIDErr: errors.New("boom!"),
+			repoDeleteOverridesByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 

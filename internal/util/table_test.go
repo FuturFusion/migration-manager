@@ -2,11 +2,11 @@ package util_test
 
 import (
 	"bytes"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/migration-manager/internal/testing/boom"
 	"github.com/FuturFusion/migration-manager/internal/util"
 )
 
@@ -322,11 +322,11 @@ func TestRenderTableError(t *testing.T) {
 type errWriter struct{}
 
 func (errWriter) Write(_ []byte) (int, error) {
-	return 0, errors.New("boom!")
+	return 0, boom.Error
 }
 
 type errTextMarshaler struct{}
 
 func (errTextMarshaler) MarshalText() ([]byte, error) {
-	return nil, errors.New("boom!")
+	return nil, boom.Error
 }

@@ -2,7 +2,6 @@ package migration_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/mock"
+	"github.com/FuturFusion/migration-manager/internal/testing/boom"
 	"github.com/FuturFusion/migration-manager/internal/testing/queue"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -98,9 +98,9 @@ func TestBatchService_Create(t *testing.T) {
 				Name:              "one",
 				IncludeExpression: "true",
 			},
-			repoCreateErr: errors.New("boom!"),
+			repoCreateErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - repo",
@@ -172,9 +172,9 @@ func TestBatchService_GetAll(t *testing.T) {
 		},
 		{
 			name:          "error - repo",
-			repoGetAllErr: errors.New("boom!"),
+			repoGetAllErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -229,9 +229,9 @@ func TestBatchService_GetAllByState(t *testing.T) {
 		},
 		{
 			name:                 "error - repo",
-			repoGetAllByStateErr: errors.New("boom!"),
+			repoGetAllByStateErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -277,9 +277,9 @@ func TestBatchService_GetAllNames(t *testing.T) {
 		},
 		{
 			name:          "error - repo",
-			repoGetAllErr: errors.New("boom!"),
+			repoGetAllErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -327,9 +327,9 @@ func TestBatchService_GetByID(t *testing.T) {
 		{
 			name:           "error - repo",
 			idArg:          1,
-			repoGetByIDErr: errors.New("boom!"),
+			repoGetByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -382,9 +382,9 @@ func TestBatchService_GetByName(t *testing.T) {
 		{
 			name:             "error - repo",
 			nameArg:          "one",
-			repoGetByNameErr: errors.New("boom!"),
+			repoGetByNameErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -471,9 +471,9 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
 			},
-			repoGetByIDErr: errors.New("boom!"),
+			repoGetByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - status can not be modified",
@@ -522,9 +522,9 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
-			repoUpdateErr: errors.New("boom!"),
+			instanceSvcGetAllByBatchIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -689,9 +689,9 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
-			instanceSvcGetAllByBatchIDErr: errors.New("boom!"),
+			instanceSvcGetAllByBatchIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - svcInstance.GetByIDWithDetails",
@@ -708,11 +708,11 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
 				{
-					Err: errors.New("boom!"),
+					Err: boom.Error,
 				},
 			},
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - batch.InstanceMatchesCriteria",
@@ -761,11 +761,11 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcUnassignFromBatch: []queue.Item[struct{}]{
 				{
-					Err: errors.New("boom!"),
+					Err: boom.Error,
 				},
 			},
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - instanceSvc.UpdateByID",
@@ -790,11 +790,11 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcUpdateByID: []queue.Item[migration.Instance]{
 				{
-					Err: errors.New("boom!"),
+					Err: boom.Error,
 				},
 			},
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 
 		// Unassigned instances error cases.
@@ -805,9 +805,9 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
-			instanceSvcGetAllUnassignedErr: errors.New("boom!"),
+			instanceSvcGetAllUnassignedErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - svcInstance.GetByIDWithDetails for unassigned",
@@ -824,11 +824,11 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
 				{
-					Err: errors.New("boom!"),
+					Err: boom.Error,
 				},
 			},
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name: "error - batch.InstanceMatchesCriteria for unassigned",
@@ -877,11 +877,11 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcUpdateByID: []queue.Item[migration.Instance]{
 				{
-					Err: errors.New("boom!"),
+					Err: boom.Error,
 				},
 			},
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -948,9 +948,9 @@ func TestBatchService_UpdateStatusByID(t *testing.T) {
 		{
 			name:                    "error - repo",
 			idArg:                   1,
-			repoUpdateStatusByIDErr: errors.New("boom!"),
+			repoUpdateStatusByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -1030,7 +1030,18 @@ func TestBatchService_DeleteByName(t *testing.T) {
 		{
 			name:             "error - get batch",
 			nameArg:          "one",
-			repoGetByNameErr: errors.New("boom!"),
+			repoGetByNameErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:    "success - batch without instances",
+			nameArg: "one",
+			repoGetByNameBatch: migration.Batch{
+				ID:     1,
+				Name:   "one",
+				Status: api.BATCHSTATUS_QUEUED,
+			},
 
 			assertErr: require.Error,
 		},
@@ -1042,9 +1053,9 @@ func TestBatchService_DeleteByName(t *testing.T) {
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
-			instanceSvcGetAllByBatchIDErr: errors.New("boom!"),
+			instanceSvcGetAllByBatchIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:    "error - instance migrating",
@@ -1077,16 +1088,21 @@ func TestBatchService_DeleteByName(t *testing.T) {
 					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 			},
-			instanceSvcUnassignFromBatchErr: errors.New("boom!"),
+			instanceSvcUnassignFromBatchErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
-			name:                "error - repo",
-			nameArg:             "one",
-			repoDeleteByNameErr: errors.New("boom!"),
+			name:    "error - repo.DeleteByName",
+			nameArg: "one",
+			repoGetByNameBatch: migration.Batch{
+				ID:     1,
+				Name:   "one",
+				Status: api.BATCHSTATUS_DEFINED,
+			},
+			repoDeleteByNameErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -1152,9 +1168,9 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 		{
 			name:             "error - repo.GetByName",
 			nameArg:          "one",
-			repoGetByNameErr: errors.New("boom!"),
+			repoGetByNameErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:    "error - batch state is not ready to be started",
@@ -1175,9 +1191,9 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
-			repoUpdateStatusByIDErr: errors.New("boom!"),
+			repoUpdateStatusByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -1234,9 +1250,9 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 		{
 			name:             "error - repo.GetByName",
 			nameArg:          "one",
-			repoGetByNameErr: errors.New("boom!"),
+			repoGetByNameErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 		{
 			name:    "error - batch state is not ready to be started",
@@ -1257,9 +1273,9 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 				Name:   "one",
 				Status: api.BATCHSTATUS_READY,
 			},
-			repoUpdateStatusByIDErr: errors.New("boom!"),
+			repoUpdateStatusByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 

@@ -3,13 +3,13 @@ package migration_test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/mock"
+	"github.com/FuturFusion/migration-manager/internal/testing/boom"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -202,9 +202,9 @@ func TestSourceService_Create(t *testing.T) {
 				SourceType: api.SOURCETYPE_COMMON,
 				Properties: json.RawMessage(`{}`),
 			},
-			repoCreateErr: errors.New("boom!"),
+			repoCreateErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -256,9 +256,9 @@ func TestSourceService_GetAll(t *testing.T) {
 		},
 		{
 			name:          "error - repo",
-			repoGetAllErr: errors.New("boom!"),
+			repoGetAllErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -304,9 +304,9 @@ func TestSourceService_GetAllNames(t *testing.T) {
 		},
 		{
 			name:          "error - repo",
-			repoGetAllErr: errors.New("boom!"),
+			repoGetAllErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -351,9 +351,9 @@ func TestSourceService_GetByID(t *testing.T) {
 		},
 		{
 			name:           "error - repo",
-			repoGetByIDErr: errors.New("boom!"),
+			repoGetByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -406,9 +406,9 @@ func TestSourceService_GetByName(t *testing.T) {
 		{
 			name:             "error - repo",
 			nameArg:          "one",
-			repoGetByNameErr: errors.New("boom!"),
+			repoGetByNameErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -622,9 +622,9 @@ func TestSourceService_UpdateByName(t *testing.T) {
 				SourceType: api.SOURCETYPE_COMMON,
 				Properties: json.RawMessage(`{}`),
 			},
-			repoUpdateErr: errors.New("boom!"),
+			repoUpdateErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -672,9 +672,9 @@ func TestSourceService_DeleteByName(t *testing.T) {
 		{
 			name:                "error - repo",
 			nameArg:             "one",
-			repoDeleteByNameErr: errors.New("boom!"),
+			repoDeleteByNameErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 

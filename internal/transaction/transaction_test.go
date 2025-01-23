@@ -3,12 +3,12 @@ package transaction_test
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/db/sqlite"
+	"github.com/FuturFusion/migration-manager/internal/testing/boom"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 )
 
@@ -291,7 +291,7 @@ func TestDo_rollback(t *testing.T) {
 		err := dummySvc.create(ctx)
 		require.NoError(t, err)
 
-		return errors.New("boom!")
+		return boom.Error
 	})
 	require.Error(t, err)
 
@@ -333,7 +333,7 @@ func TestDo_sequence(t *testing.T) {
 		err := dummySvc.create(ctx)
 		require.NoError(t, err)
 
-		return errors.New("boom!")
+		return boom.Error
 	})
 	require.Error(t, err)
 

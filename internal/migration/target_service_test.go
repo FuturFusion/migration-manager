@@ -2,13 +2,13 @@ package migration_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/mock"
+	"github.com/FuturFusion/migration-manager/internal/testing/boom"
 )
 
 func TestTargetService_Create(t *testing.T) {
@@ -90,9 +90,9 @@ func TestTargetService_Create(t *testing.T) {
 				TLSClientCert: "cert",
 				Insecure:      false,
 			},
-			repoCreateErr: errors.New("boom!"),
+			repoCreateErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -144,9 +144,9 @@ func TestTargetService_GetAll(t *testing.T) {
 		},
 		{
 			name:          "error - repo",
-			repoGetAllErr: errors.New("boom!"),
+			repoGetAllErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -192,9 +192,9 @@ func TestTargetService_GetAllNames(t *testing.T) {
 		},
 		{
 			name:          "error - repo",
-			repoGetAllErr: errors.New("boom!"),
+			repoGetAllErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 			count:     0,
 		},
 	}
@@ -248,9 +248,9 @@ func TestTargetService_GetByName(t *testing.T) {
 		{
 			name:             "error - repo",
 			nameArg:          "one",
-			repoGetByNameErr: errors.New("boom!"),
+			repoGetByNameErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -297,9 +297,9 @@ func TestTargetService_GetByID(t *testing.T) {
 		{
 			name:           "error - repo",
 			idArg:          1,
-			repoGetByIDErr: errors.New("boom!"),
+			repoGetByIDErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -403,9 +403,9 @@ func TestTargetService_UpdateByName(t *testing.T) {
 				TLSClientCert: "cert",
 				Insecure:      false,
 			},
-			repoUpdateErr: errors.New("boom!"),
+			repoUpdateErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
@@ -453,9 +453,9 @@ func TestTargetService_DeleteByName(t *testing.T) {
 		{
 			name:                "error - repo",
 			nameArg:             "one",
-			repoDeleteByNameErr: errors.New("boom!"),
+			repoDeleteByNameErr: boom.Error,
 
-			assertErr: require.Error,
+			assertErr: boom.ErrorIs,
 		},
 	}
 
