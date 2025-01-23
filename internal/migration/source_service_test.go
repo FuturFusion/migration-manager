@@ -433,7 +433,7 @@ func TestSourceService_GetByName(t *testing.T) {
 	}
 }
 
-func TestSourceService_UpdateByName(t *testing.T) {
+func TestSourceService_UpdateByID(t *testing.T) {
 	tests := []struct {
 		name             string
 		source           migration.Source
@@ -632,7 +632,7 @@ func TestSourceService_UpdateByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.SourceRepoMock{
-				UpdateByNameFunc: func(ctx context.Context, in migration.Source) (migration.Source, error) {
+				UpdateByIDFunc: func(ctx context.Context, in migration.Source) (migration.Source, error) {
 					return tc.repoUpdateSource, tc.repoUpdateErr
 				},
 			}
@@ -640,7 +640,7 @@ func TestSourceService_UpdateByName(t *testing.T) {
 			sourceSvc := migration.NewSourceService(repo)
 
 			// Run test
-			source, err := sourceSvc.UpdateByName(context.Background(), tc.source)
+			source, err := sourceSvc.UpdateByID(context.Background(), tc.source)
 
 			// Assert
 			tc.assertErr(t, err)

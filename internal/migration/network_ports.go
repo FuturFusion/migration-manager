@@ -10,7 +10,7 @@ type NetworkService interface {
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Network, error)
 	GetByName(ctx context.Context, name string) (Network, error)
-	UpdateByName(ctx context.Context, network Network) (Network, error)
+	UpdateByID(ctx context.Context, network Network) (Network, error)
 	DeleteByName(ctx context.Context, name string) error
 }
 
@@ -24,6 +24,6 @@ type NetworkRepo interface {
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Network, error)
 	GetByName(ctx context.Context, name string) (Network, error)
-	UpdateByName(ctx context.Context, network Network) (Network, error)
+	UpdateByID(ctx context.Context, network Network) (Network, error)
 	DeleteByName(ctx context.Context, name string) error
 }

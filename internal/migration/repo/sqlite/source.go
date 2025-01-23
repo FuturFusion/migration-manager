@@ -120,10 +120,10 @@ func (s source) GetByName(ctx context.Context, name string) (migration.Source, e
 	return scanSource(row)
 }
 
-func (s source) UpdateByName(ctx context.Context, in migration.Source) (migration.Source, error) {
+func (s source) UpdateByID(ctx context.Context, in migration.Source) (migration.Source, error) {
 	const sqlUpdate = `
 UPDATE sources SET name=:name, insecure=:insecure, type=:type, config=:config
-WHERE name=:name
+WHERE id=:id
 RETURNING id, name, type, insecure, config;
 `
 
@@ -132,6 +132,7 @@ RETURNING id, name, type, insecure, config;
 		sql.Named("type", in.SourceType),
 		sql.Named("insecure", in.Insecure),
 		sql.Named("config", in.Properties),
+		sql.Named("id", in.ID),
 	)
 	if row.Err() != nil {
 		return migration.Source{}, row.Err()

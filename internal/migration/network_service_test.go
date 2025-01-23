@@ -293,7 +293,7 @@ func TestNetworkService_GetByName(t *testing.T) {
 	}
 }
 
-func TestNetworkService_UpdateByName(t *testing.T) {
+func TestNetworkService_UpdateByID(t *testing.T) {
 	tests := []struct {
 		name              string
 		network           migration.Network
@@ -354,7 +354,7 @@ func TestNetworkService_UpdateByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.NetworkRepoMock{
-				UpdateByNameFunc: func(ctx context.Context, in migration.Network) (migration.Network, error) {
+				UpdateByIDFunc: func(ctx context.Context, in migration.Network) (migration.Network, error) {
 					return tc.repoUpdateNetwork, tc.repoUpdateErr
 				},
 			}
@@ -362,7 +362,7 @@ func TestNetworkService_UpdateByName(t *testing.T) {
 			networkSvc := migration.NewNetworkService(repo)
 
 			// Run test
-			network, err := networkSvc.UpdateByName(context.Background(), tc.network)
+			network, err := networkSvc.UpdateByID(context.Background(), tc.network)
 
 			// Assert
 			tc.assertErr(t, err)

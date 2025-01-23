@@ -10,7 +10,7 @@ type TargetService interface {
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Target, error)
 	GetByName(ctx context.Context, name string) (Target, error)
-	UpdateByName(ctx context.Context, target Target) (Target, error)
+	UpdateByID(ctx context.Context, target Target) (Target, error)
 	DeleteByName(ctx context.Context, name string) error
 }
 
@@ -24,6 +24,6 @@ type TargetRepo interface {
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Target, error)
 	GetByName(ctx context.Context, name string) (Target, error)
-	UpdateByName(ctx context.Context, target Target) (Target, error)
+	UpdateByID(ctx context.Context, target Target) (Target, error)
 	DeleteByName(ctx context.Context, name string) error
 }

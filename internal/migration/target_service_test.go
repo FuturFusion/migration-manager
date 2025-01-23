@@ -324,7 +324,7 @@ func TestTargetService_GetByID(t *testing.T) {
 	}
 }
 
-func TestTargetService_UpdateByName(t *testing.T) {
+func TestTargetService_UpdateByID(t *testing.T) {
 	tests := []struct {
 		name             string
 		target           migration.Target
@@ -413,7 +413,7 @@ func TestTargetService_UpdateByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TargetRepoMock{
-				UpdateByNameFunc: func(ctx context.Context, in migration.Target) (migration.Target, error) {
+				UpdateByIDFunc: func(ctx context.Context, in migration.Target) (migration.Target, error) {
 					return tc.repoUpdateTarget, tc.repoUpdateErr
 				},
 			}
@@ -421,7 +421,7 @@ func TestTargetService_UpdateByName(t *testing.T) {
 			targetSvc := migration.NewTargetService(repo)
 
 			// Run test
-			target, err := targetSvc.UpdateByName(context.Background(), tc.target)
+			target, err := targetSvc.UpdateByID(context.Background(), tc.target)
 
 			// Assert
 			tc.assertErr(t, err)

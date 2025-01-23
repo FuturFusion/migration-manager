@@ -46,13 +46,13 @@ func (s sourceService) GetByName(ctx context.Context, name string) (Source, erro
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s sourceService) UpdateByName(ctx context.Context, newSource Source) (Source, error) {
+func (s sourceService) UpdateByID(ctx context.Context, newSource Source) (Source, error) {
 	err := newSource.Validate()
 	if err != nil {
 		return Source{}, err
 	}
 
-	return s.repo.UpdateByName(ctx, newSource)
+	return s.repo.UpdateByID(ctx, newSource)
 }
 
 func (s sourceService) DeleteByName(ctx context.Context, name string) error {

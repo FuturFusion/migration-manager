@@ -128,10 +128,10 @@ func (t target) GetByName(ctx context.Context, name string) (migration.Target, e
 	return scanTarget(row)
 }
 
-func (t target) UpdateByName(ctx context.Context, in migration.Target) (migration.Target, error) {
+func (t target) UpdateByID(ctx context.Context, in migration.Target) (migration.Target, error) {
 	const sqlUpdate = `
 UPDATE targets SET name=:name, endpoint=:endpoint, tls_client_key=:tls_client_key, tls_client_cert=:tls_client_cert, oidc_tokens=:oidc_tokens, insecure=:insecure
-WHERE name=:name
+WHERE id=:id
 RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure;
 `
 
@@ -147,6 +147,7 @@ RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, inse
 		sql.Named("tls_client_cert", in.TLSClientCert),
 		sql.Named("oidc_tokens", marshalledOIDCTokens),
 		sql.Named("insecure", in.Insecure),
+		sql.Named("id", in.ID),
 	)
 	if row.Err() != nil {
 		return migration.Target{}, row.Err()
