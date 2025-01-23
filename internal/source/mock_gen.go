@@ -8,7 +8,7 @@ import (
 	"crypto/tls"
 	"sync"
 
-	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -34,7 +34,7 @@ var _ Source = &SourceMock{}
 //			GetAllNetworksFunc: func(ctx context.Context) ([]api.Network, error) {
 //				panic("mock out the GetAllNetworks method")
 //			},
-//			GetAllVMsFunc: func(ctx context.Context) ([]instance.InternalInstance, error) {
+//			GetAllVMsFunc: func(ctx context.Context) (migration.Instances, error) {
 //				panic("mock out the GetAllVMs method")
 //			},
 //			GetDatabaseIDFunc: func() (int, error) {
@@ -78,7 +78,7 @@ type SourceMock struct {
 	GetAllNetworksFunc func(ctx context.Context) ([]api.Network, error)
 
 	// GetAllVMsFunc mocks the GetAllVMs method.
-	GetAllVMsFunc func(ctx context.Context) ([]instance.InternalInstance, error)
+	GetAllVMsFunc func(ctx context.Context) (migration.Instances, error)
 
 	// GetDatabaseIDFunc mocks the GetDatabaseID method.
 	GetDatabaseIDFunc func() (int, error)
@@ -319,7 +319,7 @@ func (mock *SourceMock) GetAllNetworksCalls() []struct {
 }
 
 // GetAllVMs calls GetAllVMsFunc.
-func (mock *SourceMock) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
+func (mock *SourceMock) GetAllVMs(ctx context.Context) (migration.Instances, error) {
 	if mock.GetAllVMsFunc == nil {
 		panic("SourceMock.GetAllVMsFunc: method is nil but Source.GetAllVMs was just called")
 	}

@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -52,268 +53,235 @@ func (d *Daemon) syncInstancesFromSources() bool {
 
 	// TODO: context should be passed from the daemon to all the workers.
 	ctx := context.TODO()
-	// Get the list of configured sources.
-	sources, err := d.source.GetAll(ctx)
-	if err != nil {
-		log.Warn("Failed to get all sources", logger.Err(err))
-		return false
-	}
 
-	// Check each source for any net networks and any new, changed, or deleted instances.
-	for _, src := range sources {
-		log := log.With(slog.String("source", src.Name))
-
-		s, err := source.NewInternalVMwareSourceFrom(api.Source{
-			Name:       src.Name,
-			DatabaseID: src.ID,
-			Insecure:   src.Insecure,
-			SourceType: src.SourceType,
-			Properties: src.Properties,
-		})
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		// Get the list of configured sources.
+		sources, err := d.source.GetAll(ctx)
 		if err != nil {
-			log.Warn("Failed to create VMwareSource from source", logger.Err(err))
-			continue
+			return fmt.Errorf("Failed to get all sources: %w", err)
 		}
 
-		err = s.Connect(d.ShutdownCtx)
-		if err != nil {
-			log.Warn("Failed to connect to source", logger.Err(err))
-			continue
-		}
+		// Check each source for any net networks and any new, changed, or deleted instances.
+		for _, src := range sources {
+			log := log.With(slog.String("source", src.Name))
 
-		networks, err := s.GetAllNetworks(d.ShutdownCtx)
-		if err != nil {
-			log.Warn("Failed to get networks", logger.Err(err))
-			continue
-		}
-
-		// Iterate each network from this source.
-		for _, n := range networks {
-			log := log.With(slog.String("network", n.Name))
-
-			// Check if a network already exists with the same name.
-			_, err = d.network.GetByName(ctx, n.Name)
-			if errors.Is(err, migration.ErrNotFound) {
-				log.Info("Adding network from source")
-				_, err = d.network.Create(ctx, migration.Network{
-					Name:   n.Name,
-					Config: n.Config,
-				})
-				if err != nil {
-					log.Warn("Failed to add network", logger.Err(err))
-				}
-
+			s, err := source.NewInternalVMwareSourceFrom(api.Source{
+				Name:       src.Name,
+				DatabaseID: src.ID,
+				Insecure:   src.Insecure,
+				SourceType: src.SourceType,
+				Properties: src.Properties,
+			})
+			if err != nil {
+				log.Warn("Failed to create VMwareSource from source", logger.Err(err))
 				continue
 			}
 
+			err = s.Connect(d.ShutdownCtx)
 			if err != nil {
-				log.Warn("Failed to get network", logger.Err(err))
+				log.Warn("Failed to connect to source", logger.Err(err))
+				continue
 			}
-		}
 
-		instances, err := s.GetAllVMs(d.ShutdownCtx)
-		if err != nil {
-			log.Warn("Failed to get VMs", logger.Err(err))
-			continue
-		}
+			networks, err := s.GetAllNetworks(d.ShutdownCtx)
+			if err != nil {
+				log.Warn("Failed to get networks", logger.Err(err))
+				continue
+			}
 
-		currentInstancesFromSource := make(map[uuid.UUID]bool)
+			// Iterate each network from this source.
+			for _, n := range networks {
+				log := log.With(slog.String("network", n.Name))
 
-		// Iterate each instance from this source.
-		for _, i := range instances {
-			log := log.With(
-				slog.String("instance", i.GetInventoryPath()),
-				slog.Any("instance_uuid", i.GetUUID()),
-			)
-
-			// Check if this instance is already in the database.
-			existingInstance := &instance.InternalInstance{}
-			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-				inst, err := d.db.GetInstance(tx, i.GetUUID())
-				if err != nil {
-					return err
-				}
-
-				var ok bool
-				existingInstance, ok = inst.(*instance.InternalInstance)
-				if !ok {
-					return errors.New("Invalid type for internal instance")
-				}
-
-				return nil
-			})
-
-			if err == nil {
-				// An instance already exists in the database; update with any changes from the source.
-				instanceUpdated := false
-
-				if existingInstance.Annotation != i.Annotation {
-					existingInstance.Annotation = i.Annotation
-					instanceUpdated = true
-				}
-
-				if existingInstance.GuestToolsVersion != i.GuestToolsVersion {
-					existingInstance.GuestToolsVersion = i.GuestToolsVersion
-					instanceUpdated = true
-				}
-
-				if existingInstance.Architecture != i.Architecture {
-					existingInstance.Architecture = i.Architecture
-					instanceUpdated = true
-				}
-
-				if existingInstance.HardwareVersion != i.HardwareVersion {
-					existingInstance.HardwareVersion = i.HardwareVersion
-					instanceUpdated = true
-				}
-
-				if existingInstance.OS != i.OS {
-					existingInstance.OS = i.OS
-					instanceUpdated = true
-				}
-
-				if existingInstance.OSVersion != i.OSVersion {
-					existingInstance.OSVersion = i.OSVersion
-					instanceUpdated = true
-				}
-
-				if !slices.Equal(existingInstance.Devices, i.Devices) {
-					existingInstance.Devices = i.Devices
-					instanceUpdated = true
-				}
-
-				if !slices.Equal(existingInstance.Disks, i.Disks) {
-					existingInstance.Disks = i.Disks
-					instanceUpdated = true
-				}
-
-				if !slices.Equal(existingInstance.NICs, i.NICs) {
-					existingInstance.NICs = i.NICs
-					instanceUpdated = true
-				}
-
-				if !slices.Equal(existingInstance.Snapshots, i.Snapshots) {
-					existingInstance.Snapshots = i.Snapshots
-					instanceUpdated = true
-				}
-
-				if existingInstance.CPU.NumberCPUs != i.CPU.NumberCPUs {
-					existingInstance.CPU.NumberCPUs = i.CPU.NumberCPUs
-					instanceUpdated = true
-				}
-
-				if !slices.Equal(existingInstance.CPU.CPUAffinity, i.CPU.CPUAffinity) {
-					existingInstance.CPU.CPUAffinity = i.CPU.CPUAffinity
-					instanceUpdated = true
-				}
-
-				if existingInstance.CPU.NumberOfCoresPerSocket != i.CPU.NumberOfCoresPerSocket {
-					existingInstance.CPU.NumberOfCoresPerSocket = i.CPU.NumberOfCoresPerSocket
-					instanceUpdated = true
-				}
-
-				if existingInstance.Memory.MemoryInBytes != i.Memory.MemoryInBytes {
-					existingInstance.Memory.MemoryInBytes = i.Memory.MemoryInBytes
-					instanceUpdated = true
-				}
-
-				if existingInstance.Memory.MemoryReservationInBytes != i.Memory.MemoryReservationInBytes {
-					existingInstance.Memory.MemoryReservationInBytes = i.Memory.MemoryReservationInBytes
-					instanceUpdated = true
-				}
-
-				if existingInstance.UseLegacyBios != i.UseLegacyBios {
-					existingInstance.UseLegacyBios = i.UseLegacyBios
-					instanceUpdated = true
-				}
-
-				if existingInstance.SecureBootEnabled != i.SecureBootEnabled {
-					existingInstance.SecureBootEnabled = i.SecureBootEnabled
-					instanceUpdated = true
-				}
-
-				if existingInstance.TPMPresent != i.TPMPresent {
-					existingInstance.TPMPresent = i.TPMPresent
-					instanceUpdated = true
-				}
-
-				if instanceUpdated {
-					log.Info("Syncing changes to instance from source")
-					existingInstance.LastUpdateFromSource = i.LastUpdateFromSource
-					err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-						err := d.db.UpdateInstance(tx, existingInstance)
-						if err != nil {
-							return err
-						}
-
-						return nil
+				// Check if a network already exists with the same name.
+				_, err = d.network.GetByName(ctx, n.Name)
+				if errors.Is(err, migration.ErrNotFound) {
+					log.Info("Adding network from source")
+					_, err = d.network.Create(ctx, migration.Network{
+						Name:   n.Name,
+						Config: n.Config,
 					})
 					if err != nil {
-						log.Warn("Failed to update instance", logger.Err(err))
+						log.Warn("Failed to add network", logger.Err(err))
+					}
+
+					continue
+				}
+
+				if err != nil {
+					log.Warn("Failed to get network", logger.Err(err))
+				}
+			}
+
+			instances, err := s.GetAllVMs(d.ShutdownCtx)
+			if err != nil {
+				log.Warn("Failed to get VMs", logger.Err(err))
+				continue
+			}
+
+			currentInstancesFromSource := make(map[uuid.UUID]bool)
+
+			// Iterate each instance from this source.
+			for _, i := range instances {
+				log := log.With(
+					slog.String("instance", i.InventoryPath),
+					slog.Any("instance_uuid", i.UUID),
+				)
+
+				// Check if this instance is already in the database.
+				existingInstance, err := d.instance.GetByID(ctx, i.UUID)
+				if err != nil && !errors.Is(err, migration.ErrNotFound) {
+					log.Warn("Failed to query DB for instance", slog.Any("instance", i.UUID), logger.Err(err))
+					continue
+				}
+
+				if err == nil {
+					// An instance already exists in the database; update with any changes from the source.
+					instanceUpdated := false
+
+					if existingInstance.Annotation != i.Annotation {
+						existingInstance.Annotation = i.Annotation
+						instanceUpdated = true
+					}
+
+					if existingInstance.GuestToolsVersion != i.GuestToolsVersion {
+						existingInstance.GuestToolsVersion = i.GuestToolsVersion
+						instanceUpdated = true
+					}
+
+					if existingInstance.Architecture != i.Architecture {
+						existingInstance.Architecture = i.Architecture
+						instanceUpdated = true
+					}
+
+					if existingInstance.HardwareVersion != i.HardwareVersion {
+						existingInstance.HardwareVersion = i.HardwareVersion
+						instanceUpdated = true
+					}
+
+					if existingInstance.OS != i.OS {
+						existingInstance.OS = i.OS
+						instanceUpdated = true
+					}
+
+					if existingInstance.OSVersion != i.OSVersion {
+						existingInstance.OSVersion = i.OSVersion
+						instanceUpdated = true
+					}
+
+					if !slices.Equal(existingInstance.Devices, i.Devices) {
+						existingInstance.Devices = i.Devices
+						instanceUpdated = true
+					}
+
+					if !slices.Equal(existingInstance.Disks, i.Disks) {
+						existingInstance.Disks = i.Disks
+						instanceUpdated = true
+					}
+
+					if !slices.Equal(existingInstance.NICs, i.NICs) {
+						existingInstance.NICs = i.NICs
+						instanceUpdated = true
+					}
+
+					if !slices.Equal(existingInstance.Snapshots, i.Snapshots) {
+						existingInstance.Snapshots = i.Snapshots
+						instanceUpdated = true
+					}
+
+					if existingInstance.CPU.NumberCPUs != i.CPU.NumberCPUs {
+						existingInstance.CPU.NumberCPUs = i.CPU.NumberCPUs
+						instanceUpdated = true
+					}
+
+					if !slices.Equal(existingInstance.CPU.CPUAffinity, i.CPU.CPUAffinity) {
+						existingInstance.CPU.CPUAffinity = i.CPU.CPUAffinity
+						instanceUpdated = true
+					}
+
+					if existingInstance.CPU.NumberOfCoresPerSocket != i.CPU.NumberOfCoresPerSocket {
+						existingInstance.CPU.NumberOfCoresPerSocket = i.CPU.NumberOfCoresPerSocket
+						instanceUpdated = true
+					}
+
+					if existingInstance.Memory.MemoryInBytes != i.Memory.MemoryInBytes {
+						existingInstance.Memory.MemoryInBytes = i.Memory.MemoryInBytes
+						instanceUpdated = true
+					}
+
+					if existingInstance.Memory.MemoryReservationInBytes != i.Memory.MemoryReservationInBytes {
+						existingInstance.Memory.MemoryReservationInBytes = i.Memory.MemoryReservationInBytes
+						instanceUpdated = true
+					}
+
+					if existingInstance.UseLegacyBios != i.UseLegacyBios {
+						existingInstance.UseLegacyBios = i.UseLegacyBios
+						instanceUpdated = true
+					}
+
+					if existingInstance.SecureBootEnabled != i.SecureBootEnabled {
+						existingInstance.SecureBootEnabled = i.SecureBootEnabled
+						instanceUpdated = true
+					}
+
+					if existingInstance.TPMPresent != i.TPMPresent {
+						existingInstance.TPMPresent = i.TPMPresent
+						instanceUpdated = true
+					}
+
+					if instanceUpdated {
+						log.Info("Syncing changes to instance from source")
+						existingInstance.LastUpdateFromSource = i.LastUpdateFromSource
+						_, err := d.instance.UpdateByID(ctx, existingInstance)
+						if err != nil {
+							log.Warn("Failed to update instance", logger.Err(err))
+							continue
+						}
+					}
+				} else {
+					// Add a new instance to the database.
+					log.Info("Adding instance from source to database")
+
+					_, err = d.instance.Create(ctx, i)
+					if err != nil {
+						log.Warn("Failed to add instance", logger.Err(err))
 						continue
 					}
 				}
-			} else {
-				// Add a new instance to the database.
-				log.Info("Adding instance from source to database")
 
-				err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					err := d.db.AddInstance(tx, &i)
-					if err != nil {
-						return err
-					}
-
-					return nil
-				})
-				if err != nil {
-					log.Warn("Failed to add instance", logger.Err(err))
-					continue
-				}
+				// Record that this instance exists.
+				currentInstancesFromSource[i.UUID] = true
 			}
 
-			// Record that this instance exists.
-			currentInstancesFromSource[i.GetUUID()] = true
-		}
-
-		// Remove instances that no longer exist in this source.
-		allDBInstances := []instance.Instance{}
-		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			instances, err := d.db.GetAllInstances(tx)
+			// Remove instances that no longer exist in this source.
+			allDBInstances, err := d.instance.GetAll(ctx)
 			if err != nil {
-				return err
+				log.Warn("Failed to get instances", logger.Err(err))
+				continue
 			}
 
-			allDBInstances = instances
-			return nil
-		})
-		if err != nil {
-			log.Warn("Failed to get instances", logger.Err(err))
-			continue
-		}
+			for _, i := range allDBInstances {
+				log := log.With(
+					slog.String("instance", i.InventoryPath),
+					slog.Any("instance_uuid", i.UUID),
+				)
 
-		for _, i := range allDBInstances {
-			log := log.With(
-				slog.String("instance", i.GetInventoryPath()),
-				slog.Any("instance_uuid", i.GetUUID()),
-			)
-
-			_, instanceExists := currentInstancesFromSource[i.GetUUID()]
-			if !instanceExists {
-				log.Info("Instance removed from source")
-				err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-					err := d.db.DeleteInstance(tx, i.GetUUID())
+				_, instanceExists := currentInstancesFromSource[i.UUID]
+				if !instanceExists {
+					log.Info("Instance removed from source")
+					err := d.instance.DeleteByID(ctx, i.UUID)
 					if err != nil {
-						return err
+						log.Warn("Failed to delete instance", logger.Err(err))
+						continue
 					}
-
-					return nil
-				})
-				if err != nil {
-					log.Warn("Failed to delete instance", logger.Err(err))
-					continue
 				}
 			}
 		}
+
+		return nil
+	})
+	if err != nil {
+		log.Warn("Sync Instances From Sources worker failed", logger.Err(err))
 	}
 
 	return false
