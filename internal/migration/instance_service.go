@@ -2,6 +2,7 @@ package migration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -98,7 +99,7 @@ func (s instanceService) GetByIDWithDetails(ctx context.Context, id uuid.UUID) (
 		}
 
 		overrides, err := s.repo.GetOverridesByID(ctx, id)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrNotFound) {
 			return err
 		}
 
