@@ -107,9 +107,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 
 	// Add the batch.
 	b := api.Batch{
-		Name:         args[0],
-		Status:       api.BATCHSTATUS_DEFINED,
-		StatusString: api.BATCHSTATUS_DEFINED.String(),
+		Name: args[0],
 	}
 
 	targetString, err := c.global.Asker.AskChoice(fmt.Sprintf("What target should be used by this batch? (Choices: '%s') ", strings.Join(definedTargets, "', '")), definedTargets, "")
