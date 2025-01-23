@@ -369,105 +369,82 @@ func (d *Daemon) processReadyBatches() bool {
 func (d *Daemon) processQueuedBatches() bool {
 	log := slog.With(slog.String("method", "processQueuedBatches"))
 
-	// Get any batches in the "queued" state.
-	batches := []batch.Batch{}
-	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		var err error
-		batches, err = d.db.GetAllBatchesByState(tx, api.BATCHSTATUS_QUEUED)
+	// TODO: context should be passed from the daemon to all the workers.
+	ctx := context.TODO()
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		batches, err := d.batch.GetAllByState(ctx, api.BATCHSTATUS_QUEUED)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to get batches by state: %w", err)
+		}
+
+		// See if we can start running this batch.
+		for _, b := range batches {
+			log := log.With(slog.String("batch", b.Name))
+
+			log.Info("Batch status is 'Queued', processing....")
+
+			if err != nil {
+				log.Warn("Failed to get database ID", logger.Err(err))
+				continue
+			}
+
+			if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(time.Now().UTC()) {
+				log.Error("Batch window end time has already passed")
+
+				_, err = d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
+				if err != nil {
+					log.Warn("Failed to update batch status", logger.Err(err))
+					continue
+				}
+
+				continue
+			}
+
+			// Get all instances for this batch.
+			instances, err := d.instance.GetAllByBatchID(ctx, b.ID)
+			if err != nil {
+				log.Warn("Failed to get instances for batch", logger.Err(err))
+				continue
+			}
+
+			// Make sure the necessary ISO images exist in the Incus storage pool.
+			err = d.ensureISOImagesExistInStoragePool(ctx, instances[0], b.TargetProject, b.StoragePool)
+			if err != nil {
+				log.Warn("Failed to ensure ISO images exist in storage pool", logger.Err(err))
+				continue
+			}
+
+			// Instantiate each new empty VM in Incus.
+			for _, inst := range instances {
+				// Create fresh context, since operation is happening in its own go routine.
+				ctx := context.Background()
+				go d.spinUpMigrationEnv(ctx, inst, b.TargetProject, b.StoragePool)
+			}
+
+			// Move batch to "running" status.
+			log.Info("Updating batch status to 'Running'")
+
+			_, err = d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_RUNNING.String())
+			if err != nil {
+				log.Warn("Failed to update batch status", logger.Err(err))
+				continue
+			}
 		}
 
 		return nil
 	})
 	if err != nil {
-		log.Warn("Failed to get batches by state", logger.Err(err))
-		return false
-	}
-
-	// See if we can start running this batch.
-	for _, b := range batches {
-		log := log.With(slog.String("batch", b.GetName()))
-
-		log.Info("Batch status is 'Queued', processing....")
-
-		batchID, err := b.GetDatabaseID()
-		if err != nil {
-			log.Warn("Failed to get database ID", logger.Err(err))
-			continue
-		}
-
-		if !b.GetMigrationWindowEnd().IsZero() && b.GetMigrationWindowEnd().Before(time.Now().UTC()) {
-			log.Error("Batch window end time has already passed")
-
-			err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-				err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
-				if err != nil {
-					return err
-				}
-
-				return nil
-			})
-			if err != nil {
-				log.Warn("Failed to update batch status", logger.Err(err))
-				continue
-			}
-
-			continue
-		}
-
-		// Get all instances for this batch.
-		instances := []instance.Instance{}
-		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			var err error
-			instances, err = d.db.GetAllInstancesForBatchID(tx, batchID)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
-		if err != nil {
-			log.Warn("Failed to get instances for batch", logger.Err(err))
-			continue
-		}
-
-		// Make sure the necessary ISO images exist in the Incus storage pool.
-		err = d.ensureISOImagesExistInStoragePool(instances[0], b.GetTargetProject(), b.GetStoragePool())
-		if err != nil {
-			log.Warn("Failed to ensure ISO images exist in storage pool", logger.Err(err))
-			continue
-		}
-
-		// Instantiate each new empty VM in Incus.
-		for _, inst := range instances {
-			go d.spinUpMigrationEnv(inst, b.GetTargetProject(), b.GetStoragePool())
-		}
-
-		// Move batch to "running" status.
-		log.Info("Updating batch status to 'Running'")
-
-		err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			err := d.db.UpdateBatchStatus(tx, batchID, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_RUNNING.String())
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
-		if err != nil {
-			log.Warn("Failed to update batch status", logger.Err(err))
-			continue
-		}
+		log.Warn("Process Queued Batches worker failed", logger.Err(err))
 	}
 
 	return false
 }
 
-func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, project string, storagePool string) error {
+func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, inst migration.Instance, project string, storagePool string) error {
 	log := slog.With(
 		slog.String("method", "ensureISOImagesExistInStoragePool"),
-		slog.String("instance", inst.GetInventoryPath()),
+		slog.String("instance", inst.InventoryPath),
 		slog.String("storage_pool", storagePool),
 	)
 
@@ -483,8 +460,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, proje
 	}
 
 	// Get the target.
-	ctx := context.TODO()
-	t, err := d.target.GetByID(ctx, *inst.GetTargetID())
+	t, err := d.target.GetByID(ctx, *inst.TargetID)
 	if err != nil {
 		return err
 	}
@@ -538,54 +514,39 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, proje
 	return nil
 }
 
-func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, project string, storagePool string) {
+func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance, project string, storagePool string) {
 	log := slog.With(
 		slog.String("method", "spinUpMigrationEnv"),
-		slog.String("instance", inst.GetInventoryPath()),
+		slog.String("instance", inst.InventoryPath),
 	)
 
 	// Update the instance status.
-	err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	_, err := d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
 	if err != nil {
-		log.Warn("Failed to update instance status", logger.Err(err))
+		log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		return
 	}
 
-	// TODO: Context should be passed from Daemon to all the workers.
-	ctx := context.TODO()
-	s, err := d.source.GetByID(ctx, inst.GetSourceID())
+	s, err := d.source.GetByID(ctx, inst.SourceID)
 	if err != nil {
 		log.Warn("Failed to get source by ID", logger.Err(err))
-		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-			if err != nil {
-				return err
-			}
+		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+		if err != nil {
+			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+		}
 
-			return nil
-		})
 		return
 	}
 
 	// Get the target for this instance.
-	t, err := d.target.GetByID(ctx, *inst.GetTargetID())
+	t, err := d.target.GetByID(ctx, *inst.TargetID)
 	if err != nil {
-		log.Warn("Failed to get target by ID", slog.Int("target_id", *inst.GetTargetID()), logger.Err(err))
-		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-			if err != nil {
-				return err
-			}
+		log.Warn("Failed to get target by ID", slog.Int("target_id", *inst.TargetID), logger.Err(err))
+		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+		if err != nil {
+			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+		}
 
-			return nil
-		})
 		return
 	}
 
@@ -607,14 +568,11 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, project string, stor
 	err = it.Connect(d.ShutdownCtx)
 	if err != nil {
 		log.Warn("Failed to connect to target", slog.String("target", it.GetName()), logger.Err(err))
-		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-			if err != nil {
-				return err
-			}
+		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+		if err != nil {
+			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+		}
 
-			return nil
-		})
 		return
 	}
 
@@ -622,56 +580,33 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, project string, stor
 	err = it.SetProject(project)
 	if err != nil {
 		log.Warn("Failed to set target project", slog.String("project", project), logger.Err(err))
-		_ = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-			if err != nil {
-				return err
-			}
+		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+		if err != nil {
+			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+		}
 
-			return nil
-		})
 		return
 	}
 
 	// Create the instance.
-	internalInstance, ok := inst.(*instance.InternalInstance)
-	if !ok {
-		log.Warn("Invalid type for internal instance")
-		return
-	}
-
 	wokrerISOName, _ := d.os.GetMigrationManagerISOName()
 	driverISOName, _ := d.os.GetVirtioDriversISOName()
-	instanceDef := it.CreateVMDefinition(*internalInstance, s.Name, storagePool)
+	instanceDef := it.CreateVMDefinition(inst, s.Name, storagePool)
 	creationErr := it.CreateNewVM(instanceDef, storagePool, wokrerISOName, driverISOName)
 	if creationErr != nil {
 		log.Warn("Failed to create new VM", slog.String("instance", instanceDef.Name), logger.Err(creationErr))
-		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, creationErr.Error(), true)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
+		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, creationErr.Error(), true)
 		if err != nil {
-			log.Warn("Failed to update instance status", logger.Err(err))
+			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
 
 		return
 	}
 
 	// Creation was successful, update the instance state to 'Idle'.
-	err = d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-		err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
 	if err != nil {
-		log.Warn("Failed to update instance status", logger.Err(err))
+		log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		return
 	}
 
@@ -679,16 +614,9 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, project string, stor
 	startErr := it.StartVM(inst.GetName())
 	if startErr != nil {
 		log.Warn("Failed to start VM", logger.Err(startErr))
-		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, startErr.Error(), true)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
+		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, startErr.Error(), true)
 		if err != nil {
-			log.Warn("Failed to update instance status", logger.Err(err))
+			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
 
 		return
@@ -699,35 +627,21 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, project string, stor
 	pushErr := it.PushFile(inst.GetName(), workerBinaryName, "/root/")
 	if pushErr != nil {
 		log.Warn("Failed to push file to instance", slog.String("filename", workerBinaryName), logger.Err(pushErr))
-		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, pushErr.Error(), true)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
+		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, pushErr.Error(), true)
 		if err != nil {
-			log.Warn("Failed to update instance status", logger.Err(err))
+			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
 
 		return
 	}
 
 	// Start the worker binary.
-	workerStartErr := it.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getWorkerEndpoint(), "--uuid", inst.GetUUID().String(), "--token", inst.GetSecretToken().String()})
+	workerStartErr := it.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getWorkerEndpoint(), "--uuid", inst.UUID.String(), "--token", inst.SecretToken.String()})
 	if workerStartErr != nil {
 		log.Warn("Failed to execute without waiting", logger.Err(workerStartErr))
-		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-			err := d.db.UpdateInstanceStatus(tx, inst.GetUUID(), api.MIGRATIONSTATUS_ERROR, workerStartErr.Error(), true)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
+		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, workerStartErr.Error(), true)
 		if err != nil {
-			log.Warn("Failed to update instance status", logger.Err(err))
+			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
 
 		return
