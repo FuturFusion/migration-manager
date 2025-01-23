@@ -380,9 +380,8 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	batch.DatabaseID = currentBatch.ID
 	_, err = d.batch.UpdateByID(ctx, migration.Batch{
-		ID:                   batch.DatabaseID,
+		ID:                   currentBatch.ID,
 		Name:                 batch.Name,
 		TargetID:             batch.TargetID,
 		TargetProject:        batch.TargetProject,
@@ -394,6 +393,9 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		MigrationWindowEnd:   batch.MigrationWindowEnd,
 		DefaultNetwork:       batch.DefaultNetwork,
 	})
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))
+	}
 
 	err = trans.Commit()
 	if err != nil {

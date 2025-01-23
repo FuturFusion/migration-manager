@@ -331,9 +331,9 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	currentSource, err := d.source.GetByName(ctx, source.Name)
+	currentSource, err := d.source.GetByName(ctx, name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get source %q: %w", source.Name, err))
+		return response.BadRequest(fmt.Errorf("Failed to get source %q: %w", name, err))
 	}
 
 	// Validate ETag
@@ -342,15 +342,15 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = d.source.UpdateByName(r.Context(), migration.Source{
-		ID:         source.DatabaseID,
-		Name:       name,
+	_, err = d.source.UpdateByID(r.Context(), migration.Source{
+		ID:         currentSource.ID,
+		Name:       source.Name,
 		Insecure:   source.Insecure,
 		SourceType: source.SourceType,
 		Properties: source.Properties,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", name, err))
+		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", source.Name, err))
 	}
 
 	err = trans.Commit()

@@ -324,9 +324,9 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	currentNetwork, err := d.network.GetByName(ctx, network.Name)
+	currentNetwork, err := d.network.GetByName(ctx, name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get network %q: %w", network.Name, err))
+		return response.BadRequest(fmt.Errorf("Failed to get network %q: %w", name, err))
 	}
 
 	// Validate ETag
@@ -335,13 +335,13 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = d.network.UpdateByName(ctx, migration.Network{
-		ID:     network.DatabaseID,
-		Name:   name,
+	_, err = d.network.UpdateByID(ctx, migration.Network{
+		ID:     currentNetwork.ID,
+		Name:   network.Name,
 		Config: network.Config,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", name, err))
+		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", network.Name, err))
 	}
 
 	err = trans.Commit()
