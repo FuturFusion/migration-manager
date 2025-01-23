@@ -172,8 +172,7 @@ func scanNetwork(row interface{ Scan(dest ...any) error }) (migration.Network, e
 		return migration.Network{}, err
 	}
 
-	var config map[string]string
-	err = json.Unmarshal(configJSON, &config)
+	err = json.Unmarshal(configJSON, &network.Config)
 	if err != nil {
 		return migration.Network{}, fmt.Errorf("Failed to unmarshal network config: %w", err)
 	}

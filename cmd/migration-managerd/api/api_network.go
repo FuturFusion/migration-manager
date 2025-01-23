@@ -325,6 +325,9 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 	}()
 
 	currentNetwork, err := d.network.GetByName(ctx, network.Name)
+	if err != nil {
+		return response.SmartError(err)
+	}
 
 	// Validate ETag
 	err = util.EtagCheck(r, currentNetwork)

@@ -331,7 +331,10 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	currentSource, err := d.target.GetByName(ctx, source.Name)
+	currentSource, err := d.source.GetByName(ctx, source.Name)
+	if err != nil {
+		return response.SmartError(err)
+	}
 
 	// Validate ETag
 	err = util.EtagCheck(r, currentSource)

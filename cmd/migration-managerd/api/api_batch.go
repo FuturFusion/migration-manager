@@ -215,7 +215,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		TargetProject:        apiBatch.TargetProject,
 		Status:               apiBatch.Status,
 		StatusString:         apiBatch.StatusString,
-		StoragePool:          apiBatch.StatusString,
+		StoragePool:          apiBatch.StoragePool,
 		IncludeExpression:    apiBatch.IncludeExpression,
 		MigrationWindowStart: apiBatch.MigrationWindowStart,
 		MigrationWindowEnd:   apiBatch.MigrationWindowEnd,
