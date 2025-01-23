@@ -22,8 +22,8 @@ import (
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
 
-	"github.com/FuturFusion/migration-manager/internal/instance"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -103,8 +103,8 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
-	ret := []instance.InternalInstance{}
+func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {
+	ret := migration.Instances{}
 
 	finder := find.NewFinder(s.govmomiClient.Client)
 	vms, err := finder.VirtualMachineList(ctx, "/...")
@@ -335,39 +335,37 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 		}
 
 		secretToken, _ := uuid.NewRandom()
-		ret = append(ret, instance.InternalInstance{
-			Instance: api.Instance{
-				UUID:                  UUID,
-				InventoryPath:         vm.InventoryPath,
-				Annotation:            vmProps.Config.Annotation,
-				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-				LastUpdateFromSource:  time.Now().UTC(),
-				SourceID:              s.DatabaseID,
-				GuestToolsVersion:     guestToolsVersion,
-				Architecture:          arch,
-				HardwareVersion:       vmProps.Summary.Config.HwVersion,
-				OS:                    strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
-				OSVersion:             vmProps.Summary.Config.GuestFullName,
-				Devices:               devices,
-				Disks:                 disks,
-				NICs:                  nics,
-				Snapshots:             snapshots,
-				CPU: api.InstanceCPUInfo{
-					NumberCPUs:             int(vmProps.Config.Hardware.NumCPU),
-					CPUAffinity:            cpuAffinity,
-					NumberOfCoresPerSocket: int(numberOfCoresPerSocket),
-				},
-				Memory: api.InstanceMemoryInfo{
-					MemoryInBytes:            int64(vmProps.Summary.Config.MemorySizeMB) * 1024 * 1024,
-					MemoryReservationInBytes: int64(vmProps.Summary.Config.MemoryReservation) * 1024 * 1024,
-				},
-				UseLegacyBios:     useLegacyBios,
-				SecureBootEnabled: secureBootEnabled,
-				TPMPresent:        tpmPresent,
+		ret = append(ret, migration.Instance{
+			UUID:                  UUID,
+			InventoryPath:         vm.InventoryPath,
+			Annotation:            vmProps.Config.Annotation,
+			MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+			MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
+			LastUpdateFromSource:  time.Now().UTC(),
+			SourceID:              s.DatabaseID,
+			GuestToolsVersion:     guestToolsVersion,
+			Architecture:          arch,
+			HardwareVersion:       vmProps.Summary.Config.HwVersion,
+			OS:                    strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
+			OSVersion:             vmProps.Summary.Config.GuestFullName,
+			Devices:               devices,
+			Disks:                 disks,
+			NICs:                  nics,
+			Snapshots:             snapshots,
+			CPU: api.InstanceCPUInfo{
+				NumberCPUs:             int(vmProps.Config.Hardware.NumCPU),
+				CPUAffinity:            cpuAffinity,
+				NumberOfCoresPerSocket: int(numberOfCoresPerSocket),
 			},
-			NeedsDiskImport: true,
-			SecretToken:     secretToken,
+			Memory: api.InstanceMemoryInfo{
+				MemoryInBytes:            int64(vmProps.Summary.Config.MemorySizeMB) * 1024 * 1024,
+				MemoryReservationInBytes: int64(vmProps.Summary.Config.MemoryReservation) * 1024 * 1024,
+			},
+			UseLegacyBios:     useLegacyBios,
+			SecureBootEnabled: secureBootEnabled,
+			TPMPresent:        tpmPresent,
+			NeedsDiskImport:   true,
+			SecretToken:       secretToken,
 		})
 	}
 
