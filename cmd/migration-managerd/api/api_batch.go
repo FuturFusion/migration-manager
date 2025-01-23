@@ -224,7 +224,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 
 	_, err = d.batch.Create(r.Context(), batch)
 	if err != nil {
-		return response.SmartError(err)
+		return response.SmartError(fmt.Errorf("Failed creating batch %q: %w", batch.Name, err))
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+batch.Name)
@@ -298,7 +298,7 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 
 	batch, err := d.batch.GetByName(r.Context(), name)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(fmt.Errorf("Failed to get batch %q: %w", name, err))
 	}
 
 	return response.SyncResponseETag(
@@ -502,12 +502,12 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 
 	batch, err := d.batch.GetByName(ctx, name)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(fmt.Errorf("Failed to get batch %q: %w", name, err))
 	}
 
 	instances, err := d.instance.GetAllByBatchID(ctx, batch.ID)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(fmt.Errorf("Failed to get instances for batch %q: %w", name, err))
 	}
 
 	if recursion == 1 {

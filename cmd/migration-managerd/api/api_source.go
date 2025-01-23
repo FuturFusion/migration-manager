@@ -268,7 +268,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 
 	source, err := d.source.GetByName(r.Context(), name)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(fmt.Errorf("Failed to get source %q: %w", name, err))
 	}
 
 	return response.SyncResponseETag(
@@ -332,6 +332,9 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 	}()
 
 	currentSource, err := d.target.GetByName(ctx, source.Name)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get source %q: %w", source.Name, err))
+	}
 
 	// Validate ETag
 	err = util.EtagCheck(r, currentSource)

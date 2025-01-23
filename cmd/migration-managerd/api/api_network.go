@@ -263,7 +263,7 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 
 	network, err := d.network.GetByName(r.Context(), name)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(fmt.Errorf("Failed to get network %q: %w", name, err))
 	}
 
 	return response.SyncResponseETag(
@@ -325,6 +325,9 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 	}()
 
 	currentNetwork, err := d.network.GetByName(ctx, network.Name)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get network %q: %w", network.Name, err))
+	}
 
 	// Validate ETag
 	err = util.EtagCheck(r, currentNetwork)

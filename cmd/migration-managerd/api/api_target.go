@@ -270,7 +270,7 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 
 	target, err := d.target.GetByName(r.Context(), name)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(fmt.Errorf("Failed to get target %q: %w", name, err))
 	}
 
 	return response.SyncResponseETag(
