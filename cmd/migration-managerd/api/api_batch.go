@@ -219,7 +219,6 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		IncludeExpression:    apiBatch.IncludeExpression,
 		MigrationWindowStart: apiBatch.MigrationWindowStart,
 		MigrationWindowEnd:   apiBatch.MigrationWindowEnd,
-		DefaultNetwork:       apiBatch.DefaultNetwork,
 	}
 
 	_, err = d.batch.Create(r.Context(), batch)
@@ -314,7 +313,6 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 			IncludeExpression:    batch.IncludeExpression,
 			MigrationWindowStart: batch.MigrationWindowStart,
 			MigrationWindowEnd:   batch.MigrationWindowEnd,
-			DefaultNetwork:       batch.DefaultNetwork,
 		},
 		batch,
 	)
@@ -391,7 +389,6 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		IncludeExpression:    batch.IncludeExpression,
 		MigrationWindowStart: batch.MigrationWindowStart,
 		MigrationWindowEnd:   batch.MigrationWindowEnd,
-		DefaultNetwork:       batch.DefaultNetwork,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))

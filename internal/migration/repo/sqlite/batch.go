@@ -26,9 +26,9 @@ func NewBatch(db repo.DBTX) *batch {
 
 func (b batch) Create(ctx context.Context, in migration.Batch) (migration.Batch, error) {
 	const sqlInsert = `
-INSERT INTO batches (name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end, default_network)
-VALUES (:name, :target_id, :target_project, :status, :status_string, :storage_pool, :include_expression, :migration_window_start, :migration_window_end, :default_network)
-RETURNING id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end, default_network;
+INSERT INTO batches (name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end)
+VALUES (:name, :target_id, :target_project, :status, :status_string, :storage_pool, :include_expression, :migration_window_start, :migration_window_end)
+RETURNING id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end;
 `
 
 	marshalledMigrationWindowStart, err := in.MigrationWindowStart.MarshalText()
@@ -51,7 +51,6 @@ RETURNING id, name, target_id, target_project, status, status_string, storage_po
 		sql.Named("include_expression", in.IncludeExpression),
 		sql.Named("migration_window_start", marshalledMigrationWindowStart),
 		sql.Named("migration_window_end", marshalledMigrationWindowEnd),
-		sql.Named("default_network", in.DefaultNetwork),
 	)
 	if row.Err() != nil {
 		return migration.Batch{}, row.Err()
@@ -62,7 +61,7 @@ RETURNING id, name, target_id, target_project, status, status_string, storage_po
 
 func (b batch) GetAll(ctx context.Context) (migration.Batches, error) {
 	const sqlGetAll = `
-SELECT id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end, default_network
+SELECT id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end
 FROM batches
 ORDER BY name;
 `
@@ -93,7 +92,7 @@ ORDER BY name;
 
 func (b batch) GetAllByState(ctx context.Context, status api.BatchStatusType) (migration.Batches, error) {
 	const sqlGetAll = `
-SELECT id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end, default_network
+SELECT id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end
 FROM batches
 WHERE status=:status
 ORDER BY name;
@@ -155,7 +154,7 @@ func (b batch) GetAllNames(ctx context.Context) ([]string, error) {
 
 func (b batch) GetByID(ctx context.Context, id int) (migration.Batch, error) {
 	const sqlGetByID = `
-SELECT id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end, default_network
+SELECT id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end
 FROM batches
 WHERE id=:id;
 `
@@ -170,7 +169,7 @@ WHERE id=:id;
 
 func (b batch) GetByName(ctx context.Context, name string) (migration.Batch, error) {
 	const sqlGetByName = `
-SELECT id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end, default_network
+SELECT id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end
 FROM batches
 WHERE name=:name;
 `
@@ -185,9 +184,9 @@ WHERE name=:name;
 
 func (b batch) UpdateByID(ctx context.Context, in migration.Batch) (migration.Batch, error) {
 	const sqlUpdate = `
-UPDATE batches SET name=:name, target_id=:target_id, target_project=:target_project, status=:status, status_string=:status_string, storage_pool=:storage_pool, include_expression=:include_expression, migration_window_start=:migration_window_start, migration_window_end=:migration_window_end, default_network=:default_network
+UPDATE batches SET name=:name, target_id=:target_id, target_project=:target_project, status=:status, status_string=:status_string, storage_pool=:storage_pool, include_expression=:include_expression, migration_window_start=:migration_window_start, migration_window_end=:migration_window_end
 WHERE id=:id
-RETURNING id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end, default_network;
+RETURNING id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end;
 `
 
 	marshalledMigrationWindowStart, err := in.MigrationWindowStart.MarshalText()
@@ -211,7 +210,6 @@ RETURNING id, name, target_id, target_project, status, status_string, storage_po
 		sql.Named("include_expression", in.IncludeExpression),
 		sql.Named("migration_window_start", marshalledMigrationWindowStart),
 		sql.Named("migration_window_end", marshalledMigrationWindowEnd),
-		sql.Named("default_network", in.DefaultNetwork),
 	)
 	if row.Err() != nil {
 		return migration.Batch{}, row.Err()
@@ -224,7 +222,7 @@ func (b batch) UpdateStatusByID(ctx context.Context, id int, status api.BatchSta
 	const sqlUpdateStatusByID = `
 UPDATE batches SET status=:status, status_string=:status_string
 WHERE id=:id
-RETURNING id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end, default_network;
+RETURNING id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end;
 `
 
 	row := b.db.QueryRowContext(ctx, sqlUpdateStatusByID,
@@ -254,7 +252,6 @@ func scanBatch(row interface{ Scan(dest ...any) error }) (migration.Batch, error
 		&batch.IncludeExpression,
 		&marshalledMigrationWindowStart,
 		&marshalledMigrationWindowEnd,
-		&batch.DefaultNetwork,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

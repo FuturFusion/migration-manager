@@ -20,7 +20,7 @@ import (
 var (
 	testSource       = migration.Source{Name: "TestSource", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
 	testTarget       = migration.Target{Name: "TestTarget", Endpoint: "https://localhost:6443"}
-	testBatch        = batch.NewBatch("TestBatch", 1, "", "", "", time.Time{}, time.Time{}, "network")
+	testBatch        = batch.NewBatch("TestBatch", 1, "", "", "", time.Time{}, time.Time{})
 	instanceAUUID, _ = uuid.NewRandom()
 	instanceA        = instance.NewInstance(instanceAUUID, "/path/UbuntuVM", "annotation", 1, ptr.To(1), nil, 123, "x86_64", "hw version", "Ubuntu", "24.04", nil, []api.InstanceDiskInfo{
 		{

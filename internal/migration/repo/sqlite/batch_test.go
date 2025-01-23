@@ -23,7 +23,6 @@ var (
 		IncludeExpression:    "include",
 		MigrationWindowStart: time.Time{},
 		MigrationWindowEnd:   time.Time{},
-		DefaultNetwork:       "",
 	}
 
 	batchB = migration.Batch{
@@ -34,7 +33,6 @@ var (
 		IncludeExpression:    "",
 		MigrationWindowStart: time.Now().UTC(),
 		MigrationWindowEnd:   time.Time{},
-		DefaultNetwork:       "network-name",
 	}
 
 	batchC = migration.Batch{
@@ -45,7 +43,6 @@ var (
 		IncludeExpression:    "include",
 		MigrationWindowStart: time.Time{},
 		MigrationWindowEnd:   time.Now().UTC(),
-		DefaultNetwork:       "another-network",
 	}
 )
 

@@ -22,7 +22,6 @@ type Batch struct {
 	IncludeExpression    string
 	MigrationWindowStart time.Time
 	MigrationWindowEnd   time.Time
-	DefaultNetwork       string
 }
 
 func (b Batch) Validate() error {

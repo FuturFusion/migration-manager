@@ -171,11 +171,6 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		b.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
 	}
 
-	b.DefaultNetwork, err = c.global.Asker.AskString("Default network for instances: ", "", func(s string) error { return nil })
-	if err != nil {
-		return err
-	}
-
 	// Insert into database.
 	content, err := json.Marshal(b)
 	if err != nil {
@@ -242,7 +237,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Status", "Status String", "Target", "Project", "Storage Pool", "Include Expression", "Window Start", "Window End", "Default Network"}
+	header := []string{"Name", "Status", "Status String", "Target", "Project", "Storage Pool", "Include Expression", "Window Start", "Window End"}
 	data := [][]string{}
 
 	for _, b := range batches {
@@ -256,7 +251,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 			endString = b.MigrationWindowEnd.String()
 		}
 
-		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, targetMap[b.TargetID], b.TargetProject, b.StoragePool, b.IncludeExpression, startString, endString, b.DefaultNetwork})
+		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, targetMap[b.TargetID], b.TargetProject, b.StoragePool, b.IncludeExpression, startString, endString})
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, batches)
@@ -380,10 +375,6 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	if !b.MigrationWindowEnd.IsZero() {
 		cmd.Printf("  - Window end:         %s\n", b.MigrationWindowEnd)
-	}
-
-	if b.DefaultNetwork != "" {
-		cmd.Printf("  - Default network:    %s\n", b.DefaultNetwork)
 	}
 
 	cmd.Printf("\n  - Instances:\n")
@@ -598,11 +589,6 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 
 	if windowEnd != "" {
 		b.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
-	}
-
-	b.DefaultNetwork, err = c.global.Asker.AskString("Default network for instances: ["+b.DefaultNetwork+"] ", b.DefaultNetwork, func(s string) error { return nil })
-	if err != nil {
-		return err
 	}
 
 	newBatchName := b.Name

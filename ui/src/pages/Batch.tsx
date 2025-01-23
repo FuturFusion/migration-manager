@@ -17,7 +17,7 @@ const Batch = () => {
     refetchInterval: refetchInterval,
   })
 
-  const headers = ["Name", "Status", "Target", "Project", "Storage pool", "Include expression", "Window start", "Window end", "Default network", "Actions"];
+  const headers = ["Name", "Status", "Target", "Project", "Storage pool", "Include expression", "Window start", "Window end", "Actions"];
   const rows = batches.map((item) => {
     return [
       {
@@ -43,9 +43,6 @@ const Batch = () => {
       },
       {
         content: formatDate(item.migration_window_end.toString())
-      },
-      {
-        content: item.default_network
       },
       {
         content: <BatchActions batch={item} />

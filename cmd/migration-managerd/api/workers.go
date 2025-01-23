@@ -960,52 +960,28 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			continue
 		}
 
-		// Get the default network to use for this instance.
-		defaultNetwork, defNetErr := d.network.GetByName(ctx, dbBatch.GetDefaultNetwork())
-		if defNetErr != nil {
-			log.Warn("Failed to get network", logger.Err(defNetErr))
-			err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-				err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, defNetErr.Error(), true)
-				if err != nil {
-					return err
-				}
-
-				return nil
-			})
-			if err != nil {
-				log.Warn("Failed to update instance status", logger.Err(err))
-			}
-
-			continue
-		}
-
 		// Add NIC(s).
 		for idx, nic := range i.(*instance.InternalInstance).NICs {
 			log := log.With(slog.String("network_hwaddr", nic.Hwaddr))
 
 			nicDeviceName := fmt.Sprintf("eth%d", idx)
-			baseNetwork := defaultNetwork
 
-			// If the NIC has a network set, and it's not the default, fetch the network definition.
-			if nic.Network != "" && nic.Network != baseNetwork.Name {
-				var netErr error
-				baseNetwork, netErr = d.network.GetByName(ctx, nic.Network)
-				if netErr != nil {
-					log.Warn("Failed to get network", logger.Err(netErr))
-					err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
-						err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, netErr.Error(), true)
-						if err != nil {
-							return err
-						}
-
-						return nil
-					})
+			baseNetwork, netErr := d.network.GetByName(ctx, nic.Network)
+			if netErr != nil {
+				log.Warn("Failed to get network", logger.Err(netErr))
+				err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
+					err := d.db.UpdateInstanceStatus(tx, i.GetUUID(), api.MIGRATIONSTATUS_ERROR, netErr.Error(), true)
 					if err != nil {
-						log.Warn("Failed to update instance status", logger.Err(err))
+						return err
 					}
 
-					continue
+					return nil
+				})
+				if err != nil {
+					log.Warn("Failed to update instance status", logger.Err(err))
 				}
+
+				continue
 			}
 
 			// Pickup device name override if set.
