@@ -15,7 +15,6 @@ const Notification = () => {
     {notification.message != "" && (
     <ToastContainer
       className="p-3"
-      position="bottom-end"
       style={{ zIndex: 1 }}
     >
       <Toast bg={notification.type} >

@@ -28,6 +28,27 @@ export const fetchBatchInstances = (name: string | undefined): Promise<Instance[
   });
 };
 
+export const createBatch = (body: string): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/batches`, {
+      method: "POST",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
+export const deleteBatch = (name: string): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/batches/${name}`, {method: "DELETE"})
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const startBatch = (name: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/batches/${name}/start`, {method: "POST"})
