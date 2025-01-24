@@ -2,12 +2,15 @@ package migration
 
 import "context"
 
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg migration_test -out target_service_mock_gen_test.go -rm . TargetService
+
 type TargetService interface {
 	Create(ctx context.Context, target Target) (Target, error)
 	GetAll(ctx context.Context) (Targets, error)
+	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Target, error)
 	GetByName(ctx context.Context, name string) (Target, error)
-	UpdateByName(ctx context.Context, target Target) (Target, error)
+	UpdateByID(ctx context.Context, target Target) (Target, error)
 	DeleteByName(ctx context.Context, name string) error
 }
 
@@ -18,8 +21,9 @@ type TargetService interface {
 type TargetRepo interface {
 	Create(ctx context.Context, target Target) (Target, error)
 	GetAll(ctx context.Context) (Targets, error)
+	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Target, error)
 	GetByName(ctx context.Context, name string) (Target, error)
-	UpdateByName(ctx context.Context, target Target) (Target, error)
+	UpdateByID(ctx context.Context, target Target) (Target, error)
 	DeleteByName(ctx context.Context, name string) error
 }

@@ -20,7 +20,7 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Add batch to the database.
-	q := `INSERT INTO batches (name,target_id,target_project,status,status_string,storage_pool,include_expression,migration_window_start,migration_window_end,default_network) VALUES(?,?,?,?,?,?,?,?,?,?)`
+	q := `INSERT INTO batches (name,target_id,target_project,status,status_string,storage_pool,include_expression,migration_window_start,migration_window_end) VALUES(?,?,?,?,?,?,?,?,?)`
 
 	marshalledMigrationWindowStart, err := internalBatch.MigrationWindowStart.MarshalText()
 	if err != nil {
@@ -32,7 +32,7 @@ func (n *Node) AddBatch(tx *sql.Tx, b batch.Batch) error {
 		return err
 	}
 
-	result, err := tx.Exec(q, internalBatch.Name, internalBatch.TargetID, internalBatch.TargetProject, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeExpression, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DefaultNetwork)
+	result, err := tx.Exec(q, internalBatch.Name, internalBatch.TargetID, internalBatch.TargetProject, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeExpression, marshalledMigrationWindowStart, marshalledMigrationWindowEnd)
 	if err != nil {
 		return mapDBError(err)
 	}
@@ -158,7 +158,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	// Update batch in the database.
-	q = `UPDATE batches SET name=?,target_id=?,target_project=?,status=?,status_string=?,storage_pool=?,include_expression=?,migration_window_start=?,migration_window_end=?,default_network=? WHERE id=?`
+	q = `UPDATE batches SET name=?,target_id=?,target_project=?,status=?,status_string=?,storage_pool=?,include_expression=?,migration_window_start=?,migration_window_end=? WHERE id=?`
 
 	internalBatch, ok := b.(*batch.InternalBatch)
 	if !ok {
@@ -175,7 +175,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 		return err
 	}
 
-	result, err := tx.Exec(q, internalBatch.Name, internalBatch.TargetID, internalBatch.TargetProject, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeExpression, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DefaultNetwork, internalBatch.DatabaseID)
+	result, err := tx.Exec(q, internalBatch.Name, internalBatch.TargetID, internalBatch.TargetProject, internalBatch.Status, internalBatch.StatusString, internalBatch.StoragePool, internalBatch.IncludeExpression, marshalledMigrationWindowStart, marshalledMigrationWindowEnd, internalBatch.DatabaseID)
 	if err != nil {
 		return mapDBError(err)
 	}
@@ -196,7 +196,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 	ret := []batch.Batch{}
 
 	// Get all batches in the database.
-	q := `SELECT id,name,target_id,target_project,status,status_string,storage_pool,include_expression,migration_window_start,migration_window_end,default_network FROM batches`
+	q := `SELECT id,name,target_id,target_project,status,status_string,storage_pool,include_expression,migration_window_start,migration_window_end FROM batches`
 	var rows *sql.Rows
 	var err error
 	if name != "" {
@@ -221,7 +221,7 @@ func (n *Node) getBatchesHelper(tx *sql.Tx, name string, id int) ([]batch.Batch,
 		marshalledMigrationWindowStart := ""
 		marshalledMigrationWindowEnd := ""
 
-		err := rows.Scan(&newBatch.DatabaseID, &newBatch.Name, &newBatch.TargetID, &newBatch.TargetProject, &newBatch.Status, &newBatch.StatusString, &newBatch.StoragePool, &newBatch.IncludeExpression, &marshalledMigrationWindowStart, &marshalledMigrationWindowEnd, &newBatch.DefaultNetwork)
+		err := rows.Scan(&newBatch.DatabaseID, &newBatch.Name, &newBatch.TargetID, &newBatch.TargetProject, &newBatch.Status, &newBatch.StatusString, &newBatch.StoragePool, &newBatch.IncludeExpression, &marshalledMigrationWindowStart, &marshalledMigrationWindowEnd)
 		if err != nil {
 			return nil, err
 		}

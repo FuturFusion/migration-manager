@@ -83,6 +83,25 @@ func (_d TargetRepoWithSlog) GetAll(ctx context.Context) (t1 _sourceMigration.Ta
 	return _d._base.GetAll(ctx)
 }
 
+// GetAllNames implements _sourceMigration.TargetRepo
+func (_d TargetRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+	).Debug("TargetRepoWithSlog: calling GetAllNames")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("sa1", sa1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("TargetRepoWithSlog: method GetAllNames returned an error")
+		} else {
+			log.Debug("TargetRepoWithSlog: method GetAllNames finished")
+		}
+	}()
+	return _d._base.GetAllNames(ctx)
+}
+
 // GetByID implements _sourceMigration.TargetRepo
 func (_d TargetRepoWithSlog) GetByID(ctx context.Context, id int) (t1 _sourceMigration.Target, err error) {
 	_d._log.With(
@@ -123,22 +142,22 @@ func (_d TargetRepoWithSlog) GetByName(ctx context.Context, name string) (t1 _so
 	return _d._base.GetByName(ctx, name)
 }
 
-// UpdateByName implements _sourceMigration.TargetRepo
-func (_d TargetRepoWithSlog) UpdateByName(ctx context.Context, target _sourceMigration.Target) (t1 _sourceMigration.Target, err error) {
+// UpdateByID implements _sourceMigration.TargetRepo
+func (_d TargetRepoWithSlog) UpdateByID(ctx context.Context, target _sourceMigration.Target) (t1 _sourceMigration.Target, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("target", target),
-	).Debug("TargetRepoWithSlog: calling UpdateByName")
+	).Debug("TargetRepoWithSlog: calling UpdateByID")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("t1", t1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("TargetRepoWithSlog: method UpdateByName returned an error")
+			log.Error("TargetRepoWithSlog: method UpdateByID returned an error")
 		} else {
-			log.Debug("TargetRepoWithSlog: method UpdateByName finished")
+			log.Debug("TargetRepoWithSlog: method UpdateByID finished")
 		}
 	}()
-	return _d._base.UpdateByName(ctx, target)
+	return _d._base.UpdateByID(ctx, target)
 }

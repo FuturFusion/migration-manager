@@ -19,6 +19,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/config"
 	"github.com/FuturFusion/migration-manager/internal/testcert"
+	"github.com/FuturFusion/migration-manager/internal/testing/queue"
 )
 
 var (
@@ -434,28 +435,9 @@ func TestSourceRemove(t *testing.T) {
 	}
 }
 
-type queueItem[T any] struct {
-	value T
-	err   error
-}
-
 type httpResponse struct {
 	status int
 	body   string
-}
-
-func pop[T any](t *testing.T, queue *[]queueItem[T]) (T, error) {
-	t.Helper()
-
-	if len(*queue) == 0 {
-		t.Fatal("ask value queue already drained")
-	}
-
-	ret, err := (*queue)[0].value, (*queue)[0].err
-	updatedQueue := (*queue)[1:]
-	*queue = updatedQueue
-
-	return ret, err
 }
 
 func TestSourceUpdate(t *testing.T) {
@@ -484,9 +466,9 @@ func TestSourceUpdate(t *testing.T) {
 	tests := []struct {
 		name                       string
 		args                       []string
-		askStringReturns           []queueItem[string]
-		askBoolReturns             []queueItem[bool]
-		migrationManagerdResponses []queueItem[httpResponse]
+		askStringReturns           []queue.Item[string]
+		askBoolReturns             []queue.Item[bool]
+		migrationManagerdResponses []queue.Item[httpResponse]
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -504,18 +486,18 @@ func TestSourceUpdate(t *testing.T) {
 		{
 			name: "success",
 			args: []string{"source 1"},
-			askStringReturns: []queueItem[string]{
-				{value: "new name"},
-				{value: vCenterSimulator.URL.String()},
-				{value: vcUser},
-				{value: vcPassword},
+			askStringReturns: []queue.Item[string]{
+				{Value: "new name"},
+				{Value: vCenterSimulator.URL.String()},
+				{Value: vcUser},
+				{Value: vcPassword},
 			},
-			askBoolReturns: []queueItem[bool]{
-				{value: true}, // isInsecure
+			askBoolReturns: []queue.Item[bool]{
+				{Value: true}, // isInsecure
 			},
-			migrationManagerdResponses: []queueItem[httpResponse]{
-				{value: httpResponse{http.StatusOK, existingSource}},
-				{value: httpResponse{http.StatusOK, successfulPutResponse}},
+			migrationManagerdResponses: []queue.Item[httpResponse]{
+				{Value: httpResponse{http.StatusOK, existingSource}},
+				{Value: httpResponse{http.StatusOK, successfulPutResponse}},
 			},
 
 			assertErr: require.NoError,
@@ -523,8 +505,8 @@ func TestSourceUpdate(t *testing.T) {
 		{
 			name: "error - failed retrival of existing source",
 			args: []string{"source 1"},
-			migrationManagerdResponses: []queueItem[httpResponse]{
-				{value: httpResponse{http.StatusOK, `{`}}, // invalid JSON
+			migrationManagerdResponses: []queue.Item[httpResponse]{
+				{Value: httpResponse{http.StatusOK, `{`}}, // invalid JSON
 			},
 
 			assertErr: require.Error,
@@ -532,8 +514,8 @@ func TestSourceUpdate(t *testing.T) {
 		{
 			name: "error - invalid metadata type for existing source",
 			args: []string{"source 1"},
-			migrationManagerdResponses: []queueItem[httpResponse]{
-				{value: httpResponse{
+			migrationManagerdResponses: []queue.Item[httpResponse]{
+				{Value: httpResponse{
 					http.StatusOK, `{
   "status_code": 200,
   "status": "Success",
@@ -547,17 +529,8 @@ func TestSourceUpdate(t *testing.T) {
 		{
 			name: "error - source type is not VMware",
 			args: []string{"source 1"},
-			askStringReturns: []queueItem[string]{
-				{value: "new name"},
-				{value: vCenterSimulator.URL.String()},
-				{value: vcUser},
-				{value: vcPassword},
-			},
-			askBoolReturns: []queueItem[bool]{
-				{value: true}, // isInsecure
-			},
-			migrationManagerdResponses: []queueItem[httpResponse]{
-				{value: httpResponse{
+			migrationManagerdResponses: []queue.Item[httpResponse]{
+				{Value: httpResponse{
 					http.StatusOK, `{
   "status_code": 200,
   "status": "Success",
@@ -575,17 +548,17 @@ func TestSourceUpdate(t *testing.T) {
 		{
 			name: "error - failed connection test",
 			args: []string{"source 1"},
-			askStringReturns: []queueItem[string]{
-				{value: "new name"},
-				{value: vCenterSimulator.URL.String()},
-				{value: "invalid user"}, // invalid user
-				{value: vcPassword},
+			askStringReturns: []queue.Item[string]{
+				{Value: "new name"},
+				{Value: vCenterSimulator.URL.String()},
+				{Value: "invalid user"}, // invalid user
+				{Value: vcPassword},
 			},
-			askBoolReturns: []queueItem[bool]{
-				{value: true}, // isInsecure
+			askBoolReturns: []queue.Item[bool]{
+				{Value: true}, // isInsecure
 			},
-			migrationManagerdResponses: []queueItem[httpResponse]{
-				{value: httpResponse{http.StatusOK, existingSource}},
+			migrationManagerdResponses: []queue.Item[httpResponse]{
+				{Value: httpResponse{http.StatusOK, existingSource}},
 			},
 
 			assertErr: require.Error,
@@ -596,19 +569,19 @@ func TestSourceUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			asker := &AskerMock{
 				AskStringFunc: func(question string, defaultAnswer string, validate func(string) error) (string, error) {
-					return pop(t, &tc.askStringReturns)
+					return queue.Pop(t, &tc.askStringReturns)
 				},
 				AskPasswordFunc: func(question string) string {
-					ret, _ := pop(t, &tc.askStringReturns)
+					ret, _ := queue.Pop(t, &tc.askStringReturns)
 					return ret
 				},
 				AskBoolFunc: func(question string, defaultAnswer string) (bool, error) {
-					return pop(t, &tc.askBoolReturns)
+					return queue.Pop(t, &tc.askBoolReturns)
 				},
 			}
 
 			migrationManagerd := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ret, _ := pop(t, &tc.migrationManagerdResponses)
+				ret, _ := queue.Pop(t, &tc.migrationManagerdResponses)
 				w.WriteHeader(ret.status)
 				_, _ = w.Write([]byte(ret.body))
 			}))
@@ -636,6 +609,11 @@ func TestSourceUpdate(t *testing.T) {
 			if testing.Verbose() {
 				t.Logf("\n%s", buf.String())
 			}
+
+			// Ensure queues are completely drained.
+			require.Empty(t, tc.askStringReturns)
+			require.Empty(t, tc.askBoolReturns)
+			require.Empty(t, tc.migrationManagerdResponses)
 		})
 	}
 }

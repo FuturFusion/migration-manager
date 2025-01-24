@@ -30,6 +30,10 @@ func (s sourceService) GetAll(ctx context.Context) (Sources, error) {
 	return s.repo.GetAll(ctx)
 }
 
+func (s sourceService) GetAllNames(ctx context.Context) ([]string, error) {
+	return s.repo.GetAllNames(ctx)
+}
+
 func (s sourceService) GetByID(ctx context.Context, id int) (Source, error) {
 	return s.repo.GetByID(ctx, id)
 }
@@ -42,13 +46,13 @@ func (s sourceService) GetByName(ctx context.Context, name string) (Source, erro
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s sourceService) UpdateByName(ctx context.Context, newSource Source) (Source, error) {
+func (s sourceService) UpdateByID(ctx context.Context, newSource Source) (Source, error) {
 	err := newSource.Validate()
 	if err != nil {
 		return Source{}, err
 	}
 
-	return s.repo.UpdateByName(ctx, newSource)
+	return s.repo.UpdateByID(ctx, newSource)
 }
 
 func (s sourceService) DeleteByName(ctx context.Context, name string) error {

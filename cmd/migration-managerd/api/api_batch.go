@@ -1,18 +1,16 @@
 package api
 
 import (
-	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 
-	"github.com/FuturFusion/migration-manager/internal/batch"
-	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -136,27 +134,39 @@ func batchesGet(d *Daemon, r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	batches := []batch.Batch{}
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbBatches, err := d.db.GetAllBatches(tx)
+	if recursion == 1 {
+		batches, err := d.batch.GetAll(r.Context())
 		if err != nil {
-			return err
+			return response.SmartError(err)
 		}
 
-		batches = dbBatches
-		return nil
-	})
+		result := make([]api.Batch, 0, len(batches))
+		for _, batch := range batches {
+			result = append(result, api.Batch{
+				DatabaseID:           batch.ID,
+				Name:                 batch.Name,
+				TargetID:             batch.TargetID,
+				TargetProject:        batch.TargetProject,
+				Status:               batch.Status,
+				StatusString:         batch.StatusString,
+				StoragePool:          batch.StoragePool,
+				IncludeExpression:    batch.IncludeExpression,
+				MigrationWindowStart: batch.MigrationWindowStart,
+				MigrationWindowEnd:   batch.MigrationWindowEnd,
+			})
+		}
+
+		return response.SyncResponse(true, result)
+	}
+
+	batchNames, err := d.batch.GetAllNames(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	if recursion == 1 {
-		return response.SyncResponse(true, batches)
-	}
-
-	result := make([]string, 0, len(batches))
-	for _, b := range batches {
-		result = append(result, fmt.Sprintf("/%s/batches/%s", api.APIVersion, b.GetName()))
+	result := make([]string, 0, len(batchNames))
+	for _, name := range batchNames {
+		result = append(result, fmt.Sprintf("/%s/batches/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)
@@ -190,39 +200,33 @@ func batchesGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchesPost(d *Daemon, r *http.Request) response.Response {
-	var b batch.InternalBatch
+	var apiBatch api.Batch
 
 	// Decode into the new batch.
-	err := json.NewDecoder(r.Body).Decode(&b)
+	err := json.NewDecoder(r.Body).Decode(&apiBatch)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	_, err = b.CompileIncludeExpression(batch.InstanceWithDetails{})
-	if err != nil {
-		return response.BadRequest(err)
+	batch := migration.Batch{
+		ID:                   apiBatch.DatabaseID,
+		Name:                 apiBatch.Name,
+		TargetID:             apiBatch.TargetID,
+		TargetProject:        apiBatch.TargetProject,
+		Status:               apiBatch.Status,
+		StatusString:         apiBatch.StatusString,
+		StoragePool:          apiBatch.StoragePool,
+		IncludeExpression:    apiBatch.IncludeExpression,
+		MigrationWindowStart: apiBatch.MigrationWindowStart,
+		MigrationWindowEnd:   apiBatch.MigrationWindowEnd,
 	}
 
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		// Insert into database.
-		dbErr := d.db.AddBatch(tx, &b)
-		if dbErr != nil {
-			return fmt.Errorf("Failed creating batch %q: %w", b.GetName(), dbErr)
-		}
-
-		// Add any instances to this batch that match selection criteria.
-		dbErr = d.db.UpdateInstancesAssignedToBatch(tx, &b)
-		if dbErr != nil {
-			return fmt.Errorf("Failed to assign instances to batch %q: %w", b.GetName(), dbErr)
-		}
-
-		return nil
-	})
+	_, err = d.batch.Create(r.Context(), batch)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+b.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+batch.Name)
 }
 
 // swagger:operation DELETE /1.0/batches/{name} batches batch_delete
@@ -246,15 +250,9 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 func batchDelete(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
-	}
-
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.DeleteBatch(tx, name)
-	})
+	err := d.batch.DeleteByName(r.Context(), name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to delete batch '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
 	return response.EmptySyncResponse
@@ -297,25 +295,27 @@ func batchDelete(d *Daemon, r *http.Request) response.Response {
 func batchGet(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
-	}
-
-	var b batch.Batch
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbBatch, err := d.db.GetBatch(tx, name)
-		if err != nil {
-			return err
-		}
-
-		b = dbBatch
-		return nil
-	})
+	batch, err := d.batch.GetByName(r.Context(), name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
-	return response.SyncResponseETag(true, b, b)
+	return response.SyncResponseETag(
+		true,
+		api.Batch{
+			DatabaseID:           batch.ID,
+			Name:                 batch.Name,
+			TargetID:             batch.TargetID,
+			TargetProject:        batch.TargetProject,
+			Status:               batch.Status,
+			StatusString:         batch.StatusString,
+			StoragePool:          batch.StoragePool,
+			IncludeExpression:    batch.IncludeExpression,
+			MigrationWindowStart: batch.MigrationWindowStart,
+			MigrationWindowEnd:   batch.MigrationWindowEnd,
+		},
+		batch,
+	)
 }
 
 // swagger:operation PUT /1.0/batches/{name} batches batch_put
@@ -350,59 +350,56 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 func batchPut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
+	var batch api.Batch
+
+	// Decode into the existing batch.
+	err := json.NewDecoder(r.Body).Decode(&batch)
+	if err != nil {
+		return response.BadRequest(err)
 	}
 
-	// Get the existing batch.
-	var b batch.Batch
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbBatch, err := d.db.GetBatch(tx, name)
-		if err != nil {
-			return err
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
 		}
+	}()
 
-		b = dbBatch
-		return nil
-	})
+	// Get the existing batch.
+	currentBatch, err := d.batch.GetByName(ctx, name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch '%s': %w", name, err))
+		return response.BadRequest(fmt.Errorf("Failed to get batch %q: %w", name, err))
 	}
 
 	// Validate ETag
-	err = util.EtagCheck(r, b)
+	err = util.EtagCheck(r, currentBatch)
 	if err != nil {
 		return response.PreconditionFailed(err)
 	}
 
-	// Decode into the existing batch.
-	err = json.NewDecoder(r.Body).Decode(&b)
-	if err != nil {
-		return response.BadRequest(err)
-	}
-
-	_, err = b.(*batch.InternalBatch).CompileIncludeExpression(batch.InstanceWithDetails{})
-	if err != nil {
-		return response.BadRequest(err)
-	}
-
-	// Update batch in the database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateBatch(tx, b)
+	_, err = d.batch.UpdateByID(ctx, migration.Batch{
+		ID:                   currentBatch.ID,
+		Name:                 batch.Name,
+		TargetID:             batch.TargetID,
+		TargetProject:        batch.TargetProject,
+		Status:               batch.Status,
+		StatusString:         batch.StatusString,
+		StoragePool:          batch.StoragePool,
+		IncludeExpression:    batch.IncludeExpression,
+		MigrationWindowStart: batch.MigrationWindowStart,
+		MigrationWindowEnd:   batch.MigrationWindowEnd,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", b.GetName(), err))
+		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))
 	}
 
-	// Update any instances for this batch that match selection criteria.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateInstancesAssignedToBatch(tx, b)
-	})
+	err = trans.Commit()
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to update instances for batch %q: %w", b.GetName(), err))
+		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+b.GetName())
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+batch.Name)
 }
 
 // swagger:operation GET /1.0/batches/{name}/instances batches batches_instances_get
@@ -488,55 +485,72 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
-	}
-
 	// Parse the recursion field.
 	recursion, err := strconv.Atoi(r.FormValue("recursion"))
 	if err != nil {
 		recursion = 0
 	}
 
-	var b batch.Batch
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbBatch, err := d.db.GetBatch(tx, name)
-		if err != nil {
-			return err
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
 		}
+	}()
 
-		b = dbBatch
-		return nil
-	})
+	batch, err := d.batch.GetByName(ctx, name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
-	instances := []instance.Instance{}
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		id, err := b.GetDatabaseID()
-		if err != nil {
-			return err
-		}
-
-		instances, err = d.db.GetAllInstancesForBatchID(tx, id)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	instances, err := d.instance.GetAllByBatchID(ctx, batch.ID)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
 	if recursion == 1 {
-		return response.SyncResponse(true, instances)
+		result := make([]api.Instance, 0, len(instances))
+		for _, instance := range instances {
+			apiInstance := api.Instance{
+				UUID:                  instance.UUID,
+				InventoryPath:         instance.InventoryPath,
+				Annotation:            instance.Annotation,
+				MigrationStatus:       instance.MigrationStatus,
+				MigrationStatusString: instance.MigrationStatusString,
+				LastUpdateFromSource:  instance.LastUpdateFromSource,
+				SourceID:              instance.SourceID,
+				TargetID:              instance.TargetID,
+				BatchID:               instance.BatchID,
+				GuestToolsVersion:     instance.GuestToolsVersion,
+				Architecture:          instance.Architecture,
+				HardwareVersion:       instance.HardwareVersion,
+				OS:                    instance.OS,
+				OSVersion:             instance.OSVersion,
+				Devices:               instance.Devices,
+				Disks:                 instance.Disks,
+				NICs:                  instance.NICs,
+				Snapshots:             instance.Snapshots,
+				CPU:                   instance.CPU,
+				Memory:                instance.Memory,
+				UseLegacyBios:         instance.UseLegacyBios,
+				SecureBootEnabled:     instance.SecureBootEnabled,
+				TPMPresent:            instance.TPMPresent,
+			}
+
+			if instance.Overrides != nil {
+				apiInstance.Overrides = api.InstanceOverride(*instance.Overrides)
+			}
+
+			result = append(result, apiInstance)
+		}
+
+		return response.SyncResponse(true, result)
 	}
 
 	result := make([]string, 0, len(instances))
-	for _, i := range instances {
-		result = append(result, fmt.Sprintf("/%s/instances/%s", api.APIVersion, i.GetUUID()))
+	for _, instance := range instances {
+		result = append(result, fmt.Sprintf("/%s/instances/%s", api.APIVersion, instance.UUID))
 	}
 
 	return response.SyncResponse(true, result)
@@ -563,20 +577,9 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
-	}
-
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		err := d.db.StartBatch(tx, name)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	err := d.batch.StartBatchByName(r.Context(), name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to start batch '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponse(true, nil)
@@ -603,20 +606,9 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 func batchStopPost(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	if name == "" {
-		return response.BadRequest(fmt.Errorf("Batch name cannot be empty"))
-	}
-
-	err := d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		err := d.db.StopBatch(tx, name)
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
+	err := d.batch.StopBatchByName(r.Context(), name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to stop batch '%s': %w", name, err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponse(true, nil)

@@ -72,6 +72,11 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, sources, 4)
 
+	sourceNames, err := source.GetAllNames(ctx)
+	require.NoError(t, err)
+	require.Len(t, sourceNames, 4)
+	require.ElementsMatch(t, []string{"CommonSourceA", "CommonSourceB", "vmware_source", "vmware_source2"}, sourceNames)
+
 	// Should get back vmwareSourceA unchanged.
 	dbVMWareSourceA, err := source.GetByName(ctx, vmwareSourceA.Name)
 	require.NoError(t, err)
@@ -80,7 +85,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	// Test updating a source.
 	vmwareSourceB.SourceType = api.SOURCETYPE_UNKNOWN
 	vmwareSourceB.Properties = json.RawMessage(`{}`)
-	dbVMWareSourceB, err := source.UpdateByName(ctx, vmwareSourceB)
+	dbVMWareSourceB, err := source.UpdateByID(ctx, vmwareSourceB)
 	require.NoError(t, err)
 	require.Equal(t, vmwareSourceB, dbVMWareSourceB)
 	dbVMWareSourceB, err = source.GetByName(ctx, vmwareSourceB.Name)
@@ -103,7 +108,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a source that doesn't exist.
-	_, err = source.UpdateByName(ctx, commonSourceA)
+	_, err = source.UpdateByID(ctx, commonSourceA)
 	require.Error(t, err)
 
 	// Can't add a duplicate source.

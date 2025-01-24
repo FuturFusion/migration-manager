@@ -21,7 +21,6 @@ CREATE TABLE batches (
     include_expression TEXT NOT NULL,
     migration_window_start TEXT NOT NULL,
     migration_window_end TEXT NOT NULL,
-    default_network VARCHAR(255) NOT NULL,
     UNIQUE (name),
     FOREIGN KEY(target_id) REFERENCES targets(id)
 );
@@ -139,7 +138,6 @@ CREATE TABLE batches (
     include_expression TEXT NOT NULL,
     migration_window_start TEXT NOT NULL,
     migration_window_end TEXT NOT NULL,
-    default_network VARCHAR(255) NOT NULL,
     UNIQUE (name),
     FOREIGN KEY(target_id) REFERENCES targets(id)
 );

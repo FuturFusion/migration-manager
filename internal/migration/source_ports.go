@@ -2,12 +2,15 @@ package migration
 
 import "context"
 
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg migration_test -out source_service_mock_gen_test.go -rm . SourceService
+
 type SourceService interface {
 	Create(ctx context.Context, source Source) (Source, error)
 	GetAll(ctx context.Context) (Sources, error)
+	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Source, error)
 	GetByName(ctx context.Context, name string) (Source, error)
-	UpdateByName(ctx context.Context, source Source) (Source, error)
+	UpdateByID(ctx context.Context, source Source) (Source, error)
 	DeleteByName(ctx context.Context, name string) error
 }
 
@@ -18,8 +21,9 @@ type SourceService interface {
 type SourceRepo interface {
 	Create(ctx context.Context, source Source) (Source, error)
 	GetAll(ctx context.Context) (Sources, error)
+	GetAllNames(ctx context.Context) ([]string, error)
 	GetByID(ctx context.Context, id int) (Source, error)
 	GetByName(ctx context.Context, name string) (Source, error)
-	UpdateByName(ctx context.Context, source Source) (Source, error)
+	UpdateByID(ctx context.Context, source Source) (Source, error)
 	DeleteByName(ctx context.Context, name string) error
 }

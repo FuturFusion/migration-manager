@@ -40,7 +40,4 @@ type Batch interface {
 
 	// Returns the migration window end time
 	GetMigrationWindowEnd() time.Time
-
-	// Returns the default network name
-	GetDefaultNetwork() string
 }

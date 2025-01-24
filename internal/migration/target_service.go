@@ -30,6 +30,10 @@ func (s targetService) GetAll(ctx context.Context) (Targets, error) {
 	return s.repo.GetAll(ctx)
 }
 
+func (s targetService) GetAllNames(ctx context.Context) ([]string, error) {
+	return s.repo.GetAllNames(ctx)
+}
+
 func (s targetService) GetByID(ctx context.Context, id int) (Target, error) {
 	return s.repo.GetByID(ctx, id)
 }
@@ -42,18 +46,18 @@ func (s targetService) GetByName(ctx context.Context, name string) (Target, erro
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s targetService) UpdateByName(ctx context.Context, newTarget Target) (Target, error) {
+func (s targetService) UpdateByID(ctx context.Context, newTarget Target) (Target, error) {
 	err := newTarget.Validate()
 	if err != nil {
 		return Target{}, err
 	}
 
-	return s.repo.UpdateByName(ctx, newTarget)
+	return s.repo.UpdateByID(ctx, newTarget)
 }
 
 func (s targetService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
-		return errors.New("Source name cannot be empty")
+		return errors.New("Instance name cannot be empty")
 	}
 
 	return s.repo.DeleteByName(ctx, name)

@@ -116,12 +116,12 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	targets, err := d.target.GetAll(r.Context())
-	if err != nil {
-		return response.SmartError(err)
-	}
-
 	if recursion == 1 {
+		targets, err := d.target.GetAll(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
 		result := make([]api.IncusTarget, 0, len(targets))
 		for _, target := range targets {
 			result = append(result, api.IncusTarget{
@@ -138,9 +138,14 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 		return response.SyncResponse(true, result)
 	}
 
-	result := make([]string, 0, len(targets))
-	for _, target := range targets {
-		result = append(result, fmt.Sprintf("/%s/targets/%s", api.APIVersion, target.Name))
+	targetNames, err := d.target.GetAllNames(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	result := make([]string, 0, len(targetNames))
+	for _, name := range targetNames {
+		result = append(result, fmt.Sprintf("/%s/targets/%s", api.APIVersion, name))
 	}
 
 	return response.SyncResponse(true, result)
@@ -330,7 +335,10 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	currentTarget, err := d.target.GetByName(ctx, target.Name)
+	currentTarget, err := d.target.GetByName(ctx, name)
+	if err != nil {
+		return response.BadRequest(fmt.Errorf("Failed to get target %q: %w", name, err))
+	}
 
 	// Validate ETag
 	err = util.EtagCheck(r, currentTarget)
@@ -338,9 +346,9 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = d.target.UpdateByName(ctx, migration.Target{
-		ID:            target.DatabaseID,
-		Name:          name,
+	_, err = d.target.UpdateByID(ctx, migration.Target{
+		ID:            currentTarget.ID,
+		Name:          target.Name,
 		Endpoint:      target.Endpoint,
 		TLSClientKey:  target.TLSClientKey,
 		TLSClientCert: target.TLSClientCert,
@@ -348,7 +356,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		Insecure:      target.Insecure,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", name, err))
+		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", target.Name, err))
 	}
 
 	err = trans.Commit()

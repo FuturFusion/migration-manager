@@ -24,13 +24,13 @@ func NewSource(db repo.DBTX) *source {
 }
 
 func (s source) Create(ctx context.Context, in migration.Source) (migration.Source, error) {
-	const sqlUpsert = `
+	const sqlInsert = `
 INSERT INTO sources (name, type, insecure, config)
 VALUES(:name, :type, :insecure, :config)
 RETURNING id, name, type, insecure, config;
 `
 
-	row := s.db.QueryRowContext(ctx, sqlUpsert,
+	row := s.db.QueryRowContext(ctx, sqlInsert,
 		sql.Named("name", in.Name),
 		sql.Named("type", in.SourceType),
 		sql.Named("insecure", in.Insecure),
@@ -44,7 +44,7 @@ RETURNING id, name, type, insecure, config;
 }
 
 func (s source) GetAll(ctx context.Context) (migration.Sources, error) {
-	const sqlGetAll = `SELECT id, name, type, insecure, config FROM sources ORDER BY name`
+	const sqlGetAll = `SELECT id, name, type, insecure, config FROM sources ORDER BY name;`
 
 	rows, err := s.db.QueryContext(ctx, sqlGetAll)
 	if err != nil {
@@ -70,8 +70,36 @@ func (s source) GetAll(ctx context.Context) (migration.Sources, error) {
 	return sources, nil
 }
 
+func (s source) GetAllNames(ctx context.Context) ([]string, error) {
+	const sqlGetAllNames = `SELECT name FROM sources ORDER BY name;`
+
+	rows, err := s.db.QueryContext(ctx, sqlGetAllNames)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() { _ = rows.Close() }()
+
+	var sourceNames []string
+	for rows.Next() {
+		var sourceName string
+		err := rows.Scan(&sourceName)
+		if err != nil {
+			return nil, err
+		}
+
+		sourceNames = append(sourceNames, sourceName)
+	}
+
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+
+	return sourceNames, nil
+}
+
 func (s source) GetByID(ctx context.Context, id int) (migration.Source, error) {
-	const sqlGetByID = `SELECT id, name, type, insecure, config FROM sources WHERE id=:id`
+	const sqlGetByID = `SELECT id, name, type, insecure, config FROM sources WHERE id=:id;`
 
 	row := s.db.QueryRowContext(ctx, sqlGetByID, sql.Named("id", id))
 	if row.Err() != nil {
@@ -82,7 +110,7 @@ func (s source) GetByID(ctx context.Context, id int) (migration.Source, error) {
 }
 
 func (s source) GetByName(ctx context.Context, name string) (migration.Source, error) {
-	const sqlGetByName = `SELECT id, name, type, insecure, config FROM sources WHERE name=:name`
+	const sqlGetByName = `SELECT id, name, type, insecure, config FROM sources WHERE name=:name;`
 
 	row := s.db.QueryRowContext(ctx, sqlGetByName, sql.Named("name", name))
 	if row.Err() != nil {
@@ -92,18 +120,19 @@ func (s source) GetByName(ctx context.Context, name string) (migration.Source, e
 	return scanSource(row)
 }
 
-func (s source) UpdateByName(ctx context.Context, in migration.Source) (migration.Source, error) {
-	const sqlUpsert = `
+func (s source) UpdateByID(ctx context.Context, in migration.Source) (migration.Source, error) {
+	const sqlUpdate = `
 UPDATE sources SET name=:name, insecure=:insecure, type=:type, config=:config
-WHERE name=:name
+WHERE id=:id
 RETURNING id, name, type, insecure, config;
 `
 
-	row := s.db.QueryRowContext(ctx, sqlUpsert,
+	row := s.db.QueryRowContext(ctx, sqlUpdate,
 		sql.Named("name", in.Name),
 		sql.Named("type", in.SourceType),
 		sql.Named("insecure", in.Insecure),
 		sql.Named("config", in.Properties),
+		sql.Named("id", in.ID),
 	)
 	if row.Err() != nil {
 		return migration.Source{}, row.Err()
@@ -114,7 +143,13 @@ RETURNING id, name, type, insecure, config;
 
 func scanSource(row interface{ Scan(dest ...any) error }) (migration.Source, error) {
 	var source migration.Source
-	err := row.Scan(&source.ID, &source.Name, &source.SourceType, &source.Insecure, &source.Properties)
+	err := row.Scan(
+		&source.ID,
+		&source.Name,
+		&source.SourceType,
+		&source.Insecure,
+		&source.Properties,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return migration.Source{}, migration.ErrNotFound
@@ -134,7 +169,7 @@ func scanSource(row interface{ Scan(dest ...any) error }) (migration.Source, err
 }
 
 func (s source) DeleteByName(ctx context.Context, name string) error {
-	const sqlDelete = `DELETE FROM sources WHERE name=:name`
+	const sqlDelete = `DELETE FROM sources WHERE name=:name;`
 
 	result, err := s.db.ExecContext(ctx, sqlDelete, sql.Named("name", name))
 	if err != nil {

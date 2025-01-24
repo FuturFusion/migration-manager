@@ -29,14 +29,17 @@ var _ migration.SourceRepo = &SourceRepoMock{}
 //			GetAllFunc: func(ctx context.Context) (migration.Sources, error) {
 //				panic("mock out the GetAll method")
 //			},
+//			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
+//				panic("mock out the GetAllNames method")
+//			},
 //			GetByIDFunc: func(ctx context.Context, id int) (migration.Source, error) {
 //				panic("mock out the GetByID method")
 //			},
 //			GetByNameFunc: func(ctx context.Context, name string) (migration.Source, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateByNameFunc: func(ctx context.Context, source migration.Source) (migration.Source, error) {
-//				panic("mock out the UpdateByName method")
+//			UpdateByIDFunc: func(ctx context.Context, source migration.Source) (migration.Source, error) {
+//				panic("mock out the UpdateByID method")
 //			},
 //		}
 //
@@ -54,14 +57,17 @@ type SourceRepoMock struct {
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Sources, error)
 
+	// GetAllNamesFunc mocks the GetAllNames method.
+	GetAllNamesFunc func(ctx context.Context) ([]string, error)
+
 	// GetByIDFunc mocks the GetByID method.
 	GetByIDFunc func(ctx context.Context, id int) (migration.Source, error)
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (migration.Source, error)
 
-	// UpdateByNameFunc mocks the UpdateByName method.
-	UpdateByNameFunc func(ctx context.Context, source migration.Source) (migration.Source, error)
+	// UpdateByIDFunc mocks the UpdateByID method.
+	UpdateByIDFunc func(ctx context.Context, source migration.Source) (migration.Source, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -84,6 +90,11 @@ type SourceRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetAllNames holds details about calls to the GetAllNames method.
+		GetAllNames []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
 		// GetByID holds details about calls to the GetByID method.
 		GetByID []struct {
 			// Ctx is the ctx argument value.
@@ -98,8 +109,8 @@ type SourceRepoMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// UpdateByName holds details about calls to the UpdateByName method.
-		UpdateByName []struct {
+		// UpdateByID holds details about calls to the UpdateByID method.
+		UpdateByID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
@@ -109,9 +120,10 @@ type SourceRepoMock struct {
 	lockCreate       sync.RWMutex
 	lockDeleteByName sync.RWMutex
 	lockGetAll       sync.RWMutex
+	lockGetAllNames  sync.RWMutex
 	lockGetByID      sync.RWMutex
 	lockGetByName    sync.RWMutex
-	lockUpdateByName sync.RWMutex
+	lockUpdateByID   sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -218,6 +230,38 @@ func (mock *SourceRepoMock) GetAllCalls() []struct {
 	return calls
 }
 
+// GetAllNames calls GetAllNamesFunc.
+func (mock *SourceRepoMock) GetAllNames(ctx context.Context) ([]string, error) {
+	if mock.GetAllNamesFunc == nil {
+		panic("SourceRepoMock.GetAllNamesFunc: method is nil but SourceRepo.GetAllNames was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetAllNames.Lock()
+	mock.calls.GetAllNames = append(mock.calls.GetAllNames, callInfo)
+	mock.lockGetAllNames.Unlock()
+	return mock.GetAllNamesFunc(ctx)
+}
+
+// GetAllNamesCalls gets all the calls that were made to GetAllNames.
+// Check the length with:
+//
+//	len(mockedSourceRepo.GetAllNamesCalls())
+func (mock *SourceRepoMock) GetAllNamesCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetAllNames.RLock()
+	calls = mock.calls.GetAllNames
+	mock.lockGetAllNames.RUnlock()
+	return calls
+}
+
 // GetByID calls GetByIDFunc.
 func (mock *SourceRepoMock) GetByID(ctx context.Context, id int) (migration.Source, error) {
 	if mock.GetByIDFunc == nil {
@@ -290,10 +334,10 @@ func (mock *SourceRepoMock) GetByNameCalls() []struct {
 	return calls
 }
 
-// UpdateByName calls UpdateByNameFunc.
-func (mock *SourceRepoMock) UpdateByName(ctx context.Context, source migration.Source) (migration.Source, error) {
-	if mock.UpdateByNameFunc == nil {
-		panic("SourceRepoMock.UpdateByNameFunc: method is nil but SourceRepo.UpdateByName was just called")
+// UpdateByID calls UpdateByIDFunc.
+func (mock *SourceRepoMock) UpdateByID(ctx context.Context, source migration.Source) (migration.Source, error) {
+	if mock.UpdateByIDFunc == nil {
+		panic("SourceRepoMock.UpdateByIDFunc: method is nil but SourceRepo.UpdateByID was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -302,17 +346,17 @@ func (mock *SourceRepoMock) UpdateByName(ctx context.Context, source migration.S
 		Ctx:    ctx,
 		Source: source,
 	}
-	mock.lockUpdateByName.Lock()
-	mock.calls.UpdateByName = append(mock.calls.UpdateByName, callInfo)
-	mock.lockUpdateByName.Unlock()
-	return mock.UpdateByNameFunc(ctx, source)
+	mock.lockUpdateByID.Lock()
+	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
+	mock.lockUpdateByID.Unlock()
+	return mock.UpdateByIDFunc(ctx, source)
 }
 
-// UpdateByNameCalls gets all the calls that were made to UpdateByName.
+// UpdateByIDCalls gets all the calls that were made to UpdateByID.
 // Check the length with:
 //
-//	len(mockedSourceRepo.UpdateByNameCalls())
-func (mock *SourceRepoMock) UpdateByNameCalls() []struct {
+//	len(mockedSourceRepo.UpdateByIDCalls())
+func (mock *SourceRepoMock) UpdateByIDCalls() []struct {
 	Ctx    context.Context
 	Source migration.Source
 } {
@@ -320,8 +364,8 @@ func (mock *SourceRepoMock) UpdateByNameCalls() []struct {
 		Ctx    context.Context
 		Source migration.Source
 	}
-	mock.lockUpdateByName.RLock()
-	calls = mock.calls.UpdateByName
-	mock.lockUpdateByName.RUnlock()
+	mock.lockUpdateByID.RLock()
+	calls = mock.calls.UpdateByID
+	mock.lockUpdateByID.RUnlock()
 	return calls
 }

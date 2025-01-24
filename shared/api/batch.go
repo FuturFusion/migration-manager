@@ -84,7 +84,4 @@ type Batch struct {
 
 	// If specified, don't start the migration after this time
 	MigrationWindowEnd time.Time `json:"migration_window_end" yaml:"migration_window_end"`
-
-	// Default network to use for instances if not specified by their NIC(s) definition
-	DefaultNetwork string `json:"default_network" yaml:"default_network"`
 }

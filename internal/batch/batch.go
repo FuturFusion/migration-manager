@@ -17,7 +17,7 @@ type InternalBatch struct {
 }
 
 // Returns a new Batch ready for use.
-func NewBatch(name string, targetID int, targetProject string, storagePool string, includeExpression string, migrationWindowStart time.Time, migrationWindowEnd time.Time, defaultNetwork string) *InternalBatch {
+func NewBatch(name string, targetID int, targetProject string, storagePool string, includeExpression string, migrationWindowStart time.Time, migrationWindowEnd time.Time) *InternalBatch {
 	return &InternalBatch{
 		Batch: api.Batch{
 			Name:                 name,
@@ -30,7 +30,6 @@ func NewBatch(name string, targetID int, targetProject string, storagePool strin
 			IncludeExpression:    includeExpression,
 			MigrationWindowStart: migrationWindowStart,
 			MigrationWindowEnd:   migrationWindowEnd,
-			DefaultNetwork:       defaultNetwork,
 		},
 	}
 }
@@ -84,10 +83,6 @@ func (b *InternalBatch) GetMigrationWindowStart() time.Time {
 
 func (b *InternalBatch) GetMigrationWindowEnd() time.Time {
 	return b.MigrationWindowEnd
-}
-
-func (b *InternalBatch) GetDefaultNetwork() string {
-	return b.DefaultNetwork
 }
 
 type InstanceWithDetails struct {

@@ -118,7 +118,7 @@ func (f *FGA) load(ctx context.Context, certificateFingerprints []string, opts O
 				slog.Info("Connection with OpenFGA established")
 
 				f.onlineMu.Lock()
-				defer f.onlineMu.Unlock() //nolint:revive
+				defer f.onlineMu.Unlock()
 				f.online = true
 
 				return

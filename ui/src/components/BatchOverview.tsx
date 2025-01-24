@@ -60,10 +60,6 @@ const BatchOverview = () => {
         <div className="col-2 detail-table-header">Window stop</div>
         <div className="col-10 detail-table-cell">{ formatDate(batch?.migration_window_end.toString()) }</div>
       </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Default network</div>
-        <div className="col-10 detail-table-cell">{ batch?.default_network }</div>
-      </div>
     </div>
   );
 };
