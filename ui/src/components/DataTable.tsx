@@ -3,6 +3,7 @@ import { Table } from 'react-bootstrap';
 
 interface DataTableRow {
   content: ReactNode | string;
+  class?: string;
 }
 
 interface Props {
@@ -30,7 +31,7 @@ const DataTable: FC<Props> = ({ headers, rows}) => {
     const dataRows = rows.map((rowItem, rowIndex) => {
       const row = rowItem.map((item, index) => {
         return (
-          <td key={ index }>{ item.content }</td>
+          <td className={item.class} key={ index }>{ item.content }</td>
         );
       });
 

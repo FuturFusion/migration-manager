@@ -8,6 +8,7 @@ import BatchCreate from 'pages/BatchCreate';
 import BatchDetail from 'pages/BatchDetail';
 import Home from 'pages/Home';
 import Instance from 'pages/Instance';
+import InstanceDetail from 'pages/InstanceDetail';
 import Source from 'pages/Source';
 import Target from 'pages/Target';
 import Queue from 'pages/Queue';
@@ -35,6 +36,8 @@ function App() {
           <Route path="/ui/sources" element={<Source />} />
           <Route path="/ui/targets" element={<Target />} />
           <Route path="/ui/instances" element={<Instance />} />
+          <Route path="/ui/instances/:uuid" element={<InstanceDetail />} />
+          <Route path="/ui/instances/:uuid/:activeTab" element={<InstanceDetail />} />
           <Route path="/ui/batches" element={<Batch />} />
           <Route path="/ui/batches/create" element={<BatchCreate />} />
           <Route path="/ui/batches/:name" element={<BatchDetail />} />
