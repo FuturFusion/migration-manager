@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -371,7 +372,7 @@ func instanceOverridePost(d *Daemon, r *http.Request) response.Response {
 
 	_, err = d.instance.CreateOverrides(r.Context(), migration.Overrides{
 		UUID:             override.UUID,
-		LastUpdate:       override.LastUpdate,
+		LastUpdate:       time.Now().UTC(),
 		Comment:          override.Comment,
 		NumberCPUs:       override.NumberCPUs,
 		MemoryInBytes:    override.MemoryInBytes,
@@ -450,7 +451,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 
 	_, err = d.instance.UpdateOverridesByID(ctx, migration.Overrides{
 		UUID:             override.UUID,
-		LastUpdate:       override.LastUpdate,
+		LastUpdate:       time.Now().UTC(),
 		Comment:          override.Comment,
 		NumberCPUs:       override.NumberCPUs,
 		MemoryInBytes:    override.MemoryInBytes,
