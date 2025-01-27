@@ -72,7 +72,11 @@ const Batch = () => {
           </div>
         </div>
       </div>
-      <DataTable headers={headers} rows={rows} />
+      <div className="d-flex flex-column">
+        <div className="scroll-container flex-grow-1 p-3">
+          <DataTable headers={headers} rows={rows} />
+        </div>
+      </div>
     </>
   );
 };

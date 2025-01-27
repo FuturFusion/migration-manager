@@ -21,7 +21,13 @@ const Instance = () => {
     );
   }
 
-  return <InstanceDataTable instances={instances} />;
+  return (
+    <div className="d-flex flex-column">
+      <div className="scroll-container flex-grow-1 p-3">
+        <InstanceDataTable instances={instances} />
+      </div>
+    </div>
+  );
 };
 
 export default Instance;
