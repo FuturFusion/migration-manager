@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router';
 import { fetchBatchInstances } from 'api/batches';
-import DataTable from 'components/DataTable.tsx';
+import InstanceDataTable from 'components/InstanceDataTable.tsx';
 
 const BatchInstances = () => {
   const { name } = useParams();
@@ -26,33 +26,7 @@ const BatchInstances = () => {
     );
   }
 
-  const headers = ["UUID", "Source", "Inventory path", "OS version", "CPU", "Memory", "Migration status"];
-  const rows = instances.map((item) => {
-    return [
-      {
-        content: item.uuid
-      },
-      {
-        content: item.source_id
-      },
-      {
-        content: item.inventory_path
-      },
-      {
-        content: item.os_version
-      },
-      {
-        content: item.cpu.number_cpus
-      },
-      {
-        content: item.memory.memory_in_bytes
-      },
-      {
-        content: item.migration_status_string
-      }];
-  });
-
-  return <DataTable headers={headers} rows={rows} />;
+  return <InstanceDataTable instances={instances} />;
 };
 
 export default BatchInstances;

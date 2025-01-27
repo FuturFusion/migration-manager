@@ -33,3 +33,8 @@ body {
   bottom: 50px !important;
   right: 0px !important;
 }
+
+.item-deleted {
+  text-decoration: line-through;
+  color: gray;
+}

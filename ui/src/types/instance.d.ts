@@ -36,6 +36,15 @@ export interface InstanceMemoryInfo {
   memory_reservation_in_bytes: number;
 }
 
+export interface InstanceOverride {
+  uuid: string;
+  last_update: Date;
+  comment: string;
+  number_cpus: number;
+  memory_in_bytes: number;
+  disable_migration: boolean;
+}
+
 export interface Instance {
   uuid: number;
   inventory_path: string;
@@ -59,4 +68,5 @@ export interface Instance {
   use_legacy_bios: boolean;
   secure_boot_enabled: boolean;
   tpm_present: boolean;
+  overrides: InstanceOverride;
 }
