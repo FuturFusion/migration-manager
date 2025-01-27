@@ -1,4 +1,5 @@
 import { Instance } from 'types/instance';
+import { APIResponse } from 'types/response';
 
 export const fetchInstances = (): Promise<Instance[]> => {
   return new Promise((resolve, reject) => {
@@ -18,7 +19,7 @@ export const fetchInstance = (uuid: string): Promise<Instance> => {
   });
 };
 
-export const createInstanceOverride = (uuid: string, body: string): Promise<any> => {
+export const createInstanceOverride = (uuid: string, body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/instances/${uuid}/override`, {
       method: "POST",
@@ -30,7 +31,7 @@ export const createInstanceOverride = (uuid: string, body: string): Promise<any>
   });
 };
 
-export const updateInstanceOverride = (uuid: string, body: string): Promise<any> => {
+export const updateInstanceOverride = (uuid: string, body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/instances/${uuid}/override`, {
       method: "PUT",
@@ -42,7 +43,7 @@ export const updateInstanceOverride = (uuid: string, body: string): Promise<any>
   });
 };
 
-export const deleteInstanceOverride = (uuid: string): Promise<any> => {
+export const deleteInstanceOverride = (uuid: string): Promise<APIResponse<Object>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/instances/${uuid}/override`, {method: "DELETE"})
       .then((response) => response.json())

@@ -12,6 +12,7 @@ import {
   fetchInstance
 } from 'api/instances';
 import { useNotification } from 'context/notification';
+import { APIResponse } from 'types/response';
 import {
   bytesToHumanReadable,
   hasOverride,
@@ -54,7 +55,7 @@ const InstanceOverrides: FC = () => {
     };
   }
 
-  const handleSuccessResponse = (response: any) => {
+  const handleSuccessResponse = (response: APIResponse<null>) => {
     if (response.error_code == 0) {
       void queryClient.invalidateQueries({queryKey: ['instances', uuid]});
       notify.success(`Override for the instance with ${uuid} saved.`);

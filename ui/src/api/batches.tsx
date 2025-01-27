@@ -1,5 +1,6 @@
 import { Batch } from 'types/batch';
 import { Instance } from 'types/instance';
+import { APIResponse } from 'types/response';
 
 export const fetchBatches = (): Promise<Batch[]> => {
   return new Promise((resolve, reject) => {
@@ -28,7 +29,7 @@ export const fetchBatchInstances = (name: string | undefined): Promise<Instance[
   });
 };
 
-export const createBatch = (body: string): Promise<any> => {
+export const createBatch = (body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/batches`, {
       method: "POST",
@@ -40,7 +41,7 @@ export const createBatch = (body: string): Promise<any> => {
   });
 };
 
-export const deleteBatch = (name: string): Promise<any> => {
+export const deleteBatch = (name: string): Promise<APIResponse<Object>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/batches/${name}`, {method: "DELETE"})
       .then((response) => response.json())
@@ -49,7 +50,7 @@ export const deleteBatch = (name: string): Promise<any> => {
   });
 };
 
-export const startBatch = (name: string): Promise<void> => {
+export const startBatch = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/batches/${name}/start`, {method: "POST"})
       .then((response) => response.json())
@@ -58,7 +59,7 @@ export const startBatch = (name: string): Promise<void> => {
   });
 };
 
-export const stopBatch = (name: string): Promise<void> => {
+export const stopBatch = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/batches/${name}/stop`, {method: "POST"})
       .then((response) => response.json())
