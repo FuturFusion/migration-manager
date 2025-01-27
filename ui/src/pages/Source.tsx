@@ -54,7 +54,13 @@ const Source = () => {
     );
   }
 
-  return <DataTable headers={headers} rows={rows} />;
+  return (
+    <div className="d-flex flex-column">
+      <div className="scroll-container flex-grow-1 p-3">
+        <DataTable headers={headers} rows={rows} />
+      </div>
+    </div>
+  );
 };
 
 export default Source;
