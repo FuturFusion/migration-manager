@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/units"
@@ -115,8 +114,6 @@ func (c *cmdInstanceOverrideAdd) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	override.MemoryInBytes, _ = units.ParseByteSizeString(memoryString)
-
-	override.LastUpdate = time.Now().UTC()
 
 	// Insert into database.
 	content, err := json.Marshal(override)
@@ -319,8 +316,6 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 	if override.MemoryInBytes != val {
 		override.MemoryInBytes = val
 	}
-
-	override.LastUpdate = time.Now().UTC()
 
 	content, err := json.Marshal(override)
 	if err != nil {
