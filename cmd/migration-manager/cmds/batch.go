@@ -91,18 +91,13 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get any defined targets.
-	targetMap, err := c.global.getTargetMap()
+	targets, err := c.global.getTargets()
 	if err != nil {
 		return err
 	}
 
-	if len(targetMap) == 0 {
+	if len(targets) == 0 {
 		return fmt.Errorf("No targets have been defined, cannot add a batch.")
-	}
-
-	definedTargets := []string{}
-	for _, v := range targetMap {
-		definedTargets = append(definedTargets, v)
 	}
 
 	// Add the batch.
@@ -110,16 +105,9 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		Name: args[0],
 	}
 
-	targetString, err := c.global.Asker.AskChoice(fmt.Sprintf("What target should be used by this batch? (Choices: '%s') ", strings.Join(definedTargets, "', '")), definedTargets, "")
+	b.Target, err = c.global.Asker.AskChoice(fmt.Sprintf("What target should be used by this batch? (Choices: '%s') ", strings.Join(targets, "', '")), targets, "")
 	if err != nil {
 		return err
-	}
-
-	for k, v := range targetMap {
-		if v == targetString {
-			b.TargetID = k
-			break
-		}
 	}
 
 	b.TargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? [default] ", "default", nil)
@@ -215,12 +203,6 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Get any defined targets.
-	targetMap, err := c.global.getTargetMap()
-	if err != nil {
-		return err
-	}
-
 	// Get the list of all batches.
 	resp, err := c.global.doHTTPRequestV1("/batches", http.MethodGet, "recursion=1", nil)
 	if err != nil {
@@ -249,7 +231,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 			endString = b.MigrationWindowEnd.String()
 		}
 
-		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, targetMap[b.TargetID], b.TargetProject, b.StoragePool, b.IncludeExpression, startString, endString})
+		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.Target, b.TargetProject, b.StoragePool, b.IncludeExpression, startString, endString})
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, batches)
@@ -319,12 +301,6 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Get any defined targets.
-	targetMap, err := c.global.getTargetMap()
-	if err != nil {
-		return err
-	}
-
 	// Get the batch.
 	resp, err := c.global.doHTTPRequestV1("/batches/"+name, http.MethodGet, "", nil)
 	if err != nil {
@@ -354,7 +330,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	// Show the details
 	cmd.Printf("Batch: %s\n", b.Name)
 	cmd.Printf("  - Status:             %s\n", b.StatusString)
-	cmd.Printf("  - Target:             %s\n", targetMap[b.TargetID])
+	cmd.Printf("  - Target:             %s\n", b.Target)
 	if b.TargetProject != "" {
 		cmd.Printf("  - Project:            %s\n", b.TargetProject)
 	}
@@ -485,18 +461,13 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get any defined targets.
-	targetMap, err := c.global.getTargetMap()
+	targets, err := c.global.getTargets()
 	if err != nil {
 		return err
 	}
 
-	if len(targetMap) == 0 {
-		return fmt.Errorf("No targets have been defined, cannot update the batch.")
-	}
-
-	definedTargets := make([]string, 0, len(targetMap))
-	for _, v := range targetMap {
-		definedTargets = append(definedTargets, v)
+	if len(targets) == 0 {
+		return fmt.Errorf("No targets have been defined, cannot add a batch.")
 	}
 
 	// Get the existing batch.
@@ -520,16 +491,9 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	targetString, err := c.global.Asker.AskChoice(fmt.Sprintf("Target: ["+targetMap[b.TargetID]+"] (Choices: '%s') ", strings.Join(definedTargets, "', '")), definedTargets, "")
+	b.Target, err = c.global.Asker.AskChoice(fmt.Sprintf("Target: ["+b.Target+"] (Choices: '%s') ", strings.Join(targets, "', '")), targets, "")
 	if err != nil {
 		return err
-	}
-
-	for k, v := range targetMap {
-		if v == targetString {
-			b.TargetID = k
-			break
-		}
 	}
 
 	b.TargetProject, err = c.global.Asker.AskString("Project: ["+b.TargetProject+"] ", b.TargetProject, nil)
@@ -605,25 +569,26 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (c *CmdGlobal) getTargetMap() (map[int]string, error) {
-	ret := make(map[int]string)
+func (c *CmdGlobal) getTargets() ([]string, error) {
+	ret := []string{}
 
 	// Get the list of all targets.
-	resp, err := c.doHTTPRequestV1("/targets", http.MethodGet, "recursion=1", nil)
+	resp, err := c.doHTTPRequestV1("/targets", http.MethodGet, "", nil)
 	if err != nil {
 		return ret, err
 	}
 
-	targets := []api.IncusTarget{}
-
+	targets := []string{}
 	err = responseToStruct(resp, &targets)
 	if err != nil {
 		return ret, err
 	}
 
-	// Loop through returned targets.
-	for _, t := range targets {
-		ret[t.DatabaseID] = t.Name
+	for _, v := range targets {
+		parts := strings.Split(v, "/")
+		if len(parts) > 0 {
+			ret = append(ret, parts[len(parts)-1])
+		}
 	}
 
 	return ret, nil

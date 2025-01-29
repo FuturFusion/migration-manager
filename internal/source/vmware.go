@@ -343,7 +343,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource:  time.Now().UTC(),
-				SourceID:              s.DatabaseID,
+				Source:                s.Name,
 				GuestToolsVersion:     guestToolsVersion,
 				Architecture:          arch,
 				HardwareVersion:       vmProps.Summary.Config.HwVersion,
@@ -368,6 +368,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) ([]instance.Intern
 			},
 			NeedsDiskImport: true,
 			SecretToken:     secretToken,
+			SourceID:        s.DatabaseID,
 		})
 	}
 

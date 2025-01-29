@@ -102,9 +102,9 @@ type Instance struct {
 	// Example: 2024-11-12 16:15:00 +0000 UTC
 	LastUpdateFromSource time.Time `json:"last_update_from_source" yaml:"last_update_from_source"`
 
-	// The originating source ID for this instance
-	// Example: 1
-	SourceID int `json:"source_id" yaml:"source_id"`
+	// The originating source name for this instance
+	// Example: MySource
+	Source string `json:"source" yaml:"source"`
 
 	// The destination target ID for this instance
 	// Example: 1
