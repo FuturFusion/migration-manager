@@ -25,8 +25,8 @@ const BatchCreate = () => {
       errors.name = 'Name is required';
     }
 
-    if (!values.target_id || values.target_id < 1) {
-      errors.target_id = 'Target is required';
+    if (!values.target || values.target < 1) {
+      errors.target = 'Target is required';
     }
 
     if (!values.include_expression) {
@@ -47,7 +47,7 @@ const BatchCreate = () => {
   const formik = useFormik({
     initialValues: {
       name: '',
-      target_id: '',
+      target: '',
       target_project: 'default',
       storage_pool: 'local',
       include_expression: '',
@@ -69,7 +69,6 @@ const BatchCreate = () => {
 
       const modifiedValues = {
         ...values,
-        target_id: parseInt(values.target_id, 10),
         target_project: values.target_project != '' ? values.target_project : 'default',
         storage_pool: values.storage_pool != '' ? values.storage_pool : 'local',
         migration_window_start: windowStart,
@@ -109,25 +108,25 @@ const BatchCreate = () => {
                 {formik.errors.name}
               </Form.Control.Feedback>
             </Form.Group>
-            <Form.Group controlId="target_id">
+            <Form.Group controlId="target">
               <Form.Label>Target</Form.Label>
               {!isLoadingTargets && !targetsError && (
                 <Form.Select
-                  name="target_id"
-                  value={formik.values.target_id}
+                  name="target"
+                  value={formik.values.target}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  isInvalid={!!formik.errors.target_id && formik.touched.target_id}>
+                  isInvalid={!!formik.errors.target && formik.touched.target}>
                     <option value="">-- Select an option --</option>
                     {targets.map((option) => (
-                    <option key={option.database_id} value={option.database_id}>
+                    <option key={option.name} value={option.name}>
                       {option.name}
                     </option>
                     ))}
                 </Form.Select>
               )}
               <Form.Control.Feedback type="invalid">
-                {formik.errors.target_id}
+                {formik.errors.target}
               </Form.Control.Feedback>
             </Form.Group>
             <Form.Group className="mb-3" controlId="project">
