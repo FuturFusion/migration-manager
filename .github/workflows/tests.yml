@@ -15,6 +15,40 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+
+    permissions:
+      # required for all workflows
+      security-events: write
+
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+
+    steps:
+      - name: Repository checkout
+        uses: actions/checkout@v4
+        with:
+          # Differential ShellCheck requires full git history
+          fetch-depth: 0
+
+      - id: ShellCheck
+        name: Differential ShellCheck
+        uses: redhat-plumbers-in-action/differential-shellcheck@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - if: always()
+        name: Upload artifact with ShellCheck defects in SARIF format
+        uses: actions/upload-artifact@v4
+        with:
+          name: Differential ShellCheck SARIF
+          path: ${{ steps.ShellCheck.outputs.sarif }}
+
   code-tests:
     name: Code
     runs-on: ubuntu-24.04
@@ -37,20 +71,6 @@ jobs:
       # - name: Dependency Review
       #   uses: actions/dependency-review-action@v4
       #   if: github.event_name == 'pull_request'
-
-      - id: ShellCheck
-        name: Differential ShellCheck
-        uses: redhat-plumbers-in-action/differential-shellcheck@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-        if: github.event_name == 'pull_request' && matrix.go == 'stable'
-
-      - name: Upload artifact with ShellCheck defects in SARIF format
-        uses: actions/upload-artifact@v4
-        with:
-          name: Differential ShellCheck SARIF
-          path: ${{ steps.ShellCheck.outputs.sarif }}
-        if: github.event_name == 'pull_request' && matrix.go == 'stable'
 
       - name: Install Go (${{ matrix.go }})
         uses: actions/setup-go@v5
@@ -82,8 +102,7 @@ jobs:
 
           sudo apt-get install --no-install-recommends -y \
             libnbd-dev \
-            make \
-            shellcheck
+            make
 
       - name: Download go dependencies
         run: |
@@ -102,27 +121,3 @@ jobs:
       - name: Unit tests (all)
         run: |
           make test
-
-      - name: Set Node.js 22.x
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22.x
-
-      - name: Install UI dependencies
-        uses: borales/actions-yarn@v4
-        with:
-          cmd: install
-          dir: ui
-
-      - name: Build UI
-        uses: borales/actions-yarn@v4
-        with:
-          cmd: build
-          dir: ui
-
-      - name: Upload UI artifact
-        if: matrix.go == 'stable'
-        uses: actions/upload-artifact@v4
-        with:
-          name: UI
-          path: ui/dist/
