@@ -55,6 +55,25 @@ func (m MigrationStatusType) String() string {
 	}
 }
 
+type OSType int
+
+const (
+	OSTYPE_WINDOWS OSType = iota
+	OSTYPE_LINUX
+)
+
+// Implement the stringer interface.
+func (o OSType) String() string {
+	switch o {
+	case OSTYPE_WINDOWS:
+		return "Windows"
+	case OSTYPE_LINUX:
+		return "Linux"
+	default:
+		return fmt.Sprintf("OSType(%d)", o)
+	}
+}
+
 // Instance defines a VM instance to be migrated.
 //
 // swagger:model
