@@ -569,6 +569,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(instances []instance.Instance
 		return fmt.Errorf("Worker ISO not found at %q", workerISOPath)
 	}
 
+	importISOs := []string{workerISOName}
 	for _, inst := range instances {
 		if inst.GetOSType() == api.OSTYPE_WINDOWS {
 			driverISOPath := filepath.Join(d.os.CacheDir, driverISOName)
@@ -576,6 +577,8 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(instances []instance.Instance
 			if !driverISOExists {
 				return fmt.Errorf("VirtIO drivers ISO not found at %q", driverISOPath)
 			}
+
+			importISOs = append(importISOs, driverISOName)
 
 			break
 		}
@@ -615,7 +618,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(instances []instance.Instance
 	}
 
 	// Verify needed ISO images are in the storage pool.
-	for _, iso := range []string{workerISOName, driverISOName} {
+	for _, iso := range importISOs {
 		log := log.With(slog.String("iso", iso))
 
 		_, _, err = it.GetStoragePoolVolume(storagePool, "custom", iso)
