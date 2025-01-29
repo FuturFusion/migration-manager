@@ -17,6 +17,8 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/op"
 )
 
+var defaultOidcScopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess}
+
 // Verifier holds all information needed to verify an access token offline.
 type Verifier struct {
 	accessTokenVerifier *op.AccessTokenVerifier
@@ -360,6 +362,11 @@ func NewVerifier(issuer string, clientid string, scope string, audience string, 
 	}
 
 	scopes := util.SplitNTrimSpace(scope, ",", -1, false)
+	scopesLen := len(scopes)
+	if (scopesLen == 0) || (scopesLen == 1 && scopes[0] == "") {
+		scopes = defaultOidcScopes
+	}
+
 	verifier := &Verifier{issuer: issuer, clientID: clientid, scopes: scopes, audience: audience, cookieKey: cookieKey, claim: claim}
 	verifier.accessTokenVerifier, _ = getAccessTokenVerifier(issuer)
 
