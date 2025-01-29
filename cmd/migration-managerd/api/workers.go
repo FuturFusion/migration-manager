@@ -547,7 +547,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, proje
 	)
 
 	// Determine the ISO names.
-	wokrerISOName, err := d.os.GetMigrationManagerISOName()
+	workerISOName, err := d.os.GetMigrationManagerISOName()
 	if err != nil {
 		return err
 	}
@@ -591,7 +591,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, proje
 	}
 
 	// Verify needed ISO images are in the storage pool.
-	for _, iso := range []string{wokrerISOName, driverISOName} {
+	for _, iso := range []string{workerISOName, driverISOName} {
 		log := log.With(slog.String("iso", iso))
 
 		_, _, err = it.GetStoragePoolVolume(storagePool, "custom", iso)
@@ -715,10 +715,10 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, project string, stor
 		return
 	}
 
-	wokrerISOName, _ := d.os.GetMigrationManagerISOName()
+	workerISOName, _ := d.os.GetMigrationManagerISOName()
 	driverISOName, _ := d.os.GetVirtioDriversISOName()
 	instanceDef := it.CreateVMDefinition(*internalInstance, s.Name, storagePool)
-	creationErr := it.CreateNewVM(instanceDef, storagePool, wokrerISOName, driverISOName)
+	creationErr := it.CreateNewVM(instanceDef, storagePool, workerISOName, driverISOName)
 	if creationErr != nil {
 		log.Warn("Failed to create new VM", slog.String("instance", instanceDef.Name), logger.Err(creationErr))
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
