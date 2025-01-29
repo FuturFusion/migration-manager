@@ -508,7 +508,7 @@ func (d *Daemon) processQueuedBatches() bool {
 		}
 
 		// Make sure the necessary ISO images exist in the Incus storage pool.
-		err = d.ensureISOImagesExistInStoragePool(instances[0], b.GetTargetProject(), b.GetStoragePool())
+		err = d.ensureISOImagesExistInStoragePool(instances, b.GetTargetProject(), b.GetStoragePool())
 		if err != nil {
 			log.Warn("Failed to ensure ISO images exist in storage pool", logger.Err(err))
 			continue
@@ -539,7 +539,12 @@ func (d *Daemon) processQueuedBatches() bool {
 	return false
 }
 
-func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, project string, storagePool string) error {
+func (d *Daemon) ensureISOImagesExistInStoragePool(instances []instance.Instance, project string, storagePool string) error {
+	if len(instances) == 0 {
+		return fmt.Errorf("No instances in batch")
+	}
+
+	inst := instances[0]
 	log := slog.With(
 		slog.String("method", "ensureISOImagesExistInStoragePool"),
 		slog.String("instance", inst.GetInventoryPath()),
