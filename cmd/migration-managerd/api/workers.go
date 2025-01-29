@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusUtil "github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -560,6 +561,12 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(instances []instance.Instance
 	driverISOName, err := d.os.GetVirtioDriversISOName()
 	if err != nil {
 		return err
+	}
+
+	workerISOPath := filepath.Join(d.os.CacheDir, workerISOName)
+	workerISOExists := incusUtil.PathExists(workerISOPath)
+	if !workerISOExists {
+		return fmt.Errorf("Worker ISO not found at %q", workerISOPath)
 	}
 
 	// Get the target.
