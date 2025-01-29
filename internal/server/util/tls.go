@@ -3,6 +3,7 @@ package util
 import (
 	"crypto/x509"
 	"log/slog"
+	"strings"
 	"time"
 
 	incustls "github.com/lxc/incus/v6/shared/tls"
@@ -22,9 +23,10 @@ func CheckTrustState(cert x509.Certificate, trustedCertFingerprints []string) (b
 
 	// Check whether client certificate fingerprint is trusted.
 	for _, fingerprint := range trustedCertFingerprints {
-		if certFingerprint == fingerprint {
-			slog.Debug("Matched trusted cert", slog.String("fingerprint", fingerprint), slog.Any("subject", cert.Subject))
-			return true, fingerprint
+		canonicalFingerprint := strings.ToLower(strings.ReplaceAll(fingerprint, ":", ""))
+		if certFingerprint == canonicalFingerprint {
+			slog.Debug("Matched trusted cert", slog.String("fingerprint", canonicalFingerprint), slog.Any("subject", cert.Subject))
+			return true, canonicalFingerprint
 		}
 	}
 

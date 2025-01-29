@@ -12,6 +12,7 @@ import (
 
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
@@ -245,7 +246,13 @@ func (d *Daemon) Start() error {
 		certFile := filepath.Join(d.os.VarDir, "server.crt")
 		keyFile := filepath.Join(d.os.VarDir, "server.key")
 
-		err := d.server.ListenAndServeTLS(certFile, keyFile)
+		// Ensure that the certificate exists, or create a new one if it does not.
+		err := incusTLS.FindOrGenCert(certFile, keyFile, false, true)
+		if err != nil {
+			return err
+		}
+
+		err = d.server.ListenAndServeTLS(certFile, keyFile)
 		if errors.Is(err, http.ErrServerClosed) {
 			// Ignore error from graceful shutdown.
 			return nil
