@@ -569,6 +569,18 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(instances []instance.Instance
 		return fmt.Errorf("Worker ISO not found at %q", workerISOPath)
 	}
 
+	for _, inst := range instances {
+		if inst.GetOSType() == api.OSTYPE_WINDOWS {
+			driverISOPath := filepath.Join(d.os.CacheDir, driverISOName)
+			driverISOExists := incusUtil.PathExists(driverISOPath)
+			if !driverISOExists {
+				return fmt.Errorf("VirtIO drivers ISO not found at %q", driverISOPath)
+			}
+
+			break
+		}
+	}
+
 	// Get the target.
 	ctx := context.TODO()
 	t, err := d.target.GetByID(ctx, *inst.GetTargetID())
