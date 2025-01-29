@@ -1,6 +1,7 @@
 package instance
 
 import (
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -124,4 +125,13 @@ func (i *InternalInstance) GetSecretToken() uuid.UUID {
 
 func (i *InternalInstance) GetOverrides() api.InstanceOverride {
 	return i.Overrides
+}
+
+// The mapping of OS version strings to OS types is determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
+func (i *InternalInstance) GetOSType() api.OSType {
+	if strings.HasPrefix(i.OSVersion, "win") {
+		return api.OSTYPE_WINDOWS
+	}
+
+	return api.OSTYPE_LINUX
 }
