@@ -13,6 +13,7 @@ type InternalInstance struct {
 
 	NeedsDiskImport bool
 	SecretToken     uuid.UUID
+	SourceID        int
 }
 
 // Returns a new Instance ready for use.
@@ -27,7 +28,6 @@ func NewInstance(UUID uuid.UUID, inventoryPath string, annotation string, source
 			MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 			MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 			LastUpdateFromSource:  time.Now().UTC(),
-			SourceID:              sourceID,
 			TargetID:              targetID,
 			BatchID:               batchID,
 			GuestToolsVersion:     guestToolsVersion,
@@ -54,6 +54,7 @@ func NewInstance(UUID uuid.UUID, inventoryPath string, annotation string, source
 		},
 		NeedsDiskImport: true,
 		SecretToken:     secretToken,
+		SourceID:        sourceID,
 	}
 }
 
