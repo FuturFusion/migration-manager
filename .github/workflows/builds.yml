@@ -12,6 +12,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  client:
+    name: Client binaries
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v5
+
+      - name: Build binaries
+        run: |
+          make migration-manager
+
+      - name: Upload client (Linux)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Linux
+          path: bin/*linux*
+
+      - name: Upload client (MacOS)
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: bin/*macos*
+
+      - name: Upload client (Windows)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Windows
+          path: bin/*windows*
+
   ui:
     name: UI
     runs-on: ubuntu-24.04
