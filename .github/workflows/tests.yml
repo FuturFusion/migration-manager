@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - stable-*
   pull_request:
 
 permissions:
@@ -125,5 +124,5 @@ jobs:
         if: matrix.go == 'stable'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ runner.os }}
+          name: UI
           path: ui/dist/
