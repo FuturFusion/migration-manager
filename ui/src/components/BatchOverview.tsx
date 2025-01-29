@@ -38,7 +38,7 @@ const BatchOverview = () => {
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Target</div>
-        <div className="col-10 detail-table-cell">{ batch?.target_id }</div>
+        <div className="col-10 detail-table-cell">{ batch?.target }</div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Project</div>

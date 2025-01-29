@@ -7,6 +7,6 @@ export interface Batch {
   status: number;
   status_string: string;
   storage_pool: string;
-  target_id: number;
+  target: string;
   target_project: string;
 }

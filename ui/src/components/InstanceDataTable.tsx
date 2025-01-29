@@ -17,7 +17,7 @@ const InstanceDataTable: FC<Props> = ({instances}) => {
 
   const headers = ["UUID", "Source", "Inventory path", "OS version", "CPU", "Memory", "Migration status", ""];
   const rows = instances.map((item) => {
-    const className = item.overrides?.disable_migration === true ? 'item-deleted' : '';
+  const className = item.overrides?.disable_migration === true ? 'item-deleted' : '';
 
     return [
       {
@@ -25,7 +25,7 @@ const InstanceDataTable: FC<Props> = ({instances}) => {
         class: className,
       },
       {
-        content: item.source_id,
+        content: item.source,
         class: className,
       },
       {
