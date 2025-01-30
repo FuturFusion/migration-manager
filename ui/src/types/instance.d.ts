@@ -51,7 +51,7 @@ export interface Instance {
   annotation: string;
   migration_status: number;
   migration_status_string: string;
-  source_id: number;
+  source: string;
   target_id: number;
   batch_id: number;
   guest_tools_version: number;

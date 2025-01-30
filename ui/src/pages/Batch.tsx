@@ -29,7 +29,7 @@ const Batch = () => {
         content: item.status_string
       },
       {
-        content: item.target_id
+        content: item.target
       },
       {
         content: item.target_project

@@ -105,23 +105,6 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		batchesMap[b.DatabaseID] = b.Name
 	}
 
-	// Get nice names for the sources.
-	sources := []api.Source{}
-	sourcesMap := make(map[int]string)
-	resp, err = c.global.doHTTPRequestV1("/sources", http.MethodGet, "recursion=1", nil)
-	if err != nil {
-		return err
-	}
-
-	err = responseToStruct(resp, &sources)
-	if err != nil {
-		return err
-	}
-
-	for _, s := range sources {
-		sourcesMap[s.DatabaseID] = s.Name
-	}
-
 	// Get nice names for the targets.
 	targets := []api.IncusTarget{}
 	targetsMap := make(map[int]string)
@@ -160,7 +143,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			i.MigrationStatusString = i.MigrationStatus.String()
 		}
 
-		row := []string{i.UUID.String(), sourcesMap[i.SourceID], i.InventoryPath, i.OSVersion, strconv.Itoa(i.CPU.NumberCPUs), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), i.MigrationStatusString}
+		row := []string{i.UUID.String(), i.Source, i.InventoryPath, i.OSVersion, strconv.Itoa(i.CPU.NumberCPUs), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), i.MigrationStatusString}
 
 		if c.flagVerbose {
 			devices := []string{}
@@ -189,7 +172,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 				CPUAffinity = string(v)
 			}
 
-			row = []string{i.UUID.String(), i.InventoryPath, i.Annotation, sourcesMap[i.SourceID], getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatus.String(), i.MigrationStatusString, i.LastUpdateFromSource.String(), strconv.Itoa(i.GuestToolsVersion), i.Architecture, i.HardwareVersion, i.OS, i.OSVersion, strings.Join(devices, "\n"), strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(i.CPU.NumberCPUs), CPUAffinity, strconv.Itoa(i.CPU.NumberOfCoresPerSocket), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), units.GetByteSizeStringIEC(i.Memory.MemoryReservationInBytes, 2), strconv.FormatBool(i.UseLegacyBios), strconv.FormatBool(i.SecureBootEnabled), strconv.FormatBool(i.TPMPresent)}
+			row = []string{i.UUID.String(), i.InventoryPath, i.Annotation, i.Source, getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatus.String(), i.MigrationStatusString, i.LastUpdateFromSource.String(), strconv.Itoa(i.GuestToolsVersion), i.Architecture, i.HardwareVersion, i.OS, i.OSVersion, strings.Join(devices, "\n"), strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(i.CPU.NumberCPUs), CPUAffinity, strconv.Itoa(i.CPU.NumberOfCoresPerSocket), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), units.GetByteSizeStringIEC(i.Memory.MemoryReservationInBytes, 2), strconv.FormatBool(i.UseLegacyBios), strconv.FormatBool(i.SecureBootEnabled), strconv.FormatBool(i.TPMPresent)}
 		}
 
 		data = append(data, row)

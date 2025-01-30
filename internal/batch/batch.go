@@ -14,6 +14,8 @@ import (
 
 type InternalBatch struct {
 	api.Batch `yaml:",inline"`
+
+	TargetID int
 }
 
 // Returns a new Batch ready for use.
@@ -22,7 +24,6 @@ func NewBatch(name string, targetID int, targetProject string, storagePool strin
 		Batch: api.Batch{
 			Name:                 name,
 			DatabaseID:           internal.INVALID_DATABASE_ID,
-			TargetID:             targetID,
 			TargetProject:        targetProject,
 			Status:               api.BATCHSTATUS_DEFINED,
 			StatusString:         api.BATCHSTATUS_DEFINED.String(),
@@ -31,6 +32,7 @@ func NewBatch(name string, targetID int, targetProject string, storagePool strin
 			MigrationWindowStart: migrationWindowStart,
 			MigrationWindowEnd:   migrationWindowEnd,
 		},
+		TargetID: targetID,
 	}
 }
 

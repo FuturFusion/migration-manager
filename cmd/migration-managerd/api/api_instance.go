@@ -132,6 +132,17 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 		}
 
 		result := make([]api.Instance, 0, len(instances))
+
+		sourceMap := make(map[int]string)
+		sources, err := d.source.GetAll(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		for _, t := range sources {
+			sourceMap[t.ID] = t.Name
+		}
+
 		for _, instance := range instances {
 			apiInstance := api.Instance{
 				UUID:                  instance.UUID,
@@ -140,7 +151,7 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 				MigrationStatus:       instance.MigrationStatus,
 				MigrationStatusString: instance.MigrationStatusString,
 				LastUpdateFromSource:  instance.LastUpdateFromSource,
-				SourceID:              instance.SourceID,
+				Source:                sourceMap[instance.SourceID],
 				TargetID:              instance.TargetID,
 				BatchID:               instance.BatchID,
 				GuestToolsVersion:     instance.GuestToolsVersion,
@@ -229,6 +240,11 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
 	}
 
+	source, err := d.source.GetByID(r.Context(), instance.SourceID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
 	apiInstance := api.Instance{
 		UUID:                  instance.UUID,
 		InventoryPath:         instance.InventoryPath,
@@ -236,7 +252,7 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 		MigrationStatus:       instance.MigrationStatus,
 		MigrationStatusString: instance.MigrationStatusString,
 		LastUpdateFromSource:  instance.LastUpdateFromSource,
-		SourceID:              instance.SourceID,
+		Source:                source.Name,
 		TargetID:              instance.TargetID,
 		BatchID:               instance.BatchID,
 		GuestToolsVersion:     instance.GuestToolsVersion,

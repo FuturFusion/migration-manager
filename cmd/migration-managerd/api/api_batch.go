@@ -141,11 +141,22 @@ func batchesGet(d *Daemon, r *http.Request) response.Response {
 		}
 
 		result := make([]api.Batch, 0, len(batches))
+
+		targetMap := make(map[int]string)
+		targets, err := d.target.GetAll(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		for _, t := range targets {
+			targetMap[t.ID] = t.Name
+		}
+
 		for _, batch := range batches {
 			result = append(result, api.Batch{
 				DatabaseID:           batch.ID,
 				Name:                 batch.Name,
-				TargetID:             batch.TargetID,
+				Target:               targetMap[batch.TargetID],
 				TargetProject:        batch.TargetProject,
 				Status:               batch.Status,
 				StatusString:         batch.StatusString,
@@ -208,10 +219,15 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
+	target, err := d.target.GetByName(r.Context(), apiBatch.Target)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
 	batch := migration.Batch{
 		ID:                   apiBatch.DatabaseID,
 		Name:                 apiBatch.Name,
-		TargetID:             apiBatch.TargetID,
+		TargetID:             target.ID,
 		TargetProject:        apiBatch.TargetProject,
 		Status:               api.BATCHSTATUS_DEFINED,
 		StatusString:         api.BATCHSTATUS_DEFINED.String(),
@@ -300,12 +316,17 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	target, err := d.target.GetByID(r.Context(), batch.TargetID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
 	return response.SyncResponseETag(
 		true,
 		api.Batch{
 			DatabaseID:           batch.ID,
 			Name:                 batch.Name,
-			TargetID:             batch.TargetID,
+			Target:               target.Name,
 			TargetProject:        batch.TargetProject,
 			Status:               batch.Status,
 			StatusString:         batch.StatusString,
@@ -378,10 +399,15 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
+	target, err := d.target.GetByID(r.Context(), currentBatch.TargetID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
 	_, err = d.batch.UpdateByID(ctx, migration.Batch{
 		ID:                   currentBatch.ID,
 		Name:                 batch.Name,
-		TargetID:             batch.TargetID,
+		TargetID:             target.ID,
 		TargetProject:        batch.TargetProject,
 		Status:               batch.Status,
 		StatusString:         batch.StatusString,
@@ -511,6 +537,17 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 
 	if recursion == 1 {
 		result := make([]api.Instance, 0, len(instances))
+
+		sourceMap := make(map[int]string)
+		sources, err := d.source.GetAll(ctx)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		for _, t := range sources {
+			sourceMap[t.ID] = t.Name
+		}
+
 		for _, instance := range instances {
 			apiInstance := api.Instance{
 				UUID:                  instance.UUID,
@@ -519,7 +556,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 				MigrationStatus:       instance.MigrationStatus,
 				MigrationStatusString: instance.MigrationStatusString,
 				LastUpdateFromSource:  instance.LastUpdateFromSource,
-				SourceID:              instance.SourceID,
+				Source:                sourceMap[instance.SourceID],
 				TargetID:              instance.TargetID,
 				BatchID:               instance.BatchID,
 				GuestToolsVersion:     instance.GuestToolsVersion,
