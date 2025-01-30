@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/FuturFusion/migration-manager/internal/server/request"
@@ -93,6 +94,12 @@ func restServer(d *Daemon) *http.Server {
 			slog.Info("Sending top level 404", slog.Any("url", r.URL), slog.String("method", r.Method), slog.String("remote", r.RemoteAddr))
 			_ = response.NotFound(nil).Render(w)
 			return
+		}
+
+		ua := r.Header.Get("User-Agent")
+		if strings.Contains(ua, "Gecko") {
+			// Web browser handling.
+			http.Redirect(w, r, "/ui/", http.StatusMovedPermanently)
 		}
 
 		_ = response.SyncResponse(true, []string{"/1.0"}).Render(w)
