@@ -44,4 +44,7 @@ type Instance interface {
 
 	// Returns the overrides for this instance, if any.
 	GetOverrides() api.InstanceOverride
+
+	// Returns the OS type for this instance.
+	GetOSType() api.OSType
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusUtil "github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
 	"github.com/FuturFusion/migration-manager/internal/instance"
@@ -508,7 +509,7 @@ func (d *Daemon) processQueuedBatches() bool {
 		}
 
 		// Make sure the necessary ISO images exist in the Incus storage pool.
-		err = d.ensureISOImagesExistInStoragePool(instances[0], b.GetTargetProject(), b.GetStoragePool())
+		err = d.ensureISOImagesExistInStoragePool(instances, b.GetTargetProject(), b.GetStoragePool())
 		if err != nil {
 			log.Warn("Failed to ensure ISO images exist in storage pool", logger.Err(err))
 			continue
@@ -539,7 +540,12 @@ func (d *Daemon) processQueuedBatches() bool {
 	return false
 }
 
-func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, project string, storagePool string) error {
+func (d *Daemon) ensureISOImagesExistInStoragePool(instances []instance.Instance, project string, storagePool string) error {
+	if len(instances) == 0 {
+		return fmt.Errorf("No instances in batch")
+	}
+
+	inst := instances[0]
 	log := slog.With(
 		slog.String("method", "ensureISOImagesExistInStoragePool"),
 		slog.String("instance", inst.GetInventoryPath()),
@@ -547,7 +553,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, proje
 	)
 
 	// Determine the ISO names.
-	wokrerISOName, err := d.os.GetMigrationManagerISOName()
+	workerISOName, err := d.os.GetMigrationManagerISOName()
 	if err != nil {
 		return err
 	}
@@ -555,6 +561,27 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, proje
 	driverISOName, err := d.os.GetVirtioDriversISOName()
 	if err != nil {
 		return err
+	}
+
+	workerISOPath := filepath.Join(d.os.CacheDir, workerISOName)
+	workerISOExists := incusUtil.PathExists(workerISOPath)
+	if !workerISOExists {
+		return fmt.Errorf("Worker ISO not found at %q", workerISOPath)
+	}
+
+	importISOs := []string{workerISOName}
+	for _, inst := range instances {
+		if inst.GetOSType() == api.OSTYPE_WINDOWS {
+			driverISOPath := filepath.Join(d.os.CacheDir, driverISOName)
+			driverISOExists := incusUtil.PathExists(driverISOPath)
+			if !driverISOExists {
+				return fmt.Errorf("VirtIO drivers ISO not found at %q", driverISOPath)
+			}
+
+			importISOs = append(importISOs, driverISOName)
+
+			break
+		}
 	}
 
 	// Get the target.
@@ -591,7 +618,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(inst instance.Instance, proje
 	}
 
 	// Verify needed ISO images are in the storage pool.
-	for _, iso := range []string{wokrerISOName, driverISOName} {
+	for _, iso := range importISOs {
 		log := log.With(slog.String("iso", iso))
 
 		_, _, err = it.GetStoragePoolVolume(storagePool, "custom", iso)
@@ -715,10 +742,10 @@ func (d *Daemon) spinUpMigrationEnv(inst instance.Instance, project string, stor
 		return
 	}
 
-	wokrerISOName, _ := d.os.GetMigrationManagerISOName()
+	workerISOName, _ := d.os.GetMigrationManagerISOName()
 	driverISOName, _ := d.os.GetVirtioDriversISOName()
 	instanceDef := it.CreateVMDefinition(*internalInstance, s.Name, storagePool)
-	creationErr := it.CreateNewVM(instanceDef, storagePool, wokrerISOName, driverISOName)
+	creationErr := it.CreateNewVM(instanceDef, storagePool, workerISOName, driverISOName)
 	if creationErr != nil {
 		log.Warn("Failed to create new VM", slog.String("instance", instanceDef.Name), logger.Err(creationErr))
 		err := d.db.Transaction(d.ShutdownCtx, func(ctx context.Context, tx *sql.Tx) error {
