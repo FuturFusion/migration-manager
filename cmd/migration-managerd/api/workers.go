@@ -6,12 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/batch"
@@ -622,7 +624,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(instances []instance.Instance
 		log := log.With(slog.String("iso", iso))
 
 		_, _, err = it.GetStoragePoolVolume(storagePool, "custom", iso)
-		if err != nil {
+		if err != nil && incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
 			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.CacheDir, iso))
@@ -634,6 +636,10 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(instances []instance.Instance
 			if err != nil {
 				return err
 			}
+		}
+
+		if err != nil {
+			return fmt.Errorf("Failed checking for storage volume %q: %w", iso, err)
 		}
 	}
 
