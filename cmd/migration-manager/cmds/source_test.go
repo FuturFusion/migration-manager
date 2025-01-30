@@ -539,7 +539,7 @@ func TestSourceUpdate(t *testing.T) {
     "database_id": 1,
     "insecure": true
   }
-}`, // metadata.type is not 2 (VMWare)
+}`, // metadata.type is not 2 (VMware)
 				}},
 			},
 
