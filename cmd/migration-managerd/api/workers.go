@@ -71,7 +71,7 @@ func (d *Daemon) syncInstancesFromSources() bool {
 			Properties: src.Properties,
 		})
 		if err != nil {
-			log.Warn("Failed to create VMWareSource from source", logger.Err(err))
+			log.Warn("Failed to create VMwareSource from source", logger.Err(err))
 			continue
 		}
 

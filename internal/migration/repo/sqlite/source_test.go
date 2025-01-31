@@ -78,19 +78,19 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.ElementsMatch(t, []string{"CommonSourceA", "CommonSourceB", "vmware_source", "vmware_source2"}, sourceNames)
 
 	// Should get back vmwareSourceA unchanged.
-	dbVMWareSourceA, err := source.GetByName(ctx, vmwareSourceA.Name)
+	dbVMwareSourceA, err := source.GetByName(ctx, vmwareSourceA.Name)
 	require.NoError(t, err)
-	require.Equal(t, vmwareSourceA, dbVMWareSourceA)
+	require.Equal(t, vmwareSourceA, dbVMwareSourceA)
 
 	// Test updating a source.
 	vmwareSourceB.SourceType = api.SOURCETYPE_UNKNOWN
 	vmwareSourceB.Properties = json.RawMessage(`{}`)
-	dbVMWareSourceB, err := source.UpdateByID(ctx, vmwareSourceB)
+	dbVMwareSourceB, err := source.UpdateByID(ctx, vmwareSourceB)
 	require.NoError(t, err)
-	require.Equal(t, vmwareSourceB, dbVMWareSourceB)
-	dbVMWareSourceB, err = source.GetByName(ctx, vmwareSourceB.Name)
+	require.Equal(t, vmwareSourceB, dbVMwareSourceB)
+	dbVMwareSourceB, err = source.GetByName(ctx, vmwareSourceB.Name)
 	require.NoError(t, err)
-	require.Equal(t, vmwareSourceB, dbVMWareSourceB)
+	require.Equal(t, vmwareSourceB, dbVMwareSourceB)
 
 	// Delete a source.
 	err = source.DeleteByName(ctx, commonSourceA.Name)
