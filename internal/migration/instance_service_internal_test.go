@@ -6,13 +6,13 @@ import (
 	"github.com/google/uuid"
 )
 
-func WithNow(now func() time.Time) ServiceOption {
+func WithNow(now func() time.Time) InstanceServiceOption {
 	return func(s *instanceService) {
 		s.now = now
 	}
 }
 
-func WithRandomUUID(randomUUID func() (uuid.UUID, error)) ServiceOption {
+func WithRandomUUID(randomUUID func() (uuid.UUID, error)) InstanceServiceOption {
 	return func(s *instanceService) {
 		s.randomUUID = randomUUID
 	}

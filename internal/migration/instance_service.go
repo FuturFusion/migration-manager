@@ -22,9 +22,9 @@ type instanceService struct {
 
 var _ InstanceService = &instanceService{}
 
-type ServiceOption func(s *instanceService)
+type InstanceServiceOption func(s *instanceService)
 
-func NewInstanceService(repo InstanceRepo, source SourceService, opts ...ServiceOption) instanceService {
+func NewInstanceService(repo InstanceRepo, source SourceService, opts ...InstanceServiceOption) instanceService {
 	instanceSvc := instanceService{
 		repo:   repo,
 		source: source,
