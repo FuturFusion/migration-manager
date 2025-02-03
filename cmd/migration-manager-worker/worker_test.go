@@ -13,7 +13,7 @@ import (
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-manager-worker/worker"
+	"github.com/FuturFusion/migration-manager/cmd/migration-manager-worker/internal/worker"
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/shared/api"
