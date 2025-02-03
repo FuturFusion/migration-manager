@@ -7,7 +7,7 @@ import (
 	"github.com/lxc/incus/v6/shared/ask"
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-manager/cmds"
+	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/cmds"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
