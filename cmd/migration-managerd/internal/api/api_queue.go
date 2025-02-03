@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,10 +11,10 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/FuturFusion/migration-manager/internal/batch"
-	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -64,21 +63,7 @@ func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
 	}
 
 	// Get the instance.
-	var i *instance.InternalInstance
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbInstance, err := d.db.GetInstance(tx, instanceUUID)
-		if err != nil {
-			return err
-		}
-
-		internalInstance, ok := dbInstance.(*instance.InternalInstance)
-		if !ok {
-			return fmt.Errorf("Wasn't given an InternalInstance?")
-		}
-
-		i = internalInstance
-		return nil
-	})
+	i, err := d.instance.GetByID(r.Context(), instanceUUID)
 	if err != nil {
 		return false
 	}
@@ -95,7 +80,7 @@ func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
 			return false
 		}
 
-		return secretUUID == i.GetSecretToken()
+		return secretUUID == i.SecretToken
 	}
 
 	// Allow a GET for a valid instance.
@@ -191,56 +176,41 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 
 	queueItems := []api.QueueEntry{}
 
-	// Get all batches.
-	var batches []batch.Batch
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbBatches, err := d.db.GetAllBatches(tx)
+	// TODO: this should be moved to a queue service.
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		// Get all batches.
+		batches, err := d.batch.GetAll(r.Context())
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to get batches: %w", err)
 		}
 
-		batches = dbBatches
+		// For each batch that has entered the "queued" state or later, add its instances.
+		for _, b := range batches {
+			if b.Status == api.BATCHSTATUS_UNKNOWN || b.Status == api.BATCHSTATUS_DEFINED || b.Status == api.BATCHSTATUS_READY {
+				continue
+			}
+
+			instances, err := d.instance.GetAllByBatchID(r.Context(), b.ID)
+			if err != nil {
+				return fmt.Errorf("Failed to get instances for batch '%s': %w", b.Name, err)
+			}
+
+			for _, i := range instances {
+				queueItems = append(queueItems, api.QueueEntry{
+					InstanceUUID:          i.UUID,
+					InstanceName:          i.GetName(),
+					MigrationStatus:       i.MigrationStatus,
+					MigrationStatusString: i.MigrationStatusString,
+					BatchID:               b.ID,
+					BatchName:             b.Name,
+				})
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batches: %w", err))
-	}
-
-	// For each batch that has entered the "queued" state or later, add its instances.
-	for _, b := range batches {
-		if b.GetStatus() == api.BATCHSTATUS_UNKNOWN || b.GetStatus() == api.BATCHSTATUS_DEFINED || b.GetStatus() == api.BATCHSTATUS_READY {
-			continue
-		}
-
-		id, err := b.GetDatabaseID()
-		if err != nil {
-			return response.BadRequest(fmt.Errorf("Failed to get database ID for batch %q: %w", b.GetName(), err))
-		}
-
-		var instances []instance.Instance
-		err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-			dbInstances, err := d.db.GetAllInstancesForBatchID(tx, id)
-			if err != nil {
-				return err
-			}
-
-			instances = dbInstances
-			return nil
-		})
-		if err != nil {
-			return response.BadRequest(fmt.Errorf("Failed to get instances for batch %q: %w", b.GetName(), err))
-		}
-
-		for _, i := range instances {
-			queueItems = append(queueItems, api.QueueEntry{
-				InstanceUUID:          i.GetUUID(),
-				InstanceName:          i.GetName(),
-				MigrationStatus:       i.GetMigrationStatus(),
-				MigrationStatusString: i.GetMigrationStatusString(),
-				BatchID:               id,
-				BatchName:             b.GetName(),
-			})
-		}
+		return response.SmartError(err)
 	}
 
 	if recursion == 1 {
@@ -297,54 +267,40 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	// Get the instance.
-	var i *instance.InternalInstance
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbInstance, err := d.db.GetInstance(tx, UUID)
+	var ret api.QueueEntry
+
+	// TODO: this should be moved to a queue service.
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		// Get the instance.
+		instance, err := d.instance.GetByID(ctx, UUID)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to get instance '%s': %w", UUID, err)
 		}
 
-		internalInstance, ok := dbInstance.(*instance.InternalInstance)
-		if !ok {
-			return fmt.Errorf("Wasn't given an InternalInstance?")
+		// Don't return info for instances that aren't in the migration queue.
+		if instance.BatchID == nil || !instance.IsMigrating() {
+			return fmt.Errorf("Instance '%s' isn't in the migration queue: %w", instance.GetName(), migration.ErrNotFound)
 		}
 
-		i = internalInstance
+		// Get the corresponding batch.
+		batch, err := d.batch.GetByID(r.Context(), *instance.BatchID)
+		if err != nil {
+			return fmt.Errorf("Failed to get batch: %w", err)
+		}
+
+		ret = api.QueueEntry{
+			InstanceUUID:          instance.UUID,
+			InstanceName:          instance.GetName(),
+			MigrationStatus:       instance.MigrationStatus,
+			MigrationStatusString: instance.MigrationStatusString,
+			BatchID:               batch.ID,
+			BatchName:             batch.Name,
+		}
+
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
-	}
-
-	// Don't return info for instances that aren't in the migration queue.
-	if i.GetBatchID() == nil || !i.IsMigrating() {
-		return response.BadRequest(fmt.Errorf("Instance %q isn't in the migration queue", i.GetName()))
-	}
-
-	// Get the corresponding batch.
-	var b batch.Batch
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbBatch, err := d.db.GetBatchByID(tx, *i.GetBatchID())
-		if err != nil {
-			return err
-		}
-
-		b = dbBatch
-		return nil
-	})
-	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch: %w", err))
-	}
-
-	batchID, _ := b.GetDatabaseID()
-	ret := api.QueueEntry{
-		InstanceUUID:          i.GetUUID(),
-		InstanceName:          i.GetName(),
-		MigrationStatus:       i.GetMigrationStatus(),
-		MigrationStatusString: i.GetMigrationStatusString(),
-		BatchID:               batchID,
-		BatchName:             b.GetName(),
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponseETag(true, ret, ret)
@@ -392,108 +348,96 @@ func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	// Get the instance.
-	var i *instance.InternalInstance
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbInstance, err := d.db.GetInstance(tx, UUID)
+	var cmd api.WorkerCommand
+
+	// TODO: this should be moved to a queue service.
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		// Get the instance.
+		instance, err := d.instance.GetByID(r.Context(), UUID)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to get instance '%s': %w", UUID, err)
 		}
 
-		internalInstance, ok := dbInstance.(*instance.InternalInstance)
-		if !ok {
-			return fmt.Errorf("Wasn't given an InternalInstance?")
+		// Don't return info for instances that aren't in the migration queue.
+		if instance.BatchID == nil || !instance.IsMigrating() {
+			return fmt.Errorf("Instance '%s' isn't in the migration queue: %w", instance.GetName(), migration.ErrNotFound)
 		}
 
-		i = internalInstance
+		// If the instance is already doing something, don't start something else.
+		if instance.MigrationStatus != api.MIGRATIONSTATUS_IDLE {
+			return fmt.Errorf("Instance '%s' isn't idle: %s (%s): %w", instance.InventoryPath, instance.MigrationStatus.String(), instance.MigrationStatusString, migration.ErrOperationNotPermitted)
+		}
+
+		// Setup the default "idle" command
+		cmd = api.WorkerCommand{
+			Command:       api.WORKERCOMMAND_IDLE,
+			InventoryPath: instance.InventoryPath,
+			SourceType:    api.SOURCETYPE_UNKNOWN,
+			Source:        []byte(`{}`),
+			OS:            instance.OS,
+			OSVersion:     instance.OSVersion,
+		}
+
+		// Fetch the source for the instance.
+		ms, err := d.source.GetByID(r.Context(), instance.SourceID)
+		if err != nil {
+			return fmt.Errorf("Failed to get source '%s': %w", UUID, err)
+		}
+
+		s := api.Source{
+			DatabaseID: ms.ID,
+			Name:       ms.Name,
+			Insecure:   ms.Insecure,
+			SourceType: ms.SourceType,
+			Properties: ms.Properties,
+		}
+
+		// Fetch the batch for the instance.
+		batch, err := d.batch.GetByID(r.Context(), *instance.BatchID)
+		if err != nil {
+			return fmt.Errorf("Failed to get batch '%d': %w", *instance.BatchID, err)
+		}
+
+		// Determine what action, if any, the worker should start.
+		switch {
+		case instance.NeedsDiskImport && disksSupportDifferentialSync(instance.Disks):
+			// If we can do a background disk sync, kick it off.
+			cmd.Command = api.WORKERCOMMAND_IMPORT_DISKS
+			cmd.SourceType = api.SOURCETYPE_VMWARE
+			cmd.Source, _ = json.Marshal(s)
+
+			instance.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
+			instance.MigrationStatusString = instance.MigrationStatus.String()
+
+		case !batch.MigrationWindowStart.IsZero() && batch.MigrationWindowStart.Before(time.Now().UTC()):
+			// If a migration window has been defined, and we have passed the start time, begin the final migration.
+			cmd.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
+			cmd.SourceType = api.SOURCETYPE_VMWARE
+			cmd.Source, _ = json.Marshal(s)
+
+			instance.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
+			instance.MigrationStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
+
+		case batch.MigrationWindowStart.IsZero():
+			// If no migration window start time has been defined, go ahead and begin the final migration.
+			cmd.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
+			cmd.SourceType = api.SOURCETYPE_VMWARE
+			cmd.Source, _ = json.Marshal(s)
+
+			instance.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
+			instance.MigrationStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
+		}
+
+		// Update instance in the database.
+		_, err = d.instance.UpdateStatusByID(r.Context(), UUID, instance.MigrationStatus, instance.MigrationStatusString, instance.NeedsDiskImport)
+		if err != nil {
+			return fmt.Errorf("Failed updating instance '%s': %w", instance.UUID, err)
+		}
+
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
-	}
-
-	// Don't return info for instances that aren't in the migration queue.
-	if i.GetBatchID() == nil || !i.IsMigrating() {
-		return response.BadRequest(fmt.Errorf("Instance %q isn't in the migration queue", i.GetName()))
-	}
-
-	// If the instance is already doing something, don't start something else.
-	if i.MigrationStatus != api.MIGRATIONSTATUS_IDLE {
-		return response.BadRequest(fmt.Errorf("Instance %q isn't idle: %s (%s)", i.GetInventoryPath(), i.MigrationStatus.String(), i.MigrationStatusString))
-	}
-
-	// Setup the default "idle" command
-	cmd := api.WorkerCommand{
-		Command:       api.WORKERCOMMAND_IDLE,
-		InventoryPath: i.InventoryPath,
-		SourceType:    api.SOURCETYPE_UNKNOWN,
-		Source:        []byte(`{}`),
-		OS:            i.OS,
-		OSVersion:     i.OSVersion,
-	}
-
-	// Fetch the source for the instance.
-	ms, err := d.source.GetByID(r.Context(), i.SourceID)
-	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get source %q: %w", UUID, err))
-	}
-
-	s := api.Source{
-		DatabaseID: ms.ID,
-		Name:       ms.Name,
-		Insecure:   ms.Insecure,
-		SourceType: ms.SourceType,
-		Properties: ms.Properties,
-	}
-
-	// Fetch the batch for the instance.
-	var b batch.Batch
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbBatch, err := d.db.GetBatchByID(tx, *i.GetBatchID())
-		if err != nil {
-			return err
-		}
-
-		b = dbBatch
-		return nil
-	})
-	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch '%d': %w", *i.GetBatchID(), err))
-	}
-
-	// Determine what action, if any, the worker should start.
-	if i.NeedsDiskImport && disksSupportDifferentialSync(i.Disks) {
-		// If we can do a background disk sync, kick it off.
-		cmd.Command = api.WORKERCOMMAND_IMPORT_DISKS
-		cmd.SourceType = api.SOURCETYPE_VMWARE
-		cmd.Source, _ = json.Marshal(s)
-
-		i.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
-		i.MigrationStatusString = i.MigrationStatus.String()
-	} else if !b.GetMigrationWindowStart().IsZero() && b.GetMigrationWindowStart().Before(time.Now().UTC()) {
-		// If a migration window has been defined, and we have passed the start time, begin the final migration.
-		cmd.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
-		cmd.SourceType = api.SOURCETYPE_VMWARE
-		cmd.Source, _ = json.Marshal(s)
-
-		i.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
-		i.MigrationStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
-	} else if b.GetMigrationWindowStart().IsZero() {
-		// If no migration window start time has been defined, go ahead and begin the final migration.
-		cmd.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
-		cmd.SourceType = api.SOURCETYPE_VMWARE
-		cmd.Source, _ = json.Marshal(s)
-
-		i.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
-		i.MigrationStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
-	}
-
-	// Update instance in the database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateInstanceStatus(tx, UUID, i.MigrationStatus, i.MigrationStatusString, i.NeedsDiskImport)
-	})
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating instance %q: %w", i.GetUUID(), err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponseETag(true, cmd, cmd)
@@ -546,31 +490,6 @@ func queueWorkerPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	// Get the instance.
-	var i *instance.InternalInstance
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		dbInstance, err := d.db.GetInstance(tx, UUID)
-		if err != nil {
-			return err
-		}
-
-		internalInstance, ok := dbInstance.(*instance.InternalInstance)
-		if !ok {
-			return fmt.Errorf("Wasn't given an InternalInstance?")
-		}
-
-		i = internalInstance
-		return nil
-	})
-	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
-	}
-
-	// Don't update instances that aren't in the migration queue.
-	if i.GetBatchID() == nil || !i.IsMigrating() {
-		return response.BadRequest(fmt.Errorf("Instance %q isn't in the migration queue", i.GetName()))
-	}
-
 	// Decode the command response.
 	var resp api.WorkerResponse
 	err = json.NewDecoder(r.Body).Decode(&resp)
@@ -578,32 +497,51 @@ func queueWorkerPut(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	// Process the response.
-	switch resp.Status {
-	case api.WORKERRESPONSE_RUNNING:
-		i.MigrationStatusString = resp.StatusString
-	case api.WORKERRESPONSE_SUCCESS:
-		switch i.MigrationStatus {
-		case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
-			i.NeedsDiskImport = false
-			i.MigrationStatus = api.MIGRATIONSTATUS_IDLE
-			i.MigrationStatusString = api.MIGRATIONSTATUS_IDLE.String()
-		case api.MIGRATIONSTATUS_FINAL_IMPORT:
-			i.MigrationStatus = api.MIGRATIONSTATUS_IMPORT_COMPLETE
-			i.MigrationStatusString = api.MIGRATIONSTATUS_IMPORT_COMPLETE.String()
+	// TODO: this should be moved to a queue service.
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		// Get the instance.
+		instance, err := d.instance.GetByID(r.Context(), UUID)
+		if err != nil {
+			return fmt.Errorf("Failed to get instance '%s': %w", UUID, err)
 		}
 
-	case api.WORKERRESPONSE_FAILED:
-		i.MigrationStatus = api.MIGRATIONSTATUS_ERROR
-		i.MigrationStatusString = resp.StatusString
-	}
+		// Don't update instances that aren't in the migration queue.
+		if instance.BatchID == nil || !instance.IsMigrating() {
+			return fmt.Errorf("Instance '%s' isn't in the migration queue: %w", instance.GetName(), migration.ErrNotFound)
+		}
 
-	// Update instance in the database.
-	err = d.db.Transaction(r.Context(), func(ctx context.Context, tx *sql.Tx) error {
-		return d.db.UpdateInstanceStatus(tx, UUID, i.MigrationStatus, i.MigrationStatusString, i.NeedsDiskImport)
+		// Process the response.
+		switch resp.Status {
+		case api.WORKERRESPONSE_RUNNING:
+			instance.MigrationStatusString = resp.StatusString
+
+		case api.WORKERRESPONSE_SUCCESS:
+			switch instance.MigrationStatus {
+			case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
+				instance.NeedsDiskImport = false
+				instance.MigrationStatus = api.MIGRATIONSTATUS_IDLE
+				instance.MigrationStatusString = api.MIGRATIONSTATUS_IDLE.String()
+
+			case api.MIGRATIONSTATUS_FINAL_IMPORT:
+				instance.MigrationStatus = api.MIGRATIONSTATUS_IMPORT_COMPLETE
+				instance.MigrationStatusString = api.MIGRATIONSTATUS_IMPORT_COMPLETE.String()
+			}
+
+		case api.WORKERRESPONSE_FAILED:
+			instance.MigrationStatus = api.MIGRATIONSTATUS_ERROR
+			instance.MigrationStatusString = resp.StatusString
+		}
+
+		// Update instance in the database.
+		_, err = d.instance.UpdateStatusByID(r.Context(), UUID, instance.MigrationStatus, instance.MigrationStatusString, instance.NeedsDiskImport)
+		if err != nil {
+			return fmt.Errorf("Failed updating instance '%s': %w", instance.UUID, err)
+		}
+
+		return nil
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating instance %q: %w", i.GetUUID(), err))
+		return response.SmartError(err)
 	}
 
 	return response.SyncResponse(true, nil)
