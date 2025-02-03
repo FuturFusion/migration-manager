@@ -28,7 +28,7 @@ func SmartError(err error) Response {
 		return &errorResponse{http.StatusBadRequest, err.Error()}
 	}
 
-	if errors.Is(err, migration.ErrConstraintViolation) || errors.Is(err, migration.ErrNotFound) {
+	if errors.Is(err, migration.ErrConstraintViolation) || errors.Is(err, migration.ErrNotFound) || errors.Is(err, migration.ErrOperationNotPermitted) {
 		return &errorResponse{http.StatusBadRequest, err.Error()}
 	}
 
