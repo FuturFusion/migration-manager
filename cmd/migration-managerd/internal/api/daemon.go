@@ -60,6 +60,7 @@ type Daemon struct {
 	network  migration.NetworkService
 	source   migration.SourceService
 	target   migration.TargetService
+	queue    migration.QueueService
 
 	server   *http.Server
 	errgroup *errgroup.Group
@@ -190,6 +191,7 @@ func (d *Daemon) Start() error {
 	d.source = migration.NewSourceService(sqlite.NewSource(dbWithTransaction))
 	d.instance = migration.NewInstanceService(sqlite.NewInstance(dbWithTransaction), d.source)
 	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance)
+	d.queue = migration.NewQueueService(d.batch, d.instance, d.source)
 
 	// Set default authorizer.
 	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)
