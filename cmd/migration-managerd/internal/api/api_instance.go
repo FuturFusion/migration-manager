@@ -232,12 +232,12 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(err)
 	}
 
 	instance, err := d.instance.GetByID(r.Context(), UUID)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
+		return response.SmartError(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
 	}
 
 	source, err := d.source.GetByID(r.Context(), instance.SourceID)
@@ -321,12 +321,12 @@ func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(err)
 	}
 
 	override, err := d.instance.GetOverridesByID(r.Context(), UUID)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get override for instance %q: %w", UUID, err))
+		return response.SmartError(fmt.Errorf("Failed to get override for instance %q: %w", UUID, err))
 	}
 
 	return response.SyncResponseETag(
@@ -375,7 +375,7 @@ func instanceOverridePost(d *Daemon, r *http.Request) response.Response {
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(err)
 	}
 
 	var override api.InstanceOverride
@@ -435,7 +435,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(err)
 	}
 
 	// Decode into the existing instance override.
@@ -456,7 +456,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 	// Get the existing instance override.
 	currentOverrides, err := d.instance.GetOverridesByID(ctx, UUID)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get override for instance %q: %w", UUID, err))
+		return response.SmartError(fmt.Errorf("Failed to get override for instance %q: %w", UUID, err))
 	}
 
 	// Validate ETag
@@ -508,7 +508,7 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(err)
 	}
 
 	err = d.instance.DeleteOverridesByID(r.Context(), UUID)

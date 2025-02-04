@@ -390,7 +390,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 	// Get the existing batch.
 	currentBatch, err := d.batch.GetByName(ctx, name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch %q: %w", name, err))
+		return response.SmartError(fmt.Errorf("Failed to get batch %q: %w", name, err))
 	}
 
 	// Validate ETag

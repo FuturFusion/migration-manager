@@ -238,7 +238,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(err)
 	}
 
 	queueItem, err := d.queue.GetByInstanceID(r.Context(), UUID)
@@ -295,7 +295,7 @@ func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(err)
 	}
 
 	workerCommand, err := d.queue.GetWorkerCommandByInstanceID(r.Context(), UUID)
@@ -360,7 +360,7 @@ func queueWorkerPut(d *Daemon, r *http.Request) response.Response {
 
 	UUID, err := uuid.Parse(UUIDString)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(err)
 	}
 
 	// Decode the command response.
