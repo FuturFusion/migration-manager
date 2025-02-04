@@ -43,7 +43,10 @@ func TestNetworkService_Create(t *testing.T) {
 				Config: map[string]string{},
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - name empty",
@@ -53,7 +56,10 @@ func TestNetworkService_Create(t *testing.T) {
 				Config: map[string]string{},
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - repo",
@@ -261,7 +267,9 @@ func TestNetworkService_GetByName(t *testing.T) {
 			name:    "error - name argument empty string",
 			nameArg: "",
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:             "error - repo",
@@ -325,7 +333,10 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 				Config: map[string]string{},
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - name empty",
@@ -335,7 +346,10 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 				Config: map[string]string{},
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - repo",
@@ -389,7 +403,9 @@ func TestNetworkService_DeleteByName(t *testing.T) {
 			name:    "error - name argument empty string",
 			nameArg: "",
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:                "error - repo",

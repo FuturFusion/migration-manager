@@ -50,7 +50,12 @@ func (s Source) Validate() error {
 
 func (s Source) validateSourceTypeCommon() error {
 	var v any
-	return json.Unmarshal(s.Properties, &v)
+	err := json.Unmarshal(s.Properties, &v)
+	if err != nil {
+		return NewValidationErrf("Invalid properties for common type: %v", err)
+	}
+
+	return nil
 }
 
 func (s Source) validateSourceTypeVMware() error {
@@ -58,7 +63,7 @@ func (s Source) validateSourceTypeVMware() error {
 
 	err := json.Unmarshal(s.Properties, &properties)
 	if err != nil {
-		return err
+		return NewValidationErrf("Invalid properties for VMware type: %v", err)
 	}
 
 	_, err = url.Parse(properties.Endpoint)

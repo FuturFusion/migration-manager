@@ -66,7 +66,10 @@ func TestInstanceService_Create(t *testing.T) {
 				SecretToken:           uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - missing secret token",
@@ -80,7 +83,10 @@ func TestInstanceService_Create(t *testing.T) {
 				SecretToken:           uuid.Nil,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - invalid inventory path",
@@ -94,7 +100,10 @@ func TestInstanceService_Create(t *testing.T) {
 				SecretToken:           uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - source id",
@@ -617,7 +626,10 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SecretToken:     uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - invalid inventory path",
@@ -629,7 +641,10 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SecretToken:     uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - invalid source",
@@ -641,7 +656,10 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SecretToken:     uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - invalid migration status",
@@ -653,7 +671,10 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SecretToken:     uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - repo.GetByID",
@@ -686,7 +707,9 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SecretToken:     uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name: "error - repo.UpdateByID",
@@ -862,7 +885,10 @@ func TestInstanceService_UpdateStatusByID(t *testing.T) {
 			uuidArg:   uuidA,
 			statusArg: -1, // invalid
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name:                    "error - repo",
@@ -1102,7 +1128,9 @@ func TestInstanceService_DeleteByID(t *testing.T) {
 				BatchID:         ptr.To(1),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:    "error - status is migrating",
@@ -1112,7 +1140,9 @@ func TestInstanceService_DeleteByID(t *testing.T) {
 				MigrationStatus: api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:                       "error - repo.DeleteOverridesByID",
@@ -1223,7 +1253,10 @@ func TestInstanceService_CreateOverrides(t *testing.T) {
 				DisableMigration: false,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "success - disable migration",
@@ -1447,7 +1480,10 @@ func TestInstanceService_UpdateOverridesByID(t *testing.T) {
 				DisableMigration: false,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - repo.GetOverrideByID",

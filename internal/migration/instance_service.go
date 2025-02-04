@@ -168,7 +168,7 @@ func (s instanceService) UpdateByID(ctx context.Context, instance Instance) (Ins
 		}
 
 		if oldInstance.BatchID != nil {
-			return fmt.Errorf("Instance %q is already assigned to a batch", oldInstance.InventoryPath)
+			return fmt.Errorf("Instance %q is already assigned to a batch: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
 		}
 
 		instance, err = s.repo.UpdateByID(ctx, instance)
@@ -252,7 +252,7 @@ func (s instanceService) DeleteByID(ctx context.Context, id uuid.UUID) error {
 		}
 
 		if oldInstance.BatchID != nil || oldInstance.IsMigrating() {
-			return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating", oldInstance.InventoryPath)
+			return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
 		}
 
 		err = s.repo.DeleteOverridesByID(ctx, id)
