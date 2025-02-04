@@ -126,7 +126,15 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if recursion == 1 {
-		instances, err := d.instance.GetAll(r.Context())
+		ctx, trans := transaction.Begin(r.Context())
+		defer func() {
+			rollbackErr := trans.Rollback()
+			if rollbackErr != nil {
+				response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+			}
+		}()
+
+		instances, err := d.instance.GetAll(ctx)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -134,7 +142,7 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.Instance, 0, len(instances))
 
 		sourceMap := make(map[int]string)
-		sources, err := d.source.GetAll(r.Context())
+		sources, err := d.source.GetAll(ctx)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -235,12 +243,20 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	instance, err := d.instance.GetByID(r.Context(), UUID)
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+		}
+	}()
+
+	instance, err := d.instance.GetByID(ctx, UUID)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
 	}
 
-	source, err := d.source.GetByID(r.Context(), instance.SourceID)
+	source, err := d.source.GetByID(ctx, instance.SourceID)
 	if err != nil {
 		return response.SmartError(err)
 	}
