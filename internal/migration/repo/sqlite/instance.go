@@ -506,11 +506,25 @@ func (i instance) DeleteByID(ctx context.Context, id uuid.UUID) error {
 
 	result, err := i.db.ExecContext(ctx, sqlDelete, sql.Named("uuid", id))
 	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) {
+			if sqliteErr.Code == sqlite3.ErrConstraint {
+				return migration.ErrConstraintViolation
+			}
+		}
+
 		return err
 	}
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) {
+			if sqliteErr.Code == sqlite3.ErrConstraint {
+				return migration.ErrConstraintViolation
+			}
+		}
+
 		return err
 	}
 
@@ -594,6 +608,13 @@ func (i instance) DeleteOverridesByID(ctx context.Context, id uuid.UUID) error {
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) {
+			if sqliteErr.Code == sqlite3.ErrConstraint {
+				return migration.ErrConstraintViolation
+			}
+		}
+
 		return err
 	}
 

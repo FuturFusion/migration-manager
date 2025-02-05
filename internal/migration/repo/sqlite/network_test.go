@@ -77,7 +77,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	err = network.DeleteByName(ctx, networkA.Name)
 	require.NoError(t, err)
 	_, err = network.GetByName(ctx, networkA.Name)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Should have two networks remaining.
 	networks, err = network.GetAll(ctx)
@@ -86,13 +86,13 @@ func TestNetworkDatabaseActions(t *testing.T) {
 
 	// Can't delete a network that doesn't exist.
 	err = network.DeleteByName(ctx, "BazBiz")
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a network that doesn't exist.
 	networkA, err = network.UpdateByID(ctx, networkA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate network.
 	networkB, err = network.Create(ctx, networkB)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 }

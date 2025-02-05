@@ -286,6 +286,13 @@ func (b batch) DeleteByName(ctx context.Context, name string) error {
 
 	result, err := b.db.ExecContext(ctx, sqlDelete, sql.Named("name", name))
 	if err != nil {
+		var sqliteErr sqlite3.Error
+		if errors.As(err, &sqliteErr) {
+			if sqliteErr.Code == sqlite3.ErrConstraint {
+				return migration.ErrConstraintViolation
+			}
+		}
+
 		return err
 	}
 
