@@ -25,3 +25,8 @@
 .data-table-link {
   text-decoration: none;
 }
+
+.page-control {
+  width: 50px !important;
+  display: inline-block !important;
+}
