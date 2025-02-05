@@ -41,6 +41,18 @@ export const createBatch = (body: string): Promise<APIResponse<null>> => {
   });
 };
 
+export const updateBatch = (name: string, body: string): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/batches/${name}`, {
+      method: "PUT",
+      body: body,
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const deleteBatch = (name: string): Promise<APIResponse<Object>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/batches/${name}`, {method: "DELETE"})

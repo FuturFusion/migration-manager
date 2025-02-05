@@ -399,7 +399,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	target, err := d.target.GetByID(r.Context(), currentBatch.TargetID)
+	target, err := d.target.GetByName(ctx, batch.Target)
 	if err != nil {
 		return response.SmartError(err)
 	}

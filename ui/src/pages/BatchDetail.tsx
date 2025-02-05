@@ -3,6 +3,7 @@ import Button from 'react-bootstrap/Button';
 import Modal from 'react-bootstrap/Modal';
 import { useNavigate, useParams } from 'react-router';
 import { deleteBatch } from 'api/batches';
+import BatchConfiguration from 'components/BatchConfiguration';
 import BatchInstances from 'components/BatchInstances';
 import BatchOverview from 'components/BatchOverview';
 import TabView from 'components/TabView';
@@ -40,6 +41,11 @@ const BatchDetail = () => {
       content: <BatchOverview />
     },
     {
+      key: 'configuration',
+      title: 'Configuration',
+      content: <BatchConfiguration />
+    },
+    {
       key: 'instances',
       title: 'Instances',
       content: <BatchInstances />
@@ -56,7 +62,9 @@ const BatchDetail = () => {
           onSelect={(key) => navigate(`/ui/batches/${name}/${key}`)} />
       </div>
       <div className="fixed-footer p-3">
+        {(!activeTab || activeTab == 'overview') && (
         <Button className="float-end" variant="danger" onClick={handleShow}>Delete</Button>
+        )}
       </div>
 
       <Modal show={show} onHide={handleClose}>
