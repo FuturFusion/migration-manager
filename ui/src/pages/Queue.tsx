@@ -18,16 +18,20 @@ const Queue = () => {
   const rows = queue.map((item) => {
     return [
       {
-        content: item.instance_name
+        content: item.instance_name,
+        sortKey: item.instance_name,
       },
       {
-        content: item.batch_name
+        content: item.batch_name,
+        sortKey: item.batch_name,
       },
       {
-        content: item.migration_status
+        content: item.migration_status,
+        sortKey: item.migration_status,
       },
       {
-        content: item.migration_status_string
+        content: item.migration_status_string,
+        sortKey: item.migration_status_string,
       }];
   });
 
