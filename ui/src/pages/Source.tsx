@@ -23,19 +23,23 @@ const Source = () => {
       const props = item.properties as VMwareProperties;
       return [
         {
-          content: item.name
+          content: item.name,
+          sortKey: item.name
         },
         {
           content: "VMware"
         },
         {
-          content: props.endpoint
+          content: props.endpoint,
+          sortKey: props.endpoint
         },
         {
-          content: props.username
+          content: props.username,
+          sortKey: props.username
         },
         {
-          content: item.insecure.toString()
+          content: item.insecure.toString(),
+          sortKey: item.insecure.toString()
         }];
     }
 

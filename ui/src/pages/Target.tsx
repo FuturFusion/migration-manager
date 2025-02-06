@@ -18,16 +18,20 @@ const Target = () => {
 
     return [
       {
-        content: item.name
+        content: item.name,
+        sortKey: item.name,
       },
       {
-        content: item.endpoint
+        content: item.endpoint,
+        sortKey: item.endpoint,
       },
       {
-        content: authType
+        content: authType,
+        sortKey: authType,
       },
       {
-        content: item.insecure.toString()
+        content: item.insecure.toString(),
+        sortKey: item.insecure.toString()
       }];
   });
 

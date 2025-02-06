@@ -23,28 +23,36 @@ const Batch = () => {
   const rows = batches.map((item) => {
     return [
       {
-        content: <Link to={`/ui/batches/${item.name}`} className="data-table-link">{item.name}</Link>
+        content: <Link to={`/ui/batches/${item.name}`} className="data-table-link">{item.name}</Link>,
+        sortKey: item.name,
       },
       {
-        content: item.status_string
+        content: item.status_string,
+        sortKey: item.status_string,
       },
       {
-        content: item.target
+        content: item.target,
+        sortKey: item.target,
       },
       {
-        content: item.target_project
+        content: item.target_project,
+        sortKey: item.target_project,
       },
       {
-        content: item.storage_pool
+        content: item.storage_pool,
+        sortKey: item.storage_pool,
       },
       {
-        content: item.include_expression
+        content: item.include_expression,
+        sortKey: item.include_expression
       },
       {
-        content: formatDate(item.migration_window_start.toString())
+        content: formatDate(item.migration_window_start.toString()),
+        sortKey: formatDate(item.migration_window_start.toString()),
       },
       {
-        content: formatDate(item.migration_window_end.toString())
+        content: formatDate(item.migration_window_end.toString()),
+        sortKey: formatDate(item.migration_window_end.toString())
       },
       {
         content: <BatchActions batch={item} />

@@ -46,7 +46,7 @@ export interface InstanceOverride {
 }
 
 export interface Instance {
-  uuid: number;
+  uuid: string;
   inventory_path: string;
   annotation: string;
   migration_status: number;
