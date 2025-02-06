@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 
-	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -53,7 +53,7 @@ type Source interface {
 	// Returns an array of all VMs available from the source, encoded as Instances.
 	//
 	// Returns an error if there is a problem fetching VMs or their properties.
-	GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error)
+	GetAllVMs(ctx context.Context) (migration.Instances, error)
 
 	// Returns an array of all networks available from the source, encoded as Networks.
 	//
