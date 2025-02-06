@@ -342,7 +342,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = d.source.UpdateByID(r.Context(), migration.Source{
+	_, err = d.source.UpdateByID(ctx, migration.Source{
 		ID:         currentSource.ID,
 		Name:       source.Name,
 		Insecure:   source.Insecure,
