@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"

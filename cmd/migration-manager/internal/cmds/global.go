@@ -21,9 +21,9 @@ import (
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-manager/config"
-	"github.com/FuturFusion/migration-manager/cmd/migration-manager/oidc"
-	internalUtil "github.com/FuturFusion/migration-manager/cmd/migration-manager/util"
+	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/config"
+	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/oidc"
+	internalUtil "github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
 )
 

@@ -15,7 +15,7 @@ import (
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"

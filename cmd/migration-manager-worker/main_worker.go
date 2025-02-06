@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-manager-worker/worker"
+	"github.com/FuturFusion/migration-manager/cmd/migration-manager-worker/internal/worker"
 )
 
 type cmdWorker struct {

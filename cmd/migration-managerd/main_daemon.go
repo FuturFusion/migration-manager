@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/api"
-	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/config"
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/api"
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
 	"github.com/FuturFusion/migration-manager/internal/ports"
 )
 

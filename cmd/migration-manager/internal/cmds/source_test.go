@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vmware/govmomi/simulator"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-manager/config"
+	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/config"
 	"github.com/FuturFusion/migration-manager/internal/testcert"
 	"github.com/FuturFusion/migration-manager/internal/testing/queue"
 )
