@@ -35,6 +35,10 @@ build-all-packages:
 build-ui:
 	$(MAKE) -C ui
 
+.PHONY: test-ui
+test-ui:
+	$(MAKE) test -C ui
+
 .PHONY: test
 test: build-dependencies
 	$(GO) test ./... -v -cover
