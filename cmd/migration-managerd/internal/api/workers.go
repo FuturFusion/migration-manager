@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v6/shared/revert"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
@@ -176,17 +177,17 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 		slog.String("method", "syncInstancesFromSource"),
 		slog.String("source", sourceName),
 	)
-	for uuid, inst := range existingInstances {
+	for instUUID, inst := range existingInstances {
 		log := log.With(
 			slog.String("instance", inst.InventoryPath),
 			slog.Any("instance_uuid", inst.UUID),
 		)
 
-		srcInst, ok := srcInstances[uuid]
+		srcInst, ok := srcInstances[instUUID]
 		if !ok {
 			// Delete the instances that don't exist on the source.
 			log.Info("Deleting instance with no source record")
-			err := i.DeleteByID(ctx, uuid)
+			err := i.DeleteByID(ctx, instUUID)
 			if err != nil {
 				return err
 			}
@@ -297,8 +298,8 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 	}
 
 	// Create any missing instances.
-	for uuid, inst := range srcInstances {
-		_, ok := existingInstances[uuid]
+	for instUUID, inst := range srcInstances {
+		_, ok := existingInstances[instUUID]
 		if !ok {
 			log := log.With(
 				slog.String("instance", inst.InventoryPath),
@@ -439,31 +440,33 @@ func (d *Daemon) processReadyBatches() bool {
 	return false
 }
 
-func (d *Daemon) processQueuedBatches() bool {
+// processQueuedBatches fetches all QUEUED batches which are in an active migration window,
+// and sets them to RUNNING if they have the necessary files to begin a migration.
+// All of ASSIGNED instances in the RUNNING batch are also set to CREATING, so that
+// `beginImports` can differentiate between the various states of instances in a RUNNING batch.
+func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 	log := slog.With(slog.String("method", "processQueuedBatches"))
-
-	// TODO: context should be passed from the daemon to all the workers.
-	ctx := context.TODO()
-
+	// Fetch all QUEUED batches, and their instances and targets.
+	instancesByBatch := map[int]migration.Instances{}
+	targetsByBatch := map[int]migration.Target{}
+	batchesByID := map[int]migration.Batch{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		batches, err := d.batch.GetAllByState(ctx, api.BATCHSTATUS_QUEUED)
 		if err != nil {
 			return fmt.Errorf("Failed to get batches by state: %w", err)
 		}
 
-		// See if we can start running this batch.
+		// Skip any batches outside the migration window.
 		for _, b := range batches {
 			log := log.With(slog.String("batch", b.Name))
 
 			log.Info("Batch status is 'Queued', processing....")
-
 			if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(time.Now().UTC()) {
 				log.Error("Batch window end time has already passed")
 
 				_, err = d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
 				if err != nil {
-					log.Warn("Failed to update batch status", logger.Err(err))
-					continue
+					return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_ERROR.String(), err)
 				}
 
 				continue
@@ -472,47 +475,76 @@ func (d *Daemon) processQueuedBatches() bool {
 			// Get all instances for this batch.
 			instances, err := d.instance.GetAllByBatchID(ctx, b.ID)
 			if err != nil {
-				log.Warn("Failed to get instances for batch", logger.Err(err))
-				continue
+				return fmt.Errorf("Failed to get instances for batch: %w", err)
 			}
 
 			target, err := d.target.GetByID(ctx, b.TargetID)
 			if err != nil {
-				log.Warn("Failed to get target for batch", logger.Err(err))
-				continue
+				return err
 			}
 
-			// Make sure the necessary ISO images exist in the Incus storage pool.
-			err = d.ensureISOImagesExistInStoragePool(ctx, target, instances, b.TargetProject, b.StoragePool)
-			if err != nil {
-				log.Warn("Failed to ensure ISO images exist in storage pool", logger.Err(err))
-				continue
-			}
-
-			// Instantiate each new empty VM in Incus.
+			availableInstances := migration.Instances{}
 			for _, inst := range instances {
-				// Create fresh context, since operation is happening in its own go routine.
-				ctx := context.Background()
-				go d.spinUpMigrationEnv(ctx, inst, b)
+				if inst.MigrationStatus == api.MIGRATIONSTATUS_ASSIGNED_BATCH {
+					availableInstances = append(availableInstances, inst)
+				}
 			}
 
-			// Move batch to "running" status.
-			log.Info("Updating batch status to 'Running'")
+			batchesByID[b.ID] = b
+			instancesByBatch[b.ID] = availableInstances
+			targetsByBatch[b.ID] = target
+		}
 
-			_, err = d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_RUNNING.String())
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	// Skip any batches that are lacking the necessary ISO images in the Incus storage pool.
+	for batchID, instances := range instancesByBatch {
+		t := targetsByBatch[batchID]
+		b := batchesByID[batchID]
+		err := d.ensureISOImagesExistInStoragePool(ctx, t, instances, b.TargetProject, b.StoragePool)
+		if err != nil {
+			// Skip the batch if it's missing needed resources.
+			delete(batchesByID, batchID)
+			log.Error("Failed to ensure ISO images exist in storage pool", logger.Err(err))
+		}
+	}
+
+	// Set the statuses for any batches that made it this far to RUNNING in preparation for instance creation on the target.
+	// `finalizeCompleteInstances` will pick up these batches, but won't find any instances in them until their associated VMs are created.
+	sourcesByInstance := map[uuid.UUID]migration.Source{}
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		for _, b := range batchesByID {
+			log := log.With(slog.String("batch", b.Name))
+			log.Info("Updating batch status to 'Running'")
+			_, err := d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_RUNNING.String())
 			if err != nil {
-				log.Warn("Failed to update batch status", logger.Err(err))
-				continue
+				return fmt.Errorf("Failed to update batch status: %w", err)
+			}
+
+			for _, inst := range instancesByBatch[b.ID] {
+				sourcesByInstance[inst.UUID], err = d.source.GetByID(ctx, inst.SourceID)
+				if err != nil {
+					return err
+				}
+
+				_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
+				if err != nil {
+					return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_CREATING.String(), err)
+				}
 			}
 		}
 
 		return nil
 	})
 	if err != nil {
-		log.Warn("Process Queued Batches worker failed", logger.Err(err))
+		return fmt.Errorf("Process Queued Batches worker failed: %w", err)
 	}
 
-	return false
+	return nil
 }
 
 func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migration.Target, instances migration.Instances, project string, storagePool string) error {
@@ -608,144 +640,208 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 	return nil
 }
 
-func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance, b migration.Batch) {
+// beginImports creates the target VMs for all CREATING status instances in a RUNNING batch.
+// Errors encountered in one batch do not affect the processing of other batches.
+//   - cleanupInstances determines whether to delete failed target VMs on errors.
+//     If true, errors will not result in the instance state being set to ERROR, to enable retrying this task.
+//     If any errors occur after the VM has started, the VM will no longer be cleaned up, and its state will be set to ERROR, preventing retries.
+func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error {
 	log := slog.With(
-		slog.String("method", "spinUpMigrationEnv"),
-		slog.String("instance", inst.InventoryPath),
+		slog.String("method", "beginImports"),
 	)
 
-	// Update the instance status.
-	_, err := d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
-	if err != nil {
-		log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
-		return
-	}
-
-	s, err := d.source.GetByID(ctx, inst.SourceID)
-	if err != nil {
-		log.Warn("Failed to get source by ID", logger.Err(err))
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+	var batchesByID map[int]migration.Batch
+	var instancesByBatch map[int]migration.Instances
+	targetsByBatch := map[int]migration.Target{}
+	sourcesByInstance := map[uuid.UUID]migration.Source{}
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		batches, err := d.batch.GetAllByState(ctx, api.BATCHSTATUS_RUNNING)
 		if err != nil {
-			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+			return fmt.Errorf("Failed to get batches by state %q: %w", api.BATCHSTATUS_RUNNING.String(), err)
 		}
 
-		return
-	}
-
-	// Get the target for this instance.
-	t, err := d.target.GetByID(ctx, b.TargetID)
-	if err != nil {
-		log.Warn("Failed to get target by ID", slog.Int("target_id", b.TargetID), logger.Err(err))
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+		allInstances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_CREATING)
 		if err != nil {
-			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_CREATING.String(), err)
 		}
 
-		return
-	}
+		batchesByID = make(map[int]migration.Batch, len(batches))
+		for _, batch := range batches {
+			batchesByID[batch.ID] = batch
+		}
 
-	it, err := target.NewInternalIncusTargetFrom(api.Target{
-		Name:       t.Name,
-		DatabaseID: t.ID,
-		TargetType: t.TargetType,
-		Properties: t.Properties,
+		// Collect only CREATING instances (and their target and source) for RUNNING batches.
+		instancesByBatch = map[int]migration.Instances{}
+		for _, inst := range allInstances {
+			b, ok := batchesByID[*inst.BatchID]
+			if !ok {
+				continue
+			}
+
+			if instancesByBatch[*inst.BatchID] == nil {
+				instancesByBatch[*inst.BatchID] = migration.Instances{}
+			}
+
+			instancesByBatch[*inst.BatchID] = append(instancesByBatch[*inst.BatchID], inst)
+
+			targetsByBatch[*inst.BatchID], err = d.target.GetByID(ctx, b.TargetID)
+			if err != nil {
+				return fmt.Errorf("Failed to get target for instance %q: %w", inst.UUID, err)
+			}
+
+			sourcesByInstance[inst.UUID], err = d.source.GetByID(ctx, inst.SourceID)
+			if err != nil {
+				return fmt.Errorf("Failed to get source for instance %q: %w", inst.UUID, err)
+			}
+		}
+
+		return nil
 	})
 	if err != nil {
-		log.Warn("Failed to construct target", slog.String("target", it.GetName()), logger.Err(err))
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-		if err != nil {
-			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
-		}
-
-		return
+		return err
 	}
 
-	// Connect to the target.
-	err = it.Connect(d.ShutdownCtx)
+	for bID, instances := range instancesByBatch {
+		err := d.createTargetVMs(ctx, batchesByID[bID], instances, targetsByBatch[bID], sourcesByInstance, cleanupInstances)
+		if err != nil {
+			log.Error("Failed to initialize migration workers", slog.String("target", targetsByBatch[bID].Name), slog.String("batch", batchesByID[bID].Name), logger.Err(err))
+		}
+	}
+
+	return nil
+}
+
+// Concurrently create target VMs for each instance record.
+// Any instance that fails the migration has its state set to ERROR.
+// - cleanupInstances determines whether a target VM should be deleted if it encounters an error.
+func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instances migration.Instances, t migration.Target, sources map[uuid.UUID]migration.Source, cleanupInstances bool) error {
+	log := slog.With(
+		slog.String("method", "createTargetVMs"),
+		slog.String("target", t.Name),
+		slog.String("batch", b.Name),
+	)
+
+	err := util.RunConcurrentList(instances, func(inst migration.Instance) (_err error) {
+		s := sources[inst.UUID]
+		log := log.With(
+			slog.String("instance", inst.InventoryPath),
+			slog.String("source", s.Name),
+		)
+
+		reverter := revert.New()
+		defer reverter.Fail()
+		reverter.Add(func() {
+			log := log.With(slog.String("revert", "set instance failed"))
+			var errString string
+			if _err != nil {
+				errString = _err.Error()
+			}
+
+			// If cleanupInstances is true, then we can try to create the VMs again so don't set the instance state to errored.
+			if cleanupInstances {
+				log.Error("Failed attempt to create target instance. Trying again soon")
+				return
+			}
+
+			// Try to set the instance state to ERRORED if it failed.
+			_, err := d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, errString, true)
+			if err != nil {
+				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR.String()), logger.Err(err))
+			}
+		})
+
+		it, err := target.NewInternalIncusTargetFrom(api.Target{
+			Name:       t.Name,
+			DatabaseID: t.ID,
+			TargetType: t.TargetType,
+			Properties: t.Properties,
+		})
+		if err != nil {
+			return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
+		}
+
+		// Connect to the target.
+		err = it.Connect(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to connect to target %q: %w", it.GetName(), err)
+		}
+
+		// Set the project.
+		err = it.SetProject(b.TargetProject)
+		if err != nil {
+			return fmt.Errorf("Failed to set project %q for target %q: %w", b.TargetProject, it.GetName(), err)
+		}
+
+		// Create the instance.
+		workerISOName, err := d.os.GetMigrationManagerISOName()
+		if err != nil {
+			return fmt.Errorf("Failed to get worker ISO path: %w", err)
+		}
+
+		var driverISOName string
+		if inst.GetOSType() == api.OSTYPE_WINDOWS {
+			driverISOName, err = d.os.GetVirtioDriversISOName()
+			if err != nil {
+				return fmt.Errorf("Failed to get driver ISO path: %w", err)
+			}
+		}
+
+		// Optionally clean up the VMs if we fail to create them.
+		instanceDef := it.CreateVMDefinition(inst, s.Name, b.StoragePool)
+		if cleanupInstances {
+			reverter.Add(func() {
+				log := log.With(slog.String("revert", "instance cleanup"))
+				err := it.DeleteVM(instanceDef.Name)
+				if err != nil {
+					log.Error("Failed to delete new instance after failure", logger.Err(err))
+				}
+			})
+		}
+
+		err = it.CreateNewVM(instanceDef, b.StoragePool, workerISOName, driverISOName)
+		if err != nil {
+			return fmt.Errorf("Failed to create new instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
+		}
+
+		// Start the instance.
+		err = it.StartVM(inst.GetName())
+		if err != nil {
+			return fmt.Errorf("Failed to start instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
+		}
+
+		// Inject the worker binary.
+		workerBinaryName := filepath.Join(d.os.VarDir, "migration-manager-worker")
+		err = it.PushFile(inst.GetName(), workerBinaryName, "/root/")
+		if err != nil {
+			return fmt.Errorf("Failed to push %q to instance %q on target %q: %w", workerBinaryName, instanceDef.Name, it.GetName(), err)
+		}
+
+		// Set the instance state to IDLE before triggering the worker.
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
+		if err != nil {
+			return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_IDLE.String(), err)
+		}
+
+		// At this point, the import is about to begin, so we won't try to delete instances anymore.
+		// Instead, if an error occurs, we will try to set the instance state to ERROR so that we don't retry.
+		cleanupInstances = false
+
+		// Start the worker binary.
+		// TODO: Periodically check that the worker is actually running.
+		err = it.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getWorkerEndpoint(), "--uuid", inst.UUID.String(), "--token", inst.SecretToken.String()})
+		if err != nil {
+			return fmt.Errorf("Failed to execute worker on instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
+		}
+
+		reverter.Success()
+
+		return nil
+	})
 	if err != nil {
-		log.Warn("Failed to connect to target", slog.String("target", it.GetName()), logger.Err(err))
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-		if err != nil {
-			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
-		}
-
-		return
+		return err
 	}
 
-	// Set the project.
-	err = it.SetProject(b.TargetProject)
-	if err != nil {
-		log.Warn("Failed to set target project", slog.String("project", b.TargetProject), logger.Err(err))
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-		if err != nil {
-			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
-		}
-
-		return
-	}
-
-	// Create the instance.
-	workerISOName, _ := d.os.GetMigrationManagerISOName()
-	var driverISOName string
-	if inst.GetOSType() == api.OSTYPE_WINDOWS {
-		driverISOName, _ = d.os.GetVirtioDriversISOName()
-	}
-
-	instanceDef := it.CreateVMDefinition(inst, s.Name, b.StoragePool)
-	creationErr := it.CreateNewVM(instanceDef, b.StoragePool, workerISOName, driverISOName)
-	if creationErr != nil {
-		log.Warn("Failed to create new VM", slog.String("instance", instanceDef.Name), logger.Err(creationErr))
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, creationErr.Error(), true)
-		if err != nil {
-			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
-		}
-
-		return
-	}
-
-	// Creation was successful, update the instance state to 'Idle'.
-	_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
-	if err != nil {
-		log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
-		return
-	}
-
-	// Start the instance.
-	startErr := it.StartVM(inst.GetName())
-	if startErr != nil {
-		log.Warn("Failed to start VM", logger.Err(startErr))
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, startErr.Error(), true)
-		if err != nil {
-			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
-		}
-
-		return
-	}
-
-	// Inject the worker binary.
-	workerBinaryName := filepath.Join(d.os.VarDir, "migration-manager-worker")
-	pushErr := it.PushFile(inst.GetName(), workerBinaryName, "/root/")
-	if pushErr != nil {
-		log.Warn("Failed to push file to instance", slog.String("filename", workerBinaryName), logger.Err(pushErr))
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, pushErr.Error(), true)
-		if err != nil {
-			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
-		}
-
-		return
-	}
-
-	// Start the worker binary.
-	workerStartErr := it.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getWorkerEndpoint(), "--uuid", inst.UUID.String(), "--token", inst.SecretToken.String()})
-	if workerStartErr != nil {
-		log.Warn("Failed to execute without waiting", logger.Err(workerStartErr))
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, workerStartErr.Error(), true)
-		if err != nil {
-			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
-		}
-
-		return
-	}
+	return nil
 }
 
 func (d *Daemon) finalizeCompleteInstances() bool {
