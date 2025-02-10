@@ -28,6 +28,13 @@ func NewInstanceService(repo InstanceRepo, source SourceService, opts ...Instanc
 	instanceSvc := instanceService{
 		repo:   repo,
 		source: source,
+
+		now: func() time.Time {
+			return time.Now().UTC()
+		},
+		randomUUID: func() (uuid.UUID, error) {
+			return uuid.NewRandom()
+		},
 	}
 
 	for _, opt := range opts {

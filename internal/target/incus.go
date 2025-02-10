@@ -180,12 +180,12 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 
 	// Apply CPU and memory limits.
 	ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.CPU.NumberCPUs)
-	if instanceDef.Overrides.NumberCPUs != 0 {
+	if instanceDef.Overrides != nil && instanceDef.Overrides.NumberCPUs != 0 {
 		ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.Overrides.NumberCPUs)
 	}
 
 	ret.Config["limits.memory"] = fmt.Sprintf("%dB", instanceDef.Memory.MemoryInBytes)
-	if instanceDef.Overrides.MemoryInBytes != 0 {
+	if instanceDef.Overrides != nil && instanceDef.Overrides.MemoryInBytes != 0 {
 		ret.Config["limits.memory"] = fmt.Sprintf("%dB", instanceDef.Overrides.MemoryInBytes)
 	}
 

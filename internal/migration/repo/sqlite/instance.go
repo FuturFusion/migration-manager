@@ -526,6 +526,7 @@ func (i instance) UpdateStatusByID(ctx context.Context, id uuid.UUID, status api
 UPDATE instances
 SET migration_status=:migration_status, migration_status_string=:migration_status_string, needs_disk_import=:needs_disk_import
 WHERE uuid=:uuid
+RETURNING uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token;
 `
 
 	row := i.db.QueryRowContext(ctx, sqlUpdate,

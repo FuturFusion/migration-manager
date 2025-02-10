@@ -387,7 +387,7 @@ func instanceOverridePost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	_, err = d.instance.CreateOverrides(r.Context(), migration.Overrides{
-		UUID:             override.UUID,
+		UUID:             UUID,
 		LastUpdate:       time.Now().UTC(),
 		Comment:          override.Comment,
 		NumberCPUs:       override.NumberCPUs,
