@@ -4,9 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
-
-	"github.com/mattn/go-sqlite3"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo"
@@ -45,7 +42,7 @@ RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, inse
 		sql.Named("insecure", in.Insecure),
 	)
 	if row.Err() != nil {
-		return migration.Target{}, row.Err()
+		return migration.Target{}, mapErr(row.Err())
 	}
 
 	return scanTarget(row)
@@ -56,7 +53,7 @@ func (t target) GetAll(ctx context.Context) (migration.Targets, error) {
 
 	rows, err := t.db.QueryContext(ctx, sqlGetAll)
 	if err != nil {
-		return nil, err
+		return nil, mapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -72,7 +69,7 @@ func (t target) GetAll(ctx context.Context) (migration.Targets, error) {
 	}
 
 	if rows.Err() != nil {
-		return nil, rows.Err()
+		return nil, mapErr(rows.Err())
 	}
 
 	return targets, nil
@@ -83,7 +80,7 @@ func (t target) GetAllNames(ctx context.Context) ([]string, error) {
 
 	rows, err := t.db.QueryContext(ctx, sqlGetAllNames)
 	if err != nil {
-		return nil, err
+		return nil, mapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -93,14 +90,14 @@ func (t target) GetAllNames(ctx context.Context) ([]string, error) {
 		var targetName string
 		err := rows.Scan(&targetName)
 		if err != nil {
-			return nil, err
+			return nil, mapErr(err)
 		}
 
 		targetNames = append(targetNames, targetName)
 	}
 
 	if rows.Err() != nil {
-		return nil, rows.Err()
+		return nil, mapErr(rows.Err())
 	}
 
 	return targetNames, nil
@@ -111,7 +108,7 @@ func (t target) GetByID(ctx context.Context, id int) (migration.Target, error) {
 
 	row := t.db.QueryRowContext(ctx, sqlGetByID, sql.Named("id", id))
 	if row.Err() != nil {
-		return migration.Target{}, row.Err()
+		return migration.Target{}, mapErr(row.Err())
 	}
 
 	return scanTarget(row)
@@ -122,7 +119,7 @@ func (t target) GetByName(ctx context.Context, name string) (migration.Target, e
 
 	row := t.db.QueryRowContext(ctx, sqlGetByName, sql.Named("name", name))
 	if row.Err() != nil {
-		return migration.Target{}, row.Err()
+		return migration.Target{}, mapErr(row.Err())
 	}
 
 	return scanTarget(row)
@@ -150,7 +147,7 @@ RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, inse
 		sql.Named("id", in.ID),
 	)
 	if row.Err() != nil {
-		return migration.Target{}, row.Err()
+		return migration.Target{}, mapErr(row.Err())
 	}
 
 	return scanTarget(row)
@@ -169,18 +166,7 @@ func scanTarget(row interface{ Scan(dest ...any) error }) (migration.Target, err
 		&target.Insecure,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return migration.Target{}, migration.ErrNotFound
-		}
-
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			if sqliteErr.Code == sqlite3.ErrConstraint {
-				return migration.Target{}, migration.ErrConstraintViolation
-			}
-		}
-
-		return migration.Target{}, err
+		return migration.Target{}, mapErr(err)
 	}
 
 	err = json.Unmarshal(marshalledOIDCTokens, &target.OIDCTokens)
@@ -196,19 +182,12 @@ func (t target) DeleteByName(ctx context.Context, name string) error {
 
 	result, err := t.db.ExecContext(ctx, sqlDelete, sql.Named("name", name))
 	if err != nil {
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			if sqliteErr.Code == sqlite3.ErrConstraint {
-				return migration.ErrConstraintViolation
-			}
-		}
-
-		return err
+		return mapErr(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return mapErr(err)
 	}
 
 	if affectedRows == 0 {
