@@ -198,7 +198,13 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 
 	d.checkSourceConnectivity()
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+source.Name)
+	// Get the source's connectivity status to return to the client.
+	currentSource, err := d.source.GetByName(r.Context(), source.Name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponseLocation(true, map[string]api.ExternalConnectivityStatus{"ConnectivityStatus": currentSource.ConnectivityStatus}, "/"+api.APIVersion+"/sources/"+source.Name)
 }
 
 // swagger:operation DELETE /1.0/sources/{name} sources source_delete
@@ -363,5 +369,11 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 
 	d.checkSourceConnectivity()
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+source.Name)
+	// Get the source's connectivity status to return to the client.
+	currentSource, err = d.source.GetByName(r.Context(), source.Name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponseLocation(true, map[string]api.ExternalConnectivityStatus{"ConnectivityStatus": currentSource.ConnectivityStatus}, "/"+api.APIVersion+"/sources/"+source.Name)
 }

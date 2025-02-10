@@ -203,7 +203,13 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 
 	d.checkTargetConnectivity()
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+target.Name)
+	// Get the target's connectivity status to return to the client.
+	currentTarget, err := d.target.GetByName(r.Context(), target.Name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponseLocation(true, map[string]api.ExternalConnectivityStatus{"ConnectivityStatus": currentTarget.ConnectivityStatus}, "/"+api.APIVersion+"/targets/"+target.Name)
 }
 
 // swagger:operation DELETE /1.0/targets/{name} targets target_delete
@@ -372,5 +378,11 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 
 	d.checkTargetConnectivity()
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+target.Name)
+	// Get the target's connectivity status to return to the client.
+	currentTarget, err = d.target.GetByName(r.Context(), target.Name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponseLocation(true, map[string]api.ExternalConnectivityStatus{"ConnectivityStatus": currentTarget.ConnectivityStatus}, "/"+api.APIVersion+"/targets/"+target.Name)
 }
