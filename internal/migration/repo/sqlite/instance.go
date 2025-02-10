@@ -521,7 +521,7 @@ func (i instance) DeleteByID(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (i instance) UpdateStatusByID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
+func (i instance) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
 	const sqlUpdate = `
 UPDATE instances
 SET migration_status=:migration_status, migration_status_string=:migration_status_string, needs_disk_import=:needs_disk_import

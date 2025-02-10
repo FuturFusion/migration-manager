@@ -67,8 +67,8 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			UpdateOverridesByIDFunc: func(ctx context.Context, overrides migration.Overrides) (migration.Overrides, error) {
 //				panic("mock out the UpdateOverridesByID method")
 //			},
-//			UpdateStatusByIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
-//				panic("mock out the UpdateStatusByID method")
+//			UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
+//				panic("mock out the UpdateStatusByUUID method")
 //			},
 //		}
 //
@@ -122,8 +122,8 @@ type InstanceServiceMock struct {
 	// UpdateOverridesByIDFunc mocks the UpdateOverridesByID method.
 	UpdateOverridesByIDFunc func(ctx context.Context, overrides migration.Overrides) (migration.Overrides, error)
 
-	// UpdateStatusByIDFunc mocks the UpdateStatusByID method.
-	UpdateStatusByIDFunc func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error)
+	// UpdateStatusByUUIDFunc mocks the UpdateStatusByUUID method.
+	UpdateStatusByUUIDFunc func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -226,8 +226,8 @@ type InstanceServiceMock struct {
 			// Overrides is the overrides argument value.
 			Overrides migration.Overrides
 		}
-		// UpdateStatusByID holds details about calls to the UpdateStatusByID method.
-		UpdateStatusByID []struct {
+		// UpdateStatusByUUID holds details about calls to the UpdateStatusByUUID method.
+		UpdateStatusByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
@@ -255,7 +255,7 @@ type InstanceServiceMock struct {
 	lockUnassignFromBatch   sync.RWMutex
 	lockUpdateByID          sync.RWMutex
 	lockUpdateOverridesByID sync.RWMutex
-	lockUpdateStatusByID    sync.RWMutex
+	lockUpdateStatusByUUID  sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -786,10 +786,10 @@ func (mock *InstanceServiceMock) UpdateOverridesByIDCalls() []struct {
 	return calls
 }
 
-// UpdateStatusByID calls UpdateStatusByIDFunc.
-func (mock *InstanceServiceMock) UpdateStatusByID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
-	if mock.UpdateStatusByIDFunc == nil {
-		panic("InstanceServiceMock.UpdateStatusByIDFunc: method is nil but InstanceService.UpdateStatusByID was just called")
+// UpdateStatusByUUID calls UpdateStatusByUUIDFunc.
+func (mock *InstanceServiceMock) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
+	if mock.UpdateStatusByUUIDFunc == nil {
+		panic("InstanceServiceMock.UpdateStatusByUUIDFunc: method is nil but InstanceService.UpdateStatusByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx             context.Context
@@ -804,17 +804,17 @@ func (mock *InstanceServiceMock) UpdateStatusByID(ctx context.Context, id uuid.U
 		StatusString:    statusString,
 		NeedsDiskImport: needsDiskImport,
 	}
-	mock.lockUpdateStatusByID.Lock()
-	mock.calls.UpdateStatusByID = append(mock.calls.UpdateStatusByID, callInfo)
-	mock.lockUpdateStatusByID.Unlock()
-	return mock.UpdateStatusByIDFunc(ctx, id, status, statusString, needsDiskImport)
+	mock.lockUpdateStatusByUUID.Lock()
+	mock.calls.UpdateStatusByUUID = append(mock.calls.UpdateStatusByUUID, callInfo)
+	mock.lockUpdateStatusByUUID.Unlock()
+	return mock.UpdateStatusByUUIDFunc(ctx, id, status, statusString, needsDiskImport)
 }
 
-// UpdateStatusByIDCalls gets all the calls that were made to UpdateStatusByID.
+// UpdateStatusByUUIDCalls gets all the calls that were made to UpdateStatusByUUID.
 // Check the length with:
 //
-//	len(mockedInstanceService.UpdateStatusByIDCalls())
-func (mock *InstanceServiceMock) UpdateStatusByIDCalls() []struct {
+//	len(mockedInstanceService.UpdateStatusByUUIDCalls())
+func (mock *InstanceServiceMock) UpdateStatusByUUIDCalls() []struct {
 	Ctx             context.Context
 	ID              uuid.UUID
 	Status          api.MigrationStatusType
@@ -828,8 +828,8 @@ func (mock *InstanceServiceMock) UpdateStatusByIDCalls() []struct {
 		StatusString    string
 		NeedsDiskImport bool
 	}
-	mock.lockUpdateStatusByID.RLock()
-	calls = mock.calls.UpdateStatusByID
-	mock.lockUpdateStatusByID.RUnlock()
+	mock.lockUpdateStatusByUUID.RLock()
+	calls = mock.calls.UpdateStatusByUUID
+	mock.lockUpdateStatusByUUID.RUnlock()
 	return calls
 }
