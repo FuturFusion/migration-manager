@@ -1,7 +1,6 @@
 package cmds
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -9,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -55,8 +53,7 @@ func (c *CmdTarget) Command() *cobra.Command {
 type cmdTargetAdd struct {
 	global *CmdGlobal
 
-	flagInsecure         bool
-	flagNoTestConnection bool
+	flagInsecure bool
 }
 
 func (c *cmdTargetAdd) Command() *cobra.Command {
@@ -74,7 +71,6 @@ func (c *cmdTargetAdd) Command() *cobra.Command {
 
 	cmd.RunE = c.Run
 	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the target")
-	cmd.Flags().BoolVar(&c.flagNoTestConnection, "no-test-connection", false, "Don't test connection to the new target")
 
 	return cmd
 }
@@ -98,7 +94,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
+	// If TLS, prompt for cert/key pair.
 	if authType == "tls" {
 		tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
 		if err != nil {
@@ -125,29 +121,8 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		t.TLSClientKey = string(contents)
 	}
 
-	content, err := json.Marshal(t)
-	if err != nil {
-		return err
-	}
-
-	// Verify we can connect to the target, and if using OIDC grab the tokens.
-	ctx := context.TODO()
-
-	internalTarget := target.InternalIncusTarget{}
-	err = json.Unmarshal(content, &internalTarget)
-	if err != nil {
-		return err
-	}
-
-	if !c.flagNoTestConnection {
-		err = internalTarget.Connect(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Insert into database.
-	content, err = json.Marshal(internalTarget)
+	content, err := json.Marshal(t)
 	if err != nil {
 		return err
 	}
@@ -327,7 +302,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
+		// If TLS, prompt for cert/key pair.
 		if authType == "tls" {
 			tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
 			if err != nil {
@@ -367,27 +342,8 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 
 	newTargetName := t.Name
 
-	content, err := json.Marshal(t)
-	if err != nil {
-		return err
-	}
-
-	// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
-	ctx := context.TODO()
-
-	internalTarget := target.InternalIncusTarget{}
-	err = json.Unmarshal(content, &internalTarget)
-	if err != nil {
-		return err
-	}
-
-	err = internalTarget.Connect(ctx)
-	if err != nil {
-		return err
-	}
-
 	// Update the target.
-	content, err = json.Marshal(internalTarget)
+	content, err := json.Marshal(t)
 	if err != nil {
 		return err
 	}
