@@ -81,4 +81,33 @@ func (s Source) validateSourceTypeVMware() error {
 	return nil
 }
 
+func (s Source) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
+		}
+
+		return properties.ConnectivityStatus
+	default:
+		return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
+	}
+}
+
+func (s *Source) SetExternalConnectivityStatus(status api.ExternalConnectivityStatus) {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return
+		}
+
+		properties.ConnectivityStatus = status
+		s.Properties, _ = json.Marshal(properties)
+	}
+}
+
 type Sources []Source

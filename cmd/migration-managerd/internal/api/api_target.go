@@ -193,6 +193,8 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", target.Name, err))
 	}
 
+	d.checkTargetConnectivity()
+
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+target.Name)
 }
 
@@ -351,6 +353,8 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
+
+	d.checkTargetConnectivity()
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+target.Name)
 }
