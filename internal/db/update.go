@@ -76,9 +76,9 @@ CREATE TABLE networks (
 CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    type INTEGER NOT NULL,
+    source_type INTEGER NOT NULL,
     insecure BOOLEAN,
-    config TEXT NOT NULL,
+    properties TEXT NOT NULL,
     UNIQUE (name)
 );
 
@@ -193,9 +193,9 @@ CREATE TABLE networks (
 CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    type INTEGER NOT NULL,
+    source_type INTEGER NOT NULL,
     insecure BOOLEAN,
-    config TEXT NOT NULL,
+    properties TEXT NOT NULL,
     UNIQUE (name)
 );
 
