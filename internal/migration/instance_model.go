@@ -107,6 +107,10 @@ func (i Instance) Validate() error {
 		return NewValidationErrf("Invalid instance, UUID can not be empty")
 	}
 
+	if i.SecretToken == uuid.Nil {
+		return NewValidationErrf("Invalid instance, SecretToken can not be empty")
+	}
+
 	if i.InventoryPath == "" {
 		return NewValidationErrf("Invalid instance, inventory path can not be empty")
 	}

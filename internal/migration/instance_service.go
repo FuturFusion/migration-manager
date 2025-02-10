@@ -45,26 +45,10 @@ func NewInstanceService(repo InstanceRepo, source SourceService, opts ...Instanc
 }
 
 func (s instanceService) Create(ctx context.Context, instance Instance) (Instance, error) {
-	var err error
+	// Note that we expect the source to fully populate an instance. For instance, the VMware source does
+	// this in its GetAllVMs() method.
 
-	// FIXME: where to handle instance ID?
-	instance.UUID, err = s.randomUUID()
-	if err != nil {
-		return Instance{}, err
-	}
-
-	// FIXME: where to handle LastUpdateFromSource timestamp?
-	instance.LastUpdateFromSource = s.now()
-	instance.MigrationStatus = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
-	instance.MigrationStatusString = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String()
-
-	// FIXME: where to handle secret token?
-	instance.SecretToken, err = s.randomUUID()
-	if err != nil {
-		return Instance{}, err
-	}
-
-	err = instance.Validate()
+	err := instance.Validate()
 	if err != nil {
 		return Instance{}, err
 	}
@@ -172,8 +156,6 @@ func (s instanceService) UnassignFromBatch(ctx context.Context, id uuid.UUID) er
 }
 
 func (s instanceService) UpdateByID(ctx context.Context, instance Instance) (Instance, error) {
-	// FIXME: where to handle LastUpdateFromSource timestamp?
-
 	err := instance.Validate()
 	if err != nil {
 		return Instance{}, err
