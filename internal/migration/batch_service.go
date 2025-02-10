@@ -83,7 +83,7 @@ func (s batchService) UpdateByID(ctx context.Context, batch Batch) (Batch, error
 		}
 
 		if !oldBatch.CanBeModified() {
-			return fmt.Errorf("Cannot update batch '%s': Currently in a migration phase", batch.Name)
+			return fmt.Errorf("Cannot update batch %q: Currently in a migration phase", batch.Name)
 		}
 
 		batch, err = s.repo.UpdateByID(ctx, batch)
@@ -203,7 +203,7 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 		}
 
 		if !oldBatch.CanBeModified() {
-			return fmt.Errorf("Cannot delete batch '%s': Currently in a migration phase", name)
+			return fmt.Errorf("Cannot delete batch %q: Currently in a migration phase", name)
 		}
 
 		instances, err := s.instance.GetAllByBatchID(ctx, oldBatch.ID)
@@ -214,7 +214,7 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 		// Verify all instances for this batch aren't in a migration phase and remove their association with this batch.
 		for _, inst := range instances {
 			if inst.IsMigrating() {
-				return fmt.Errorf("Cannot delete batch '%s': At least one assigned instance is in a migration phase", name)
+				return fmt.Errorf("Cannot delete batch %q: At least one assigned instance is in a migration phase", name)
 			}
 
 			err = s.instance.UnassignFromBatch(ctx, inst.UUID)
@@ -247,7 +247,7 @@ func (s batchService) StartBatchByName(ctx context.Context, name string) (err er
 			api.BATCHSTATUS_ERROR:
 			// States, where starting a batch is allowed.
 		default:
-			return fmt.Errorf("Cannot start batch '%s' in its current state '%s'", batch.Name, batch.Status)
+			return fmt.Errorf("Cannot start batch %q in its current state %q", batch.Name, batch.Status)
 		}
 
 		_, err = s.UpdateStatusByID(ctx, batch.ID, api.BATCHSTATUS_READY, api.BATCHSTATUS_READY.String())
@@ -279,7 +279,7 @@ func (s batchService) StopBatchByName(ctx context.Context, name string) (err err
 			api.BATCHSTATUS_RUNNING:
 			// States, where starting a batch is allowed.
 		default:
-			return fmt.Errorf("Cannot stop batch '%s' in its current state '%s'", batch.Name, batch.Status)
+			return fmt.Errorf("Cannot stop batch %q in its current state %q", batch.Name, batch.Status)
 		}
 
 		// Move batch status to "stopped".

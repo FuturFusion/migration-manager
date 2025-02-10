@@ -68,7 +68,7 @@ func (n *Node) GetInstance(tx *sql.Tx, UUID uuid.UUID) (instance.Instance, error
 	}
 
 	if len(ret) != 1 {
-		return nil, fmt.Errorf("No instance exists with UUID '%s'", UUID)
+		return nil, fmt.Errorf("No instance exists with UUID %q", UUID)
 	}
 
 	return ret[0], nil
@@ -86,7 +86,7 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 	}
 
 	if i.GetBatchID() != nil || i.IsMigrating() {
-		return fmt.Errorf("Cannot delete instance '%s': Either assigned to a batch or currently migrating", i.GetInventoryPath())
+		return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating", i.GetInventoryPath())
 	}
 
 	// Delete any corresponding override first.
@@ -109,7 +109,7 @@ func (n *Node) DeleteInstance(tx *sql.Tx, UUID uuid.UUID) error {
 	}
 
 	if affectedRows == 0 {
-		return fmt.Errorf("Instance with UUID '%s' doesn't exist, can't delete", UUID)
+		return fmt.Errorf("Instance with UUID %q doesn't exist, can't delete", UUID)
 	}
 
 	return nil
@@ -136,7 +136,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 			return mapDBError(err)
 		}
 
-		return fmt.Errorf("Cannot update instance '%s' while assigned to batch '%s'", i.GetInventoryPath(), batchName)
+		return fmt.Errorf("Cannot update instance %q while assigned to batch %q", i.GetInventoryPath(), batchName)
 	}
 
 	// Update instance in the database.
@@ -193,7 +193,7 @@ func (n *Node) UpdateInstance(tx *sql.Tx, i instance.Instance) error {
 	}
 
 	if affectedRows == 0 {
-		return fmt.Errorf("Instance with UUID '%s' doesn't exist, can't update", internalInstance.UUID)
+		return fmt.Errorf("Instance with UUID %q doesn't exist, can't update", internalInstance.UUID)
 	}
 
 	return nil

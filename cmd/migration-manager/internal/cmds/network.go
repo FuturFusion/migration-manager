@@ -104,7 +104,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully added new network '%s'.\n", n.Name)
+	cmd.Printf("Successfully added new network %q.\n", n.Name)
 	return nil
 }
 
@@ -201,7 +201,7 @@ func (c *cmdNetworkRemove) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully removed network '%s'.\n", name)
+	cmd.Printf("Successfully removed network %q.\n", name)
 	return nil
 }
 
@@ -284,6 +284,6 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully updated network '%s'.\n", newNetworkName)
+	cmd.Printf("Successfully updated network %q.\n", newNetworkName)
 	return nil
 }

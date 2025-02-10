@@ -198,7 +198,7 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 	}
 
 	if serverInfo.Auth != c.config.AuthType {
-		return fmt.Errorf("Received authentication mismatch: got '%s', expected '%s'", serverInfo.Auth, c.config.AuthType)
+		return fmt.Errorf("Received authentication mismatch: got %q, expected %q", serverInfo.Auth, c.config.AuthType)
 	}
 
 	return c.config.SaveConfig()

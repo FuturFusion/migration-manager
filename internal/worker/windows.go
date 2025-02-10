@@ -258,6 +258,6 @@ func MapWindowsVersionToAbbrev(version string) (string, error) {
 	case strings.Contains(version, "Server 2022"):
 		return "2k22", nil
 	default:
-		return "", fmt.Errorf("'%s' is not currently supported", version)
+		return "", fmt.Errorf("%q is not currently supported", version)
 	}
 }

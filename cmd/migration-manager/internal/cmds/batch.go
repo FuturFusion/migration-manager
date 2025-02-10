@@ -105,7 +105,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		Name: args[0],
 	}
 
-	b.Target, err = c.global.Asker.AskChoice(fmt.Sprintf("What target should be used by this batch? (Choices: '%s') ", strings.Join(targets, "', '")), targets, "")
+	b.Target, err = c.global.Asker.AskChoice(fmt.Sprintf("What target should be used by this batch? (Choices: %q) ", strings.Join(targets, "', '")), targets, "")
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully added new batch '%s'.\n", b.Name)
+	cmd.Printf("Successfully added new batch %q.\n", b.Name)
 	return nil
 }
 
@@ -270,7 +270,7 @@ func (c *cmdBatchRemove) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully removed batch '%s'.\n", name)
+	cmd.Printf("Successfully removed batch %q.\n", name)
 	return nil
 }
 
@@ -392,7 +392,7 @@ func (c *cmdBatchStart) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully started batch '%s'.\n", name)
+	cmd.Printf("Successfully started batch %q.\n", name)
 	return nil
 }
 
@@ -429,7 +429,7 @@ func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully stopped batch '%s'.\n", name)
+	cmd.Printf("Successfully stopped batch %q.\n", name)
 	return nil
 }
 
@@ -491,7 +491,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	b.Target, err = c.global.Asker.AskChoice(fmt.Sprintf("Target: ["+b.Target+"] (Choices: '%s') ", strings.Join(targets, "', '")), targets, "")
+	b.Target, err = c.global.Asker.AskChoice(fmt.Sprintf("Target: ["+b.Target+"] (Choices: %q) ", strings.Join(targets, "', '")), targets, "")
 	if err != nil {
 		return err
 	}
@@ -565,7 +565,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully updated batch '%s'.\n", newBatchName)
+	cmd.Printf("Successfully updated batch %q.\n", newBatchName)
 	return nil
 }
 

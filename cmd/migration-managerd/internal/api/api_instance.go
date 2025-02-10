@@ -237,7 +237,7 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 
 	instance, err := d.instance.GetByID(r.Context(), UUID)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
+		return response.BadRequest(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
 	}
 
 	source, err := d.source.GetByID(r.Context(), instance.SourceID)
@@ -326,7 +326,7 @@ func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
 
 	override, err := d.instance.GetOverridesByID(r.Context(), UUID)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get override for instance '%s': %w", UUID, err))
+		return response.BadRequest(fmt.Errorf("Failed to get override for instance %q: %w", UUID, err))
 	}
 
 	return response.SyncResponseETag(
@@ -474,7 +474,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 		DisableMigration: override.DisableMigration,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating override for instance '%s': %w", UUID, err))
+		return response.SmartError(fmt.Errorf("Failed updating override for instance %q: %w", UUID, err))
 	}
 
 	err = trans.Commit()

@@ -57,7 +57,7 @@ func NewInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, e
 
 func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 	if s.isConnected {
-		return fmt.Errorf("Already connected to endpoint '%s'", s.Endpoint)
+		return fmt.Errorf("Already connected to endpoint %q", s.Endpoint)
 	}
 
 	endpointURL, err := soap.ParseURL(s.Endpoint)
@@ -89,7 +89,7 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 	if !s.isConnected {
-		return fmt.Errorf("Not connected to endpoint '%s'", s.Endpoint)
+		return fmt.Errorf("Not connected to endpoint %q", s.Endpoint)
 	}
 
 	err := s.govmomiClient.Logout(ctx)

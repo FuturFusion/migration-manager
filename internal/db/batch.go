@@ -55,7 +55,7 @@ func (n *Node) GetBatch(tx *sql.Tx, name string) (batch.Batch, error) {
 	}
 
 	if len(ret) != 1 {
-		return nil, fmt.Errorf("No batch exists with name '%s'", name)
+		return nil, fmt.Errorf("No batch exists with name %q", name)
 	}
 
 	return ret[0], nil
@@ -86,7 +86,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 	}
 
 	if !dbBatch.CanBeModified() {
-		return fmt.Errorf("Cannot delete batch '%s': Currently in a migration phase", name)
+		return fmt.Errorf("Cannot delete batch %q: Currently in a migration phase", name)
 	}
 
 	// Get a list of any instances currently assigned to this batch.
@@ -103,7 +103,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 	// Verify all instances for this batch aren't in a migration phase and remove their association with this batch.
 	for _, inst := range instances {
 		if inst.IsMigrating() {
-			return fmt.Errorf("Cannot delete batch '%s': At least one assigned instance is in a migration phase", name)
+			return fmt.Errorf("Cannot delete batch %q: At least one assigned instance is in a migration phase", name)
 		}
 
 		q := `UPDATE instances SET batch_id=?,migration_status=?,migration_status_string=? WHERE uuid=?`
@@ -126,7 +126,7 @@ func (n *Node) DeleteBatch(tx *sql.Tx, name string) error {
 	}
 
 	if affectedRows == 0 {
-		return fmt.Errorf("Batch with name '%s' doesn't exist, can't delete", name)
+		return fmt.Errorf("Batch with name %q doesn't exist, can't delete", name)
 	}
 
 	return nil
@@ -154,7 +154,7 @@ func (n *Node) UpdateBatch(tx *sql.Tx, b batch.Batch) error {
 	}
 
 	if !dbBatch.CanBeModified() {
-		return fmt.Errorf("Cannot update batch '%s': Currently in a migration phase", b.GetName())
+		return fmt.Errorf("Cannot update batch %q: Currently in a migration phase", b.GetName())
 	}
 
 	// Update batch in the database.
@@ -456,7 +456,7 @@ func (n *Node) StartBatch(tx *sql.Tx, name string) error {
 
 	// Ensure batch is in a state that is ready to start.
 	if internalBatch.Status != api.BATCHSTATUS_DEFINED && internalBatch.Status != api.BATCHSTATUS_STOPPED && internalBatch.Status != api.BATCHSTATUS_ERROR {
-		return fmt.Errorf("Cannot start batch '%s' in its current state '%s'", internalBatch.Name, internalBatch.Status)
+		return fmt.Errorf("Cannot start batch %q in its current state %q", internalBatch.Name, internalBatch.Status)
 	}
 
 	// Move batch status to "ready".
@@ -477,7 +477,7 @@ func (n *Node) StopBatch(tx *sql.Tx, name string) error {
 
 	// Ensure batch is in a state that is ready to stop.
 	if internalBatch.Status != api.BATCHSTATUS_READY && internalBatch.Status != api.BATCHSTATUS_QUEUED && internalBatch.Status != api.BATCHSTATUS_RUNNING {
-		return fmt.Errorf("Cannot stop batch '%s' in its current state '%s'", internalBatch.Name, internalBatch.Status)
+		return fmt.Errorf("Cannot stop batch %q in its current state %q", internalBatch.Name, internalBatch.Status)
 	}
 
 	// Move batch status to "stopped".
