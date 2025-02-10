@@ -1,8 +1,6 @@
 package cmds
 
 import (
-	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,7 +12,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -62,10 +59,7 @@ func (c *CmdTarget) Command() *cobra.Command {
 type cmdTargetAdd struct {
 	global *CmdGlobal
 
-	flagInsecure         bool
-	flagNoTestConnection bool
-
-	additionalRootCertificate *tls.Certificate
+	flagInsecure bool
 }
 
 func (c *cmdTargetAdd) Command() *cobra.Command {
@@ -84,7 +78,6 @@ func (c *cmdTargetAdd) Command() *cobra.Command {
 
 	cmd.RunE = c.Run
 	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the target")
-	cmd.Flags().BoolVar(&c.flagNoTestConnection, "no-test-connection", false, "Don't test connection to the new target")
 
 	return cmd
 }
@@ -163,27 +156,6 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-
-		internalTarget, err := target.NewInternalIncusTargetFrom(t)
-		if err != nil {
-			return err
-		}
-
-		// Verify we can connect to the target, and if using OIDC grab the tokens.
-		if c.additionalRootCertificate != nil {
-			internalTarget.WithAdditionalRootCertificate(c.additionalRootCertificate)
-		}
-
-		if !c.flagNoTestConnection {
-			ctx := context.TODO()
-			err = internalTarget.Connect(ctx)
-			if err != nil {
-				return err
-			}
-		}
-
-		// Need to grab properties post-connection to get any OIDC tokens that we need to save.
-		t.Properties = internalTarget.Properties
 
 		// Insert into database.
 		content, err := json.Marshal(t)
@@ -434,21 +406,6 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("Unsupported target type %d; must be one of %q", tgt.TargetType, supportedTargetTypes)
 	}
-
-	internalTarget, err := target.NewInternalIncusTargetFrom(tgt)
-	if err != nil {
-		return err
-	}
-
-	// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
-	ctx := context.TODO()
-	err = internalTarget.Connect(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Need to grab properties post-connection to get any OIDC tokens that we need to save.
-	tgt.Properties = internalTarget.Properties
 
 	// Update the target.
 	content, err := json.Marshal(tgt)
