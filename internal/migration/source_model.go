@@ -13,7 +13,8 @@ type Source struct {
 	Insecure   bool
 	SourceType api.SourceType
 
-	Properties json.RawMessage
+	Properties         json.RawMessage
+	ConnectivityStatus api.ExternalConnectivityStatus
 }
 
 func (s Source) Validate() error {

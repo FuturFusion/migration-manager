@@ -22,9 +22,9 @@ func NewSource(db repo.DBTX) *source {
 
 func (s source) Create(ctx context.Context, in migration.Source) (migration.Source, error) {
 	const sqlInsert = `
-INSERT INTO sources (name, source_type, insecure, properties)
-VALUES(:name, :source_type, :insecure, :properties)
-RETURNING id, name, source_type, insecure, properties;
+INSERT INTO sources (name, source_type, insecure, properties, connectivity_status)
+VALUES(:name, :source_type, :insecure, :properties, :connectivity_status)
+RETURNING id, name, source_type, insecure, properties, connectivity_status;
 `
 
 	row := s.db.QueryRowContext(ctx, sqlInsert,
@@ -32,6 +32,7 @@ RETURNING id, name, source_type, insecure, properties;
 		sql.Named("source_type", in.SourceType),
 		sql.Named("insecure", in.Insecure),
 		sql.Named("properties", in.Properties),
+		sql.Named("connectivity_status", in.ConnectivityStatus),
 	)
 	if row.Err() != nil {
 		return migration.Source{}, mapErr(row.Err())
@@ -41,7 +42,7 @@ RETURNING id, name, source_type, insecure, properties;
 }
 
 func (s source) GetAll(ctx context.Context) (migration.Sources, error) {
-	const sqlGetAll = `SELECT id, name, source_type, insecure, properties FROM sources ORDER BY name;`
+	const sqlGetAll = `SELECT id, name, source_type, insecure, properties, connectivity_status FROM sources ORDER BY name;`
 
 	rows, err := s.db.QueryContext(ctx, sqlGetAll)
 	if err != nil {
@@ -96,7 +97,7 @@ func (s source) GetAllNames(ctx context.Context) ([]string, error) {
 }
 
 func (s source) GetByID(ctx context.Context, id int) (migration.Source, error) {
-	const sqlGetByID = `SELECT id, name, source_type, insecure, properties FROM sources WHERE id=:id;`
+	const sqlGetByID = `SELECT id, name, source_type, insecure, properties, connectivity_status FROM sources WHERE id=:id;`
 
 	row := s.db.QueryRowContext(ctx, sqlGetByID, sql.Named("id", id))
 	if row.Err() != nil {
@@ -107,7 +108,7 @@ func (s source) GetByID(ctx context.Context, id int) (migration.Source, error) {
 }
 
 func (s source) GetByName(ctx context.Context, name string) (migration.Source, error) {
-	const sqlGetByName = `SELECT id, name, source_type, insecure, properties FROM sources WHERE name=:name;`
+	const sqlGetByName = `SELECT id, name, source_type, insecure, properties, connectivity_status FROM sources WHERE name=:name;`
 
 	row := s.db.QueryRowContext(ctx, sqlGetByName, sql.Named("name", name))
 	if row.Err() != nil {
@@ -119,9 +120,9 @@ func (s source) GetByName(ctx context.Context, name string) (migration.Source, e
 
 func (s source) UpdateByID(ctx context.Context, in migration.Source) (migration.Source, error) {
 	const sqlUpdate = `
-UPDATE sources SET name=:name, insecure=:insecure, source_type=:source_type, properties=:properties
+UPDATE sources SET name=:name, insecure=:insecure, source_type=:source_type, properties=:properties, connectivity_status=:connectivity_status
 WHERE id=:id
-RETURNING id, name, source_type, insecure, properties;
+RETURNING id, name, source_type, insecure, properties, connectivity_status;
 `
 
 	row := s.db.QueryRowContext(ctx, sqlUpdate,
@@ -130,6 +131,7 @@ RETURNING id, name, source_type, insecure, properties;
 		sql.Named("insecure", in.Insecure),
 		sql.Named("properties", in.Properties),
 		sql.Named("id", in.ID),
+		sql.Named("connectivity_status", in.ConnectivityStatus),
 	)
 	if row.Err() != nil {
 		return migration.Source{}, mapErr(row.Err())
@@ -146,6 +148,7 @@ func scanSource(row interface{ Scan(dest ...any) error }) (migration.Source, err
 		&source.SourceType,
 		&source.Insecure,
 		&source.Properties,
+		&source.ConnectivityStatus,
 	)
 	if err != nil {
 		return migration.Source{}, mapErr(err)

@@ -4,16 +4,19 @@ import (
 	"net/url"
 
 	"github.com/zitadel/oidc/v3/pkg/oidc"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type Target struct {
-	ID            int
-	Name          string
-	Endpoint      string
-	TLSClientKey  string
-	TLSClientCert string
-	OIDCTokens    *oidc.Tokens[*oidc.IDTokenClaims]
-	Insecure      bool
+	ID                 int
+	Name               string
+	Endpoint           string
+	TLSClientKey       string
+	TLSClientCert      string
+	OIDCTokens         *oidc.Tokens[*oidc.IDTokenClaims]
+	Insecure           bool
+	ConnectivityStatus api.ExternalConnectivityStatus
 }
 
 func (t Target) Validate() error {

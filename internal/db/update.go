@@ -79,6 +79,7 @@ CREATE TABLE sources (
     source_type INTEGER NOT NULL,
     insecure BOOLEAN,
     properties TEXT NOT NULL,
+    connectivity_status INTEGER NOT NULL,
     UNIQUE (name)
 );
 
@@ -90,6 +91,7 @@ CREATE TABLE targets (
     tls_client_cert TEXT NOT NULL,
     oidc_tokens TEXT NOT NULL,
     insecure BOOLEAN,
+    connectivity_status INTEGER NOT NULL,
     UNIQUE (name)
 );
 
@@ -196,6 +198,7 @@ CREATE TABLE sources (
     source_type INTEGER NOT NULL,
     insecure BOOLEAN,
     properties TEXT NOT NULL,
+    connectivity_status INTEGER NOT NULL,
     UNIQUE (name)
 );
 
@@ -207,6 +210,7 @@ CREATE TABLE targets (
     tls_client_cert TEXT NOT NULL,
     oidc_tokens TEXT NOT NULL,
     insecure BOOLEAN,
+    connectivity_status INTEGER NOT NULL,
     UNIQUE (name)
 );
 `
