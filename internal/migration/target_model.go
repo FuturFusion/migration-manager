@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/url"
 
+	"github.com/zitadel/oidc/v3/pkg/oidc"
+
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -61,6 +63,21 @@ func (t Target) validateTargetTypeIncus() error {
 	return nil
 }
 
+func (t Target) GetEndpoint() string {
+	switch t.TargetType {
+	case api.TARGETTYPE_INCUS:
+		var properties api.IncusProperties
+		err := json.Unmarshal(t.Properties, &properties)
+		if err != nil {
+			return ""
+		}
+
+		return properties.Endpoint
+	default:
+		return ""
+	}
+}
+
 func (t Target) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
 	switch t.TargetType {
 	case api.TARGETTYPE_INCUS:
@@ -86,6 +103,20 @@ func (t *Target) SetExternalConnectivityStatus(status api.ExternalConnectivitySt
 		}
 
 		properties.ConnectivityStatus = status
+		t.Properties, _ = json.Marshal(properties)
+	}
+}
+
+func (t *Target) SetOIDCTokens(tokens *oidc.Tokens[*oidc.IDTokenClaims]) {
+	switch t.TargetType {
+	case api.TARGETTYPE_INCUS:
+		var properties api.IncusProperties
+		err := json.Unmarshal(t.Properties, &properties)
+		if err != nil {
+			return
+		}
+
+		properties.OIDCTokens = tokens
 		t.Properties, _ = json.Marshal(properties)
 	}
 }

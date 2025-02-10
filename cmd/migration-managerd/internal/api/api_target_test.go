@@ -67,14 +67,14 @@ func TestTargetsPost(t *testing.T) {
 		{
 			name: "success",
 
-			targetJSON: `{"name": "new", "target_type": 1, "properties": {"endpoint": "some endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "new", "target_type": 1, "properties": {"endpoint": "https://some-endpoint", "insecure": true}}`,
 
 			wantHTTPStatus: http.StatusCreated,
 		},
 		{
 			name: "error - name already exists",
 
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "some endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint", "insecure": true}}`,
 
 			wantHTTPStatus: http.StatusBadRequest,
 		},
@@ -237,7 +237,7 @@ func TestTargetPut(t *testing.T) {
 			name: "success",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "some endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint", "insecure": true}}`,
 
 			wantHTTPStatus: http.StatusCreated,
 		},
@@ -245,7 +245,7 @@ func TestTargetPut(t *testing.T) {
 			name: "success with etag",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "some endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint", "insecure": true}}`,
 			targetEtag: func() string {
 				etag, err := util.EtagHash(migration.Target{
 					ID:         1,
@@ -298,7 +298,7 @@ func TestTargetPut(t *testing.T) {
 			name: "error - invalid etag",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "some endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint", "insecure": true}}`,
 			targetEtag: "invalid_etag",
 
 			wantHTTPStatus: http.StatusPreconditionFailed,
