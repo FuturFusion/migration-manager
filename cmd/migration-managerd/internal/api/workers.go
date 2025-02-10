@@ -992,8 +992,19 @@ func (d *Daemon) checkTargetConnectivity() {
 			},
 		}
 
-		// Test the connectivity of this target.
-		tgt.ConnectivityStatus = mapErrorToStatus(it.Connect(ctx))
+		if it.TLSClientKey == "" && it.OIDCTokens == nil {
+			// Target is configured for OIDC, but has no tokens yet.
+
+			_, err := http.Get(it.Endpoint) // Do basic connectivity test.
+			if err != nil {
+				tgt.ConnectivityStatus = mapErrorToStatus(err)
+			} else {
+				tgt.ConnectivityStatus = api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC
+			}
+		} else {
+			// Test the connectivity of this target.
+			tgt.ConnectivityStatus = mapErrorToStatus(it.Connect(ctx))
+		}
 
 		// Update the connectivity status in the database.
 		_, err = d.target.UpdateByID(ctx, tgt)
