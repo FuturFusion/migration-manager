@@ -23,9 +23,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/config"
-	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/oidc"
-	internalUtil "github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/util"
+	"github.com/FuturFusion/migration-manager/internal/client/oidc"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
+	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )
 
 //go:generate go run github.com/matryer/moq -fmt goimports -out asker_mock_gen_test.go -rm . Asker
