@@ -274,7 +274,24 @@ func (d *Daemon) Start() error {
 			return false
 		}, 10*time.Minute)
 	d.runPeriodicTask(d.processReadyBatches, 10*time.Second)
-	d.runPeriodicTask(d.processQueuedBatches, 10*time.Second)
+	d.runPeriodicTask(func() (done bool) {
+		err := d.processQueuedBatches(d.ShutdownCtx)
+		if err != nil {
+			slog.Error("Failed to process queued batches", logger.Err(err))
+		}
+
+		return false
+	}, 10*time.Second)
+
+	d.runPeriodicTask(func() (done bool) {
+		err := d.initMigrationWorkers(d.ShutdownCtx, false)
+		if err != nil {
+			slog.Error("Failed to migrate running batches", logger.Err(err))
+		}
+
+		return false
+	}, 10*time.Second)
+
 	d.runPeriodicTask(d.finalizeCompleteInstances, 10*time.Second)
 
 	select {
