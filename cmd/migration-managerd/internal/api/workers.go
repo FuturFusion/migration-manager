@@ -2,10 +2,13 @@ package api
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -61,6 +64,11 @@ func (d *Daemon) syncInstancesFromSources() bool {
 		// Check each source for any net networks and any new, changed, or deleted instances.
 		for _, src := range sources {
 			log := log.With(slog.String("source", src.Name))
+
+			if src.ConnectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+				log.Debug("Skipping source that hasn't passed connectivity check")
+				continue
+			}
 
 			s, err := source.NewInternalVMwareSourceFrom(api.Source{
 				Name:       src.Name,
@@ -899,4 +907,124 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 	}
 
 	return false
+}
+
+func (d *Daemon) checkSourceConnectivity() {
+	log := slog.With(slog.String("method", "checkSourceConnectivity"))
+
+	// TODO: context should be passed from the daemon to all the workers.
+	ctx := context.TODO()
+
+	sources, err := d.source.GetAll(ctx)
+	if err != nil {
+		log.Warn("Failed to get sources from database", logger.Err(err))
+		return
+	}
+
+	sourceScanNeeded := false
+	for _, src := range sources {
+		// Skip any sources that already have good connectivity or aren't VMware.
+		if src.ConnectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_OK || src.SourceType != api.SOURCETYPE_VMWARE {
+			continue
+		}
+
+		s, err := source.NewInternalVMwareSourceFrom(api.Source{
+			Name:       src.Name,
+			DatabaseID: src.ID,
+			Insecure:   src.Insecure,
+			SourceType: src.SourceType,
+			Properties: src.Properties,
+		})
+		if err != nil {
+			log.Warn("Failed to create VMWareSource from source", slog.String("source", src.Name), logger.Err(err))
+			continue
+		}
+
+		// Test the connectivity of this source.
+		src.ConnectivityStatus = mapErrorToStatus(s.Connect(ctx))
+
+		// Update the connectivity status in the database.
+		_, err = d.source.UpdateByID(ctx, src)
+		if err != nil {
+			log.Warn("Failed updating source", slog.String("source", src.Name), logger.Err(err))
+			continue
+		}
+
+		if src.ConnectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_OK {
+			sourceScanNeeded = true
+		}
+	}
+
+	if sourceScanNeeded {
+		_ = d.syncInstancesFromSources()
+	}
+}
+
+func (d *Daemon) checkTargetConnectivity() {
+	log := slog.With(slog.String("method", "checkTargetConnectivity"))
+
+	// TODO: context should be passed from the daemon to all the workers.
+	ctx := context.TODO()
+
+	targets, err := d.target.GetAll(ctx)
+	if err != nil {
+		log.Warn("Failed to get targets from database", logger.Err(err))
+		return
+	}
+
+	for _, tgt := range targets {
+		// Skip any targets that already have good connectivity
+		if tgt.ConnectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_OK {
+			continue
+		}
+
+		// TODO: The methods on the target.InternalIncusTarget should be moved to migration
+		// which would then make this conversion obsolete.
+		it := target.InternalIncusTarget{
+			IncusTarget: api.IncusTarget{
+				DatabaseID:    tgt.ID,
+				Name:          tgt.Name,
+				Endpoint:      tgt.Endpoint,
+				TLSClientKey:  tgt.TLSClientKey,
+				TLSClientCert: tgt.TLSClientCert,
+				Insecure:      tgt.Insecure,
+				OIDCTokens:    tgt.OIDCTokens,
+			},
+		}
+
+		// Test the connectivity of this target.
+		tgt.ConnectivityStatus = mapErrorToStatus(it.Connect(ctx))
+
+		// Update the connectivity status in the database.
+		_, err = d.target.UpdateByID(ctx, tgt)
+		if err != nil {
+			log.Warn("Failed updating target", slog.String("target", tgt.Name), logger.Err(err))
+		}
+	}
+}
+
+func mapErrorToStatus(err error) api.ExternalConnectivityStatus {
+	if err == nil {
+		return api.EXTERNALCONNECTIVITYSTATUS_OK
+	}
+
+	var dnsError *net.DNSError
+	var opError *net.OpError
+	var urlError *url.Error
+	var tlsError *tls.CertificateVerificationError
+
+	if errors.As(err, &tlsError) {
+		return api.EXTERNALCONNECTIVITYSTATUS_TLS_ERROR
+	} else if errors.As(err, &dnsError) || errors.As(err, &opError) || errors.As(err, &urlError) {
+		return api.EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT
+	} else if strings.Contains(err.Error(), "ServerFaultCode: Cannot complete login") { // vmware
+		return api.EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	} else if strings.Contains(err.Error(), "ErrorType=access_denied") { // zitadel oidc
+		return api.EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	} else if strings.Contains(err.Error(), "not authorized") { // incus
+		return api.EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	}
+
+	slog.Warn("Received an unhandled remote connectivity error", logger.Err(err))
+	return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
 }

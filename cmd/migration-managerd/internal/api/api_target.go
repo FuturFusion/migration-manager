@@ -125,13 +125,14 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.IncusTarget, 0, len(targets))
 		for _, target := range targets {
 			result = append(result, api.IncusTarget{
-				DatabaseID:    target.ID,
-				Name:          target.Name,
-				Endpoint:      target.Endpoint,
-				TLSClientKey:  target.TLSClientKey,
-				TLSClientCert: target.TLSClientCert,
-				OIDCTokens:    target.OIDCTokens,
-				Insecure:      target.Insecure,
+				DatabaseID:         target.ID,
+				Name:               target.Name,
+				Endpoint:           target.Endpoint,
+				TLSClientKey:       target.TLSClientKey,
+				TLSClientCert:      target.TLSClientCert,
+				OIDCTokens:         target.OIDCTokens,
+				Insecure:           target.Insecure,
+				ConnectivityStatus: target.ConnectivityStatus,
 			})
 		}
 
@@ -188,16 +189,19 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	_, err = d.target.Create(r.Context(), migration.Target{
-		Name:          target.Name,
-		Endpoint:      target.Endpoint,
-		TLSClientKey:  target.TLSClientKey,
-		TLSClientCert: target.TLSClientCert,
-		OIDCTokens:    target.OIDCTokens,
-		Insecure:      target.Insecure,
+		Name:               target.Name,
+		Endpoint:           target.Endpoint,
+		TLSClientKey:       target.TLSClientKey,
+		TLSClientCert:      target.TLSClientCert,
+		OIDCTokens:         target.OIDCTokens,
+		Insecure:           target.Insecure,
+		ConnectivityStatus: target.ConnectivityStatus,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", target.Name, err))
 	}
+
+	d.checkTargetConnectivity()
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+target.Name)
 }
@@ -276,13 +280,14 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.IncusTarget{
-			DatabaseID:    target.ID,
-			Name:          target.Name,
-			Endpoint:      target.Endpoint,
-			TLSClientKey:  target.TLSClientKey,
-			TLSClientCert: target.TLSClientCert,
-			OIDCTokens:    target.OIDCTokens,
-			Insecure:      target.Insecure,
+			DatabaseID:         target.ID,
+			Name:               target.Name,
+			Endpoint:           target.Endpoint,
+			TLSClientKey:       target.TLSClientKey,
+			TLSClientCert:      target.TLSClientCert,
+			OIDCTokens:         target.OIDCTokens,
+			Insecure:           target.Insecure,
+			ConnectivityStatus: target.ConnectivityStatus,
 		},
 		target,
 	)
@@ -347,13 +352,14 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	_, err = d.target.UpdateByID(ctx, migration.Target{
-		ID:            currentTarget.ID,
-		Name:          target.Name,
-		Endpoint:      target.Endpoint,
-		TLSClientKey:  target.TLSClientKey,
-		TLSClientCert: target.TLSClientCert,
-		OIDCTokens:    target.OIDCTokens,
-		Insecure:      target.Insecure,
+		ID:                 currentTarget.ID,
+		Name:               target.Name,
+		Endpoint:           target.Endpoint,
+		TLSClientKey:       target.TLSClientKey,
+		TLSClientCert:      target.TLSClientCert,
+		OIDCTokens:         target.OIDCTokens,
+		Insecure:           target.Insecure,
+		ConnectivityStatus: target.ConnectivityStatus,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", target.Name, err))
@@ -363,6 +369,8 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
+
+	d.checkTargetConnectivity()
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+target.Name)
 }
