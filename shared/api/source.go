@@ -65,4 +65,7 @@ type VMwareProperties struct {
 	// Password to authenticate against the endpoint
 	// Example: password
 	Password string `json:"password" yaml:"password"`
+
+	// Connectivity status of this source
+	ConnectivityStatus ExternalConnectivityStatus `json:"connectivity_status" yaml:"connectivity_status"`
 }

@@ -1,9 +1,41 @@
 package api
 
+import (
+	"fmt"
+)
+
 const (
 	APIVersion string = "1.0"
 	APIStatus  string = "devel"
 )
+
+type ExternalConnectivityStatus int
+
+const (
+	EXTERNALCONNECTIVITYSTATUS_UNKNOWN ExternalConnectivityStatus = iota
+	EXTERNALCONNECTIVITYSTATUS_OK
+	EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT
+	EXTERNALCONNECTIVITYSTATUS_TLS_ERROR
+	EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+)
+
+// Implement the stringer interface.
+func (e ExternalConnectivityStatus) String() string {
+	switch e {
+	case EXTERNALCONNECTIVITYSTATUS_UNKNOWN:
+		return "Unknown"
+	case EXTERNALCONNECTIVITYSTATUS_OK:
+		return "OK"
+	case EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT:
+		return "Cannot connect"
+	case EXTERNALCONNECTIVITYSTATUS_TLS_ERROR:
+		return "TLS error"
+	case EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR:
+		return "Auth error"
+	default:
+		return fmt.Sprintf("ExternalConnectivityStatus(%d)", e)
+	}
+}
 
 // ServerPut represents the modifiable fields of a server configuration
 //
