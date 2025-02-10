@@ -454,11 +454,6 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 		return err
 	}
 
-	driverISOName, err := d.os.GetVirtioDriversISOName()
-	if err != nil {
-		return err
-	}
-
 	workerISOPath := filepath.Join(d.os.CacheDir, workerISOName)
 	workerISOExists := incusUtil.PathExists(workerISOPath)
 	if !workerISOExists {
@@ -468,6 +463,11 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 	importISOs := []string{workerISOName}
 	for _, inst := range instances {
 		if inst.GetOSType() == api.OSTYPE_WINDOWS {
+			driverISOName, err := d.os.GetVirtioDriversISOName()
+			if err != nil {
+				return err
+			}
+
 			driverISOPath := filepath.Join(d.os.CacheDir, driverISOName)
 			driverISOExists := incusUtil.PathExists(driverISOPath)
 			if !driverISOExists {
@@ -615,7 +615,11 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 
 	// Create the instance.
 	workerISOName, _ := d.os.GetMigrationManagerISOName()
-	driverISOName, _ := d.os.GetVirtioDriversISOName()
+	var driverISOName string
+	if inst.GetOSType() == api.OSTYPE_WINDOWS {
+		driverISOName, _ = d.os.GetVirtioDriversISOName()
+	}
+
 	instanceDef := it.CreateVMDefinition(inst, s.Name, storagePool)
 	creationErr := it.CreateNewVM(instanceDef, storagePool, workerISOName, driverISOName)
 	if creationErr != nil {

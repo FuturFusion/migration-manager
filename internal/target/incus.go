@@ -278,6 +278,10 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool 
 
 	// If this is a Windows VM, attach the virtio drivers ISO.
 	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
+		if driversISOImage == "" {
+			return fmt.Errorf("Missing Windows drivers ISO image")
+		}
+
 		apiDef.Devices["drivers"] = map[string]string{
 			"type":   "disk",
 			"pool":   storagePool,
