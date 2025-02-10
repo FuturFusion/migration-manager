@@ -219,7 +219,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Type", "Endpoint", "Auth Type", "Insecure"}
+	header := []string{"Name", "Type", "Endpoint", "Connectivity Status", "Auth Type", "Insecure"}
 	data := [][]string{}
 
 	for _, t := range targets {
@@ -236,7 +236,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 				authType = "TLS"
 			}
 
-			data = append(data, []string{t.Name, t.TargetType.String(), incusProperties.Endpoint, authType, strconv.FormatBool(incusProperties.Insecure)})
+			data = append(data, []string{t.Name, t.TargetType.String(), incusProperties.Endpoint, incusProperties.ConnectivityStatus.String(), authType, strconv.FormatBool(incusProperties.Insecure)})
 		default:
 			return fmt.Errorf("Unsupported target type %d", t.TargetType)
 		}
