@@ -168,14 +168,23 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		metadata := make(map[string]api.ExternalConnectivityStatus)
+		metadata := make(map[string]string)
 		err = json.Unmarshal(resp.Metadata, &metadata)
 		if err != nil {
 			return err
 		}
 
-		if metadata["ConnectivityStatus"] != api.EXTERNALCONNECTIVITYSTATUS_OK {
-			cmd.Printf("Successfully added new target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.\n", t.Name, metadata["ConnectivityStatus"].String())
+		connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
+		if err != nil {
+			return err
+		}
+
+		connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+
+		if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
+			cmd.Printf("Successfully added new target %q; please visit %s to complete OIDC authorization.\n", t.Name, metadata["OIDCURL"])
+		} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			cmd.Printf("Successfully added new target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.\n", t.Name, connectivityStatus.String())
 		} else {
 			cmd.Printf("Successfully added new target %q.\n", t.Name)
 		}
@@ -428,14 +437,23 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	metadata := make(map[string]api.ExternalConnectivityStatus)
+	metadata := make(map[string]string)
 	err = json.Unmarshal(resp.Metadata, &metadata)
 	if err != nil {
 		return err
 	}
 
-	if metadata["ConnectivityStatus"] != api.EXTERNALCONNECTIVITYSTATUS_OK {
-		cmd.Printf("Successfully updated target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.\n", newTargetName, metadata["ConnectivityStatus"].String())
+	connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
+	if err != nil {
+		return err
+	}
+
+	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+
+	if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
+		cmd.Printf("Successfully updated target %q; please visit %s to complete OIDC authorization.\n", newTargetName, metadata["OIDCURL"])
+	} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		cmd.Printf("Successfully updated target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.\n", newTargetName, connectivityStatus.String())
 	} else {
 		cmd.Printf("Successfully updated target %q.\n", newTargetName)
 	}

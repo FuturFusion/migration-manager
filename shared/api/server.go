@@ -17,6 +17,7 @@ const (
 	EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT
 	EXTERNALCONNECTIVITYSTATUS_TLS_ERROR
 	EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC
 )
 
 // Implement the stringer interface.
@@ -31,7 +32,9 @@ func (e ExternalConnectivityStatus) String() string {
 	case EXTERNALCONNECTIVITYSTATUS_TLS_ERROR:
 		return "TLS error"
 	case EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR:
-		return "Auth error"
+		return "Authentication error"
+	case EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC:
+		return "Waiting for OIDC authentications"
 	default:
 		return fmt.Sprintf("ExternalConnectivityStatus(%d)", e)
 	}
