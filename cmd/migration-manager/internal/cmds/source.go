@@ -1,8 +1,6 @@
 package cmds
 
 import (
-	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,7 +12,6 @@ import (
 	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -62,10 +59,7 @@ func (c *CmdSource) Command() *cobra.Command {
 type cmdSourceAdd struct {
 	global *CmdGlobal
 
-	flagInsecure         bool
-	flagNoTestConnection bool
-
-	additionalRootCertificate *tls.Certificate
+	flagInsecure bool
 }
 
 func (c *cmdSourceAdd) Command() *cobra.Command {
@@ -84,7 +78,6 @@ func (c *cmdSourceAdd) Command() *cobra.Command {
 
 	cmd.RunE = c.Run
 	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the source")
-	cmd.Flags().BoolVar(&c.flagNoTestConnection, "no-test-connection", false, "Don't test connection to the new source")
 
 	return cmd
 }
@@ -139,24 +132,6 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		s.Properties, err = json.Marshal(vmwareProperties)
 		if err != nil {
 			return err
-		}
-
-		internalSource, err := source.NewInternalVMwareSourceFrom(s)
-		if err != nil {
-			return err
-		}
-
-		// Verify we can connect to the source.
-		if c.additionalRootCertificate != nil {
-			internalSource.WithAdditionalRootCertificate(c.additionalRootCertificate)
-		}
-
-		if !c.flagNoTestConnection {
-			ctx := context.TODO()
-			err = internalSource.Connect(ctx)
-			if err != nil {
-				return err
-			}
 		}
 
 		// Insert into database.
@@ -371,18 +346,6 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		newSourceName = src.Name
 	default:
 		return fmt.Errorf("Unsupported source type %d; must be one of %q", src.SourceType, supportedSourceTypes)
-	}
-
-	internalSource, err := source.NewInternalVMwareSourceFrom(src)
-	if err != nil {
-		return err
-	}
-
-	// Verify we can connect to the updated source.
-	ctx := context.TODO()
-	err = internalSource.Connect(ctx)
-	if err != nil {
-		return err
 	}
 
 	// Update the source.
