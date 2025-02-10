@@ -21,7 +21,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"golang.org/x/oauth2"
 
-	internalUtil "github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/util"
+	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )
 
 // ErrOIDCExpired is returned when the token is expired and we can't retry the request ourselves.
