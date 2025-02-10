@@ -163,12 +163,22 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		_, err = c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
+		resp, err := c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
 		if err != nil {
 			return err
 		}
 
-		cmd.Printf("Successfully added new target %q.\n", t.Name)
+		metadata := make(map[string]api.ExternalConnectivityStatus)
+		err = json.Unmarshal(resp.Metadata, &metadata)
+		if err != nil {
+			return err
+		}
+
+		if metadata["ConnectivityStatus"] != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			cmd.Printf("Successfully added new target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.\n", t.Name, metadata["ConnectivityStatus"].String())
+		} else {
+			cmd.Printf("Successfully added new target %q.\n", t.Name)
+		}
 	}
 
 	return nil
@@ -413,11 +423,22 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/targets/"+origTargetName, http.MethodPut, "", content)
+	resp, err = c.global.doHTTPRequestV1("/targets/"+origTargetName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}
 
-	cmd.Printf("Successfully updated target %q.\n", newTargetName)
+	metadata := make(map[string]api.ExternalConnectivityStatus)
+	err = json.Unmarshal(resp.Metadata, &metadata)
+	if err != nil {
+		return err
+	}
+
+	if metadata["ConnectivityStatus"] != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		cmd.Printf("Successfully updated target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.\n", newTargetName, metadata["ConnectivityStatus"].String())
+	} else {
+		cmd.Printf("Successfully updated target %q.\n", newTargetName)
+	}
+
 	return nil
 }
