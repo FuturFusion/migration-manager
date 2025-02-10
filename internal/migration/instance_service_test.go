@@ -876,7 +876,7 @@ func TestInstanceService_UpdateStatusByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.InstanceRepoMock{
-				UpdateStatusByIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
+				UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
 					return tc.repoUpdateStatusByIDInstance, tc.repoUpdateStatusByIDErr
 				},
 			}
@@ -884,7 +884,7 @@ func TestInstanceService_UpdateStatusByID(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			instance, err := instanceSvc.UpdateStatusByID(context.Background(), tc.uuidArg, tc.statusArg, "", false)
+			instance, err := instanceSvc.UpdateStatusByUUID(context.Background(), tc.uuidArg, tc.statusArg, "", false)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1088,7 +1088,7 @@ func TestInstanceService_CreateOverrides(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.InstanceRepoMock{
-				UpdateStatusByIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
+				UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
 					require.Equal(t, tc.wantStatus, status)
 					return migration.Instance{}, tc.repoUpdateStatusByIDErr
 				},
@@ -1345,7 +1345,7 @@ func TestInstanceService_UpdateOverridesByID(t *testing.T) {
 				GetOverridesByIDFunc: func(ctx context.Context, id uuid.UUID) (migration.Overrides, error) {
 					return tc.repoGetOverridesByIDOverrides, tc.repoGetOverridesByIDErr
 				},
-				UpdateStatusByIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
+				UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
 					require.Equal(t, tc.wantStatus, status)
 					return migration.Instance{}, tc.repoUpdateStatusByIDErr
 				},
@@ -1425,7 +1425,7 @@ func TestInstanceService_DeleteOverridesByID(t *testing.T) {
 				GetOverridesByIDFunc: func(ctx context.Context, id uuid.UUID) (migration.Overrides, error) {
 					return tc.repoGetOverridesByIDOverrides, tc.repoGetOverridesByIDErr
 				},
-				UpdateStatusByIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
+				UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
 					return migration.Instance{}, tc.repoUpdateStatusByIDErr
 				},
 				DeleteOverridesByIDFunc: func(ctx context.Context, id uuid.UUID) error {

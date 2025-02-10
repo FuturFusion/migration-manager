@@ -182,14 +182,14 @@ func (s instanceService) UpdateByID(ctx context.Context, instance Instance) (Ins
 	return instance, nil
 }
 
-func (s instanceService) UpdateStatusByID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (Instance, error) {
+func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (Instance, error) {
 	if status < api.MIGRATIONSTATUS_UNKNOWN || status > api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
 		return Instance{}, NewValidationErrf("Invalid instance, %d is not a valid migration status", status)
 	}
 
 	// FIXME: ensure only valid transitions according to the state machine are possible
 
-	return s.repo.UpdateStatusByID(ctx, id, status, statusString, needsDiskImport)
+	return s.repo.UpdateStatusByUUID(ctx, id, status, statusString, needsDiskImport)
 }
 
 func (s instanceService) DeleteByID(ctx context.Context, id uuid.UUID) error {
@@ -222,7 +222,7 @@ func (s instanceService) CreateOverrides(ctx context.Context, overrides Override
 		var err error
 
 		if overrides.DisableMigration {
-			_, err = s.UpdateStatusByID(ctx, overrides.UUID, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION.String(), true)
+			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION.String(), true)
 			if err != nil {
 				return err
 			}
@@ -266,7 +266,7 @@ func (s instanceService) UpdateOverridesByID(ctx context.Context, overrides Over
 				newStatus = api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION
 			}
 
-			_, err = s.UpdateStatusByID(ctx, overrides.UUID, newStatus, newStatus.String(), true)
+			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, newStatus, newStatus.String(), true)
 			if err != nil {
 				return err
 			}
@@ -290,7 +290,7 @@ func (s instanceService) DeleteOverridesByID(ctx context.Context, id uuid.UUID) 
 		}
 
 		if overrides.DisableMigration {
-			_, err = s.UpdateStatusByID(ctx, id, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), true)
+			_, err = s.UpdateStatusByUUID(ctx, id, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), true)
 			if err != nil {
 				return err
 			}

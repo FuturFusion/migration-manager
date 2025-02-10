@@ -546,7 +546,7 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 	)
 
 	// Update the instance status.
-	_, err := d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
+	_, err := d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
 	if err != nil {
 		log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		return
@@ -555,7 +555,7 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 	s, err := d.source.GetByID(ctx, inst.SourceID)
 	if err != nil {
 		log.Warn("Failed to get source by ID", logger.Err(err))
-		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 		if err != nil {
 			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
@@ -567,7 +567,7 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 	t, err := d.target.GetByID(ctx, *inst.TargetID)
 	if err != nil {
 		log.Warn("Failed to get target by ID", slog.Int("target_id", *inst.TargetID), logger.Err(err))
-		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 		if err != nil {
 			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
@@ -593,7 +593,7 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 	err = it.Connect(d.ShutdownCtx)
 	if err != nil {
 		log.Warn("Failed to connect to target", slog.String("target", it.GetName()), logger.Err(err))
-		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 		if err != nil {
 			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
@@ -605,7 +605,7 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 	err = it.SetProject(project)
 	if err != nil {
 		log.Warn("Failed to set target project", slog.String("project", project), logger.Err(err))
-		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 		if err != nil {
 			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
@@ -624,7 +624,7 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 	creationErr := it.CreateNewVM(instanceDef, storagePool, workerISOName, driverISOName)
 	if creationErr != nil {
 		log.Warn("Failed to create new VM", slog.String("instance", instanceDef.Name), logger.Err(creationErr))
-		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, creationErr.Error(), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, creationErr.Error(), true)
 		if err != nil {
 			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
@@ -633,7 +633,7 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 	}
 
 	// Creation was successful, update the instance state to 'Idle'.
-	_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
+	_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
 	if err != nil {
 		log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		return
@@ -643,7 +643,7 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 	startErr := it.StartVM(inst.GetName())
 	if startErr != nil {
 		log.Warn("Failed to start VM", logger.Err(startErr))
-		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, startErr.Error(), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, startErr.Error(), true)
 		if err != nil {
 			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
@@ -656,7 +656,7 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 	pushErr := it.PushFile(inst.GetName(), workerBinaryName, "/root/")
 	if pushErr != nil {
 		log.Warn("Failed to push file to instance", slog.String("filename", workerBinaryName), logger.Err(pushErr))
-		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, pushErr.Error(), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, pushErr.Error(), true)
 		if err != nil {
 			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
@@ -668,7 +668,7 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 	workerStartErr := it.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getWorkerEndpoint(), "--uuid", inst.UUID.String(), "--token", inst.SecretToken.String()})
 	if workerStartErr != nil {
 		log.Warn("Failed to execute without waiting", logger.Err(workerStartErr))
-		_, err = d.instance.UpdateStatusByID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, workerStartErr.Error(), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, workerStartErr.Error(), true)
 		if err != nil {
 			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
@@ -699,7 +699,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			t, err := d.target.GetByID(ctx, *i.TargetID)
 			if err != nil {
 				log.Warn("Failed to get target", slog.Int("target_id", *i.TargetID), logger.Err(err))
-				_, err := d.instance.UpdateStatusByID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+				_, err := d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					log.Warn("Failed to update instance status", logger.Err(err))
 					continue
@@ -726,7 +726,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			batch, err := d.batch.GetByID(ctx, *i.BatchID)
 			if err != nil {
 				log.Warn("Failed to get batch by ID", slog.Int("batch_id", *i.BatchID), logger.Err(err))
-				_, err := d.instance.UpdateStatusByID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+				_, err := d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					log.Warn("Failed to update instance status", logger.Err(err))
 					continue
@@ -739,7 +739,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			err = it.Connect(d.ShutdownCtx)
 			if err != nil {
 				log.Warn("Failed to connect to target", slog.String("target", it.GetName()), logger.Err(err))
-				_, err = d.instance.UpdateStatusByID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					log.Warn("Failed to update instance status", logger.Err(err))
 					continue
@@ -752,7 +752,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			err = it.SetProject(batch.TargetProject)
 			if err != nil {
 				log.Warn("Failed to set target project", slog.String("project", batch.TargetProject), logger.Err(err))
-				_, err = d.instance.UpdateStatusByID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					log.Warn("Failed to update instance status", logger.Err(err))
 					continue
@@ -765,7 +765,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			stopErr := it.StopVM(i.GetName(), true)
 			if stopErr != nil {
 				log.Warn("Failed to stop VM", logger.Err(stopErr))
-				_, err = d.instance.UpdateStatusByID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					log.Warn("Failed to update instance status", logger.Err(err))
 					continue
@@ -778,7 +778,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			apiDef, etag, err := it.GetInstance(i.GetName())
 			if err != nil {
 				log.Warn("Failed to get instance", logger.Err(err))
-				_, err = d.instance.UpdateStatusByID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					log.Warn("Failed to update instance status", logger.Err(err))
 					continue
@@ -796,7 +796,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 				baseNetwork, err := d.network.GetByName(ctx, nic.Network)
 				if err != nil {
 					log.Warn("Failed to get network", logger.Err(err))
-					_, err = d.instance.UpdateStatusByID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+					_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 					if err != nil {
 						log.Warn("Failed to update instance status", logger.Err(err))
 						continue
@@ -855,7 +855,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			op, err := it.UpdateInstance(i.GetName(), apiDef.Writable(), etag)
 			if err != nil {
 				log.Warn("Failed to update instance", logger.Err(err))
-				_, err = d.instance.UpdateStatusByID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					log.Warn("Failed to update instance status", logger.Err(err))
 					continue
@@ -867,7 +867,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			err = op.Wait()
 			if err != nil {
 				log.Warn("Failed to wait for operation", logger.Err(err))
-				_, err = d.instance.UpdateStatusByID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
 				if err != nil {
 					log.Warn("Failed to update instance status", logger.Err(err))
 					continue
@@ -877,7 +877,7 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 			}
 
 			// Update the instance status.
-			_, err = d.instance.UpdateStatusByID(ctx, i.UUID, api.MIGRATIONSTATUS_FINISHED, api.MIGRATIONSTATUS_FINISHED.String(), true)
+			_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_FINISHED, api.MIGRATIONSTATUS_FINISHED.String(), true)
 			if err != nil {
 				log.Warn("Failed to update instance status", logger.Err(err))
 				continue

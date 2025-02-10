@@ -21,7 +21,7 @@ type InstanceService interface {
 	GetByIDWithDetails(ctx context.Context, id uuid.UUID) (InstanceWithDetails, error)
 	UnassignFromBatch(ctx context.Context, id uuid.UUID) error
 	UpdateByID(ctx context.Context, instance Instance) (Instance, error)
-	UpdateStatusByID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (Instance, error)
+	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (Instance, error)
 	DeleteByID(ctx context.Context, id uuid.UUID) error
 
 	// Overrride
@@ -44,7 +44,7 @@ type InstanceRepo interface {
 	GetAllUnassigned(ctx context.Context) (Instances, error)
 	GetByID(ctx context.Context, id uuid.UUID) (Instance, error)
 	UpdateByID(ctx context.Context, instance Instance) (Instance, error)
-	UpdateStatusByID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (Instance, error)
+	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (Instance, error)
 	DeleteByID(ctx context.Context, id uuid.UUID) error
 
 	// Overrides

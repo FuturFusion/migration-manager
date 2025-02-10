@@ -282,25 +282,25 @@ func (_d InstanceRepoWithSlog) UpdateOverridesByID(ctx context.Context, override
 	return _d._base.UpdateOverridesByID(ctx, overrides)
 }
 
-// UpdateStatusByID implements _sourceMigration.InstanceRepo
-func (_d InstanceRepoWithSlog) UpdateStatusByID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (i1 _sourceMigration.Instance, err error) {
+// UpdateStatusByUUID implements _sourceMigration.InstanceRepo
+func (_d InstanceRepoWithSlog) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (i1 _sourceMigration.Instance, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("id", id),
 		slog.Any("status", status),
 		slog.String("statusString", statusString),
 		slog.Bool("needsDiskImport", needsDiskImport),
-	).Debug("InstanceRepoWithSlog: calling UpdateStatusByID")
+	).Debug("InstanceRepoWithSlog: calling UpdateStatusByUUID")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("i1", i1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method UpdateStatusByID returned an error")
+			log.Error("InstanceRepoWithSlog: method UpdateStatusByUUID returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method UpdateStatusByID finished")
+			log.Debug("InstanceRepoWithSlog: method UpdateStatusByUUID finished")
 		}
 	}()
-	return _d._base.UpdateStatusByID(ctx, id, status, statusString, needsDiskImport)
+	return _d._base.UpdateStatusByUUID(ctx, id, status, statusString, needsDiskImport)
 }
