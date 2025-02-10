@@ -214,7 +214,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 
 		id, err := b.GetDatabaseID()
 		if err != nil {
-			return response.BadRequest(fmt.Errorf("Failed to get database ID for batch '%s': %w", b.GetName(), err))
+			return response.BadRequest(fmt.Errorf("Failed to get database ID for batch %q: %w", b.GetName(), err))
 		}
 
 		var instances []instance.Instance
@@ -228,7 +228,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 			return nil
 		})
 		if err != nil {
-			return response.BadRequest(fmt.Errorf("Failed to get instances for batch '%s': %w", b.GetName(), err))
+			return response.BadRequest(fmt.Errorf("Failed to get instances for batch %q: %w", b.GetName(), err))
 		}
 
 		for _, i := range instances {
@@ -314,12 +314,12 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
+		return response.BadRequest(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
 	}
 
 	// Don't return info for instances that aren't in the migration queue.
 	if i.GetBatchID() == nil || !i.IsMigrating() {
-		return response.BadRequest(fmt.Errorf("Instance '%s' isn't in the migration queue", i.GetName()))
+		return response.BadRequest(fmt.Errorf("Instance %q isn't in the migration queue", i.GetName()))
 	}
 
 	// Get the corresponding batch.
@@ -409,17 +409,17 @@ func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
+		return response.BadRequest(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
 	}
 
 	// Don't return info for instances that aren't in the migration queue.
 	if i.GetBatchID() == nil || !i.IsMigrating() {
-		return response.BadRequest(fmt.Errorf("Instance '%s' isn't in the migration queue", i.GetName()))
+		return response.BadRequest(fmt.Errorf("Instance %q isn't in the migration queue", i.GetName()))
 	}
 
 	// If the instance is already doing something, don't start something else.
 	if i.MigrationStatus != api.MIGRATIONSTATUS_IDLE {
-		return response.BadRequest(fmt.Errorf("Instance '%s' isn't idle: %s (%s)", i.GetInventoryPath(), i.MigrationStatus.String(), i.MigrationStatusString))
+		return response.BadRequest(fmt.Errorf("Instance %q isn't idle: %s (%s)", i.GetInventoryPath(), i.MigrationStatus.String(), i.MigrationStatusString))
 	}
 
 	// Setup the default "idle" command
@@ -435,7 +435,7 @@ func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 	// Fetch the source for the instance.
 	ms, err := d.source.GetByID(r.Context(), i.SourceID)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get source '%s': %w", UUID, err))
+		return response.BadRequest(fmt.Errorf("Failed to get source %q: %w", UUID, err))
 	}
 
 	s := api.Source{
@@ -493,7 +493,7 @@ func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 		return d.db.UpdateInstanceStatus(tx, UUID, i.MigrationStatus, i.MigrationStatusString, i.NeedsDiskImport)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating instance '%s': %w", i.GetUUID(), err))
+		return response.SmartError(fmt.Errorf("Failed updating instance %q: %w", i.GetUUID(), err))
 	}
 
 	return response.SyncResponseETag(true, cmd, cmd)
@@ -563,12 +563,12 @@ func queueWorkerPut(d *Daemon, r *http.Request) response.Response {
 		return nil
 	})
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get instance '%s': %w", UUID, err))
+		return response.BadRequest(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
 	}
 
 	// Don't update instances that aren't in the migration queue.
 	if i.GetBatchID() == nil || !i.IsMigrating() {
-		return response.BadRequest(fmt.Errorf("Instance '%s' isn't in the migration queue", i.GetName()))
+		return response.BadRequest(fmt.Errorf("Instance %q isn't in the migration queue", i.GetName()))
 	}
 
 	// Decode the command response.
@@ -603,7 +603,7 @@ func queueWorkerPut(d *Daemon, r *http.Request) response.Response {
 		return d.db.UpdateInstanceStatus(tx, UUID, i.MigrationStatus, i.MigrationStatusString, i.NeedsDiskImport)
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating instance '%s': %w", i.GetUUID(), err))
+		return response.SmartError(fmt.Errorf("Failed updating instance %q: %w", i.GetUUID(), err))
 	}
 
 	return response.SyncResponse(true, nil)

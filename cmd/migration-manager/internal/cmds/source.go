@@ -101,7 +101,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 	// Set variables.
 	if len(args) == 3 {
 		if !slices.Contains(supportedTypes, strings.ToLower(args[0])) {
-			return fmt.Errorf("Unsupported source type '%s'; must be one of %q", args[0], supportedTypes)
+			return fmt.Errorf("Unsupported source type %q; must be one of %q", args[0], supportedTypes)
 		}
 
 		sourceType = strings.ToLower(args[0])
@@ -168,7 +168,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		cmd.Printf("Successfully added new source '%s'.\n", sourceName)
+		cmd.Printf("Successfully added new source %q.\n", sourceName)
 	}
 
 	return nil
@@ -275,7 +275,7 @@ func (c *cmdSourceRemove) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully removed source '%s'.\n", name)
+	cmd.Printf("Successfully removed source %q.\n", name)
 	return nil
 }
 
@@ -392,6 +392,6 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully updated source '%s'.\n", newSourceName)
+	cmd.Printf("Successfully updated source %q.\n", newSourceName)
 	return nil
 }

@@ -126,7 +126,7 @@ func (c *cmdInstanceOverrideAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully added new override for instance '%s'.\n", UUIDString)
+	cmd.Printf("Successfully added new override for instance %q.\n", UUIDString)
 	return nil
 }
 
@@ -163,7 +163,7 @@ func (c *cmdInstanceOverrideRemove) Run(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	cmd.Printf("Successfully removed override for instance '%s'.\n", UUIDString)
+	cmd.Printf("Successfully removed override for instance %q.\n", UUIDString)
 	return nil
 }
 
@@ -327,6 +327,6 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	cmd.Printf("Successfully updated instance override '%s'.\n", UUIDString)
+	cmd.Printf("Successfully updated instance override %q.\n", UUIDString)
 	return nil
 }

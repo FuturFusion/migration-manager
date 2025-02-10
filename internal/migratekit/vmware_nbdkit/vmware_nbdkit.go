@@ -307,7 +307,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 				}
 
 				bar.Set64(offset + chunkSize)
-				statusCallback(fmt.Sprintf("Importing disk '%s': %02.2f%% complete", diskName, float64(offset+chunkSize)/float64(s.Disk.CapacityInBytes)*100.0), false)
+				statusCallback(fmt.Sprintf("Importing disk %q: %02.2f%% complete", diskName, float64(offset+chunkSize)/float64(s.Disk.CapacityInBytes)*100.0), false)
 				offset += chunkSize
 			}
 		}

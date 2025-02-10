@@ -43,7 +43,7 @@ func NewIncusTarget(name string, endpoint string) *InternalIncusTarget {
 
 func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	if t.isConnected {
-		return fmt.Errorf("Already connected to endpoint '%s'", t.Endpoint)
+		return fmt.Errorf("Already connected to endpoint %q", t.Endpoint)
 	}
 
 	authType := api.AuthenticationMethodTLS
@@ -62,7 +62,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	client, err := incus.ConnectIncusWithContext(ctx, t.Endpoint, t.incusConnectionArgs)
 	if err != nil {
 		t.incusConnectionArgs = nil
-		return fmt.Errorf("Failed to connect to endpoint '%s': %s", t.Endpoint, err)
+		return fmt.Errorf("Failed to connect to endpoint %q: %s", t.Endpoint, err)
 	}
 
 	t.incusClient = client
@@ -70,13 +70,13 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	// Do a quick check to see if our authentication was accepted by the server.
 	srv, _, err := t.incusClient.GetServer()
 	if err != nil {
-		return fmt.Errorf("failed to connect to endpoint '%s': %s", t.Endpoint, err)
+		return fmt.Errorf("failed to connect to endpoint %q: %s", t.Endpoint, err)
 	}
 
 	if srv.Auth != "trusted" {
 		t.incusConnectionArgs = nil
 		t.incusClient = nil
-		return fmt.Errorf("Failed to connect to endpoint '%s': not authorized", t.Endpoint)
+		return fmt.Errorf("Failed to connect to endpoint %q: not authorized", t.Endpoint)
 	}
 
 	// Save the OIDC tokens.
@@ -95,7 +95,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 
 func (t *InternalIncusTarget) Disconnect(ctx context.Context) error {
 	if !t.isConnected {
-		return fmt.Errorf("Not connected to endpoint '%s'", t.Endpoint)
+		return fmt.Errorf("Not connected to endpoint %q", t.Endpoint)
 	}
 
 	t.incusClient.Disconnect()

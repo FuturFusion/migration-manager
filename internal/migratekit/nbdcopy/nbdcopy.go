@@ -64,7 +64,7 @@ func Run(source, destination string, size int64, targetIsClean bool, diskName st
 			}
 
 			bar.Set64(progress * size / 100)
-			statusCallback(fmt.Sprintf("Importing disk '%s': %02.2f%% complete", diskName, float64(progress)), false)
+			statusCallback(fmt.Sprintf("Importing disk %q: %02.2f%% complete", diskName, float64(progress)), false)
 		}
 
 		if err := scanner.Err(); err != nil {

@@ -55,7 +55,7 @@ func (n *Node) DeleteInstanceOverride(tx *sql.Tx, UUID uuid.UUID) error {
 	}
 
 	if i.GetBatchID() != nil || i.IsMigrating() {
-		return fmt.Errorf("Cannot delete override for instance '%s': Either assigned to a batch or currently migrating", i.GetInventoryPath())
+		return fmt.Errorf("Cannot delete override for instance %q: Either assigned to a batch or currently migrating", i.GetInventoryPath())
 	}
 
 	// Delete the override from the database.
@@ -71,7 +71,7 @@ func (n *Node) DeleteInstanceOverride(tx *sql.Tx, UUID uuid.UUID) error {
 	}
 
 	if affectedRows == 0 {
-		return fmt.Errorf("Instance override with UUID '%s' doesn't exist, can't delete", UUID)
+		return fmt.Errorf("Instance override with UUID %q doesn't exist, can't delete", UUID)
 	}
 
 	return nil
@@ -99,7 +99,7 @@ func (n *Node) UpdateInstanceOverride(tx *sql.Tx, override api.InstanceOverride)
 			return mapDBError(err)
 		}
 
-		return fmt.Errorf("Cannot update override for instance '%s' while assigned to batch '%s'", inventoryPath, batchName)
+		return fmt.Errorf("Cannot update override for instance %q while assigned to batch %q", inventoryPath, batchName)
 	}
 
 	// Update override in the database.
@@ -121,7 +121,7 @@ func (n *Node) UpdateInstanceOverride(tx *sql.Tx, override api.InstanceOverride)
 	}
 
 	if affectedRows == 0 {
-		return fmt.Errorf("Instance with UUID '%s' doesn't exist, can't update", override.UUID)
+		return fmt.Errorf("Instance with UUID %q doesn't exist, can't update", override.UUID)
 	}
 
 	return nil

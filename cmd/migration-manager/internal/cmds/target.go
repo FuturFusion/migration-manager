@@ -157,7 +157,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully added new target '%s'.\n", t.Name)
+	cmd.Printf("Successfully added new target %q.\n", t.Name)
 	return nil
 }
 
@@ -254,7 +254,7 @@ func (c *cmdTargetRemove) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully removed target '%s'.\n", name)
+	cmd.Printf("Successfully removed target %q.\n", name)
 	return nil
 }
 
@@ -397,6 +397,6 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully updated target '%s'.\n", newTargetName)
+	cmd.Printf("Successfully updated target %q.\n", newTargetName)
 	return nil
 }
