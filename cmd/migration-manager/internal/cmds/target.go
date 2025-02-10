@@ -181,7 +181,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Endpoint", "Auth Type", "Insecure"}
+	header := []string{"Name", "Endpoint", "Connectivity Status", "Auth Type", "Insecure"}
 	data := [][]string{}
 
 	for _, t := range targets {
@@ -190,7 +190,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 			authType = "TLS"
 		}
 
-		data = append(data, []string{t.Name, t.Endpoint, authType, strconv.FormatBool(t.Insecure)})
+		data = append(data, []string{t.Name, t.Endpoint, t.ConnectivityStatus.String(), authType, strconv.FormatBool(t.Insecure)})
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, targets)
