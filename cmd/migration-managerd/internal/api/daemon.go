@@ -264,7 +264,15 @@ func (d *Daemon) Start() error {
 	})
 
 	// Start background workers
-	d.runPeriodicTask(d.syncInstancesFromSources, 10*time.Minute)
+	d.runPeriodicTask(
+		func() (done bool) {
+			err := d.trySyncAllSources(d.ShutdownCtx, true)
+			if err != nil {
+				slog.Error("Failed to sync all sources", logger.Err(err))
+			}
+
+			return false
+		}, 10*time.Minute)
 	d.runPeriodicTask(d.processReadyBatches, 10*time.Second)
 	d.runPeriodicTask(d.processQueuedBatches, 10*time.Second)
 	d.runPeriodicTask(d.finalizeCompleteInstances, 10*time.Second)
