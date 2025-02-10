@@ -183,7 +183,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	src, err := d.source.Create(r.Context(), migration.Source{
+	_, err = d.source.Create(r.Context(), migration.Source{
 		Name:       source.Name,
 		SourceType: source.SourceType,
 		Properties: source.Properties,
@@ -192,11 +192,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", source.Name, err))
 	}
 
-	// Trigger a scan of this new source for instances.
-	err = d.syncOneSource(d.ShutdownCtx, src)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to initiate sync from source %q: %w", source.Name, err))
-	}
+	d.checkSourceConnectivity()
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+source.Name)
 }
@@ -342,7 +338,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	src, err := d.source.UpdateByID(ctx, migration.Source{
+	_, err = d.source.UpdateByID(ctx, migration.Source{
 		ID:         currentSource.ID,
 		Name:       source.Name,
 		SourceType: source.SourceType,
@@ -357,11 +353,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	// Trigger a scan of this new source for instances.
-	err = d.syncOneSource(d.ShutdownCtx, src)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to initiate sync from source %q: %w", source.Name, err))
-	}
+	d.checkSourceConnectivity()
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+source.Name)
 }

@@ -61,4 +61,33 @@ func (t Target) validateTargetTypeIncus() error {
 	return nil
 }
 
+func (t Target) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
+	switch t.TargetType {
+	case api.TARGETTYPE_INCUS:
+		var properties api.IncusProperties
+		err := json.Unmarshal(t.Properties, &properties)
+		if err != nil {
+			return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
+		}
+
+		return properties.ConnectivityStatus
+	default:
+		return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
+	}
+}
+
+func (t *Target) SetExternalConnectivityStatus(status api.ExternalConnectivityStatus) {
+	switch t.TargetType {
+	case api.TARGETTYPE_INCUS:
+		var properties api.IncusProperties
+		err := json.Unmarshal(t.Properties, &properties)
+		if err != nil {
+			return
+		}
+
+		properties.ConnectivityStatus = status
+		t.Properties, _ = json.Marshal(properties)
+	}
+}
+
 type Targets []Target
