@@ -140,12 +140,22 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		_, err = c.global.doHTTPRequestV1("/sources", http.MethodPost, "", content)
+		resp, err := c.global.doHTTPRequestV1("/sources", http.MethodPost, "", content)
 		if err != nil {
 			return err
 		}
 
-		cmd.Printf("Successfully added new source %q.\n", sourceName)
+		metadata := make(map[string]api.ExternalConnectivityStatus)
+		err = json.Unmarshal(resp.Metadata, &metadata)
+		if err != nil {
+			return err
+		}
+
+		if metadata["ConnectivityStatus"] != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			cmd.Printf("Successfully added new source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.\n", sourceName, metadata["ConnectivityStatus"].String())
+		} else {
+			cmd.Printf("Successfully added new source %q.\n", sourceName)
+		}
 	}
 
 	return nil
@@ -354,11 +364,22 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/sources/"+origSourceName, http.MethodPut, "", content)
+	resp, err = c.global.doHTTPRequestV1("/sources/"+origSourceName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}
 
-	cmd.Printf("Successfully updated source %q.\n", newSourceName)
+	metadata := make(map[string]api.ExternalConnectivityStatus)
+	err = json.Unmarshal(resp.Metadata, &metadata)
+	if err != nil {
+		return err
+	}
+
+	if metadata["ConnectivityStatus"] != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		cmd.Printf("Successfully updated source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.\n", newSourceName, metadata["ConnectivityStatus"].String())
+	} else {
+		cmd.Printf("Successfully updated source %q.\n", newSourceName)
+	}
+
 	return nil
 }

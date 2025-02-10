@@ -113,7 +113,7 @@ func TestSourceAdd(t *testing.T) {
 			username:                    vcUser,
 			password:                    vcPassword,
 			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   `{}`,
+			migrationManagerdResponse:   `{"Metadata": {"ConnectivityStatus": 1}}`,
 
 			assertErr: require.NoError,
 		},
@@ -123,7 +123,7 @@ func TestSourceAdd(t *testing.T) {
 			username:                    vcUser,
 			password:                    vcPassword,
 			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   `{}`,
+			migrationManagerdResponse:   `{"Metadata": {"ConnectivityStatus": 1}}`,
 
 			assertErr: require.NoError,
 		},
@@ -430,7 +430,8 @@ func TestSourceUpdate(t *testing.T) {
 }`
 		successfulPutResponse = `{
   "status_code": 200,
-  "status": "Success"
+  "status": "Success",
+  "metadata": {"ConnectivityStatus": 1}
 }`
 	)
 

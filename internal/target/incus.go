@@ -67,7 +67,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	client, err := incus.ConnectIncusWithContext(ctx, t.Endpoint, t.incusConnectionArgs)
 	if err != nil {
 		t.incusConnectionArgs = nil
-		return fmt.Errorf("Failed to connect to endpoint %q: %s", t.Endpoint, err)
+		return err
 	}
 
 	t.incusClient = client
@@ -75,7 +75,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	// Do a quick check to see if our authentication was accepted by the server.
 	srv, _, err := t.incusClient.GetServer()
 	if err != nil {
-		return fmt.Errorf("failed to connect to endpoint %q: %s", t.Endpoint, err)
+		return err
 	}
 
 	if srv.Auth != "trusted" {
