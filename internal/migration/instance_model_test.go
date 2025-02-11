@@ -19,7 +19,7 @@ func TestInstance_GetOSType(t *testing.T) {
 		{
 			name: "windows",
 			instance: migration.Instance{
-				OSVersion: "windows xp",
+				OS: "winXPProGuest",
 			},
 
 			want: api.OSTYPE_WINDOWS,
@@ -27,7 +27,7 @@ func TestInstance_GetOSType(t *testing.T) {
 		{
 			name: "linux",
 			instance: migration.Instance{
-				OSVersion: "24.04",
+				OS: "ubuntu64Guest",
 			},
 
 			want: api.OSTYPE_LINUX,

@@ -165,7 +165,7 @@ func (i Instance) IsMigrating() bool {
 
 // The mapping of OS version strings to OS types is determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
 func (i *Instance) GetOSType() api.OSType {
-	if strings.HasPrefix(i.OSVersion, "win") {
+	if strings.HasPrefix(i.OS, "win") {
 		return api.OSTYPE_WINDOWS
 	}
 
