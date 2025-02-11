@@ -195,7 +195,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 
 	// Cannot add an instance with an invalid source.
 	_, err = instance.Create(ctx, instanceA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
 	// Add dummy source.
 	_, err = sourceSvc.Create(ctx, testSource)
@@ -223,9 +223,9 @@ func TestInstanceDatabaseActions(t *testing.T) {
 
 	// Cannot delete a source or target if referenced by an instance.
 	err = sourceSvc.DeleteByName(context.TODO(), testSource.Name)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 	err = targetSvc.DeleteByName(ctx, testTarget.Name)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
 	// Ensure we have three instances.
 	instances, err := instance.GetAll(ctx)
@@ -252,7 +252,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	err = instance.DeleteByID(ctx, instanceA.UUID)
 	require.NoError(t, err)
 	_, err = instance.GetByID(ctx, instanceA.UUID)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Should have two instances remaining.
 	instances, err = instance.GetAll(ctx)
@@ -262,23 +262,23 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Can't delete an instance that doesn't exist.
 	randomUUID, _ := uuid.NewRandom()
 	err = instance.DeleteByID(ctx, randomUUID)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update an instance that doesn't exist.
 	_, err = instance.UpdateByID(ctx, instanceA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate instance.
 	_, err = instance.Create(ctx, instanceB)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
 	// Can't delete a source that has at least one associated instance.
 	err = sourceSvc.DeleteByName(ctx, testSource.Name)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
 	// Can't delete a target that has at least one associated instance.
 	err = targetSvc.DeleteByName(ctx, testTarget.Name)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 }
 
 var overridesA = migration.Overrides{UUID: instanceAUUID, LastUpdate: time.Now().UTC(), Comment: "A comment", NumberCPUs: 8, MemoryInBytes: 4096, DisableMigration: true}
@@ -306,7 +306,7 @@ func TestInstanceOverridesDatabaseActions(t *testing.T) {
 
 	// Cannot add an overrides if there's no corresponding instance.
 	_, err = instance.CreateOverrides(ctx, overridesA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
 	// Add the corresponding instance.
 	_, err = sourceSvc.Create(ctx, testSource)
@@ -341,22 +341,22 @@ func TestInstanceOverridesDatabaseActions(t *testing.T) {
 
 	// Can't add a duplicate overrides.
 	_, err = instance.CreateOverrides(ctx, overridesA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
 	// Delete an overrides.
 	err = instance.DeleteOverridesByID(ctx, instanceA.UUID)
 	require.NoError(t, err)
 	_, err = instance.GetOverridesByID(ctx, instanceA.UUID)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't delete an overrides that doesn't exist.
 	randomUUID := uuid.Must(uuid.NewRandom())
 	err = instance.DeleteOverridesByID(ctx, randomUUID)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update an overrides that doesn't exist.
 	_, err = instance.UpdateOverridesByID(ctx, overridesA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Ensure deletion of instance fails, if an overrides is present
 	// (cascading delete is handled by the business logic and not the DB layer).
@@ -365,7 +365,7 @@ func TestInstanceOverridesDatabaseActions(t *testing.T) {
 	_, err = instance.GetOverridesByID(ctx, instanceA.UUID)
 	require.NoError(t, err)
 	err = instance.DeleteByID(ctx, instanceA.UUID)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 }
 
 func TestInstanceGetAll(t *testing.T) {

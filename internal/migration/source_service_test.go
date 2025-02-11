@@ -80,7 +80,10 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{}`),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - name empty",
@@ -92,7 +95,10 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{}`),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - invalid source type",
@@ -104,7 +110,10 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{}`),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - properties nil",
@@ -116,7 +125,10 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: nil, // nil
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - common properties invalid json",
@@ -128,7 +140,10 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{`), // invalid json
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - VMware properties invalid json",
@@ -140,7 +155,10 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{`), // invalid json
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - VMware invalid endpoint",
@@ -157,7 +175,10 @@ func TestSourceService_Create(t *testing.T) {
 `),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - VMware empty username",
@@ -174,7 +195,10 @@ func TestSourceService_Create(t *testing.T) {
 `),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - VMware empty password",
@@ -191,7 +215,10 @@ func TestSourceService_Create(t *testing.T) {
 `),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - repo",
@@ -401,7 +428,9 @@ func TestSourceService_GetByName(t *testing.T) {
 			name:    "error - name argument empty string",
 			nameArg: "",
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:             "error - repo",
@@ -500,7 +529,10 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: json.RawMessage(`{}`),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - name empty",
@@ -512,7 +544,10 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: json.RawMessage(`{}`),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - invalid source type",
@@ -524,7 +559,10 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: json.RawMessage(`{}`),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - properties nil",
@@ -536,7 +574,10 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: nil, // nil
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - common properties invalid json",
@@ -548,7 +589,10 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: json.RawMessage(`{`), // invalid json
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - VMware properties invalid json",
@@ -560,7 +604,10 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: json.RawMessage(`{`), // invalid json
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - VMware invalid endpoint",
@@ -577,7 +624,10 @@ func TestSourceService_UpdateByID(t *testing.T) {
 `),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - VMware empty username",
@@ -594,7 +644,10 @@ func TestSourceService_UpdateByID(t *testing.T) {
 `),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - VMware empty password",
@@ -611,7 +664,10 @@ func TestSourceService_UpdateByID(t *testing.T) {
 `),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - repo",
@@ -667,7 +723,9 @@ func TestSourceService_DeleteByName(t *testing.T) {
 			name:    "error - name argument empty string",
 			nameArg: "",
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:                "error - repo",

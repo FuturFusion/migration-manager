@@ -109,11 +109,11 @@ func TestSourceDatabaseActions(t *testing.T) {
 
 	// Can't update a source that doesn't exist.
 	_, err = source.UpdateByID(ctx, commonSourceA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate source.
 	_, err = source.Create(ctx, commonSourceB)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 }
 
 func newVMwareSource(name string, insecure bool, endpoint string, user string, password string) migration.Source {

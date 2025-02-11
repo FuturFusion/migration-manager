@@ -5,9 +5,13 @@ import (
 	"fmt"
 )
 
-var ErrNotFound = errors.New("Not found")
+var (
+	ErrNotFound = errors.New("Not found")
 
-var ErrConstraintViolation = errors.New("Constraint violation")
+	ErrConstraintViolation = errors.New("Constraint violation")
+
+	ErrOperationNotPermitted = errors.New("Operation not permitted")
+)
 
 type ErrValidation string
 

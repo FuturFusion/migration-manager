@@ -58,6 +58,9 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			GetOverridesByIDFunc: func(ctx context.Context, id uuid.UUID) (migration.Overrides, error) {
 //				panic("mock out the GetOverridesByID method")
 //			},
+//			ProcessWorkerUpdateFunc: func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusString string) (migration.Instance, error) {
+//				panic("mock out the ProcessWorkerUpdate method")
+//			},
 //			UnassignFromBatchFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the UnassignFromBatch method")
 //			},
@@ -112,6 +115,9 @@ type InstanceServiceMock struct {
 
 	// GetOverridesByIDFunc mocks the GetOverridesByID method.
 	GetOverridesByIDFunc func(ctx context.Context, id uuid.UUID) (migration.Overrides, error)
+
+	// ProcessWorkerUpdateFunc mocks the ProcessWorkerUpdate method.
+	ProcessWorkerUpdateFunc func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusString string) (migration.Instance, error)
 
 	// UnassignFromBatchFunc mocks the UnassignFromBatch method.
 	UnassignFromBatchFunc func(ctx context.Context, id uuid.UUID) error
@@ -205,6 +211,17 @@ type InstanceServiceMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// ProcessWorkerUpdate holds details about calls to the ProcessWorkerUpdate method.
+		ProcessWorkerUpdate []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// WorkerResponseTypeArg is the workerResponseTypeArg argument value.
+			WorkerResponseTypeArg api.WorkerResponseType
+			// StatusString is the statusString argument value.
+			StatusString string
+		}
 		// UnassignFromBatch holds details about calls to the UnassignFromBatch method.
 		UnassignFromBatch []struct {
 			// Ctx is the ctx argument value.
@@ -252,6 +269,7 @@ type InstanceServiceMock struct {
 	lockGetByID             sync.RWMutex
 	lockGetByIDWithDetails  sync.RWMutex
 	lockGetOverridesByID    sync.RWMutex
+	lockProcessWorkerUpdate sync.RWMutex
 	lockUnassignFromBatch   sync.RWMutex
 	lockUpdateByID          sync.RWMutex
 	lockUpdateOverridesByID sync.RWMutex
@@ -675,6 +693,50 @@ func (mock *InstanceServiceMock) GetOverridesByIDCalls() []struct {
 	mock.lockGetOverridesByID.RLock()
 	calls = mock.calls.GetOverridesByID
 	mock.lockGetOverridesByID.RUnlock()
+	return calls
+}
+
+// ProcessWorkerUpdate calls ProcessWorkerUpdateFunc.
+func (mock *InstanceServiceMock) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusString string) (migration.Instance, error) {
+	if mock.ProcessWorkerUpdateFunc == nil {
+		panic("InstanceServiceMock.ProcessWorkerUpdateFunc: method is nil but InstanceService.ProcessWorkerUpdate was just called")
+	}
+	callInfo := struct {
+		Ctx                   context.Context
+		ID                    uuid.UUID
+		WorkerResponseTypeArg api.WorkerResponseType
+		StatusString          string
+	}{
+		Ctx:                   ctx,
+		ID:                    id,
+		WorkerResponseTypeArg: workerResponseTypeArg,
+		StatusString:          statusString,
+	}
+	mock.lockProcessWorkerUpdate.Lock()
+	mock.calls.ProcessWorkerUpdate = append(mock.calls.ProcessWorkerUpdate, callInfo)
+	mock.lockProcessWorkerUpdate.Unlock()
+	return mock.ProcessWorkerUpdateFunc(ctx, id, workerResponseTypeArg, statusString)
+}
+
+// ProcessWorkerUpdateCalls gets all the calls that were made to ProcessWorkerUpdate.
+// Check the length with:
+//
+//	len(mockedInstanceService.ProcessWorkerUpdateCalls())
+func (mock *InstanceServiceMock) ProcessWorkerUpdateCalls() []struct {
+	Ctx                   context.Context
+	ID                    uuid.UUID
+	WorkerResponseTypeArg api.WorkerResponseType
+	StatusString          string
+} {
+	var calls []struct {
+		Ctx                   context.Context
+		ID                    uuid.UUID
+		WorkerResponseTypeArg api.WorkerResponseType
+		StatusString          string
+	}
+	mock.lockProcessWorkerUpdate.RLock()
+	calls = mock.calls.ProcessWorkerUpdate
+	mock.lockProcessWorkerUpdate.RUnlock()
 	return calls
 }
 

@@ -128,6 +128,8 @@ var batchStopCmd = APIEndpoint{
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchesGet(d *Daemon, r *http.Request) response.Response {
+	var err error
+
 	// Parse the recursion field.
 	recursion, err := strconv.Atoi(r.FormValue("recursion"))
 	if err != nil {
@@ -135,7 +137,15 @@ func batchesGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if recursion == 1 {
-		batches, err := d.batch.GetAll(r.Context())
+		ctx, trans := transaction.Begin(r.Context())
+		defer func() {
+			rollbackErr := trans.Rollback()
+			if rollbackErr != nil {
+				response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+			}
+		}()
+
+		batches, err := d.batch.GetAll(ctx)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -143,7 +153,7 @@ func batchesGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.Batch, 0, len(batches))
 
 		targetMap := make(map[int]string)
-		targets, err := d.target.GetAll(r.Context())
+		targets, err := d.target.GetAll(ctx)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -219,7 +229,15 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	target, err := d.target.GetByName(r.Context(), apiBatch.Target)
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+		}
+	}()
+
+	target, err := d.target.GetByName(ctx, apiBatch.Target)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -237,7 +255,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		MigrationWindowEnd:   apiBatch.MigrationWindowEnd,
 	}
 
-	_, err = d.batch.Create(r.Context(), batch)
+	_, err = d.batch.Create(ctx, batch)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -309,14 +327,24 @@ func batchDelete(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchGet(d *Daemon, r *http.Request) response.Response {
+	var err error
+
 	name := r.PathValue("name")
 
-	batch, err := d.batch.GetByName(r.Context(), name)
+	ctx, trans := transaction.Begin(r.Context())
+	defer func() {
+		rollbackErr := trans.Rollback()
+		if rollbackErr != nil {
+			response.SmartError(fmt.Errorf("Transaction rollback failed: %v, reason: %w", rollbackErr, err))
+		}
+	}()
+
+	batch, err := d.batch.GetByName(ctx, name)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	target, err := d.target.GetByID(r.Context(), batch.TargetID)
+	target, err := d.target.GetByID(ctx, batch.TargetID)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -390,7 +418,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 	// Get the existing batch.
 	currentBatch, err := d.batch.GetByName(ctx, name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get batch %q: %w", name, err))
+		return response.SmartError(fmt.Errorf("Failed to get batch %q: %w", name, err))
 	}
 
 	// Validate ETag

@@ -47,7 +47,10 @@ func TestBatchService_Create(t *testing.T) {
 				IncludeExpression: "true",
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - name empty",
@@ -57,7 +60,10 @@ func TestBatchService_Create(t *testing.T) {
 				IncludeExpression: "true",
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - target invalid",
@@ -68,7 +74,10 @@ func TestBatchService_Create(t *testing.T) {
 				IncludeExpression: "true",
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - state invalid",
@@ -79,7 +88,10 @@ func TestBatchService_Create(t *testing.T) {
 				IncludeExpression: "true",
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - state invalid",
@@ -89,7 +101,10 @@ func TestBatchService_Create(t *testing.T) {
 				IncludeExpression: "", // invalid
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - repo",
@@ -377,7 +392,9 @@ func TestBatchService_GetByName(t *testing.T) {
 			name:    "error - name argument empty string",
 			nameArg: "",
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:             "error - repo",
@@ -451,7 +468,10 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Status: api.BATCHSTATUS_DEFINED,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - name empty",
@@ -461,7 +481,10 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Status: api.BATCHSTATUS_DEFINED,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - repo.GetByID",
@@ -490,7 +513,9 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				IncludeExpression: "true",
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name: "error - repo.UpdateByID",
@@ -1025,7 +1050,9 @@ func TestBatchService_DeleteByName(t *testing.T) {
 			name:    "error - name argument empty string",
 			nameArg: "",
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:             "error - get batch",
@@ -1035,7 +1062,7 @@ func TestBatchService_DeleteByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:    "success - batch without instances",
+			name:    "error - batch without instances",
 			nameArg: "one",
 			repoGetByNameBatch: migration.Batch{
 				ID:     1,
@@ -1043,7 +1070,9 @@ func TestBatchService_DeleteByName(t *testing.T) {
 				Status: api.BATCHSTATUS_QUEUED,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:    "error - instance migrating",
@@ -1072,7 +1101,9 @@ func TestBatchService_DeleteByName(t *testing.T) {
 				},
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:    "error - batch unassignment",
@@ -1163,7 +1194,9 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 			name:    "error - empty name",
 			nameArg: "",
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:             "error - repo.GetByName",
@@ -1181,7 +1214,9 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 				Status: api.BATCHSTATUS_QUEUED,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:    "error - batch state is not ready to be started",
@@ -1245,7 +1280,9 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 			name:    "error - empty name",
 			nameArg: "",
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:             "error - repo.GetByName",
@@ -1263,7 +1300,9 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 				Status: api.BATCHSTATUS_DEFINED,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:    "error - batch state is not ready to be started",

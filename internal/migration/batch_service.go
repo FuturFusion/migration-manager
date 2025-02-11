@@ -2,7 +2,6 @@ package migration
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
@@ -64,7 +63,7 @@ func (s batchService) GetByID(ctx context.Context, id int) (Batch, error) {
 
 func (s batchService) GetByName(ctx context.Context, name string) (Batch, error) {
 	if name == "" {
-		return Batch{}, NewValidationErrf("batch name cannot be empty")
+		return Batch{}, fmt.Errorf("Batch name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return s.repo.GetByName(ctx, name)
@@ -83,7 +82,7 @@ func (s batchService) UpdateByID(ctx context.Context, batch Batch) (Batch, error
 		}
 
 		if !oldBatch.CanBeModified() {
-			return fmt.Errorf("Cannot update batch %q: Currently in a migration phase", batch.Name)
+			return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", batch.Name, ErrOperationNotPermitted)
 		}
 
 		batch, err = s.repo.UpdateByID(ctx, batch)
@@ -193,7 +192,7 @@ func (s batchService) UpdateStatusByID(ctx context.Context, id int, status api.B
 
 func (s batchService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
-		return errors.New("Instance name cannot be empty")
+		return fmt.Errorf("Instance name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
@@ -203,7 +202,7 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 		}
 
 		if !oldBatch.CanBeModified() {
-			return fmt.Errorf("Cannot delete batch %q: Currently in a migration phase", name)
+			return fmt.Errorf("Cannot delete batch %q: Currently in a migration phase: %w", name, ErrOperationNotPermitted)
 		}
 
 		instances, err := s.instance.GetAllByBatchID(ctx, oldBatch.ID)
@@ -214,7 +213,7 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 		// Verify all instances for this batch aren't in a migration phase and remove their association with this batch.
 		for _, inst := range instances {
 			if inst.IsMigrating() {
-				return fmt.Errorf("Cannot delete batch %q: At least one assigned instance is in a migration phase", name)
+				return fmt.Errorf("Cannot delete batch %q: At least one assigned instance is in a migration phase: %w", name, ErrOperationNotPermitted)
 			}
 
 			err = s.instance.UnassignFromBatch(ctx, inst.UUID)
@@ -229,7 +228,7 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 
 func (s batchService) StartBatchByName(ctx context.Context, name string) (err error) {
 	if name == "" {
-		return NewValidationErrf("batch name cannot be empty")
+		return fmt.Errorf("Batch name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
@@ -247,7 +246,7 @@ func (s batchService) StartBatchByName(ctx context.Context, name string) (err er
 			api.BATCHSTATUS_ERROR:
 			// States, where starting a batch is allowed.
 		default:
-			return fmt.Errorf("Cannot start batch %q in its current state %q", batch.Name, batch.Status)
+			return fmt.Errorf("Cannot start batch %q in its current state '%s': %w", batch.Name, batch.Status, ErrOperationNotPermitted)
 		}
 
 		_, err = s.UpdateStatusByID(ctx, batch.ID, api.BATCHSTATUS_READY, api.BATCHSTATUS_READY.String())
@@ -261,7 +260,7 @@ func (s batchService) StartBatchByName(ctx context.Context, name string) (err er
 
 func (s batchService) StopBatchByName(ctx context.Context, name string) (err error) {
 	if name == "" {
-		return NewValidationErrf("batch name cannot be empty")
+		return fmt.Errorf("Batch name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
@@ -279,7 +278,7 @@ func (s batchService) StopBatchByName(ctx context.Context, name string) (err err
 			api.BATCHSTATUS_RUNNING:
 			// States, where starting a batch is allowed.
 		default:
-			return fmt.Errorf("Cannot stop batch %q in its current state %q", batch.Name, batch.Status)
+			return fmt.Errorf("Cannot stop batch %q in its current state '%s': %w", batch.Name, batch.Status, ErrOperationNotPermitted)
 		}
 
 		// Move batch status to "stopped".

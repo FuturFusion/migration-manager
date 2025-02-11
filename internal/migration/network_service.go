@@ -2,7 +2,7 @@ package migration
 
 import (
 	"context"
-	"errors"
+	"fmt"
 )
 
 type networkService struct {
@@ -40,7 +40,7 @@ func (n networkService) GetByID(ctx context.Context, id int) (Network, error) {
 
 func (n networkService) GetByName(ctx context.Context, name string) (Network, error) {
 	if name == "" {
-		return Network{}, errors.New("Network name cannot be empty")
+		return Network{}, fmt.Errorf("Network name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return n.repo.GetByName(ctx, name)
@@ -57,7 +57,7 @@ func (n networkService) UpdateByID(ctx context.Context, newNetwork Network) (Net
 
 func (n networkService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
-		return errors.New("Network name cannot be empty")
+		return fmt.Errorf("Network name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return n.repo.DeleteByName(ctx, name)

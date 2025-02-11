@@ -168,7 +168,7 @@ func (s instanceService) UpdateByID(ctx context.Context, instance Instance) (Ins
 		}
 
 		if oldInstance.BatchID != nil {
-			return fmt.Errorf("Instance %q is already assigned to a batch", oldInstance.InventoryPath)
+			return fmt.Errorf("Instance %q is already assigned to a batch: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
 		}
 
 		instance, err = s.repo.UpdateByID(ctx, instance)
@@ -192,6 +192,58 @@ func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, s
 	return s.repo.UpdateStatusByUUID(ctx, id, status, statusString, needsDiskImport)
 }
 
+func (s instanceService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseType api.WorkerResponseType, statusString string) (Instance, error) {
+	var instance Instance
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		// Get the instance.
+		instance, err := s.GetByID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("Failed to get instance '%s': %w", id, err)
+		}
+
+		// Don't update instances that aren't in the migration queue.
+		if instance.BatchID == nil || !instance.IsMigrating() {
+			return fmt.Errorf("Instance '%s' isn't in the migration queue: %w", instance.GetName(), ErrNotFound)
+		}
+
+		// Process the response.
+		switch workerResponseType {
+		case api.WORKERRESPONSE_RUNNING:
+			instance.MigrationStatusString = statusString
+
+		case api.WORKERRESPONSE_SUCCESS:
+			switch instance.MigrationStatus {
+			case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
+				instance.NeedsDiskImport = false
+				instance.MigrationStatus = api.MIGRATIONSTATUS_IDLE
+				instance.MigrationStatusString = api.MIGRATIONSTATUS_IDLE.String()
+
+			case api.MIGRATIONSTATUS_FINAL_IMPORT:
+				instance.MigrationStatus = api.MIGRATIONSTATUS_IMPORT_COMPLETE
+				instance.MigrationStatusString = api.MIGRATIONSTATUS_IMPORT_COMPLETE.String()
+			}
+
+		case api.WORKERRESPONSE_FAILED:
+			instance.MigrationStatus = api.MIGRATIONSTATUS_ERROR
+			instance.MigrationStatusString = statusString
+		}
+
+		// Update instance in the database.
+		instance, err = s.UpdateStatusByUUID(ctx, id, instance.MigrationStatus, instance.MigrationStatusString, instance.NeedsDiskImport)
+		if err != nil {
+			return fmt.Errorf("Failed updating instance '%s': %w", instance.UUID, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return Instance{}, err
+	}
+
+	return instance, nil
+}
+
 func (s instanceService) DeleteByID(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		oldInstance, err := s.repo.GetByID(ctx, id)
@@ -200,7 +252,7 @@ func (s instanceService) DeleteByID(ctx context.Context, id uuid.UUID) error {
 		}
 
 		if oldInstance.BatchID != nil || oldInstance.IsMigrating() {
-			return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating", oldInstance.InventoryPath)
+			return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
 		}
 
 		err = s.repo.DeleteOverridesByID(ctx, id)

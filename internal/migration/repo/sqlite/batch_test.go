@@ -67,7 +67,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 
 	// Cannot add a batch with an invalid target.
 	_, err = batch.Create(ctx, batchA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 	_, err = targetSvc.Create(ctx, testTarget)
 	require.NoError(t, err)
 
@@ -90,7 +90,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 
 	// Cannot delete a target if referenced by a batch.
 	err = targetSvc.DeleteByName(ctx, testTarget.Name)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
 	// Should get back batchA unchanged.
 	dbBatchA, err := batch.GetByName(ctx, batchA.Name)
@@ -110,7 +110,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 	err = batch.DeleteByName(ctx, batchA.Name)
 	require.NoError(t, err)
 	_, err = batch.GetByName(ctx, batchA.Name)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Should have two batches remaining.
 	batches, err = batch.GetAll(ctx)
@@ -119,13 +119,13 @@ func TestBatchDatabaseActions(t *testing.T) {
 
 	// Can't delete a batch that doesn't exist.
 	err = batch.DeleteByName(ctx, "BazBiz")
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a batch that doesn't exist.
 	_, err = batch.UpdateByID(ctx, batchA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate batch.
 	_, err = batch.Create(ctx, batchB)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 }

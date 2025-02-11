@@ -2,7 +2,7 @@ package migration
 
 import (
 	"context"
-	"errors"
+	"fmt"
 )
 
 type sourceService struct {
@@ -40,7 +40,7 @@ func (s sourceService) GetByID(ctx context.Context, id int) (Source, error) {
 
 func (s sourceService) GetByName(ctx context.Context, name string) (Source, error) {
 	if name == "" {
-		return Source{}, errors.New("Source name cannot be empty")
+		return Source{}, fmt.Errorf("Source name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return s.repo.GetByName(ctx, name)
@@ -57,7 +57,7 @@ func (s sourceService) UpdateByID(ctx context.Context, newSource Source) (Source
 
 func (s sourceService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
-		return errors.New("Source name cannot be empty")
+		return fmt.Errorf("Source name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return s.repo.DeleteByName(ctx, name)

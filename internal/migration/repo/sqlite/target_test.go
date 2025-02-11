@@ -89,7 +89,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	err = target.DeleteByName(ctx, incusTargetA.Name)
 	require.NoError(t, err)
 	_, err = target.GetByName(ctx, incusTargetA.Name)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Should have two targets remaining.
 	targets, err = target.GetAll(ctx)
@@ -98,13 +98,13 @@ func TestTargetDatabaseActions(t *testing.T) {
 
 	// Can't delete a target that doesn't exist.
 	err = target.DeleteByName(ctx, "BazBiz")
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a target that doesn't exist.
 	_, err = target.UpdateByID(ctx, incusTargetA)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate target.
 	_, err = target.Create(ctx, incusTargetB)
-	require.Error(t, err)
+	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 }

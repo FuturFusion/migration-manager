@@ -337,7 +337,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 
 	currentTarget, err := d.target.GetByName(ctx, name)
 	if err != nil {
-		return response.BadRequest(fmt.Errorf("Failed to get target %q: %w", name, err))
+		return response.SmartError(fmt.Errorf("Failed to get target %q: %w", name, err))
 	}
 
 	// Validate ETag

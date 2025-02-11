@@ -66,7 +66,10 @@ func TestInstanceService_Create(t *testing.T) {
 				SecretToken:           uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - missing secret token",
@@ -80,7 +83,10 @@ func TestInstanceService_Create(t *testing.T) {
 				SecretToken:           uuid.Nil,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - invalid inventory path",
@@ -94,7 +100,10 @@ func TestInstanceService_Create(t *testing.T) {
 				SecretToken:           uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - source id",
@@ -617,7 +626,10 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SecretToken:     uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - invalid inventory path",
@@ -629,7 +641,10 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SecretToken:     uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - invalid source",
@@ -641,7 +656,10 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SecretToken:     uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - invalid migration status",
@@ -653,7 +671,10 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SecretToken:     uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - repo.GetByID",
@@ -686,7 +707,9 @@ func TestInstanceService_UpdateByID(t *testing.T) {
 				SecretToken:     uuidB,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name: "error - repo.UpdateByID",
@@ -862,7 +885,10 @@ func TestInstanceService_UpdateStatusByID(t *testing.T) {
 			uuidArg:   uuidA,
 			statusArg: -1, // invalid
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name:                    "error - repo",
@@ -889,6 +915,178 @@ func TestInstanceService_UpdateStatusByID(t *testing.T) {
 			// Assert
 			tc.assertErr(t, err)
 			require.Equal(t, tc.wantInstance, instance)
+		})
+	}
+}
+
+func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
+	tests := []struct {
+		name                  string
+		uuidArg               uuid.UUID
+		workerResponseTypeArg api.WorkerResponseType
+		statusStringArg       string
+
+		repoGetByIDInstance          migration.Instance
+		repoGetByIDErr               error
+		repoUpdateStatusByIDInstance migration.Instance
+		repoUpdateStatusByIDErr      error
+
+		assertErr                 require.ErrorAssertionFunc
+		wantMigrationStatus       api.MigrationStatusType
+		wantMigrationStatusString string
+	}{
+		{
+			name:                  "success - migration running",
+			uuidArg:               uuidA,
+			workerResponseTypeArg: api.WORKERRESPONSE_RUNNING,
+			statusStringArg:       "creating",
+			repoGetByIDInstance: migration.Instance{
+				UUID:            uuidA,
+				InventoryPath:   "/inventory/path",
+				SourceID:        1,
+				MigrationStatus: api.MIGRATIONSTATUS_CREATING,
+				BatchID:         ptr.To(1),
+			},
+
+			assertErr:                 require.NoError,
+			wantMigrationStatus:       api.MIGRATIONSTATUS_CREATING,
+			wantMigrationStatusString: "creating",
+		},
+		{
+			name:                  "success - migration success background import",
+			uuidArg:               uuidA,
+			workerResponseTypeArg: api.WORKERRESPONSE_SUCCESS,
+			statusStringArg:       "done",
+			repoGetByIDInstance: migration.Instance{
+				UUID:            uuidA,
+				InventoryPath:   "/inventory/path",
+				SourceID:        1,
+				MigrationStatus: api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
+				BatchID:         ptr.To(1),
+			},
+
+			assertErr:                 require.NoError,
+			wantMigrationStatus:       api.MIGRATIONSTATUS_IDLE,
+			wantMigrationStatusString: "Idle",
+		},
+		{
+			name:                  "success - migration success final import",
+			uuidArg:               uuidA,
+			workerResponseTypeArg: api.WORKERRESPONSE_SUCCESS,
+			statusStringArg:       "done",
+			repoGetByIDInstance: migration.Instance{
+				UUID:            uuidA,
+				InventoryPath:   "/inventory/path",
+				SourceID:        1,
+				MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT,
+				BatchID:         ptr.To(1),
+			},
+
+			assertErr:                 require.NoError,
+			wantMigrationStatus:       api.MIGRATIONSTATUS_IMPORT_COMPLETE,
+			wantMigrationStatusString: "Import tasks complete",
+		},
+		{
+			name:                  "success - migration failed",
+			uuidArg:               uuidA,
+			workerResponseTypeArg: api.WORKERRESPONSE_FAILED,
+			statusStringArg:       "boom!",
+			repoGetByIDInstance: migration.Instance{
+				UUID:            uuidA,
+				InventoryPath:   "/inventory/path",
+				SourceID:        1,
+				MigrationStatus: api.MIGRATIONSTATUS_CREATING,
+				BatchID:         ptr.To(1),
+			},
+
+			assertErr:                 require.NoError,
+			wantMigrationStatus:       api.MIGRATIONSTATUS_ERROR,
+			wantMigrationStatusString: "boom!",
+		},
+		{
+			name:                  "error - GetByID",
+			uuidArg:               uuidA,
+			workerResponseTypeArg: api.WORKERRESPONSE_RUNNING,
+			statusStringArg:       "creating",
+			repoGetByIDErr:        boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                  "error - instance not part of batch",
+			uuidArg:               uuidA,
+			workerResponseTypeArg: api.WORKERRESPONSE_RUNNING,
+			statusStringArg:       "creating",
+			repoGetByIDInstance: migration.Instance{
+				UUID:            uuidA,
+				InventoryPath:   "/inventory/path",
+				SourceID:        1,
+				MigrationStatus: api.MIGRATIONSTATUS_CREATING,
+				BatchID:         nil, // not assigned to batch
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrNotFound, a...)
+			},
+		},
+		{
+			name:                  "error - instance not in migration state",
+			uuidArg:               uuidA,
+			workerResponseTypeArg: api.WORKERRESPONSE_RUNNING,
+			statusStringArg:       "creating",
+			repoGetByIDInstance: migration.Instance{
+				UUID:            uuidA,
+				InventoryPath:   "/inventory/path",
+				SourceID:        1,
+				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, // not in migration state
+				BatchID:         ptr.To(1),
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrNotFound, a...)
+			},
+		},
+		{
+			name:                  "error - UpdateStatusByID",
+			uuidArg:               uuidA,
+			workerResponseTypeArg: api.WORKERRESPONSE_RUNNING,
+			statusStringArg:       "creating",
+			repoGetByIDInstance: migration.Instance{
+				UUID:            uuidA,
+				InventoryPath:   "/inventory/path",
+				SourceID:        1,
+				MigrationStatus: api.MIGRATIONSTATUS_CREATING,
+				BatchID:         ptr.To(1),
+			},
+			repoUpdateStatusByIDErr: boom.Error,
+
+			assertErr:                 boom.ErrorIs,
+			wantMigrationStatus:       api.MIGRATIONSTATUS_CREATING,
+			wantMigrationStatusString: "creating",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.InstanceRepoMock{
+				GetByIDFunc: func(ctx context.Context, id uuid.UUID) (migration.Instance, error) {
+					return tc.repoGetByIDInstance, tc.repoGetByIDErr
+				},
+				UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
+					require.Equal(t, tc.wantMigrationStatus, status)
+					require.Equal(t, tc.wantMigrationStatusString, statusString)
+					return migration.Instance{}, tc.repoUpdateStatusByIDErr
+				},
+			}
+
+			instanceSvc := migration.NewInstanceService(repo, nil)
+
+			// Run test
+			_, err := instanceSvc.ProcessWorkerUpdate(context.Background(), tc.uuidArg, tc.workerResponseTypeArg, tc.statusStringArg)
+
+			// Assert
+			tc.assertErr(t, err)
 		})
 	}
 }
@@ -930,7 +1128,9 @@ func TestInstanceService_DeleteByID(t *testing.T) {
 				BatchID:         ptr.To(1),
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:    "error - status is migrating",
@@ -940,7 +1140,9 @@ func TestInstanceService_DeleteByID(t *testing.T) {
 				MigrationStatus: api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
 		},
 		{
 			name:                       "error - repo.DeleteOverridesByID",
@@ -1051,7 +1253,10 @@ func TestInstanceService_CreateOverrides(t *testing.T) {
 				DisableMigration: false,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "success - disable migration",
@@ -1275,7 +1480,10 @@ func TestInstanceService_UpdateOverridesByID(t *testing.T) {
 				DisableMigration: false,
 			},
 
-			assertErr: require.Error,
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
 		},
 		{
 			name: "error - repo.GetOverrideByID",

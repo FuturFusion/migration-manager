@@ -3,9 +3,6 @@ package sqlite
 import (
 	"context"
 	"database/sql"
-	"errors"
-
-	"github.com/mattn/go-sqlite3"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo"
@@ -53,7 +50,7 @@ RETURNING id, name, target_id, target_project, status, status_string, storage_po
 		sql.Named("migration_window_end", marshalledMigrationWindowEnd),
 	)
 	if row.Err() != nil {
-		return migration.Batch{}, row.Err()
+		return migration.Batch{}, mapErr(row.Err())
 	}
 
 	return scanBatch(row)
@@ -68,7 +65,7 @@ ORDER BY name;
 
 	rows, err := b.db.QueryContext(ctx, sqlGetAll)
 	if err != nil {
-		return nil, err
+		return nil, mapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -84,7 +81,7 @@ ORDER BY name;
 	}
 
 	if rows.Err() != nil {
-		return nil, rows.Err()
+		return nil, mapErr(rows.Err())
 	}
 
 	return batches, nil
@@ -102,7 +99,7 @@ ORDER BY name;
 		sql.Named("status", status),
 	)
 	if err != nil {
-		return nil, err
+		return nil, mapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -118,7 +115,7 @@ ORDER BY name;
 	}
 
 	if rows.Err() != nil {
-		return nil, rows.Err()
+		return nil, mapErr(rows.Err())
 	}
 
 	return batches, nil
@@ -129,7 +126,7 @@ func (b batch) GetAllNames(ctx context.Context) ([]string, error) {
 
 	rows, err := b.db.QueryContext(ctx, sqlGetAllNames)
 	if err != nil {
-		return nil, err
+		return nil, mapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -139,14 +136,14 @@ func (b batch) GetAllNames(ctx context.Context) ([]string, error) {
 		var batchName string
 		err := rows.Scan(&batchName)
 		if err != nil {
-			return nil, err
+			return nil, mapErr(err)
 		}
 
 		batchesNames = append(batchesNames, batchName)
 	}
 
 	if rows.Err() != nil {
-		return nil, rows.Err()
+		return nil, mapErr(rows.Err())
 	}
 
 	return batchesNames, nil
@@ -161,7 +158,7 @@ WHERE id=:id;
 
 	row := b.db.QueryRowContext(ctx, sqlGetByID, sql.Named("id", id))
 	if row.Err() != nil {
-		return migration.Batch{}, row.Err()
+		return migration.Batch{}, mapErr(row.Err())
 	}
 
 	return scanBatch(row)
@@ -176,7 +173,7 @@ WHERE name=:name;
 
 	row := b.db.QueryRowContext(ctx, sqlGetByName, sql.Named("name", name))
 	if row.Err() != nil {
-		return migration.Batch{}, row.Err()
+		return migration.Batch{}, mapErr(row.Err())
 	}
 
 	return scanBatch(row)
@@ -212,7 +209,7 @@ RETURNING id, name, target_id, target_project, status, status_string, storage_po
 		sql.Named("migration_window_end", marshalledMigrationWindowEnd),
 	)
 	if row.Err() != nil {
-		return migration.Batch{}, row.Err()
+		return migration.Batch{}, mapErr(row.Err())
 	}
 
 	return scanBatch(row)
@@ -231,7 +228,7 @@ RETURNING id, name, target_id, target_project, status, status_string, storage_po
 		sql.Named("status_string", statusString),
 	)
 	if row.Err() != nil {
-		return migration.Batch{}, row.Err()
+		return migration.Batch{}, mapErr(row.Err())
 	}
 
 	return scanBatch(row)
@@ -254,18 +251,7 @@ func scanBatch(row interface{ Scan(dest ...any) error }) (migration.Batch, error
 		&marshalledMigrationWindowEnd,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return migration.Batch{}, migration.ErrNotFound
-		}
-
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			if sqliteErr.Code == sqlite3.ErrConstraint {
-				return migration.Batch{}, migration.ErrConstraintViolation
-			}
-		}
-
-		return migration.Batch{}, err
+		return migration.Batch{}, mapErr(err)
 	}
 
 	err = batch.MigrationWindowStart.UnmarshalText(marshalledMigrationWindowStart)
@@ -286,12 +272,12 @@ func (b batch) DeleteByName(ctx context.Context, name string) error {
 
 	result, err := b.db.ExecContext(ctx, sqlDelete, sql.Named("name", name))
 	if err != nil {
-		return err
+		return mapErr(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return mapErr(err)
 	}
 
 	if affectedRows == 0 {

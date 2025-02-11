@@ -4,10 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
-
-	"github.com/mattn/go-sqlite3"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo"
@@ -42,7 +39,7 @@ RETURNING id, name, config;
 		sql.Named("config", config),
 	)
 	if row.Err() != nil {
-		return migration.Network{}, row.Err()
+		return migration.Network{}, mapErr(row.Err())
 	}
 
 	return scanNetwork(row)
@@ -53,7 +50,7 @@ func (n network) GetAll(ctx context.Context) (migration.Networks, error) {
 
 	rows, err := n.db.QueryContext(ctx, sqlGetAll)
 	if err != nil {
-		return nil, err
+		return nil, mapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -69,7 +66,7 @@ func (n network) GetAll(ctx context.Context) (migration.Networks, error) {
 	}
 
 	if rows.Err() != nil {
-		return nil, rows.Err()
+		return nil, mapErr(rows.Err())
 	}
 
 	return networks, nil
@@ -80,7 +77,7 @@ func (n network) GetAllNames(ctx context.Context) ([]string, error) {
 
 	rows, err := n.db.QueryContext(ctx, sqlGetAllNames)
 	if err != nil {
-		return nil, err
+		return nil, mapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -90,14 +87,14 @@ func (n network) GetAllNames(ctx context.Context) ([]string, error) {
 		var networkName string
 		err := rows.Scan(&networkName)
 		if err != nil {
-			return nil, err
+			return nil, mapErr(err)
 		}
 
 		networkNames = append(networkNames, networkName)
 	}
 
 	if rows.Err() != nil {
-		return nil, rows.Err()
+		return nil, mapErr(rows.Err())
 	}
 
 	return networkNames, nil
@@ -108,7 +105,7 @@ func (n network) GetByID(ctx context.Context, id int) (migration.Network, error)
 
 	row := n.db.QueryRowContext(ctx, sqlGetByID, sql.Named("id", id))
 	if row.Err() != nil {
-		return migration.Network{}, row.Err()
+		return migration.Network{}, mapErr(row.Err())
 	}
 
 	return scanNetwork(row)
@@ -119,7 +116,7 @@ func (n network) GetByName(ctx context.Context, name string) (migration.Network,
 
 	row := n.db.QueryRowContext(ctx, sqlGetByName, sql.Named("name", name))
 	if row.Err() != nil {
-		return migration.Network{}, row.Err()
+		return migration.Network{}, mapErr(row.Err())
 	}
 
 	return scanNetwork(row)
@@ -143,7 +140,7 @@ RETURNING id, name, config;
 		sql.Named("id", in.ID),
 	)
 	if row.Err() != nil {
-		return migration.Network{}, row.Err()
+		return migration.Network{}, mapErr(row.Err())
 	}
 
 	return scanNetwork(row)
@@ -158,18 +155,7 @@ func scanNetwork(row interface{ Scan(dest ...any) error }) (migration.Network, e
 		&configJSON,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return migration.Network{}, migration.ErrNotFound
-		}
-
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			if sqliteErr.Code == sqlite3.ErrConstraint {
-				return migration.Network{}, migration.ErrConstraintViolation
-			}
-		}
-
-		return migration.Network{}, err
+		return migration.Network{}, mapErr(err)
 	}
 
 	err = json.Unmarshal(configJSON, &network.Config)
@@ -185,12 +171,12 @@ func (n network) DeleteByName(ctx context.Context, name string) error {
 
 	result, err := n.db.ExecContext(ctx, sqlDelete, sql.Named("name", name))
 	if err != nil {
-		return err
+		return mapErr(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return mapErr(err)
 	}
 
 	if affectedRows == 0 {

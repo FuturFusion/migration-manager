@@ -7,7 +7,6 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
-	"github.com/mattn/go-sqlite3"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo"
@@ -102,7 +101,7 @@ RETURNING uuid, inventory_path, annotation, migration_status, migration_status_s
 			sql.Named("secret_token", in.SecretToken),
 		)
 		if row.Err() != nil {
-			return row.Err()
+			return mapErr(row.Err())
 		}
 
 		instance, err = i.scanInstance(ctx, row)
@@ -127,7 +126,7 @@ ORDER BY inventory_path;
 
 		rows, err := i.db.QueryContext(ctx, sqlGetAll)
 		if err != nil {
-			return err
+			return mapErr(err)
 		}
 
 		defer func() { _ = rows.Close() }()
@@ -141,7 +140,7 @@ ORDER BY inventory_path;
 			instances = append(instances, instance)
 		}
 
-		return rows.Err()
+		return mapErr(rows.Err())
 	})
 	if err != nil {
 		return nil, err
@@ -165,7 +164,7 @@ ORDER BY inventory_path;
 			sql.Named("batch_id", batchID),
 		)
 		if err != nil {
-			return err
+			return mapErr(err)
 		}
 
 		defer func() { _ = rows.Close() }()
@@ -179,7 +178,7 @@ ORDER BY inventory_path;
 			instances = append(instances, instance)
 		}
 
-		return rows.Err()
+		return mapErr(rows.Err())
 	})
 	if err != nil {
 		return nil, err
@@ -203,7 +202,7 @@ ORDER BY inventory_path;
 			sql.Named("migration_status", status),
 		)
 		if err != nil {
-			return err
+			return mapErr(err)
 		}
 
 		defer func() { _ = rows.Close() }()
@@ -217,7 +216,7 @@ ORDER BY inventory_path;
 			instances = append(instances, instance)
 		}
 
-		return rows.Err()
+		return mapErr(rows.Err())
 	})
 	if err != nil {
 		return nil, err
@@ -231,7 +230,7 @@ func (i instance) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
 
 	rows, err := i.db.QueryContext(ctx, sqlGetAllUUIDs)
 	if err != nil {
-		return nil, err
+		return nil, mapErr(err)
 	}
 
 	defer func() { _ = rows.Close() }()
@@ -241,14 +240,14 @@ func (i instance) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
 		var instanceUUID uuid.UUID
 		err := rows.Scan(&instanceUUID)
 		if err != nil {
-			return nil, err
+			return nil, mapErr(err)
 		}
 
 		instanceUUIDs = append(instanceUUIDs, instanceUUID)
 	}
 
 	if rows.Err() != nil {
-		return nil, rows.Err()
+		return nil, mapErr(rows.Err())
 	}
 
 	return instanceUUIDs, nil
@@ -267,7 +266,7 @@ ORDER BY inventory_path;
 
 		rows, err := i.db.QueryContext(ctx, sqlGetAll)
 		if err != nil {
-			return err
+			return mapErr(err)
 		}
 
 		defer func() { _ = rows.Close() }()
@@ -281,7 +280,7 @@ ORDER BY inventory_path;
 			instances = append(instances, instance)
 		}
 
-		return rows.Err()
+		return mapErr(rows.Err())
 	})
 	if err != nil {
 		return nil, err
@@ -300,7 +299,7 @@ func (i instance) GetByID(ctx context.Context, id uuid.UUID) (migration.Instance
 
 		row := i.db.QueryRowContext(ctx, sqlGetByUUID, sql.Named("uuid", id))
 		if row.Err() != nil {
-			return row.Err()
+			return mapErr(row.Err())
 		}
 
 		instance, err = i.scanInstance(ctx, row)
@@ -387,7 +386,7 @@ RETURNING uuid, inventory_path, annotation, migration_status, migration_status_s
 			sql.Named("secret_token", in.SecretToken),
 		)
 		if row.Err() != nil {
-			return row.Err()
+			return mapErr(row.Err())
 		}
 
 		instance, err = i.scanInstance(ctx, row)
@@ -438,18 +437,7 @@ func (i instance) scanInstance(ctx context.Context, row interface{ Scan(dest ...
 		&instance.SecretToken,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return migration.Instance{}, migration.ErrNotFound
-		}
-
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			if sqliteErr.Code == sqlite3.ErrConstraint {
-				return migration.Instance{}, migration.ErrConstraintViolation
-			}
-		}
-
-		return migration.Instance{}, err
+		return migration.Instance{}, mapErr(err)
 	}
 
 	err = instance.LastUpdateFromSource.UnmarshalText([]byte(marshalledLastUpdateFromSource))
@@ -506,12 +494,12 @@ func (i instance) DeleteByID(ctx context.Context, id uuid.UUID) error {
 
 	result, err := i.db.ExecContext(ctx, sqlDelete, sql.Named("uuid", id))
 	if err != nil {
-		return err
+		return mapErr(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return mapErr(err)
 	}
 
 	if affectedRows == 0 {
@@ -536,7 +524,7 @@ RETURNING uuid, inventory_path, annotation, migration_status, migration_status_s
 		sql.Named("needs_disk_import", needsDiskImport),
 	)
 	if row.Err() != nil {
-		return migration.Instance{}, row.Err()
+		return migration.Instance{}, mapErr(row.Err())
 	}
 
 	return i.scanInstance(ctx, row)
@@ -563,7 +551,7 @@ RETURNING uuid, last_update, comment, number_cpus, memory_in_bytes, disable_migr
 		sql.Named("disable_migration", overrides.DisableMigration),
 	)
 	if row.Err() != nil {
-		return migration.Overrides{}, row.Err()
+		return migration.Overrides{}, mapErr(row.Err())
 	}
 
 	return scanInstanceOverrides(row)
@@ -578,7 +566,7 @@ WHERE uuid=:uuid;
 
 	row := i.db.QueryRowContext(ctx, sqlGetOverridesByUUID, sql.Named("uuid", id))
 	if row.Err() != nil {
-		return migration.Overrides{}, row.Err()
+		return migration.Overrides{}, mapErr(row.Err())
 	}
 
 	return scanInstanceOverrides(row)
@@ -589,12 +577,12 @@ func (i instance) DeleteOverridesByID(ctx context.Context, id uuid.UUID) error {
 
 	result, err := i.db.ExecContext(ctx, sqlDeleteOverrides, sql.Named("uuid", id))
 	if err != nil {
-		return err
+		return mapErr(err)
 	}
 
 	affectedRows, err := result.RowsAffected()
 	if err != nil {
-		return err
+		return mapErr(err)
 	}
 
 	if affectedRows == 0 {
@@ -626,7 +614,7 @@ RETURNING uuid, last_update, comment, number_cpus, memory_in_bytes, disable_migr
 		sql.Named("disable_migration", overrides.DisableMigration),
 	)
 	if row.Err() != nil {
-		return migration.Overrides{}, row.Err()
+		return migration.Overrides{}, mapErr(row.Err())
 	}
 
 	return scanInstanceOverrides(row)
@@ -645,18 +633,7 @@ func scanInstanceOverrides(row interface{ Scan(dest ...any) error }) (migration.
 		&overrides.DisableMigration,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return migration.Overrides{}, migration.ErrNotFound
-		}
-
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			if sqliteErr.Code == sqlite3.ErrConstraint {
-				return migration.Overrides{}, migration.ErrConstraintViolation
-			}
-		}
-
-		return migration.Overrides{}, err
+		return migration.Overrides{}, mapErr(err)
 	}
 
 	err = overrides.LastUpdate.UnmarshalText([]byte(marshalledLastUpdate))
