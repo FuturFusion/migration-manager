@@ -301,7 +301,14 @@ func (d *Daemon) Start() error {
 		return false
 	}, 10*time.Second)
 
-	d.runPeriodicTask(d.finalizeCompleteInstances, 10*time.Second)
+	d.runPeriodicTask(func() (done bool) {
+		err := d.finalizeCompleteInstances(d.ShutdownCtx)
+		if err != nil {
+			slog.Error("Failed to finish processing batches", logger.Err(err))
+		}
+
+		return false
+	}, 10*time.Second)
 
 	select {
 	case <-errgroupCtx.Done():

@@ -827,17 +827,53 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 	return nil
 }
 
-func (d *Daemon) finalizeCompleteInstances() bool {
+func (d *Daemon) finalizeCompleteInstances(ctx context.Context) error {
 	log := slog.With(slog.String("method", "finalizeCompleteInstances"))
+	reverter := revert.New()
+	defer reverter.Fail()
 
-	// TODO: context should be passed from the daemon to all the workers.
-	ctx := context.TODO()
+	var err error
+	var instances migration.Instances
+	var targetsByBatch map[int]*target.InternalIncusTarget
+	var batchesByInstance map[uuid.UUID]migration.Batch
+	var networksByName map[string]migration.Network
+	reverter.Add(func() {
+		var errString string
+		if err != nil {
+			errString = err.Error()
+		}
 
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+		err = transaction.Do(ctx, func(ctx context.Context) error {
+			for _, i := range instances {
+				_, err := d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, true)
+				if err != nil {
+					log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR.String()), logger.Err(err))
+				}
+			}
+
+			return nil
+		})
+	})
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		// Get any instances in the "complete" state.
-		instances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
+		var err error
+		instances, err = d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances by state: %w", err)
+		}
+
+		networks, err := d.network.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get all networks: %w", err)
+		}
+
+		targetsByBatch = make(map[int]*target.InternalIncusTarget, len(instances))
+		batchesByInstance = make(map[uuid.UUID]migration.Batch, len(instances))
+		networksByName = make(map[string]migration.Network, len(networks))
+
+		for _, net := range networks {
+			networksByName[net.Name] = net
 		}
 
 		batches, err := d.batch.GetAll(ctx)
@@ -848,206 +884,169 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 		batchesByID := make(map[int]migration.Batch, len(batches))
 		for _, b := range batches {
 			batchesByID[b.ID] = b
-		}
 
-		for _, i := range instances {
-			log := log.With(slog.String("instance", i.InventoryPath))
-
-			log.Info("Finalizing migration steps for instance")
-
-			// Get the target for this instance.
-			batch := batchesByID[*i.BatchID]
-			t, err := d.target.GetByID(ctx, batch.TargetID)
+			t, err := d.target.GetByID(ctx, b.TargetID)
 			if err != nil {
-				log.Warn("Failed to get target", slog.Int("target_id", batch.TargetID), logger.Err(err))
-				_, err := d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-				if err != nil {
-					log.Warn("Failed to update instance status", logger.Err(err))
-					continue
-				}
-
-				continue
+				return fmt.Errorf("Failed to get all targets: %w", err)
 			}
 
-			it, err := target.NewInternalIncusTargetFrom(api.Target{
+			targetsByBatch[b.ID], err = target.NewInternalIncusTargetFrom(api.Target{
 				Name:       t.Name,
 				DatabaseID: t.ID,
 				TargetType: t.TargetType,
 				Properties: t.Properties,
 			})
 			if err != nil {
-				log.Warn("Failed to construct target", slog.String("target", it.GetName()), logger.Err(err))
-				_, err := d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-				if err != nil {
-					log.Warn("Failed to update instance status", logger.Err(err))
-					continue
-				}
+				return err
+			}
+		}
 
-				continue
+		for _, i := range instances {
+			batch, ok := batchesByID[*i.BatchID]
+			if !ok {
+				return fmt.Errorf("No batch found for instance %q: %w", i.UUID, err)
 			}
 
-			// Connect to the target.
-			err = it.Connect(d.ShutdownCtx)
-			if err != nil {
-				log.Warn("Failed to connect to target", slog.String("target", it.GetName()), logger.Err(err))
-				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-				if err != nil {
-					log.Warn("Failed to update instance status", logger.Err(err))
-					continue
-				}
+			batchesByInstance[i.UUID] = batch
+		}
 
-				continue
-			}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
 
-			// Set the project.
-			err = it.SetProject(batch.TargetProject)
-			if err != nil {
-				log.Warn("Failed to set target project", slog.String("project", batch.TargetProject), logger.Err(err))
-				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-				if err != nil {
-					log.Warn("Failed to update instance status", logger.Err(err))
-					continue
-				}
+	instanceErrs := make([]error, 0, len(instances))
+	for _, i := range instances {
+		log := log.With(slog.String("instance", i.InventoryPath))
+		batch := batchesByInstance[i.UUID]
+		it := targetsByBatch[*i.BatchID]
+		err = configureMigratedInstance(ctx, i, it, batch, networksByName)
+		if err != nil {
+			instanceErrs = append(instanceErrs, err)
+			log.Error("Failed to finalize instance", logger.Err(err))
+		}
+	}
 
-				continue
-			}
+	if len(instanceErrs) > 0 {
+		return fmt.Errorf("Failed to finalize %d instances. Last error: %w", len(instanceErrs), instanceErrs[len(instanceErrs)-1])
+	}
 
-			// Stop the instance.
-			stopErr := it.StopVM(i.GetName(), true)
-			if stopErr != nil {
-				log.Warn("Failed to stop VM", logger.Err(stopErr))
-				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-				if err != nil {
-					log.Warn("Failed to update instance status", logger.Err(err))
-					continue
-				}
-
-				continue
-			}
-
-			// Get the instance definition.
-			apiDef, etag, err := it.GetInstance(i.GetName())
-			if err != nil {
-				log.Warn("Failed to get instance", logger.Err(err))
-				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-				if err != nil {
-					log.Warn("Failed to update instance status", logger.Err(err))
-					continue
-				}
-
-				continue
-			}
-
-			// Add NIC(s).
-			for idx, nic := range i.NICs {
-				log := log.With(slog.String("network_hwaddr", nic.Hwaddr))
-
-				nicDeviceName := fmt.Sprintf("eth%d", idx)
-
-				baseNetwork, err := d.network.GetByName(ctx, nic.Network)
-				if err != nil {
-					log.Warn("Failed to get network", logger.Err(err))
-					_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-					if err != nil {
-						log.Warn("Failed to update instance status", logger.Err(err))
-						continue
-					}
-
-					continue
-				}
-
-				// Pickup device name override if set.
-				deviceName, ok := baseNetwork.Config["name"]
-				if ok {
-					nicDeviceName = deviceName
-				}
-
-				// Copy the base network definitions.
-				apiDef.Devices[nicDeviceName] = make(map[string]string, len(baseNetwork.Config))
-				for k, v := range baseNetwork.Config {
-					apiDef.Devices[nicDeviceName][k] = v
-				}
-
-				// Set a few forced overrides.
-				apiDef.Devices[nicDeviceName]["type"] = "nic"
-				apiDef.Devices[nicDeviceName]["name"] = nicDeviceName
-				apiDef.Devices[nicDeviceName]["hwaddr"] = nic.Hwaddr
-			}
-
-			// Remove the migration ISO image.
-			delete(apiDef.Devices, "migration-iso")
-
-			// Don't set any profiles by default.
-			apiDef.Profiles = []string{}
-
-			// Handle Windows-specific completion steps.
-			if strings.Contains(apiDef.Config["image.os"], "swodniw") {
-				// Remove the drivers ISO image.
-				delete(apiDef.Devices, "drivers")
-
-				// Fixup the OS name.
-				apiDef.Config["image.os"] = strings.Replace(apiDef.Config["image.os"], "swodniw", "windows", 1)
-			}
-
-			// Handle RHEL (and derivative) specific completion steps.
-			if util.IsRHELOrDerivative(apiDef.Config["image.os"]) {
-				// RHEL7+ don't support 9p, so make agent config available via cdrom.
-				apiDef.Devices["agent"] = map[string]string{
-					"type":   "disk",
-					"source": "agent:config",
-				}
-			}
-
-			// Set the instance's UUID copied from the source.
-			apiDef.Config["volatile.uuid"] = i.UUID.String()
-			apiDef.Config["volatile.uuid.generation"] = i.UUID.String()
-
-			// Update the instance in Incus.
-			op, err := it.UpdateInstance(i.GetName(), apiDef.Writable(), etag)
-			if err != nil {
-				log.Warn("Failed to update instance", logger.Err(err))
-				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-				if err != nil {
-					log.Warn("Failed to update instance status", logger.Err(err))
-					continue
-				}
-
-				continue
-			}
-
-			err = op.Wait()
-			if err != nil {
-				log.Warn("Failed to wait for operation", logger.Err(err))
-				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
-				if err != nil {
-					log.Warn("Failed to update instance status", logger.Err(err))
-					continue
-				}
-
-				continue
-			}
-
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		for _, i := range instances {
 			// Update the instance status.
-			_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_FINISHED, api.MIGRATIONSTATUS_FINISHED.String(), true)
+			_, err := d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_FINISHED, api.MIGRATIONSTATUS_FINISHED.String(), true)
 			if err != nil {
-				log.Warn("Failed to update instance status", logger.Err(err))
-				continue
-			}
-
-			// Power on the completed instance.
-			err = it.StartVM(i.GetName())
-			if err != nil {
-				log.Warn("Failed to start VM", logger.Err(err))
-				continue
+				return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_FINISHED.String(), err)
 			}
 		}
 
 		return nil
 	})
 	if err != nil {
-		log.Warn("Sync Instances From Sources worker failed", logger.Err(err))
-		return false
+		return err
 	}
 
-	return false
+	reverter.Success()
+
+	return nil
+}
+
+// configureMigratedInstance updates the configuration of an instance after it has finished migrating.
+func configureMigratedInstance(ctx context.Context, i migration.Instance, it *target.InternalIncusTarget, batch migration.Batch, allNetworks map[string]migration.Network) error {
+	// Connect to the target.
+	err := it.Connect(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to target %q: %w", it.GetName(), err)
+	}
+
+	// Set the project.
+	err = it.SetProject(batch.TargetProject)
+	if err != nil {
+		return fmt.Errorf("Failed to set target %q project %q: %w", it.GetName(), batch.TargetProject, err)
+	}
+
+	// Stop the instance.
+	err = it.StopVM(i.GetName(), true)
+	if err != nil {
+		return fmt.Errorf("Failed to stop instance %q on target %q: %w", i.GetName(), it.GetName(), err)
+	}
+
+	// Get the instance definition.
+	apiDef, _, err := it.GetInstance(i.GetName())
+	if err != nil {
+		return fmt.Errorf("Failed to get configuration for instance %q on target %q: %w", i.GetName(), it.GetName(), err)
+	}
+
+	for idx, nic := range i.NICs {
+		nicDeviceName := fmt.Sprintf("eth%d", idx)
+		baseNetwork, ok := allNetworks[nic.Network]
+		if !ok {
+			err = fmt.Errorf("No network %q associated with instance %q on target %q", nic.Network, i.GetName(), it.GetName())
+			return err
+		}
+
+		// Pickup device name override if set.
+		deviceName, ok := baseNetwork.Config["name"]
+		if ok {
+			nicDeviceName = deviceName
+		}
+
+		// Copy the base network definitions.
+		apiDef.Devices[nicDeviceName] = make(map[string]string, len(baseNetwork.Config))
+		for k, v := range baseNetwork.Config {
+			apiDef.Devices[nicDeviceName][k] = v
+		}
+
+		// Set a few forced overrides.
+		apiDef.Devices[nicDeviceName]["type"] = "nic"
+		apiDef.Devices[nicDeviceName]["name"] = nicDeviceName
+		apiDef.Devices[nicDeviceName]["hwaddr"] = nic.Hwaddr
+	}
+
+	// Remove the migration ISO image.
+	delete(apiDef.Devices, "migration-iso")
+
+	// Don't set any profiles by default.
+	apiDef.Profiles = []string{}
+
+	// Handle Windows-specific completion steps.
+	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
+		// Remove the drivers ISO image.
+		delete(apiDef.Devices, "drivers")
+
+		// Fixup the OS name.
+		apiDef.Config["image.os"] = strings.Replace(apiDef.Config["image.os"], "swodniw", "windows", 1)
+	}
+
+	// Handle RHEL (and derivative) specific completion steps.
+	if util.IsRHELOrDerivative(apiDef.Config["image.os"]) {
+		// RHEL7+ don't support 9p, so make agent config available via cdrom.
+		apiDef.Devices["agent"] = map[string]string{
+			"type":   "disk",
+			"source": "agent:config",
+		}
+	}
+
+	// Set the instance's UUID copied from the source.
+	apiDef.Config["volatile.uuid"] = i.UUID.String()
+	apiDef.Config["volatile.uuid.generation"] = i.UUID.String()
+
+	// Update the instance in Incus.
+	op, err := it.UpdateInstance(i.GetName(), apiDef.Writable(), "")
+	if err != nil {
+		return fmt.Errorf("Failed to update instance %q on target %q: %w", i.GetName(), it.GetName(), err)
+	}
+
+	err = op.Wait()
+	if err != nil {
+		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.GetName(), it.GetName(), err)
+	}
+
+	err = it.StartVM(i.GetName())
+	if err != nil {
+		return fmt.Errorf("Failed to start instance %q on target %q: %w", i.GetName(), it.GetName(), err)
+	}
+
+	return nil
 }
