@@ -272,7 +272,7 @@ func (d *Daemon) Start() error {
 		return d.beginImports(ctx, false)
 	}, 10*time.Second)
 
-	d.runPeriodicTask(d.finalizeCompleteInstances, 10*time.Second)
+	d.runPeriodicTask(d.ShutdownCtx, "finalizeCompleteInstances", d.finalizeCompleteInstances, 10*time.Second)
 
 	select {
 	case <-errgroupCtx.Done():
