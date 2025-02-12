@@ -264,10 +264,51 @@ func (d *Daemon) Start() error {
 	})
 
 	// Start background workers
-	d.runPeriodicTask(d.syncInstancesFromSources, 10*time.Minute)
-	d.runPeriodicTask(d.processReadyBatches, 10*time.Second)
-	d.runPeriodicTask(d.processQueuedBatches, 10*time.Second)
-	d.runPeriodicTask(d.finalizeCompleteInstances, 10*time.Second)
+	d.runPeriodicTask(
+		func() (done bool) {
+			err := d.trySyncAllSources(d.ShutdownCtx, true)
+			if err != nil {
+				slog.Error("Failed to sync all sources", logger.Err(err))
+			}
+
+			return false
+		}, 10*time.Minute)
+
+	d.runPeriodicTask(func() (done bool) {
+		err := d.processReadyBatches(d.ShutdownCtx)
+		if err != nil {
+			slog.Error("Failed to process ready batches", logger.Err(err))
+		}
+
+		return false
+	}, 10*time.Second)
+
+	d.runPeriodicTask(func() (done bool) {
+		err := d.processQueuedBatches(d.ShutdownCtx)
+		if err != nil {
+			slog.Error("Failed to process queued batches", logger.Err(err))
+		}
+
+		return false
+	}, 10*time.Second)
+
+	d.runPeriodicTask(func() (done bool) {
+		err := d.initMigrationWorkers(d.ShutdownCtx, false)
+		if err != nil {
+			slog.Error("Failed to migrate running batches", logger.Err(err))
+		}
+
+		return false
+	}, 10*time.Second)
+
+	d.runPeriodicTask(func() (done bool) {
+		err := d.finalizeCompleteInstances(d.ShutdownCtx)
+		if err != nil {
+			slog.Error("Failed to finish processing batches", logger.Err(err))
+		}
+
+		return false
+	}, 10*time.Second)
 
 	select {
 	case <-errgroupCtx.Done():
