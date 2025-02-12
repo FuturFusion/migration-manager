@@ -556,7 +556,7 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 	return nil
 }
 
-func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instances migration.Instances, project string, storagePool string) error {
+func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migration.Target, instances migration.Instances, project string, storagePool string) error {
 	if len(instances) == 0 {
 		return fmt.Errorf("No instances in batch")
 	}
@@ -600,18 +600,6 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 		}
 	}
 
-	// Get the target.
-	var t migration.Target
-	err = transaction.Do(ctx, func(ctx context.Context) error {
-		var err error
-		t, err = d.target.GetByID(ctx, *inst.TargetID)
-
-		return err
-	})
-	if err != nil {
-		return err
-	}
-
 	// TODO: The methods on the target.InternalIncusTarget should be moved to migration
 	// which would then make this conversion obsolete.
 	it := target.InternalIncusTarget{
@@ -627,7 +615,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 	}
 
 	// Connect to the target.
-	err = it.Connect(d.ShutdownCtx)
+	err = it.Connect(ctx)
 	if err != nil {
 		return err
 	}
