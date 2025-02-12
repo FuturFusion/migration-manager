@@ -358,16 +358,23 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 	return networkMap, instanceMap, nil
 }
 
-func (d *Daemon) processReadyBatches() bool {
+func (d *Daemon) processReadyBatches(ctx context.Context) error {
 	log := slog.With(slog.String("method", "processReadyBatches"))
-
-	// TODO: context should be passed from the daemon to all the workers.
-	ctx := context.TODO()
-
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		batches, err := d.batch.GetAllByState(ctx, api.BATCHSTATUS_READY)
 		if err != nil {
 			return fmt.Errorf("Failed to get batches by state: %w", err)
+		}
+
+		// Sets the batch to errored status with the given message, and logs the message as well.
+		setBatchErr := func(msg string, batchID int, log *slog.Logger) error {
+			log.Error("Failed to start batch", slog.String("message", msg), slog.Int("batch_id", batchID))
+			_, err := d.batch.UpdateStatusByID(ctx, batchID, api.BATCHSTATUS_ERROR, msg)
+			if err != nil {
+				return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_ERROR.String(), err)
+			}
+
+			return nil
 		}
 
 		// Do some basic sanity check of each batch before adding it to the queue.
@@ -378,44 +385,34 @@ func (d *Daemon) processReadyBatches() bool {
 
 			// If a migration window is defined, ensure sure it makes sense.
 			if !b.MigrationWindowStart.IsZero() && !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(b.MigrationWindowStart) {
-				log.Error("Batch window end time is before its start time")
-
-				_, err = d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_ERROR, "Migration window end before start")
+				err := setBatchErr("Batch migration window end time is before its start time", b.ID, log)
 				if err != nil {
-					log.Warn("Failed to update batch status", logger.Err(err))
-					continue
+					return err
 				}
 
 				continue
 			}
 
 			if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(time.Now().UTC()) {
-				log.Error("Batch window end time has already passed")
-
-				_, err = d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
+				err := setBatchErr("Batch migration window end time has already passed", b.ID, log)
 				if err != nil {
-					log.Warn("Failed to update batch status", logger.Err(err))
-					continue
+					return err
 				}
 
 				continue
 			}
 
-			// Get all instances for this batch.
+			// Get all instances and targets for this batch. Fail the transaction on errors as it could mean a database issue.
 			instances, err := d.instance.GetAllByBatchID(ctx, b.ID)
 			if err != nil {
-				log.Warn("Failed to get instances for batch", logger.Err(err))
-				continue
+				return fmt.Errorf("Failed to get instances for batch %q: %w", b.Name, err)
 			}
 
 			// If no instances apply to this batch, return an error.
 			if len(instances) == 0 {
-				log.Error("Batch has no instances")
-
-				_, err = d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_ERROR, "No instances assigned")
+				err := setBatchErr("Batch has no instances assigned", b.ID, log)
 				if err != nil {
-					log.Warn("Failed to update batch status", logger.Err(err))
-					continue
+					return err
 				}
 
 				continue
@@ -426,18 +423,17 @@ func (d *Daemon) processReadyBatches() bool {
 
 			_, err = d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_QUEUED.String())
 			if err != nil {
-				log.Warn("Failed to update batch status", logger.Err(err))
-				continue
+				return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_QUEUED.String(), err)
 			}
 		}
 
 		return nil
 	})
 	if err != nil {
-		log.Warn("Process Ready Batches worker failed", logger.Err(err))
+		return fmt.Errorf("Process Ready Batches worker failed: %w", err)
 	}
 
-	return false
+	return nil
 }
 
 // processQueuedBatches fetches all QUEUED batches which are in an active migration window,
