@@ -23,9 +23,9 @@ func NewTarget(db repo.DBTX) *target {
 
 func (t target) Create(ctx context.Context, in migration.Target) (migration.Target, error) {
 	const sqlInsert = `
-INSERT INTO targets (name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure)
-VALUES(:name, :endpoint, :tls_client_key, :tls_client_cert, :oidc_tokens, :insecure)
-RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure;
+INSERT INTO targets (name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure, connectivity_status)
+VALUES(:name, :endpoint, :tls_client_key, :tls_client_cert, :oidc_tokens, :insecure, :connectivity_status)
+RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure, connectivity_status;
 `
 
 	marshalledOIDCTokens, err := json.Marshal(in.OIDCTokens)
@@ -40,6 +40,7 @@ RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, inse
 		sql.Named("tls_client_cert", in.TLSClientCert),
 		sql.Named("oidc_tokens", marshalledOIDCTokens),
 		sql.Named("insecure", in.Insecure),
+		sql.Named("connectivity_status", in.ConnectivityStatus),
 	)
 	if row.Err() != nil {
 		return migration.Target{}, mapErr(row.Err())
@@ -49,7 +50,7 @@ RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, inse
 }
 
 func (t target) GetAll(ctx context.Context) (migration.Targets, error) {
-	const sqlGetAll = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure FROM targets ORDER BY name;`
+	const sqlGetAll = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure, connectivity_status FROM targets ORDER BY name;`
 
 	rows, err := t.db.QueryContext(ctx, sqlGetAll)
 	if err != nil {
@@ -104,7 +105,7 @@ func (t target) GetAllNames(ctx context.Context) ([]string, error) {
 }
 
 func (t target) GetByID(ctx context.Context, id int) (migration.Target, error) {
-	const sqlGetByID = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure FROM targets WHERE id=:id;`
+	const sqlGetByID = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure, connectivity_status FROM targets WHERE id=:id;`
 
 	row := t.db.QueryRowContext(ctx, sqlGetByID, sql.Named("id", id))
 	if row.Err() != nil {
@@ -115,7 +116,7 @@ func (t target) GetByID(ctx context.Context, id int) (migration.Target, error) {
 }
 
 func (t target) GetByName(ctx context.Context, name string) (migration.Target, error) {
-	const sqlGetByName = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure FROM targets WHERE name=:name;`
+	const sqlGetByName = `SELECT id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure, connectivity_status FROM targets WHERE name=:name;`
 
 	row := t.db.QueryRowContext(ctx, sqlGetByName, sql.Named("name", name))
 	if row.Err() != nil {
@@ -127,9 +128,9 @@ func (t target) GetByName(ctx context.Context, name string) (migration.Target, e
 
 func (t target) UpdateByID(ctx context.Context, in migration.Target) (migration.Target, error) {
 	const sqlUpdate = `
-UPDATE targets SET name=:name, endpoint=:endpoint, tls_client_key=:tls_client_key, tls_client_cert=:tls_client_cert, oidc_tokens=:oidc_tokens, insecure=:insecure
+UPDATE targets SET name=:name, endpoint=:endpoint, tls_client_key=:tls_client_key, tls_client_cert=:tls_client_cert, oidc_tokens=:oidc_tokens, insecure=:insecure, connectivity_status=:connectivity_status
 WHERE id=:id
-RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure;
+RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, insecure, connectivity_status;
 `
 
 	marshalledOIDCTokens, err := json.Marshal(in.OIDCTokens)
@@ -144,6 +145,7 @@ RETURNING id, name, endpoint, tls_client_key, tls_client_cert, oidc_tokens, inse
 		sql.Named("tls_client_cert", in.TLSClientCert),
 		sql.Named("oidc_tokens", marshalledOIDCTokens),
 		sql.Named("insecure", in.Insecure),
+		sql.Named("connectivity_status", in.ConnectivityStatus),
 		sql.Named("id", in.ID),
 	)
 	if row.Err() != nil {
@@ -164,6 +166,7 @@ func scanTarget(row interface{ Scan(dest ...any) error }) (migration.Target, err
 		&target.TLSClientCert,
 		&marshalledOIDCTokens,
 		&target.Insecure,
+		&target.ConnectivityStatus,
 	)
 	if err != nil {
 		return migration.Target{}, mapErr(err)

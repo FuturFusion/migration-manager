@@ -1,8 +1,6 @@
 package cmds
 
 import (
-	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,7 +10,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -60,10 +57,7 @@ func (c *CmdSource) Command() *cobra.Command {
 type cmdSourceAdd struct {
 	global *CmdGlobal
 
-	flagInsecure         bool
-	flagNoTestConnection bool
-
-	additionalRootCertificate *tls.Certificate
+	flagInsecure bool
 }
 
 func (c *cmdSourceAdd) Command() *cobra.Command {
@@ -82,7 +76,6 @@ func (c *cmdSourceAdd) Command() *cobra.Command {
 
 	cmd.RunE = c.Run
 	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the source")
-	cmd.Flags().BoolVar(&c.flagNoTestConnection, "no-test-connection", false, "Don't test connection to the new source")
 
 	return cmd
 }
@@ -139,36 +132,35 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		internalSource, err := source.NewInternalVMwareSourceFrom(s)
-		if err != nil {
-			return err
-		}
-
-		// Verify we can connect to the source.
-		if c.additionalRootCertificate != nil {
-			internalSource.WithAdditionalRootCertificate(c.additionalRootCertificate)
-		}
-
-		if !c.flagNoTestConnection {
-			ctx := context.TODO()
-			err = internalSource.Connect(ctx)
-			if err != nil {
-				return err
-			}
-		}
-
 		// Insert into database.
 		content, err := json.Marshal(s)
 		if err != nil {
 			return err
 		}
 
-		_, err = c.global.doHTTPRequestV1("/sources", http.MethodPost, "type="+strconv.Itoa(int(api.SOURCETYPE_VMWARE)), content)
+		resp, err := c.global.doHTTPRequestV1("/sources", http.MethodPost, "type="+strconv.Itoa(int(api.SOURCETYPE_VMWARE)), content)
 		if err != nil {
 			return err
 		}
 
-		cmd.Printf("Successfully added new source %q.\n", sourceName)
+		metadata := make(map[string]string)
+		err = json.Unmarshal(resp.Metadata, &metadata)
+		if err != nil {
+			return err
+		}
+
+		connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
+		if err != nil {
+			return err
+		}
+
+		connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+
+		if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			cmd.Printf("Successfully added new source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.\n", sourceName, connectivityStatus.String())
+		} else {
+			cmd.Printf("Successfully added new source %q.\n", sourceName)
+		}
 	}
 
 	return nil
@@ -219,7 +211,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Type", "Endpoint", "Username", "Insecure"}
+	header := []string{"Name", "Type", "Endpoint", "Connectivity Status", "Username", "Insecure"}
 	data := [][]string{}
 
 	for _, s := range sources {
@@ -231,7 +223,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			data = append(data, []string{s.Name, "VMware", vmwareProperties.Endpoint, vmwareProperties.Username, strconv.FormatBool(s.Insecure)})
+			data = append(data, []string{s.Name, "VMware", vmwareProperties.Endpoint, s.ConnectivityStatus.String(), vmwareProperties.Username, strconv.FormatBool(s.Insecure)})
 		case api.SOURCETYPE_COMMON:
 			// Nothing to output in this case
 		default:
@@ -369,29 +361,35 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Unsupported source type %d; must be one of %q", src.SourceType, supportedTypes)
 	}
 
-	internalSource, err := source.NewInternalVMwareSourceFrom(src)
-	if err != nil {
-		return err
-	}
-
-	// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
-	ctx := context.TODO()
-	err = internalSource.Connect(ctx)
-	if err != nil {
-		return err
-	}
-
 	// Update the source.
 	content, err := json.Marshal(src)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/sources/"+origSourceName, http.MethodPut, "", content)
+	resp, err = c.global.doHTTPRequestV1("/sources/"+origSourceName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}
 
-	cmd.Printf("Successfully updated source %q.\n", newSourceName)
+	metadata := make(map[string]string)
+	err = json.Unmarshal(resp.Metadata, &metadata)
+	if err != nil {
+		return err
+	}
+
+	connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
+	if err != nil {
+		return err
+	}
+
+	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+
+	if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		cmd.Printf("Successfully updated source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.\n", newSourceName, connectivityStatus.String())
+	} else {
+		cmd.Printf("Successfully updated source %q.\n", newSourceName)
+	}
+
 	return nil
 }

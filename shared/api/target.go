@@ -32,4 +32,7 @@ type IncusTarget struct {
 	// If true, disable TLS certificate validation
 	// Example: false
 	Insecure bool `json:"insecure" yaml:"insecure"`
+
+	// Connectivity status of this target
+	ConnectivityStatus ExternalConnectivityStatus `json:"connectivity_status" yaml:"connectivity_status"`
 }

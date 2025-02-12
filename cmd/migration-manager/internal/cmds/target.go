@@ -1,7 +1,6 @@
 package cmds
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -9,7 +8,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -55,8 +53,7 @@ func (c *CmdTarget) Command() *cobra.Command {
 type cmdTargetAdd struct {
 	global *CmdGlobal
 
-	flagInsecure         bool
-	flagNoTestConnection bool
+	flagInsecure bool
 }
 
 func (c *cmdTargetAdd) Command() *cobra.Command {
@@ -74,7 +71,6 @@ func (c *cmdTargetAdd) Command() *cobra.Command {
 
 	cmd.RunE = c.Run
 	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the target")
-	cmd.Flags().BoolVar(&c.flagNoTestConnection, "no-test-connection", false, "Don't test connection to the new target")
 
 	return cmd
 }
@@ -98,7 +94,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
+	// If TLS, prompt for cert/key pair.
 	if authType == "tls" {
 		tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
 		if err != nil {
@@ -125,39 +121,38 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		t.TLSClientKey = string(contents)
 	}
 
+	// Insert into database.
 	content, err := json.Marshal(t)
 	if err != nil {
 		return err
 	}
 
-	// Verify we can connect to the target, and if using OIDC grab the tokens.
-	ctx := context.TODO()
-
-	internalTarget := target.InternalIncusTarget{}
-	err = json.Unmarshal(content, &internalTarget)
+	resp, err := c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
 	if err != nil {
 		return err
 	}
 
-	if !c.flagNoTestConnection {
-		err = internalTarget.Connect(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Insert into database.
-	content, err = json.Marshal(internalTarget)
+	metadata := make(map[string]string)
+	err = json.Unmarshal(resp.Metadata, &metadata)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
+	connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
 	if err != nil {
 		return err
 	}
 
-	cmd.Printf("Successfully added new target %q.\n", t.Name)
+	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+
+	if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
+		cmd.Printf("Successfully added new target %q; please visit %s to complete OIDC authorization.\n", t.Name, metadata["OIDCURL"])
+	} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		cmd.Printf("Successfully added new target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.\n", t.Name, connectivityStatus.String())
+	} else {
+		cmd.Printf("Successfully added new target %q.\n", t.Name)
+	}
+
 	return nil
 }
 
@@ -206,7 +201,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Endpoint", "Auth Type", "Insecure"}
+	header := []string{"Name", "Endpoint", "Connectivity Status", "Auth Type", "Insecure"}
 	data := [][]string{}
 
 	for _, t := range targets {
@@ -215,7 +210,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 			authType = "TLS"
 		}
 
-		data = append(data, []string{t.Name, t.Endpoint, authType, strconv.FormatBool(t.Insecure)})
+		data = append(data, []string{t.Name, t.Endpoint, t.ConnectivityStatus.String(), authType, strconv.FormatBool(t.Insecure)})
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, targets)
@@ -327,7 +322,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
+		// If TLS, prompt for cert/key pair.
 		if authType == "tls" {
 			tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
 			if err != nil {
@@ -367,36 +362,37 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 
 	newTargetName := t.Name
 
+	// Update the target.
 	content, err := json.Marshal(t)
 	if err != nil {
 		return err
 	}
 
-	// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
-	ctx := context.TODO()
-
-	internalTarget := target.InternalIncusTarget{}
-	err = json.Unmarshal(content, &internalTarget)
+	resp, err = c.global.doHTTPRequestV1("/targets/"+origTargetName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}
 
-	err = internalTarget.Connect(ctx)
+	metadata := make(map[string]string)
+	err = json.Unmarshal(resp.Metadata, &metadata)
 	if err != nil {
 		return err
 	}
 
-	// Update the target.
-	content, err = json.Marshal(internalTarget)
+	connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
 	if err != nil {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/targets/"+origTargetName, http.MethodPut, "", content)
-	if err != nil {
-		return err
+	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+
+	if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
+		cmd.Printf("Successfully updated target %q; please visit %s to complete OIDC authorization.\n", t.Name, metadata["OIDCURL"])
+	} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		cmd.Printf("Successfully updated target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.\n", newTargetName, connectivityStatus.String())
+	} else {
+		cmd.Printf("Successfully updated target %q.\n", newTargetName)
 	}
 
-	cmd.Printf("Successfully updated target %q.\n", newTargetName)
 	return nil
 }

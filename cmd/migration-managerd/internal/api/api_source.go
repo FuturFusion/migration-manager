@@ -125,11 +125,12 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.Source, 0, len(sources))
 		for _, source := range sources {
 			result = append(result, api.Source{
-				DatabaseID: source.ID,
-				Name:       source.Name,
-				Insecure:   source.Insecure,
-				SourceType: source.SourceType,
-				Properties: source.Properties,
+				DatabaseID:         source.ID,
+				Name:               source.Name,
+				Insecure:           source.Insecure,
+				SourceType:         source.SourceType,
+				Properties:         source.Properties,
+				ConnectivityStatus: source.ConnectivityStatus,
 			})
 		}
 
@@ -185,19 +186,28 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	_, err = d.source.Create(r.Context(), migration.Source{
-		Name:       source.Name,
-		Insecure:   source.Insecure,
-		SourceType: source.SourceType,
-		Properties: source.Properties,
+		Name:               source.Name,
+		Insecure:           source.Insecure,
+		SourceType:         source.SourceType,
+		Properties:         source.Properties,
+		ConnectivityStatus: api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", source.Name, err))
 	}
 
-	// Trigger a scan of this new source for instances.
-	_ = d.syncInstancesFromSources()
+	d.checkSourceConnectivity()
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+source.Name)
+	// Get the source's connectivity status to return to the client.
+	currentSource, err := d.source.GetByName(r.Context(), source.Name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	metadata := make(map[string]string)
+	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentSource.ConnectivityStatus)
+
+	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+source.Name)
 }
 
 // swagger:operation DELETE /1.0/sources/{name} sources source_delete
@@ -274,11 +284,12 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Source{
-			DatabaseID: source.ID,
-			Name:       source.Name,
-			Insecure:   source.Insecure,
-			SourceType: source.SourceType,
-			Properties: source.Properties,
+			DatabaseID:         source.ID,
+			Name:               source.Name,
+			Insecure:           source.Insecure,
+			SourceType:         source.SourceType,
+			Properties:         source.Properties,
+			ConnectivityStatus: source.ConnectivityStatus,
 		},
 		source,
 	)
@@ -343,11 +354,12 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	_, err = d.source.UpdateByID(ctx, migration.Source{
-		ID:         currentSource.ID,
-		Name:       source.Name,
-		Insecure:   source.Insecure,
-		SourceType: source.SourceType,
-		Properties: source.Properties,
+		ID:                 currentSource.ID,
+		Name:               source.Name,
+		Insecure:           source.Insecure,
+		SourceType:         source.SourceType,
+		Properties:         source.Properties,
+		ConnectivityStatus: api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", source.Name, err))
@@ -358,8 +370,16 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	// Trigger a scan of this new source for instances.
-	_ = d.syncInstancesFromSources()
+	d.checkSourceConnectivity()
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+source.Name)
+	// Get the source's connectivity status to return to the client.
+	currentSource, err = d.source.GetByName(r.Context(), source.Name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	metadata := make(map[string]string)
+	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentSource.ConnectivityStatus)
+
+	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+source.Name)
 }

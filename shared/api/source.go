@@ -48,6 +48,9 @@ type Source struct {
 
 	// Properties contains source type specific properties
 	Properties json.RawMessage `json:"properties" yaml:"properties"`
+
+	// Connectivity status of this source
+	ConnectivityStatus ExternalConnectivityStatus `json:"connectivity_status" yaml:"connectivity_status"`
 }
 
 // VMwareProperties defines the set of VMware specific properties of an endpoint that the migration manager can connect to.

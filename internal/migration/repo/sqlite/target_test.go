@@ -12,6 +12,7 @@ import (
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func TestTargetDatabaseActions(t *testing.T) {
@@ -78,6 +79,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 
 	// Test updating a target.
 	incusTargetB.Endpoint = "https://127.0.0.1:6443"
+	incusTargetB.ConnectivityStatus = api.EXTERNALCONNECTIVITYSTATUS_OK
 	dbIncusTargetB, err := target.UpdateByID(ctx, incusTargetB)
 	require.Equal(t, incusTargetB, dbIncusTargetB)
 	require.NoError(t, err)
