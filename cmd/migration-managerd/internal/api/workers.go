@@ -732,6 +732,7 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 		reverter := revert.New()
 		defer reverter.Fail()
 		reverter.Add(func() {
+			log := log.With(slog.String("revert", "set instance status"))
 			var errString string
 			if err != nil {
 				errString = err.Error()
@@ -788,6 +789,7 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 		instanceDef := it.CreateVMDefinition(inst, s.Name, b.StoragePool)
 		if cleanupInstances {
 			reverter.Add(func() {
+				log := log.With(slog.String("revert", "delete instance"))
 				err := it.DeleteVM(instanceDef.Name)
 				if err != nil {
 					log.Error("Failed to delete new instance after failure", logger.Err(err))
@@ -847,6 +849,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) error {
 	var batchesByInstance map[uuid.UUID]migration.Batch
 	var networksByName map[string]migration.Network
 	reverter.Add(func() {
+		log := log.With(slog.String("revert", "set instance status"))
 		var errString string
 		if err != nil {
 			errString = err.Error()
