@@ -3,6 +3,7 @@ package target
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 
 	incus "github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
@@ -61,6 +62,9 @@ type Target interface {
 	// Attempting to get an ID for a freshly-created target that hasn't yet been added to the database
 	// via AddTarget() or retrieved via GetTarget()/GetAllTargets() will return an error.
 	GetDatabaseID() (int, error)
+
+	// Returns the json-encoded type specific properties for this target.
+	GetProperties() json.RawMessage
 
 	// -----------------------------------------------
 

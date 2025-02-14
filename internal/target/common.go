@@ -3,6 +3,7 @@ package target
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 
 	incus "github.com/lxc/incus/v6/client"
@@ -55,6 +56,10 @@ func (t *InternalTarget) GetDatabaseID() (int, error) {
 	}
 
 	return t.DatabaseID, nil
+}
+
+func (t *InternalTarget) GetProperties() json.RawMessage {
+	return json.RawMessage(`{}`)
 }
 
 func (t *InternalTarget) SetProject(project string) error {

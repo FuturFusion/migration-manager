@@ -92,6 +92,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		}
 
 		t.OIDCTokens = pi.GetOIDCTokens()
+		t.Properties = t.GetProperties()
 	}
 
 	t.isConnected = true
@@ -128,6 +129,17 @@ func (t *InternalIncusTarget) SetClientTLSCredentials(key string, cert string) e
 	t.TLSClientKey = key
 	t.TLSClientCert = cert
 	return nil
+}
+
+func (t *InternalIncusTarget) GetProperties() json.RawMessage {
+	content, _ := json.Marshal(t)
+
+	properties := api.IncusProperties{}
+	_ = json.Unmarshal(content, &properties)
+
+	ret, _ := json.Marshal(properties)
+
+	return ret
 }
 
 func (t *InternalIncusTarget) SetProject(project string) error {

@@ -181,8 +181,11 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 			}
 		}
 
+		// Need to grab properties post-connection to get any OIDC tokens that we need to save.
+		t.Properties = internalTarget.Properties
+
 		// Insert into database.
-		content, err := json.Marshal(internalTarget)
+		content, err := json.Marshal(t)
 		if err != nil {
 			return err
 		}
@@ -243,7 +246,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Endpoint", "Auth Type", "Insecure"}
+	header := []string{"Name", "Type", "Endpoint", "Auth Type", "Insecure"}
 	data := [][]string{}
 
 	for _, t := range targets {
@@ -260,7 +263,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 				authType = "TLS"
 			}
 
-			data = append(data, []string{t.Name, incusProperties.Endpoint, authType, strconv.FormatBool(incusProperties.Insecure)})
+			data = append(data, []string{t.Name, t.TargetType.String(), incusProperties.Endpoint, authType, strconv.FormatBool(incusProperties.Insecure)})
 		default:
 			return fmt.Errorf("Unsupported target type %d", t.TargetType)
 		}
@@ -441,8 +444,11 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Need to grab properties post-connection to get any OIDC tokens that we need to save.
+	tgt.Properties = internalTarget.Properties
+
 	// Update the target.
-	content, err := json.Marshal(internalTarget)
+	content, err := json.Marshal(tgt)
 	if err != nil {
 		return err
 	}
