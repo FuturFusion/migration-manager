@@ -10,7 +10,6 @@ import (
 type Source struct {
 	ID         int
 	Name       string
-	Insecure   bool
 	SourceType api.SourceType
 
 	Properties json.RawMessage
