@@ -65,7 +65,6 @@ func (d *Daemon) syncInstancesFromSources() bool {
 			s, err := source.NewInternalVMwareSourceFrom(api.Source{
 				Name:       src.Name,
 				DatabaseID: src.ID,
-				Insecure:   src.Insecure,
 				SourceType: src.SourceType,
 				Properties: src.Properties,
 			})
@@ -486,18 +485,14 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 		return err
 	}
 
-	// TODO: The methods on the target.InternalIncusTarget should be moved to migration
-	// which would then make this conversion obsolete.
-	it := target.InternalIncusTarget{
-		IncusTarget: api.IncusTarget{
-			DatabaseID:    t.ID,
-			Name:          t.Name,
-			Endpoint:      t.Endpoint,
-			TLSClientKey:  t.TLSClientKey,
-			TLSClientCert: t.TLSClientCert,
-			OIDCTokens:    t.OIDCTokens,
-			Insecure:      t.Insecure,
-		},
+	it, err := target.NewInternalIncusTargetFrom(api.Target{
+		Name:       t.Name,
+		DatabaseID: t.ID,
+		TargetType: t.TargetType,
+		Properties: t.Properties,
+	})
+	if err != nil {
+		return err
 	}
 
 	// Connect to the target.
@@ -575,18 +570,20 @@ func (d *Daemon) spinUpMigrationEnv(ctx context.Context, inst migration.Instance
 		return
 	}
 
-	// TODO: The methods on the target.InternalIncusTarget should be moved to migration
-	// which would then make this conversion obsolete.
-	it := target.InternalIncusTarget{
-		IncusTarget: api.IncusTarget{
-			DatabaseID:    t.ID,
-			Name:          t.Name,
-			Endpoint:      t.Endpoint,
-			TLSClientKey:  t.TLSClientKey,
-			TLSClientCert: t.TLSClientCert,
-			OIDCTokens:    t.OIDCTokens,
-			Insecure:      t.Insecure,
-		},
+	it, err := target.NewInternalIncusTargetFrom(api.Target{
+		Name:       t.Name,
+		DatabaseID: t.ID,
+		TargetType: t.TargetType,
+		Properties: t.Properties,
+	})
+	if err != nil {
+		log.Warn("Failed to construct target", slog.String("target", it.GetName()), logger.Err(err))
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+		if err != nil {
+			log.Warn("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+		}
+
+		return
 	}
 
 	// Connect to the target.
@@ -708,18 +705,21 @@ func (d *Daemon) finalizeCompleteInstances() bool {
 				continue
 			}
 
-			// TODO: The methods on the target.InternalIncusTarget should be moved to migration
-			// which would then make this conversion obsolete.
-			it := target.InternalIncusTarget{
-				IncusTarget: api.IncusTarget{
-					DatabaseID:    t.ID,
-					Name:          t.Name,
-					Endpoint:      t.Endpoint,
-					TLSClientKey:  t.TLSClientKey,
-					TLSClientCert: t.TLSClientCert,
-					OIDCTokens:    t.OIDCTokens,
-					Insecure:      t.Insecure,
-				},
+			it, err := target.NewInternalIncusTargetFrom(api.Target{
+				Name:       t.Name,
+				DatabaseID: t.ID,
+				TargetType: t.TargetType,
+				Properties: t.Properties,
+			})
+			if err != nil {
+				log.Warn("Failed to construct target", slog.String("target", it.GetName()), logger.Err(err))
+				_, err := d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, err.Error(), true)
+				if err != nil {
+					log.Warn("Failed to update instance status", logger.Err(err))
+					continue
+				}
+
+				continue
 			}
 
 			// Get the batch for this instance.
