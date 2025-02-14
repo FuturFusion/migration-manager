@@ -27,16 +27,14 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 			repoCreateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 
 			assertErr: require.NoError,
@@ -46,24 +44,24 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
-  "password": "pass"
+  "password": "pass",
+  "insecure": false
 }
 `),
 			},
 			repoCreateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
-  "password": "pass"
+  "password": "pass",
+  "insecure": false
 }
 `),
 			},
@@ -75,9 +73,8 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         -1, // invalid
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -90,9 +87,8 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "", // empty
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -105,9 +101,8 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SourceType(-1), // invalid
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -120,7 +115,6 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
 				Properties: nil, // nil
 			},
@@ -135,7 +129,6 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
 				Properties: json.RawMessage(`{`), // invalid json
 			},
@@ -150,7 +143,6 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{`), // invalid json
 			},
@@ -165,12 +157,12 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{
   "endpoint": ":|\\",
   "username": "user",
-  "password": "pass"
+  "password": "pass",
+  "insecure": false
 }
 `),
 			},
@@ -185,12 +177,12 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{
   "endpoint": "enpoint.url",
   "username": "",
-  "password": "pass"
+  "password": "pass",
+  "insecure": false
 }
 `),
 			},
@@ -205,12 +197,12 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{
   "endpoint": "enpoint.url",
   "username": "user",
-  "password": ""
+  "password": "",
+  "insecure": false
 }
 `),
 			},
@@ -225,9 +217,8 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 			repoCreateErr: boom.Error,
 
@@ -476,16 +467,14 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 			repoUpdateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 
 			assertErr: require.NoError,
@@ -495,24 +484,24 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
-  "password": "pass"
+  "password": "pass",
+  "insecure": false
 }
 `),
 			},
 			repoUpdateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
-  "password": "pass"
+  "password": "pass",
+  "insecure": false
 }
 `),
 			},
@@ -524,9 +513,8 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         -1, // invalid
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -539,9 +527,8 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "", // empty
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -554,9 +541,8 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SourceType(-1), // invalid
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -569,7 +555,6 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
 				Properties: nil, // nil
 			},
@@ -584,7 +569,6 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
 				Properties: json.RawMessage(`{`), // invalid json
 			},
@@ -599,7 +583,6 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{`), // invalid json
 			},
@@ -614,12 +597,12 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{
   "endpoint": ":|\\",
   "username": "user",
-  "password": "pass"
+  "password": "pass",
+  "insecure": false
 }
 `),
 			},
@@ -634,12 +617,12 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{
   "endpoint": "enpoint.url",
   "username": "",
-  "password": "pass"
+  "password": "pass",
+  "insecure": false
 }
 `),
 			},
@@ -654,12 +637,12 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{
   "endpoint": "enpoint.url",
   "username": "user",
-  "password": ""
+  "password": "",
+  "insecure": false
 }
 `),
 			},
@@ -674,9 +657,8 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				Insecure:   false,
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				Properties: json.RawMessage(`{"insecure": false}`),
 			},
 			repoUpdateErr: boom.Error,
 

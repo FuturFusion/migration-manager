@@ -306,7 +306,6 @@ func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 	apiSource := api.Source{
 		DatabaseID: workerCommand.Source.ID,
 		Name:       workerCommand.Source.Name,
-		Insecure:   workerCommand.Source.Insecure,
 		SourceType: workerCommand.Source.SourceType,
 		Properties: workerCommand.Source.Properties,
 	}

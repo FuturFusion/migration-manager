@@ -106,7 +106,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get nice names for the targets.
-	targets := []api.IncusTarget{}
+	targets := []api.Target{}
 	targetsMap := make(map[int]string)
 	resp, err = c.global.doHTTPRequestV1("/targets", http.MethodGet, "recursion=1", nil)
 	if err != nil {

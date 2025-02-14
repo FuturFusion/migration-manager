@@ -17,7 +17,7 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-var supportedTypes = []string{"vmware"}
+var supportedSourceTypes = []string{"vmware"}
 
 type CmdSource struct {
 	Global *CmdGlobal
@@ -100,8 +100,8 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 
 	// Set variables.
 	if len(args) == 3 {
-		if !slices.Contains(supportedTypes, strings.ToLower(args[0])) {
-			return fmt.Errorf("Unsupported source type %q; must be one of %q", args[0], supportedTypes)
+		if !slices.Contains(supportedSourceTypes, strings.ToLower(args[0])) {
+			return fmt.Errorf("Unsupported source type %q; must be one of %q", args[0], supportedSourceTypes)
 		}
 
 		sourceType = strings.ToLower(args[0])
@@ -124,13 +124,13 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 
 		vmwareProperties := api.VMwareProperties{
 			Endpoint: sourceEndpoint,
+			Insecure: c.flagInsecure,
 			Username: sourceUsername,
 			Password: sourcePassword,
 		}
 
 		s := api.Source{
 			Name:       sourceName,
-			Insecure:   c.flagInsecure,
 			SourceType: api.SOURCETYPE_VMWARE,
 		}
 
@@ -163,7 +163,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		_, err = c.global.doHTTPRequestV1("/sources", http.MethodPost, "type="+strconv.Itoa(int(api.SOURCETYPE_VMWARE)), content)
+		_, err = c.global.doHTTPRequestV1("/sources", http.MethodPost, "", content)
 		if err != nil {
 			return err
 		}
@@ -231,7 +231,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			data = append(data, []string{s.Name, "VMware", vmwareProperties.Endpoint, vmwareProperties.Username, strconv.FormatBool(s.Insecure)})
+			data = append(data, []string{s.Name, "VMware", vmwareProperties.Endpoint, vmwareProperties.Username, strconv.FormatBool(vmwareProperties.Insecure)})
 		case api.SOURCETYPE_COMMON:
 			// Nothing to output in this case
 		default:
@@ -350,11 +350,11 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		vmwareProperties.Password = c.global.Asker.AskPasswordOnce("Password: ")
 
 		isInsecure := "no"
-		if src.Insecure {
+		if vmwareProperties.Insecure {
 			isInsecure = "yes"
 		}
 
-		src.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
+		vmwareProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
 		if err != nil {
 			return err
 		}
@@ -366,7 +366,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 
 		newSourceName = src.Name
 	default:
-		return fmt.Errorf("Unsupported source type %d; must be one of %q", src.SourceType, supportedTypes)
+		return fmt.Errorf("Unsupported source type %d; must be one of %q", src.SourceType, supportedSourceTypes)
 	}
 
 	internalSource, err := source.NewInternalVMwareSourceFrom(src)
@@ -374,7 +374,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
+	// Verify we can connect to the updated source.
 	ctx := context.TODO()
 	err = internalSource.Connect(ctx)
 	if err != nil {

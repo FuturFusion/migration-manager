@@ -22,16 +22,15 @@ func NewSource(db repo.DBTX) *source {
 
 func (s source) Create(ctx context.Context, in migration.Source) (migration.Source, error) {
 	const sqlInsert = `
-INSERT INTO sources (name, type, insecure, config)
-VALUES(:name, :type, :insecure, :config)
-RETURNING id, name, type, insecure, config;
+INSERT INTO sources (name, source_type, properties)
+VALUES(:name, :source_type, :properties)
+RETURNING id, name, source_type, properties;
 `
 
 	row := s.db.QueryRowContext(ctx, sqlInsert,
 		sql.Named("name", in.Name),
-		sql.Named("type", in.SourceType),
-		sql.Named("insecure", in.Insecure),
-		sql.Named("config", in.Properties),
+		sql.Named("source_type", in.SourceType),
+		sql.Named("properties", in.Properties),
 	)
 	if row.Err() != nil {
 		return migration.Source{}, mapErr(row.Err())
@@ -41,7 +40,7 @@ RETURNING id, name, type, insecure, config;
 }
 
 func (s source) GetAll(ctx context.Context) (migration.Sources, error) {
-	const sqlGetAll = `SELECT id, name, type, insecure, config FROM sources ORDER BY name;`
+	const sqlGetAll = `SELECT id, name, source_type, properties FROM sources ORDER BY name;`
 
 	rows, err := s.db.QueryContext(ctx, sqlGetAll)
 	if err != nil {
@@ -96,7 +95,7 @@ func (s source) GetAllNames(ctx context.Context) ([]string, error) {
 }
 
 func (s source) GetByID(ctx context.Context, id int) (migration.Source, error) {
-	const sqlGetByID = `SELECT id, name, type, insecure, config FROM sources WHERE id=:id;`
+	const sqlGetByID = `SELECT id, name, source_type, properties FROM sources WHERE id=:id;`
 
 	row := s.db.QueryRowContext(ctx, sqlGetByID, sql.Named("id", id))
 	if row.Err() != nil {
@@ -107,7 +106,7 @@ func (s source) GetByID(ctx context.Context, id int) (migration.Source, error) {
 }
 
 func (s source) GetByName(ctx context.Context, name string) (migration.Source, error) {
-	const sqlGetByName = `SELECT id, name, type, insecure, config FROM sources WHERE name=:name;`
+	const sqlGetByName = `SELECT id, name, source_type, properties FROM sources WHERE name=:name;`
 
 	row := s.db.QueryRowContext(ctx, sqlGetByName, sql.Named("name", name))
 	if row.Err() != nil {
@@ -119,16 +118,15 @@ func (s source) GetByName(ctx context.Context, name string) (migration.Source, e
 
 func (s source) UpdateByID(ctx context.Context, in migration.Source) (migration.Source, error) {
 	const sqlUpdate = `
-UPDATE sources SET name=:name, insecure=:insecure, type=:type, config=:config
+UPDATE sources SET name=:name, source_type=:source_type, properties=:properties
 WHERE id=:id
-RETURNING id, name, type, insecure, config;
+RETURNING id, name, source_type, properties;
 `
 
 	row := s.db.QueryRowContext(ctx, sqlUpdate,
 		sql.Named("name", in.Name),
-		sql.Named("type", in.SourceType),
-		sql.Named("insecure", in.Insecure),
-		sql.Named("config", in.Properties),
+		sql.Named("source_type", in.SourceType),
+		sql.Named("properties", in.Properties),
 		sql.Named("id", in.ID),
 	)
 	if row.Err() != nil {
@@ -144,7 +142,6 @@ func scanSource(row interface{ Scan(dest ...any) error }) (migration.Source, err
 		&source.ID,
 		&source.Name,
 		&source.SourceType,
-		&source.Insecure,
 		&source.Properties,
 	)
 	if err != nil {

@@ -20,7 +20,7 @@ import (
 
 var (
 	testSource    = migration.Source{Name: "TestSource", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
-	testTarget    = migration.Target{Name: "TestTarget", Endpoint: "https://localhost:6443"}
+	testTarget    = migration.Target{Name: "TestTarget", TargetType: api.TARGETTYPE_INCUS, Properties: []byte(`{"endpoint": "https://localhost:6443"}`)}
 	testBatch     = migration.Batch{ID: 1, Name: "TestBatch", TargetID: 1, StoragePool: "", IncludeExpression: "true", MigrationWindowStart: time.Time{}, MigrationWindowEnd: time.Time{}}
 	instanceAUUID = uuid.Must(uuid.NewRandom())
 

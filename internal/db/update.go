@@ -76,20 +76,16 @@ CREATE TABLE networks (
 CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    type INTEGER NOT NULL,
-    insecure BOOLEAN,
-    config TEXT NOT NULL,
+    source_type INTEGER NOT NULL,
+    properties TEXT NOT NULL,
     UNIQUE (name)
 );
 
 CREATE TABLE targets (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    endpoint VARCHAR(255) NOT NULL,
-    tls_client_key TEXT NOT NULL,
-    tls_client_cert TEXT NOT NULL,
-    oidc_tokens TEXT NOT NULL,
-    insecure BOOLEAN,
+    target_type INTEGER NOT NULL,
+    properties TEXT NOT NULL,
     UNIQUE (name)
 );
 
@@ -193,20 +189,16 @@ CREATE TABLE networks (
 CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    type INTEGER NOT NULL,
-    insecure BOOLEAN,
-    config TEXT NOT NULL,
+    source_type INTEGER NOT NULL,
+    properties TEXT NOT NULL,
     UNIQUE (name)
 );
 
 CREATE TABLE targets (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    endpoint VARCHAR(255) NOT NULL,
-    tls_client_key TEXT NOT NULL,
-    tls_client_cert TEXT NOT NULL,
-    oidc_tokens TEXT NOT NULL,
-    insecure BOOLEAN,
+    target_type INTEGER NOT NULL,
+    properties TEXT NOT NULL,
     UNIQUE (name)
 );
 `

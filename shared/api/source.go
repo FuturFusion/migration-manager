@@ -39,10 +39,6 @@ type Source struct {
 	// Example: 123
 	DatabaseID int `json:"database_id" yaml:"database_id"`
 
-	// If true, disable TLS certificate validation
-	// Example: false
-	Insecure bool `json:"insecure" yaml:"insecure"`
-
 	// SourceType defines the type of the source
 	SourceType SourceType `json:"source_type" yaml:"source_type"`
 
@@ -57,6 +53,10 @@ type VMwareProperties struct {
 	// Hostname or IP address of the source endpoint
 	// Example: vsphere.local
 	Endpoint string `json:"endpoint" yaml:"endpoint"`
+
+	// If true, disable TLS certificate validation
+	// Example: false
+	Insecure bool `json:"insecure" yaml:"insecure"`
 
 	// Username to authenticate against the endpoint
 	// Example: admin

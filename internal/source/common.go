@@ -19,20 +19,15 @@ type InternalSource struct {
 }
 
 func (s *InternalSource) Connect(ctx context.Context) error {
-	return fmt.Errorf("Not implemented by Source")
+	return fmt.Errorf("Not implemented by InternalSource")
 }
 
 func (s *InternalSource) Disconnect(ctx context.Context) error {
-	return fmt.Errorf("Not implemented by CommonSource")
+	return fmt.Errorf("Not implemented by InternalSource")
 }
 
 func (s *InternalSource) SetInsecureTLS(insecure bool) error {
-	if s.isConnected {
-		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
-	}
-
-	s.Insecure = insecure
-	return nil
+	return fmt.Errorf("Not implemented by InternalSource")
 }
 
 func (s *InternalSource) WithAdditionalRootCertificate(rootCert *tls.Certificate) {
@@ -56,21 +51,21 @@ func (s *InternalSource) GetDatabaseID() (int, error) {
 }
 
 func (s *InternalSource) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
-	return nil, fmt.Errorf("Not implemented by CommonSource")
+	return nil, fmt.Errorf("Not implemented by InternalSource")
 }
 
 func (s *InternalSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
-	return nil, fmt.Errorf("Not implemented by CommonSource")
+	return nil, fmt.Errorf("Not implemented by InternalSource")
 }
 
 func (s *InternalSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
-	return fmt.Errorf("Not implemented by CommonSource")
+	return fmt.Errorf("Not implemented by InternalSource")
 }
 
 func (s *InternalSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string, bool)) error {
-	return fmt.Errorf("Not implemented by CommonSource")
+	return fmt.Errorf("Not implemented by InternalSource")
 }
 
 func (s *InternalSource) PowerOffVM(ctx context.Context, vmName string) error {
-	return fmt.Errorf("Not implemented by CommonSource")
+	return fmt.Errorf("Not implemented by InternalSource")
 }

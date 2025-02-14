@@ -127,7 +127,6 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 			result = append(result, api.Source{
 				DatabaseID: source.ID,
 				Name:       source.Name,
-				Insecure:   source.Insecure,
 				SourceType: source.SourceType,
 				Properties: source.Properties,
 			})
@@ -186,7 +185,6 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 
 	_, err = d.source.Create(r.Context(), migration.Source{
 		Name:       source.Name,
-		Insecure:   source.Insecure,
 		SourceType: source.SourceType,
 		Properties: source.Properties,
 	})
@@ -276,7 +274,6 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 		api.Source{
 			DatabaseID: source.ID,
 			Name:       source.Name,
-			Insecure:   source.Insecure,
 			SourceType: source.SourceType,
 			Properties: source.Properties,
 		},
@@ -345,7 +342,6 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 	_, err = d.source.UpdateByID(ctx, migration.Source{
 		ID:         currentSource.ID,
 		Name:       source.Name,
-		Insecure:   source.Insecure,
 		SourceType: source.SourceType,
 		Properties: source.Properties,
 	})

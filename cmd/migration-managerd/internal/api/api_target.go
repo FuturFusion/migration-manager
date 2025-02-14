@@ -122,16 +122,13 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 			return response.SmartError(err)
 		}
 
-		result := make([]api.IncusTarget, 0, len(targets))
+		result := make([]api.Target, 0, len(targets))
 		for _, target := range targets {
-			result = append(result, api.IncusTarget{
-				DatabaseID:    target.ID,
-				Name:          target.Name,
-				Endpoint:      target.Endpoint,
-				TLSClientKey:  target.TLSClientKey,
-				TLSClientCert: target.TLSClientCert,
-				OIDCTokens:    target.OIDCTokens,
-				Insecure:      target.Insecure,
+			result = append(result, api.Target{
+				DatabaseID: target.ID,
+				Name:       target.Name,
+				TargetType: target.TargetType,
+				Properties: target.Properties,
 			})
 		}
 
@@ -179,7 +176,7 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func targetsPost(d *Daemon, r *http.Request) response.Response {
-	var target api.IncusTarget
+	var target api.Target
 
 	// Decode into the new target.
 	err := json.NewDecoder(r.Body).Decode(&target)
@@ -188,12 +185,9 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	_, err = d.target.Create(r.Context(), migration.Target{
-		Name:          target.Name,
-		Endpoint:      target.Endpoint,
-		TLSClientKey:  target.TLSClientKey,
-		TLSClientCert: target.TLSClientCert,
-		OIDCTokens:    target.OIDCTokens,
-		Insecure:      target.Insecure,
+		Name:       target.Name,
+		TargetType: target.TargetType,
+		Properties: target.Properties,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", target.Name, err))
@@ -275,14 +269,11 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 
 	return response.SyncResponseETag(
 		true,
-		api.IncusTarget{
-			DatabaseID:    target.ID,
-			Name:          target.Name,
-			Endpoint:      target.Endpoint,
-			TLSClientKey:  target.TLSClientKey,
-			TLSClientCert: target.TLSClientCert,
-			OIDCTokens:    target.OIDCTokens,
-			Insecure:      target.Insecure,
+		api.Target{
+			DatabaseID: target.ID,
+			Name:       target.Name,
+			TargetType: target.TargetType,
+			Properties: target.Properties,
 		},
 		target,
 	)
@@ -320,7 +311,7 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 func targetPut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var target api.IncusTarget
+	var target api.Target
 
 	err := json.NewDecoder(r.Body).Decode(&target)
 	if err != nil {
@@ -347,13 +338,10 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	_, err = d.target.UpdateByID(ctx, migration.Target{
-		ID:            currentTarget.ID,
-		Name:          target.Name,
-		Endpoint:      target.Endpoint,
-		TLSClientKey:  target.TLSClientKey,
-		TLSClientCert: target.TLSClientCert,
-		OIDCTokens:    target.OIDCTokens,
-		Insecure:      target.Insecure,
+		ID:         currentTarget.ID,
+		Name:       target.Name,
+		TargetType: target.TargetType,
+		Properties: target.Properties,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", target.Name, err))

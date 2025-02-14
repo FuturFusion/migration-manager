@@ -103,6 +103,15 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 	return nil
 }
 
+func (s *InternalVMwareSource) SetInsecureTLS(insecure bool) error {
+	if s.isConnected {
+		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
+	}
+
+	s.Insecure = insecure
+	return nil
+}
+
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {
 	ret := migration.Instances{}
 

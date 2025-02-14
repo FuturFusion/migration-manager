@@ -1,13 +1,35 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
 
-// IncusTarget defines an Incus target for use by the migration manager.
+type TargetType int
+
+const (
+	TARGETTYPE_UNKNOWN TargetType = iota
+	TARGETTYPE_INCUS
+)
+
+// Implement the stringer interface.
+func (t TargetType) String() string {
+	switch t {
+	case TARGETTYPE_UNKNOWN:
+		return "Unknown"
+	case TARGETTYPE_INCUS:
+		return "Incus"
+	default:
+		return fmt.Sprintf("TargetType(%d)", t)
+	}
+}
+
+// Target defines properties common to all targets.
 //
 // swagger:model
-type IncusTarget struct {
+type Target struct {
 	// A human-friendly name for this target
 	// Example: MyTarget
 	Name string `json:"name" yaml:"name"`
@@ -16,6 +38,17 @@ type IncusTarget struct {
 	// Example: 123
 	DatabaseID int `json:"database_id" yaml:"database_id"`
 
+	// TargetType defines the type of the target
+	TargetType TargetType `json:"target_type" yaml:"target_type"`
+
+	// Properties contains target type specific properties
+	Properties json.RawMessage `json:"properties" yaml:"properties"`
+}
+
+// IncusProperties defines the set of Incus specific properties of a target that the migration manager can connect to.
+//
+// swagger:model
+type IncusProperties struct {
 	// Hostname or IP address of the target endpoint
 	// Example: https://incus.local:6443
 	Endpoint string `json:"endpoint" yaml:"endpoint"`

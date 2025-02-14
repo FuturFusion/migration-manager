@@ -2,6 +2,8 @@ package target
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,36 +11,39 @@ import (
 	"time"
 
 	incus "github.com/lxc/incus/v6/client"
-	"github.com/lxc/incus/v6/shared/api"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/migration"
-	mmapi "github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type InternalIncusTarget struct {
-	mmapi.IncusTarget `yaml:",inline"`
+	InternalTarget      `yaml:",inline"`
+	api.IncusProperties `yaml:",inline"`
 
-	isConnected         bool
 	incusConnectionArgs *incus.ConnectionArgs
 	incusClient         incus.InstanceServer
 }
 
-// Returns a new IncusTarget ready for use.
-func NewIncusTarget(name string, endpoint string) *InternalIncusTarget {
-	return &InternalIncusTarget{
-		IncusTarget: mmapi.IncusTarget{
-			Name:          name,
-			DatabaseID:    internal.INVALID_DATABASE_ID,
-			Endpoint:      endpoint,
-			TLSClientKey:  "",
-			TLSClientCert: "",
-			OIDCTokens:    nil,
-			Insecure:      false,
-		},
-		isConnected: false,
+func NewInternalIncusTargetFrom(apiTarget api.Target) (*InternalIncusTarget, error) {
+	if apiTarget.TargetType != api.TARGETTYPE_INCUS {
+		return nil, errors.New("Target is not of type Incus")
 	}
+
+	var properties api.IncusProperties
+
+	err := json.Unmarshal(apiTarget.Properties, &properties)
+	if err != nil {
+		return nil, err
+	}
+
+	return &InternalIncusTarget{
+		InternalTarget: InternalTarget{
+			Target: apiTarget,
+		},
+		IncusProperties: properties,
+	}, nil
 }
 
 func (t *InternalIncusTarget) Connect(ctx context.Context) error {
@@ -46,9 +51,9 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		return fmt.Errorf("Already connected to endpoint %q", t.Endpoint)
 	}
 
-	authType := api.AuthenticationMethodTLS
+	authType := incusAPI.AuthenticationMethodTLS
 	if t.TLSClientKey == "" {
-		authType = api.AuthenticationMethodOIDC
+		authType = incusAPI.AuthenticationMethodOIDC
 	}
 
 	t.incusConnectionArgs = &incus.ConnectionArgs{
@@ -80,7 +85,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	}
 
 	// Save the OIDC tokens.
-	if authType == api.AuthenticationMethodOIDC {
+	if authType == incusAPI.AuthenticationMethodOIDC {
 		pi, ok := t.incusClient.(*incus.ProtocolIncus)
 		if !ok {
 			return fmt.Errorf("Server != ProtocolIncus")
@@ -125,22 +130,6 @@ func (t *InternalIncusTarget) SetClientTLSCredentials(key string, cert string) e
 	return nil
 }
 
-func (t *InternalIncusTarget) IsConnected() bool {
-	return t.isConnected
-}
-
-func (t *InternalIncusTarget) GetName() string {
-	return t.Name
-}
-
-func (t *InternalIncusTarget) GetDatabaseID() (int, error) {
-	if t.DatabaseID == internal.INVALID_DATABASE_ID {
-		return internal.INVALID_DATABASE_ID, fmt.Errorf("Target has not been added to database, so it doesn't have an ID")
-	}
-
-	return t.DatabaseID, nil
-}
-
 func (t *InternalIncusTarget) SetProject(project string) error {
 	if !t.isConnected {
 		return fmt.Errorf("Cannot change project before connecting")
@@ -151,16 +140,16 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 	return nil
 }
 
-func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) api.InstancesPost {
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) incusAPI.InstancesPost {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
-	ret := api.InstancesPost{
+	ret := incusAPI.InstancesPost{
 		Name: instanceDef.GetName(),
-		Source: api.InstanceSource{
+		Source: incusAPI.InstanceSource{
 			Type: "none",
 		},
-		Type: api.InstanceTypeVM,
+		Type: incusAPI.InstanceTypeVM,
 	}
 
 	ret.Config = make(map[string]string)
@@ -264,7 +253,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	return ret
 }
 
-func (t *InternalIncusTarget) CreateNewVM(apiDef api.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error {
+func (t *InternalIncusTarget) CreateNewVM(apiDef incusAPI.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error {
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -319,7 +308,7 @@ func (t *InternalIncusTarget) DeleteVM(name string) error {
 }
 
 func (t *InternalIncusTarget) StartVM(name string) error {
-	req := api.InstanceStatePut{
+	req := incusAPI.InstanceStatePut{
 		Action:   "start",
 		Timeout:  -1,
 		Force:    false,
@@ -335,7 +324,7 @@ func (t *InternalIncusTarget) StartVM(name string) error {
 }
 
 func (t *InternalIncusTarget) StopVM(name string, force bool) error {
-	req := api.InstanceStatePut{
+	req := incusAPI.InstanceStatePut{
 		Action:   "stop",
 		Timeout:  -1,
 		Force:    force,
@@ -396,7 +385,7 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 }
 
 func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []string) error {
-	req := api.InstanceExecPost{
+	req := incusAPI.InstanceExecPost{
 		Command:     cmd,
 		WaitForWS:   true,
 		Interactive: false,
@@ -408,15 +397,15 @@ func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []stri
 	return err
 }
 
-func (t *InternalIncusTarget) GetInstance(name string) (*api.Instance, string, error) {
+func (t *InternalIncusTarget) GetInstance(name string) (*incusAPI.Instance, string, error) {
 	return t.incusClient.GetInstance(name)
 }
 
-func (t *InternalIncusTarget) UpdateInstance(name string, instanceDef api.InstancePut, ETag string) (incus.Operation, error) {
+func (t *InternalIncusTarget) UpdateInstance(name string, instanceDef incusAPI.InstancePut, ETag string) (incus.Operation, error) {
 	return t.incusClient.UpdateInstance(name, instanceDef, ETag)
 }
 
-func (t *InternalIncusTarget) GetStoragePoolVolume(pool string, volType string, name string) (*api.StorageVolume, string, error) {
+func (t *InternalIncusTarget) GetStoragePoolVolume(pool string, volType string, name string) (*incusAPI.StorageVolume, string, error) {
 	return t.incusClient.GetStoragePoolVolume(pool, volType, name)
 }
 

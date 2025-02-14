@@ -2,10 +2,14 @@ package cmds
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -13,6 +17,8 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
+
+var supportedTargetTypes = []string{"incus"}
 
 type CmdTarget struct {
 	Global *CmdGlobal
@@ -57,16 +63,19 @@ type cmdTargetAdd struct {
 
 	flagInsecure         bool
 	flagNoTestConnection bool
+
+	additionalRootCertificate *tls.Certificate
 }
 
 func (c *cmdTargetAdd) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "add <name> <IP|FQDN|URL>"
+	cmd.Use = "add [type] <name> <IP|FQDN|URL>"
 	cmd.Short = "Add a new target"
 	cmd.Long = `Description:
   Add a new target
 
-  Adds a new target for the migration manager to use.
+  Adds a new target for the migration manager to use. The "type" argument is optional,
+  and defaults to "incus" if not specified.
 
   Depending on the target type, you may be prompted for additional information required
   to connect to the target.
@@ -81,83 +90,111 @@ func (c *cmdTargetAdd) Command() *cobra.Command {
 
 func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := c.global.CheckArgs(cmd, args, 2, 2)
+	exit, err := c.global.CheckArgs(cmd, args, 2, 3)
 	if exit {
 		return err
 	}
 
+	targetType := "incus"
+	targetName := ""
+	targetEndpoint := ""
+
+	// Set variables.
+	if len(args) == 3 {
+		if !slices.Contains(supportedTargetTypes, strings.ToLower(args[0])) {
+			return fmt.Errorf("Unsupported target type %q; must be one of %q", args[0], supportedTargetTypes)
+		}
+
+		targetType = strings.ToLower(args[0])
+		targetName = args[1]
+		targetEndpoint = args[2]
+	} else {
+		targetName = args[0]
+		targetEndpoint = args[1]
+	}
+
 	// Add the target.
-	t := api.IncusTarget{
-		Name:     args[0],
-		Endpoint: args[1],
-		Insecure: c.flagInsecure,
-	}
+	switch targetType {
+	case "incus":
+		incusProperties := api.IncusProperties{
+			Endpoint: targetEndpoint,
+			Insecure: c.flagInsecure,
+		}
 
-	authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
-	if err != nil {
-		return err
-	}
+		t := api.Target{
+			Name:       targetName,
+			TargetType: api.TARGETTYPE_INCUS,
+		}
 
-	// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
-	if authType == "tls" {
-		tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
+		authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
 		if err != nil {
 			return err
 		}
 
-		contents, err := os.ReadFile(tlsCertPath)
+		// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
+		if authType == "tls" {
+			tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
+			if err != nil {
+				return err
+			}
+
+			contents, err := os.ReadFile(tlsCertPath)
+			if err != nil {
+				return err
+			}
+
+			incusProperties.TLSClientCert = string(contents)
+
+			tlsKeyPath, err := c.global.Asker.AskString("Please enter path to client TLS key: ", "", nil)
+			if err != nil {
+				return err
+			}
+
+			contents, err = os.ReadFile(tlsKeyPath)
+			if err != nil {
+				return err
+			}
+
+			incusProperties.TLSClientKey = string(contents)
+		}
+
+		t.Properties, err = json.Marshal(incusProperties)
 		if err != nil {
 			return err
 		}
 
-		t.TLSClientCert = string(contents)
-
-		tlsKeyPath, err := c.global.Asker.AskString("Please enter path to client TLS key: ", "", nil)
+		internalTarget, err := target.NewInternalIncusTargetFrom(t)
 		if err != nil {
 			return err
 		}
 
-		contents, err = os.ReadFile(tlsKeyPath)
+		// Verify we can connect to the target, and if using OIDC grab the tokens.
+		if c.additionalRootCertificate != nil {
+			internalTarget.WithAdditionalRootCertificate(c.additionalRootCertificate)
+		}
+
+		if !c.flagNoTestConnection {
+			ctx := context.TODO()
+			err = internalTarget.Connect(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Insert into database.
+		content, err := json.Marshal(internalTarget)
 		if err != nil {
 			return err
 		}
 
-		t.TLSClientKey = string(contents)
-	}
-
-	content, err := json.Marshal(t)
-	if err != nil {
-		return err
-	}
-
-	// Verify we can connect to the target, and if using OIDC grab the tokens.
-	ctx := context.TODO()
-
-	internalTarget := target.InternalIncusTarget{}
-	err = json.Unmarshal(content, &internalTarget)
-	if err != nil {
-		return err
-	}
-
-	if !c.flagNoTestConnection {
-		err = internalTarget.Connect(ctx)
+		_, err = c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
 		if err != nil {
 			return err
 		}
+
+		cmd.Printf("Successfully added new target %q.\n", t.Name)
 	}
 
-	// Insert into database.
-	content, err = json.Marshal(internalTarget)
-	if err != nil {
-		return err
-	}
-
-	_, err = c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
-	if err != nil {
-		return err
-	}
-
-	cmd.Printf("Successfully added new target %q.\n", t.Name)
 	return nil
 }
 
@@ -198,7 +235,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	targets := []api.IncusTarget{}
+	targets := []api.Target{}
 
 	err = responseToStruct(resp, &targets)
 	if err != nil {
@@ -210,12 +247,23 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, t := range targets {
-		authType := "OIDC"
-		if t.TLSClientKey != "" {
-			authType = "TLS"
-		}
+		switch t.TargetType {
+		case api.TARGETTYPE_INCUS:
+			incusProperties := api.IncusProperties{}
+			err := json.Unmarshal(t.Properties, &incusProperties)
+			if err != nil {
+				return err
+			}
 
-		data = append(data, []string{t.Name, t.Endpoint, authType, strconv.FormatBool(t.Insecure)})
+			authType := "OIDC"
+			if incusProperties.TLSClientKey != "" {
+				authType = "TLS"
+			}
+
+			data = append(data, []string{t.Name, incusProperties.Endpoint, authType, strconv.FormatBool(incusProperties.Insecure)})
+		default:
+			return fmt.Errorf("Unsupported target type %d", t.TargetType)
+		}
 	}
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, targets)
@@ -291,103 +339,110 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	t := api.IncusTarget{}
+	tgt := api.Target{}
+	incusProperties := api.IncusProperties{}
 
-	err = responseToStruct(resp, &t)
+	err = responseToStruct(resp, &tgt)
 	if err != nil {
 		return err
 	}
 
-	// Prompt for updates.
-	origTargetName := t.Name
-
-	t.Name, err = c.global.Asker.AskString("Target name: ["+t.Name+"] ", t.Name, nil)
-	if err != nil {
-		return err
-	}
-
-	t.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+t.Endpoint+"] ", t.Endpoint, nil)
-	if err != nil {
-		return err
-	}
-
-	updateAuth, err := c.global.Asker.AskBool("Update configured authentication? [no] ", "no")
-	if err != nil {
-		return err
-	}
-
-	if updateAuth {
-		// Clear out existing auth.
-		t.TLSClientKey = ""
-		t.TLSClientCert = ""
-		t.OIDCTokens = nil
-
-		authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
+	// Prompt for updates, depending on the target type.
+	origTargetName := ""
+	newTargetName := ""
+	switch tgt.TargetType {
+	case api.TARGETTYPE_INCUS:
+		err := json.Unmarshal(tgt.Properties, &incusProperties)
 		if err != nil {
 			return err
 		}
 
-		// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
-		if authType == "tls" {
-			tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
-			if err != nil {
-				return err
-			}
+		origTargetName = tgt.Name
 
-			contents, err := os.ReadFile(tlsCertPath)
-			if err != nil {
-				return err
-			}
-
-			t.TLSClientCert = string(contents)
-
-			tlsKeyPath, err := c.global.Asker.AskString("Please enter path to client TLS key: ", "", nil)
-			if err != nil {
-				return err
-			}
-
-			contents, err = os.ReadFile(tlsKeyPath)
-			if err != nil {
-				return err
-			}
-
-			t.TLSClientKey = string(contents)
+		tgt.Name, err = c.global.Asker.AskString("Target name: ["+tgt.Name+"] ", tgt.Name, nil)
+		if err != nil {
+			return err
 		}
+
+		incusProperties.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+incusProperties.Endpoint+"] ", incusProperties.Endpoint, nil)
+		if err != nil {
+			return err
+		}
+
+		updateAuth, err := c.global.Asker.AskBool("Update configured authentication? [no] ", "no")
+		if err != nil {
+			return err
+		}
+
+		if updateAuth {
+			// Clear out existing auth.
+			incusProperties.TLSClientKey = ""
+			incusProperties.TLSClientCert = ""
+			incusProperties.OIDCTokens = nil
+
+			authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
+			if err != nil {
+				return err
+			}
+
+			// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
+			if authType == "tls" {
+				tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
+				if err != nil {
+					return err
+				}
+
+				contents, err := os.ReadFile(tlsCertPath)
+				if err != nil {
+					return err
+				}
+
+				incusProperties.TLSClientCert = string(contents)
+
+				tlsKeyPath, err := c.global.Asker.AskString("Please enter path to client TLS key: ", "", nil)
+				if err != nil {
+					return err
+				}
+
+				contents, err = os.ReadFile(tlsKeyPath)
+				if err != nil {
+					return err
+				}
+
+				incusProperties.TLSClientKey = string(contents)
+			}
+		}
+
+		isInsecure := "no"
+		if incusProperties.Insecure {
+			isInsecure = "yes"
+		}
+
+		incusProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
+		if err != nil {
+			return err
+		}
+
+		newTargetName = tgt.Name
+
+	default:
+		return fmt.Errorf("Unsupported target type %d; must be one of %q", tgt.TargetType, supportedTargetTypes)
 	}
 
-	isInsecure := "no"
-	if t.Insecure {
-		isInsecure = "yes"
-	}
-
-	t.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
-	if err != nil {
-		return err
-	}
-
-	newTargetName := t.Name
-
-	content, err := json.Marshal(t)
+	internalTarget, err := target.NewInternalIncusTargetFrom(tgt)
 	if err != nil {
 		return err
 	}
 
 	// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
 	ctx := context.TODO()
-
-	internalTarget := target.InternalIncusTarget{}
-	err = json.Unmarshal(content, &internalTarget)
-	if err != nil {
-		return err
-	}
-
 	err = internalTarget.Connect(ctx)
 	if err != nil {
 		return err
 	}
 
 	// Update the target.
-	content, err = json.Marshal(internalTarget)
+	content, err := json.Marshal(internalTarget)
 	if err != nil {
 		return err
 	}

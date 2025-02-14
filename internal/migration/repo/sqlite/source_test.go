@@ -119,13 +119,13 @@ func TestSourceDatabaseActions(t *testing.T) {
 func newVMwareSource(name string, insecure bool, endpoint string, user string, password string) migration.Source {
 	vmwareProperties := api.VMwareProperties{
 		Endpoint: endpoint,
+		Insecure: insecure,
 		Username: user,
 		Password: password,
 	}
 
 	src := migration.Source{
 		Name:       name,
-		Insecure:   insecure,
 		SourceType: api.SOURCETYPE_VMWARE,
 	}
 
