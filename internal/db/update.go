@@ -33,7 +33,6 @@ CREATE TABLE instances (
     migration_status_string TEXT NOT NULL,
     last_update_from_source TEXT NOT NULL,
     source_id INTEGER NOT NULL,
-    target_id INTEGER NULL,
     batch_id INTEGER NULL,
     guest_tools_version INTEGER NOT NULL,
     architecture VARCHAR(255) NOT NULL,
@@ -52,7 +51,6 @@ CREATE TABLE instances (
     needs_disk_import INTEGER NOT NULL,
     secret_token TEXT NOT NULL,
     FOREIGN KEY(source_id) REFERENCES sources(id),
-    FOREIGN KEY(target_id) REFERENCES targets(id),
     FOREIGN KEY(batch_id) REFERENCES batches(id)
 );
 
@@ -146,7 +144,6 @@ CREATE TABLE instances (
     migration_status_string TEXT NOT NULL,
     last_update_from_source TEXT NOT NULL,
     source_id INTEGER NOT NULL,
-    target_id INTEGER NULL,
     batch_id INTEGER NULL,
     guest_tools_version INTEGER NOT NULL,
     architecture VARCHAR(255) NOT NULL,
@@ -165,7 +162,6 @@ CREATE TABLE instances (
     needs_disk_import INTEGER NOT NULL,
     secret_token TEXT NOT NULL,
     FOREIGN KEY(source_id) REFERENCES sources(id),
-    FOREIGN KEY(target_id) REFERENCES targets(id),
     FOREIGN KEY(batch_id) REFERENCES batches(id)
 );
 

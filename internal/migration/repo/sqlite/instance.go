@@ -33,9 +33,9 @@ func (i instance) Create(ctx context.Context, in migration.Instance) (migration.
 		var err error
 
 		const sqlInsert = `
-INSERT INTO instances (uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token)
-VALUES (:uuid, :inventory_path, :annotation, :migration_status, :migration_status_string, :last_update_from_source, :source_id, :target_id, :batch_id, :guest_tools_version, :architecture, :hardware_version, :os, :os_version, :devices, :disks, :nics, :snapshots, :cpu, :memory, :use_legacy_bios, :secure_boot_enabled, :tpm_present, :needs_disk_import, :secret_token)
-RETURNING uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token;
+INSERT INTO instances (uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token)
+VALUES (:uuid, :inventory_path, :annotation, :migration_status, :migration_status_string, :last_update_from_source, :source_id, :batch_id, :guest_tools_version, :architecture, :hardware_version, :os, :os_version, :devices, :disks, :nics, :snapshots, :cpu, :memory, :use_legacy_bios, :secure_boot_enabled, :tpm_present, :needs_disk_import, :secret_token)
+RETURNING uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token;
 `
 
 		marshalledLastUpdateFromSource, err := in.LastUpdateFromSource.MarshalText()
@@ -81,7 +81,6 @@ RETURNING uuid, inventory_path, annotation, migration_status, migration_status_s
 			sql.Named("migration_status_string", in.MigrationStatusString),
 			sql.Named("last_update_from_source", marshalledLastUpdateFromSource),
 			sql.Named("source_id", in.SourceID),
-			sql.Named("target_id", in.TargetID),
 			sql.Named("batch_id", in.BatchID),
 			sql.Named("guest_tools_version", in.GuestToolsVersion),
 			sql.Named("architecture", in.Architecture),
@@ -119,7 +118,7 @@ func (i instance) GetAll(ctx context.Context) (migration.Instances, error) {
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		const sqlGetAll = `
-SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
+SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
 FROM instances
 ORDER BY inventory_path;
 `
@@ -154,7 +153,7 @@ func (i instance) GetAllByBatchID(ctx context.Context, batchID int) (migration.I
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		const sqlGetAllByState = `
-SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
+SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
 FROM instances
 WHERE batch_id=:batch_id
 ORDER BY inventory_path;
@@ -192,7 +191,7 @@ func (i instance) GetAllByState(ctx context.Context, status api.MigrationStatusT
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		const sqlGetAllByState = `
-SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
+SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
 FROM instances
 WHERE migration_status=:migration_status
 ORDER BY inventory_path;
@@ -258,7 +257,7 @@ func (i instance) GetAllUnassigned(ctx context.Context) (migration.Instances, er
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		const sqlGetAll = `
-SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
+SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token
 FROM instances
 WHERE batch_id IS NULL
 ORDER BY inventory_path;
@@ -295,7 +294,7 @@ func (i instance) GetByID(ctx context.Context, id uuid.UUID) (migration.Instance
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 
-		const sqlGetByUUID = `SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token FROM instances WHERE uuid=:uuid;`
+		const sqlGetByUUID = `SELECT uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token FROM instances WHERE uuid=:uuid;`
 
 		row := i.db.QueryRowContext(ctx, sqlGetByUUID, sql.Named("uuid", id))
 		if row.Err() != nil {
@@ -318,9 +317,9 @@ func (i instance) UpdateByID(ctx context.Context, in migration.Instance) (migrat
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		const sqlUpdate = `
 UPDATE instances
-SET inventory_path=:inventory_path, annotation=:annotation, migration_status=:migration_status, migration_status_string=:migration_status_string, last_update_from_source=:last_update_from_source, source_id=:source_id, target_id=:target_id, batch_id=:batch_id, guest_tools_version=:guest_tools_version, architecture=:architecture, hardware_version=:hardware_version, os=:os, os_version=:os_version, devices=:devices, disks=:disks, nics=:nics, snapshots=:snapshots, cpu=:cpu, memory=:memory, use_legacy_bios=:use_legacy_bios, secure_boot_enabled=:secure_boot_enabled, tpm_present=:tpm_present, needs_disk_import=:needs_disk_import, secret_token=:secret_token
+SET inventory_path=:inventory_path, annotation=:annotation, migration_status=:migration_status, migration_status_string=:migration_status_string, last_update_from_source=:last_update_from_source, source_id=:source_id, batch_id=:batch_id, guest_tools_version=:guest_tools_version, architecture=:architecture, hardware_version=:hardware_version, os=:os, os_version=:os_version, devices=:devices, disks=:disks, nics=:nics, snapshots=:snapshots, cpu=:cpu, memory=:memory, use_legacy_bios=:use_legacy_bios, secure_boot_enabled=:secure_boot_enabled, tpm_present=:tpm_present, needs_disk_import=:needs_disk_import, secret_token=:secret_token
 WHERE uuid=:uuid
-RETURNING uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token;
+RETURNING uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token;
 `
 
 		marshalledLastUpdateFromSource, err := in.LastUpdateFromSource.MarshalText()
@@ -366,7 +365,6 @@ RETURNING uuid, inventory_path, annotation, migration_status, migration_status_s
 			sql.Named("migration_status_string", in.MigrationStatusString),
 			sql.Named("last_update_from_source", marshalledLastUpdateFromSource),
 			sql.Named("source_id", in.SourceID),
-			sql.Named("target_id", in.TargetID),
 			sql.Named("batch_id", in.BatchID),
 			sql.Named("guest_tools_version", in.GuestToolsVersion),
 			sql.Named("architecture", in.Architecture),
@@ -417,7 +415,6 @@ func (i instance) scanInstance(ctx context.Context, row interface{ Scan(dest ...
 		&instance.MigrationStatusString,
 		&marshalledLastUpdateFromSource,
 		&instance.SourceID,
-		&instance.TargetID,
 		&instance.BatchID,
 		&instance.GuestToolsVersion,
 		&instance.Architecture,
@@ -514,7 +511,7 @@ func (i instance) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status a
 UPDATE instances
 SET migration_status=:migration_status, migration_status_string=:migration_status_string, needs_disk_import=:needs_disk_import
 WHERE uuid=:uuid
-RETURNING uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, target_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token;
+RETURNING uuid, inventory_path, annotation, migration_status, migration_status_string, last_update_from_source, source_id, batch_id, guest_tools_version, architecture, hardware_version, os, os_version, devices, disks, nics, snapshots, cpu, memory, use_legacy_bios, secure_boot_enabled, tpm_present, needs_disk_import, secret_token;
 `
 
 	row := i.db.QueryRowContext(ctx, sqlUpdate,

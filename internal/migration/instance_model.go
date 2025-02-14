@@ -19,7 +19,6 @@ type Instance struct {
 	MigrationStatusString string
 	LastUpdateFromSource  time.Time
 	SourceID              int
-	TargetID              *int
 	BatchID               *int
 	GuestToolsVersion     int
 	Architecture          string

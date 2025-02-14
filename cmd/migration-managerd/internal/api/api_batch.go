@@ -590,7 +590,6 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 				MigrationStatusString: instance.MigrationStatusString,
 				LastUpdateFromSource:  instance.LastUpdateFromSource,
 				Source:                sourceMap[instance.SourceID],
-				TargetID:              instance.TargetID,
 				BatchID:               instance.BatchID,
 				GuestToolsVersion:     instance.GuestToolsVersion,
 				Architecture:          instance.Architecture,
