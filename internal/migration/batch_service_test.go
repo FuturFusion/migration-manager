@@ -700,9 +700,6 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 				{
 					Value: migration.Instance{},
 				},
-				{
-					Value: migration.Instance{},
-				},
 			},
 
 			assertErr: require.NoError,
@@ -792,36 +789,6 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
-		{
-			name: "error - instanceSvc.UpdateByID",
-			batch: migration.Batch{
-				ID:                1,
-				Name:              "one",
-				IncludeExpression: `InventoryPath matches "^/inventory/path/A"`,
-			},
-			instanceSvcGetAllByBatchIDInstances: migration.Instances{
-				{
-					InventoryPath:   "/inventory/path/A",
-					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-				},
-			},
-			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
-				{
-					Value: migration.InstanceWithDetails{
-						Name:          "A",
-						InventoryPath: "/inventory/path/A",
-					},
-				},
-			},
-			instanceSvcUpdateByID: []queue.Item[migration.Instance]{
-				{
-					Err: boom.Error,
-				},
-			},
-
-			assertErr: boom.ErrorIs,
-		},
-
 		// Unassigned instances error cases.
 		{
 			name: "error - instanceSvc.GetAllUnassigned",

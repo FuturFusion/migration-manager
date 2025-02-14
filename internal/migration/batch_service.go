@@ -134,15 +134,6 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 				if err != nil {
 					return err
 				}
-
-				continue
-			}
-
-			// Ensure the target ID is synced from the batch to this instance.
-			instance.TargetID = &batch.TargetID
-			_, err = s.instance.UpdateByID(ctx, instance)
-			if err != nil {
-				return err
 			}
 		}
 
