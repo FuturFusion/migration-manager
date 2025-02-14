@@ -2,26 +2,21 @@ package sqlite_test
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/zitadel/oidc/v3/pkg/oidc"
 
 	dbschema "github.com/FuturFusion/migration-manager/internal/db"
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func TestTargetDatabaseActions(t *testing.T) {
-	token := &oidc.Tokens[*oidc.IDTokenClaims]{}
-	err := json.Unmarshal([]byte(`{"access_token":"encoded_content","token_type":"Bearer","refresh_token":"encoded_content","expiry":"2024-11-06T14:23:16.439206188Z","IDTokenClaims":null,"IDToken":"encoded_content"}`), token)
-	require.NoError(t, err)
-
-	incusTargetA := migration.Target{Name: "Target A", Endpoint: "https://localhost:6443", TLSClientKey: "PRIVATE_KEY", TLSClientCert: "PUBLIC_CERT"}
-	incusTargetB := migration.Target{Name: "Target B", Endpoint: "https://incus.local:6443", OIDCTokens: token}
-	incusTargetC := migration.Target{Name: "Target C", Endpoint: "https://10.10.10.10:6443", Insecure: true}
+	incusTargetA := migration.Target{Name: "Target A", TargetType: api.TARGETTYPE_INCUS, Properties: []byte(`{"endpoint": "https://localhost:6443", "tls_client_key", "PRIVATE_KEY", "tls_client_cert": "PUBLIC_CERT"}`)}
+	incusTargetB := migration.Target{Name: "Target B", TargetType: api.TARGETTYPE_INCUS, Properties: []byte(`{"endpoint": "https://incus.local:6443", "oidc_tokens": {"access_token":"encoded_content","token_type":"Bearer","refresh_token":"encoded_content","expiry":"2024-11-06T14:23:16.439206188Z","IDTokenClaims":null,"IDToken":"encoded_content"}}`)}
+	incusTargetC := migration.Target{Name: "Target C", TargetType: api.TARGETTYPE_INCUS, Properties: []byte(`{"endpoint": "https://10.10.10.10:6443", "insecure": true}`)}
 
 	ctx := context.Background()
 
@@ -77,13 +72,13 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.Equal(t, incusTargetC, dbIncusTargetC)
 
 	// Test updating a target.
-	incusTargetB.Endpoint = "https://127.0.0.1:6443"
-	dbIncusTargetB, err := target.UpdateByID(ctx, incusTargetB)
-	require.Equal(t, incusTargetB, dbIncusTargetB)
+	incusTargetC.Properties = []byte(`{"endpoint": "https://127.0.0.1:6443", "insecure": true}`)
+	dbIncusTargetC, err = target.UpdateByID(ctx, incusTargetC)
+	require.Equal(t, incusTargetC, dbIncusTargetC)
 	require.NoError(t, err)
-	dbIncusTargetB, err = target.GetByName(ctx, incusTargetB.Name)
+	dbIncusTargetC, err = target.GetByName(ctx, incusTargetC.Name)
 	require.NoError(t, err)
-	require.Equal(t, incusTargetB, dbIncusTargetB)
+	require.Equal(t, incusTargetC, dbIncusTargetC)
 
 	// Delete a target.
 	err = target.DeleteByName(ctx, incusTargetA.Name)

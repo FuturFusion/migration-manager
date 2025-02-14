@@ -77,7 +77,6 @@ CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
     source_type INTEGER NOT NULL,
-    insecure BOOLEAN,
     properties TEXT NOT NULL,
     UNIQUE (name)
 );
@@ -85,11 +84,8 @@ CREATE TABLE sources (
 CREATE TABLE targets (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    endpoint VARCHAR(255) NOT NULL,
-    tls_client_key TEXT NOT NULL,
-    tls_client_cert TEXT NOT NULL,
-    oidc_tokens TEXT NOT NULL,
-    insecure BOOLEAN,
+    target_type INTEGER NOT NULL,
+    properties TEXT NOT NULL,
     UNIQUE (name)
 );
 
@@ -194,7 +190,6 @@ CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
     source_type INTEGER NOT NULL,
-    insecure BOOLEAN,
     properties TEXT NOT NULL,
     UNIQUE (name)
 );
@@ -202,11 +197,8 @@ CREATE TABLE sources (
 CREATE TABLE targets (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    endpoint VARCHAR(255) NOT NULL,
-    tls_client_key TEXT NOT NULL,
-    tls_client_cert TEXT NOT NULL,
-    oidc_tokens TEXT NOT NULL,
-    insecure BOOLEAN,
+    target_type INTEGER NOT NULL,
+    properties TEXT NOT NULL,
     UNIQUE (name)
 );
 `
