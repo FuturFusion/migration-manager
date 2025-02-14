@@ -134,15 +134,6 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 				if err != nil {
 					return err
 				}
-
-				continue
-			}
-
-			// Ensure the target ID is synced from the batch to this instance.
-			instance.TargetID = &batch.TargetID
-			_, err = s.instance.UpdateByID(ctx, instance)
-			if err != nil {
-				return err
 			}
 		}
 
@@ -171,7 +162,6 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 
 			if isMatch && instance.CanBeModified() {
 				instance.BatchID = &batch.ID
-				instance.TargetID = &batch.TargetID
 				instance.MigrationStatus = api.MIGRATIONSTATUS_ASSIGNED_BATCH
 				instance.MigrationStatusString = api.MIGRATIONSTATUS_ASSIGNED_BATCH.String()
 				_, err = s.instance.UpdateByID(ctx, instance)

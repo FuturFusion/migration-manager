@@ -106,10 +106,6 @@ type Instance struct {
 	// Example: MySource
 	Source string `json:"source" yaml:"source"`
 
-	// The destination target ID for this instance
-	// Example: 1
-	TargetID *int `json:"target_id,omitempty" yaml:"target_id,omitempty"`
-
 	// The batch ID for this instance
 	// Example: 1
 	BatchID *int `json:"batch_id,omitempty" yaml:"batch_id,omitempty"`

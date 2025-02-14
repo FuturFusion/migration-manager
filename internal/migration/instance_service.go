@@ -142,7 +142,6 @@ func (s instanceService) UnassignFromBatch(ctx context.Context, id uuid.UUID) er
 		}
 
 		instance.BatchID = nil
-		instance.TargetID = nil
 		instance.MigrationStatus = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
 		instance.MigrationStatusString = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String()
 

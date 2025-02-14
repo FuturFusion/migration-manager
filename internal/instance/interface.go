@@ -30,9 +30,6 @@ type Instance interface {
 	// Returns the source ID for this instance.
 	GetSourceID() int
 
-	// Returns the target ID for this instance.
-	GetTargetID() *int
-
 	// Returns the migration status of this instance.
 	GetMigrationStatus() api.MigrationStatusType
 

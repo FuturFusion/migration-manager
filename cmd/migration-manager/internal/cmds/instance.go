@@ -105,27 +105,10 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		batchesMap[b.DatabaseID] = b.Name
 	}
 
-	// Get nice names for the targets.
-	targets := []api.Target{}
-	targetsMap := make(map[int]string)
-	resp, err = c.global.doHTTPRequestV1("/targets", http.MethodGet, "recursion=1", nil)
-	if err != nil {
-		return err
-	}
-
-	err = responseToStruct(resp, &targets)
-	if err != nil {
-		return err
-	}
-
-	for _, t := range targets {
-		targetsMap[t.DatabaseID] = t.Name
-	}
-
 	// Render the table.
 	header := []string{"UUID", "Source", "Inventory Path", "OS Version", "CPU", "Memory", "Migration Status"}
 	if c.flagVerbose {
-		header = []string{"UUID", "Inventory Path", "Annotation", "Source", "Target", "Batch", "Migration Status", "Migration Status String", "Last Update from Source", "Guest Tools Version", "Architecture", "Hardware Version", "OS", "OS Version", "Devices", "Disks", "NICs", "Snapshots", "CPU", "CPU Affinity", "Cores Per Socket", "Memory", "Memory Reservation", "Use Legacy BIOS", "Secure Boot Enabled", "TPM Present"}
+		header = []string{"UUID", "Inventory Path", "Annotation", "Source", "Batch", "Migration Status", "Migration Status String", "Last Update from Source", "Guest Tools Version", "Architecture", "Hardware Version", "OS", "OS Version", "Devices", "Disks", "NICs", "Snapshots", "CPU", "CPU Affinity", "Cores Per Socket", "Memory", "Memory Reservation", "Use Legacy BIOS", "Secure Boot Enabled", "TPM Present"}
 	}
 
 	data := [][]string{}
@@ -172,7 +155,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 				CPUAffinity = string(v)
 			}
 
-			row = []string{i.UUID.String(), i.InventoryPath, i.Annotation, i.Source, getFrom(targetsMap, i.TargetID), getFrom(batchesMap, i.BatchID), i.MigrationStatus.String(), i.MigrationStatusString, i.LastUpdateFromSource.String(), strconv.Itoa(i.GuestToolsVersion), i.Architecture, i.HardwareVersion, i.OS, i.OSVersion, strings.Join(devices, "\n"), strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(i.CPU.NumberCPUs), CPUAffinity, strconv.Itoa(i.CPU.NumberOfCoresPerSocket), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), units.GetByteSizeStringIEC(i.Memory.MemoryReservationInBytes, 2), strconv.FormatBool(i.UseLegacyBios), strconv.FormatBool(i.SecureBootEnabled), strconv.FormatBool(i.TPMPresent)}
+			row = []string{i.UUID.String(), i.InventoryPath, i.Annotation, i.Source, getFrom(batchesMap, i.BatchID), i.MigrationStatus.String(), i.MigrationStatusString, i.LastUpdateFromSource.String(), strconv.Itoa(i.GuestToolsVersion), i.Architecture, i.HardwareVersion, i.OS, i.OSVersion, strings.Join(devices, "\n"), strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(i.CPU.NumberCPUs), CPUAffinity, strconv.Itoa(i.CPU.NumberOfCoresPerSocket), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), units.GetByteSizeStringIEC(i.Memory.MemoryReservationInBytes, 2), strconv.FormatBool(i.UseLegacyBios), strconv.FormatBool(i.SecureBootEnabled), strconv.FormatBool(i.TPMPresent)}
 		}
 
 		data = append(data, row)

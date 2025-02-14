@@ -18,7 +18,7 @@ type InternalInstance struct {
 }
 
 // Returns a new Instance ready for use.
-func NewInstance(UUID uuid.UUID, inventoryPath string, annotation string, sourceID int, targetID *int, batchID *int, guestToolsVersion int, architecture string, hardwareVersion string, os string, osVersion string, devices []api.InstanceDeviceInfo, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, snapshots []api.InstanceSnapshotInfo, numberCPUs int, cpuAffinity []int32, numberOfCoresPerSocket int, memoryInBytes int64, memoryReservationInBytes int64, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
+func NewInstance(UUID uuid.UUID, inventoryPath string, annotation string, sourceID int, batchID *int, guestToolsVersion int, architecture string, hardwareVersion string, os string, osVersion string, devices []api.InstanceDeviceInfo, disks []api.InstanceDiskInfo, nics []api.InstanceNICInfo, snapshots []api.InstanceSnapshotInfo, numberCPUs int, cpuAffinity []int32, numberOfCoresPerSocket int, memoryInBytes int64, memoryReservationInBytes int64, useLegacyBios bool, secureBootEnabled bool, tpmPresent bool) *InternalInstance {
 	secretToken, _ := uuid.NewRandom()
 
 	return &InternalInstance{
@@ -29,7 +29,6 @@ func NewInstance(UUID uuid.UUID, inventoryPath string, annotation string, source
 			MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 			MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 			LastUpdateFromSource:  time.Now().UTC(),
-			TargetID:              targetID,
 			BatchID:               batchID,
 			GuestToolsVersion:     guestToolsVersion,
 			Architecture:          architecture,
@@ -102,10 +101,6 @@ func (i *InternalInstance) GetBatchID() *int {
 
 func (i *InternalInstance) GetSourceID() int {
 	return i.SourceID
-}
-
-func (i *InternalInstance) GetTargetID() *int {
-	return i.TargetID
 }
 
 func (i *InternalInstance) GetMigrationStatus() api.MigrationStatusType {
