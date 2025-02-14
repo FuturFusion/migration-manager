@@ -263,7 +263,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 				authType = "TLS"
 			}
 
-			data = append(data, []string{t.Name, "Incus", incusProperties.Endpoint, authType, strconv.FormatBool(incusProperties.Insecure)})
+			data = append(data, []string{t.Name, t.TargetType.String(), incusProperties.Endpoint, authType, strconv.FormatBool(incusProperties.Insecure)})
 		default:
 			return fmt.Errorf("Unsupported target type %d", t.TargetType)
 		}

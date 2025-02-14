@@ -231,7 +231,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			data = append(data, []string{s.Name, "VMware", vmwareProperties.Endpoint, vmwareProperties.Username, strconv.FormatBool(vmwareProperties.Insecure)})
+			data = append(data, []string{s.Name, s.SourceType.String(), vmwareProperties.Endpoint, vmwareProperties.Username, strconv.FormatBool(vmwareProperties.Insecure)})
 		case api.SOURCETYPE_COMMON:
 			// Nothing to output in this case
 		default:
