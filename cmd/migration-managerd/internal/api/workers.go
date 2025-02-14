@@ -315,7 +315,8 @@ func (d *Daemon) processReadyBatches() bool {
 				continue
 			}
 
-			if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(time.Now().UTC()) {
+			now := time.Now().UTC()
+			if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(now) {
 				log.Error("Batch window end time has already passed")
 
 				_, err = d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
@@ -323,6 +324,12 @@ func (d *Daemon) processReadyBatches() bool {
 					log.Warn("Failed to update batch status", logger.Err(err))
 					continue
 				}
+
+				continue
+			}
+
+			if !b.MigrationWindowStart.IsZero() && b.MigrationWindowStart.Before(now) {
+				log.Info("Batch window start time not yet reached. Skipping batch")
 
 				continue
 			}
