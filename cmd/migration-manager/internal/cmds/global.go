@@ -19,6 +19,7 @@ import (
 	"github.com/lxc/incus/v6/shared/api"
 	localtls "github.com/lxc/incus/v6/shared/tls"
 	"github.com/lxc/incus/v6/shared/util"
+	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/config"
@@ -32,8 +33,8 @@ import (
 type Asker interface {
 	AskBool(question string, defaultAnswer string) (bool, error)
 	AskChoice(question string, choices []string, defaultAnswer string) (string, error)
-	AskInt(question string, minValue int64, maxValue int64, defaultAnswer string, validate func(int64) error) (int64, error)
-	AskString(question string, defaultAnswer string, validate func(string) error) (string, error)
+	AskInt(question string, minValue int64, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error)
+	AskString(question string, defaultAnswer string, validator func(string) error) (string, error)
 	AskPasswordOnce(question string) string
 }
 
@@ -144,7 +145,7 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 	c.config.MigrationManagerServer = server
 
 	if c.config.MigrationManagerServerCert != nil {
-		trustedCert, err := c.Asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? ", localtls.CertFingerprint(c.config.MigrationManagerServerCert)), "false")
+		trustedCert, err := c.Asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? (yes/no) [default=no]: ", localtls.CertFingerprint(c.config.MigrationManagerServerCert)), "no")
 		if err != nil {
 			return err
 		}
@@ -154,7 +155,7 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 		}
 	}
 
-	c.config.AuthType, err = c.Asker.AskChoice("What type of authentication should be used (none, oidc, tls)? [none] ", []string{"none", "oidc", "tls"}, "none")
+	c.config.AuthType, err = c.Asker.AskChoice("What type of authentication should be used? (none, oidc, tls) [default=none]: ", []string{"none", "oidc", "tls"}, "none")
 	if err != nil {
 		return err
 	}
@@ -162,24 +163,12 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 	if c.config.AuthType == "none" {
 		c.config.AuthType = "untrusted"
 	} else if c.config.AuthType == "tls" {
-		c.config.TLSClientCertFile, err = c.Asker.AskString("Please enter path to client TLS certificate: ", "", func(s string) error {
-			if !util.PathExists(s) {
-				return fmt.Errorf("Cannot read file")
-			}
-
-			return nil
-		})
+		c.config.TLSClientCertFile, err = c.Asker.AskString("Please enter the absolute path to client TLS certificate: ", "", validateAbsFilePathExists)
 		if err != nil {
 			return err
 		}
 
-		c.config.TLSClientKeyFile, err = c.Asker.AskString("Please enter path to client TLS key: ", "", func(s string) error {
-			if !util.PathExists(s) {
-				return fmt.Errorf("Cannot read file")
-			}
-
-			return nil
-		})
+		c.config.TLSClientKeyFile, err = c.Asker.AskString("Please enter the absolute path to client TLS key: ", "", validateAbsFilePathExists)
 		if err != nil {
 			return err
 		}
@@ -357,4 +346,17 @@ func getUnixHTTPClient(socketPath string) *http.Client {
 	client.Transport = transport
 
 	return client
+}
+
+func validateAbsFilePathExists(s string) error {
+	err := validate.IsAbsFilePath(s)
+	if err != nil {
+		return err
+	}
+
+	if !util.PathExists(s) {
+		return fmt.Errorf("Cannot read file")
+	}
+
+	return nil
 }

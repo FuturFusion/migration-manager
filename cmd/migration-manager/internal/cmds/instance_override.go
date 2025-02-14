@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/units"
+	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -88,24 +89,24 @@ func (c *cmdInstanceOverrideAdd) Run(cmd *cobra.Command, args []string) error {
 		UUID: UUID,
 	}
 
-	override.Comment, err = c.global.Asker.AskString("Comment: ", "", nil)
+	override.Comment, err = c.global.Asker.AskString("Comment (empty to skip):", "", validate.IsAny)
 	if err != nil {
 		return err
 	}
 
-	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? ", "false")
+	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? (yes/no) [default=no]: ", "no")
 	if err != nil {
 		return err
 	}
 
-	val, err := c.global.Asker.AskInt("Number of vCPUs: ", 0, 1024, "0", nil)
+	val, err := c.global.Asker.AskInt("Number of vCPUs (empty to skip): ", 0, 1024, "0", nil)
 	if err != nil {
 		return err
 	}
 
 	override.NumberCPUs = int(val)
 
-	memoryString, err := c.global.Asker.AskString("Memory: ", "0B", func(s string) error {
+	memoryString, err := c.global.Asker.AskString("Memory (empty to skip): ", "0B", func(s string) error {
 		_, err := units.ParseByteSizeString(s)
 		return err
 	})
@@ -270,25 +271,35 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 		return err
 	}
 
+	var defaultOverride string
+	if override.Comment != "" {
+		defaultOverride = "[default=" + override.Comment + "]"
+	}
+
 	// Prompt for updates.
-	override.Comment, err = c.global.Asker.AskString("Comment: ["+override.Comment+"] ", override.Comment, func(s string) error { return nil })
+	override.Comment, err = c.global.Asker.AskString("Comment "+defaultOverride+": ", override.Comment, func(s string) error { return nil })
 	if err != nil {
 		return err
 	}
 
-	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? ("+strconv.FormatBool(override.DisableMigration)+") ", strconv.FormatBool(override.DisableMigration))
+	disableMigration := "no"
+	if override.DisableMigration {
+		disableMigration = "yes"
+	}
+
+	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? (yes/no) [default="+disableMigration+"]: ", strconv.FormatBool(override.DisableMigration))
 	if err != nil {
 		return err
 	}
 
 	displayOverride := ""
 	if override.NumberCPUs != 0 {
-		displayOverride = "[" + strconv.Itoa(override.NumberCPUs) + "] "
+		displayOverride = "default=[" + strconv.Itoa(override.NumberCPUs) + "]: "
 	} else {
-		displayOverride = ""
+		displayOverride = "(empty to skip): "
 	}
 
-	val, err := c.global.Asker.AskInt("Number of vCPUs: "+displayOverride, 0, 1024, strconv.Itoa(override.NumberCPUs), nil)
+	val, err := c.global.Asker.AskInt("Number of vCPUs "+displayOverride, 0, 1024, strconv.Itoa(override.NumberCPUs), nil)
 	if err != nil {
 		return err
 	}
@@ -298,12 +309,12 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 	}
 
 	if override.MemoryInBytes != 0 {
-		displayOverride = "[" + units.GetByteSizeStringIEC(override.MemoryInBytes, 2) + "] "
+		displayOverride = "[" + units.GetByteSizeStringIEC(override.MemoryInBytes, 2) + "]: "
 	} else {
-		displayOverride = ""
+		displayOverride = "(empty to skip): "
 	}
 
-	memoryString, err := c.global.Asker.AskString("Memory: "+displayOverride, fmt.Sprintf("%dB", override.MemoryInBytes), func(s string) error {
+	memoryString, err := c.global.Asker.AskString("Memory "+displayOverride, fmt.Sprintf("%dB", override.MemoryInBytes), func(s string) error {
 		_, err := units.ParseByteSizeString(s)
 		return err
 	})

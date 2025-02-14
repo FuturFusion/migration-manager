@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/source"
@@ -115,7 +116,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 	// Add the source.
 	switch sourceType {
 	case "vmware":
-		sourceUsername, err := c.global.Asker.AskString("Please enter username for endpoint '"+sourceEndpoint+"': ", "", nil)
+		sourceUsername, err := c.global.Asker.AskString("Please enter username for endpoint '"+sourceEndpoint+"': ", "", validate.IsNotEmpty)
 		if err != nil {
 			return err
 		}
@@ -332,17 +333,17 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 
 		origSourceName = src.Name
 
-		src.Name, err = c.global.Asker.AskString("Source name: ["+src.Name+"] ", src.Name, nil)
+		src.Name, err = c.global.Asker.AskString("Source name [default="+src.Name+"]: ", src.Name, nil)
 		if err != nil {
 			return err
 		}
 
-		vmwareProperties.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+vmwareProperties.Endpoint+"] ", vmwareProperties.Endpoint, nil)
+		vmwareProperties.Endpoint, err = c.global.Asker.AskString("Endpoint [default="+vmwareProperties.Endpoint+"]: ", vmwareProperties.Endpoint, nil)
 		if err != nil {
 			return err
 		}
 
-		vmwareProperties.Username, err = c.global.Asker.AskString("Username: ["+vmwareProperties.Username+"] ", vmwareProperties.Username, nil)
+		vmwareProperties.Username, err = c.global.Asker.AskString("Username: [default="+vmwareProperties.Username+"]: ", vmwareProperties.Username, nil)
 		if err != nil {
 			return err
 		}
@@ -354,7 +355,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			isInsecure = "yes"
 		}
 
-		vmwareProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
+		vmwareProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? (yes/no) [default="+isInsecure+"]: ", isInsecure)
 		if err != nil {
 			return err
 		}
