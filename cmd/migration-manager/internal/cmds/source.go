@@ -120,7 +120,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		sourcePassword := c.global.Asker.AskPassword("Please enter password for endpoint '" + sourceEndpoint + "': ")
+		sourcePassword := c.global.Asker.AskPasswordOnce("Please enter password for endpoint '" + sourceEndpoint + "': ")
 
 		vmwareProperties := api.VMwareProperties{
 			Endpoint: sourceEndpoint,
@@ -347,7 +347,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		vmwareProperties.Password = c.global.Asker.AskPassword("Password: ")
+		vmwareProperties.Password = c.global.Asker.AskPasswordOnce("Password: ")
 
 		isInsecure := "no"
 		if src.Insecure {
