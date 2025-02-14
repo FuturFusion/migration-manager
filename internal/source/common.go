@@ -27,12 +27,7 @@ func (s *InternalSource) Disconnect(ctx context.Context) error {
 }
 
 func (s *InternalSource) SetInsecureTLS(insecure bool) error {
-	if s.isConnected {
-		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
-	}
-
-	s.Insecure = insecure
-	return nil
+	return fmt.Errorf("Not implemented by InternalSource")
 }
 
 func (s *InternalSource) WithAdditionalRootCertificate(rootCert *tls.Certificate) {

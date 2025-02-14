@@ -2,11 +2,12 @@ package target
 
 import (
 	"context"
+	"crypto/tls"
 
 	incus "github.com/lxc/incus/v6/client"
 	"github.com/lxc/incus/v6/shared/api"
 
-	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/migration"
 )
 
 // Interface definition for all migration manager targets.
@@ -30,6 +31,11 @@ type Target interface {
 	//
 	// Returns an error if called while connected to a target.
 	SetInsecureTLS(insecure bool) error
+
+	// WithAdditionalRootCertificate accepts an additional certificate, which
+	// is added to the default CertPool used to validate server certificates
+	// while connecting to the Target using TLS.
+	WithAdditionalRootCertificate(rootCert *tls.Certificate)
 
 	// Sets the client TLS key and certificate to be used to authenticate with the target. Leave unset to
 	// default to OIDC authentication.
@@ -64,7 +70,7 @@ type Target interface {
 	SetProject(project string) error
 
 	// Creates a VM definition for use with the Incus REST API.
-	CreateVMDefinition(instanceDef instance.InternalInstance, sourceName string, storagePool string) api.InstancesPost
+	CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) api.InstancesPost
 
 	// Creates a new VM from the pre-populated API definition.
 	CreateNewVM(apiDef api.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error
