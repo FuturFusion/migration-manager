@@ -26,8 +26,8 @@ var _ Asker = &AskerMock{}
 //			AskIntFunc: func(question string, minValue int64, maxValue int64, defaultAnswer string, validate func(int64) error) (int64, error) {
 //				panic("mock out the AskInt method")
 //			},
-//			AskPasswordFunc: func(question string) string {
-//				panic("mock out the AskPassword method")
+//			AskPasswordOnceFunc: func(question string) string {
+//				panic("mock out the AskPasswordOnce method")
 //			},
 //			AskStringFunc: func(question string, defaultAnswer string, validate func(string) error) (string, error) {
 //				panic("mock out the AskString method")
@@ -48,8 +48,8 @@ type AskerMock struct {
 	// AskIntFunc mocks the AskInt method.
 	AskIntFunc func(question string, minValue int64, maxValue int64, defaultAnswer string, validate func(int64) error) (int64, error)
 
-	// AskPasswordFunc mocks the AskPassword method.
-	AskPasswordFunc func(question string) string
+	// AskPasswordOnceFunc mocks the AskPasswordOnce method.
+	AskPasswordOnceFunc func(question string) string
 
 	// AskStringFunc mocks the AskString method.
 	AskStringFunc func(question string, defaultAnswer string, validate func(string) error) (string, error)
@@ -85,8 +85,8 @@ type AskerMock struct {
 			// Validate is the validate argument value.
 			Validate func(int64) error
 		}
-		// AskPassword holds details about calls to the AskPassword method.
-		AskPassword []struct {
+		// AskPasswordOnce holds details about calls to the AskPasswordOnce method.
+		AskPasswordOnce []struct {
 			// Question is the question argument value.
 			Question string
 		}
@@ -100,11 +100,11 @@ type AskerMock struct {
 			Validate func(string) error
 		}
 	}
-	lockAskBool     sync.RWMutex
-	lockAskChoice   sync.RWMutex
-	lockAskInt      sync.RWMutex
-	lockAskPassword sync.RWMutex
-	lockAskString   sync.RWMutex
+	lockAskBool         sync.RWMutex
+	lockAskChoice       sync.RWMutex
+	lockAskInt          sync.RWMutex
+	lockAskPasswordOnce sync.RWMutex
+	lockAskString       sync.RWMutex
 }
 
 // AskBool calls AskBoolFunc.
@@ -231,35 +231,35 @@ func (mock *AskerMock) AskIntCalls() []struct {
 	return calls
 }
 
-// AskPassword calls AskPasswordFunc.
-func (mock *AskerMock) AskPassword(question string) string {
-	if mock.AskPasswordFunc == nil {
-		panic("AskerMock.AskPasswordFunc: method is nil but Asker.AskPassword was just called")
+// AskPasswordOnce calls AskPasswordOnceFunc.
+func (mock *AskerMock) AskPasswordOnce(question string) string {
+	if mock.AskPasswordOnceFunc == nil {
+		panic("AskerMock.AskPasswordOnceFunc: method is nil but Asker.AskPasswordOnce was just called")
 	}
 	callInfo := struct {
 		Question string
 	}{
 		Question: question,
 	}
-	mock.lockAskPassword.Lock()
-	mock.calls.AskPassword = append(mock.calls.AskPassword, callInfo)
-	mock.lockAskPassword.Unlock()
-	return mock.AskPasswordFunc(question)
+	mock.lockAskPasswordOnce.Lock()
+	mock.calls.AskPasswordOnce = append(mock.calls.AskPasswordOnce, callInfo)
+	mock.lockAskPasswordOnce.Unlock()
+	return mock.AskPasswordOnceFunc(question)
 }
 
-// AskPasswordCalls gets all the calls that were made to AskPassword.
+// AskPasswordOnceCalls gets all the calls that were made to AskPasswordOnce.
 // Check the length with:
 //
-//	len(mockedAsker.AskPasswordCalls())
-func (mock *AskerMock) AskPasswordCalls() []struct {
+//	len(mockedAsker.AskPasswordOnceCalls())
+func (mock *AskerMock) AskPasswordOnceCalls() []struct {
 	Question string
 } {
 	var calls []struct {
 		Question string
 	}
-	mock.lockAskPassword.RLock()
-	calls = mock.calls.AskPassword
-	mock.lockAskPassword.RUnlock()
+	mock.lockAskPasswordOnce.RLock()
+	calls = mock.calls.AskPasswordOnce
+	mock.lockAskPasswordOnce.RUnlock()
 	return calls
 }
 

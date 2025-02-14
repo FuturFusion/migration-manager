@@ -178,7 +178,7 @@ func TestSourceAdd(t *testing.T) {
 				AskStringFunc: func(question string, defaultAnswer string, validate func(string) error) (string, error) {
 					return tc.username, nil
 				},
-				AskPasswordFunc: func(question string) string {
+				AskPasswordOnceFunc: func(question string) string {
 					return tc.password
 				},
 			}
@@ -571,7 +571,7 @@ func TestSourceUpdate(t *testing.T) {
 				AskStringFunc: func(question string, defaultAnswer string, validate func(string) error) (string, error) {
 					return queue.Pop(t, &tc.askStringReturns)
 				},
-				AskPasswordFunc: func(question string) string {
+				AskPasswordOnceFunc: func(question string) string {
 					ret, _ := queue.Pop(t, &tc.askStringReturns)
 					return ret
 				},
