@@ -181,8 +181,11 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 			}
 		}
 
+		// Need to grab properties post-connection to get any OIDC tokens that we need to save.
+		t.Properties = internalTarget.Properties
+
 		// Insert into database.
-		content, err := json.Marshal(internalTarget)
+		content, err := json.Marshal(t)
 		if err != nil {
 			return err
 		}
@@ -441,8 +444,11 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Need to grab properties post-connection to get any OIDC tokens that we need to save.
+	tgt.Properties = internalTarget.Properties
+
 	// Update the target.
-	content, err := json.Marshal(internalTarget)
+	content, err := json.Marshal(tgt)
 	if err != nil {
 		return err
 	}
