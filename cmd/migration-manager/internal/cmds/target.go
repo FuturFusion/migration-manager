@@ -126,14 +126,14 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 			TargetType: api.TARGETTYPE_INCUS,
 		}
 
-		authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
+		authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [default=oidc]: ", []string{"oidc", "tls"}, "oidc")
 		if err != nil {
 			return err
 		}
 
 		// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
 		if authType == "tls" {
-			tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
+			tlsCertPath, err := c.global.Asker.AskString("Please enter the absolute path to client TLS certificate: ", "", validateAbsFilePathExists)
 			if err != nil {
 				return err
 			}
@@ -145,7 +145,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 
 			incusProperties.TLSClientCert = string(contents)
 
-			tlsKeyPath, err := c.global.Asker.AskString("Please enter path to client TLS key: ", "", nil)
+			tlsKeyPath, err := c.global.Asker.AskString("Please enter the absolute path to client TLS key: ", "", validateAbsFilePathExists)
 			if err != nil {
 				return err
 			}
@@ -362,17 +362,17 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 
 		origTargetName = tgt.Name
 
-		tgt.Name, err = c.global.Asker.AskString("Target name: ["+tgt.Name+"] ", tgt.Name, nil)
+		tgt.Name, err = c.global.Asker.AskString("Target name [default="+tgt.Name+"]: ", tgt.Name, nil)
 		if err != nil {
 			return err
 		}
 
-		incusProperties.Endpoint, err = c.global.Asker.AskString("Endpoint: ["+incusProperties.Endpoint+"] ", incusProperties.Endpoint, nil)
+		incusProperties.Endpoint, err = c.global.Asker.AskString("Endpoint [default="+incusProperties.Endpoint+"]: ", incusProperties.Endpoint, nil)
 		if err != nil {
 			return err
 		}
 
-		updateAuth, err := c.global.Asker.AskBool("Update configured authentication? [no] ", "no")
+		updateAuth, err := c.global.Asker.AskBool("Update configured authentication? (yes/no) [default=no]: ", "no")
 		if err != nil {
 			return err
 		}
@@ -383,14 +383,14 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 			incusProperties.TLSClientCert = ""
 			incusProperties.OIDCTokens = nil
 
-			authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [oidc] ", []string{"oidc", "tls"}, "oidc")
+			authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [default=oidc]: ", []string{"oidc", "tls"}, "oidc")
 			if err != nil {
 				return err
 			}
 
 			// Only TLS certs require additional prompting at the moment; we'll grab OIDC tokens below when we verify the target.
 			if authType == "tls" {
-				tlsCertPath, err := c.global.Asker.AskString("Please enter path to client TLS certificate: ", "", nil)
+				tlsCertPath, err := c.global.Asker.AskString("Please enter the absolute path to client TLS certificate: ", "", validateAbsFilePathExists)
 				if err != nil {
 					return err
 				}
@@ -402,7 +402,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 
 				incusProperties.TLSClientCert = string(contents)
 
-				tlsKeyPath, err := c.global.Asker.AskString("Please enter path to client TLS key: ", "", nil)
+				tlsKeyPath, err := c.global.Asker.AskString("Please enter the absolute path to client TLS key: ", "", validateAbsFilePathExists)
 				if err != nil {
 					return err
 				}
@@ -421,7 +421,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 			isInsecure = "yes"
 		}
 
-		incusProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? ["+isInsecure+"] ", isInsecure)
+		incusProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? (yes/no) [default="+isInsecure+"]: ", isInsecure)
 		if err != nil {
 			return err
 		}

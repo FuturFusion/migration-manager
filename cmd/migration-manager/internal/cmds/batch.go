@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -105,27 +106,33 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		Name: args[0],
 	}
 
-	b.Target, err = c.global.Asker.AskChoice(fmt.Sprintf("What target should be used by this batch? (Choices: %q) ", strings.Join(targets, "', '")), targets, "")
+	if len(targets) == 1 {
+		b.Target = targets[0]
+		fmt.Printf("Using target %q\n", b.Target)
+	} else {
+		defaultTargetHint := "(" + strings.Join(targets, ", ") + "): "
+		b.Target, err = c.global.Asker.AskChoice("What target should this batch use? "+defaultTargetHint, targets, "")
+		if err != nil {
+			return err
+		}
+	}
+
+	b.TargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? ", "", validate.IsNotEmpty)
 	if err != nil {
 		return err
 	}
 
-	b.TargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? [default] ", "default", nil)
+	b.StoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? ", "", validate.IsNotEmpty)
 	if err != nil {
 		return err
 	}
 
-	b.StoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? [local] ", "local", nil)
+	b.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances: ", "", validate.IsAny)
 	if err != nil {
 		return err
 	}
 
-	b.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances: ", "", func(s string) error { return nil })
-	if err != nil {
-		return err
-	}
-
-	windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ", "", func(s string) error {
+	windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
 		if s != "" {
 			_, err := time.Parse(time.DateTime, s)
 			return err
@@ -141,7 +148,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		b.MigrationWindowStart, _ = time.Parse(time.DateTime, windowStart)
 	}
 
-	windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ", "", func(s string) error {
+	windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
 		if s != "" {
 			_, err := time.Parse(time.DateTime, s)
 			return err
@@ -486,27 +493,32 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 	// Prompt for updates.
 	origBatchName := b.Name
 
-	b.Name, err = c.global.Asker.AskString("Batch name: ["+b.Name+"] ", b.Name, nil)
+	b.Name, err = c.global.Asker.AskString("Batch name [default="+b.Name+"]: ", b.Name, nil)
 	if err != nil {
 		return err
 	}
 
-	b.Target, err = c.global.Asker.AskChoice(fmt.Sprintf("Target: ["+b.Target+"] (Choices: %q) ", strings.Join(targets, "', '")), targets, "")
+	var targetChoices string
+	if len(targets) > 1 {
+		targetChoices = " (" + strings.Join(targets, ", ") + ")"
+	}
+
+	b.Target, err = c.global.Asker.AskChoice("Target"+targetChoices+" [default="+b.Target+"]: ", targets, b.Target)
 	if err != nil {
 		return err
 	}
 
-	b.TargetProject, err = c.global.Asker.AskString("Project: ["+b.TargetProject+"] ", b.TargetProject, nil)
+	b.TargetProject, err = c.global.Asker.AskString("Project [default="+b.TargetProject+"]: ", b.TargetProject, nil)
 	if err != nil {
 		return err
 	}
 
-	b.StoragePool, err = c.global.Asker.AskString("Storage pool: ["+b.StoragePool+"] ", b.StoragePool, nil)
+	b.StoragePool, err = c.global.Asker.AskString("Storage pool [default="+b.StoragePool+"]: ", b.StoragePool, nil)
 	if err != nil {
 		return err
 	}
 
-	b.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances: ["+b.IncludeExpression+"] ", b.IncludeExpression, func(s string) error { return nil })
+	b.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances [default="+b.IncludeExpression+"]: ", b.IncludeExpression, func(s string) error { return nil })
 	if err != nil {
 		return err
 	}
@@ -516,7 +528,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		windowStartValue = b.MigrationWindowStart.Format(time.DateTime)
 	}
 
-	windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS): ["+windowStartValue+"] ", windowStartValue, func(s string) error {
+	windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS) [default-"+windowStartValue+"]: ", windowStartValue, func(s string) error {
 		if s != "" {
 			_, err := time.Parse(time.DateTime, s)
 			return err
@@ -537,7 +549,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		windowEndValue = b.MigrationWindowEnd.Format(time.DateTime)
 	}
 
-	windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS): ["+windowEndValue+"] ", windowEndValue, func(s string) error {
+	windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS) [default="+windowEndValue+"]: ", windowEndValue, func(s string) error {
 		if s != "" {
 			_, err := time.Parse(time.DateTime, s)
 			return err

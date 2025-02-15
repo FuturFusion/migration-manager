@@ -23,13 +23,13 @@ var _ Asker = &AskerMock{}
 //			AskChoiceFunc: func(question string, choices []string, defaultAnswer string) (string, error) {
 //				panic("mock out the AskChoice method")
 //			},
-//			AskIntFunc: func(question string, minValue int64, maxValue int64, defaultAnswer string, validate func(int64) error) (int64, error) {
+//			AskIntFunc: func(question string, minValue int64, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error) {
 //				panic("mock out the AskInt method")
 //			},
 //			AskPasswordOnceFunc: func(question string) string {
 //				panic("mock out the AskPasswordOnce method")
 //			},
-//			AskStringFunc: func(question string, defaultAnswer string, validate func(string) error) (string, error) {
+//			AskStringFunc: func(question string, defaultAnswer string, validator func(string) error) (string, error) {
 //				panic("mock out the AskString method")
 //			},
 //		}
@@ -46,13 +46,13 @@ type AskerMock struct {
 	AskChoiceFunc func(question string, choices []string, defaultAnswer string) (string, error)
 
 	// AskIntFunc mocks the AskInt method.
-	AskIntFunc func(question string, minValue int64, maxValue int64, defaultAnswer string, validate func(int64) error) (int64, error)
+	AskIntFunc func(question string, minValue int64, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error)
 
 	// AskPasswordOnceFunc mocks the AskPasswordOnce method.
 	AskPasswordOnceFunc func(question string) string
 
 	// AskStringFunc mocks the AskString method.
-	AskStringFunc func(question string, defaultAnswer string, validate func(string) error) (string, error)
+	AskStringFunc func(question string, defaultAnswer string, validator func(string) error) (string, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -82,8 +82,8 @@ type AskerMock struct {
 			MaxValue int64
 			// DefaultAnswer is the defaultAnswer argument value.
 			DefaultAnswer string
-			// Validate is the validate argument value.
-			Validate func(int64) error
+			// Validator is the validator argument value.
+			Validator func(int64) error
 		}
 		// AskPasswordOnce holds details about calls to the AskPasswordOnce method.
 		AskPasswordOnce []struct {
@@ -96,8 +96,8 @@ type AskerMock struct {
 			Question string
 			// DefaultAnswer is the defaultAnswer argument value.
 			DefaultAnswer string
-			// Validate is the validate argument value.
-			Validate func(string) error
+			// Validator is the validator argument value.
+			Validator func(string) error
 		}
 	}
 	lockAskBool         sync.RWMutex
@@ -184,7 +184,7 @@ func (mock *AskerMock) AskChoiceCalls() []struct {
 }
 
 // AskInt calls AskIntFunc.
-func (mock *AskerMock) AskInt(question string, minValue int64, maxValue int64, defaultAnswer string, validate func(int64) error) (int64, error) {
+func (mock *AskerMock) AskInt(question string, minValue int64, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error) {
 	if mock.AskIntFunc == nil {
 		panic("AskerMock.AskIntFunc: method is nil but Asker.AskInt was just called")
 	}
@@ -193,18 +193,18 @@ func (mock *AskerMock) AskInt(question string, minValue int64, maxValue int64, d
 		MinValue      int64
 		MaxValue      int64
 		DefaultAnswer string
-		Validate      func(int64) error
+		Validator     func(int64) error
 	}{
 		Question:      question,
 		MinValue:      minValue,
 		MaxValue:      maxValue,
 		DefaultAnswer: defaultAnswer,
-		Validate:      validate,
+		Validator:     validator,
 	}
 	mock.lockAskInt.Lock()
 	mock.calls.AskInt = append(mock.calls.AskInt, callInfo)
 	mock.lockAskInt.Unlock()
-	return mock.AskIntFunc(question, minValue, maxValue, defaultAnswer, validate)
+	return mock.AskIntFunc(question, minValue, maxValue, defaultAnswer, validator)
 }
 
 // AskIntCalls gets all the calls that were made to AskInt.
@@ -216,14 +216,14 @@ func (mock *AskerMock) AskIntCalls() []struct {
 	MinValue      int64
 	MaxValue      int64
 	DefaultAnswer string
-	Validate      func(int64) error
+	Validator     func(int64) error
 } {
 	var calls []struct {
 		Question      string
 		MinValue      int64
 		MaxValue      int64
 		DefaultAnswer string
-		Validate      func(int64) error
+		Validator     func(int64) error
 	}
 	mock.lockAskInt.RLock()
 	calls = mock.calls.AskInt
@@ -264,23 +264,23 @@ func (mock *AskerMock) AskPasswordOnceCalls() []struct {
 }
 
 // AskString calls AskStringFunc.
-func (mock *AskerMock) AskString(question string, defaultAnswer string, validate func(string) error) (string, error) {
+func (mock *AskerMock) AskString(question string, defaultAnswer string, validator func(string) error) (string, error) {
 	if mock.AskStringFunc == nil {
 		panic("AskerMock.AskStringFunc: method is nil but Asker.AskString was just called")
 	}
 	callInfo := struct {
 		Question      string
 		DefaultAnswer string
-		Validate      func(string) error
+		Validator     func(string) error
 	}{
 		Question:      question,
 		DefaultAnswer: defaultAnswer,
-		Validate:      validate,
+		Validator:     validator,
 	}
 	mock.lockAskString.Lock()
 	mock.calls.AskString = append(mock.calls.AskString, callInfo)
 	mock.lockAskString.Unlock()
-	return mock.AskStringFunc(question, defaultAnswer, validate)
+	return mock.AskStringFunc(question, defaultAnswer, validator)
 }
 
 // AskStringCalls gets all the calls that were made to AskString.
@@ -290,12 +290,12 @@ func (mock *AskerMock) AskString(question string, defaultAnswer string, validate
 func (mock *AskerMock) AskStringCalls() []struct {
 	Question      string
 	DefaultAnswer string
-	Validate      func(string) error
+	Validator     func(string) error
 } {
 	var calls []struct {
 		Question      string
 		DefaultAnswer string
-		Validate      func(string) error
+		Validator     func(string) error
 	}
 	mock.lockAskString.RLock()
 	calls = mock.calls.AskString

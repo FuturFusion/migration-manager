@@ -82,7 +82,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 		Name: args[0],
 	}
 
-	_, err = c.global.Asker.AskString("Enter a JSON string with any network-specific configuration: ", "", func(s string) error {
+	_, err = c.global.Asker.AskString("Enter a JSON string with any network-specific configuration (empty to skip): ", "", func(s string) error {
 		if s != "" {
 			return json.Unmarshal([]byte(s), &n.Config)
 		}
@@ -255,12 +255,17 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	network.Name, err = c.global.Asker.AskString("Network name: ["+network.Name+"] ", network.Name, nil)
+	network.Name, err = c.global.Asker.AskString("Network name [default="+network.Name+"]: ", network.Name, nil)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.global.Asker.AskString("JSON config: ["+string(configString)+"] ", string(configString), func(s string) error {
+	defaultConfig := "(empty to skip): "
+	if len(configString) > 0 {
+		defaultConfig = "[default=" + string(configString) + "]: "
+	}
+
+	_, err = c.global.Asker.AskString("JSON config "+defaultConfig, string(configString), func(s string) error {
 		if s != "" {
 			return json.Unmarshal([]byte(s), &network.Config)
 		}
