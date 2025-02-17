@@ -1,0 +1,9 @@
+[Unit]
+Description=Migration Manager - Unpack seed data
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/tar zxvf /dev/disk/by-partlabel/seed-data -C /opt/
+
+[Install]
+WantedBy=multi-user.target

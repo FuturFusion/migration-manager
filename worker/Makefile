@@ -21,6 +21,8 @@ test:
 	incus delete -f test-migration-manager-worker || true
 	incus storage volume delete default migration-manager-worker || true
 
+	tar -zcf - -T /dev/null | sudo dd if=/dev/stdin of=mkosi.output/migration-manager-worker.raw seek=616448 bs=512 conv=notrunc
+
 	./pack-image image.tar.gz
 	incus storage volume import default image.tar.gz migration-manager-worker
 	rm image.tar.gz
