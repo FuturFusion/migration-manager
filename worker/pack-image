@@ -1,0 +1,7 @@
+#!/bin/sh
+WORKDIR=$(mktemp -d)
+mkdir -p "${WORKDIR}/backup"
+cp volume.yaml "${WORKDIR}/backup/index.yaml"
+cp mkosi.output/migration-manager-worker.raw "${WORKDIR}/backup/volume.img"
+tar -zcf "${1}" -C "${WORKDIR}" "backup/"
+rm -Rf "${WORKDIR}"

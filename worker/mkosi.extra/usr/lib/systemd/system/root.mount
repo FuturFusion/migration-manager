@@ -1,0 +1,12 @@
+[Unit]
+Description=/root mount
+Before=sysinit.target
+
+[Mount]
+What=tmpfs
+Where=/root
+Type=tmpfs
+Options=size=200M,mode=0700
+
+[Install]
+WantedBy=local-fs.target
