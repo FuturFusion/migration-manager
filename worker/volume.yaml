@@ -1,0 +1,12 @@
+name: migration-manager-worker
+backend: dir
+pool: pool-name
+optimized: false
+optimized_header: false
+type: custom
+config:
+  volume:
+    description: "Temporary image for the migration-manager worker"
+    name: migration-manager-worker
+    type: custom
+    content_type: block
