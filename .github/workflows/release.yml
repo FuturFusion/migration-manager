@@ -5,8 +5,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+'
-  workflow_dispatch:
+      - '*'
 
 permissions:
   contents: write
@@ -22,23 +21,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Go
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes \
+            debian-archive-keyring \
+            make \
+            pipx
+          pipx install git+https://github.com/systemd/mkosi.git@v25.3
+
+      - name: Client - Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: "stable"
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-
-          sudo apt-get install --no-install-recommends -y \
-            libnbd-dev \
-
-      - name: Download go dependencies
+      - name: Client - Download go dependencies
         run: |
           go mod download
 
-      - name: Run GoReleaser
+      - name: Client - Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           distribution: goreleaser
@@ -46,3 +47,36 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: UI - Install dependencies
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: install
+          dir: ui
+
+      - name: UI - Build
+        uses: borales/actions-yarn@v4
+        with:
+          cmd: build
+          dir: ui
+
+      - name: Worker - Build
+        run: |
+          cd worker
+          make
+
+      - name: Prepare uploads
+        run: |
+          mkdir upload
+          cd upload
+
+          tar -zcf ui.tar.gz -C ../ui/dist/ .
+          gzip -9 < ../worker/mkosi.output/migration-manager-worker.raw > migration-manager-worker.img.gz
+
+      - name: Upload binaries to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          file: upload/*
+          overwrite: true
+          file_glob: true
+          release_name: ${{ github.ref_name }}

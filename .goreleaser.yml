@@ -14,7 +14,8 @@ builds:
       - amd64
       - arm64
 archives:
-  - format: binary
+  - formats:
+      - binary
     wrap_in_directory: false
     strip_binary_directory: true
     name_template: >-
