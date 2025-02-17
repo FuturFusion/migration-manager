@@ -79,3 +79,37 @@ jobs:
         with:
           name: UI
           path: ui/dist/
+
+  worker:
+    name: Worker
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install --yes \
+            debian-archive-keyring \
+            make \
+            pipx
+          pipx install git+https://github.com/systemd/mkosi.git@v25.3
+
+      - name: Build the image
+        run: |
+          cd worker
+          make
+
+      - name: Pack as an Incus volume
+        run: |
+          cd worker
+          ./pack-image worker.tar.gz
+
+      - name: Upload worker artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Worker
+          path: worker/worker.tar.gz
