@@ -103,13 +103,8 @@ jobs:
           cd worker
           make
 
-      - name: Pack as an Incus volume
-        run: |
-          cd worker
-          ./pack-image worker.tar.gz
-
       - name: Upload worker artifact
         uses: actions/upload-artifact@v4
         with:
           name: Worker
-          path: worker/worker.tar.gz
+          path: worker/mkosi.output/migration-manager-worker.raw
