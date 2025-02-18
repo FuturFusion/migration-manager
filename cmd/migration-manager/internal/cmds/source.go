@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -239,6 +240,8 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("Unsupported source type %d", s.SourceType)
 		}
 	}
+
+	sort.Sort(util.SortColumnsNaturally(data))
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, sources)
 }
