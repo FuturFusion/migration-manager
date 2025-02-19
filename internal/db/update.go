@@ -19,8 +19,8 @@ CREATE TABLE batches (
     status_string TEXT NOT NULL,
     storage_pool VARCHAR(255) NOT NULL,
     include_expression TEXT NOT NULL,
-    migration_window_start TEXT NOT NULL,
-    migration_window_end TEXT NOT NULL,
+    migration_window_start DATETIME NOT NULL,
+    migration_window_end DATETIME NOT NULL,
     UNIQUE (name),
     FOREIGN KEY(target_id) REFERENCES targets(id)
 );
@@ -130,8 +130,8 @@ CREATE TABLE batches (
     status_string TEXT NOT NULL,
     storage_pool VARCHAR(255) NOT NULL,
     include_expression TEXT NOT NULL,
-    migration_window_start TEXT NOT NULL,
-    migration_window_end TEXT NOT NULL,
+    migration_window_start DATETIME NOT NULL,
+    migration_window_end DATETIME NOT NULL,
     UNIQUE (name),
     FOREIGN KEY(target_id) REFERENCES targets(id)
 );
