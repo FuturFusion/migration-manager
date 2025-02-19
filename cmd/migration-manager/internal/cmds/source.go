@@ -309,7 +309,6 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	src := api.Source{}
-	vmwareProperties := api.VMwareProperties{}
 
 	err = responseToStruct(resp, &src)
 	if err != nil {
@@ -321,6 +320,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	newSourceName := ""
 	switch src.SourceType {
 	case api.SOURCETYPE_VMWARE:
+		vmwareProperties := api.VMwareProperties{}
 		err := json.Unmarshal(src.Properties, &vmwareProperties)
 		if err != nil {
 			return err

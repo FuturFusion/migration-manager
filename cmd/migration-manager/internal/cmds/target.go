@@ -337,7 +337,6 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	tgt := api.Target{}
-	incusProperties := api.IncusProperties{}
 
 	err = responseToStruct(resp, &tgt)
 	if err != nil {
@@ -349,6 +348,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	newTargetName := ""
 	switch tgt.TargetType {
 	case api.TARGETTYPE_INCUS:
+		incusProperties := api.IncusProperties{}
 		err := json.Unmarshal(tgt.Properties, &incusProperties)
 		if err != nil {
 			return err
@@ -416,6 +416,11 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		incusProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? (yes/no) [default="+isInsecure+"]: ", isInsecure)
+		if err != nil {
+			return err
+		}
+
+		tgt.Properties, err = json.Marshal(incusProperties)
 		if err != nil {
 			return err
 		}
