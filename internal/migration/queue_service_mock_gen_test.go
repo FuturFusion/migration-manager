@@ -27,8 +27,8 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			GetByInstanceIDFunc: func(ctx context.Context, id uuid.UUID) (migration.QueueEntry, error) {
 //				panic("mock out the GetByInstanceID method")
 //			},
-//			GetWorkerCommandByInstanceIDFunc: func(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error) {
-//				panic("mock out the GetWorkerCommandByInstanceID method")
+//			NewWorkerCommandByInstanceUUIDFunc: func(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error) {
+//				panic("mock out the NewWorkerCommandByInstanceUUID method")
 //			},
 //		}
 //
@@ -43,8 +43,8 @@ type QueueServiceMock struct {
 	// GetByInstanceIDFunc mocks the GetByInstanceID method.
 	GetByInstanceIDFunc func(ctx context.Context, id uuid.UUID) (migration.QueueEntry, error)
 
-	// GetWorkerCommandByInstanceIDFunc mocks the GetWorkerCommandByInstanceID method.
-	GetWorkerCommandByInstanceIDFunc func(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error)
+	// NewWorkerCommandByInstanceUUIDFunc mocks the NewWorkerCommandByInstanceUUID method.
+	NewWorkerCommandByInstanceUUIDFunc func(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -60,17 +60,17 @@ type QueueServiceMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
-		// GetWorkerCommandByInstanceID holds details about calls to the GetWorkerCommandByInstanceID method.
-		GetWorkerCommandByInstanceID []struct {
+		// NewWorkerCommandByInstanceUUID holds details about calls to the NewWorkerCommandByInstanceUUID method.
+		NewWorkerCommandByInstanceUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
 	}
-	lockGetAll                       sync.RWMutex
-	lockGetByInstanceID              sync.RWMutex
-	lockGetWorkerCommandByInstanceID sync.RWMutex
+	lockGetAll                         sync.RWMutex
+	lockGetByInstanceID                sync.RWMutex
+	lockNewWorkerCommandByInstanceUUID sync.RWMutex
 }
 
 // GetAll calls GetAllFunc.
@@ -141,10 +141,10 @@ func (mock *QueueServiceMock) GetByInstanceIDCalls() []struct {
 	return calls
 }
 
-// GetWorkerCommandByInstanceID calls GetWorkerCommandByInstanceIDFunc.
-func (mock *QueueServiceMock) GetWorkerCommandByInstanceID(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error) {
-	if mock.GetWorkerCommandByInstanceIDFunc == nil {
-		panic("QueueServiceMock.GetWorkerCommandByInstanceIDFunc: method is nil but QueueService.GetWorkerCommandByInstanceID was just called")
+// NewWorkerCommandByInstanceUUID calls NewWorkerCommandByInstanceUUIDFunc.
+func (mock *QueueServiceMock) NewWorkerCommandByInstanceUUID(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error) {
+	if mock.NewWorkerCommandByInstanceUUIDFunc == nil {
+		panic("QueueServiceMock.NewWorkerCommandByInstanceUUIDFunc: method is nil but QueueService.NewWorkerCommandByInstanceUUID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -153,17 +153,17 @@ func (mock *QueueServiceMock) GetWorkerCommandByInstanceID(ctx context.Context, 
 		Ctx: ctx,
 		ID:  id,
 	}
-	mock.lockGetWorkerCommandByInstanceID.Lock()
-	mock.calls.GetWorkerCommandByInstanceID = append(mock.calls.GetWorkerCommandByInstanceID, callInfo)
-	mock.lockGetWorkerCommandByInstanceID.Unlock()
-	return mock.GetWorkerCommandByInstanceIDFunc(ctx, id)
+	mock.lockNewWorkerCommandByInstanceUUID.Lock()
+	mock.calls.NewWorkerCommandByInstanceUUID = append(mock.calls.NewWorkerCommandByInstanceUUID, callInfo)
+	mock.lockNewWorkerCommandByInstanceUUID.Unlock()
+	return mock.NewWorkerCommandByInstanceUUIDFunc(ctx, id)
 }
 
-// GetWorkerCommandByInstanceIDCalls gets all the calls that were made to GetWorkerCommandByInstanceID.
+// NewWorkerCommandByInstanceUUIDCalls gets all the calls that were made to NewWorkerCommandByInstanceUUID.
 // Check the length with:
 //
-//	len(mockedQueueService.GetWorkerCommandByInstanceIDCalls())
-func (mock *QueueServiceMock) GetWorkerCommandByInstanceIDCalls() []struct {
+//	len(mockedQueueService.NewWorkerCommandByInstanceUUIDCalls())
+func (mock *QueueServiceMock) NewWorkerCommandByInstanceUUIDCalls() []struct {
 	Ctx context.Context
 	ID  uuid.UUID
 } {
@@ -171,8 +171,8 @@ func (mock *QueueServiceMock) GetWorkerCommandByInstanceIDCalls() []struct {
 		Ctx context.Context
 		ID  uuid.UUID
 	}
-	mock.lockGetWorkerCommandByInstanceID.RLock()
-	calls = mock.calls.GetWorkerCommandByInstanceID
-	mock.lockGetWorkerCommandByInstanceID.RUnlock()
+	mock.lockNewWorkerCommandByInstanceUUID.RLock()
+	calls = mock.calls.NewWorkerCommandByInstanceUUID
+	mock.lockNewWorkerCommandByInstanceUUID.RUnlock()
 	return calls
 }
