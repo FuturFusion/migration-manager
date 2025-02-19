@@ -279,7 +279,7 @@ func TestInstanceService_GetByInstanceID(t *testing.T) {
 	}
 }
 
-func TestInstanceService_GetWorkerCommandByInstanceID(t *testing.T) {
+func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 	tests := []struct {
 		name                           string
 		uuidArg                        uuid.UUID
@@ -603,7 +603,7 @@ func TestInstanceService_GetWorkerCommandByInstanceID(t *testing.T) {
 			queueSvc := migration.NewQueueService(batchSvc, instanceSvc, sourceSvc)
 
 			// Run test
-			workerCommand, err := queueSvc.GetWorkerCommandByInstanceID(context.Background(), tc.uuidArg)
+			workerCommand, err := queueSvc.NewWorkerCommandByInstanceUUID(context.Background(), tc.uuidArg)
 
 			// Assert
 			tc.assertErr(t, err)
