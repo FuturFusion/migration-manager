@@ -11,5 +11,5 @@ import (
 type QueueService interface {
 	GetAll(ctx context.Context) (QueueEntries, error)
 	GetByInstanceID(ctx context.Context, id uuid.UUID) (QueueEntry, error)
-	GetWorkerCommandByInstanceID(ctx context.Context, id uuid.UUID) (WorkerCommand, error)
+	NewWorkerCommandByInstanceUUID(ctx context.Context, id uuid.UUID) (WorkerCommand, error)
 }

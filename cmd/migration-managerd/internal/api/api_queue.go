@@ -30,21 +30,26 @@ var queueWorkerCmd = APIEndpoint{
 	Path: "queue/{uuid}/worker",
 
 	// Endpoints used by the migration worker which authenticates via a randomly-generated UUID unique to each instance.
-	Get: APIEndpointAction{Handler: queueWorkerGet, AccessHandler: allowAuthenticated},
-	Put: APIEndpointAction{Handler: queueWorkerPut, AccessHandler: allowAuthenticated},
+	Post: APIEndpointAction{Handler: queueWorkerPost, AccessHandler: allowAuthenticated},
+}
+
+var queueWorkerCommandCmd = APIEndpoint{
+	Path: "queue/{uuid}/worker/command",
+
+	Post: APIEndpointAction{Handler: queueWorkerCommandPost, AccessHandler: allowAuthenticated},
 }
 
 // Authenticate a migration worker. Allow a GET for an existing instance so the worker can get its instructions,
 // and for PUT require the secret token to be valid when the worker reports back.
 func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
 	// Only allow GET and PUT methods.
-	if r.Method != http.MethodGet && r.Method != http.MethodPut {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
 		return false
 	}
 
 	// Limit to just queue status updates
 	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 4 {
+	if len(pathParts) < 5 {
 		return false
 	}
 
@@ -64,7 +69,7 @@ func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
 		return false
 	}
 
-	if r.Method == http.MethodPut {
+	if r.Method == http.MethodPost {
 		// Get the secret token.
 		err = r.ParseForm()
 		if err != nil {
@@ -256,11 +261,11 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	}, queueItem)
 }
 
-// swagger:operation GET /1.0/queue/{uuid}/worker queue queue_worker_get
+// swagger:operation POST /1.0/queue/{uuid}/worker/command queue queue_worker_command_post
 //
-//	Get worker command for instance
+//	Generate next worker command for instance
 //
-//	Gets a worker command, if any, for this queued instance.
+//	Generates the next worker command, if any, for this queued instance.
 //
 //	---
 //	produces:
@@ -290,7 +295,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
+func queueWorkerCommandPost(d *Daemon, r *http.Request) response.Response {
 	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
@@ -298,7 +303,7 @@ func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	workerCommand, err := d.queue.GetWorkerCommandByInstanceID(r.Context(), UUID)
+	workerCommand, err := d.queue.NewWorkerCommandByInstanceUUID(r.Context(), UUID)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -325,7 +330,7 @@ func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 	}, workerCommand)
 }
 
-// swagger:operation PUT /1.0/queue/{uuid}/worker queue queue_worker_put
+// swagger:operation POST /1.0/queue/{uuid}/worker queue queue_worker_post
 //
 //	Sets worker response for instance
 //
@@ -354,7 +359,7 @@ func queueWorkerGet(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func queueWorkerPut(d *Daemon, r *http.Request) response.Response {
+func queueWorkerPost(d *Daemon, r *http.Request) response.Response {
 	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)

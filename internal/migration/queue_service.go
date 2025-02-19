@@ -110,7 +110,9 @@ func (s queueService) GetByInstanceID(ctx context.Context, id uuid.UUID) (QueueE
 	return queueItem, nil
 }
 
-func (s queueService) GetWorkerCommandByInstanceID(ctx context.Context, id uuid.UUID) (WorkerCommand, error) {
+// NewWorkerCommandByInstanceID gets the next worker command for the instance with the given UUID, and updates the instance state accordingly.
+// An instance must be IDLE to have a next worker command.
+func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uuid.UUID) (WorkerCommand, error) {
 	var workerCommand WorkerCommand
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -153,33 +155,30 @@ func (s queueService) GetWorkerCommandByInstanceID(ctx context.Context, id uuid.
 		}
 
 		// Determine what action, if any, the worker should start.
+		newStatus := instance.MigrationStatus
+		newStatusString := instance.MigrationStatusString
 		switch {
 		case instance.NeedsDiskImport && disksSupportDifferentialSync(instance.Disks):
 			// If we can do a background disk sync, kick it off.
 			workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
 
-			instance.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
-			instance.MigrationStatusString = instance.MigrationStatus.String()
+			newStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
+			newStatusString = api.MIGRATIONSTATUS_BACKGROUND_IMPORT.String()
 
-		case !batch.MigrationWindowStart.IsZero() && batch.MigrationWindowStart.Before(time.Now().UTC()):
-			// If a migration window has been defined, and we have passed the start time, begin the final migration.
+		case batch.MigrationWindowStart.IsZero() || batch.MigrationWindowStart.Before(time.Now().UTC()):
+			// If a migration window has not been defined, or it has and we have passed the start time, begin the final migration.
 			workerCommand.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
 
-			instance.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
-			instance.MigrationStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
-
-		case batch.MigrationWindowStart.IsZero():
-			// If no migration window start time has been defined, go ahead and begin the final migration.
-			workerCommand.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
-
-			instance.MigrationStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
-			instance.MigrationStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
+			newStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
+			newStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
 		}
 
-		// Update instance in the database.
-		_, err = s.instance.UpdateStatusByUUID(ctx, id, instance.MigrationStatus, instance.MigrationStatusString, instance.NeedsDiskImport)
-		if err != nil {
-			return fmt.Errorf("Failed updating instance '%s': %w", instance.UUID, err)
+		if newStatus != instance.MigrationStatus || newStatusString != instance.MigrationStatusString {
+			// Update instance in the database.
+			_, err = s.instance.UpdateStatusByUUID(ctx, id, newStatus, newStatusString, instance.NeedsDiskImport)
+			if err != nil {
+				return fmt.Errorf("Failed updating instance '%s': %w", instance.UUID, err)
+			}
 		}
 
 		return nil
