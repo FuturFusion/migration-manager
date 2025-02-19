@@ -6,6 +6,7 @@ require (
 	github.com/Rican7/retry v0.3.1
 	github.com/expr-lang/expr v1.16.9
 	github.com/flosch/pongo2/v4 v4.0.2
+	github.com/fvbommel/sortorder v1.1.0
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.14.0
 	github.com/hexdigest/gowrap v1.4.1

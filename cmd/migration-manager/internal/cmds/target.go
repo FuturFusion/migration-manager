@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -268,6 +269,8 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("Unsupported target type %d", t.TargetType)
 		}
 	}
+
+	sort.Sort(util.SortColumnsNaturally(data))
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, targets)
 }

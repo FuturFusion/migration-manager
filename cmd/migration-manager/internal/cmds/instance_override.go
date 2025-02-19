@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -224,6 +225,8 @@ func (c *cmdInstanceOverrideShow) Run(cmd *cobra.Command, args []string) error {
 	// Render the table.
 	header := []string{"UUID", "Last Update", "Comment", "Migration Disabled", "Num vCPUs", "Memory"}
 	data := [][]string{{override.UUID.String(), override.LastUpdate.String(), override.Comment, strconv.FormatBool(override.DisableMigration), numCPUSDisplay, memoryDisplay}}
+
+	sort.Sort(util.SortColumnsNaturally(data))
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, override)
 }

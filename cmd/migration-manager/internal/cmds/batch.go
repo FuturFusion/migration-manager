@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 	"time"
 
@@ -240,6 +241,8 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 
 		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.Target, b.TargetProject, b.StoragePool, b.IncludeExpression, startString, endString})
 	}
+
+	sort.Sort(util.SortColumnsNaturally(data))
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, batches)
 }

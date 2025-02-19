@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"net/http"
+	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -100,6 +101,8 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 
 		data = append(data, row)
 	}
+
+	sort.Sort(util.SortColumnsNaturally(data))
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, queueEntries)
 }

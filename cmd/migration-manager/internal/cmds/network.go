@@ -3,6 +3,7 @@ package cmds
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 
 	"github.com/spf13/cobra"
 
@@ -164,6 +165,8 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 
 		data = append(data, []string{n.Name, string(configString)})
 	}
+
+	sort.Sort(util.SortColumnsNaturally(data))
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, networks)
 }

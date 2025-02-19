@@ -3,6 +3,7 @@ package cmds
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -160,6 +161,8 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 		data = append(data, row)
 	}
+
+	sort.Sort(util.SortColumnsNaturally(data))
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, instances)
 }
