@@ -278,8 +278,22 @@ func TestRun(t *testing.T) {
 
 			// Create migration-managerd double.
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				switch r.Method {
-				case http.MethodGet:
+				switch r.RequestURI {
+				case "/1.0":
+					if r.Method != http.MethodGet {
+						cancel(fmt.Errorf("Unsupported method %q", r.Method))
+						return
+					}
+
+					fallthrough
+				case fmt.Sprintf("/1.0/queue/%s/worker/command", uuid):
+					if r.RequestURI != "/1.0" {
+						if r.Method != http.MethodPost {
+							cancel(fmt.Errorf("Unsupported method %q", r.Method))
+							return
+						}
+					}
+
 					if len(tc.migrationManagerdResponses) == 1 {
 						tc.migrationManagerdResponses[0](tc.instanceSpec, cancel, w, r)
 						return
@@ -289,8 +303,12 @@ func TestRun(t *testing.T) {
 					tc.migrationManagerdResponses = tc.migrationManagerdResponses[1:]
 
 					respFunc(tc.instanceSpec, cancel, w, r)
+				case fmt.Sprintf("/1.0/queue/%s/worker?secret=", uuid):
+					if r.Method != http.MethodPost {
+						cancel(fmt.Errorf("Unsupported method %q", r.Method))
+						return
+					}
 
-				case http.MethodPut:
 					var resp api.WorkerResponse
 					err := json.NewDecoder(r.Body).Decode(&resp)
 					if err != nil {
@@ -313,6 +331,9 @@ func TestRun(t *testing.T) {
 					}
 
 					_, _ = w.Write([]byte(`{}`))
+				default:
+					cancel(fmt.Errorf("Unsupported request %q", r.RequestURI))
+					return
 				}
 			}))
 			defer ts.Close()
