@@ -28,16 +28,6 @@ VALUES (:name, :target_id, :target_project, :status, :status_string, :storage_po
 RETURNING id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end;
 `
 
-	marshalledMigrationWindowStart, err := in.MigrationWindowStart.MarshalText()
-	if err != nil {
-		return migration.Batch{}, err
-	}
-
-	marshalledMigrationWindowEnd, err := in.MigrationWindowEnd.MarshalText()
-	if err != nil {
-		return migration.Batch{}, err
-	}
-
 	row := b.db.QueryRowContext(ctx, sqlInsert,
 		sql.Named("name", in.Name),
 		sql.Named("target_id", in.TargetID),
@@ -46,8 +36,8 @@ RETURNING id, name, target_id, target_project, status, status_string, storage_po
 		sql.Named("status_string", in.StatusString),
 		sql.Named("storage_pool", in.StoragePool),
 		sql.Named("include_expression", in.IncludeExpression),
-		sql.Named("migration_window_start", marshalledMigrationWindowStart),
-		sql.Named("migration_window_end", marshalledMigrationWindowEnd),
+		sql.Named("migration_window_start", in.MigrationWindowStart),
+		sql.Named("migration_window_end", in.MigrationWindowEnd),
 	)
 	if row.Err() != nil {
 		return migration.Batch{}, mapErr(row.Err())
@@ -186,16 +176,6 @@ WHERE id=:id
 RETURNING id, name, target_id, target_project, status, status_string, storage_pool, include_expression, migration_window_start, migration_window_end;
 `
 
-	marshalledMigrationWindowStart, err := in.MigrationWindowStart.MarshalText()
-	if err != nil {
-		return migration.Batch{}, err
-	}
-
-	marshalledMigrationWindowEnd, err := in.MigrationWindowEnd.MarshalText()
-	if err != nil {
-		return migration.Batch{}, err
-	}
-
 	row := b.db.QueryRowContext(ctx, sqlUpdate,
 		sql.Named("id", in.ID),
 		sql.Named("name", in.Name),
@@ -205,8 +185,8 @@ RETURNING id, name, target_id, target_project, status, status_string, storage_po
 		sql.Named("status_string", in.StatusString),
 		sql.Named("storage_pool", in.StoragePool),
 		sql.Named("include_expression", in.IncludeExpression),
-		sql.Named("migration_window_start", marshalledMigrationWindowStart),
-		sql.Named("migration_window_end", marshalledMigrationWindowEnd),
+		sql.Named("migration_window_start", in.MigrationWindowStart),
+		sql.Named("migration_window_end", in.MigrationWindowEnd),
 	)
 	if row.Err() != nil {
 		return migration.Batch{}, mapErr(row.Err())
@@ -236,8 +216,6 @@ RETURNING id, name, target_id, target_project, status, status_string, storage_po
 
 func scanBatch(row interface{ Scan(dest ...any) error }) (migration.Batch, error) {
 	var batch migration.Batch
-	var marshalledMigrationWindowStart []byte
-	var marshalledMigrationWindowEnd []byte
 	err := row.Scan(
 		&batch.ID,
 		&batch.Name,
@@ -247,21 +225,11 @@ func scanBatch(row interface{ Scan(dest ...any) error }) (migration.Batch, error
 		&batch.StatusString,
 		&batch.StoragePool,
 		&batch.IncludeExpression,
-		&marshalledMigrationWindowStart,
-		&marshalledMigrationWindowEnd,
+		&batch.MigrationWindowStart,
+		&batch.MigrationWindowEnd,
 	)
 	if err != nil {
 		return migration.Batch{}, mapErr(err)
-	}
-
-	err = batch.MigrationWindowStart.UnmarshalText(marshalledMigrationWindowStart)
-	if err != nil {
-		return migration.Batch{}, err
-	}
-
-	err = batch.MigrationWindowEnd.UnmarshalText(marshalledMigrationWindowEnd)
-	if err != nil {
-		return migration.Batch{}, err
 	}
 
 	return batch, nil
