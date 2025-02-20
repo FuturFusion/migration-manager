@@ -24,18 +24,18 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-func (d *Daemon) runPeriodicTask(f func() bool, interval time.Duration) {
+func (d *Daemon) runPeriodicTask(ctx context.Context, task string, f func(context.Context) error, interval time.Duration) {
 	go func() {
 		for {
-			done := f()
-			if done {
-				return
+			err := f(ctx)
+			if err != nil {
+				slog.Error("Failed to run periodic task", slog.String("task", task), logger.Err(err))
 			}
 
 			t := time.NewTimer(interval)
 
 			select {
-			case <-d.ShutdownCtx.Done():
+			case <-ctx.Done():
 				t.Stop()
 				return
 			case <-t.C:
