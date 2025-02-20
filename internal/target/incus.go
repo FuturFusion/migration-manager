@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 	incus "github.com/lxc/incus/v6/client"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -62,6 +64,12 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		TLSClientKey:  t.TLSClientKey,
 		TLSClientCert: t.TLSClientCert,
 		OIDCTokens:    t.OIDCTokens,
+	}
+
+	// Set expected TLS server certificate if configured and matches the provided trusted fingerprint.
+	if t.ServerCertificate != nil && incusTLS.CertFingerprint(t.ServerCertificate) == strings.ToLower(strings.ReplaceAll(t.TrustedServerCertificateFingerprint, ":", "")) {
+		serverCrt := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: t.ServerCertificate.Raw})
+		t.incusConnectionArgs.TLSServerCert = string(serverCrt)
 	}
 
 	client, err := incus.ConnectIncusWithContext(ctx, t.Endpoint, t.incusConnectionArgs)
