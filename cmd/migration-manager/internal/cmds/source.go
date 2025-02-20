@@ -158,7 +158,9 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 
 		connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
 
-		if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+			cmd.Printf("Successfully added new source %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the source to correct the issue.\n", sourceName, metadata["certFingerprint"])
+		} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
 			cmd.Printf("Successfully added new source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.\n", sourceName, connectivityStatus.String())
 		} else {
 			cmd.Printf("Successfully added new source %q.\n", sourceName)
@@ -384,7 +386,9 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 
 	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
 
-	if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+	if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		cmd.Printf("Successfully updated source %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the source to correct the issue.\n", newSourceName, metadata["certFingerprint"])
+	} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
 		cmd.Printf("Successfully updated source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.\n", newSourceName, connectivityStatus.String())
 	} else {
 		cmd.Printf("Successfully updated source %q.\n", newSourceName)
