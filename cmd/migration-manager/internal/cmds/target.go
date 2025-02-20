@@ -59,7 +59,7 @@ func (c *CmdTarget) Command() *cobra.Command {
 type cmdTargetAdd struct {
 	global *CmdGlobal
 
-	flagInsecure bool
+	flagTrustedServerCertificateFingerprint string
 }
 
 func (c *cmdTargetAdd) Command() *cobra.Command {
@@ -77,7 +77,7 @@ func (c *cmdTargetAdd) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
-	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the target")
+	cmd.Flags().StringVar(&c.flagTrustedServerCertificateFingerprint, "trusted-cert-fingerprint", "", "Trusted SHA256 fingerprint of the target's TLS certificate")
 
 	return cmd
 }
@@ -111,8 +111,8 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 	switch targetType {
 	case "incus":
 		incusProperties := api.IncusProperties{
-			Endpoint: targetEndpoint,
-			Insecure: c.flagInsecure,
+			Endpoint:                            targetEndpoint,
+			TrustedServerCertificateFingerprint: c.flagTrustedServerCertificateFingerprint,
 		}
 
 		t := api.Target{
@@ -238,7 +238,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Type", "Endpoint", "Connectivity Status", "Auth Type", "Insecure"}
+	header := []string{"Name", "Type", "Endpoint", "Connectivity Status", "Auth Type", "Trusted TLS Cert SHA256 Fingerprint"}
 	data := [][]string{}
 
 	for _, t := range targets {
@@ -255,7 +255,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 				authType = "TLS"
 			}
 
-			data = append(data, []string{t.Name, t.TargetType.String(), incusProperties.Endpoint, incusProperties.ConnectivityStatus.String(), authType, strconv.FormatBool(incusProperties.Insecure)})
+			data = append(data, []string{t.Name, t.TargetType.String(), incusProperties.Endpoint, incusProperties.ConnectivityStatus.String(), authType, incusProperties.TrustedServerCertificateFingerprint})
 		default:
 			return fmt.Errorf("Unsupported target type %d", t.TargetType)
 		}
@@ -410,12 +410,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		isInsecure := "no"
-		if incusProperties.Insecure {
-			isInsecure = "yes"
-		}
-
-		incusProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? (yes/no) [default="+isInsecure+"]: ", isInsecure)
+		incusProperties.TrustedServerCertificateFingerprint, err = c.global.Asker.AskString("Manually-set trusted TLS cert SHA256 fingerprint ["+incusProperties.TrustedServerCertificateFingerprint+"]: ", incusProperties.TrustedServerCertificateFingerprint, validateSHA256Format)
 		if err != nil {
 			return err
 		}

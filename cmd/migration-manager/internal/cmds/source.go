@@ -59,7 +59,7 @@ func (c *CmdSource) Command() *cobra.Command {
 type cmdSourceAdd struct {
 	global *CmdGlobal
 
-	flagInsecure bool
+	flagTrustedServerCertificateFingerprint string
 }
 
 func (c *cmdSourceAdd) Command() *cobra.Command {
@@ -77,7 +77,7 @@ func (c *cmdSourceAdd) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
-	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the source")
+	cmd.Flags().StringVar(&c.flagTrustedServerCertificateFingerprint, "trusted-cert-fingerprint", "", "Trusted SHA256 fingerprint of the source's TLS certificate")
 
 	return cmd
 }
@@ -118,10 +118,10 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		sourcePassword := c.global.Asker.AskPasswordOnce("Please enter password for endpoint '" + sourceEndpoint + "': ")
 
 		vmwareProperties := api.VMwareProperties{
-			Endpoint: sourceEndpoint,
-			Insecure: c.flagInsecure,
-			Username: sourceUsername,
-			Password: sourcePassword,
+			Endpoint:                            sourceEndpoint,
+			TrustedServerCertificateFingerprint: c.flagTrustedServerCertificateFingerprint,
+			Username:                            sourceUsername,
+			Password:                            sourcePassword,
 		}
 
 		s := api.Source{
@@ -213,7 +213,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Type", "Endpoint", "Connectivity Status", "Username", "Insecure"}
+	header := []string{"Name", "Type", "Endpoint", "Connectivity Status", "Username", "Trusted TLS Cert SHA256 Fingerprint"}
 	data := [][]string{}
 
 	for _, s := range sources {
@@ -225,7 +225,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			data = append(data, []string{s.Name, s.SourceType.String(), vmwareProperties.Endpoint, vmwareProperties.ConnectivityStatus.String(), vmwareProperties.Username, strconv.FormatBool(vmwareProperties.Insecure)})
+			data = append(data, []string{s.Name, s.SourceType.String(), vmwareProperties.Endpoint, vmwareProperties.ConnectivityStatus.String(), vmwareProperties.Username, vmwareProperties.TrustedServerCertificateFingerprint})
 		case api.SOURCETYPE_COMMON:
 			// Nothing to output in this case
 		default:
@@ -345,12 +345,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 
 		vmwareProperties.Password = c.global.Asker.AskPasswordOnce("Password: ")
 
-		isInsecure := "no"
-		if vmwareProperties.Insecure {
-			isInsecure = "yes"
-		}
-
-		vmwareProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? (yes/no) [default="+isInsecure+"]: ", isInsecure)
+		vmwareProperties.TrustedServerCertificateFingerprint, err = c.global.Asker.AskString("Manually-set trusted TLS cert SHA256 fingerprint ["+vmwareProperties.TrustedServerCertificateFingerprint+"]: ", vmwareProperties.TrustedServerCertificateFingerprint, validateSHA256Format)
 		if err != nil {
 			return err
 		}

@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -356,6 +357,22 @@ func validateAbsFilePathExists(s string) error {
 
 	if !util.PathExists(s) {
 		return fmt.Errorf("Cannot read file")
+	}
+
+	return nil
+}
+
+func validateSHA256Format(s string) error {
+	if s == "" {
+		return nil
+	}
+
+	canonicalFingerprint := strings.ToLower(strings.ReplaceAll(s, ":", ""))
+
+	matches, _ := regexp.Match(`^[[:xdigit:]]{64}$`, []byte(canonicalFingerprint))
+
+	if !matches {
+		return fmt.Errorf("Invalid SHA256 fingerprint")
 	}
 
 	return nil
