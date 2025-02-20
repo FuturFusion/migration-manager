@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
@@ -71,7 +72,13 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 	endpointURL.User = url.UserPassword(s.Username, s.Password)
 
-	s.govmomiClient, err = soapWithKeepalive(ctx, endpointURL, s.ServerCertificate)
+	serverCert := s.ServerCertificate
+	// Unset TLS server certificate if configured but doesn't match the provided trusted fingerprint.
+	if serverCert != nil && incusTLS.CertFingerprint(s.ServerCertificate) != strings.ToLower(strings.ReplaceAll(s.TrustedServerCertificateFingerprint, ":", "")) {
+		serverCert = nil
+	}
+
+	s.govmomiClient, err = soapWithKeepalive(ctx, endpointURL, serverCert)
 	if err != nil {
 		return err
 	}

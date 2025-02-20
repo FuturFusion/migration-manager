@@ -2,11 +2,13 @@ package api
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 
@@ -216,7 +218,12 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 
 	// If the target is using OIDC, get the authentication URL and return it to the user.
 	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
-		u, err := getOIDCAuthURL(d, currentTarget.Name, currentTarget.GetEndpoint())
+		trustedCert := currentTarget.GetServerCertificate()
+		if trustedCert != nil && incusTLS.CertFingerprint(trustedCert) != strings.ToLower(strings.ReplaceAll(currentTarget.GetTrustedServerCertificateFingerprint(), ":", "")) {
+			trustedCert = nil
+		}
+
+		u, err := getOIDCAuthURL(d, currentTarget.Name, currentTarget.GetEndpoint(), trustedCert)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -227,14 +234,14 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/targets/"+target.Name)
 }
 
-func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string) (string, error) {
+func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCert *x509.Certificate) (string, error) {
 	apiEndpoint, _ := url.JoinPath(endpointURL, "/1.0")
 	req, err := http.NewRequest(http.MethodGet, apiEndpoint, nil)
 	if err != nil {
 		return "", err
 	}
 
-	oidcClient := oidc.NewOIDCClient("", nil) // TODO -- handle TLS errors if insecure
+	oidcClient := oidc.NewOIDCClient("", trustedCert)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
 	tokenURL, resp, provider, err := oidcClient.FetchNewIncusTokenURL(req)
 	if err != nil {
@@ -434,7 +441,12 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 
 	// If the target is using OIDC, get the authentication URL and return it to the user.
 	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
-		u, err := getOIDCAuthURL(d, currentTarget.Name, currentTarget.GetEndpoint())
+		trustedCert := currentTarget.GetServerCertificate()
+		if trustedCert != nil && incusTLS.CertFingerprint(trustedCert) != strings.ToLower(strings.ReplaceAll(currentTarget.GetTrustedServerCertificateFingerprint(), ":", "")) {
+			trustedCert = nil
+		}
+
+		u, err := getOIDCAuthURL(d, currentTarget.Name, currentTarget.GetEndpoint(), trustedCert)
 		if err != nil {
 			return response.SmartError(err)
 		}
