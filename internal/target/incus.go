@@ -2,6 +2,7 @@ package target
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -57,11 +58,10 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	}
 
 	t.incusConnectionArgs = &incus.ConnectionArgs{
-		AuthType:           authType,
-		TLSClientKey:       t.TLSClientKey,
-		TLSClientCert:      t.TLSClientCert,
-		OIDCTokens:         t.OIDCTokens,
-		InsecureSkipVerify: t.Insecure,
+		AuthType:      authType,
+		TLSClientKey:  t.TLSClientKey,
+		TLSClientCert: t.TLSClientCert,
+		OIDCTokens:    t.OIDCTokens,
 	}
 
 	client, err := incus.ConnectIncusWithContext(ctx, t.Endpoint, t.incusConnectionArgs)
@@ -112,13 +112,8 @@ func (t *InternalIncusTarget) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (t *InternalIncusTarget) SetInsecureTLS(insecure bool) error {
-	if t.isConnected {
-		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
-	}
-
-	t.Insecure = insecure
-	return nil
+func (t *InternalIncusTarget) WithAdditionalRootCertificate(rootCert *x509.Certificate) {
+	t.ServerCertificate = rootCert
 }
 
 func (t *InternalIncusTarget) SetClientTLSCredentials(key string, cert string) error {
