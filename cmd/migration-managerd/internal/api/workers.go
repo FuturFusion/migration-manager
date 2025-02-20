@@ -1095,7 +1095,7 @@ func (d *Daemon) checkSourceConnectivity() {
 
 		if untrustedCert != nil && s.ServerCertificate == nil {
 			// We got an untrusted certificate; if one hasn't already been set, add it to this source.
-			s.ServerCertificate = untrustedCert
+			s.ServerCertificate = untrustedCert.Raw
 			src.SetServerCertificate(untrustedCert)
 		}
 
@@ -1165,7 +1165,7 @@ func (d *Daemon) checkTargetConnectivity() {
 
 		if untrustedCert != nil && it.ServerCertificate == nil {
 			// We got an untrusted certificate; if one hasn't already been set, add it to this target.
-			it.ServerCertificate = untrustedCert
+			it.ServerCertificate = untrustedCert.Raw
 			tgt.SetServerCertificate(untrustedCert)
 		}
 

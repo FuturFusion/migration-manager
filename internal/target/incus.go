@@ -66,9 +66,19 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		OIDCTokens:    t.OIDCTokens,
 	}
 
+	var serverCert *x509.Certificate
+	var err error
+
+	if len(t.ServerCertificate) > 0 {
+		serverCert, err = x509.ParseCertificate(t.ServerCertificate)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Set expected TLS server certificate if configured and matches the provided trusted fingerprint.
-	if t.ServerCertificate != nil && incusTLS.CertFingerprint(t.ServerCertificate) == strings.ToLower(strings.ReplaceAll(t.TrustedServerCertificateFingerprint, ":", "")) {
-		serverCrt := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: t.ServerCertificate.Raw})
+	if serverCert != nil && incusTLS.CertFingerprint(serverCert) == strings.ToLower(strings.ReplaceAll(t.TrustedServerCertificateFingerprint, ":", "")) {
+		serverCrt := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: serverCert.Raw})
 		t.incusConnectionArgs.TLSServerCert = string(serverCrt)
 	}
 
@@ -121,7 +131,7 @@ func (t *InternalIncusTarget) Disconnect(ctx context.Context) error {
 }
 
 func (t *InternalIncusTarget) WithAdditionalRootCertificate(rootCert *x509.Certificate) {
-	t.ServerCertificate = rootCert
+	t.ServerCertificate = rootCert.Raw
 }
 
 func (t *InternalIncusTarget) SetClientTLSCredentials(key string, cert string) error {

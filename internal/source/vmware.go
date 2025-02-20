@@ -72,9 +72,17 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 	endpointURL.User = url.UserPassword(s.Username, s.Password)
 
-	serverCert := s.ServerCertificate
+	var serverCert *x509.Certificate
+
+	if len(s.ServerCertificate) > 0 {
+		serverCert, err = x509.ParseCertificate(s.ServerCertificate)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Unset TLS server certificate if configured but doesn't match the provided trusted fingerprint.
-	if serverCert != nil && incusTLS.CertFingerprint(s.ServerCertificate) != strings.ToLower(strings.ReplaceAll(s.TrustedServerCertificateFingerprint, ":", "")) {
+	if serverCert != nil && incusTLS.CertFingerprint(serverCert) != strings.ToLower(strings.ReplaceAll(s.TrustedServerCertificateFingerprint, ":", "")) {
 		serverCert = nil
 	}
 
@@ -111,7 +119,7 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 }
 
 func (s *InternalVMwareSource) WithAdditionalRootCertificate(rootCert *x509.Certificate) {
-	s.ServerCertificate = rootCert
+	s.ServerCertificate = rootCert.Raw
 }
 
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {
