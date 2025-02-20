@@ -243,7 +243,7 @@ func (d *Daemon) Start() error {
 	})
 
 	group.Go(func() error {
-		slog.Info("Start http listener", slog.Any("addr", d.server.Addr))
+		slog.Info("Start https listener", slog.Any("addr", d.server.Addr))
 
 		certFile := filepath.Join(d.os.VarDir, "server.crt")
 		keyFile := filepath.Join(d.os.VarDir, "server.key")
