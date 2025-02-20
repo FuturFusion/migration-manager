@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
+
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
@@ -203,6 +205,11 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 	metadata := make(map[string]string)
 	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentSource.GetExternalConnectivityStatus())
 
+	// If waiting on fingerprint confirmation, return it to the user.
+	if currentSource.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentSource.GetServerCertificate())
+	}
+
 	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+source.Name)
 }
 
@@ -372,6 +379,11 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 
 	metadata := make(map[string]string)
 	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentSource.GetExternalConnectivityStatus())
+
+	// If waiting on fingerprint confirmation, return it to the user.
+	if currentSource.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentSource.GetServerCertificate())
+	}
 
 	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+source.Name)
 }

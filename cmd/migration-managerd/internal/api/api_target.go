@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"strconv"
 
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
+
 	"github.com/FuturFusion/migration-manager/internal/client/oidc"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
@@ -206,6 +208,11 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 
 	metadata := make(map[string]string)
 	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentTarget.GetExternalConnectivityStatus())
+
+	// If waiting on fingerprint confirmation, return it to the user.
+	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentTarget.GetServerCertificate())
+	}
 
 	// If the target is using OIDC, get the authentication URL and return it to the user.
 	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
@@ -419,6 +426,11 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 
 	metadata := make(map[string]string)
 	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentTarget.GetExternalConnectivityStatus())
+
+	// If waiting on fingerprint confirmation, return it to the user.
+	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentTarget.GetServerCertificate())
+	}
 
 	// If the target is using OIDC, get the authentication URL and return it to the user.
 	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {

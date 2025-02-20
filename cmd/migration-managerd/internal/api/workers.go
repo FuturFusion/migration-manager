@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -17,6 +18,7 @@ import (
 	"github.com/google/uuid"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
@@ -1088,8 +1090,27 @@ func (d *Daemon) checkSourceConnectivity() {
 			continue
 		}
 
-		// Test the connectivity of this source.
-		src.SetExternalConnectivityStatus(mapErrorToStatus(s.Connect(ctx)))
+		// Do a basic connectivity check.
+		status, untrustedCert := doBasicConnectivityCheck(s.Endpoint, s.TrustedServerCertificateFingerprint)
+
+		if untrustedCert != nil && s.ServerCertificate == nil {
+			// We got an untrusted certificate; if one hasn't already been set, add it to this source.
+			s.ServerCertificate = untrustedCert
+			src.SetServerCertificate(untrustedCert)
+		}
+
+		if status == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+			// Need to wait for user to confirm if the fingerprint is trusted or not.
+			src.SetExternalConnectivityStatus(status)
+		} else if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			// Some other basic connectivity issue occurred.
+			src.SetExternalConnectivityStatus(status)
+		} else {
+			// Basic connectivity is good, now test authentication.
+
+			// Test the connectivity of this source.
+			src.SetExternalConnectivityStatus(mapErrorToStatus(s.Connect(ctx)))
+		}
 
 		// Update the connectivity status in the database.
 		_, err = d.source.UpdateByID(ctx, src)
@@ -1121,8 +1142,8 @@ func (d *Daemon) checkTargetConnectivity() {
 	}
 
 	for _, tgt := range targets {
-		// Skip any targets that already have good connectivity
-		if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
+		// Skip any targets that already have good connectivity or aren't Incus.
+		if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK || tgt.TargetType != api.TARGETTYPE_INCUS {
 			continue
 		}
 
@@ -1139,22 +1160,34 @@ func (d *Daemon) checkTargetConnectivity() {
 			continue
 		}
 
-		if it.TLSClientKey == "" && it.OIDCTokens == nil {
-			// Target is configured for OIDC, but has no tokens yet.
+		// Do a basic connectivity check.
+		status, untrustedCert := doBasicConnectivityCheck(it.Endpoint, it.TrustedServerCertificateFingerprint)
 
-			resp, err := http.Get(it.Endpoint) // Do basic connectivity test.
-			if err != nil {
-				tgt.SetExternalConnectivityStatus(mapErrorToStatus(err))
-			} else {
-				tgt.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC)
-				resp.Body.Close()
-			}
-		} else {
-			// Test the connectivity of this target.
-			tgt.SetExternalConnectivityStatus(mapErrorToStatus(it.Connect(ctx)))
+		if untrustedCert != nil && it.ServerCertificate == nil {
+			// We got an untrusted certificate; if one hasn't already been set, add it to this target.
+			it.ServerCertificate = untrustedCert
+			tgt.SetServerCertificate(untrustedCert)
 		}
 
-		// Update the connectivity status in the database.
+		if status == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+			// Need to wait for user to confirm if the fingerprint is trusted or not.
+			tgt.SetExternalConnectivityStatus(status)
+		} else if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			// Some other basic connectivity issue occurred.
+			tgt.SetExternalConnectivityStatus(status)
+		} else {
+			// Basic connectivity is good, now test authentication.
+
+			if it.TLSClientKey == "" && it.OIDCTokens == nil {
+				// Target is configured for OIDC, but has no tokens yet.
+				tgt.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC)
+			} else {
+				// Test the connectivity of this target.
+				tgt.SetExternalConnectivityStatus(mapErrorToStatus(it.Connect(ctx)))
+			}
+		}
+
+		// Update the target's connectivity status in the database.
 		_, err = d.target.UpdateByID(ctx, tgt)
 		if err != nil {
 			log.Warn("Failed updating target", slog.String("target", tgt.Name), logger.Err(err))
@@ -1186,4 +1219,49 @@ func mapErrorToStatus(err error) api.ExternalConnectivityStatus {
 
 	slog.Warn("Received an unhandled remote connectivity error", logger.Err(err))
 	return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
+}
+
+func doBasicConnectivityCheck(endpoint string, trustedCertFingerprint string) (api.ExternalConnectivityStatus, *x509.Certificate) {
+	// Do a basic connectivity test.
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		connStatus := mapErrorToStatus(err)
+
+		// Some sort of TLS error occurred.
+		if connStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_ERROR {
+			// Disable TLS certificate verification so we can inspect the server's cert.
+			client := &http.Client{
+				Transport: &http.Transport{
+					TLSClientConfig: &tls.Config{
+						InsecureSkipVerify: true,
+					},
+				},
+			}
+
+			// Try connecting again.
+			resp2, err := client.Get(endpoint)
+			if err != nil {
+				// Still encountering some sort of error.
+				return mapErrorToStatus(err), nil
+			}
+
+			resp2.Body.Close()
+			serverCert := resp2.TLS.PeerCertificates[0]
+
+			// Is the presented certificate's fingerprint already trusted?
+			if incusTLS.CertFingerprint(serverCert) == strings.ToLower(strings.ReplaceAll(trustedCertFingerprint, ":", "")) {
+				return api.EXTERNALCONNECTIVITYSTATUS_OK, serverCert
+			}
+
+			// We got an untrusted TLS cert.
+			return api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT, serverCert
+		}
+
+		// Some other connectivity error occurred.
+		return connStatus, nil
+	}
+
+	// Good connectivity.
+	resp.Body.Close()
+	return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
 }
