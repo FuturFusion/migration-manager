@@ -79,13 +79,13 @@ func TestCommand(_ *testing.T) {
 
 func TestSourceAdd(t *testing.T) {
 	tests := []struct {
-		name                        string
-		args                        []string
-		insecure                    bool
-		username                    string
-		password                    string
-		migrationManagerdHTTPStatus int
-		migrationManagerdResponse   string
+		name                                string
+		args                                []string
+		trustedServerCertificateFingerprint string
+		username                            string
+		password                            string
+		migrationManagerdHTTPStatus         int
+		migrationManagerdResponse           string
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -107,13 +107,13 @@ func TestSourceAdd(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name:                        "success - without type, connection test with insecure",
-			args:                        []string{"newTargetWithoutTypeInsecureConnectionTest", vCenterSimulator.URL.String()},
-			insecure:                    true,
-			username:                    vcUser,
-			password:                    vcPassword,
-			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   `{"Metadata": {"ConnectivityStatus": "1"}}`,
+			name:                                "success - without type, connection test with trustedServerCertificateFingerprint",
+			args:                                []string{"newTargetWithoutTypeTrustedServerCertificateFingerprintConnectionTest", vCenterSimulator.URL.String()},
+			trustedServerCertificateFingerprint: testcert.LocalhostCertFingerprint,
+			username:                            vcUser,
+			password:                            vcPassword,
+			migrationManagerdHTTPStatus:         http.StatusOK,
+			migrationManagerdResponse:           `{"Metadata": {"ConnectivityStatus": "1"}}`,
 
 			assertErr: require.NoError,
 		},
@@ -171,7 +171,7 @@ func TestSourceAdd(t *testing.T) {
 						MigrationManagerServerCert: serverCert,
 					},
 				},
-				flagInsecure: tc.insecure,
+				flagTrustedServerCertificateFingerprint: tc.trustedServerCertificateFingerprint,
 			}
 
 			cmd := &cobra.Command{}
@@ -191,29 +191,28 @@ func TestSourceList(t *testing.T) {
     {
       "name": "source 1",
       "database_id": 1,
-      "insecure": false,
       "source_type": 1
     },
     {
       "name": "source 2",
       "database_id": 2,
-      "insecure": false,
       "source_type": 2,
       "properties": {
         "endpoint": "https://127.0.0.2:8989/",
         "username": "user2",
-        "password": "pass2"
+        "password": "pass2",
+        "trusted_server_certificate_fingerprint": ""
       }
     },
     {
       "name": "source 3",
       "database_id": 3,
-      "insecure": false,
       "source_type": 2,
       "properties": {
         "endpoint": "https://127.0.0.3:8989/",
         "username": "user3",
-        "password": "pass3"
+        "password": "pass3",
+        "trusted_server_certificate_fingerprint": "ab601914436e58babb17b9166155caf97bd7e5f8deb9b659bcdb66c58b49f323"
       }
     }
   ]
@@ -235,8 +234,8 @@ func TestSourceList(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantOutputContains: []string{
-				`source 2,VMware,https://127.0.0.2:8989/,Unknown,user2,false`,
-				`source 3,VMware,https://127.0.0.3:8989/,Unknown,user3,false`,
+				`source 2,VMware,https://127.0.0.2:8989/,Unknown,user2,`,
+				`source 3,VMware,https://127.0.0.3:8989/,Unknown,user3,ab601914436e58babb17b9166155caf97bd7e5f8deb9b659bcdb66c58b49f323`,
 			},
 			wantOutputNotContains: []string{
 				`source 1`, // source1 is not VMware and therefore ignored
@@ -270,7 +269,6 @@ func TestSourceList(t *testing.T) {
     {
       "name": "source 1",
       "database_id": 1,
-      "insecure": false,
       "source_type": -1
     }
   ]
@@ -419,12 +417,12 @@ func TestSourceUpdate(t *testing.T) {
   "metadata": {
     "name": "source 1",
     "database_id": 1,
-    "insecure": true,
     "source_type": 2,
     "properties": {
       "endpoint": "https://old.endpoint/",
       "username": "old user",
-      "password": "old pass"
+      "password": "old pass",
+      "trustedServerCertificateFingerprint": "ab601914436e58babb17b9166155caf97bd7e5f8deb9b659bcdb66c58b49f323"
     }
   }
 }`
@@ -439,7 +437,6 @@ func TestSourceUpdate(t *testing.T) {
 		name                       string
 		args                       []string
 		askStringReturns           []queue.Item[string]
-		askBoolReturns             []queue.Item[bool]
 		migrationManagerdResponses []queue.Item[httpResponse]
 
 		assertErr require.ErrorAssertionFunc
@@ -463,9 +460,7 @@ func TestSourceUpdate(t *testing.T) {
 				{Value: vCenterSimulator.URL.String()},
 				{Value: vcUser},
 				{Value: vcPassword},
-			},
-			askBoolReturns: []queue.Item[bool]{
-				{Value: true}, // isInsecure
+				{Value: testcert.LocalhostCertFingerprint},
 			},
 			migrationManagerdResponses: []queue.Item[httpResponse]{
 				{Value: httpResponse{http.StatusOK, existingSource}},
@@ -509,7 +504,9 @@ func TestSourceUpdate(t *testing.T) {
   "metadata": {
     "name": "source 1",
     "database_id": 1,
-    "insecure": true
+    "properties": {
+      "trustedServerCertificateFingerprint": "ab601914436e58babb17b9166155caf97bd7e5f8deb9b659bcdb66c58b49f323"
+    }
   }
 }`, // metadata.type is not 2 (VMware)
 				}},
@@ -528,9 +525,6 @@ func TestSourceUpdate(t *testing.T) {
 				AskPasswordOnceFunc: func(question string) string {
 					ret, _ := queue.Pop(t, &tc.askStringReturns)
 					return ret
-				},
-				AskBoolFunc: func(question string, defaultAnswer string) (bool, error) {
-					return queue.Pop(t, &tc.askBoolReturns)
 				},
 			}
 
@@ -566,7 +560,6 @@ func TestSourceUpdate(t *testing.T) {
 
 			// Ensure queues are completely drained.
 			require.Empty(t, tc.askStringReturns)
-			require.Empty(t, tc.askBoolReturns)
 			require.Empty(t, tc.migrationManagerdResponses)
 		})
 	}
