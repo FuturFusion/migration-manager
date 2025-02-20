@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"net/url"
 
@@ -93,6 +94,36 @@ func (t Target) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
 	}
 }
 
+func (t Target) GetServerCertificate() *x509.Certificate {
+	switch t.TargetType {
+	case api.TARGETTYPE_INCUS:
+		var properties api.IncusProperties
+		err := json.Unmarshal(t.Properties, &properties)
+		if err != nil {
+			return nil
+		}
+
+		return properties.ServerCertificate
+	default:
+		return nil
+	}
+}
+
+func (t Target) GetTrustedServerCertificateFingerprint() string {
+	switch t.TargetType {
+	case api.TARGETTYPE_INCUS:
+		var properties api.IncusProperties
+		err := json.Unmarshal(t.Properties, &properties)
+		if err != nil {
+			return ""
+		}
+
+		return properties.TrustedServerCertificateFingerprint
+	default:
+		return ""
+	}
+}
+
 func (t *Target) SetExternalConnectivityStatus(status api.ExternalConnectivityStatus) {
 	switch t.TargetType {
 	case api.TARGETTYPE_INCUS:
@@ -117,6 +148,20 @@ func (t *Target) SetOIDCTokens(tokens *oidc.Tokens[*oidc.IDTokenClaims]) {
 		}
 
 		properties.OIDCTokens = tokens
+		t.Properties, _ = json.Marshal(properties)
+	}
+}
+
+func (t *Target) SetServerCertificate(cert *x509.Certificate) {
+	switch t.TargetType {
+	case api.TARGETTYPE_INCUS:
+		var properties api.IncusProperties
+		err := json.Unmarshal(t.Properties, &properties)
+		if err != nil {
+			return
+		}
+
+		properties.ServerCertificate = cert
 		t.Properties, _ = json.Marshal(properties)
 	}
 }
