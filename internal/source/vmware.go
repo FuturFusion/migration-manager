@@ -2,7 +2,7 @@ package source
 
 import (
 	"context"
-	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -71,7 +71,7 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 	endpointURL.User = url.UserPassword(s.Username, s.Password)
 
-	s.govmomiClient, err = soapWithKeepalive(ctx, endpointURL, s.Insecure, s.additionalRootCertificate)
+	s.govmomiClient, err = soapWithKeepalive(ctx, endpointURL, s.ServerCertificate)
 	if err != nil {
 		return err
 	}
@@ -103,13 +103,8 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (s *InternalVMwareSource) SetInsecureTLS(insecure bool) error {
-	if s.isConnected {
-		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
-	}
-
-	s.Insecure = insecure
-	return nil
+func (s *InternalVMwareSource) WithAdditionalRootCertificate(rootCert *x509.Certificate) {
+	s.ServerCertificate = rootCert
 }
 
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {
@@ -531,8 +526,4 @@ func (s *InternalVMwareSource) getVMProperties(ctx context.Context, vm *object.V
 	var v mo.VirtualMachine
 	err := vm.Properties(ctx, vm.Reference(), []string{}, &v)
 	return v, err
-}
-
-func (s *InternalVMwareSource) WithAdditionalRootCertificate(rootCert *tls.Certificate) {
-	s.additionalRootCertificate = rootCert
 }

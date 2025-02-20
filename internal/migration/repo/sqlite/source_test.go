@@ -17,8 +17,8 @@ import (
 func TestSourceDatabaseActions(t *testing.T) {
 	commonSourceA := migration.Source{Name: "CommonSourceA", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
 	commonSourceB := migration.Source{Name: "CommonSourceB", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
-	vmwareSourceA := newVMwareSource("vmware_source", false, "endpoint_url", "user", "pass")
-	vmwareSourceB := newVMwareSource("vmware_source2", true, "endpoint_ip", "another_user", "pass")
+	vmwareSourceA := newVMwareSource("vmware_source", "", "endpoint_url", "user", "pass")
+	vmwareSourceB := newVMwareSource("vmware_source2", "someFingerprint", "endpoint_ip", "another_user", "pass")
 
 	ctx := context.Background()
 
@@ -116,12 +116,12 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 }
 
-func newVMwareSource(name string, insecure bool, endpoint string, user string, password string) migration.Source {
+func newVMwareSource(name string, trustedFingerprint string, endpoint string, user string, password string) migration.Source {
 	vmwareProperties := api.VMwareProperties{
-		Endpoint: endpoint,
-		Insecure: insecure,
-		Username: user,
-		Password: password,
+		Endpoint:                            endpoint,
+		TrustedServerCertificateFingerprint: trustedFingerprint,
+		Username:                            user,
+		Password:                            password,
 	}
 
 	src := migration.Source{
