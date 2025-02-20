@@ -106,7 +106,12 @@ func (s Source) GetServerCertificate() *x509.Certificate {
 			return nil
 		}
 
-		return properties.ServerCertificate
+		cert, err := x509.ParseCertificate(properties.ServerCertificate)
+		if err != nil {
+			return nil
+		}
+
+		return cert
 	default:
 		return nil
 	}
@@ -150,7 +155,7 @@ func (s *Source) SetServerCertificate(cert *x509.Certificate) {
 			return
 		}
 
-		properties.ServerCertificate = cert
+		properties.ServerCertificate = cert.Raw
 		s.Properties, _ = json.Marshal(properties)
 	}
 }
