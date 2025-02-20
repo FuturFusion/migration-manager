@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"net/url"
 
@@ -96,6 +97,36 @@ func (s Source) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
 	}
 }
 
+func (s Source) GetServerCertificate() *x509.Certificate {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return nil
+		}
+
+		return properties.ServerCertificate
+	default:
+		return nil
+	}
+}
+
+func (s Source) GetTrustedServerCertificateFingerprint() string {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return ""
+		}
+
+		return properties.TrustedServerCertificateFingerprint
+	default:
+		return ""
+	}
+}
+
 func (s *Source) SetExternalConnectivityStatus(status api.ExternalConnectivityStatus) {
 	switch s.SourceType {
 	case api.SOURCETYPE_VMWARE:
@@ -106,6 +137,20 @@ func (s *Source) SetExternalConnectivityStatus(status api.ExternalConnectivitySt
 		}
 
 		properties.ConnectivityStatus = status
+		s.Properties, _ = json.Marshal(properties)
+	}
+}
+
+func (s *Source) SetServerCertificate(cert *x509.Certificate) {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return
+		}
+
+		properties.ServerCertificate = cert
 		s.Properties, _ = json.Marshal(properties)
 	}
 }
