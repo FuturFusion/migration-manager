@@ -286,7 +286,7 @@ func TestRun(t *testing.T) {
 					}
 
 					fallthrough
-				case fmt.Sprintf("/1.0/queue/%s/worker/command", uuid):
+				case fmt.Sprintf("/1.0/queue/%s/worker/command?secret=", uuid):
 					if r.RequestURI != "/1.0" {
 						if r.Method != http.MethodPost {
 							cancel(fmt.Errorf("Unsupported method %q", r.Method))

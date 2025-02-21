@@ -388,7 +388,7 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 				_ = d.oidcVerifier.WriteHeaders(w)
 			}
 
-			slog.Warn("Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr))
+			slog.Warn("Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
 			_ = response.Forbidden(nil).Render(w)
 			return
 		}

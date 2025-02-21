@@ -97,7 +97,7 @@ func (w *Worker) Run(ctx context.Context) {
 
 	for {
 		done := func() (done bool) {
-			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid+"/worker/command", http.MethodPost, "", nil)
+			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid+"/worker/command", http.MethodPost, "secret="+w.token, nil)
 			if err != nil {
 				slog.Error("HTTP request failed", logger.Err(err))
 				return false
