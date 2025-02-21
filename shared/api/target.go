@@ -53,6 +53,13 @@ type IncusProperties struct {
 	// Example: https://incus.local:6443
 	Endpoint string `json:"endpoint" yaml:"endpoint"`
 
+	// Store the expected target's TLS certificate, in raw bytes. Useful in situations when TLS certificate validation fails, such as when using self-signed certificates.
+	ServerCertificate []byte `json:"trusted_server_certificate" yaml:"trusted_server_certificate"`
+
+	// If set and the fingerprint matches that of the ServerCertificate, enables use of that certificate when performing TLS handshake.
+	// Example: b51b3046a03164a2ca279222744b12fe0878a8c12311c88fad427f4e03eca42d
+	TrustedServerCertificateFingerprint string `json:"trusted_server_certificate_fingerprint" yaml:"trusted_server_certificate_fingerprint"`
+
 	// base64-encoded TLS client key for authentication
 	TLSClientKey string `json:"tls_client_key" yaml:"tls_client_key"`
 
@@ -62,7 +69,6 @@ type IncusProperties struct {
 	// OpenID Connect tokens
 	OIDCTokens *oidc.Tokens[*oidc.IDTokenClaims] `json:"oidc_tokens" yaml:"oidc_tokens"`
 
-	// If true, disable TLS certificate validation
-	// Example: false
-	Insecure bool `json:"insecure" yaml:"insecure"`
+	// Connectivity status of this target
+	ConnectivityStatus ExternalConnectivityStatus `json:"connectivity_status" yaml:"connectivity_status"`
 }

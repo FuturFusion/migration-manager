@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/user"
 	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -23,9 +24,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/config"
-	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/oidc"
-	internalUtil "github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/util"
+	"github.com/FuturFusion/migration-manager/internal/client/oidc"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
+	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )
 
 //go:generate go run github.com/matryer/moq -fmt goimports -out asker_mock_gen_test.go -rm . Asker
@@ -356,6 +357,22 @@ func validateAbsFilePathExists(s string) error {
 
 	if !util.PathExists(s) {
 		return fmt.Errorf("Cannot read file")
+	}
+
+	return nil
+}
+
+func validateSHA256Format(s string) error {
+	if s == "" {
+		return nil
+	}
+
+	canonicalFingerprint := strings.ToLower(strings.ReplaceAll(s, ":", ""))
+
+	matches, _ := regexp.Match(`^[[:xdigit:]]{64}$`, []byte(canonicalFingerprint))
+
+	if !matches {
+		return fmt.Errorf("Invalid SHA256 fingerprint")
 	}
 
 	return nil

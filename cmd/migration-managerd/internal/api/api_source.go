@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
+
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
@@ -183,7 +185,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	src, err := d.source.Create(r.Context(), migration.Source{
+	_, err = d.source.Create(r.Context(), migration.Source{
 		Name:       source.Name,
 		SourceType: source.SourceType,
 		Properties: source.Properties,
@@ -192,13 +194,23 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", source.Name, err))
 	}
 
-	// Trigger a scan of this new source for instances.
-	err = d.syncOneSource(d.ShutdownCtx, src)
+	d.checkSourceConnectivity()
+
+	// Get the source's connectivity status to return to the client.
+	currentSource, err := d.source.GetByName(r.Context(), source.Name)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to initiate sync from source %q: %w", source.Name, err))
+		return response.SmartError(err)
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+source.Name)
+	metadata := make(map[string]string)
+	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentSource.GetExternalConnectivityStatus())
+
+	// If waiting on fingerprint confirmation, return it to the user.
+	if currentSource.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentSource.GetServerCertificate())
+	}
+
+	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+source.Name)
 }
 
 // swagger:operation DELETE /1.0/sources/{name} sources source_delete
@@ -342,7 +354,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	src, err := d.source.UpdateByID(ctx, migration.Source{
+	_, err = d.source.UpdateByID(ctx, migration.Source{
 		ID:         currentSource.ID,
 		Name:       source.Name,
 		SourceType: source.SourceType,
@@ -357,11 +369,21 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	// Trigger a scan of this new source for instances.
-	err = d.syncOneSource(d.ShutdownCtx, src)
+	d.checkSourceConnectivity()
+
+	// Get the source's connectivity status to return to the client.
+	currentSource, err = d.source.GetByName(r.Context(), source.Name)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to initiate sync from source %q: %w", source.Name, err))
+		return response.SmartError(err)
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/sources/"+source.Name)
+	metadata := make(map[string]string)
+	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentSource.GetExternalConnectivityStatus())
+
+	// If waiting on fingerprint confirmation, return it to the user.
+	if currentSource.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentSource.GetServerCertificate())
+	}
+
+	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+source.Name)
 }

@@ -72,7 +72,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.Equal(t, incusTargetC, dbIncusTargetC)
 
 	// Test updating a target.
-	incusTargetC.Properties = []byte(`{"endpoint": "https://127.0.0.1:6443", "insecure": true}`)
+	incusTargetC.Properties = []byte(`{"endpoint": "https://127.0.0.1:6443", "insecure": true, "connectivity_status": 1}`)
 	dbIncusTargetC, err = target.UpdateByID(ctx, incusTargetC)
 	require.Equal(t, incusTargetC, dbIncusTargetC)
 	require.NoError(t, err)

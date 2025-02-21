@@ -1,11 +1,18 @@
 package api
 
 import (
+	"context"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
 
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
+
+	"github.com/FuturFusion/migration-manager/internal/client/oidc"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
@@ -193,7 +200,71 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", target.Name, err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+target.Name)
+	d.checkTargetConnectivity()
+
+	// Get the target's connectivity status to return to the client.
+	currentTarget, err := d.target.GetByName(r.Context(), target.Name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	metadata := make(map[string]string)
+	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentTarget.GetExternalConnectivityStatus())
+
+	// If waiting on fingerprint confirmation, return it to the user.
+	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentTarget.GetServerCertificate())
+	}
+
+	// If the target is using OIDC, get the authentication URL and return it to the user.
+	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
+		trustedCert := currentTarget.GetServerCertificate()
+		if trustedCert != nil && incusTLS.CertFingerprint(trustedCert) != strings.ToLower(strings.ReplaceAll(currentTarget.GetTrustedServerCertificateFingerprint(), ":", "")) {
+			trustedCert = nil
+		}
+
+		u, err := getOIDCAuthURL(d, currentTarget.Name, currentTarget.GetEndpoint(), trustedCert)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		metadata["OIDCURL"] = u
+	}
+
+	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/targets/"+target.Name)
+}
+
+func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCert *x509.Certificate) (string, error) {
+	apiEndpoint, _ := url.JoinPath(endpointURL, "/1.0")
+	req, err := http.NewRequest(http.MethodGet, apiEndpoint, nil)
+	if err != nil {
+		return "", err
+	}
+
+	oidcClient := oidc.NewOIDCClient("", trustedCert)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
+	tokenURL, resp, provider, err := oidcClient.FetchNewIncusTokenURL(req)
+	if err != nil {
+		return "", err
+	}
+
+	// Spawn a worker, since we need to wait for the user to complete the authentication workflow.
+	go func() {
+		err := oidcClient.WaitForToken(resp, provider)
+		connectivityStatus := mapErrorToStatus(err)
+
+		tgt, err := d.target.GetByName(context.TODO(), targetName)
+		if err != nil {
+			return
+		}
+
+		tgt.SetExternalConnectivityStatus(connectivityStatus)
+		tgt.SetOIDCTokens(oidcClient.GetOIDCTokens())
+
+		_, _ = d.target.UpdateByID(context.TODO(), tgt)
+	}()
+
+	return tokenURL, nil
 }
 
 // swagger:operation DELETE /1.0/targets/{name} targets target_delete
@@ -352,5 +423,36 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/targets/"+target.Name)
+	d.checkTargetConnectivity()
+
+	// Get the target's connectivity status to return to the client.
+	currentTarget, err = d.target.GetByName(r.Context(), target.Name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	metadata := make(map[string]string)
+	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentTarget.GetExternalConnectivityStatus())
+
+	// If waiting on fingerprint confirmation, return it to the user.
+	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentTarget.GetServerCertificate())
+	}
+
+	// If the target is using OIDC, get the authentication URL and return it to the user.
+	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
+		trustedCert := currentTarget.GetServerCertificate()
+		if trustedCert != nil && incusTLS.CertFingerprint(trustedCert) != strings.ToLower(strings.ReplaceAll(currentTarget.GetTrustedServerCertificateFingerprint(), ":", "")) {
+			trustedCert = nil
+		}
+
+		u, err := getOIDCAuthURL(d, currentTarget.Name, currentTarget.GetEndpoint(), trustedCert)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		metadata["OIDCURL"] = u
+	}
+
+	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/targets/"+target.Name)
 }

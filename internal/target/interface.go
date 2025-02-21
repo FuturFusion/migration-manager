@@ -2,7 +2,7 @@ package target
 
 import (
 	"context"
-	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 
 	incus "github.com/lxc/incus/v6/client"
@@ -26,17 +26,10 @@ type Target interface {
 	// Returns an error if there was a problem disconnecting from the target.
 	Disconnect(ctx context.Context) error
 
-	// Toggles whether TLS verification should be skipped or not.
-	//
-	// As this can enable MITM-style attacks, in general this SHOULD NOT be used.
-	//
-	// Returns an error if called while connected to a target.
-	SetInsecureTLS(insecure bool) error
-
 	// WithAdditionalRootCertificate accepts an additional certificate, which
 	// is added to the default CertPool used to validate server certificates
 	// while connecting to the Target using TLS.
-	WithAdditionalRootCertificate(rootCert *tls.Certificate)
+	WithAdditionalRootCertificate(rootCert *x509.Certificate)
 
 	// Sets the client TLS key and certificate to be used to authenticate with the target. Leave unset to
 	// default to OIDC authentication.
