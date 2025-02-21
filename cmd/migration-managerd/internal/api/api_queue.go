@@ -40,9 +40,9 @@ var queueWorkerCommandCmd = APIEndpoint{
 }
 
 // Authenticate a migration worker. Allow a GET for an existing instance so the worker can get its instructions,
-// and for PUT require the secret token to be valid when the worker reports back.
+// and for POST require the secret token to be valid when the worker reports back.
 func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
-	// Only allow GET and PUT methods.
+	// Only allow GET and POST methods.
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
 		return false
 	}
