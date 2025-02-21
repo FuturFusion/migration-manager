@@ -264,10 +264,15 @@ func (d *Daemon) Start() error {
 	})
 
 	// Start background workers
-	d.runPeriodicTask(d.syncInstancesFromSources, 10*time.Minute)
-	d.runPeriodicTask(d.processReadyBatches, 10*time.Second)
-	d.runPeriodicTask(d.processQueuedBatches, 10*time.Second)
-	d.runPeriodicTask(d.finalizeCompleteInstances, 10*time.Second)
+	d.runPeriodicTask(d.ShutdownCtx, "trySyncAllSources", d.trySyncAllSources, 10*time.Minute)
+	d.runPeriodicTask(d.ShutdownCtx, "processReadyBatches", d.processReadyBatches, 10*time.Second)
+	d.runPeriodicTask(d.ShutdownCtx, "processQueuedBatches", d.processQueuedBatches, 10*time.Second)
+	d.runPeriodicTask(d.ShutdownCtx, "beginImports", func(ctx context.Context) error {
+		// Cleanup of instances is set to false for testing. In practice we should set it to true, so that we can retry creating VMs in case it fails.
+		return d.beginImports(ctx, false)
+	}, 10*time.Second)
+
+	d.runPeriodicTask(d.ShutdownCtx, "finalizeCompleteInstances", d.finalizeCompleteInstances, 10*time.Second)
 
 	select {
 	case <-errgroupCtx.Done():
