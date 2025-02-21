@@ -168,12 +168,12 @@ func syncNetworksFromSource(ctx context.Context, sourceName string, n migration.
 	// Currently, the entire network list is given in existingNetworks for each source, so we will need to be smarter about filtering that as well.
 
 	// Create any missing networks.
-	for name, net := range srcNetworks {
+	for name, network := range srcNetworks {
 		_, ok := existingNetworks[name]
 		if !ok {
-			log := log.With(slog.String("network", net.Name))
+			log := log.With(slog.String("network", network.Name))
 			log.Info("Recording new network detected on source")
-			_, err := n.Create(ctx, migration.Network{Name: net.Name, Config: net.Config})
+			_, err := n.Create(ctx, migration.Network{Name: network.Name, Config: network.Config})
 			if err != nil {
 				return err
 			}
@@ -359,8 +359,8 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 	networkMap := make(map[string]api.Network, len(networks))
 	instanceMap := make(map[uuid.UUID]migration.Instance, len(instances))
 
-	for _, net := range networks {
-		networkMap[net.Name] = net
+	for _, network := range networks {
+		networkMap[network.Name] = network
 	}
 
 	for _, inst := range instances {
