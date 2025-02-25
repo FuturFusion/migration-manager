@@ -1061,138 +1061,124 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 	})
 }
 
-func (d *Daemon) checkSourceConnectivity() {
+func (d *Daemon) checkSourceConnectivity(ctx context.Context, src migration.Source) error {
 	log := slog.With(slog.String("method", "checkSourceConnectivity"))
 
-	// TODO: context should be passed from the daemon to all the workers.
-	ctx := context.TODO()
+	// Skip any sources that already have good connectivity or aren't VMware.
+	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK || src.SourceType != api.SOURCETYPE_VMWARE {
+		return nil
+	}
 
-	sources, err := d.source.GetAll(ctx)
+	// TODO: The methods on the source.InternalVMwareSource should be moved to migration
+	// which would then make this conversion obsolete.
+	s, err := source.NewInternalVMwareSourceFrom(api.Source{
+		Name:       src.Name,
+		DatabaseID: src.ID,
+		SourceType: src.SourceType,
+		Properties: src.Properties,
+	})
 	if err != nil {
-		log.Warn("Failed to get sources from database", logger.Err(err))
-		return
+		log.Warn("Failed to create VMWareSource from source", slog.String("source", src.Name), logger.Err(err))
+		return err
 	}
 
-	for _, src := range sources {
-		// Skip any sources that already have good connectivity or aren't VMware.
-		if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK || src.SourceType != api.SOURCETYPE_VMWARE {
-			continue
-		}
+	// Do a basic connectivity check.
+	status, untrustedCert := doBasicConnectivityCheck(s.Endpoint, s.TrustedServerCertificateFingerprint)
 
-		s, err := source.NewInternalVMwareSourceFrom(api.Source{
-			Name:       src.Name,
-			DatabaseID: src.ID,
-			SourceType: src.SourceType,
-			Properties: src.Properties,
-		})
+	if untrustedCert != nil && s.ServerCertificate == nil {
+		// We got an untrusted certificate; if one hasn't already been set, add it to this source.
+		s.ServerCertificate = untrustedCert.Raw
+		src.SetServerCertificate(untrustedCert)
+	}
+
+	if status == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		// Need to wait for user to confirm if the fingerprint is trusted or not.
+		src.SetExternalConnectivityStatus(status)
+	} else if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		// Some other basic connectivity issue occurred.
+		src.SetExternalConnectivityStatus(status)
+	} else {
+		// Basic connectivity is good, now test authentication.
+
+		// Test the connectivity of this source.
+		src.SetExternalConnectivityStatus(mapErrorToStatus(s.Connect(ctx)))
+	}
+
+	// Update the connectivity status in the database.
+	_, err = d.source.UpdateByID(ctx, src)
+	if err != nil {
+		log.Warn("Failed updating source", slog.String("source", src.Name), logger.Err(err))
+		return err
+	}
+
+	// Trigger a scan of this new source for instances.
+	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
+		err = d.syncOneSource(ctx, src)
 		if err != nil {
-			log.Warn("Failed to create VMWareSource from source", slog.String("source", src.Name), logger.Err(err))
-			continue
-		}
-
-		// Do a basic connectivity check.
-		status, untrustedCert := doBasicConnectivityCheck(s.Endpoint, s.TrustedServerCertificateFingerprint)
-
-		if untrustedCert != nil && s.ServerCertificate == nil {
-			// We got an untrusted certificate; if one hasn't already been set, add it to this source.
-			s.ServerCertificate = untrustedCert.Raw
-			src.SetServerCertificate(untrustedCert)
-		}
-
-		if status == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-			// Need to wait for user to confirm if the fingerprint is trusted or not.
-			src.SetExternalConnectivityStatus(status)
-		} else if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
-			// Some other basic connectivity issue occurred.
-			src.SetExternalConnectivityStatus(status)
-		} else {
-			// Basic connectivity is good, now test authentication.
-
-			// Test the connectivity of this source.
-			src.SetExternalConnectivityStatus(mapErrorToStatus(s.Connect(ctx)))
-		}
-
-		// Update the connectivity status in the database.
-		_, err = d.source.UpdateByID(ctx, src)
-		if err != nil {
-			log.Warn("Failed updating source", slog.String("source", src.Name), logger.Err(err))
-			continue
-		}
-
-		// Trigger a scan of this new source for instances.
-		if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
-			err = d.syncOneSource(ctx, src)
-			if err != nil {
-				log.Warn("Failed to initiate sync from source", slog.String("source", src.Name), logger.Err(err))
-			}
+			log.Warn("Failed to initiate sync from source", slog.String("source", src.Name), logger.Err(err))
+			return err
 		}
 	}
+
+	return nil
 }
 
-func (d *Daemon) checkTargetConnectivity() {
+func (d *Daemon) checkTargetConnectivity(ctx context.Context, tgt migration.Target) error {
 	log := slog.With(slog.String("method", "checkTargetConnectivity"))
 
-	// TODO: context should be passed from the daemon to all the workers.
-	ctx := context.TODO()
+	// Skip any targets that already have good connectivity or aren't Incus.
+	if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK || tgt.TargetType != api.TARGETTYPE_INCUS {
+		return nil
+	}
 
-	targets, err := d.target.GetAll(ctx)
+	// TODO: The methods on the target.InternalIncusTarget should be moved to migration
+	// which would then make this conversion obsolete.
+	it, err := target.NewInternalIncusTargetFrom(api.Target{
+		Name:       tgt.Name,
+		DatabaseID: tgt.ID,
+		TargetType: tgt.TargetType,
+		Properties: tgt.Properties,
+	})
 	if err != nil {
-		log.Warn("Failed to get targets from database", logger.Err(err))
-		return
+		log.Warn("Failed to create IncusTarget from target", slog.String("target", tgt.Name), logger.Err(err))
+		return err
 	}
 
-	for _, tgt := range targets {
-		// Skip any targets that already have good connectivity or aren't Incus.
-		if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK || tgt.TargetType != api.TARGETTYPE_INCUS {
-			continue
-		}
+	// Do a basic connectivity check.
+	status, untrustedCert := doBasicConnectivityCheck(it.Endpoint, it.TrustedServerCertificateFingerprint)
 
-		// TODO: The methods on the target.InternalIncusTarget should be moved to migration
-		// which would then make this conversion obsolete.
-		it, err := target.NewInternalIncusTargetFrom(api.Target{
-			Name:       tgt.Name,
-			DatabaseID: tgt.ID,
-			TargetType: tgt.TargetType,
-			Properties: tgt.Properties,
-		})
-		if err != nil {
-			log.Warn("Failed to create IncusTarget from target", slog.String("target", tgt.Name), logger.Err(err))
-			continue
-		}
+	if untrustedCert != nil && it.ServerCertificate == nil {
+		// We got an untrusted certificate; if one hasn't already been set, add it to this target.
+		it.ServerCertificate = untrustedCert.Raw
+		tgt.SetServerCertificate(untrustedCert)
+	}
 
-		// Do a basic connectivity check.
-		status, untrustedCert := doBasicConnectivityCheck(it.Endpoint, it.TrustedServerCertificateFingerprint)
+	if status == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		// Need to wait for user to confirm if the fingerprint is trusted or not.
+		tgt.SetExternalConnectivityStatus(status)
+	} else if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		// Some other basic connectivity issue occurred.
+		tgt.SetExternalConnectivityStatus(status)
+	} else {
+		// Basic connectivity is good, now test authentication.
 
-		if untrustedCert != nil && it.ServerCertificate == nil {
-			// We got an untrusted certificate; if one hasn't already been set, add it to this target.
-			it.ServerCertificate = untrustedCert.Raw
-			tgt.SetServerCertificate(untrustedCert)
-		}
-
-		if status == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-			// Need to wait for user to confirm if the fingerprint is trusted or not.
-			tgt.SetExternalConnectivityStatus(status)
-		} else if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
-			// Some other basic connectivity issue occurred.
-			tgt.SetExternalConnectivityStatus(status)
+		if it.TLSClientKey == "" && it.OIDCTokens == nil {
+			// Target is configured for OIDC, but has no tokens yet.
+			tgt.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC)
 		} else {
-			// Basic connectivity is good, now test authentication.
-
-			if it.TLSClientKey == "" && it.OIDCTokens == nil {
-				// Target is configured for OIDC, but has no tokens yet.
-				tgt.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC)
-			} else {
-				// Test the connectivity of this target.
-				tgt.SetExternalConnectivityStatus(mapErrorToStatus(it.Connect(ctx)))
-			}
-		}
-
-		// Update the target's connectivity status in the database.
-		_, err = d.target.UpdateByID(ctx, tgt)
-		if err != nil {
-			log.Warn("Failed updating target", slog.String("target", tgt.Name), logger.Err(err))
+			// Test the connectivity of this target.
+			tgt.SetExternalConnectivityStatus(mapErrorToStatus(it.Connect(ctx)))
 		}
 	}
+
+	// Update the target's connectivity status in the database.
+	_, err = d.target.UpdateByID(ctx, tgt)
+	if err != nil {
+		log.Warn("Failed updating target", slog.String("target", tgt.Name), logger.Err(err))
+		return err
+	}
+
+	return nil
 }
 
 func mapErrorToStatus(err error) api.ExternalConnectivityStatus {

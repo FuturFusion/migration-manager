@@ -191,7 +191,7 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = d.target.Create(r.Context(), migration.Target{
+	tgt, err := d.target.Create(r.Context(), migration.Target{
 		Name:       target.Name,
 		TargetType: target.TargetType,
 		Properties: target.Properties,
@@ -200,30 +200,27 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", target.Name, err))
 	}
 
-	d.checkTargetConnectivity()
-
-	// Get the target's connectivity status to return to the client.
-	currentTarget, err := d.target.GetByName(r.Context(), target.Name)
+	err = d.checkTargetConnectivity(r.Context(), tgt)
 	if err != nil {
-		return response.SmartError(err)
+		return response.SmartError(fmt.Errorf("Failed check target connectivity: %w", err))
 	}
 
 	metadata := make(map[string]string)
-	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentTarget.GetExternalConnectivityStatus())
+	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", tgt.GetExternalConnectivityStatus())
 
 	// If waiting on fingerprint confirmation, return it to the user.
-	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentTarget.GetServerCertificate())
+	if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(tgt.GetServerCertificate())
 	}
 
 	// If the target is using OIDC, get the authentication URL and return it to the user.
-	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
-		trustedCert := currentTarget.GetServerCertificate()
-		if trustedCert != nil && incusTLS.CertFingerprint(trustedCert) != strings.ToLower(strings.ReplaceAll(currentTarget.GetTrustedServerCertificateFingerprint(), ":", "")) {
+	if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
+		trustedCert := tgt.GetServerCertificate()
+		if trustedCert != nil && incusTLS.CertFingerprint(trustedCert) != strings.ToLower(strings.ReplaceAll(tgt.GetTrustedServerCertificateFingerprint(), ":", "")) {
 			trustedCert = nil
 		}
 
-		u, err := getOIDCAuthURL(d, currentTarget.Name, currentTarget.GetEndpoint(), trustedCert)
+		u, err := getOIDCAuthURL(d, tgt.Name, tgt.GetEndpoint(), trustedCert)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -408,7 +405,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = d.target.UpdateByID(ctx, migration.Target{
+	tgt, err := d.target.UpdateByID(ctx, migration.Target{
 		ID:         currentTarget.ID,
 		Name:       target.Name,
 		TargetType: target.TargetType,
@@ -423,30 +420,27 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	d.checkTargetConnectivity()
-
-	// Get the target's connectivity status to return to the client.
-	currentTarget, err = d.target.GetByName(r.Context(), target.Name)
+	err = d.checkTargetConnectivity(r.Context(), tgt)
 	if err != nil {
-		return response.SmartError(err)
+		return response.SmartError(fmt.Errorf("Failed check target connectivity: %w", err))
 	}
 
 	metadata := make(map[string]string)
-	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentTarget.GetExternalConnectivityStatus())
+	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", tgt.GetExternalConnectivityStatus())
 
 	// If waiting on fingerprint confirmation, return it to the user.
-	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentTarget.GetServerCertificate())
+	if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(tgt.GetServerCertificate())
 	}
 
 	// If the target is using OIDC, get the authentication URL and return it to the user.
-	if currentTarget.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
-		trustedCert := currentTarget.GetServerCertificate()
-		if trustedCert != nil && incusTLS.CertFingerprint(trustedCert) != strings.ToLower(strings.ReplaceAll(currentTarget.GetTrustedServerCertificateFingerprint(), ":", "")) {
+	if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
+		trustedCert := tgt.GetServerCertificate()
+		if trustedCert != nil && incusTLS.CertFingerprint(trustedCert) != strings.ToLower(strings.ReplaceAll(tgt.GetTrustedServerCertificateFingerprint(), ":", "")) {
 			trustedCert = nil
 		}
 
-		u, err := getOIDCAuthURL(d, currentTarget.Name, currentTarget.GetEndpoint(), trustedCert)
+		u, err := getOIDCAuthURL(d, tgt.Name, tgt.GetEndpoint(), trustedCert)
 		if err != nil {
 			return response.SmartError(err)
 		}

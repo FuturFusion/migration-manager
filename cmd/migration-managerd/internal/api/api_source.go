@@ -185,7 +185,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = d.source.Create(r.Context(), migration.Source{
+	src, err := d.source.Create(r.Context(), migration.Source{
 		Name:       source.Name,
 		SourceType: source.SourceType,
 		Properties: source.Properties,
@@ -194,20 +194,17 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", source.Name, err))
 	}
 
-	d.checkSourceConnectivity()
-
-	// Get the source's connectivity status to return to the client.
-	currentSource, err := d.source.GetByName(r.Context(), source.Name)
+	err = d.checkSourceConnectivity(r.Context(), src)
 	if err != nil {
-		return response.SmartError(err)
+		return response.SmartError(fmt.Errorf("Failed check source connectivity: %w", err))
 	}
 
 	metadata := make(map[string]string)
-	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentSource.GetExternalConnectivityStatus())
+	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", src.GetExternalConnectivityStatus())
 
 	// If waiting on fingerprint confirmation, return it to the user.
-	if currentSource.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentSource.GetServerCertificate())
+	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(src.GetServerCertificate())
 	}
 
 	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+source.Name)
@@ -354,7 +351,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = d.source.UpdateByID(ctx, migration.Source{
+	src, err := d.source.UpdateByID(ctx, migration.Source{
 		ID:         currentSource.ID,
 		Name:       source.Name,
 		SourceType: source.SourceType,
@@ -369,20 +366,17 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	d.checkSourceConnectivity()
-
-	// Get the source's connectivity status to return to the client.
-	currentSource, err = d.source.GetByName(r.Context(), source.Name)
+	err = d.checkSourceConnectivity(r.Context(), src)
 	if err != nil {
-		return response.SmartError(err)
+		return response.SmartError(fmt.Errorf("Failed check source connectivity: %w", err))
 	}
 
 	metadata := make(map[string]string)
-	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", currentSource.GetExternalConnectivityStatus())
+	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", src.GetExternalConnectivityStatus())
 
 	// If waiting on fingerprint confirmation, return it to the user.
-	if currentSource.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-		metadata["certFingerprint"] = incusTLS.CertFingerprint(currentSource.GetServerCertificate())
+	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		metadata["certFingerprint"] = incusTLS.CertFingerprint(src.GetServerCertificate())
 	}
 
 	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+source.Name)
