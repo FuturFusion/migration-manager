@@ -182,14 +182,14 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
 
 		if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-			cmd.Printf("Successfully added new target %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the target to correct the issue.\n", t.Name, metadata["certFingerprint"])
+			return fmt.Errorf("Successfully added new target %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the target to correct the issue.", t.Name, metadata["certFingerprint"])
 		} else if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
-			cmd.Printf("Successfully added new target %q; please visit %s to complete OIDC authorization.\n", t.Name, metadata["OIDCURL"])
+			return fmt.Errorf("Successfully added new target %q; please visit %s to complete OIDC authorization.", t.Name, metadata["OIDCURL"])
 		} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
-			cmd.Printf("Successfully added new target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.\n", t.Name, connectivityStatus.String())
-		} else {
-			cmd.Printf("Successfully added new target %q.\n", t.Name)
+			return fmt.Errorf("Successfully added new target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.", t.Name, connectivityStatus.String())
 		}
+
+		cmd.Printf("Successfully added new target %q.\n", t.Name)
 	}
 
 	return nil
@@ -453,14 +453,14 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
 
 	if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-		cmd.Printf("Successfully updated target %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the target to correct the issue.\n", newTargetName, metadata["certFingerprint"])
+		return fmt.Errorf("Successfully updated target %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the target to correct the issue.", newTargetName, metadata["certFingerprint"])
 	} else if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
-		cmd.Printf("Successfully updated target %q; please visit %s to complete OIDC authorization.\n", newTargetName, metadata["OIDCURL"])
+		return fmt.Errorf("Successfully updated target %q; please visit %s to complete OIDC authorization.", newTargetName, metadata["OIDCURL"])
 	} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
-		cmd.Printf("Successfully updated target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.\n", newTargetName, connectivityStatus.String())
-	} else {
-		cmd.Printf("Successfully updated target %q.\n", newTargetName)
+		return fmt.Errorf("Successfully updated target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.", newTargetName, connectivityStatus.String())
 	}
+
+	cmd.Printf("Successfully updated target %q.\n", newTargetName)
 
 	return nil
 }

@@ -159,12 +159,12 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
 
 		if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-			cmd.Printf("Successfully added new source %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the source to correct the issue.\n", sourceName, metadata["certFingerprint"])
+			return fmt.Errorf("Successfully added new source %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the source to correct the issue.", sourceName, metadata["certFingerprint"])
 		} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
-			cmd.Printf("Successfully added new source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.\n", sourceName, connectivityStatus.String())
-		} else {
-			cmd.Printf("Successfully added new source %q.\n", sourceName)
+			return fmt.Errorf("Successfully added new source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.", sourceName, connectivityStatus.String())
 		}
+
+		cmd.Printf("Successfully added new source %q.\n", sourceName)
 	}
 
 	return nil
@@ -387,12 +387,12 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
 
 	if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-		cmd.Printf("Successfully updated source %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the source to correct the issue.\n", newSourceName, metadata["certFingerprint"])
+		return fmt.Errorf("Successfully updated source %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the source to correct the issue.", newSourceName, metadata["certFingerprint"])
 	} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
-		cmd.Printf("Successfully updated source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.\n", newSourceName, connectivityStatus.String())
-	} else {
-		cmd.Printf("Successfully updated source %q.\n", newSourceName)
+		return fmt.Errorf("Successfully updated source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.", newSourceName, connectivityStatus.String())
 	}
+
+	cmd.Printf("Successfully updated source %q.\n", newSourceName)
 
 	return nil
 }
