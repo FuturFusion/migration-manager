@@ -1209,7 +1209,11 @@ func mapErrorToStatus(err error) api.ExternalConnectivityStatus {
 
 func doBasicConnectivityCheck(endpoint string, trustedCertFingerprint string) (api.ExternalConnectivityStatus, *x509.Certificate) {
 	// Do a basic connectivity test.
-	resp, err := http.Get(endpoint)
+	client := &http.Client{
+		Timeout: 3 * time.Second, // Timeout quickly if we cannot connect to the endpoint.
+	}
+
+	resp, err := client.Get(endpoint)
 	if err != nil {
 		connStatus := mapErrorToStatus(err)
 
