@@ -561,19 +561,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 		slog.String("storage_pool", storagePool),
 	)
 
-	// Determine the ISO names.
-	workerISOName, err := d.os.GetMigrationManagerISOName()
-	if err != nil {
-		return err
-	}
-
-	workerISOPath := filepath.Join(d.os.CacheDir, workerISOName)
-	workerISOExists := incusUtil.PathExists(workerISOPath)
-	if !workerISOExists {
-		return fmt.Errorf("Worker ISO not found at %q", workerISOPath)
-	}
-
-	importISOs := []string{workerISOName}
+	importISOs := []string{}
 	for _, inst := range instances {
 		if inst.GetOSType() == api.OSTYPE_WINDOWS {
 			driverISOName, err := d.os.GetVirtioDriversISOName()
@@ -621,6 +609,26 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 	err = it.SetProject(project)
 	if err != nil {
 		return err
+	}
+
+	_, _, err = it.GetStoragePoolVolume(storagePool, "custom", util.WorkerVolume())
+	if err != nil && incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+		err = d.os.LoadWorkerImage(ctx)
+		if err != nil {
+			return err
+		}
+
+		ops, err := it.CreateStoragePoolVolumeFromBackup(storagePool, filepath.Join(d.os.CacheDir, util.RawWorkerImage()))
+		if err != nil {
+			return err
+		}
+
+		for _, op := range ops {
+			err = op.Wait()
+			if err != nil {
+				return err
+			}
+		}
 	}
 
 	// Verify needed ISO images are in the storage pool.
