@@ -582,36 +582,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 		}
 
 		for _, instance := range instances {
-			apiInstance := api.Instance{
-				UUID:                  instance.UUID,
-				InventoryPath:         instance.InventoryPath,
-				Annotation:            instance.Annotation,
-				MigrationStatus:       instance.MigrationStatus,
-				MigrationStatusString: instance.MigrationStatusString,
-				LastUpdateFromSource:  instance.LastUpdateFromSource,
-				Source:                sourceMap[instance.SourceID],
-				BatchID:               instance.BatchID,
-				GuestToolsVersion:     instance.GuestToolsVersion,
-				Architecture:          instance.Architecture,
-				HardwareVersion:       instance.HardwareVersion,
-				OS:                    instance.OS,
-				OSVersion:             instance.OSVersion,
-				Devices:               instance.Devices,
-				Disks:                 instance.Disks,
-				NICs:                  instance.NICs,
-				Snapshots:             instance.Snapshots,
-				CPU:                   instance.CPU,
-				Memory:                instance.Memory,
-				UseLegacyBios:         instance.UseLegacyBios,
-				SecureBootEnabled:     instance.SecureBootEnabled,
-				TPMPresent:            instance.TPMPresent,
-			}
-
-			if instance.Overrides != nil {
-				apiInstance.Overrides = api.InstanceOverride(*instance.Overrides)
-			}
-
-			result = append(result, apiInstance)
+			result = append(result, instance.Instance)
 		}
 
 		return response.SyncResponse(true, result)

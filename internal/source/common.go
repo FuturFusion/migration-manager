@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/FuturFusion/migration-manager/internal"
-	"github.com/FuturFusion/migration-manager/internal/instance"
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -50,7 +50,7 @@ func (s *InternalSource) GetDatabaseID() (int, error) {
 	return s.DatabaseID, nil
 }
 
-func (s *InternalSource) GetAllVMs(ctx context.Context) ([]instance.InternalInstance, error) {
+func (s *InternalSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {
 	return nil, fmt.Errorf("Not implemented by InternalSource")
 }
 

@@ -619,46 +619,62 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					// Matching instance, will get updated.
-					InventoryPath:   "/inventory/path/A",
-					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						// Matching instance, will get updated.
+						InventoryPath:   "/inventory/path/A",
+						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					},
 				},
 				{
-					// Not matching instance, will be unassigned from batch
-					InventoryPath:   "/inventory/path/B",
-					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						// Not matching instance, will be unassigned from batch
+						InventoryPath:   "/inventory/path/B",
+						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					},
 				},
 				{
-					// Instance in state "user disabled", will be skipped
-					InventoryPath:   "/inventory/path/A user disabled",
-					MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
+					Instance: api.Instance{
+						// Instance in state "user disabled", will be skipped
+						InventoryPath:   "/inventory/path/A user disabled",
+						MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
+					},
 				},
 				{
-					// Instance is already migrating, will be skipped
-					InventoryPath:   "/inventory/path/A already migrating",
-					MigrationStatus: api.MIGRATIONSTATUS_CREATING,
+					Instance: api.Instance{
+						// Instance is already migrating, will be skipped
+						InventoryPath:   "/inventory/path/A already migrating",
+						MigrationStatus: api.MIGRATIONSTATUS_CREATING,
+					},
 				},
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
-					// Matching instance, will get updated.
-					InventoryPath:   "/inventory/path/A unassigned",
-					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						// Matching instance, will get updated.
+						InventoryPath:   "/inventory/path/A unassigned",
+						MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+					},
 				},
 				{
-					// Matching instance, will get updated.
-					InventoryPath:   "/inventory/path/A unassigned idle state",
-					MigrationStatus: api.MIGRATIONSTATUS_IDLE,
+					Instance: api.Instance{
+						// Matching instance, will get updated.
+						InventoryPath:   "/inventory/path/A unassigned idle state",
+						MigrationStatus: api.MIGRATIONSTATUS_IDLE,
+					},
 				},
 				{
-					// Not matching instance, will stay unassigned from batch
-					InventoryPath:   "/inventory/path/B unassigned",
-					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						// Not matching instance, will stay unassigned from batch
+						InventoryPath:   "/inventory/path/B unassigned",
+						MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+					},
 				},
 				{
-					// Instance in state "user disabled", will be skipped
-					InventoryPath:   "/inventory/path/A unassigned user disabled",
-					MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
+					Instance: api.Instance{
+						// Instance in state "user disabled", will be skipped
+						InventoryPath:   "/inventory/path/A unassigned user disabled",
+						MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
+					},
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -724,8 +740,10 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					InventoryPath:   "/inventory/path/A",
-					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						InventoryPath:   "/inventory/path/A",
+						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					},
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -745,8 +763,10 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					InventoryPath:   "/inventory/path/A",
-					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						InventoryPath:   "/inventory/path/A",
+						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					},
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -769,8 +789,10 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					InventoryPath:   "/inventory/path/B",
-					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						InventoryPath:   "/inventory/path/B",
+						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					},
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -810,8 +832,10 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
-					InventoryPath:   "/inventory/path/A",
-					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						InventoryPath:   "/inventory/path/A",
+						MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+					},
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -831,8 +855,10 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
-					InventoryPath:   "/inventory/path/A",
-					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						InventoryPath:   "/inventory/path/A",
+						MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+					},
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -855,8 +881,10 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
-					InventoryPath:   "/inventory/path/A",
-					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						InventoryPath:   "/inventory/path/A",
+						MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+					},
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -1002,12 +1030,16 @@ func TestBatchService_DeleteByName(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					UUID:            uuidA,
-					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						UUID:            uuidA,
+						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					},
 				},
 				{
-					UUID:            uuidB,
-					MigrationStatus: api.MIGRATIONSTATUS_ERROR,
+					Instance: api.Instance{
+						UUID:            uuidB,
+						MigrationStatus: api.MIGRATIONSTATUS_ERROR,
+					},
 				},
 			},
 
@@ -1063,8 +1095,10 @@ func TestBatchService_DeleteByName(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					UUID:            uuidB,
-					MigrationStatus: api.MIGRATIONSTATUS_CREATING,
+					Instance: api.Instance{
+						UUID:            uuidB,
+						MigrationStatus: api.MIGRATIONSTATUS_CREATING,
+					},
 				},
 			},
 
@@ -1082,8 +1116,10 @@ func TestBatchService_DeleteByName(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					UUID:            uuidA,
-					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					Instance: api.Instance{
+						UUID:            uuidA,
+						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+					},
 				},
 			},
 			instanceSvcUnassignFromBatchErr: boom.Error,

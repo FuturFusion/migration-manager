@@ -481,7 +481,7 @@ func (i instance) scanInstance(ctx context.Context, row interface{ Scan(dest ...
 		return migration.Instance{}, err
 	}
 
-	instance.Overrides = &overrides
+	instance.Overrides = &overrides.InstanceOverride
 
 	return instance, nil
 }

@@ -25,144 +25,150 @@ var (
 	instanceAUUID = uuid.Must(uuid.NewRandom())
 
 	instanceA = migration.Instance{
-		UUID:                  instanceAUUID,
-		InventoryPath:         "/path/UbuntuVM",
-		Annotation:            "annotation",
-		MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-		MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-		LastUpdateFromSource:  time.Now().UTC(),
-		SourceID:              1,
-		BatchID:               nil,
-		GuestToolsVersion:     123,
-		Architecture:          "x86_64",
-		HardwareVersion:       "hw version",
-		OS:                    "Ubuntu",
-		OSVersion:             "24.04",
-		Devices:               nil,
-		Disks: []api.InstanceDiskInfo{
-			{
-				Name:                      "disk",
-				DifferentialSyncSupported: true,
-				SizeInBytes:               123,
+		Instance: api.Instance{
+			UUID:                  instanceAUUID,
+			InventoryPath:         "/path/UbuntuVM",
+			Annotation:            "annotation",
+			MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+			MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
+			LastUpdateFromSource:  time.Now().UTC(),
+			BatchID:               nil,
+			GuestToolsVersion:     123,
+			Architecture:          "x86_64",
+			HardwareVersion:       "hw version",
+			OS:                    "Ubuntu",
+			OSVersion:             "24.04",
+			Devices:               nil,
+			Disks: []api.InstanceDiskInfo{
+				{
+					Name:                      "disk",
+					DifferentialSyncSupported: true,
+					SizeInBytes:               123,
+				},
 			},
-		},
-		NICs: []api.InstanceNICInfo{
-			{
-				Network: "net",
-				Hwaddr:  "mac",
+			NICs: []api.InstanceNICInfo{
+				{
+					Network: "net",
+					Hwaddr:  "mac",
+				},
 			},
+			Snapshots: nil,
+			CPU: api.InstanceCPUInfo{
+				NumberCPUs:             2,
+				CPUAffinity:            []int32{},
+				NumberOfCoresPerSocket: 2,
+			},
+			Memory: api.InstanceMemoryInfo{
+				MemoryInBytes:            4294967296,
+				MemoryReservationInBytes: 4294967296,
+			},
+			UseLegacyBios:     false,
+			SecureBootEnabled: false,
+			TPMPresent:        false,
 		},
-		Snapshots: nil,
-		CPU: api.InstanceCPUInfo{
-			NumberCPUs:             2,
-			CPUAffinity:            []int32{},
-			NumberOfCoresPerSocket: 2,
-		},
-		Memory: api.InstanceMemoryInfo{
-			MemoryInBytes:            4294967296,
-			MemoryReservationInBytes: 4294967296,
-		},
-		UseLegacyBios:     false,
-		SecureBootEnabled: false,
-		TPMPresent:        false,
-		NeedsDiskImport:   false,
-		SecretToken:       uuid.Must(uuid.NewRandom()),
+		NeedsDiskImport: false,
+		SecretToken:     uuid.Must(uuid.NewRandom()),
+		SourceID:        1,
 	}
 
 	instanceBUUID = uuid.Must(uuid.NewRandom())
 	instanceB     = migration.Instance{
-		UUID:                  instanceBUUID,
-		InventoryPath:         "/path/WindowsVM",
-		Annotation:            "annotation",
-		MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-		MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-		LastUpdateFromSource:  time.Now().UTC(),
-		SourceID:              1,
-		BatchID:               nil,
-		GuestToolsVersion:     123,
-		Architecture:          "x86_64",
-		HardwareVersion:       "hw version",
-		OS:                    "Windows",
-		OSVersion:             "11",
-		Devices:               nil,
-		Disks: []api.InstanceDiskInfo{
-			{
-				Name:                      "disk",
-				DifferentialSyncSupported: false,
-				SizeInBytes:               321,
+		Instance: api.Instance{
+			UUID:                  instanceBUUID,
+			InventoryPath:         "/path/WindowsVM",
+			Annotation:            "annotation",
+			MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+			MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
+			LastUpdateFromSource:  time.Now().UTC(),
+			BatchID:               nil,
+			GuestToolsVersion:     123,
+			Architecture:          "x86_64",
+			HardwareVersion:       "hw version",
+			OS:                    "Windows",
+			OSVersion:             "11",
+			Devices:               nil,
+			Disks: []api.InstanceDiskInfo{
+				{
+					Name:                      "disk",
+					DifferentialSyncSupported: false,
+					SizeInBytes:               321,
+				},
 			},
-		},
-		NICs: []api.InstanceNICInfo{
-			{
-				Network: "net1",
-				Hwaddr:  "mac1",
+			NICs: []api.InstanceNICInfo{
+				{
+					Network: "net1",
+					Hwaddr:  "mac1",
+				},
+				{
+					Network: "net2",
+					Hwaddr:  "mac2",
+				},
 			},
-			{
-				Network: "net2",
-				Hwaddr:  "mac2",
+			Snapshots: nil,
+			CPU: api.InstanceCPUInfo{
+				NumberCPUs:             2,
+				CPUAffinity:            []int32{0, 1},
+				NumberOfCoresPerSocket: 2,
 			},
+			Memory: api.InstanceMemoryInfo{
+				MemoryInBytes:            4294967296,
+				MemoryReservationInBytes: 4294967296,
+			},
+			UseLegacyBios:     false,
+			SecureBootEnabled: true,
+			TPMPresent:        true,
 		},
-		Snapshots: nil,
-		CPU: api.InstanceCPUInfo{
-			NumberCPUs:             2,
-			CPUAffinity:            []int32{0, 1},
-			NumberOfCoresPerSocket: 2,
-		},
-		Memory: api.InstanceMemoryInfo{
-			MemoryInBytes:            4294967296,
-			MemoryReservationInBytes: 4294967296,
-		},
-		UseLegacyBios:     false,
-		SecureBootEnabled: true,
-		TPMPresent:        true,
-		NeedsDiskImport:   false,
-		SecretToken:       uuid.Must(uuid.NewRandom()),
+		NeedsDiskImport: false,
+		SecretToken:     uuid.Must(uuid.NewRandom()),
+		SourceID:        1,
 	}
 
 	instanceCUUID = uuid.Must(uuid.NewRandom())
 	instanceC     = migration.Instance{
-		UUID:                  instanceCUUID,
-		InventoryPath:         "/path/DebianVM",
-		Annotation:            "annotation",
-		MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-		MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-		LastUpdateFromSource:  time.Now().UTC(),
-		SourceID:              1,
-		BatchID:               ptr.To(1),
-		GuestToolsVersion:     123,
-		Architecture:          "arm64",
-		HardwareVersion:       "hw version",
-		OS:                    "Debian",
-		OSVersion:             "bookworm",
-		Devices:               nil,
-		Disks: []api.InstanceDiskInfo{
-			{
-				Name:                      "disk1",
-				DifferentialSyncSupported: true,
-				SizeInBytes:               123,
+		Instance: api.Instance{
+			UUID:                  instanceCUUID,
+			InventoryPath:         "/path/DebianVM",
+			Annotation:            "annotation",
+			MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+			MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
+			LastUpdateFromSource:  time.Now().UTC(),
+			BatchID:               ptr.To(1),
+			GuestToolsVersion:     123,
+			Architecture:          "arm64",
+			HardwareVersion:       "hw version",
+			OS:                    "Debian",
+			OSVersion:             "bookworm",
+			Devices:               nil,
+			Disks: []api.InstanceDiskInfo{
+				{
+					Name:                      "disk1",
+					DifferentialSyncSupported: true,
+					SizeInBytes:               123,
+				},
+				{
+					Name:                      "disk2",
+					DifferentialSyncSupported: true,
+					SizeInBytes:               321,
+				},
 			},
-			{
-				Name:                      "disk2",
-				DifferentialSyncSupported: true,
-				SizeInBytes:               321,
+			NICs:      nil,
+			Snapshots: nil,
+			CPU: api.InstanceCPUInfo{
+				NumberCPUs:             4,
+				CPUAffinity:            []int32{0, 1, 2, 3},
+				NumberOfCoresPerSocket: 2,
 			},
+			Memory: api.InstanceMemoryInfo{
+				MemoryInBytes:            4294967296,
+				MemoryReservationInBytes: 4294967296,
+			},
+			UseLegacyBios:     true,
+			SecureBootEnabled: false,
+			TPMPresent:        false,
 		},
-		NICs:      nil,
-		Snapshots: nil,
-		CPU: api.InstanceCPUInfo{
-			NumberCPUs:             4,
-			CPUAffinity:            []int32{0, 1, 2, 3},
-			NumberOfCoresPerSocket: 2,
-		},
-		Memory: api.InstanceMemoryInfo{
-			MemoryInBytes:            4294967296,
-			MemoryReservationInBytes: 4294967296,
-		},
-		UseLegacyBios:     true,
-		SecureBootEnabled: false,
-		TPMPresent:        false,
-		NeedsDiskImport:   false,
-		SecretToken:       uuid.Must(uuid.NewRandom()),
+		NeedsDiskImport: false,
+		SecretToken:     uuid.Must(uuid.NewRandom()),
+		SourceID:        1,
 	}
 )
 
@@ -278,7 +284,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 }
 
-var overridesA = migration.Overrides{UUID: instanceAUUID, LastUpdate: time.Now().UTC(), Comment: "A comment", NumberCPUs: 8, MemoryInBytes: 4096, DisableMigration: true}
+var overridesA = migration.Overrides{InstanceOverride: api.InstanceOverride{UUID: instanceAUUID, LastUpdate: time.Now().UTC(), Comment: "A comment", NumberCPUs: 8, MemoryInBytes: 4096, DisableMigration: true}}
 
 func TestInstanceOverridesDatabaseActions(t *testing.T) {
 	ctx := context.Background()
@@ -325,7 +331,7 @@ func TestInstanceOverridesDatabaseActions(t *testing.T) {
 	// The Instance's returned overrides should match what we set.
 	dbInstanceA, err := instance.GetByID(ctx, instanceA.UUID)
 	require.NoError(t, err)
-	require.Equal(t, *dbInstanceA.Overrides, overridesA)
+	require.Equal(t, *dbInstanceA.Overrides, overridesA.InstanceOverride)
 
 	// Test updating an overrides.
 	overridesA.Comment = "An update"

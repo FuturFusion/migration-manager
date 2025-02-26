@@ -4,7 +4,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -12,31 +11,11 @@ import (
 )
 
 type Instance struct {
-	UUID                  uuid.UUID
-	InventoryPath         string
-	Annotation            string
-	MigrationStatus       api.MigrationStatusType
-	MigrationStatusString string
-	LastUpdateFromSource  time.Time
-	SourceID              int
-	BatchID               *int
-	GuestToolsVersion     int
-	Architecture          string
-	HardwareVersion       string
-	OS                    string
-	OSVersion             string
-	Devices               []api.InstanceDeviceInfo
-	Disks                 []api.InstanceDiskInfo
-	NICs                  []api.InstanceNICInfo
-	Snapshots             []api.InstanceSnapshotInfo
-	CPU                   api.InstanceCPUInfo
-	Memory                api.InstanceMemoryInfo
-	UseLegacyBios         bool
-	SecureBootEnabled     bool
-	TPMPresent            bool
-	Overrides             *Overrides
-	NeedsDiskImport       bool
-	SecretToken           uuid.UUID
+	api.Instance `yaml:",inline"`
+
+	NeedsDiskImport bool
+	SecretToken     uuid.UUID
+	SourceID        int
 }
 
 type InstanceWithDetails struct {
@@ -60,45 +39,6 @@ type InstanceWithDetails struct {
 
 	Source    Source
 	Overrides Overrides
-}
-
-type InstanceCPUInfo struct {
-	NumberCPUs             int
-	CPUAffinity            []int32
-	NumberOfCoresPerSocket int
-}
-
-type InstanceDeviceInfo struct {
-	Type    string
-	Label   string
-	Summary string
-}
-
-type InstanceDiskInfo struct {
-	Name                      string
-	Type                      string
-	ControllerModel           string
-	DifferentialSyncSupported bool
-	SizeInBytes               int64
-	IsShared                  bool
-}
-
-type InstanceMemoryInfo struct {
-	MemoryInBytes            int64
-	MemoryReservationInBytes int64
-}
-
-type InstanceNICInfo struct {
-	Network      string
-	AdapterModel string
-	Hwaddr       string
-}
-
-type InstanceSnapshotInfo struct {
-	Name         string
-	Description  string
-	CreationTime time.Time
-	ID           int
 }
 
 func (i Instance) Validate() error {
@@ -174,12 +114,7 @@ func (i *Instance) GetOSType() api.OSType {
 type Instances []Instance
 
 type Overrides struct {
-	UUID             uuid.UUID
-	LastUpdate       time.Time
-	Comment          string
-	NumberCPUs       int
-	MemoryInBytes    int64
-	DisableMigration bool
+	api.InstanceOverride `yaml:",inline"`
 }
 
 func (o Overrides) Validate() error {
