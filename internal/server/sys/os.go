@@ -1,7 +1,9 @@
 package sys
 
 import (
+	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -70,4 +72,73 @@ func (s *OS) GetVirtioDriversISOName() (string, error) {
 	}
 
 	return filepath.Base(files[0]), nil
+}
+
+// GetVMWareVixName returns the name of the VMWare vix disklib tarball.
+func (s *OS) GetVMwareVixName() (string, error) {
+	files, err := filepath.Glob(filepath.Join(s.CacheDir, "VMware-vix-disklib*.tar.gz"))
+	if err != nil {
+		return "", fmt.Errorf("Failed to find VMware vix tarball in %q: %w", s.CacheDir, err)
+	}
+
+	if len(files) != 1 {
+		return "", fmt.Errorf("Failed to find exactly one VMWare vix tarball in %q (Found %d)", s.CacheDir, len(files))
+	}
+
+	return filepath.Base(files[0]), nil
+}
+
+// LoadWorkerImage writes the VMWare vix tarball to the worker image.
+// If the worker image does not exist, it is fetched from the current project version's corresponding GitHub release.
+func (s *OS) LoadWorkerImage(ctx context.Context) error {
+	vixName, err := s.GetVMwareVixName()
+	if err != nil {
+		return err
+	}
+
+	rawWorkerPath := filepath.Join(s.CacheDir, util.RawWorkerImage())
+	_, err = os.Stat(rawWorkerPath)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// If the image doesn't exist yet, then download it from GitHub.
+	if err != nil {
+		g, err := util.GetProjectRepo(ctx, false)
+		if err != nil {
+			return err
+		}
+
+		err = g.DownloadAsset(ctx, rawWorkerPath, "migration-manager-worker.img.gz")
+		if err != nil {
+			return err
+		}
+	}
+
+	rawImgFile, err := os.OpenFile(rawWorkerPath, os.O_WRONLY, 0o600)
+	if err != nil {
+		return err
+	}
+
+	defer rawImgFile.Close()
+
+	vixFile, err := os.Open(filepath.Join(s.CacheDir, vixName))
+	if err != nil {
+		return err
+	}
+
+	defer vixFile.Close()
+
+	_, err = rawImgFile.Seek(616448*512, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	// Write the VIX tarball at the offset.
+	_, err = io.Copy(rawImgFile, vixFile)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
