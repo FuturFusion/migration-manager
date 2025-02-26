@@ -162,8 +162,10 @@ type Instance struct {
 
 	// Overrides, if any, for this instance
 	// Example: {..., NumberCPUs: 16, ...}
-	Overrides InstanceOverride `json:"overrides" yaml:"overrides"`
+	Overrides *InstanceOverride `json:"overrides" yaml:"overrides"`
 }
+
+var nonalpha = regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
 
 // Returns the name of the instance, which may not be unique among all instances for a given source.
 // If a unique, human-readable identifier is needed, use the InventoryPath property.
@@ -172,7 +174,6 @@ func (i *Instance) GetName() string {
 	base := filepath.Base(i.InventoryPath)
 
 	// An instance name can only contain alphanumeric and hyphen characters.
-	nonalpha := regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
 	return nonalpha.ReplaceAllString(base, "")
 }
 
