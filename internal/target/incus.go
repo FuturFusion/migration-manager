@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,9 +17,11 @@ import (
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/util"
+	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -449,6 +452,39 @@ func (t *InternalIncusTarget) GetStoragePoolVolume(pool string, volType string, 
 	return t.incusClient.GetStoragePoolVolume(pool, volType, name)
 }
 
+func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string) (incus.Operation, error) {
+	pool, _, err := t.incusClient.GetStoragePool(poolName)
+	if err != nil {
+		return nil, err
+	}
+
+	// Re-use the backup tarball if we used this source before.
+	backupName := filepath.Join(util.CachePath(), fmt.Sprintf("%s_%s_%s_worker.tar.gz", t.GetName(), pool.Name, version.GoVersion()))
+	_, err = os.Stat(backupName)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	if err != nil {
+		err := createIncusBackup(backupName, backupFilePath, pool)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	f, err := os.Open(backupName)
+	if err != nil {
+		return nil, err
+	}
+
+	createArgs := incus.StorageVolumeBackupArgs{
+		BackupFile: f,
+		Name:       util.WorkerVolume(),
+	}
+
+	return t.incusClient.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
+}
+
 func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) (incus.Operation, error) {
 	file, err := os.Open(isoFilePath)
 	if err != nil {
@@ -463,4 +499,96 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(pool string, isoFil
 	}
 
 	return t.incusClient.CreateStoragePoolVolumeFromISO(pool, createArgs)
+}
+
+type backupIndexFile struct {
+	Name    string         `yaml:"name"`
+	Backend string         `yaml:"backend"`
+	Pool    string         `yaml:"pool"`
+	Type    string         `yaml:"type"`
+	Config  map[string]any `yaml:"config"`
+}
+
+// createIncusBackup creates a backup tarball at backupPath with the given imagePath, for the given pool.
+func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.StoragePool) error {
+	imgFile, err := os.Open(imagePath)
+	if err != nil {
+		return err
+	}
+
+	// Make sure the file exists.
+	imgInfo, err := imgFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	dir := filepath.Dir(backupPath)
+
+	// Create a temporary directory to build the backup image.
+	tmpDir, err := os.MkdirTemp(dir, "build-worker-img_")
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// Create the backup directory.
+	err = os.Mkdir(filepath.Join(tmpDir, "backup"), 0o700)
+	if err != nil {
+		return err
+	}
+
+	// Create the backup volume.
+	volumePath := filepath.Join(tmpDir, "backup", "volume.img")
+	volumeFile, err := os.Create(volumePath)
+	if err != nil {
+		return err
+	}
+
+	defer volumeFile.Close()
+	_, err = io.Copy(volumeFile, imgFile)
+	if err != nil {
+		return err
+	}
+
+	// Create the backup index file.
+	index := backupIndexFile{
+		Name:    util.WorkerVolume(),
+		Backend: pool.Driver,
+		Pool:    pool.Name,
+		Type:    "custom",
+		Config: map[string]any{
+			"volume": incusAPI.StorageVolume{
+				StorageVolumePut: incusAPI.StorageVolumePut{
+					Config: map[string]string{
+						"size":            fmt.Sprintf("%dB", imgInfo.Size()),
+						"security.shared": "true",
+					},
+					Description: "Temporary image for the migration-manager worker",
+				},
+				Name:        util.WorkerVolume(),
+				Type:        "custom",
+				ContentType: "block",
+			},
+		},
+	}
+
+	indexYaml, err := yaml.Marshal(index)
+	if err != nil {
+		return err
+	}
+
+	indexPath := filepath.Join(tmpDir, "backup", "index.yaml")
+	indexFile, err := os.Create(indexPath)
+	if err != nil {
+		return err
+	}
+
+	defer indexFile.Close()
+	_, err = indexFile.Write(indexYaml)
+	if err != nil {
+		return err
+	}
+
+	return util.CreateTarballFromDir(backupPath, filepath.Join(tmpDir, "backup"))
 }
