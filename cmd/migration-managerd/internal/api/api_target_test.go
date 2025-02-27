@@ -69,14 +69,14 @@ func TestTargetsPost(t *testing.T) {
 		{
 			name: "success",
 
-			targetJSON: `{"name": "new", "target_type": 1, "properties": {"endpoint": "https://some-endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "new", "target_type": 1, "properties": {"endpoint": "https://some-endpoint"}}`,
 
 			wantHTTPStatus: http.StatusCreated,
 		},
 		{
 			name: "error - name already exists",
 
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint"}}`,
 
 			wantHTTPStatus: http.StatusBadRequest,
 		},
@@ -239,7 +239,7 @@ func TestTargetPut(t *testing.T) {
 			name: "success",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint"}}`,
 
 			wantHTTPStatus: http.StatusCreated,
 		},
@@ -247,7 +247,7 @@ func TestTargetPut(t *testing.T) {
 			name: "success with etag",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint"}}`,
 			targetEtag: func() string {
 				etag, err := util.EtagHash(migration.Target{
 					ID:         1,
@@ -300,7 +300,7 @@ func TestTargetPut(t *testing.T) {
 			name: "error - invalid etag",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint"}}`,
 			targetEtag: "invalid_etag",
 
 			wantHTTPStatus: http.StatusPreconditionFailed,
@@ -396,7 +396,7 @@ func seedDBWithSingleTarget(t *testing.T, daemon *Daemon) {
 	_, err := daemon.target.Create(ctx, migration.Target{
 		Name:       "foo",
 		TargetType: api.TARGETTYPE_INCUS,
-		Properties: json.RawMessage(`{"endpoint": "bar", "insecure": true}`),
+		Properties: json.RawMessage(`{"endpoint": "bar"}`),
 		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
 			return &mock.TargetEndpointMock{
 				ConnectFunc: func(ctx context.Context) error {
