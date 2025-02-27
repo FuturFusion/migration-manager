@@ -16,6 +16,8 @@ type Target struct {
 	TargetType api.TargetType
 
 	Properties json.RawMessage
+
+	EndpointFunc func(api.Target) (TargetEndpoint, error) `json:"-"`
 }
 
 func (t Target) Validate() error {

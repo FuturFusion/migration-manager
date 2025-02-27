@@ -14,6 +14,8 @@ type Source struct {
 	SourceType api.SourceType
 
 	Properties json.RawMessage
+
+	EndpointFunc func(api.Source) (SourceEndpoint, error) `json:"-"`
 }
 
 func (s Source) Validate() error {
