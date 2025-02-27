@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/migration/endpoint/mock"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
@@ -395,6 +397,19 @@ func seedDBWithSingleTarget(t *testing.T, daemon *Daemon) {
 		Name:       "foo",
 		TargetType: api.TARGETTYPE_INCUS,
 		Properties: json.RawMessage(`{"endpoint": "bar", "insecure": true}`),
+		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
+			return &mock.TargetEndpointMock{
+				ConnectFunc: func(ctx context.Context) error {
+					return nil
+				},
+				DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+					return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+				},
+				IsWaitingForOIDCTokensFunc: func() bool {
+					return false
+				},
+			}, nil
+		},
 	},
 	)
 	require.NoError(t, err)

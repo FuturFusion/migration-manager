@@ -2,12 +2,14 @@ package migration_test
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	endpointMock "github.com/FuturFusion/migration-manager/internal/migration/endpoint/mock"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/mock"
 	"github.com/FuturFusion/migration-manager/internal/testing/boom"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -235,7 +237,19 @@ func TestSourceService_Create(t *testing.T) {
 				},
 			}
 
+			endpointFunc := func(t api.Source) (migration.SourceEndpoint, error) {
+				return &endpointMock.SourceEndpointMock{
+					ConnectFunc: func(ctx context.Context) error {
+						return nil
+					},
+					DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+						return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+					},
+				}, nil
+			}
+
 			sourceSvc := migration.NewSourceService(repo)
+			tc.source.EndpointFunc = endpointFunc
 
 			// Run test
 			source, err := sourceSvc.Create(context.Background(), tc.source)
@@ -675,7 +689,19 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				},
 			}
 
+			endpointFunc := func(t api.Source) (migration.SourceEndpoint, error) {
+				return &endpointMock.SourceEndpointMock{
+					ConnectFunc: func(ctx context.Context) error {
+						return nil
+					},
+					DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+						return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+					},
+				}, nil
+			}
+
 			sourceSvc := migration.NewSourceService(repo)
+			tc.source.EndpointFunc = endpointFunc
 
 			// Run test
 			source, err := sourceSvc.UpdateByID(context.Background(), tc.source)
