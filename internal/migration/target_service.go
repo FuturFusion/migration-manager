@@ -3,6 +3,8 @@ package migration
 import (
 	"context"
 	"fmt"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type targetService struct {
@@ -19,6 +21,11 @@ func NewTargetService(repo TargetRepo) targetService {
 
 func (s targetService) Create(ctx context.Context, newTarget Target) (Target, error) {
 	err := newTarget.Validate()
+	if err != nil {
+		return Target{}, err
+	}
+
+	err = s.updateTargetConnectivity(ctx, &newTarget)
 	if err != nil {
 		return Target{}, err
 	}
@@ -52,6 +59,14 @@ func (s targetService) UpdateByID(ctx context.Context, newTarget Target) (Target
 		return Target{}, err
 	}
 
+	// Reset connectivity status to trigger a scan on update.
+	newTarget.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN)
+
+	err = s.updateTargetConnectivity(ctx, &newTarget)
+	if err != nil {
+		return Target{}, err
+	}
+
 	return s.repo.UpdateByID(ctx, newTarget)
 }
 
@@ -61,4 +76,52 @@ func (s targetService) DeleteByName(ctx context.Context, name string) error {
 	}
 
 	return s.repo.DeleteByName(ctx, name)
+}
+
+func (s targetService) updateTargetConnectivity(ctx context.Context, tgt *Target) error {
+	// Skip if target already has good connectivity.
+	if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
+		return nil
+	}
+
+	if tgt.EndpointFunc == nil {
+		return fmt.Errorf("Endpoint function not defined for Target %q", tgt.Name)
+	}
+
+	endpoint, err := tgt.EndpointFunc(api.Target{
+		Name:       tgt.Name,
+		TargetType: tgt.TargetType,
+		Properties: tgt.Properties,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Do a basic connectivity check.
+	status, untrustedCert := endpoint.DoBasicConnectivityCheck()
+
+	if untrustedCert != nil && tgt.GetServerCertificate() == nil {
+		// We got an untrusted certificate; if one hasn't already been set, add it to this target.
+		tgt.SetServerCertificate(untrustedCert)
+	}
+
+	if status == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		// Need to wait for user to confirm if the fingerprint is trusted or not.
+		tgt.SetExternalConnectivityStatus(status)
+	} else if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		// Some other basic connectivity issue occurred.
+		tgt.SetExternalConnectivityStatus(status)
+	} else {
+		// Basic connectivity is good, now test authentication.
+
+		if endpoint.IsWaitingForOIDCTokens() {
+			// Target is configured for OIDC, but has no tokens yet.
+			tgt.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC)
+		} else {
+			// Test the connectivity of this target.
+			tgt.SetExternalConnectivityStatus(api.MapExternalConnectivityStatusToStatus(endpoint.Connect(ctx)))
+		}
+	}
+
+	return nil
 }

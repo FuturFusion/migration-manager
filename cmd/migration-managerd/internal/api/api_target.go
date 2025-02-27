@@ -17,6 +17,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	apiTarget "github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -195,14 +196,12 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 		Name:       target.Name,
 		TargetType: target.TargetType,
 		Properties: target.Properties,
+		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
+			return apiTarget.NewInternalIncusTargetFrom(t)
+		},
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", target.Name, err))
-	}
-
-	err = d.checkTargetConnectivity(r.Context(), tgt)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed check target connectivity: %w", err))
 	}
 
 	metadata := make(map[string]string)
@@ -257,6 +256,9 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 
 		tgt.SetExternalConnectivityStatus(connectivityStatus)
 		tgt.SetOIDCTokens(oidcClient.GetOIDCTokens())
+		tgt.EndpointFunc = func(t api.Target) (migration.TargetEndpoint, error) {
+			return apiTarget.NewInternalIncusTargetFrom(t)
+		}
 
 		_, _ = d.target.UpdateByID(context.TODO(), tgt)
 	}()
@@ -410,6 +412,9 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		Name:       target.Name,
 		TargetType: target.TargetType,
 		Properties: target.Properties,
+		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
+			return apiTarget.NewInternalIncusTargetFrom(t)
+		},
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", target.Name, err))
@@ -418,11 +423,6 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 	err = trans.Commit()
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
-	}
-
-	err = d.checkTargetConnectivity(r.Context(), tgt)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed check target connectivity: %w", err))
 	}
 
 	metadata := make(map[string]string)
