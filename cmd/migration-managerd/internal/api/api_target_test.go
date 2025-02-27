@@ -253,7 +253,7 @@ func TestTargetPut(t *testing.T) {
 					ID:         1,
 					Name:       "foo",
 					TargetType: api.TARGETTYPE_INCUS,
-					Properties: json.RawMessage(`{"endpoint": "bar", "insecure": true}`),
+					Properties: json.RawMessage(`{"endpoint": "bar", "trusted_server_certificate": null, "trusted_server_certificate_fingerprint": "", "tls_client_key": "", "tls_client_cert": "", "oidc_tokens": null, "connectivity_status": 1}`),
 				})
 				require.NoError(t, err)
 				return etag
