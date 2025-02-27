@@ -1,6 +1,11 @@
 package migration
 
-import "context"
+import (
+	"context"
+	"crypto/x509"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
+)
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg migration_test -out source_service_mock_gen_test.go -rm . SourceService
 
@@ -26,4 +31,13 @@ type SourceRepo interface {
 	GetByName(ctx context.Context, name string) (Source, error)
 	UpdateByID(ctx context.Context, source Source) (Source, error)
 	DeleteByName(ctx context.Context, name string) error
+}
+
+//go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out endpoint/mock/source_endpoint_mock_gen.go -rm . SourceEndpoint
+//go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i SourceEndpoint -t ../logger/slog.gotmpl -o ./endpoint/middleware/source_slog_gen.go
+// disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i SourceEndpoint -t prometheus -o ./endpoint/middleware/source_prometheus_gen.go
+
+type SourceEndpoint interface {
+	Connect(ctx context.Context) error
+	DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate)
 }
