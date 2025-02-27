@@ -2,14 +2,9 @@ package api
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"net/http"
-	"net/url"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -18,7 +13,6 @@ import (
 	"github.com/google/uuid"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
@@ -1083,7 +1077,7 @@ func (d *Daemon) checkSourceConnectivity(ctx context.Context, src migration.Sour
 	}
 
 	// Do a basic connectivity check.
-	status, untrustedCert := doBasicConnectivityCheck(s.Endpoint, s.TrustedServerCertificateFingerprint)
+	status, untrustedCert := util.DoBasicConnectivityCheck(s.Endpoint, s.TrustedServerCertificateFingerprint)
 
 	if untrustedCert != nil && s.ServerCertificate == nil {
 		// We got an untrusted certificate; if one hasn't already been set, add it to this source.
@@ -1101,7 +1095,7 @@ func (d *Daemon) checkSourceConnectivity(ctx context.Context, src migration.Sour
 		// Basic connectivity is good, now test authentication.
 
 		// Test the connectivity of this source.
-		src.SetExternalConnectivityStatus(mapErrorToStatus(s.Connect(ctx)))
+		src.SetExternalConnectivityStatus(api.MapExternalConnectivityStatusToStatus(s.Connect(ctx)))
 	}
 
 	// Update the connectivity status in the database.
@@ -1145,7 +1139,7 @@ func (d *Daemon) checkTargetConnectivity(ctx context.Context, tgt migration.Targ
 	}
 
 	// Do a basic connectivity check.
-	status, untrustedCert := doBasicConnectivityCheck(it.Endpoint, it.TrustedServerCertificateFingerprint)
+	status, untrustedCert := util.DoBasicConnectivityCheck(it.Endpoint, it.TrustedServerCertificateFingerprint)
 
 	if untrustedCert != nil && it.ServerCertificate == nil {
 		// We got an untrusted certificate; if one hasn't already been set, add it to this target.
@@ -1167,7 +1161,7 @@ func (d *Daemon) checkTargetConnectivity(ctx context.Context, tgt migration.Targ
 			tgt.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC)
 		} else {
 			// Test the connectivity of this target.
-			tgt.SetExternalConnectivityStatus(mapErrorToStatus(it.Connect(ctx)))
+			tgt.SetExternalConnectivityStatus(api.MapExternalConnectivityStatusToStatus(it.Connect(ctx)))
 		}
 	}
 
@@ -1179,79 +1173,4 @@ func (d *Daemon) checkTargetConnectivity(ctx context.Context, tgt migration.Targ
 	}
 
 	return nil
-}
-
-func mapErrorToStatus(err error) api.ExternalConnectivityStatus {
-	if err == nil {
-		return api.EXTERNALCONNECTIVITYSTATUS_OK
-	}
-
-	var dnsError *net.DNSError
-	var opError *net.OpError
-	var urlError *url.Error
-	var tlsError *tls.CertificateVerificationError
-
-	if errors.As(err, &tlsError) {
-		return api.EXTERNALCONNECTIVITYSTATUS_TLS_ERROR
-	} else if errors.As(err, &dnsError) || errors.As(err, &opError) || errors.As(err, &urlError) {
-		return api.EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT
-	} else if strings.Contains(err.Error(), "ServerFaultCode: Cannot complete login") { // vmware
-		return api.EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
-	} else if strings.Contains(err.Error(), "ErrorType=access_denied") { // zitadel oidc
-		return api.EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
-	} else if strings.Contains(err.Error(), "not authorized") { // incus
-		return api.EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
-	}
-
-	slog.Warn("Received an unhandled remote connectivity error", logger.Err(err))
-	return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
-}
-
-func doBasicConnectivityCheck(endpoint string, trustedCertFingerprint string) (api.ExternalConnectivityStatus, *x509.Certificate) {
-	// Do a basic connectivity test.
-	client := &http.Client{
-		Timeout: 3 * time.Second, // Timeout quickly if we cannot connect to the endpoint.
-	}
-
-	resp, err := client.Get(endpoint)
-	if err != nil {
-		connStatus := mapErrorToStatus(err)
-
-		// Some sort of TLS error occurred.
-		if connStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_ERROR {
-			// Disable TLS certificate verification so we can inspect the server's cert.
-			client := &http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: true,
-					},
-				},
-			}
-
-			// Try connecting again.
-			resp2, err := client.Get(endpoint)
-			if err != nil {
-				// Still encountering some sort of error.
-				return mapErrorToStatus(err), nil
-			}
-
-			resp2.Body.Close()
-			serverCert := resp2.TLS.PeerCertificates[0]
-
-			// Is the presented certificate's fingerprint already trusted?
-			if incusTLS.CertFingerprint(serverCert) == strings.ToLower(strings.ReplaceAll(trustedCertFingerprint, ":", "")) {
-				return api.EXTERNALCONNECTIVITYSTATUS_OK, serverCert
-			}
-
-			// We got an untrusted TLS cert.
-			return api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT, serverCert
-		}
-
-		// Some other connectivity error occurred.
-		return connStatus, nil
-	}
-
-	// Good connectivity.
-	resp.Body.Close()
-	return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
 }

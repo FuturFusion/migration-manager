@@ -248,7 +248,7 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 	// Spawn a worker, since we need to wait for the user to complete the authentication workflow.
 	go func() {
 		err := oidcClient.WaitForToken(resp, provider)
-		connectivityStatus := mapErrorToStatus(err)
+		connectivityStatus := api.MapExternalConnectivityStatusToStatus(err)
 
 		tgt, err := d.target.GetByName(context.TODO(), targetName)
 		if err != nil {

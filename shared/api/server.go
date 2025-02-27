@@ -1,7 +1,12 @@
 package api
 
 import (
+	"crypto/tls"
+	"errors"
 	"fmt"
+	"net"
+	"net/url"
+	"strings"
 )
 
 const (
@@ -41,6 +46,31 @@ func (e ExternalConnectivityStatus) String() string {
 	default:
 		return fmt.Sprintf("ExternalConnectivityStatus(%d)", e)
 	}
+}
+
+func MapExternalConnectivityStatusToStatus(err error) ExternalConnectivityStatus {
+	if err == nil {
+		return EXTERNALCONNECTIVITYSTATUS_OK
+	}
+
+	var dnsError *net.DNSError
+	var opError *net.OpError
+	var urlError *url.Error
+	var tlsError *tls.CertificateVerificationError
+
+	if errors.As(err, &tlsError) {
+		return EXTERNALCONNECTIVITYSTATUS_TLS_ERROR
+	} else if errors.As(err, &dnsError) || errors.As(err, &opError) || errors.As(err, &urlError) {
+		return EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT
+	} else if strings.Contains(err.Error(), "ServerFaultCode: Cannot complete login") { // vmware
+		return EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	} else if strings.Contains(err.Error(), "ErrorType=access_denied") { // zitadel oidc
+		return EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	} else if strings.Contains(err.Error(), "not authorized") { // incus
+		return EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	}
+
+	return EXTERNALCONNECTIVITYSTATUS_UNKNOWN
 }
 
 // ServerPut represents the modifiable fields of a server configuration
