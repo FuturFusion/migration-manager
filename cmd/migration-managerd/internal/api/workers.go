@@ -1014,7 +1014,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 		}
 
 		// Remove the migration ISO image.
-		delete(apiDef.Devices, "migration-iso")
+		delete(apiDef.Devices, util.WorkerVolume())
 
 		// Don't set any profiles by default.
 		apiDef.Profiles = []string{}
