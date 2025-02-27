@@ -102,8 +102,8 @@ type Target interface {
 	// Wrapper around Incus' UpdateInstance method.
 	UpdateInstance(name string, instanceDef incusAPI.InstancePut, ETag string) (incus.Operation, error)
 
-	// Wrapper around Incus' GetStoragePoolVolume method.
-	GetStoragePoolVolume(pool string, volType string, name string) (*incusAPI.StorageVolume, string, error)
+	// Wrapper around Incus' GetStoragePoolVolumeNames method.
+	GetStoragePoolVolumeNames(pool string) ([]string, error)
 
 	// Wrapper around Incus' CreateStoragePoolVolumeFromBackup.
 	CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string) ([]incus.Operation, error)

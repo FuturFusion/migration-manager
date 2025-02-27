@@ -448,8 +448,8 @@ func (t *InternalIncusTarget) UpdateInstance(name string, instanceDef incusAPI.I
 	return t.incusClient.UpdateInstance(name, instanceDef, ETag)
 }
 
-func (t *InternalIncusTarget) GetStoragePoolVolume(pool string, volType string, name string) (*incusAPI.StorageVolume, string, error) {
-	return t.incusClient.GetStoragePoolVolume(pool, volType, name)
+func (t *InternalIncusTarget) GetStoragePoolVolumeNames(pool string) ([]string, error) {
+	return t.incusClient.GetStoragePoolVolumeNames(pool)
 }
 
 func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string) ([]incus.Operation, error) {

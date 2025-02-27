@@ -102,8 +102,8 @@ func (t *InternalTarget) UpdateInstance(name string, instanceDef incusAPI.Instan
 	return nil, fmt.Errorf("Not implemented by InternalTarget")
 }
 
-func (t *InternalTarget) GetStoragePoolVolume(pool string, volType string, name string) (*incusAPI.StorageVolume, string, error) {
-	return nil, "", fmt.Errorf("Not implemented by InternalTarget")
+func (t *InternalTarget) GetStoragePoolVolumeNames(pool string) ([]string, error) {
+	return nil, fmt.Errorf("Not implemented by InternalTarget")
 }
 
 func (t *InternalTarget) CreateStoragePoolVolumeFromBackup(pool string, isoFilePath string) ([]incus.Operation, error) {

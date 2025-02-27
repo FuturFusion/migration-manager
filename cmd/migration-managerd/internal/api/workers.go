@@ -4,14 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
 
@@ -611,8 +609,12 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 		return err
 	}
 
-	_, _, err = it.GetStoragePoolVolume(storagePool, "custom", util.WorkerVolume())
-	if err != nil && incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+	volumes, err := it.GetStoragePoolVolumeNames(storagePool)
+	if err != nil {
+		return err
+	}
+
+	if !slices.Contains(volumes, "custom/"+util.WorkerVolume()) {
 		err = d.os.LoadWorkerImage(ctx)
 		if err != nil {
 			return err
@@ -635,8 +637,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 	for _, iso := range importISOs {
 		log := log.With(slog.String("iso", iso))
 
-		_, _, err = it.GetStoragePoolVolume(storagePool, "custom", iso)
-		if err != nil && incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+		if !slices.Contains(volumes, "custom/"+iso) {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
 			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.CacheDir, iso))
