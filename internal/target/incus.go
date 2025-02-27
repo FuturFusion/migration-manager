@@ -301,7 +301,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef incusAPI.InstancesPost, storage
 	defer reverter.Fail()
 
 	// Attach bootable ISO to run migration of this VM.
-	apiDef.Devices["migration-iso"] = map[string]string{
+	apiDef.Devices[util.WorkerVolume()] = map[string]string{
 		"type":          "disk",
 		"pool":          storagePool,
 		"source":        bootISOImage,
