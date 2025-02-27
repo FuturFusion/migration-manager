@@ -31,6 +31,9 @@ var _ Source = &SourceMock{}
 //			DisconnectFunc: func(ctx context.Context) error {
 //				panic("mock out the Disconnect method")
 //			},
+//			DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+//				panic("mock out the DoBasicConnectivityCheck method")
+//			},
 //			GetAllNetworksFunc: func(ctx context.Context) ([]api.Network, error) {
 //				panic("mock out the GetAllNetworks method")
 //			},
@@ -70,6 +73,9 @@ type SourceMock struct {
 
 	// DisconnectFunc mocks the Disconnect method.
 	DisconnectFunc func(ctx context.Context) error
+
+	// DoBasicConnectivityCheckFunc mocks the DoBasicConnectivityCheck method.
+	DoBasicConnectivityCheckFunc func() (api.ExternalConnectivityStatus, *x509.Certificate)
 
 	// GetAllNetworksFunc mocks the GetAllNetworks method.
 	GetAllNetworksFunc func(ctx context.Context) ([]api.Network, error)
@@ -116,6 +122,9 @@ type SourceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// DoBasicConnectivityCheck holds details about calls to the DoBasicConnectivityCheck method.
+		DoBasicConnectivityCheck []struct {
+		}
 		// GetAllNetworks holds details about calls to the GetAllNetworks method.
 		GetAllNetworks []struct {
 			// Ctx is the ctx argument value.
@@ -160,6 +169,7 @@ type SourceMock struct {
 	lockConnect                       sync.RWMutex
 	lockDeleteVMSnapshot              sync.RWMutex
 	lockDisconnect                    sync.RWMutex
+	lockDoBasicConnectivityCheck      sync.RWMutex
 	lockGetAllNetworks                sync.RWMutex
 	lockGetAllVMs                     sync.RWMutex
 	lockGetDatabaseID                 sync.RWMutex
@@ -271,6 +281,33 @@ func (mock *SourceMock) DisconnectCalls() []struct {
 	mock.lockDisconnect.RLock()
 	calls = mock.calls.Disconnect
 	mock.lockDisconnect.RUnlock()
+	return calls
+}
+
+// DoBasicConnectivityCheck calls DoBasicConnectivityCheckFunc.
+func (mock *SourceMock) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
+	if mock.DoBasicConnectivityCheckFunc == nil {
+		panic("SourceMock.DoBasicConnectivityCheckFunc: method is nil but Source.DoBasicConnectivityCheck was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockDoBasicConnectivityCheck.Lock()
+	mock.calls.DoBasicConnectivityCheck = append(mock.calls.DoBasicConnectivityCheck, callInfo)
+	mock.lockDoBasicConnectivityCheck.Unlock()
+	return mock.DoBasicConnectivityCheckFunc()
+}
+
+// DoBasicConnectivityCheckCalls gets all the calls that were made to DoBasicConnectivityCheck.
+// Check the length with:
+//
+//	len(mockedSource.DoBasicConnectivityCheckCalls())
+func (mock *SourceMock) DoBasicConnectivityCheckCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockDoBasicConnectivityCheck.RLock()
+	calls = mock.calls.DoBasicConnectivityCheck
+	mock.lockDoBasicConnectivityCheck.RUnlock()
 	return calls
 }
 

@@ -17,6 +17,11 @@ type Source interface {
 	// Returns an error if unable to connect (unable to reach remote host, bad credentials, etc).
 	Connect(ctx context.Context) error
 
+	// Performs a basic HTTP connectivity test to the source.
+	//
+	// Returns a status flag indicating the status and if a TLS certificate error occurred a copy of the untrusted TLS certificate.
+	DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate)
+
 	// Disconnects from the source.
 	//
 	// Returns an error if there was a problem disconnecting from the source.

@@ -20,6 +20,10 @@ func (s *InternalSource) Connect(ctx context.Context) error {
 	return fmt.Errorf("Not implemented by InternalSource")
 }
 
+func (s *InternalSource) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
+	return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN, nil
+}
+
 func (s *InternalSource) Disconnect(ctx context.Context) error {
 	return fmt.Errorf("Not implemented by InternalSource")
 }

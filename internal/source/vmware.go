@@ -26,6 +26,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -100,6 +101,16 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 	s.isConnected = true
 	return nil
+}
+
+func (s *InternalVMwareSource) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
+	status, cert := util.DoBasicConnectivityCheck(s.Endpoint, s.TrustedServerCertificateFingerprint)
+	if cert != nil && s.ServerCertificate == nil {
+		// We got an untrusted certificate; if one hasn't already been set, add it to this source.
+		s.ServerCertificate = cert.Raw
+	}
+
+	return status, cert
 }
 
 func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
