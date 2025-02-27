@@ -12,6 +12,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	apiSource "github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -189,14 +190,20 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		Name:       source.Name,
 		SourceType: source.SourceType,
 		Properties: source.Properties,
+		EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
+			return apiSource.NewInternalVMwareSourceFrom(s)
+		},
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", source.Name, err))
 	}
 
-	err = d.checkSourceConnectivity(r.Context(), src)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed check source connectivity: %w", err))
+	// Trigger a scan of this new source for instances.
+	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
+		err = d.syncOneSource(r.Context(), src)
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Failed to initiate sync from source %q: %w", src.Name, err))
+		}
 	}
 
 	metadata := make(map[string]string)
@@ -356,6 +363,9 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		Name:       source.Name,
 		SourceType: source.SourceType,
 		Properties: source.Properties,
+		EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
+			return apiSource.NewInternalVMwareSourceFrom(s)
+		},
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", source.Name, err))
@@ -366,9 +376,12 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	err = d.checkSourceConnectivity(r.Context(), src)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed check source connectivity: %w", err))
+	// Trigger a scan of this new source for instances.
+	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
+		err = d.syncOneSource(r.Context(), src)
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Failed to initiate sync from source %q: %w", src.Name, err))
+		}
 	}
 
 	metadata := make(map[string]string)

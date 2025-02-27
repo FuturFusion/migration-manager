@@ -1055,68 +1055,6 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 	})
 }
 
-func (d *Daemon) checkSourceConnectivity(ctx context.Context, src migration.Source) error {
-	log := slog.With(slog.String("method", "checkSourceConnectivity"))
-
-	// Skip any sources that already have good connectivity or aren't VMware.
-	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK || src.SourceType != api.SOURCETYPE_VMWARE {
-		return nil
-	}
-
-	// TODO: The methods on the source.InternalVMwareSource should be moved to migration
-	// which would then make this conversion obsolete.
-	s, err := source.NewInternalVMwareSourceFrom(api.Source{
-		Name:       src.Name,
-		DatabaseID: src.ID,
-		SourceType: src.SourceType,
-		Properties: src.Properties,
-	})
-	if err != nil {
-		log.Warn("Failed to create VMWareSource from source", slog.String("source", src.Name), logger.Err(err))
-		return err
-	}
-
-	// Do a basic connectivity check.
-	status, untrustedCert := util.DoBasicConnectivityCheck(s.Endpoint, s.TrustedServerCertificateFingerprint)
-
-	if untrustedCert != nil && s.ServerCertificate == nil {
-		// We got an untrusted certificate; if one hasn't already been set, add it to this source.
-		s.ServerCertificate = untrustedCert.Raw
-		src.SetServerCertificate(untrustedCert)
-	}
-
-	if status == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
-		// Need to wait for user to confirm if the fingerprint is trusted or not.
-		src.SetExternalConnectivityStatus(status)
-	} else if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
-		// Some other basic connectivity issue occurred.
-		src.SetExternalConnectivityStatus(status)
-	} else {
-		// Basic connectivity is good, now test authentication.
-
-		// Test the connectivity of this source.
-		src.SetExternalConnectivityStatus(api.MapExternalConnectivityStatusToStatus(s.Connect(ctx)))
-	}
-
-	// Update the connectivity status in the database.
-	_, err = d.source.UpdateByID(ctx, src)
-	if err != nil {
-		log.Warn("Failed updating source", slog.String("source", src.Name), logger.Err(err))
-		return err
-	}
-
-	// Trigger a scan of this new source for instances.
-	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
-		err = d.syncOneSource(ctx, src)
-		if err != nil {
-			log.Warn("Failed to initiate sync from source", slog.String("source", src.Name), logger.Err(err))
-			return err
-		}
-	}
-
-	return nil
-}
-
 func (d *Daemon) checkTargetConnectivity(ctx context.Context, tgt migration.Target) error {
 	log := slog.With(slog.String("method", "checkTargetConnectivity"))
 
