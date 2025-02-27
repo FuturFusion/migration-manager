@@ -18,6 +18,7 @@ import (
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -117,6 +118,16 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	return nil
 }
 
+func (t *InternalIncusTarget) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
+	status, cert := util.DoBasicConnectivityCheck(t.Endpoint, t.TrustedServerCertificateFingerprint)
+	if cert != nil && t.ServerCertificate == nil {
+		// We got an untrusted certificate; if one hasn't already been set, add it to this target.
+		t.ServerCertificate = cert.Raw
+	}
+
+	return status, cert
+}
+
 func (t *InternalIncusTarget) Disconnect(ctx context.Context) error {
 	if !t.isConnected {
 		return fmt.Errorf("Not connected to endpoint %q", t.Endpoint)
@@ -142,6 +153,10 @@ func (t *InternalIncusTarget) SetClientTLSCredentials(key string, cert string) e
 	t.TLSClientKey = key
 	t.TLSClientCert = cert
 	return nil
+}
+
+func (t *InternalIncusTarget) IsWaitingForOIDCTokens() bool {
+	return t.TLSClientKey == "" && t.OIDCTokens == nil
 }
 
 func (t *InternalIncusTarget) GetProperties() json.RawMessage {

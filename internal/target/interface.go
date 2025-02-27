@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 
 	incus "github.com/lxc/incus/v6/client"
-	"github.com/lxc/incus/v6/shared/api"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Interface definition for all migration manager targets.
@@ -20,6 +21,11 @@ type Target interface {
 	//
 	// Returns an error if unable to connect (unable to reach remote host, bad credentials, etc).
 	Connect(ctx context.Context) error
+
+	// Performs a basic HTTP connectivity test to the source.
+	//
+	// Returns a status flag indicating the status and if a TLS certificate error occurred a copy of the untrusted TLS certificate.
+	DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate)
 
 	// Disconnects from the target.
 	//
@@ -45,6 +51,9 @@ type Target interface {
 	// Returns whether currently connected to the target or not.
 	IsConnected() bool
 
+	// Returns whether the target is waiting to complete OIDC authentication.
+	IsWaitingForOIDCTokens() bool
+
 	// -----------------------------------------------
 
 	// Returns the human-readable name for this target.
@@ -67,10 +76,10 @@ type Target interface {
 	SetProject(project string) error
 
 	// Creates a VM definition for use with the Incus REST API.
-	CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) api.InstancesPost
+	CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) incusAPI.InstancesPost
 
 	// Creates a new VM from the pre-populated API definition.
-	CreateNewVM(apiDef api.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error
+	CreateNewVM(apiDef incusAPI.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error
 
 	// Deletes a VM.
 	DeleteVM(name string) error
@@ -88,13 +97,13 @@ type Target interface {
 	ExecWithoutWaiting(instanceName string, cmd []string) error
 
 	// Wrapper around Incus' GetInstance method.
-	GetInstance(name string) (*api.Instance, string, error)
+	GetInstance(name string) (*incusAPI.Instance, string, error)
 
 	// Wrapper around Incus' UpdateInstance method.
-	UpdateInstance(name string, instanceDef api.InstancePut, ETag string) (incus.Operation, error)
+	UpdateInstance(name string, instanceDef incusAPI.InstancePut, ETag string) (incus.Operation, error)
 
 	// Wrapper around Incus' GetStoragePoolVolume method.
-	GetStoragePoolVolume(pool string, volType string, name string) (*api.StorageVolume, string, error)
+	GetStoragePoolVolume(pool string, volType string, name string) (*incusAPI.StorageVolume, string, error)
 
 	// Wrapper around Incus' CreateStoragePoolVolumeFromISO.
 	CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) (incus.Operation, error)
