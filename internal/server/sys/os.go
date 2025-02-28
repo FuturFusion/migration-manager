@@ -46,20 +46,6 @@ func (s *OS) LocalDatabaseDir() string {
 	return filepath.Join(s.VarDir, "database")
 }
 
-// Returns the name of the migration manger worker ISO image.
-func (s *OS) GetMigrationManagerISOName() (string, error) {
-	files, err := filepath.Glob(fmt.Sprintf("%s/migration-manager-minimal-boot*.iso", s.CacheDir))
-	if err != nil {
-		return "", err
-	}
-
-	if len(files) != 1 {
-		return "", fmt.Errorf("Unable to determine migration manager ISO name")
-	}
-
-	return filepath.Base(files[0]), nil
-}
-
 // Returns the name of the virtio drivers ISO image.
 func (s *OS) GetVirtioDriversISOName() (string, error) {
 	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win-*.iso", s.CacheDir))
