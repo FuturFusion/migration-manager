@@ -793,12 +793,6 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 			return fmt.Errorf("Failed to set project %q for target %q: %w", b.TargetProject, it.GetName(), err)
 		}
 
-		// Create the instance.
-		workerISOName, err := d.os.GetMigrationManagerISOName()
-		if err != nil {
-			return fmt.Errorf("Failed to get worker ISO path: %w", err)
-		}
-
 		var driverISOName string
 		if inst.GetOSType() == api.OSTYPE_WINDOWS {
 			driverISOName, err = d.os.GetVirtioDriversISOName()
@@ -819,7 +813,7 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 			})
 		}
 
-		err = it.CreateNewVM(instanceDef, b.StoragePool, workerISOName, driverISOName)
+		err = it.CreateNewVM(instanceDef, b.StoragePool, util.WorkerVolume(), driverISOName)
 		if err != nil {
 			return fmt.Errorf("Failed to create new instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
 		}
