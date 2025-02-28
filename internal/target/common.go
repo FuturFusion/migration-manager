@@ -2,7 +2,7 @@ package target
 
 import (
 	"context"
-	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 
@@ -18,25 +18,21 @@ type InternalTarget struct {
 	api.Target `yaml:",inline"`
 
 	isConnected bool
-
-	additionalRootCertificate *tls.Certificate
 }
 
 func (t *InternalTarget) Connect(ctx context.Context) error {
 	return fmt.Errorf("Not implemented by InternalTarget")
 }
 
+func (t *InternalTarget) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
+	return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN, nil
+}
+
 func (t *InternalTarget) Disconnect(ctx context.Context) error {
 	return fmt.Errorf("Not implemented by InternalTarget")
 }
 
-func (t *InternalTarget) SetInsecureTLS(insecure bool) error {
-	return fmt.Errorf("Not implemented by InternalTarget")
-}
-
-func (t *InternalTarget) WithAdditionalRootCertificate(rootCert *tls.Certificate) {
-	t.additionalRootCertificate = rootCert
-}
+func (t *InternalTarget) WithAdditionalRootCertificate(rootCert *x509.Certificate) {}
 
 func (t *InternalTarget) SetClientTLSCredentials(key string, cert string) error {
 	return fmt.Errorf("Not implemented by InternalTarget")
@@ -44,6 +40,10 @@ func (t *InternalTarget) SetClientTLSCredentials(key string, cert string) error 
 
 func (t *InternalTarget) IsConnected() bool {
 	return t.isConnected
+}
+
+func (t *InternalTarget) IsWaitingForOIDCTokens() bool {
+	return false
 }
 
 func (t *InternalTarget) GetName() string {

@@ -2,7 +2,9 @@ package target
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"os"
@@ -13,8 +15,10 @@ import (
 	incus "github.com/lxc/incus/v6/client"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -57,17 +61,32 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	}
 
 	t.incusConnectionArgs = &incus.ConnectionArgs{
-		AuthType:           authType,
-		TLSClientKey:       t.TLSClientKey,
-		TLSClientCert:      t.TLSClientCert,
-		OIDCTokens:         t.OIDCTokens,
-		InsecureSkipVerify: t.Insecure,
+		AuthType:      authType,
+		TLSClientKey:  t.TLSClientKey,
+		TLSClientCert: t.TLSClientCert,
+		OIDCTokens:    t.OIDCTokens,
+	}
+
+	var serverCert *x509.Certificate
+	var err error
+
+	if len(t.ServerCertificate) > 0 {
+		serverCert, err = x509.ParseCertificate(t.ServerCertificate)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Set expected TLS server certificate if configured and matches the provided trusted fingerprint.
+	if serverCert != nil && incusTLS.CertFingerprint(serverCert) == strings.ToLower(strings.ReplaceAll(t.TrustedServerCertificateFingerprint, ":", "")) {
+		serverCrt := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: serverCert.Raw})
+		t.incusConnectionArgs.TLSServerCert = string(serverCrt)
 	}
 
 	client, err := incus.ConnectIncusWithContext(ctx, t.Endpoint, t.incusConnectionArgs)
 	if err != nil {
 		t.incusConnectionArgs = nil
-		return fmt.Errorf("Failed to connect to endpoint %q: %s", t.Endpoint, err)
+		return err
 	}
 
 	t.incusClient = client
@@ -75,7 +94,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	// Do a quick check to see if our authentication was accepted by the server.
 	srv, _, err := t.incusClient.GetServer()
 	if err != nil {
-		return fmt.Errorf("failed to connect to endpoint %q: %s", t.Endpoint, err)
+		return err
 	}
 
 	if srv.Auth != "trusted" {
@@ -99,6 +118,16 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	return nil
 }
 
+func (t *InternalIncusTarget) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
+	status, cert := util.DoBasicConnectivityCheck(t.Endpoint, t.TrustedServerCertificateFingerprint)
+	if cert != nil && t.ServerCertificate == nil {
+		// We got an untrusted certificate; if one hasn't already been set, add it to this target.
+		t.ServerCertificate = cert.Raw
+	}
+
+	return status, cert
+}
+
 func (t *InternalIncusTarget) Disconnect(ctx context.Context) error {
 	if !t.isConnected {
 		return fmt.Errorf("Not connected to endpoint %q", t.Endpoint)
@@ -112,13 +141,8 @@ func (t *InternalIncusTarget) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (t *InternalIncusTarget) SetInsecureTLS(insecure bool) error {
-	if t.isConnected {
-		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
-	}
-
-	t.Insecure = insecure
-	return nil
+func (t *InternalIncusTarget) WithAdditionalRootCertificate(rootCert *x509.Certificate) {
+	t.ServerCertificate = rootCert.Raw
 }
 
 func (t *InternalIncusTarget) SetClientTLSCredentials(key string, cert string) error {
@@ -129,6 +153,10 @@ func (t *InternalIncusTarget) SetClientTLSCredentials(key string, cert string) e
 	t.TLSClientKey = key
 	t.TLSClientCert = cert
 	return nil
+}
+
+func (t *InternalIncusTarget) IsWaitingForOIDCTokens() bool {
+	return t.TLSClientKey == "" && t.OIDCTokens == nil
 }
 
 func (t *InternalIncusTarget) GetProperties() json.RawMessage {

@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"net/url"
 
@@ -13,6 +14,8 @@ type Source struct {
 	SourceType api.SourceType
 
 	Properties json.RawMessage
+
+	EndpointFunc func(api.Source) (SourceEndpoint, error) `json:"-"`
 }
 
 func (s Source) Validate() error {
@@ -79,6 +82,84 @@ func (s Source) validateSourceTypeVMware() error {
 	}
 
 	return nil
+}
+
+func (s Source) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
+		}
+
+		return properties.ConnectivityStatus
+	default:
+		return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
+	}
+}
+
+func (s Source) GetServerCertificate() *x509.Certificate {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return nil
+		}
+
+		cert, err := x509.ParseCertificate(properties.ServerCertificate)
+		if err != nil {
+			return nil
+		}
+
+		return cert
+	default:
+		return nil
+	}
+}
+
+func (s Source) GetTrustedServerCertificateFingerprint() string {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return ""
+		}
+
+		return properties.TrustedServerCertificateFingerprint
+	default:
+		return ""
+	}
+}
+
+func (s *Source) SetExternalConnectivityStatus(status api.ExternalConnectivityStatus) {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return
+		}
+
+		properties.ConnectivityStatus = status
+		s.Properties, _ = json.Marshal(properties)
+	}
+}
+
+func (s *Source) SetServerCertificate(cert *x509.Certificate) {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return
+		}
+
+		properties.ServerCertificate = cert.Raw
+		s.Properties, _ = json.Marshal(properties)
+	}
 }
 
 type Sources []Source

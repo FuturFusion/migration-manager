@@ -1,8 +1,6 @@
 package cmds
 
 import (
-	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,7 +12,6 @@ import (
 	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -62,10 +59,7 @@ func (c *CmdSource) Command() *cobra.Command {
 type cmdSourceAdd struct {
 	global *CmdGlobal
 
-	flagInsecure         bool
-	flagNoTestConnection bool
-
-	additionalRootCertificate *tls.Certificate
+	flagTrustedServerCertificateFingerprint string
 }
 
 func (c *cmdSourceAdd) Command() *cobra.Command {
@@ -83,8 +77,7 @@ func (c *cmdSourceAdd) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
-	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the source")
-	cmd.Flags().BoolVar(&c.flagNoTestConnection, "no-test-connection", false, "Don't test connection to the new source")
+	cmd.Flags().StringVar(&c.flagTrustedServerCertificateFingerprint, "trusted-cert-fingerprint", "", "Trusted SHA256 fingerprint of the source's TLS certificate")
 
 	return cmd
 }
@@ -125,10 +118,10 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		sourcePassword := c.global.Asker.AskPasswordOnce("Please enter password for endpoint '" + sourceEndpoint + "': ")
 
 		vmwareProperties := api.VMwareProperties{
-			Endpoint: sourceEndpoint,
-			Insecure: c.flagInsecure,
-			Username: sourceUsername,
-			Password: sourcePassword,
+			Endpoint:                            sourceEndpoint,
+			TrustedServerCertificateFingerprint: c.flagTrustedServerCertificateFingerprint,
+			Username:                            sourceUsername,
+			Password:                            sourcePassword,
 		}
 
 		s := api.Source{
@@ -141,33 +134,34 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		internalSource, err := source.NewInternalVMwareSourceFrom(s)
-		if err != nil {
-			return err
-		}
-
-		// Verify we can connect to the source.
-		if c.additionalRootCertificate != nil {
-			internalSource.WithAdditionalRootCertificate(c.additionalRootCertificate)
-		}
-
-		if !c.flagNoTestConnection {
-			ctx := context.TODO()
-			err = internalSource.Connect(ctx)
-			if err != nil {
-				return err
-			}
-		}
-
 		// Insert into database.
 		content, err := json.Marshal(s)
 		if err != nil {
 			return err
 		}
 
-		_, err = c.global.doHTTPRequestV1("/sources", http.MethodPost, "", content)
+		resp, err := c.global.doHTTPRequestV1("/sources", http.MethodPost, "", content)
 		if err != nil {
 			return err
+		}
+
+		metadata := make(map[string]string)
+		err = json.Unmarshal(resp.Metadata, &metadata)
+		if err != nil {
+			return err
+		}
+
+		connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
+		if err != nil {
+			return err
+		}
+
+		connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+
+		if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+			return fmt.Errorf("Successfully added new source %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the source to correct the issue.", sourceName, metadata["certFingerprint"])
+		} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			return fmt.Errorf("Successfully added new source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.", sourceName, connectivityStatus.String())
 		}
 
 		cmd.Printf("Successfully added new source %q.\n", sourceName)
@@ -221,7 +215,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Type", "Endpoint", "Username", "Insecure"}
+	header := []string{"Name", "Type", "Endpoint", "Connectivity Status", "Username", "Trusted TLS Cert SHA256 Fingerprint"}
 	data := [][]string{}
 
 	for _, s := range sources {
@@ -233,7 +227,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			data = append(data, []string{s.Name, s.SourceType.String(), vmwareProperties.Endpoint, vmwareProperties.Username, strconv.FormatBool(vmwareProperties.Insecure)})
+			data = append(data, []string{s.Name, s.SourceType.String(), vmwareProperties.Endpoint, vmwareProperties.ConnectivityStatus.String(), vmwareProperties.Username, vmwareProperties.TrustedServerCertificateFingerprint})
 		case api.SOURCETYPE_COMMON:
 			// Nothing to output in this case
 		default:
@@ -317,7 +311,6 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	src := api.Source{}
-	vmwareProperties := api.VMwareProperties{}
 
 	err = responseToStruct(resp, &src)
 	if err != nil {
@@ -329,6 +322,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	newSourceName := ""
 	switch src.SourceType {
 	case api.SOURCETYPE_VMWARE:
+		vmwareProperties := api.VMwareProperties{}
 		err := json.Unmarshal(src.Properties, &vmwareProperties)
 		if err != nil {
 			return err
@@ -353,12 +347,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 
 		vmwareProperties.Password = c.global.Asker.AskPasswordOnce("Password: ")
 
-		isInsecure := "no"
-		if vmwareProperties.Insecure {
-			isInsecure = "yes"
-		}
-
-		vmwareProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? (yes/no) [default="+isInsecure+"]: ", isInsecure)
+		vmwareProperties.TrustedServerCertificateFingerprint, err = c.global.Asker.AskString("Manually-set trusted TLS cert SHA256 fingerprint ["+vmwareProperties.TrustedServerCertificateFingerprint+"]: ", vmwareProperties.TrustedServerCertificateFingerprint, validateSHA256Format)
 		if err != nil {
 			return err
 		}
@@ -373,29 +362,37 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Unsupported source type %d; must be one of %q", src.SourceType, supportedSourceTypes)
 	}
 
-	internalSource, err := source.NewInternalVMwareSourceFrom(src)
-	if err != nil {
-		return err
-	}
-
-	// Verify we can connect to the updated source.
-	ctx := context.TODO()
-	err = internalSource.Connect(ctx)
-	if err != nil {
-		return err
-	}
-
 	// Update the source.
 	content, err := json.Marshal(src)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/sources/"+origSourceName, http.MethodPut, "", content)
+	resp, err = c.global.doHTTPRequestV1("/sources/"+origSourceName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}
 
+	metadata := make(map[string]string)
+	err = json.Unmarshal(resp.Metadata, &metadata)
+	if err != nil {
+		return err
+	}
+
+	connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
+	if err != nil {
+		return err
+	}
+
+	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+
+	if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		return fmt.Errorf("Successfully updated source %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the source to correct the issue.", newSourceName, metadata["certFingerprint"])
+	} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		return fmt.Errorf("Successfully updated source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.", newSourceName, connectivityStatus.String())
+	}
+
 	cmd.Printf("Successfully updated source %q.\n", newSourceName)
+
 	return nil
 }

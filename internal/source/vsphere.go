@@ -10,7 +10,6 @@ package source
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"net/url"
 	"time"
@@ -25,17 +24,12 @@ import (
 
 const keepaliveInterval = 5 * time.Minute // vCenter APIs keep-alive
 
-func soapWithKeepalive(ctx context.Context, clientURL *url.URL, insecure bool, additionalRootCert *tls.Certificate) (*govmomi.Client, error) {
-	soapClient := soap.NewClient(clientURL, insecure)
+func soapWithKeepalive(ctx context.Context, clientURL *url.URL, additionalRootCert *x509.Certificate) (*govmomi.Client, error) {
+	soapClient := soap.NewClient(clientURL, false)
 
 	if additionalRootCert != nil {
-		x509cert, err := x509.ParseCertificate(additionalRootCert.Certificate[0])
-		if err != nil {
-			return nil, err
-		}
-
 		certpool := x509.NewCertPool()
-		certpool.AddCert(x509cert)
+		certpool.AddCert(additionalRootCert)
 		soapClient.DefaultTransport().TLSClientConfig.RootCAs = certpool
 	}
 

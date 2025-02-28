@@ -1,9 +1,77 @@
 package api
 
+import (
+	"crypto/tls"
+	"errors"
+	"fmt"
+	"net"
+	"net/url"
+	"strings"
+)
+
 const (
 	APIVersion string = "1.0"
 	APIStatus  string = "devel"
 )
+
+type ExternalConnectivityStatus int
+
+const (
+	EXTERNALCONNECTIVITYSTATUS_UNKNOWN ExternalConnectivityStatus = iota
+	EXTERNALCONNECTIVITYSTATUS_OK
+	EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT
+	EXTERNALCONNECTIVITYSTATUS_TLS_ERROR
+	EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT
+	EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC
+)
+
+// Implement the stringer interface.
+func (e ExternalConnectivityStatus) String() string {
+	switch e {
+	case EXTERNALCONNECTIVITYSTATUS_UNKNOWN:
+		return "Unknown"
+	case EXTERNALCONNECTIVITYSTATUS_OK:
+		return "OK"
+	case EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT:
+		return "Cannot connect"
+	case EXTERNALCONNECTIVITYSTATUS_TLS_ERROR:
+		return "TLS error"
+	case EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT:
+		return "Confirm TLS fingerprint"
+	case EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR:
+		return "Authentication error"
+	case EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC:
+		return "Waiting for OIDC authentications"
+	default:
+		return fmt.Sprintf("ExternalConnectivityStatus(%d)", e)
+	}
+}
+
+func MapExternalConnectivityStatusToStatus(err error) ExternalConnectivityStatus {
+	if err == nil {
+		return EXTERNALCONNECTIVITYSTATUS_OK
+	}
+
+	var dnsError *net.DNSError
+	var opError *net.OpError
+	var urlError *url.Error
+	var tlsError *tls.CertificateVerificationError
+
+	if errors.As(err, &tlsError) {
+		return EXTERNALCONNECTIVITYSTATUS_TLS_ERROR
+	} else if errors.As(err, &dnsError) || errors.As(err, &opError) || errors.As(err, &urlError) {
+		return EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT
+	} else if strings.Contains(err.Error(), "ServerFaultCode: Cannot complete login") { // vmware
+		return EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	} else if strings.Contains(err.Error(), "ErrorType=access_denied") { // zitadel oidc
+		return EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	} else if strings.Contains(err.Error(), "not authorized") { // incus
+		return EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
+	}
+
+	return EXTERNALCONNECTIVITYSTATUS_UNKNOWN
+}
 
 // ServerPut represents the modifiable fields of a server configuration
 //

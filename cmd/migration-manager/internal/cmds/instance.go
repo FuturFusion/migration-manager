@@ -115,12 +115,14 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, i := range instances {
-		if i.Overrides.NumberCPUs != 0 {
-			i.CPU.NumberCPUs = i.Overrides.NumberCPUs
-		}
+		if i.Overrides != nil {
+			if i.Overrides.NumberCPUs != 0 {
+				i.CPU.NumberCPUs = i.Overrides.NumberCPUs
+			}
 
-		if i.Overrides.MemoryInBytes != 0 {
-			i.Memory.MemoryInBytes = i.Overrides.MemoryInBytes
+			if i.Overrides.MemoryInBytes != 0 {
+				i.Memory.MemoryInBytes = i.Overrides.MemoryInBytes
+			}
 		}
 
 		if i.MigrationStatusString == "" {

@@ -3,6 +3,8 @@ package migration
 import (
 	"context"
 	"fmt"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type sourceService struct {
@@ -19,6 +21,11 @@ func NewSourceService(repo SourceRepo) sourceService {
 
 func (s sourceService) Create(ctx context.Context, newSource Source) (Source, error) {
 	err := newSource.Validate()
+	if err != nil {
+		return Source{}, err
+	}
+
+	err = s.updateSourceConnectivity(ctx, &newSource)
 	if err != nil {
 		return Source{}, err
 	}
@@ -52,6 +59,14 @@ func (s sourceService) UpdateByID(ctx context.Context, newSource Source) (Source
 		return Source{}, err
 	}
 
+	// Reset connectivity status to trigger a scan on update.
+	newSource.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN)
+
+	err = s.updateSourceConnectivity(ctx, &newSource)
+	if err != nil {
+		return Source{}, err
+	}
+
 	return s.repo.UpdateByID(ctx, newSource)
 }
 
@@ -61,4 +76,47 @@ func (s sourceService) DeleteByName(ctx context.Context, name string) error {
 	}
 
 	return s.repo.DeleteByName(ctx, name)
+}
+
+func (s sourceService) updateSourceConnectivity(ctx context.Context, src *Source) error {
+	// Skip if source already has good connectivity.
+	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
+		return nil
+	}
+
+	if src.EndpointFunc == nil {
+		return fmt.Errorf("Endpoint function not defined for Source %q", src.Name)
+	}
+
+	endpoint, err := src.EndpointFunc(api.Source{
+		Name:       src.Name,
+		SourceType: src.SourceType,
+		Properties: src.Properties,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Do a basic connectivity check.
+	status, untrustedCert := endpoint.DoBasicConnectivityCheck()
+
+	if untrustedCert != nil && src.GetServerCertificate() == nil {
+		// We got an untrusted certificate; if one hasn't already been set, add it to this source.
+		src.SetServerCertificate(untrustedCert)
+	}
+
+	if status == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		// Need to wait for user to confirm if the fingerprint is trusted or not.
+		src.SetExternalConnectivityStatus(status)
+	} else if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		// Some other basic connectivity issue occurred.
+		src.SetExternalConnectivityStatus(status)
+	} else {
+		// Basic connectivity is good, now test authentication.
+
+		// Test the connectivity of this source.
+		src.SetExternalConnectivityStatus(api.MapExternalConnectivityStatusToStatus(endpoint.Connect(ctx)))
+	}
+
+	return nil
 }

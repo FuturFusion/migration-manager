@@ -1,8 +1,6 @@
 package cmds
 
 import (
-	"context"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,7 +12,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -62,10 +59,7 @@ func (c *CmdTarget) Command() *cobra.Command {
 type cmdTargetAdd struct {
 	global *CmdGlobal
 
-	flagInsecure         bool
-	flagNoTestConnection bool
-
-	additionalRootCertificate *tls.Certificate
+	flagTrustedServerCertificateFingerprint string
 }
 
 func (c *cmdTargetAdd) Command() *cobra.Command {
@@ -83,8 +77,7 @@ func (c *cmdTargetAdd) Command() *cobra.Command {
 `
 
 	cmd.RunE = c.Run
-	cmd.Flags().BoolVar(&c.flagInsecure, "insecure", false, "Allow insecure TLS connections to the target")
-	cmd.Flags().BoolVar(&c.flagNoTestConnection, "no-test-connection", false, "Don't test connection to the new target")
+	cmd.Flags().StringVar(&c.flagTrustedServerCertificateFingerprint, "trusted-cert-fingerprint", "", "Trusted SHA256 fingerprint of the target's TLS certificate")
 
 	return cmd
 }
@@ -118,8 +111,8 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 	switch targetType {
 	case "incus":
 		incusProperties := api.IncusProperties{
-			Endpoint: targetEndpoint,
-			Insecure: c.flagInsecure,
+			Endpoint:                            targetEndpoint,
+			TrustedServerCertificateFingerprint: c.flagTrustedServerCertificateFingerprint,
 		}
 
 		t := api.Target{
@@ -164,36 +157,36 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		internalTarget, err := target.NewInternalIncusTargetFrom(t)
-		if err != nil {
-			return err
-		}
-
-		// Verify we can connect to the target, and if using OIDC grab the tokens.
-		if c.additionalRootCertificate != nil {
-			internalTarget.WithAdditionalRootCertificate(c.additionalRootCertificate)
-		}
-
-		if !c.flagNoTestConnection {
-			ctx := context.TODO()
-			err = internalTarget.Connect(ctx)
-			if err != nil {
-				return err
-			}
-		}
-
-		// Need to grab properties post-connection to get any OIDC tokens that we need to save.
-		t.Properties = internalTarget.Properties
-
 		// Insert into database.
 		content, err := json.Marshal(t)
 		if err != nil {
 			return err
 		}
 
-		_, err = c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
+		resp, err := c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
 		if err != nil {
 			return err
+		}
+
+		metadata := make(map[string]string)
+		err = json.Unmarshal(resp.Metadata, &metadata)
+		if err != nil {
+			return err
+		}
+
+		connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
+		if err != nil {
+			return err
+		}
+
+		connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+
+		if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+			return fmt.Errorf("Successfully added new target %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the target to correct the issue.", t.Name, metadata["certFingerprint"])
+		} else if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
+			return fmt.Errorf("Successfully added new target %q; please visit %s to complete OIDC authorization.", t.Name, metadata["OIDCURL"])
+		} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			return fmt.Errorf("Successfully added new target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.", t.Name, connectivityStatus.String())
 		}
 
 		cmd.Printf("Successfully added new target %q.\n", t.Name)
@@ -247,7 +240,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Type", "Endpoint", "Auth Type", "Insecure"}
+	header := []string{"Name", "Type", "Endpoint", "Connectivity Status", "Auth Type", "Trusted TLS Cert SHA256 Fingerprint"}
 	data := [][]string{}
 
 	for _, t := range targets {
@@ -264,7 +257,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 				authType = "TLS"
 			}
 
-			data = append(data, []string{t.Name, t.TargetType.String(), incusProperties.Endpoint, authType, strconv.FormatBool(incusProperties.Insecure)})
+			data = append(data, []string{t.Name, t.TargetType.String(), incusProperties.Endpoint, incusProperties.ConnectivityStatus.String(), authType, incusProperties.TrustedServerCertificateFingerprint})
 		default:
 			return fmt.Errorf("Unsupported target type %d", t.TargetType)
 		}
@@ -346,7 +339,6 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	tgt := api.Target{}
-	incusProperties := api.IncusProperties{}
 
 	err = responseToStruct(resp, &tgt)
 	if err != nil {
@@ -358,6 +350,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	newTargetName := ""
 	switch tgt.TargetType {
 	case api.TARGETTYPE_INCUS:
+		incusProperties := api.IncusProperties{}
 		err := json.Unmarshal(tgt.Properties, &incusProperties)
 		if err != nil {
 			return err
@@ -419,12 +412,12 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		isInsecure := "no"
-		if incusProperties.Insecure {
-			isInsecure = "yes"
+		incusProperties.TrustedServerCertificateFingerprint, err = c.global.Asker.AskString("Manually-set trusted TLS cert SHA256 fingerprint ["+incusProperties.TrustedServerCertificateFingerprint+"]: ", incusProperties.TrustedServerCertificateFingerprint, validateSHA256Format)
+		if err != nil {
+			return err
 		}
 
-		incusProperties.Insecure, err = c.global.Asker.AskBool("Allow insecure TLS? (yes/no) [default="+isInsecure+"]: ", isInsecure)
+		tgt.Properties, err = json.Marshal(incusProperties)
 		if err != nil {
 			return err
 		}
@@ -435,32 +428,39 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Unsupported target type %d; must be one of %q", tgt.TargetType, supportedTargetTypes)
 	}
 
-	internalTarget, err := target.NewInternalIncusTargetFrom(tgt)
-	if err != nil {
-		return err
-	}
-
-	// Verify we can connect to the updated target, and if needed grab new OIDC tokens.
-	ctx := context.TODO()
-	err = internalTarget.Connect(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Need to grab properties post-connection to get any OIDC tokens that we need to save.
-	tgt.Properties = internalTarget.Properties
-
 	// Update the target.
 	content, err := json.Marshal(tgt)
 	if err != nil {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/targets/"+origTargetName, http.MethodPut, "", content)
+	resp, err = c.global.doHTTPRequestV1("/targets/"+origTargetName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}
 
+	metadata := make(map[string]string)
+	err = json.Unmarshal(resp.Metadata, &metadata)
+	if err != nil {
+		return err
+	}
+
+	connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
+	if err != nil {
+		return err
+	}
+
+	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+
+	if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
+		return fmt.Errorf("Successfully updated target %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the target to correct the issue.", newTargetName, metadata["certFingerprint"])
+	} else if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
+		return fmt.Errorf("Successfully updated target %q; please visit %s to complete OIDC authorization.", newTargetName, metadata["OIDCURL"])
+	} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		return fmt.Errorf("Successfully updated target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.", newTargetName, connectivityStatus.String())
+	}
+
 	cmd.Printf("Successfully updated target %q.\n", newTargetName)
+
 	return nil
 }

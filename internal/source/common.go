@@ -2,7 +2,7 @@ package source
 
 import (
 	"context"
-	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 
 	"github.com/FuturFusion/migration-manager/internal"
@@ -14,25 +14,21 @@ type InternalSource struct {
 	api.Source `yaml:",inline"`
 
 	isConnected bool
-
-	additionalRootCertificate *tls.Certificate
 }
 
 func (s *InternalSource) Connect(ctx context.Context) error {
 	return fmt.Errorf("Not implemented by InternalSource")
 }
 
+func (s *InternalSource) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
+	return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN, nil
+}
+
 func (s *InternalSource) Disconnect(ctx context.Context) error {
 	return fmt.Errorf("Not implemented by InternalSource")
 }
 
-func (s *InternalSource) SetInsecureTLS(insecure bool) error {
-	return fmt.Errorf("Not implemented by InternalSource")
-}
-
-func (s *InternalSource) WithAdditionalRootCertificate(rootCert *tls.Certificate) {
-	s.additionalRootCertificate = rootCert
-}
+func (s *InternalSource) WithAdditionalRootCertificate(rootCert *x509.Certificate) {}
 
 func (s *InternalSource) IsConnected() bool {
 	return s.isConnected

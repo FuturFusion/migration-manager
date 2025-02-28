@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/migration/endpoint/mock"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
@@ -67,14 +69,14 @@ func TestTargetsPost(t *testing.T) {
 		{
 			name: "success",
 
-			targetJSON: `{"name": "new", "target_type": 1, "properties": {"endpoint": "some endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "new", "target_type": 1, "properties": {"endpoint": "https://some-endpoint"}}`,
 
 			wantHTTPStatus: http.StatusCreated,
 		},
 		{
 			name: "error - name already exists",
 
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "some endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint"}}`,
 
 			wantHTTPStatus: http.StatusBadRequest,
 		},
@@ -237,7 +239,7 @@ func TestTargetPut(t *testing.T) {
 			name: "success",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "some endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint"}}`,
 
 			wantHTTPStatus: http.StatusCreated,
 		},
@@ -245,13 +247,13 @@ func TestTargetPut(t *testing.T) {
 			name: "success with etag",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "some endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint"}}`,
 			targetEtag: func() string {
 				etag, err := util.EtagHash(migration.Target{
 					ID:         1,
 					Name:       "foo",
 					TargetType: api.TARGETTYPE_INCUS,
-					Properties: json.RawMessage(`{"endpoint": "bar", "insecure": true}`),
+					Properties: json.RawMessage(`{"endpoint": "bar", "trusted_server_certificate": null, "trusted_server_certificate_fingerprint": "", "tls_client_key": "", "tls_client_cert": "", "oidc_tokens": null, "connectivity_status": 1}`),
 				})
 				require.NoError(t, err)
 				return etag
@@ -298,7 +300,7 @@ func TestTargetPut(t *testing.T) {
 			name: "error - invalid etag",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "some endpoint", "insecure": true}}`,
+			targetJSON: `{"name": "foo", "target_type": 1, "properties": {"endpoint": "https://some-endpoint"}}`,
 			targetEtag: "invalid_etag",
 
 			wantHTTPStatus: http.StatusPreconditionFailed,
@@ -394,7 +396,20 @@ func seedDBWithSingleTarget(t *testing.T, daemon *Daemon) {
 	_, err := daemon.target.Create(ctx, migration.Target{
 		Name:       "foo",
 		TargetType: api.TARGETTYPE_INCUS,
-		Properties: json.RawMessage(`{"endpoint": "bar", "insecure": true}`),
+		Properties: json.RawMessage(`{"endpoint": "bar"}`),
+		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
+			return &mock.TargetEndpointMock{
+				ConnectFunc: func(ctx context.Context) error {
+					return nil
+				},
+				DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+					return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+				},
+				IsWaitingForOIDCTokensFunc: func() bool {
+					return false
+				},
+			}, nil
+		},
 	},
 	)
 	require.NoError(t, err)

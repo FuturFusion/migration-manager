@@ -16,7 +16,7 @@ import (
 func TestTargetDatabaseActions(t *testing.T) {
 	incusTargetA := migration.Target{Name: "Target A", TargetType: api.TARGETTYPE_INCUS, Properties: []byte(`{"endpoint": "https://localhost:6443", "tls_client_key", "PRIVATE_KEY", "tls_client_cert": "PUBLIC_CERT"}`)}
 	incusTargetB := migration.Target{Name: "Target B", TargetType: api.TARGETTYPE_INCUS, Properties: []byte(`{"endpoint": "https://incus.local:6443", "oidc_tokens": {"access_token":"encoded_content","token_type":"Bearer","refresh_token":"encoded_content","expiry":"2024-11-06T14:23:16.439206188Z","IDTokenClaims":null,"IDToken":"encoded_content"}}`)}
-	incusTargetC := migration.Target{Name: "Target C", TargetType: api.TARGETTYPE_INCUS, Properties: []byte(`{"endpoint": "https://10.10.10.10:6443", "insecure": true}`)}
+	incusTargetC := migration.Target{Name: "Target C", TargetType: api.TARGETTYPE_INCUS, Properties: []byte(`{"endpoint": "https://10.10.10.10:6443"}`)}
 
 	ctx := context.Background()
 
@@ -72,7 +72,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.Equal(t, incusTargetC, dbIncusTargetC)
 
 	// Test updating a target.
-	incusTargetC.Properties = []byte(`{"endpoint": "https://127.0.0.1:6443", "insecure": true}`)
+	incusTargetC.Properties = []byte(`{"endpoint": "https://127.0.0.1:6443", "connectivity_status": 1}`)
 	dbIncusTargetC, err = target.UpdateByID(ctx, incusTargetC)
 	require.Equal(t, incusTargetC, dbIncusTargetC)
 	require.NoError(t, err)

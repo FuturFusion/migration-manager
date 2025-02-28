@@ -2,7 +2,7 @@ package source
 
 import (
 	"context"
-	"crypto/tls"
+	"crypto/x509"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -17,22 +17,20 @@ type Source interface {
 	// Returns an error if unable to connect (unable to reach remote host, bad credentials, etc).
 	Connect(ctx context.Context) error
 
+	// Performs a basic HTTP connectivity test to the source.
+	//
+	// Returns a status flag indicating the status and if a TLS certificate error occurred a copy of the untrusted TLS certificate.
+	DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate)
+
 	// Disconnects from the source.
 	//
 	// Returns an error if there was a problem disconnecting from the source.
 	Disconnect(ctx context.Context) error
 
-	// Toggles whether TLS verification should be skipped or not.
-	//
-	// As this can enable MITM-style attacks, in general this SHOULD NOT be used.
-	//
-	// Returns an error if called while connected to a source.
-	SetInsecureTLS(insecure bool) error
-
 	// WithAdditionalRootCertificate accepts an additional certificate, which
 	// is added to the default CertPool used to validate server certificates
 	// while connecting to the Source using TLS.
-	WithAdditionalRootCertificate(rootCert *tls.Certificate)
+	WithAdditionalRootCertificate(rootCert *x509.Certificate)
 
 	// Returns whether currently connected to the source or not.
 	IsConnected() bool

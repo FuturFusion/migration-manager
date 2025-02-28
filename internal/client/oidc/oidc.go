@@ -21,7 +21,7 @@ import (
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"golang.org/x/oauth2"
 
-	internalUtil "github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/util"
+	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )
 
 // ErrOIDCExpired is returned when the token is expired and we can't retry the request ourselves.
@@ -93,6 +93,10 @@ func NewOIDCClient(tokensFile string, serverCert *x509.Certificate) *OidcClient 
 }
 
 func loadTokensFromFile(tokensFile string) *oidc.Tokens[*oidc.IDTokenClaims] {
+	if tokensFile == "" {
+		return nil
+	}
+
 	ret := new(oidc.Tokens[*oidc.IDTokenClaims])
 
 	contents, err := os.ReadFile(tokensFile)
@@ -109,6 +113,10 @@ func loadTokensFromFile(tokensFile string) *oidc.Tokens[*oidc.IDTokenClaims] {
 }
 
 func saveTokensToFile(tokensFile string, tokens *oidc.Tokens[*oidc.IDTokenClaims]) error {
+	if tokensFile == "" {
+		return nil
+	}
+
 	contents, err := json.Marshal(tokens)
 	if err != nil {
 		return err
@@ -256,6 +264,45 @@ func (o *OidcClient) refresh(issuer string, clientID string) error {
 // It presents a user code for the end user to input in the device that has web access and waits for them to complete the authentication,
 // subsequently updating the client's tokens upon successful authentication.
 func (o *OidcClient) authenticate(issuer string, clientID string, audience string) error {
+	tokenURL, resp, provider, err := o.getTokenURL(issuer, clientID, audience)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("URL: %s\n", tokenURL)
+	fmt.Printf("Code: %s\n\n", resp.UserCode)
+
+	_ = util.OpenBrowser(tokenURL)
+
+	return o.WaitForToken(resp, provider)
+}
+
+func (o *OidcClient) FetchNewIncusTokenURL(req *http.Request) (string, *oidc.DeviceAuthorizationResponse, rp.RelyingParty, error) {
+	resp, err := o.httpClient.Do(req)
+	if err != nil {
+		return "", nil, nil, err
+	}
+
+	defer resp.Body.Close()
+
+	// Return immediately if the error is not HTTP status unauthorized.
+	if resp.StatusCode != http.StatusUnauthorized {
+		return "", nil, nil, fmt.Errorf("Status != unauthorized")
+	}
+
+	issuer := resp.Header.Get("X-Incus-OIDC-issuer")
+	clientID := resp.Header.Get("X-Incus-OIDC-clientid")
+	audience := resp.Header.Get("X-Incus-OIDC-audience")
+
+	if issuer == "" || clientID == "" {
+		return "", nil, nil, fmt.Errorf("Missing issuer or clientID")
+	}
+
+	// Request a new token.
+	return o.getTokenURL(issuer, clientID, audience)
+}
+
+func (o *OidcClient) getTokenURL(issuer string, clientID string, audience string) (string, *oidc.DeviceAuthorizationResponse, rp.RelyingParty, error) {
 	// Store the old transport and restore it in the end.
 	oldTransport := o.httpClient.Transport
 	o.oidcTransport.audience = audience
@@ -267,23 +314,22 @@ func (o *OidcClient) authenticate(issuer string, clientID string, audience strin
 
 	provider, err := o.getProvider(issuer, clientID)
 	if err != nil {
-		return err
+		return "", nil, nil, err
 	}
 
 	o.oidcTransport.deviceAuthorizationEndpoint = provider.GetDeviceAuthorizationEndpoint()
 
 	resp, err := rp.DeviceAuthorization(context.TODO(), oidcScopes, provider, nil)
 	if err != nil {
-		return err
+		return "", nil, nil, err
 	}
 
 	u, _ := url.Parse(resp.VerificationURIComplete)
 
-	fmt.Printf("URL: %s\n", u.String())
-	fmt.Printf("Code: %s\n\n", resp.UserCode)
+	return u.String(), resp, provider, nil
+}
 
-	_ = util.OpenBrowser(u.String())
-
+func (o *OidcClient) WaitForToken(resp *oidc.DeviceAuthorizationResponse, provider rp.RelyingParty) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGINT)
 	defer stop()
 

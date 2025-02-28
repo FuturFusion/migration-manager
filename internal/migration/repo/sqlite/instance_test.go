@@ -2,6 +2,7 @@ package sqlite_test
 
 import (
 	"context"
+	"crypto/x509"
 	"fmt"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	dbschema "github.com/FuturFusion/migration-manager/internal/db"
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	endpointMock "github.com/FuturFusion/migration-manager/internal/migration/endpoint/mock"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
@@ -19,8 +21,41 @@ import (
 )
 
 var (
-	testSource    = migration.Source{Name: "TestSource", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
-	testTarget    = migration.Target{Name: "TestTarget", TargetType: api.TARGETTYPE_INCUS, Properties: []byte(`{"endpoint": "https://localhost:6443"}`)}
+	testSource = migration.Source{
+		Name:       "TestSource",
+		SourceType: api.SOURCETYPE_COMMON,
+		Properties: []byte(`{}`),
+		EndpointFunc: func(t api.Source) (migration.SourceEndpoint, error) {
+			return &endpointMock.SourceEndpointMock{
+				ConnectFunc: func(ctx context.Context) error {
+					return nil
+				},
+				DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+					return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+				},
+			}, nil
+		},
+	}
+
+	testTarget = migration.Target{
+		Name:       "TestTarget",
+		TargetType: api.TARGETTYPE_INCUS,
+		Properties: []byte(`{"endpoint": "https://localhost:6443"}`),
+		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
+			return &endpointMock.TargetEndpointMock{
+				ConnectFunc: func(ctx context.Context) error {
+					return nil
+				},
+				DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+					return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+				},
+				IsWaitingForOIDCTokensFunc: func() bool {
+					return false
+				},
+			}, nil
+		},
+	}
+
 	testBatch     = migration.Batch{ID: 1, Name: "TestBatch", TargetID: 1, StoragePool: "", IncludeExpression: "true", MigrationWindowStart: time.Time{}, MigrationWindowEnd: time.Time{}}
 	instanceAUUID = uuid.Must(uuid.NewRandom())
 

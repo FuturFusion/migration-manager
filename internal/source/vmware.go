@@ -2,7 +2,7 @@ package source
 
 import (
 	"context"
-	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
@@ -25,6 +26,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -71,7 +73,21 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 	endpointURL.User = url.UserPassword(s.Username, s.Password)
 
-	s.govmomiClient, err = soapWithKeepalive(ctx, endpointURL, s.Insecure, s.additionalRootCertificate)
+	var serverCert *x509.Certificate
+
+	if len(s.ServerCertificate) > 0 {
+		serverCert, err = x509.ParseCertificate(s.ServerCertificate)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Unset TLS server certificate if configured but doesn't match the provided trusted fingerprint.
+	if serverCert != nil && incusTLS.CertFingerprint(serverCert) != strings.ToLower(strings.ReplaceAll(s.TrustedServerCertificateFingerprint, ":", "")) {
+		serverCert = nil
+	}
+
+	s.govmomiClient, err = soapWithKeepalive(ctx, endpointURL, serverCert)
 	if err != nil {
 		return err
 	}
@@ -85,6 +101,16 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 	s.isConnected = true
 	return nil
+}
+
+func (s *InternalVMwareSource) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
+	status, cert := util.DoBasicConnectivityCheck(s.Endpoint, s.TrustedServerCertificateFingerprint)
+	if cert != nil && s.ServerCertificate == nil {
+		// We got an untrusted certificate; if one hasn't already been set, add it to this source.
+		s.ServerCertificate = cert.Raw
+	}
+
+	return status, cert
 }
 
 func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
@@ -103,13 +129,8 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 	return nil
 }
 
-func (s *InternalVMwareSource) SetInsecureTLS(insecure bool) error {
-	if s.isConnected {
-		return fmt.Errorf("Cannot change insecure TLS setting after connecting")
-	}
-
-	s.Insecure = insecure
-	return nil
+func (s *InternalVMwareSource) WithAdditionalRootCertificate(rootCert *x509.Certificate) {
+	s.ServerCertificate = rootCert.Raw
 }
 
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {
@@ -531,8 +552,4 @@ func (s *InternalVMwareSource) getVMProperties(ctx context.Context, vm *object.V
 	var v mo.VirtualMachine
 	err := vm.Properties(ctx, vm.Reference(), []string{}, &v)
 	return v, err
-}
-
-func (s *InternalVMwareSource) WithAdditionalRootCertificate(rootCert *tls.Certificate) {
-	s.additionalRootCertificate = rootCert
 }

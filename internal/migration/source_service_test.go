@@ -2,12 +2,14 @@ package migration_test
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	endpointMock "github.com/FuturFusion/migration-manager/internal/migration/endpoint/mock"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/mock"
 	"github.com/FuturFusion/migration-manager/internal/testing/boom"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -28,13 +30,13 @@ func TestSourceService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 			repoCreateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 
 			assertErr: require.NoError,
@@ -48,8 +50,7 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
-  "password": "pass",
-  "insecure": false
+  "password": "pass"
 }
 `),
 			},
@@ -60,8 +61,7 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
-  "password": "pass",
-  "insecure": false
+  "password": "pass"
 }
 `),
 			},
@@ -74,7 +74,7 @@ func TestSourceService_Create(t *testing.T) {
 				ID:         -1, // invalid
 				Name:       "one",
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -88,7 +88,7 @@ func TestSourceService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "", // empty
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -102,7 +102,7 @@ func TestSourceService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SourceType(-1), // invalid
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -161,8 +161,7 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": ":|\\",
   "username": "user",
-  "password": "pass",
-  "insecure": false
+  "password": "pass"
 }
 `),
 			},
@@ -181,8 +180,7 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": "enpoint.url",
   "username": "",
-  "password": "pass",
-  "insecure": false
+  "password": "pass"
 }
 `),
 			},
@@ -201,8 +199,7 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": "enpoint.url",
   "username": "user",
-  "password": "",
-  "insecure": false
+  "password": ""
 }
 `),
 			},
@@ -218,7 +215,7 @@ func TestSourceService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 			repoCreateErr: boom.Error,
 
@@ -235,7 +232,19 @@ func TestSourceService_Create(t *testing.T) {
 				},
 			}
 
+			endpointFunc := func(t api.Source) (migration.SourceEndpoint, error) {
+				return &endpointMock.SourceEndpointMock{
+					ConnectFunc: func(ctx context.Context) error {
+						return nil
+					},
+					DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+						return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+					},
+				}, nil
+			}
+
 			sourceSvc := migration.NewSourceService(repo)
+			tc.source.EndpointFunc = endpointFunc
 
 			// Run test
 			source, err := sourceSvc.Create(context.Background(), tc.source)
@@ -468,13 +477,13 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 			repoUpdateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 
 			assertErr: require.NoError,
@@ -488,8 +497,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
-  "password": "pass",
-  "insecure": false
+  "password": "pass"
 }
 `),
 			},
@@ -500,8 +508,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
-  "password": "pass",
-  "insecure": false
+  "password": "pass"
 }
 `),
 			},
@@ -514,7 +521,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				ID:         -1, // invalid
 				Name:       "one",
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -528,7 +535,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "", // empty
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -542,7 +549,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SourceType(-1), // invalid
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -601,8 +608,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": ":|\\",
   "username": "user",
-  "password": "pass",
-  "insecure": false
+  "password": "pass"
 }
 `),
 			},
@@ -621,8 +627,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": "enpoint.url",
   "username": "",
-  "password": "pass",
-  "insecure": false
+  "password": "pass"
 }
 `),
 			},
@@ -641,8 +646,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": "enpoint.url",
   "username": "user",
-  "password": "",
-  "insecure": false
+  "password": ""
 }
 `),
 			},
@@ -658,7 +662,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{"insecure": false}`),
+				Properties: json.RawMessage(`{}`),
 			},
 			repoUpdateErr: boom.Error,
 
@@ -675,7 +679,19 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				},
 			}
 
+			endpointFunc := func(t api.Source) (migration.SourceEndpoint, error) {
+				return &endpointMock.SourceEndpointMock{
+					ConnectFunc: func(ctx context.Context) error {
+						return nil
+					},
+					DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+						return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+					},
+				}, nil
+			}
+
 			sourceSvc := migration.NewSourceService(repo)
+			tc.source.EndpointFunc = endpointFunc
 
 			// Run test
 			source, err := sourceSvc.UpdateByID(context.Background(), tc.source)

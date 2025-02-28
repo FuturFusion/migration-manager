@@ -2,12 +2,14 @@ package migration_test
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	endpointMock "github.com/FuturFusion/migration-manager/internal/migration/endpoint/mock"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/mock"
 	"github.com/FuturFusion/migration-manager/internal/testing/boom"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -28,13 +30,13 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 			repoCreateTarget: migration.Target{
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 
 			assertErr: require.NoError,
@@ -45,7 +47,7 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         -1, // invalid
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -59,7 +61,7 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "", // empty
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -73,7 +75,7 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": ":|\\", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": ":|\\", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -87,7 +89,7 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 			repoCreateErr: boom.Error,
 
@@ -104,7 +106,22 @@ func TestTargetService_Create(t *testing.T) {
 				},
 			}
 
+			endpointFunc := func(t api.Target) (migration.TargetEndpoint, error) {
+				return &endpointMock.TargetEndpointMock{
+					ConnectFunc: func(ctx context.Context) error {
+						return nil
+					},
+					DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+						return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+					},
+					IsWaitingForOIDCTokensFunc: func() bool {
+						return false
+					},
+				}, nil
+			}
+
 			targetSvc := migration.NewTargetService(repo)
+			tc.target.EndpointFunc = endpointFunc
 
 			// Run test
 			target, err := targetSvc.Create(context.Background(), tc.target)
@@ -340,13 +357,13 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 			repoUpdateTarget: migration.Target{
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 
 			assertErr: require.NoError,
@@ -357,7 +374,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				ID:         -1, // invalid
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -371,7 +388,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "", // empty
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -385,7 +402,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": ":|\\", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": ":|\\", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -399,7 +416,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "insecure": false}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
 			},
 			repoUpdateErr: boom.Error,
 
@@ -416,7 +433,22 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				},
 			}
 
+			endpointFunc := func(t api.Target) (migration.TargetEndpoint, error) {
+				return &endpointMock.TargetEndpointMock{
+					ConnectFunc: func(ctx context.Context) error {
+						return nil
+					},
+					DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+						return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+					},
+					IsWaitingForOIDCTokensFunc: func() bool {
+						return false
+					},
+				}, nil
+			}
+
 			targetSvc := migration.NewTargetService(repo)
+			tc.target.EndpointFunc = endpointFunc
 
 			// Run test
 			target, err := targetSvc.UpdateByID(context.Background(), tc.target)
