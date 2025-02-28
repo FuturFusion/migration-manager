@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -250,6 +251,34 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 	apiDef.Config["volatile.uuid"] = i.UUID.String()
 	apiDef.Config["volatile.uuid.generation"] = i.UUID.String()
 
+	// Apply CPU and memory limits.
+	apiDef.Config["limits.cpu"] = fmt.Sprintf("%d", i.CPU.NumberCPUs)
+	if i.Overrides != nil && i.Overrides.NumberCPUs != 0 {
+		apiDef.Config["limits.cpu"] = fmt.Sprintf("%d", i.Overrides.NumberCPUs)
+	}
+
+	apiDef.Config["limits.memory"] = fmt.Sprintf("%dB", i.Memory.MemoryInBytes)
+	if i.Overrides != nil && i.Overrides.MemoryInBytes != 0 {
+		apiDef.Config["limits.memory"] = fmt.Sprintf("%dB", i.Overrides.MemoryInBytes)
+	}
+
+	// Set UEFI and secure boot configs.
+	if i.UseLegacyBios {
+		apiDef.Config["security.csm"] = "true"
+		apiDef.Config["security.secureboot"] = "false"
+	} else {
+		apiDef.Config["security.csm"] = "false"
+		apiDef.Config["security.secureboot"] = strconv.FormatBool(i.SecureBootEnabled)
+	}
+
+	// Add TPM if needed.
+	if i.TPMPresent {
+		apiDef.Devices["vtpm"] = map[string]string{
+			"type": "tpm",
+			"path": "/dev/tpm0",
+		}
+	}
+
 	// Update the instance in Incus.
 	op, err := t.UpdateInstance(i.GetName(), apiDef.Writable(), "")
 	if err != nil {
@@ -296,16 +325,9 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	ret.Config["image.os"] = instanceDef.OS
 	ret.Config["image.release"] = instanceDef.OSVersion
 
-	// Apply CPU and memory limits.
-	ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.CPU.NumberCPUs)
-	if instanceDef.Overrides != nil && instanceDef.Overrides.NumberCPUs != 0 {
-		ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.Overrides.NumberCPUs)
-	}
-
-	ret.Config["limits.memory"] = fmt.Sprintf("%dB", instanceDef.Memory.MemoryInBytes)
-	if instanceDef.Overrides != nil && instanceDef.Overrides.MemoryInBytes != 0 {
-		ret.Config["limits.memory"] = fmt.Sprintf("%dB", instanceDef.Overrides.MemoryInBytes)
-	}
+	// Apply minimal CPU and memory limits.
+	ret.Config["limits.cpu"] = "2"
+	ret.Config["limits.memory"] = "4GiB"
 
 	// Define the default disk settings.
 	defaultDiskDef := map[string]string{
@@ -341,27 +363,8 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 		numDisks++
 	}
 
-	// Add TPM if needed.
-	if instanceDef.TPMPresent {
-		ret.Devices["vtpm"] = map[string]string{
-			"type": "tpm",
-			"path": "/dev/tpm0",
-		}
-	}
-
-	// Set UEFI and secure boot configs
-	if instanceDef.UseLegacyBios {
-		ret.Config["security.csm"] = "true"
-	} else {
-		ret.Config["security.csm"] = "false"
-	}
-
-	if instanceDef.SecureBootEnabled {
-		ret.Config["security.secureboot"] = "true"
-	} else {
-		ret.Config["security.secureboot"] = "false"
-	}
-
+	ret.Config["security.csm"] = "false"
+	ret.Config["security.secureboot"] = "false"
 	ret.Description = ret.Config["image.description"]
 
 	// Set the migration source as a user tag to allow easy filtering.
