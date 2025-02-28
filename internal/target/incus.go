@@ -183,6 +183,92 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 	return nil
 }
 
+// SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
+func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, allNetworks map[string]migration.Network) error {
+	// Stop the instance.
+	err := t.StopVM(i.GetName(), true)
+	if err != nil {
+		return fmt.Errorf("Failed to stop instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+	}
+
+	apiDef, _, err := t.GetInstance(i.GetName())
+	if err != nil {
+		return fmt.Errorf("Failed to get configuration for instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+	}
+
+	for idx, nic := range i.NICs {
+		nicDeviceName := fmt.Sprintf("eth%d", idx)
+		baseNetwork, ok := allNetworks[nic.Network]
+		if !ok {
+			err = fmt.Errorf("No network %q associated with instance %q on target %q", nic.Network, i.GetName(), t.GetName())
+			return err
+		}
+
+		// Pickup device name override if set.
+		deviceName, ok := baseNetwork.Config["name"]
+		if ok {
+			nicDeviceName = deviceName
+		}
+
+		// Copy the base network definitions.
+		apiDef.Devices[nicDeviceName] = make(map[string]string, len(baseNetwork.Config))
+		for k, v := range baseNetwork.Config {
+			apiDef.Devices[nicDeviceName][k] = v
+		}
+
+		// Set a few forced overrides.
+		apiDef.Devices[nicDeviceName]["type"] = "nic"
+		apiDef.Devices[nicDeviceName]["name"] = nicDeviceName
+		apiDef.Devices[nicDeviceName]["hwaddr"] = nic.Hwaddr
+	}
+
+	// Remove the migration ISO image.
+	delete(apiDef.Devices, util.WorkerVolume())
+
+	// Don't set any profiles by default.
+	apiDef.Profiles = []string{}
+
+	// Handle Windows-specific completion steps.
+	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
+		// Remove the drivers ISO image.
+		delete(apiDef.Devices, "drivers")
+
+		// Fixup the OS name.
+		apiDef.Config["image.os"] = strings.Replace(apiDef.Config["image.os"], "swodniw", "windows", 1)
+	}
+
+	// Handle RHEL (and derivative) specific completion steps.
+	if util.IsRHELOrDerivative(apiDef.Config["image.os"]) {
+		// RHEL7+ don't support 9p, so make agent config available via cdrom.
+		apiDef.Devices["agent"] = map[string]string{
+			"type":   "disk",
+			"source": "agent:config",
+		}
+	}
+
+	// Set the instance's UUID copied from the source.
+	apiDef.Config["volatile.uuid"] = i.UUID.String()
+	apiDef.Config["volatile.uuid.generation"] = i.UUID.String()
+
+	// Update the instance in Incus.
+	op, err := t.UpdateInstance(i.GetName(), apiDef.Writable(), "")
+	if err != nil {
+		return fmt.Errorf("Failed to update instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+	}
+
+	err = op.Wait()
+	if err != nil {
+		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+	}
+
+	err = t.StartVM(i.GetName())
+	if err != nil {
+		return fmt.Errorf("Failed to start instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+	}
+
+	return nil
+}
+
 func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) incusAPI.InstancesPost {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.

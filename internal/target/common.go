@@ -66,6 +66,10 @@ func (t *InternalTarget) SetProject(project string) error {
 	return fmt.Errorf("Not implemented by InternalTarget")
 }
 
+func (t *InternalTarget) SetPostMigrationVMConfig(i migration.Instance, allNetworks map[string]migration.Network) error {
+	return fmt.Errorf("Not implemented by InternalTarget")
+}
+
 func (t *InternalTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) incusAPI.InstancesPost {
 	return incusAPI.InstancesPost{}
 }

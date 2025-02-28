@@ -75,6 +75,9 @@ type Target interface {
 	// Returns an error if called while disconnected from a target.
 	SetProject(project string) error
 
+	// SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
+	SetPostMigrationVMConfig(i migration.Instance, allNetworks map[string]migration.Network) error
+
 	// Creates a VM definition for use with the Incus REST API.
 	CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) incusAPI.InstancesPost
 
