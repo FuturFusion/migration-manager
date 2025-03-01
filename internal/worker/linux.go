@@ -45,7 +45,7 @@ type LVSOutput struct {
 	} `json:"report"`
 }
 
-const chrootMountPath string = "/mnt/target/"
+const chrootMountPath string = "/run/mount/target/"
 
 func LinuxDoPostMigrationConfig(distro string, majorVersion int) error {
 	slog.Info("Preparing to perform post-migration configuration of VM")

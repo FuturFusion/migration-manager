@@ -2,6 +2,7 @@ package nbdcopy
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,6 +16,7 @@ import (
 
 func Run(source, destination string, size int64, targetIsClean bool, diskName string, statusCallback func(string, bool)) error {
 	logger := log.WithFields(log.Fields{
+		"command":     "nbdcopy",
 		"source":      source,
 		"destination": destination,
 	})
@@ -39,11 +41,21 @@ func Run(source, destination string, size int64, targetIsClean bool, diskName st
 		"nbdcopy",
 		args...,
 	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+
+	stdout := bytes.Buffer{}
+	stderr := bytes.Buffer{}
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 	cmd.ExtraFiles = []*os.File{progressWrite}
 
-	logger.Debug("Running command: ", cmd)
+	logger.Info("Running command: ", cmd)
+	defer func() {
+		log.Debug("stdout", stdout.String())
+		if len(stderr.String()) > 0 {
+			log.Error("stderr", stderr.String())
+		}
+	}()
+
 	if err := cmd.Start(); err != nil {
 		return err
 	}
