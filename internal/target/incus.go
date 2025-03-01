@@ -395,6 +395,8 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef incusAPI.InstancesPost, storage
 		"pool":          storagePool,
 		"source":        bootISOImage,
 		"boot.priority": "10",
+		"readonly":      "true",
+		"io.bus":        "virtio-blk",
 	}
 
 	// If this is a Windows VM, attach the virtio drivers ISO.
