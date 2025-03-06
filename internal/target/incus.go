@@ -452,10 +452,23 @@ func (t *InternalIncusTarget) GetStoragePoolVolume(pool string, volType string, 
 	return t.incusClient.GetStoragePoolVolume(pool, volType, name)
 }
 
-func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string) (incus.Operation, error) {
+func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string) ([]incus.Operation, error) {
 	pool, _, err := t.incusClient.GetStoragePool(poolName)
 	if err != nil {
 		return nil, err
+	}
+
+	s, _, err := t.incusClient.GetServer()
+	if err != nil {
+		return nil, err
+	}
+
+	poolIsShared := false
+	for _, driver := range s.Environment.StorageSupportedDrivers {
+		if driver.Name == pool.Driver {
+			poolIsShared = driver.Remote
+			break
+		}
 	}
 
 	// Re-use the backup tarball if we used this source before.
@@ -472,17 +485,46 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string,
 		}
 	}
 
-	f, err := os.Open(backupName)
+	// If the pool is a shared pool, we only need to create the volume once.
+	if poolIsShared {
+		f, err := os.Open(backupName)
+		if err != nil {
+			return nil, err
+		}
+
+		createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: util.WorkerVolume()}
+		op, err := t.incusClient.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		return []incus.Operation{op}, nil
+	}
+
+	// If the pool is local-only, we have to create the volume for each member.
+	members, err := t.incusClient.GetClusterMemberNames()
 	if err != nil {
 		return nil, err
 	}
 
-	createArgs := incus.StorageVolumeBackupArgs{
-		BackupFile: f,
-		Name:       util.WorkerVolume(),
+	ops := make([]incus.Operation, 0, len(members))
+	for _, member := range members {
+		f, err := os.Open(backupName)
+		if err != nil {
+			return nil, err
+		}
+
+		createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: util.WorkerVolume()}
+		target := t.incusClient.UseTarget(member)
+		op, err := target.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		ops = append(ops, op)
 	}
 
-	return t.incusClient.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
+	return ops, nil
 }
 
 func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) (incus.Operation, error) {

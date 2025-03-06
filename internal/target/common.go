@@ -106,7 +106,7 @@ func (t *InternalTarget) GetStoragePoolVolume(pool string, volType string, name 
 	return nil, "", fmt.Errorf("Not implemented by InternalTarget")
 }
 
-func (t *InternalTarget) CreateStoragePoolVolumeFromBackup(pool string, isoFilePath string) (incus.Operation, error) {
+func (t *InternalTarget) CreateStoragePoolVolumeFromBackup(pool string, isoFilePath string) ([]incus.Operation, error) {
 	return nil, fmt.Errorf("Not implemented by InternalTarget")
 }
 
