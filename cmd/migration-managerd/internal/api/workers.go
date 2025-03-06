@@ -603,6 +603,14 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 		return err
 	}
 
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	// Key the batch by its constituent parts, as batches with different IDs may share the same target, pool, and project.
+	batchKey := t.Name + "_" + storagePool + "_" + project
+	d.batchLock.Lock(batchKey)
+	reverter.Add(func() { d.batchLock.Unlock(batchKey) })
+
 	// Connect to the target.
 	err = it.Connect(ctx)
 	if err != nil {
@@ -638,6 +646,9 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 			return fmt.Errorf("Failed checking for storage volume %q: %w", iso, err)
 		}
 	}
+
+	d.batchLock.Unlock(batchKey)
+	reverter.Success()
 
 	return nil
 }
