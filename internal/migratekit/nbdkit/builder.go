@@ -79,7 +79,6 @@ func (b *NbdkitBuilder) Build() (*NbdkitServer, error) {
 	socket := fmt.Sprintf("%s/nbdkit.sock", tmp)
 	pidFile := fmt.Sprintf("%s/nbdkit.pid", tmp)
 
-	os.Setenv("LD_LIBRARY_PATH", "/usr/lib64/vmware-vix-disklib/lib64")
 	cmd := exec.Command(
 		"nbdkit",
 		"--exit-with-parent",
@@ -95,6 +94,7 @@ func (b *NbdkitBuilder) Build() (*NbdkitServer, error) {
 		fmt.Sprintf("compression=%s", b.compression),
 		fmt.Sprintf("vm=moref=%s", b.vm),
 		fmt.Sprintf("snapshot=%s", b.snapshot),
+		"libdir=/opt/vmware-vix-disklib-distrib",
 		"transports=file:nbdssl:nbd",
 		b.filename,
 	)

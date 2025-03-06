@@ -7,8 +7,10 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,9 +18,11 @@ import (
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/util"
+	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -180,6 +184,120 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 	return nil
 }
 
+// SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
+func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, allNetworks map[string]migration.Network) error {
+	// Stop the instance.
+	err := t.StopVM(i.GetName(), true)
+	if err != nil {
+		return fmt.Errorf("Failed to stop instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+	}
+
+	apiDef, _, err := t.GetInstance(i.GetName())
+	if err != nil {
+		return fmt.Errorf("Failed to get configuration for instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+	}
+
+	for idx, nic := range i.NICs {
+		nicDeviceName := fmt.Sprintf("eth%d", idx)
+		baseNetwork, ok := allNetworks[nic.Network]
+		if !ok {
+			err = fmt.Errorf("No network %q associated with instance %q on target %q", nic.Network, i.GetName(), t.GetName())
+			return err
+		}
+
+		// Pickup device name override if set.
+		deviceName, ok := baseNetwork.Config["name"]
+		if ok {
+			nicDeviceName = deviceName
+		}
+
+		// Copy the base network definitions.
+		apiDef.Devices[nicDeviceName] = make(map[string]string, len(baseNetwork.Config))
+		for k, v := range baseNetwork.Config {
+			apiDef.Devices[nicDeviceName][k] = v
+		}
+
+		// Set a few forced overrides.
+		apiDef.Devices[nicDeviceName]["type"] = "nic"
+		apiDef.Devices[nicDeviceName]["name"] = nicDeviceName
+		apiDef.Devices[nicDeviceName]["hwaddr"] = nic.Hwaddr
+	}
+
+	// Remove the migration ISO image.
+	delete(apiDef.Devices, util.WorkerVolume())
+
+	// Don't set any profiles by default.
+	apiDef.Profiles = []string{}
+
+	// Handle Windows-specific completion steps.
+	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
+		// Remove the drivers ISO image.
+		delete(apiDef.Devices, "drivers")
+
+		// Fixup the OS name.
+		apiDef.Config["image.os"] = strings.Replace(apiDef.Config["image.os"], "swodniw", "windows", 1)
+	}
+
+	// Handle RHEL (and derivative) specific completion steps.
+	if util.IsRHELOrDerivative(apiDef.Config["image.os"]) {
+		// RHEL7+ don't support 9p, so make agent config available via cdrom.
+		apiDef.Devices["agent"] = map[string]string{
+			"type":   "disk",
+			"source": "agent:config",
+		}
+	}
+
+	// Set the instance's UUID copied from the source.
+	apiDef.Config["volatile.uuid"] = i.UUID.String()
+	apiDef.Config["volatile.uuid.generation"] = i.UUID.String()
+
+	// Apply CPU and memory limits.
+	apiDef.Config["limits.cpu"] = fmt.Sprintf("%d", i.CPU.NumberCPUs)
+	if i.Overrides != nil && i.Overrides.NumberCPUs != 0 {
+		apiDef.Config["limits.cpu"] = fmt.Sprintf("%d", i.Overrides.NumberCPUs)
+	}
+
+	apiDef.Config["limits.memory"] = fmt.Sprintf("%dB", i.Memory.MemoryInBytes)
+	if i.Overrides != nil && i.Overrides.MemoryInBytes != 0 {
+		apiDef.Config["limits.memory"] = fmt.Sprintf("%dB", i.Overrides.MemoryInBytes)
+	}
+
+	// Set UEFI and secure boot configs.
+	if i.UseLegacyBios {
+		apiDef.Config["security.csm"] = "true"
+		apiDef.Config["security.secureboot"] = "false"
+	} else {
+		apiDef.Config["security.csm"] = "false"
+		apiDef.Config["security.secureboot"] = strconv.FormatBool(i.SecureBootEnabled)
+	}
+
+	// Add TPM if needed.
+	if i.TPMPresent {
+		apiDef.Devices["vtpm"] = map[string]string{
+			"type": "tpm",
+			"path": "/dev/tpm0",
+		}
+	}
+
+	// Update the instance in Incus.
+	op, err := t.UpdateInstance(i.GetName(), apiDef.Writable(), "")
+	if err != nil {
+		return fmt.Errorf("Failed to update instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+	}
+
+	err = op.Wait()
+	if err != nil {
+		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+	}
+
+	err = t.StartVM(i.GetName())
+	if err != nil {
+		return fmt.Errorf("Failed to start instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+	}
+
+	return nil
+}
+
 func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) incusAPI.InstancesPost {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
@@ -207,16 +325,9 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	ret.Config["image.os"] = instanceDef.OS
 	ret.Config["image.release"] = instanceDef.OSVersion
 
-	// Apply CPU and memory limits.
-	ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.CPU.NumberCPUs)
-	if instanceDef.Overrides != nil && instanceDef.Overrides.NumberCPUs != 0 {
-		ret.Config["limits.cpu"] = fmt.Sprintf("%d", instanceDef.Overrides.NumberCPUs)
-	}
-
-	ret.Config["limits.memory"] = fmt.Sprintf("%dB", instanceDef.Memory.MemoryInBytes)
-	if instanceDef.Overrides != nil && instanceDef.Overrides.MemoryInBytes != 0 {
-		ret.Config["limits.memory"] = fmt.Sprintf("%dB", instanceDef.Overrides.MemoryInBytes)
-	}
+	// Apply minimal CPU and memory limits.
+	ret.Config["limits.cpu"] = "2"
+	ret.Config["limits.memory"] = "4GiB"
 
 	// Define the default disk settings.
 	defaultDiskDef := map[string]string{
@@ -252,27 +363,8 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 		numDisks++
 	}
 
-	// Add TPM if needed.
-	if instanceDef.TPMPresent {
-		ret.Devices["vtpm"] = map[string]string{
-			"type": "tpm",
-			"path": "/dev/tpm0",
-		}
-	}
-
-	// Set UEFI and secure boot configs
-	if instanceDef.UseLegacyBios {
-		ret.Config["security.csm"] = "true"
-	} else {
-		ret.Config["security.csm"] = "false"
-	}
-
-	if instanceDef.SecureBootEnabled {
-		ret.Config["security.secureboot"] = "true"
-	} else {
-		ret.Config["security.secureboot"] = "false"
-	}
-
+	ret.Config["security.csm"] = "false"
+	ret.Config["security.secureboot"] = "false"
 	ret.Description = ret.Config["image.description"]
 
 	// Set the migration source as a user tag to allow easy filtering.
@@ -298,11 +390,13 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef incusAPI.InstancesPost, storage
 	defer reverter.Fail()
 
 	// Attach bootable ISO to run migration of this VM.
-	apiDef.Devices["migration-iso"] = map[string]string{
+	apiDef.Devices[util.WorkerVolume()] = map[string]string{
 		"type":          "disk",
 		"pool":          storagePool,
 		"source":        bootISOImage,
 		"boot.priority": "10",
+		"readonly":      "true",
+		"io.bus":        "virtio-blk",
 	}
 
 	// If this is a Windows VM, attach the virtio drivers ISO.
@@ -445,8 +539,83 @@ func (t *InternalIncusTarget) UpdateInstance(name string, instanceDef incusAPI.I
 	return t.incusClient.UpdateInstance(name, instanceDef, ETag)
 }
 
-func (t *InternalIncusTarget) GetStoragePoolVolume(pool string, volType string, name string) (*incusAPI.StorageVolume, string, error) {
-	return t.incusClient.GetStoragePoolVolume(pool, volType, name)
+func (t *InternalIncusTarget) GetStoragePoolVolumeNames(pool string) ([]string, error) {
+	return t.incusClient.GetStoragePoolVolumeNames(pool)
+}
+
+func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string) ([]incus.Operation, error) {
+	pool, _, err := t.incusClient.GetStoragePool(poolName)
+	if err != nil {
+		return nil, err
+	}
+
+	s, _, err := t.incusClient.GetServer()
+	if err != nil {
+		return nil, err
+	}
+
+	poolIsShared := false
+	for _, driver := range s.Environment.StorageSupportedDrivers {
+		if driver.Name == pool.Driver {
+			poolIsShared = driver.Remote
+			break
+		}
+	}
+
+	// Re-use the backup tarball if we used this source before.
+	backupName := filepath.Join(util.CachePath(), fmt.Sprintf("%s_%s_%s_worker.tar.gz", t.GetName(), pool.Name, version.GoVersion()))
+	_, err = os.Stat(backupName)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	if err != nil {
+		err := createIncusBackup(backupName, backupFilePath, pool)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// If the pool is a shared pool, we only need to create the volume once.
+	if poolIsShared {
+		f, err := os.Open(backupName)
+		if err != nil {
+			return nil, err
+		}
+
+		createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: util.WorkerVolume()}
+		op, err := t.incusClient.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		return []incus.Operation{op}, nil
+	}
+
+	// If the pool is local-only, we have to create the volume for each member.
+	members, err := t.incusClient.GetClusterMemberNames()
+	if err != nil {
+		return nil, err
+	}
+
+	ops := make([]incus.Operation, 0, len(members))
+	for _, member := range members {
+		f, err := os.Open(backupName)
+		if err != nil {
+			return nil, err
+		}
+
+		createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: util.WorkerVolume()}
+		target := t.incusClient.UseTarget(member)
+		op, err := target.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		ops = append(ops, op)
+	}
+
+	return ops, nil
 }
 
 func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) (incus.Operation, error) {
@@ -463,4 +632,96 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(pool string, isoFil
 	}
 
 	return t.incusClient.CreateStoragePoolVolumeFromISO(pool, createArgs)
+}
+
+type backupIndexFile struct {
+	Name    string         `yaml:"name"`
+	Backend string         `yaml:"backend"`
+	Pool    string         `yaml:"pool"`
+	Type    string         `yaml:"type"`
+	Config  map[string]any `yaml:"config"`
+}
+
+// createIncusBackup creates a backup tarball at backupPath with the given imagePath, for the given pool.
+func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.StoragePool) error {
+	imgFile, err := os.Open(imagePath)
+	if err != nil {
+		return err
+	}
+
+	// Make sure the file exists.
+	imgInfo, err := imgFile.Stat()
+	if err != nil {
+		return err
+	}
+
+	dir := filepath.Dir(backupPath)
+
+	// Create a temporary directory to build the backup image.
+	tmpDir, err := os.MkdirTemp(dir, "build-worker-img_")
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// Create the backup directory.
+	err = os.Mkdir(filepath.Join(tmpDir, "backup"), 0o700)
+	if err != nil {
+		return err
+	}
+
+	// Create the backup volume.
+	volumePath := filepath.Join(tmpDir, "backup", "volume.img")
+	volumeFile, err := os.Create(volumePath)
+	if err != nil {
+		return err
+	}
+
+	defer volumeFile.Close()
+	_, err = io.Copy(volumeFile, imgFile)
+	if err != nil {
+		return err
+	}
+
+	// Create the backup index file.
+	index := backupIndexFile{
+		Name:    util.WorkerVolume(),
+		Backend: pool.Driver,
+		Pool:    pool.Name,
+		Type:    "custom",
+		Config: map[string]any{
+			"volume": incusAPI.StorageVolume{
+				StorageVolumePut: incusAPI.StorageVolumePut{
+					Config: map[string]string{
+						"size":            fmt.Sprintf("%dB", imgInfo.Size()),
+						"security.shared": "true",
+					},
+					Description: "Temporary image for the migration-manager worker",
+				},
+				Name:        util.WorkerVolume(),
+				Type:        "custom",
+				ContentType: "block",
+			},
+		},
+	}
+
+	indexYaml, err := yaml.Marshal(index)
+	if err != nil {
+		return err
+	}
+
+	indexPath := filepath.Join(tmpDir, "backup", "index.yaml")
+	indexFile, err := os.Create(indexPath)
+	if err != nil {
+		return err
+	}
+
+	defer indexFile.Close()
+	_, err = indexFile.Write(indexYaml)
+	if err != nil {
+		return err
+	}
+
+	return util.CreateTarballFromDir(backupPath, filepath.Join(tmpDir, "backup"))
 }

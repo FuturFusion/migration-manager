@@ -4,14 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"path/filepath"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
 
@@ -561,19 +558,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 		slog.String("storage_pool", storagePool),
 	)
 
-	// Determine the ISO names.
-	workerISOName, err := d.os.GetMigrationManagerISOName()
-	if err != nil {
-		return err
-	}
-
-	workerISOPath := filepath.Join(d.os.CacheDir, workerISOName)
-	workerISOExists := incusUtil.PathExists(workerISOPath)
-	if !workerISOExists {
-		return fmt.Errorf("Worker ISO not found at %q", workerISOPath)
-	}
-
-	importISOs := []string{workerISOName}
+	importISOs := []string{}
 	for _, inst := range instances {
 		if inst.GetOSType() == api.OSTYPE_WINDOWS {
 			driverISOName, err := d.os.GetVirtioDriversISOName()
@@ -603,6 +588,14 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 		return err
 	}
 
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	// Key the batch by its constituent parts, as batches with different IDs may share the same target, pool, and project.
+	batchKey := t.Name + "_" + storagePool + "_" + project
+	d.batchLock.Lock(batchKey)
+	reverter.Add(func() { d.batchLock.Unlock(batchKey) })
+
 	// Connect to the target.
 	err = it.Connect(ctx)
 	if err != nil {
@@ -615,12 +608,35 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 		return err
 	}
 
+	volumes, err := it.GetStoragePoolVolumeNames(storagePool)
+	if err != nil {
+		return err
+	}
+
+	if !slices.Contains(volumes, "custom/"+util.WorkerVolume()) {
+		err = d.os.LoadWorkerImage(ctx)
+		if err != nil {
+			return err
+		}
+
+		ops, err := it.CreateStoragePoolVolumeFromBackup(storagePool, filepath.Join(d.os.CacheDir, util.RawWorkerImage()))
+		if err != nil {
+			return err
+		}
+
+		for _, op := range ops {
+			err = op.Wait()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	// Verify needed ISO images are in the storage pool.
 	for _, iso := range importISOs {
 		log := log.With(slog.String("iso", iso))
 
-		_, _, err = it.GetStoragePoolVolume(storagePool, "custom", iso)
-		if err != nil && incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+		if !slices.Contains(volumes, "custom/"+iso) {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
 			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.CacheDir, iso))
@@ -638,6 +654,9 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 			return fmt.Errorf("Failed checking for storage volume %q: %w", iso, err)
 		}
 	}
+
+	d.batchLock.Unlock(batchKey)
+	reverter.Success()
 
 	return nil
 }
@@ -774,12 +793,6 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 			return fmt.Errorf("Failed to set project %q for target %q: %w", b.TargetProject, it.GetName(), err)
 		}
 
-		// Create the instance.
-		workerISOName, err := d.os.GetMigrationManagerISOName()
-		if err != nil {
-			return fmt.Errorf("Failed to get worker ISO path: %w", err)
-		}
-
 		var driverISOName string
 		if inst.GetOSType() == api.OSTYPE_WINDOWS {
 			driverISOName, err = d.os.GetVirtioDriversISOName()
@@ -800,7 +813,7 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 			})
 		}
 
-		err = it.CreateNewVM(instanceDef, b.StoragePool, workerISOName, driverISOName)
+		err = it.CreateNewVM(instanceDef, b.StoragePool, util.WorkerVolume(), driverISOName)
 		if err != nil {
 			return fmt.Errorf("Failed to create new instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
 		}
@@ -961,86 +974,9 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 			return fmt.Errorf("Failed to set target %q project %q: %w", it.GetName(), batch.TargetProject, err)
 		}
 
-		// Stop the instance.
-		err = it.StopVM(i.GetName(), true)
+		err = it.SetPostMigrationVMConfig(i, allNetworks)
 		if err != nil {
-			return fmt.Errorf("Failed to stop instance %q on target %q: %w", i.GetName(), it.GetName(), err)
-		}
-
-		// Get the instance definition.
-		apiDef, _, err := it.GetInstance(i.GetName())
-		if err != nil {
-			return fmt.Errorf("Failed to get configuration for instance %q on target %q: %w", i.GetName(), it.GetName(), err)
-		}
-
-		for idx, nic := range i.NICs {
-			nicDeviceName := fmt.Sprintf("eth%d", idx)
-			baseNetwork, ok := allNetworks[nic.Network]
-			if !ok {
-				err = fmt.Errorf("No network %q associated with instance %q on target %q", nic.Network, i.GetName(), it.GetName())
-				return err
-			}
-
-			// Pickup device name override if set.
-			deviceName, ok := baseNetwork.Config["name"]
-			if ok {
-				nicDeviceName = deviceName
-			}
-
-			// Copy the base network definitions.
-			apiDef.Devices[nicDeviceName] = make(map[string]string, len(baseNetwork.Config))
-			for k, v := range baseNetwork.Config {
-				apiDef.Devices[nicDeviceName][k] = v
-			}
-
-			// Set a few forced overrides.
-			apiDef.Devices[nicDeviceName]["type"] = "nic"
-			apiDef.Devices[nicDeviceName]["name"] = nicDeviceName
-			apiDef.Devices[nicDeviceName]["hwaddr"] = nic.Hwaddr
-		}
-
-		// Remove the migration ISO image.
-		delete(apiDef.Devices, "migration-iso")
-
-		// Don't set any profiles by default.
-		apiDef.Profiles = []string{}
-
-		// Handle Windows-specific completion steps.
-		if strings.Contains(apiDef.Config["image.os"], "swodniw") {
-			// Remove the drivers ISO image.
-			delete(apiDef.Devices, "drivers")
-
-			// Fixup the OS name.
-			apiDef.Config["image.os"] = strings.Replace(apiDef.Config["image.os"], "swodniw", "windows", 1)
-		}
-
-		// Handle RHEL (and derivative) specific completion steps.
-		if util.IsRHELOrDerivative(apiDef.Config["image.os"]) {
-			// RHEL7+ don't support 9p, so make agent config available via cdrom.
-			apiDef.Devices["agent"] = map[string]string{
-				"type":   "disk",
-				"source": "agent:config",
-			}
-		}
-
-		// Set the instance's UUID copied from the source.
-		apiDef.Config["volatile.uuid"] = i.UUID.String()
-		apiDef.Config["volatile.uuid.generation"] = i.UUID.String()
-
-		// Update the instance in Incus.
-		op, err := it.UpdateInstance(i.GetName(), apiDef.Writable(), "")
-		if err != nil {
-			return fmt.Errorf("Failed to update instance %q on target %q: %w", i.GetName(), it.GetName(), err)
-		}
-
-		err = op.Wait()
-		if err != nil {
-			return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.GetName(), it.GetName(), err)
-		}
-
-		err = it.StartVM(i.GetName())
-		if err != nil {
-			return fmt.Errorf("Failed to start instance %q on target %q: %w", i.GetName(), it.GetName(), err)
+			return fmt.Errorf("Failed to update post-migration config for instance %q in %q: %w", i.GetName(), it.GetName(), err)
 		}
 
 		// Update the instance status.

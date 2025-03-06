@@ -75,6 +75,9 @@ type Target interface {
 	// Returns an error if called while disconnected from a target.
 	SetProject(project string) error
 
+	// SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
+	SetPostMigrationVMConfig(i migration.Instance, allNetworks map[string]migration.Network) error
+
 	// Creates a VM definition for use with the Incus REST API.
 	CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) incusAPI.InstancesPost
 
@@ -102,8 +105,11 @@ type Target interface {
 	// Wrapper around Incus' UpdateInstance method.
 	UpdateInstance(name string, instanceDef incusAPI.InstancePut, ETag string) (incus.Operation, error)
 
-	// Wrapper around Incus' GetStoragePoolVolume method.
-	GetStoragePoolVolume(pool string, volType string, name string) (*incusAPI.StorageVolume, string, error)
+	// Wrapper around Incus' GetStoragePoolVolumeNames method.
+	GetStoragePoolVolumeNames(pool string) ([]string, error)
+
+	// Wrapper around Incus' CreateStoragePoolVolumeFromBackup.
+	CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string) ([]incus.Operation, error)
 
 	// Wrapper around Incus' CreateStoragePoolVolumeFromISO.
 	CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) (incus.Operation, error)

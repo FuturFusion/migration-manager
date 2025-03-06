@@ -27,6 +27,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
 	tlsutil "github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 )
 
@@ -66,6 +67,8 @@ type Daemon struct {
 	errgroup *errgroup.Group
 	config   *config.DaemonConfig
 
+	batchLock util.IDLock[string]
+
 	ShutdownCtx    context.Context    // Canceled when shutdown starts.
 	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
 	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
@@ -78,6 +81,7 @@ func NewDaemon(cfg *config.DaemonConfig) *Daemon {
 		db:             &db.Node{},
 		os:             sys.DefaultOS(),
 		config:         cfg,
+		batchLock:      util.NewIDLock[string](),
 		ShutdownCtx:    shutdownCtx,
 		ShutdownCancel: shutdownCancel,
 		ShutdownDoneCh: make(chan error),

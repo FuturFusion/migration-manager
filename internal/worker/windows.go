@@ -30,11 +30,11 @@ const (
 )
 
 const (
-	bitLockerMountPath       string = "/mnt/dislocker/"
+	bitLockerMountPath       string = "/run/mount/dislocker/"
 	driversMountDevice       string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
-	driversMountPath         string = "/mnt/drivers/"
-	windowsMainMountPath     string = "/mnt/win_main/"
-	windowsRecoveryMountPath string = "/mnt/win_recovery/"
+	driversMountPath         string = "/run/mount/drivers/"
+	windowsMainMountPath     string = "/run/mount/win_main/"
+	windowsRecoveryMountPath string = "/run/mount/win_recovery/"
 )
 
 func init() {

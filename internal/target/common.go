@@ -66,6 +66,10 @@ func (t *InternalTarget) SetProject(project string) error {
 	return fmt.Errorf("Not implemented by InternalTarget")
 }
 
+func (t *InternalTarget) SetPostMigrationVMConfig(i migration.Instance, allNetworks map[string]migration.Network) error {
+	return fmt.Errorf("Not implemented by InternalTarget")
+}
+
 func (t *InternalTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) incusAPI.InstancesPost {
 	return incusAPI.InstancesPost{}
 }
@@ -102,8 +106,12 @@ func (t *InternalTarget) UpdateInstance(name string, instanceDef incusAPI.Instan
 	return nil, fmt.Errorf("Not implemented by InternalTarget")
 }
 
-func (t *InternalTarget) GetStoragePoolVolume(pool string, volType string, name string) (*incusAPI.StorageVolume, string, error) {
-	return nil, "", fmt.Errorf("Not implemented by InternalTarget")
+func (t *InternalTarget) GetStoragePoolVolumeNames(pool string) ([]string, error) {
+	return nil, fmt.Errorf("Not implemented by InternalTarget")
+}
+
+func (t *InternalTarget) CreateStoragePoolVolumeFromBackup(pool string, isoFilePath string) ([]incus.Operation, error) {
+	return nil, fmt.Errorf("Not implemented by InternalTarget")
 }
 
 func (t *InternalTarget) CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) (incus.Operation, error) {

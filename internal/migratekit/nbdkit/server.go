@@ -1,6 +1,7 @@
 package nbdkit
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,10 +17,20 @@ type NbdkitServer struct {
 }
 
 func (s *NbdkitServer) Start() error {
-	s.cmd.Stdout = os.Stdout
-	s.cmd.Stderr = os.Stderr
+	log := log.WithFields(log.Fields{"command": "nbdkit"})
+	stdout := bytes.Buffer{}
+	stderr := bytes.Buffer{}
+	s.cmd.Stdout = &stdout
+	s.cmd.Stderr = &stderr
 
-	log.Debug("Running command: ", s.cmd)
+	log.Info("Running command: ", s.cmd)
+	defer func() {
+		log.Debug("stdout", stdout.String())
+		if len(stderr.String()) > 0 {
+			log.Error("stderr", stderr.String())
+		}
+	}()
+
 	if err := s.cmd.Start(); err != nil {
 		return fmt.Errorf("failed to start nbdkit server: %w", err)
 	}

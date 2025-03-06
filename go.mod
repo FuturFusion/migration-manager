@@ -7,6 +7,7 @@ require (
 	github.com/expr-lang/expr v1.16.9
 	github.com/flosch/pongo2/v4 v4.0.2
 	github.com/fvbommel/sortorder v1.1.0
+	github.com/google/go-github/v69 v69.2.0
 	github.com/google/uuid v1.6.0
 	github.com/gosimple/slug v1.14.0
 	github.com/hexdigest/gowrap v1.4.1
@@ -54,6 +55,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gocarina/gocsv v0.0.0-20240520201108-78e41c74b4b1 // indirect
 	github.com/google/cel-go v0.22.1 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
