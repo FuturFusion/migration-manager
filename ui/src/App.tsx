@@ -10,7 +10,11 @@ import Home from 'pages/Home';
 import Instance from 'pages/Instance';
 import InstanceDetail from 'pages/InstanceDetail';
 import Source from 'pages/Source';
+import SourceCreate from 'pages/SourceCreate';
+import SourceDetail from 'pages/SourceDetail';
 import Target from 'pages/Target';
+import TargetCreate from 'pages/TargetCreate';
+import TargetDetail from 'pages/TargetDetail';
 import Queue from 'pages/Queue';
 
 function App() {
@@ -34,7 +38,13 @@ function App() {
         <Routes>
           <Route path="/ui" element={<Home />} />
           <Route path="/ui/sources" element={<Source />} />
+          <Route path="/ui/sources/create" element={<SourceCreate />} />
+          <Route path="/ui/sources/:name" element={<SourceDetail />} />
+          <Route path="/ui/sources/:name/:activeTab" element={<SourceDetail />} />
           <Route path="/ui/targets" element={<Target />} />
+          <Route path="/ui/targets/create" element={<TargetCreate />} />
+          <Route path="/ui/targets/:name" element={<TargetDetail />} />
+          <Route path="/ui/targets/:name/:activeTab" element={<TargetDetail />} />
           <Route path="/ui/instances" element={<Instance />} />
           <Route path="/ui/instances/:uuid" element={<InstanceDetail />} />
           <Route path="/ui/instances/:uuid/:activeTab" element={<InstanceDetail />} />
