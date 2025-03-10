@@ -13,16 +13,16 @@ Life Cycle
 ----------
 
 ```
-Defined --> Ready --> Queued --> Running --> Finished
-    ^         |          ^       ^     ^
-     \----\   |          |       |      \--\
-           \  v          v       v          v
-            Error     Error   Stopped <--- Error
+Defined --> Queued --> Running --> Finished
+    ^          ^       ^     ^
+     \----\    |       |      \--\
+           \   v       v          v
+            Error   Stopped <--- Error
 ```
 
 When initially created, a batch will be in the **defined** state. This allows a user to specify and tweak various selection criteria and see what instances would be included in the batch were it to run. Editing of a batch is only allowed when it is in the defined state.
 
-Once satisfied, the user can start the batch, moving it to the **ready** state. At this point some simple sanity checks are run, such as ensuring at least one instance belongs to the batch and that if a migration window is defined its end doesn't come before the start. If a problem is detected, the batched is marked with an error and the user can correct the issue(s) and try again. Otherwise, the batch is moved to the queued state.
+Once satisfied, the user can start the batch, moving it to the **queued** state. At this point some simple sanity checks are run, such as ensuring at least one instance belongs to the batch and that if a migration window is defined its end doesn't come before the start. If a problem is detected, the batched is marked with an error and the user can correct the issue(s) and try again. Otherwise, the batch is moved to the queued state.
 
 In the **queued** state, the batch is waiting to begin executing the migration process for its instance(s). It might be waiting until a migration window opens, or for some other criteria before the server will consider it. If there is some problem with moving to the running state, the batch will be moved to an error state.
 
