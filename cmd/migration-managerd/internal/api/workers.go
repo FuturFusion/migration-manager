@@ -549,36 +549,6 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 		slog.String("storage_pool", storagePool),
 	)
 
-	importISOs := []string{}
-	for _, inst := range instances {
-		if inst.GetOSType() == api.OSTYPE_WINDOWS {
-			driverISOName, err := d.os.GetVirtioDriversISOName()
-			if err != nil {
-				return err
-			}
-
-			driverISOPath := filepath.Join(d.os.CacheDir, driverISOName)
-			driverISOExists := incusUtil.PathExists(driverISOPath)
-			if !driverISOExists {
-				return fmt.Errorf("VirtIO drivers ISO not found at %q", driverISOPath)
-			}
-
-			importISOs = append(importISOs, driverISOName)
-
-			break
-		}
-	}
-
-	// If not creating volumes, just validate that the VMWare-vix-disklib tarball is present.
-	if !createVolumes {
-		_, err := d.os.GetVMwareVixName()
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
-
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -612,14 +582,26 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 		}
 	}
 
-	// Verify needed ISO images are in the storage pool.
-	for _, iso := range importISOs {
-		log := log.With(slog.String("iso", iso))
+	// Verify needed ISO image is in the storage pool.
+	var needsDriverISO bool
+	for _, inst := range instances {
+		if inst.GetOSType() == api.OSTYPE_WINDOWS {
+			needsDriverISO = true
+			break
+		}
+	}
 
-		if !slices.Contains(volumes, "custom/"+iso) {
+	if needsDriverISO {
+		driversISOPath, err := d.os.LoadVirtioWinISO()
+		if err != nil {
+			return err
+		}
+
+		driversISO := filepath.Base(driversISOPath)
+		if !slices.Contains(volumes, "custom/"+driversISO) {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
-			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.CacheDir, iso))
+			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, driversISOPath)
 			if err != nil {
 				return err
 			}
