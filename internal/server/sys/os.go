@@ -53,6 +53,10 @@ func (s *OS) GetVirtioDriversISOName() (string, error) {
 		return "", err
 	}
 
+	if len(files) == 0 {
+		return "", os.ErrNotExist
+	}
+
 	if len(files) != 1 {
 		return "", fmt.Errorf("Unable to determine virtio drivers ISO name")
 	}
@@ -65,6 +69,10 @@ func (s *OS) GetVMwareVixName() (string, error) {
 	files, err := filepath.Glob(filepath.Join(s.CacheDir, "VMware-vix-disklib*.tar.gz"))
 	if err != nil {
 		return "", fmt.Errorf("Failed to find VMware vix tarball in %q: %w", s.CacheDir, err)
+	}
+
+	if len(files) == 0 {
+		return "", os.ErrNotExist
 	}
 
 	if len(files) != 1 {
