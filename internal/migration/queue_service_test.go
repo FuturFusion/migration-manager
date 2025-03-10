@@ -47,7 +47,7 @@ func TestQueueService_GetAll(t *testing.T) {
 				{
 					ID:     3,
 					Name:   "three",
-					Status: api.BATCHSTATUS_READY, // this batch is ignored
+					Status: api.BATCHSTATUS_QUEUED,
 				},
 				{
 					ID:     4,
@@ -61,13 +61,27 @@ func TestQueueService_GetAll(t *testing.T) {
 				},
 			},
 			instanceSvcGetAllByBatchID: []queue.Item[migration.Instances]{
-				// Instances for batch 4
+				// Instances for batch 3
 				{
 					Value: migration.Instances{
 						{
 							Instance: api.Instance{
 								UUID:                  uuidA,
 								InventoryPath:         "/some/instance/A",
+								MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
+								MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
+								BatchID:               ptr.To(3),
+							},
+						},
+					},
+				},
+				// Instances for batch 4
+				{
+					Value: migration.Instances{
+						{
+							Instance: api.Instance{
+								UUID:                  uuidB,
+								InventoryPath:         "/some/instance/B",
 								MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
 								MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
 								BatchID:               ptr.To(4),
@@ -80,8 +94,8 @@ func TestQueueService_GetAll(t *testing.T) {
 					Value: migration.Instances{
 						{
 							Instance: api.Instance{
-								UUID:                  uuidB,
-								InventoryPath:         "/some/instance/B",
+								UUID:                  uuidC,
+								InventoryPath:         "/some/instance/C",
 								MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
 								MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
 								BatchID:               ptr.To(5),
@@ -98,12 +112,20 @@ func TestQueueService_GetAll(t *testing.T) {
 					InstanceName:          "A",
 					MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
 					MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
-					BatchID:               4,
-					BatchName:             "four",
+					BatchID:               3,
+					BatchName:             "three",
 				},
 				{
 					InstanceUUID:          uuidB,
 					InstanceName:          "B",
+					MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
+					MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
+					BatchID:               4,
+					BatchName:             "four",
+				},
+				{
+					InstanceUUID:          uuidC,
+					InstanceName:          "C",
 					MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
 					MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
 					BatchID:               5,

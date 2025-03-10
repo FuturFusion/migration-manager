@@ -959,8 +959,8 @@ func TestBatchService_UpdateStatusByID(t *testing.T) {
 			idArg: 1,
 			repoUpdateStatusByIDBatch: migration.Batch{
 				ID:           1,
-				Status:       api.BATCHSTATUS_READY,
-				StatusString: api.BATCHSTATUS_READY.String(),
+				Status:       api.BATCHSTATUS_QUEUED,
+				StatusString: api.BATCHSTATUS_QUEUED.String(),
 			},
 
 			assertErr: require.NoError,
@@ -986,7 +986,7 @@ func TestBatchService_UpdateStatusByID(t *testing.T) {
 			batchSvc := migration.NewBatchService(repo, nil)
 
 			// Run test
-			batch, err := batchSvc.UpdateStatusByID(context.Background(), tc.idArg, api.BATCHSTATUS_READY, api.BATCHSTATUS_READY.String())
+			batch, err := batchSvc.UpdateStatusByID(context.Background(), tc.idArg, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_QUEUED.String())
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1274,7 +1274,7 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 			repoGetByNameBatch: migration.Batch{
 				ID:     1,
 				Name:   "one",
-				Status: api.BATCHSTATUS_READY,
+				Status: api.BATCHSTATUS_QUEUED,
 			},
 
 			assertErr: require.NoError,
@@ -1313,7 +1313,7 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 			repoGetByNameBatch: migration.Batch{
 				ID:     1,
 				Name:   "one",
-				Status: api.BATCHSTATUS_READY,
+				Status: api.BATCHSTATUS_QUEUED,
 			},
 			repoUpdateStatusByIDErr: boom.Error,
 

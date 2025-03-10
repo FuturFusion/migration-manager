@@ -239,7 +239,7 @@ func (s batchService) StartBatchByName(ctx context.Context, name string) (err er
 			return fmt.Errorf("Cannot start batch %q in its current state '%s': %w", batch.Name, batch.Status, ErrOperationNotPermitted)
 		}
 
-		_, err = s.UpdateStatusByID(ctx, batch.ID, api.BATCHSTATUS_READY, api.BATCHSTATUS_READY.String())
+		_, err = s.UpdateStatusByID(ctx, batch.ID, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_QUEUED.String())
 		if err != nil {
 			return fmt.Errorf("Failed to update batch status: %w", err)
 		}
@@ -263,7 +263,6 @@ func (s batchService) StopBatchByName(ctx context.Context, name string) (err err
 		// Ensure batch is in a state that is ready to stop.
 		switch batch.Status {
 		case
-			api.BATCHSTATUS_READY,
 			api.BATCHSTATUS_QUEUED,
 			api.BATCHSTATUS_RUNNING:
 			// States, where starting a batch is allowed.
