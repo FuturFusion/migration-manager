@@ -18,6 +18,7 @@ import (
 var (
 	uuidA = uuid.MustParse(`432a3dbc-3cf4-4b99-8708-bc6d6e5e867f`)
 	uuidB = uuid.MustParse(`7a24aba4-9a90-4132-9429-e0e8a4d3c49f`)
+	uuidC = uuid.MustParse(`6b1b8486-dbae-4273-83b0-dfb5ceb085a7`)
 )
 
 func TestInstanceService_Create(t *testing.T) {

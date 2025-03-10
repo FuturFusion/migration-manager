@@ -8,7 +8,6 @@ import { Batch } from 'types/batch';
 enum BatchStatus {
   Unknown,
   Defined,
-  Ready,
   Queued,
   Running,
   Stopped,
@@ -36,7 +35,7 @@ const BatchActions: FC<Props> = ({batch}) => {
 
   const isStopEnabled = () => {
     const status = batch.status;
-    if (status != BatchStatus.Ready && status != BatchStatus.Queued && status != BatchStatus.Running) {
+    if (status != BatchStatus.Queued && status != BatchStatus.Running) {
       return false;
     }
 

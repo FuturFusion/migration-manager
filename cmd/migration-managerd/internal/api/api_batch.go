@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -617,7 +618,40 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := d.batch.StartBatchByName(r.Context(), name)
+	var batch migration.Batch
+	var instances migration.Instances
+	var target migration.Target
+	err := transaction.Do(r.Context(), func(ctx context.Context) error {
+		var err error
+		batch, err = d.batch.GetByName(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to get batch %q: %w", name, err)
+		}
+
+		// Get the target and all instances for this batch.
+		instances, err = d.instance.GetAllByBatchID(ctx, batch.ID)
+		if err != nil {
+			return fmt.Errorf("Failed to get instances for batch %q: %w", batch.Name, err)
+		}
+
+		target, err = d.target.GetByID(ctx, batch.TargetID)
+		if err != nil {
+			return fmt.Errorf("Failed to get target for batch %q: %w", batch.Name, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	// Validate that the batch can be queued.
+	err = d.validateForQueue(r.Context(), batch, target, instances)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	err = d.batch.StartBatchByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
 	}

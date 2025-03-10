@@ -10,7 +10,6 @@ type BatchStatusType int
 const (
 	BATCHSTATUS_UNKNOWN BatchStatusType = iota
 	BATCHSTATUS_DEFINED
-	BATCHSTATUS_READY
 	BATCHSTATUS_QUEUED
 	BATCHSTATUS_RUNNING
 	BATCHSTATUS_STOPPED
@@ -25,8 +24,6 @@ func (b BatchStatusType) String() string {
 		return "Unknown"
 	case BATCHSTATUS_DEFINED:
 		return "Defined"
-	case BATCHSTATUS_READY:
-		return "Ready"
 	case BATCHSTATUS_QUEUED:
 		return "Queued"
 	case BATCHSTATUS_RUNNING:
