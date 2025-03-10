@@ -362,7 +362,7 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 }
 
 // validateForQueue validates that a set of instances in a batch are capable of being queued for the given target.
-// - The batch must be QUEUED.
+// - The batch must be DEFINED or QUEUED. If the batch is already QUEUED, missing storage volumes will be created.
 // - All instances must be ASSIGNED to the batch.
 // - All instances must be defined on the source.
 // - The batch must be within a valid migration window.
@@ -370,8 +370,8 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 // - Ensures there are no conflicting instances on the target.
 // - Ensures the correct ISO images exist in the target storage pool.
 func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migration.Target, instances migration.Instances) error {
-	if b.Status != api.BATCHSTATUS_QUEUED {
-		return fmt.Errorf("Batch status is %q, not %q", b.Status.String(), api.BATCHSTATUS_QUEUED.String())
+	if b.Status != api.BATCHSTATUS_QUEUED && b.Status != api.BATCHSTATUS_DEFINED {
+		return fmt.Errorf("Batch status is %q, not %q or %q", b.Status.String(), api.BATCHSTATUS_QUEUED.String(), api.BATCHSTATUS_DEFINED.String())
 	}
 
 	// If a migration window is defined, ensure sure it makes sense.
@@ -434,7 +434,8 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migr
 		}
 	}
 
-	return d.ensureISOImagesExistInStoragePool(ctx, it, instances, b.TargetProject, b.StoragePool)
+	createVolumes := b.Status == api.BATCHSTATUS_QUEUED
+	return d.ensureISOImagesExistInStoragePool(ctx, it, instances, b.TargetProject, b.StoragePool, createVolumes)
 }
 
 // processQueuedBatches fetches all QUEUED batches which are in an active migration window,
@@ -522,7 +523,7 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 }
 
 // ensureISOImagesExistInStoragePool ensures the necessary image files exist on the daemon to be imported to the storage volume.
-func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *target.InternalIncusTarget, instances migration.Instances, project string, storagePool string) error {
+func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *target.InternalIncusTarget, instances migration.Instances, project string, storagePool string, createVolumes bool) error {
 	if len(instances) == 0 {
 		return fmt.Errorf("No instances in batch")
 	}
@@ -550,6 +551,16 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 
 			break
 		}
+	}
+
+	// If not creating volumes, just validate that the VMWare-vix-disklib tarball is present.
+	if !createVolumes {
+		_, err := d.os.GetVMwareVixName()
+		if err != nil {
+			return err
+		}
+
+		return nil
 	}
 
 	reverter := revert.New()
