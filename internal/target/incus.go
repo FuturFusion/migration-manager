@@ -217,6 +217,11 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 			apiDef.Devices[nicDeviceName][k] = v
 		}
 
+		// If no network is given, set "default" as the default.
+		if apiDef.Devices[nicDeviceName]["network"] == "" {
+			apiDef.Devices[nicDeviceName]["network"] = "default"
+		}
+
 		// Set a few forced overrides.
 		apiDef.Devices[nicDeviceName]["type"] = "nic"
 		apiDef.Devices[nicDeviceName]["name"] = nicDeviceName

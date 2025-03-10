@@ -682,11 +682,11 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 		return err
 	}
 
-	for bID, instances := range instancesByBatch {
-		err := d.createTargetVMs(ctx, batchesByID[bID], instances, targetsByBatch[bID], sourcesByInstance, cleanupInstances)
-		if err != nil {
-			log.Error("Failed to initialize migration workers", slog.String("target", targetsByBatch[bID].Name), slog.String("batch", batchesByID[bID].Name), logger.Err(err))
-		}
+	err = util.RunConcurrentMap(instancesByBatch, func(bID int, instances migration.Instances) error {
+		return d.createTargetVMs(ctx, batchesByID[bID], instances, targetsByBatch[bID], sourcesByInstance, cleanupInstances)
+	})
+	if err != nil {
+		log.Error("Failed to initialize migration workers", logger.Err(err))
 	}
 
 	return nil
