@@ -18,10 +18,10 @@ type cmdWorker struct {
 	global *cmdGlobal
 
 	// Common options
-	flagMMEndpoint  string
-	flagUUID        string
-	flagToken       string
-	flagInsecureTLS bool
+	flagMMEndpoint         string
+	flagUUID               string
+	flagToken              string
+	flagTrustedFingerprint string
 }
 
 func (c *cmdWorker) Command() *cobra.Command {
@@ -40,7 +40,7 @@ func (c *cmdWorker) Command() *cobra.Command {
 	must(cmd.MarkFlagRequired("uuid"))
 	cmd.Flags().StringVar(&c.flagToken, "token", "", "Secret token used by the worker to authenticate when sending status updates")
 	must(cmd.MarkFlagRequired("token"))
-	cmd.Flags().BoolVar(&c.flagInsecureTLS, "insecure", false, "Allow insecure TLS connections")
+	cmd.Flags().StringVar(&c.flagTrustedFingerprint, "trusted-cert-fingerprint", "", "Trusted SHA256 fingerprint of the Migration Manager's TLS certificate")
 
 	return cmd
 }
@@ -58,7 +58,7 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("This tool is designed to be run within an Incus VM\n")
 	}
 
-	w, err := worker.NewWorker(c.flagMMEndpoint, c.flagUUID, c.flagToken, worker.SetInsecure(c.flagInsecureTLS))
+	w, err := worker.NewWorker(c.flagMMEndpoint, c.flagUUID, c.flagToken, worker.SetTrustedFingerprint(c.flagTrustedFingerprint))
 	if err != nil {
 		return err
 	}
