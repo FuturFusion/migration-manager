@@ -531,6 +531,10 @@ func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []stri
 	return err
 }
 
+func (t *InternalIncusTarget) GetInstanceNames() ([]string, error) {
+	return t.incusClient.GetInstanceNames(incusAPI.InstanceTypeAny)
+}
+
 func (t *InternalIncusTarget) GetInstance(name string) (*incusAPI.Instance, string, error) {
 	return t.incusClient.GetInstance(name)
 }

@@ -98,6 +98,10 @@ func (t *InternalTarget) ExecWithoutWaiting(instanceName string, cmd []string) e
 	return fmt.Errorf("Not implemented by InternalTarget")
 }
 
+func (t *InternalTarget) GetInstanceNames() ([]string, error) {
+	return nil, fmt.Errorf("Not implemented by InternalTarget")
+}
+
 func (t *InternalTarget) GetInstance(name string) (*api.Instance, string, error) {
 	return nil, "", fmt.Errorf("Not implemented by InternalTarget")
 }

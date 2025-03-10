@@ -99,6 +99,9 @@ type Target interface {
 	// Run a command within an instance and return immediately without waiting for it to complete.
 	ExecWithoutWaiting(instanceName string, cmd []string) error
 
+	// Wrapper around Incus' GetInstanceNames method.
+	GetInstanceNames() ([]string, error)
+
 	// Wrapper around Incus' GetInstance method.
 	GetInstance(name string) (*incusAPI.Instance, string, error)
 
