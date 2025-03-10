@@ -10,8 +10,8 @@ build: build-dependencies migration-manager
 
 .PHONY: build-dependencies
 build-dependencies:
-	@if ! dpkg --compare-versions 1.20 "<=" ${DETECTED_LIBNBD_VERSION}; then \
-		echo "Please install libnbd-dev with version >= 1.20"; \
+	@if ! dpkg --compare-versions 1.22 "<=" ${DETECTED_LIBNBD_VERSION}; then \
+		echo "Please install libnbd-dev with version >= 1.22"; \
 		exit 1; \
 	fi
 
