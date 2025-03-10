@@ -361,6 +361,82 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 	return networkMap, instanceMap, nil
 }
 
+// validateForQueue validates that a set of instances in a batch are capable of being queued for the given target.
+// - The batch must be QUEUED.
+// - All instances must be ASSIGNED to the batch.
+// - All instances must be defined on the source.
+// - The batch must be within a valid migration window.
+// - Ensures the target and project are reachable.
+// - Ensures there are no conflicting instances on the target.
+// - Ensures the correct ISO images exist in the target storage pool.
+func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migration.Target, instances migration.Instances) error {
+	if b.Status != api.BATCHSTATUS_QUEUED {
+		return fmt.Errorf("Batch status is %q, not %q", b.Status.String(), api.BATCHSTATUS_QUEUED.String())
+	}
+
+	// If a migration window is defined, ensure sure it makes sense.
+	if !b.MigrationWindowStart.IsZero() && !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(b.MigrationWindowStart) {
+		return fmt.Errorf("Batch %q window end time is before start time", b.Name)
+	}
+
+	if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(time.Now().UTC()) {
+		return fmt.Errorf("Batch %q migration window has already passed", b.Name)
+	}
+
+	// If no instances apply to this batch, return an error.
+	if len(instances) == 0 {
+		return fmt.Errorf("Batch %q has no instances assigned", b.Name)
+	}
+
+	it, err := target.NewInternalIncusTargetFrom(api.Target{
+		Name:       t.Name,
+		DatabaseID: t.ID,
+		TargetType: t.TargetType,
+		Properties: t.Properties,
+	})
+	if err != nil {
+		return fmt.Errorf("Failed to connect to target for batch %q: %w", b.Name, err)
+	}
+
+	// Connect to the target.
+	err = it.Connect(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to target for batch %q: %w", b.Name, err)
+	}
+
+	// Set the project.
+	err = it.SetProject(b.TargetProject)
+	if err != nil {
+		return fmt.Errorf("Failed to set project %q for target of batch %q: %w", b.TargetProject, b.Name, err)
+	}
+
+	targetInstances, err := it.GetInstanceNames()
+	if err != nil {
+		return fmt.Errorf("Failed to get instancs in project %q of target %q for batch %q: %w", b.TargetProject, it.GetName(), b.Name, err)
+	}
+
+	targetInstanceMap := make(map[string]bool, len(targetInstances))
+	for _, inst := range targetInstances {
+		targetInstanceMap[inst] = true
+	}
+
+	for _, inst := range instances {
+		if b.ID != *inst.BatchID {
+			return fmt.Errorf("Instance %q is not in batch %q", inst.GetName(), b.Name)
+		}
+
+		if inst.MigrationStatus != api.MIGRATIONSTATUS_ASSIGNED_BATCH {
+			return fmt.Errorf("Instance %q in batch %q has status %q, expected %q", inst.GetName(), b.Name, inst.MigrationStatus.String(), api.MIGRATIONSTATUS_ASSIGNED_BATCH.String())
+		}
+
+		if targetInstanceMap[inst.GetName()] {
+			return fmt.Errorf("Another instance with name %q already exists", inst.GetName())
+		}
+	}
+
+	return d.ensureISOImagesExistInStoragePool(ctx, it, instances, b.TargetProject, b.StoragePool)
+}
+
 // processQueuedBatches fetches all QUEUED batches which are in an active migration window,
 // and sets them to RUNNING if they have the necessary files to begin a migration.
 // All of ASSIGNED instances in the RUNNING batch are also set to CREATING, so that
@@ -377,43 +453,21 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 			return fmt.Errorf("Failed to get batches by state: %w", err)
 		}
 
-		// Skip any batches outside the migration window.
 		for _, b := range batches {
-			log := log.With(slog.String("batch", b.Name))
-
-			log.Info("Batch status is 'Queued', processing....")
-			if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(time.Now().UTC()) {
-				log.Error("Batch window end time has already passed")
-
-				_, err = d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_ERROR, "Migration window end has already passed")
-				if err != nil {
-					return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_ERROR.String(), err)
-				}
-
-				continue
-			}
-
-			// Get all instances for this batch.
+			// Get the target and all instances for this batch.
 			instances, err := d.instance.GetAllByBatchID(ctx, b.ID)
 			if err != nil {
-				return fmt.Errorf("Failed to get instances for batch: %w", err)
+				return fmt.Errorf("Failed to get instances for batch %q: %w", b.Name, err)
 			}
 
-			target, err := d.target.GetByID(ctx, b.TargetID)
+			t, err := d.target.GetByID(ctx, b.TargetID)
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to get target for batch %q: %w", b.Name, err)
 			}
 
-			availableInstances := migration.Instances{}
-			for _, inst := range instances {
-				if inst.MigrationStatus == api.MIGRATIONSTATUS_ASSIGNED_BATCH {
-					availableInstances = append(availableInstances, inst)
-				}
-			}
-
+			instancesByBatch[b.ID] = instances
+			targetsByBatch[b.ID] = t
 			batchesByID[b.ID] = b
-			instancesByBatch[b.ID] = availableInstances
-			targetsByBatch[b.ID] = target
 		}
 
 		return nil
@@ -422,24 +476,28 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 		return err
 	}
 
-	// Skip any batches that are lacking the necessary ISO images in the Incus storage pool.
-	for batchID, instances := range instancesByBatch {
+	// Validate the batches before updating their state.
+	// If a batch is invalid or unable to be validated, it will be set to ERROR and removed from consideration.
+	for batchID, availableInstances := range instancesByBatch {
 		t := targetsByBatch[batchID]
 		b := batchesByID[batchID]
-		err := d.ensureISOImagesExistInStoragePool(ctx, t, instances, b.TargetProject, b.StoragePool)
+		log := log.With(slog.String("batch", b.Name))
+		err := d.validateForQueue(ctx, b, t, availableInstances)
 		if err != nil {
-			// Skip the batch if it's missing needed resources.
+			log.Error("Failed to validate batch", logger.Err(err))
+			_, err := d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_ERROR, err.Error())
+			if err != nil {
+				return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_ERROR.String(), err)
+			}
+
 			delete(batchesByID, batchID)
-			log.Error("Failed to ensure ISO images exist in storage pool", logger.Err(err))
 		}
 	}
 
 	// Set the statuses for any batches that made it this far to RUNNING in preparation for instance creation on the target.
 	// `finalizeCompleteInstances` will pick up these batches, but won't find any instances in them until their associated VMs are created.
-	sourcesByInstance := map[uuid.UUID]migration.Source{}
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		for _, b := range batchesByID {
-			log := log.With(slog.String("batch", b.Name))
 			log.Info("Updating batch status to 'Running'")
 			_, err := d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_RUNNING.String())
 			if err != nil {
@@ -447,11 +505,6 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 			}
 
 			for _, inst := range instancesByBatch[b.ID] {
-				sourcesByInstance[inst.UUID], err = d.source.GetByID(ctx, inst.SourceID)
-				if err != nil {
-					return err
-				}
-
 				_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
 				if err != nil {
 					return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_CREATING.String(), err)
@@ -468,15 +521,14 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 	return nil
 }
 
-func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migration.Target, instances migration.Instances, project string, storagePool string) error {
+// ensureISOImagesExistInStoragePool ensures the necessary image files exist on the daemon to be imported to the storage volume.
+func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *target.InternalIncusTarget, instances migration.Instances, project string, storagePool string) error {
 	if len(instances) == 0 {
 		return fmt.Errorf("No instances in batch")
 	}
 
-	inst := instances[0]
 	log := slog.With(
 		slog.String("method", "ensureISOImagesExistInStoragePool"),
-		slog.String("instance", inst.InventoryPath),
 		slog.String("storage_pool", storagePool),
 	)
 
@@ -500,36 +552,15 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 		}
 	}
 
-	it, err := target.NewInternalIncusTargetFrom(api.Target{
-		Name:       t.Name,
-		DatabaseID: t.ID,
-		TargetType: t.TargetType,
-		Properties: t.Properties,
-	})
-	if err != nil {
-		return err
-	}
-
 	reverter := revert.New()
 	defer reverter.Fail()
 
 	// Key the batch by its constituent parts, as batches with different IDs may share the same target, pool, and project.
-	batchKey := t.Name + "_" + storagePool + "_" + project
+	batchKey := it.GetName() + "_" + storagePool + "_" + project
 	d.batchLock.Lock(batchKey)
 	reverter.Add(func() { d.batchLock.Unlock(batchKey) })
 
 	// Connect to the target.
-	err = it.Connect(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Set the project.
-	err = it.SetProject(project)
-	if err != nil {
-		return err
-	}
-
 	volumes, err := it.GetStoragePoolVolumeNames(storagePool)
 	if err != nil {
 		return err
@@ -570,10 +601,6 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, t migrat
 			if err != nil {
 				return err
 			}
-		}
-
-		if err != nil {
-			return fmt.Errorf("Failed checking for storage volume %q: %w", iso, err)
 		}
 	}
 
