@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -15,6 +17,7 @@ import (
 	"time"
 
 	incusAPI "github.com/lxc/incus/v6/shared/api"
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"golang.org/x/sys/unix"
 
 	"github.com/FuturFusion/migration-manager/internal"
@@ -26,11 +29,11 @@ import (
 )
 
 type Worker struct {
-	endpoint *url.URL
-	insecure bool
-	source   source.Source
-	uuid     string
-	token    string
+	endpoint           *url.URL
+	trustedFingerprint string
+	source             source.Source
+	uuid               string
+	token              string
 
 	lastUpdate time.Time
 	idleSleep  time.Duration
@@ -47,7 +50,6 @@ func NewWorker(endpoint string, uuid string, token string, opts ...WorkerOption)
 
 	wrkr := &Worker{
 		endpoint:   parsedURL,
-		insecure:   false,
 		source:     nil,
 		uuid:       uuid,
 		token:      token,
@@ -85,9 +87,9 @@ func WithSource(src source.Source) WorkerOption {
 	}
 }
 
-func SetInsecure(insecure bool) WorkerOption {
+func SetTrustedFingerprint(fingerprint string) WorkerOption {
 	return func(w *Worker) error {
-		w.insecure = insecure
+		w.trustedFingerprint = fingerprint
 		return nil
 	}
 }
@@ -354,7 +356,30 @@ func (w *Worker) doHTTPRequestV1(endpoint string, method string, query string, c
 	req.Header.Set("Content-Type", "application/json")
 
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: w.insecure},
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+			VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+				if len(rawCerts) == 0 {
+					return &tls.CertificateVerificationError{Err: fmt.Errorf("No TLS certificates found")}
+				}
+
+				if w.trustedFingerprint == "" {
+					return &tls.CertificateVerificationError{Err: fmt.Errorf("No trusted fingerprint found")}
+				}
+
+				fingerprint, err := incusTLS.CertFingerprintStr(string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rawCerts[0]})))
+				if err != nil {
+					return &tls.CertificateVerificationError{Err: err}
+				}
+
+				trustedFingerprint := strings.ToLower(strings.ReplaceAll(w.trustedFingerprint, ":", ""))
+				if fingerprint != strings.ToLower(strings.ReplaceAll(w.trustedFingerprint, ":", "")) {
+					return &tls.CertificateVerificationError{Err: fmt.Errorf("Fingerprints do not match. Expected (%s), Got (%s)", trustedFingerprint, fingerprint)}
+				}
+
+				return nil
+			},
+		},
 	}
 
 	client := &http.Client{Transport: transport}

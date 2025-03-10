@@ -63,9 +63,10 @@ type Daemon struct {
 	target   migration.TargetService
 	queue    migration.QueueService
 
-	server   *http.Server
-	errgroup *errgroup.Group
-	config   *config.DaemonConfig
+	server     *http.Server
+	serverCert *incusTLS.CertInfo
+	errgroup   *errgroup.Group
+	config     *config.DaemonConfig
 
 	batchLock util.IDLock[string]
 
@@ -252,8 +253,9 @@ func (d *Daemon) Start() error {
 		certFile := filepath.Join(d.os.VarDir, "server.crt")
 		keyFile := filepath.Join(d.os.VarDir, "server.key")
 
+		var err error
 		// Ensure that the certificate exists, or create a new one if it does not.
-		err := incusTLS.FindOrGenCert(certFile, keyFile, false, true)
+		d.serverCert, err = incusTLS.KeyPairAndCA(d.os.VarDir, "server", incusTLS.CertServer, true)
 		if err != nil {
 			return err
 		}
@@ -290,6 +292,11 @@ func (d *Daemon) Start() error {
 	slog.Info("Daemon started")
 
 	return nil
+}
+
+func (d *Daemon) ServerCert() *incusTLS.CertInfo {
+	cert := *d.serverCert
+	return &cert
 }
 
 func (d *Daemon) Stop(ctx context.Context) error {
