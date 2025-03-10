@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/revert"
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
@@ -801,9 +802,14 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 		// Instead, if an error occurs, we will try to set the instance state to ERROR so that we don't retry.
 		cleanupInstances = false
 
+		cert, err := d.ServerCert().PublicKeyX509()
+		if err != nil {
+			return fmt.Errorf("Failed to parse server certificate: %w", err)
+		}
+
 		// Start the worker binary.
 		// TODO: Periodically check that the worker is actually running.
-		err = it.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getWorkerEndpoint(), "--uuid", inst.UUID.String(), "--token", inst.SecretToken.String()})
+		err = it.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getWorkerEndpoint(), "--uuid", inst.UUID.String(), "--token", inst.SecretToken.String(), "--trusted-cert-fingerprint", incusTLS.CertFingerprint(cert)})
 		if err != nil {
 			return fmt.Errorf("Failed to execute worker on instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
 		}
