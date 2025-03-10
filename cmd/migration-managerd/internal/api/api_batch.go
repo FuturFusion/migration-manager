@@ -646,7 +646,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Validate that the batch can be queued.
-	err = d.validateForQueue(r.Context(), batch, target, instances)
+	_, err = d.validateForQueue(r.Context(), batch, target, instances)
 	if err != nil {
 		return response.SmartError(err)
 	}
