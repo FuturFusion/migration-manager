@@ -7,12 +7,14 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incusUtil "github.com/lxc/incus/v6/shared/util"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
@@ -228,9 +230,18 @@ func (d *Daemon) Start() error {
 	d.errgroup = group
 
 	group.Go(func() error {
-		// TODO: Check if the socket file already exists. If it does, return an error,
-		// because this indicates, that an other instance of the operations-center
-		// is already running.
+		_, err := net.Dial("unix", d.os.GetUnixSocket())
+		if err == nil {
+			return fmt.Errorf("Active unix socket found at %q", d.os.GetUnixSocket())
+		}
+
+		if incusUtil.PathExists(d.os.GetUnixSocket()) {
+			err := os.RemoveAll(d.os.GetUnixSocket())
+			if err != nil {
+				return fmt.Errorf("Failed to delete stale unix socket at %q: %w", d.os.GetUnixSocket(), err)
+			}
+		}
+
 		unixListener, err := net.Listen("unix", d.os.GetUnixSocket())
 		if err != nil {
 			return err
