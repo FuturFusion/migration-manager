@@ -444,7 +444,7 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migr
 	// Ensure exactly zero or one VirtIO drivers ISOs exist.
 	_, err = d.os.GetVirtioDriversISOName()
 	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("Failed to find VMWare vix tarball: %w", err)
+		return nil, fmt.Errorf("Failed to find Virtio drivers ISO: %w", err)
 	}
 
 	return it, nil
