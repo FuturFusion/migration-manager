@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
 )
@@ -49,7 +50,7 @@ func (s *OS) LocalDatabaseDir() string {
 
 // Returns the name of the virtio drivers ISO image.
 func (s *OS) GetVirtioDriversISOName() (string, error) {
-	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win*.iso", s.CacheDir))
+	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win-*.iso", s.CacheDir))
 	if err != nil {
 		return "", err
 	}
@@ -156,7 +157,12 @@ func (s *OS) LoadVirtioWinISO() (string, error) {
 
 	defer func() { _ = resp.Body.Close() }()
 
-	isoPath := filepath.Join(s.CacheDir, "virtio-win.iso")
+	versionedName := filepath.Base(resp.Request.URL.Path)
+	if !strings.HasPrefix(versionedName, "virtio-win-") || !strings.HasSuffix(versionedName, ".iso") {
+		return "", fmt.Errorf("VirtIO drivers ISO is not available. Found artifact: %q", versionedName)
+	}
+
+	isoPath := filepath.Join(s.CacheDir, versionedName)
 	isoFile, err := os.Create(isoPath)
 	if err != nil {
 		return "", err

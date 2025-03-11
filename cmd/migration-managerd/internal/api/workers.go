@@ -497,7 +497,7 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 		log := log.With(slog.String("batch", b.Name))
 		it, err := d.validateForQueue(ctx, b, t, availableInstances)
 		if err == nil {
-			err = d.ensureISOImagesExistInStoragePool(ctx, it, availableInstances, b.TargetProject, b.StoragePool)
+			err = d.ensureISOImagesExistInStoragePool(ctx, it, availableInstances, b)
 		}
 
 		if err != nil {
@@ -539,37 +539,68 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 }
 
 // ensureISOImagesExistInStoragePool ensures the necessary image files exist on the daemon to be imported to the storage volume.
-func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *target.InternalIncusTarget, instances migration.Instances, project string, storagePool string) error {
+func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *target.InternalIncusTarget, instances migration.Instances, batch migration.Batch) error {
 	if len(instances) == 0 {
 		return fmt.Errorf("No instances in batch")
 	}
 
 	log := slog.With(
 		slog.String("method", "ensureISOImagesExistInStoragePool"),
-		slog.String("storage_pool", storagePool),
+		slog.String("storage_pool", batch.StoragePool),
 	)
 
 	reverter := revert.New()
 	defer reverter.Fail()
 
 	// Key the batch by its constituent parts, as batches with different IDs may share the same target, pool, and project.
-	batchKey := it.GetName() + "_" + storagePool + "_" + project
+	batchKey := it.GetName() + "_" + batch.StoragePool + "_" + batch.TargetProject
 	d.batchLock.Lock(batchKey)
 	reverter.Add(func() { d.batchLock.Unlock(batchKey) })
 
 	// Connect to the target.
-	volumes, err := it.GetStoragePoolVolumeNames(storagePool)
+	volumes, err := it.GetStoragePoolVolumeNames(batch.StoragePool)
 	if err != nil {
 		return err
 	}
 
-	if !slices.Contains(volumes, "custom/"+util.WorkerVolume()) {
+	volumeMap := make(map[string]bool, len(volumes))
+	for _, vol := range volumes {
+		volumeMap[vol] = true
+	}
+
+	// Verify needed ISO image is in the storage pool.
+	var needsDriverISO bool
+	for _, inst := range instances {
+		if inst.GetOSType() == api.OSTYPE_WINDOWS {
+			needsDriverISO = true
+			break
+		}
+	}
+
+	existingDriverName, err := d.os.GetVirtioDriversISOName()
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("Failed to find Virtio drivers ISO: %w", err)
+	}
+
+	missingBaseImg := !volumeMap["custom/"+util.WorkerVolume()]
+	missingDriverISO := needsDriverISO && (existingDriverName == "" || !volumeMap["custom/"+existingDriverName])
+
+	// If we need to download missing files, or upload them to the target, set a status message.
+	if missingBaseImg || missingDriverISO {
+		_, err := d.batch.UpdateStatusByID(ctx, batch.ID, batch.Status, "Downloading artifacts")
+		if err != nil {
+			return fmt.Errorf("Failed to update batch %q status message: %w", batch.Name, err)
+		}
+	}
+
+	if missingBaseImg {
+		log.Info("Worker image doesn't exist in storage pool, importing...")
 		err = d.os.LoadWorkerImage(ctx)
 		if err != nil {
 			return err
 		}
 
-		ops, err := it.CreateStoragePoolVolumeFromBackup(storagePool, filepath.Join(d.os.CacheDir, util.RawWorkerImage()))
+		ops, err := it.CreateStoragePoolVolumeFromBackup(batch.StoragePool, filepath.Join(d.os.CacheDir, util.RawWorkerImage()))
 		if err != nil {
 			return err
 		}
@@ -582,26 +613,17 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 		}
 	}
 
-	// Verify needed ISO image is in the storage pool.
-	var needsDriverISO bool
-	for _, inst := range instances {
-		if inst.GetOSType() == api.OSTYPE_WINDOWS {
-			needsDriverISO = true
-			break
-		}
-	}
-
-	if needsDriverISO {
+	if missingDriverISO {
 		driversISOPath, err := d.os.LoadVirtioWinISO()
 		if err != nil {
 			return err
 		}
 
 		driversISO := filepath.Base(driversISOPath)
-		if !slices.Contains(volumes, "custom/"+driversISO) {
+		if !volumeMap["custom/"+driversISO] {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
-			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, driversISOPath)
+			op, err := it.CreateStoragePoolVolumeFromISO(batch.StoragePool, driversISOPath)
 			if err != nil {
 				return err
 			}
