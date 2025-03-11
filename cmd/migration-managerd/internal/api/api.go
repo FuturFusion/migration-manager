@@ -114,6 +114,7 @@ func restServer(d *Daemon) *http.Server {
 		ConnContext: request.SaveConnectionInContext,
 		IdleTimeout: 30 * time.Second,
 		TLSConfig: &tls.Config{
+			NextProtos: []string{"h2", "http/1.1"},
 			ClientAuth: tls.RequestClientCert,
 		},
 	}
