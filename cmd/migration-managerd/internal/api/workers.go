@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"slices"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
-	incusUtil "github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
@@ -363,30 +363,30 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 }
 
 // validateForQueue validates that a set of instances in a batch are capable of being queued for the given target.
-// - The batch must be DEFINED or QUEUED. If the batch is already QUEUED, missing storage volumes will be created.
+// - The batch must be DEFINED or QUEUED.
 // - All instances must be ASSIGNED to the batch.
 // - All instances must be defined on the source.
 // - The batch must be within a valid migration window.
 // - Ensures the target and project are reachable.
 // - Ensures there are no conflicting instances on the target.
 // - Ensures the correct ISO images exist in the target storage pool.
-func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migration.Target, instances migration.Instances) error {
+func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migration.Target, instances migration.Instances) (*target.InternalIncusTarget, error) {
 	if b.Status != api.BATCHSTATUS_QUEUED && b.Status != api.BATCHSTATUS_DEFINED {
-		return fmt.Errorf("Batch status is %q, not %q or %q", b.Status.String(), api.BATCHSTATUS_QUEUED.String(), api.BATCHSTATUS_DEFINED.String())
+		return nil, fmt.Errorf("Batch status is %q, not %q or %q", b.Status.String(), api.BATCHSTATUS_QUEUED.String(), api.BATCHSTATUS_DEFINED.String())
 	}
 
 	// If a migration window is defined, ensure sure it makes sense.
 	if !b.MigrationWindowStart.IsZero() && !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(b.MigrationWindowStart) {
-		return fmt.Errorf("Batch %q window end time is before start time", b.Name)
+		return nil, fmt.Errorf("Batch %q window end time is before start time", b.Name)
 	}
 
 	if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(time.Now().UTC()) {
-		return fmt.Errorf("Batch %q migration window has already passed", b.Name)
+		return nil, fmt.Errorf("Batch %q migration window has already passed", b.Name)
 	}
 
-	// If no instances apply to this batch, return an error.
+	// If no instances apply to this batch, return nil, an error.
 	if len(instances) == 0 {
-		return fmt.Errorf("Batch %q has no instances assigned", b.Name)
+		return nil, fmt.Errorf("Batch %q has no instances assigned", b.Name)
 	}
 
 	it, err := target.NewInternalIncusTargetFrom(api.Target{
@@ -396,24 +396,24 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migr
 		Properties: t.Properties,
 	})
 	if err != nil {
-		return fmt.Errorf("Failed to connect to target for batch %q: %w", b.Name, err)
+		return nil, fmt.Errorf("Failed to connect to target for batch %q: %w", b.Name, err)
 	}
 
 	// Connect to the target.
 	err = it.Connect(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to connect to target for batch %q: %w", b.Name, err)
+		return nil, fmt.Errorf("Failed to connect to target for batch %q: %w", b.Name, err)
 	}
 
 	// Set the project.
 	err = it.SetProject(b.TargetProject)
 	if err != nil {
-		return fmt.Errorf("Failed to set project %q for target of batch %q: %w", b.TargetProject, b.Name, err)
+		return nil, fmt.Errorf("Failed to set project %q for target of batch %q: %w", b.TargetProject, b.Name, err)
 	}
 
 	targetInstances, err := it.GetInstanceNames()
 	if err != nil {
-		return fmt.Errorf("Failed to get instancs in project %q of target %q for batch %q: %w", b.TargetProject, it.GetName(), b.Name, err)
+		return nil, fmt.Errorf("Failed to get instancs in project %q of target %q for batch %q: %w", b.TargetProject, it.GetName(), b.Name, err)
 	}
 
 	targetInstanceMap := make(map[string]bool, len(targetInstances))
@@ -423,20 +423,31 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migr
 
 	for _, inst := range instances {
 		if b.ID != *inst.BatchID {
-			return fmt.Errorf("Instance %q is not in batch %q", inst.GetName(), b.Name)
+			return nil, fmt.Errorf("Instance %q is not in batch %q", inst.GetName(), b.Name)
 		}
 
 		if inst.MigrationStatus != api.MIGRATIONSTATUS_ASSIGNED_BATCH {
-			return fmt.Errorf("Instance %q in batch %q has status %q, expected %q", inst.GetName(), b.Name, inst.MigrationStatus.String(), api.MIGRATIONSTATUS_ASSIGNED_BATCH.String())
+			return nil, fmt.Errorf("Instance %q in batch %q has status %q, expected %q", inst.GetName(), b.Name, inst.MigrationStatus.String(), api.MIGRATIONSTATUS_ASSIGNED_BATCH.String())
 		}
 
 		if targetInstanceMap[inst.GetName()] {
-			return fmt.Errorf("Another instance with name %q already exists", inst.GetName())
+			return nil, fmt.Errorf("Another instance with name %q already exists", inst.GetName())
 		}
 	}
 
-	createVolumes := b.Status == api.BATCHSTATUS_QUEUED
-	return d.ensureISOImagesExistInStoragePool(ctx, it, instances, b.TargetProject, b.StoragePool, createVolumes)
+	// Ensure VMware VIX tarball exists.
+	_, err = d.os.GetVMwareVixName()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to find VMWare vix tarball: %w", err)
+	}
+
+	// Ensure exactly zero or one VirtIO drivers ISOs exist.
+	_, err = d.os.GetVirtioDriversISOName()
+	if err != nil && !os.IsNotExist(err) {
+		return nil, fmt.Errorf("Failed to find VMWare vix tarball: %w", err)
+	}
+
+	return it, nil
 }
 
 // processQueuedBatches fetches all QUEUED batches which are in an active migration window,
@@ -484,7 +495,11 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 		t := targetsByBatch[batchID]
 		b := batchesByID[batchID]
 		log := log.With(slog.String("batch", b.Name))
-		err := d.validateForQueue(ctx, b, t, availableInstances)
+		it, err := d.validateForQueue(ctx, b, t, availableInstances)
+		if err == nil {
+			err = d.ensureISOImagesExistInStoragePool(ctx, it, availableInstances, b.TargetProject, b.StoragePool)
+		}
+
 		if err != nil {
 			log.Error("Failed to validate batch", logger.Err(err))
 			_, err := d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_ERROR, err.Error())
@@ -524,7 +539,7 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 }
 
 // ensureISOImagesExistInStoragePool ensures the necessary image files exist on the daemon to be imported to the storage volume.
-func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *target.InternalIncusTarget, instances migration.Instances, project string, storagePool string, createVolumes bool) error {
+func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *target.InternalIncusTarget, instances migration.Instances, project string, storagePool string) error {
 	if len(instances) == 0 {
 		return fmt.Errorf("No instances in batch")
 	}
@@ -533,36 +548,6 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 		slog.String("method", "ensureISOImagesExistInStoragePool"),
 		slog.String("storage_pool", storagePool),
 	)
-
-	importISOs := []string{}
-	for _, inst := range instances {
-		if inst.GetOSType() == api.OSTYPE_WINDOWS {
-			driverISOName, err := d.os.GetVirtioDriversISOName()
-			if err != nil {
-				return err
-			}
-
-			driverISOPath := filepath.Join(d.os.CacheDir, driverISOName)
-			driverISOExists := incusUtil.PathExists(driverISOPath)
-			if !driverISOExists {
-				return fmt.Errorf("VirtIO drivers ISO not found at %q", driverISOPath)
-			}
-
-			importISOs = append(importISOs, driverISOName)
-
-			break
-		}
-	}
-
-	// If not creating volumes, just validate that the VMWare-vix-disklib tarball is present.
-	if !createVolumes {
-		_, err := d.os.GetVMwareVixName()
-		if err != nil {
-			return err
-		}
-
-		return nil
-	}
 
 	reverter := revert.New()
 	defer reverter.Fail()
@@ -597,14 +582,26 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 		}
 	}
 
-	// Verify needed ISO images are in the storage pool.
-	for _, iso := range importISOs {
-		log := log.With(slog.String("iso", iso))
+	// Verify needed ISO image is in the storage pool.
+	var needsDriverISO bool
+	for _, inst := range instances {
+		if inst.GetOSType() == api.OSTYPE_WINDOWS {
+			needsDriverISO = true
+			break
+		}
+	}
 
-		if !slices.Contains(volumes, "custom/"+iso) {
+	if needsDriverISO {
+		driversISOPath, err := d.os.LoadVirtioWinISO()
+		if err != nil {
+			return err
+		}
+
+		driversISO := filepath.Base(driversISOPath)
+		if !slices.Contains(volumes, "custom/"+driversISO) {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
-			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, filepath.Join(d.os.CacheDir, iso))
+			op, err := it.CreateStoragePoolVolumeFromISO(storagePool, driversISOPath)
 			if err != nil {
 				return err
 			}

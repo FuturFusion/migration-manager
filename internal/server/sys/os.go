@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -48,9 +49,13 @@ func (s *OS) LocalDatabaseDir() string {
 
 // Returns the name of the virtio drivers ISO image.
 func (s *OS) GetVirtioDriversISOName() (string, error) {
-	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win-*.iso", s.CacheDir))
+	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win*.iso", s.CacheDir))
 	if err != nil {
 		return "", err
+	}
+
+	if len(files) == 0 {
+		return "", os.ErrNotExist
 	}
 
 	if len(files) != 1 {
@@ -65,6 +70,10 @@ func (s *OS) GetVMwareVixName() (string, error) {
 	files, err := filepath.Glob(filepath.Join(s.CacheDir, "VMware-vix-disklib*.tar.gz"))
 	if err != nil {
 		return "", fmt.Errorf("Failed to find VMware vix tarball in %q: %w", s.CacheDir, err)
+	}
+
+	if len(files) == 0 {
+		return "", os.ErrNotExist
 	}
 
 	if len(files) != 1 {
@@ -127,4 +136,38 @@ func (s *OS) LoadWorkerImage(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// LoadVirtioWinISO attempts to fetch the latest virtio-win ISO, returning the path to the file.
+func (s *OS) LoadVirtioWinISO() (string, error) {
+	iso, err := s.GetVirtioDriversISOName()
+	if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+
+	if err == nil {
+		return iso, nil
+	}
+
+	resp, err := http.Get("https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso")
+	if err != nil {
+		return "", fmt.Errorf("Failed to fetch latest virtio-win ISO: %w", err)
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+
+	isoPath := filepath.Join(s.CacheDir, "virtio-win.iso")
+	isoFile, err := os.Create(isoPath)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() { _ = isoFile.Close() }()
+
+	_, err = io.Copy(isoFile, resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return isoPath, nil
 }
