@@ -1,11 +1,11 @@
-ARG GO_VERSION=1.22
+ARG GO_VERSION=1.23
 ARG DEBIAN_VERSION=bookworm
 
 # Build DEB files for libnbd
 
 FROM debian:${DEBIAN_VERSION} AS build
-ARG LIBNBD_VERSION=1.20.3
-ARG LIBNBD_DEB_VERSION=1.20.3-1
+ARG LIBNBD_VERSION=1.22.0
+ARG LIBNBD_DEB_VERSION=1.22.0-1
 
 # Install requirements for deb build of libnbd.
 RUN apt update && \
