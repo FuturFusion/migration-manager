@@ -146,7 +146,7 @@ func (s *OS) LoadVirtioWinISO() (string, error) {
 	}
 
 	if err == nil {
-		return iso, nil
+		return filepath.Join(s.CacheDir, iso), nil
 	}
 
 	resp, err := http.Get("https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso")
