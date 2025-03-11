@@ -67,9 +67,9 @@ func (s *OS) GetVirtioDriversISOName() (string, error) {
 
 // GetVMWareVixName returns the name of the VMWare vix disklib tarball.
 func (s *OS) GetVMwareVixName() (string, error) {
-	files, err := filepath.Glob(filepath.Join(s.CacheDir, "VMware-vix-disklib*.tar.gz"))
+	files, err := filepath.Glob(filepath.Join(s.VarDir, "VMware-vix-disklib*.tar.gz"))
 	if err != nil {
-		return "", fmt.Errorf("Failed to find VMware vix tarball in %q: %w", s.CacheDir, err)
+		return "", fmt.Errorf("Failed to find VMware vix tarball in %q: %w", s.VarDir, err)
 	}
 
 	if len(files) == 0 {
@@ -77,7 +77,7 @@ func (s *OS) GetVMwareVixName() (string, error) {
 	}
 
 	if len(files) != 1 {
-		return "", fmt.Errorf("Failed to find exactly one VMWare vix tarball in %q (Found %d)", s.CacheDir, len(files))
+		return "", fmt.Errorf("Failed to find exactly one VMWare vix tarball in %q (Found %d)", s.VarDir, len(files))
 	}
 
 	return filepath.Base(files[0]), nil
@@ -117,7 +117,7 @@ func (s *OS) LoadWorkerImage(ctx context.Context) error {
 
 	defer rawImgFile.Close()
 
-	vixFile, err := os.Open(filepath.Join(s.CacheDir, vixName))
+	vixFile, err := os.Open(filepath.Join(s.VarDir, vixName))
 	if err != nil {
 		return err
 	}
