@@ -19,11 +19,13 @@ const TargetCreate = () => {
           const connStatusString = ExternalConnectivityStatusString[connStatus as ExternalConnectivityStatus];
 
           if (connStatus === ExternalConnectivityStatus.TLSConfirmFingerprint) {
-            notify.error(`Successfully added new target ${values.name}, but received an untrusted TLS server certificate with fingerprint ${response.metadata?.["certFingerprint"]}. Please update the source to correct the issue.`);
+            notify.info(`Successfully added new target ${values.name}, but received an untrusted TLS server certificate with fingerprint ${response.metadata?.["certFingerprint"]}. Please update the source to correct the issue.`);
           } else if (connStatus === ExternalConnectivityStatus.WaitingOIDC) {
-            notify.error(`"Successfully added new target ${values.name}; please visit ${response.metadata?.["OIDCURL"]} to complete OIDC authorization."`);
+            const oidcURL = response.metadata?.["OIDCURL"];
+            notify.info(`Successfully added new target ${values.name}. Please go to <a href="${oidcURL}" target="_blank" rel="noopener noreferrer" style="color: white">${oidcURL}</a> if your browser didn't open an authentication window for you.`);
+            window.open(oidcURL, "_blank", "noopener,noreferrer");
           } else if (connStatus !== ExternalConnectivityStatus.OK) {
-            notify.error(`Successfully added new target ${values.name}, but connectivity check reported an issue: ${connStatusString}. Please update the source to correct the issue.`);
+            notify.info(`Successfully added new target ${values.name}, but connectivity check reported an issue: ${connStatusString}. Please update the source to correct the issue.`);
           } else {
             notify.success(`Target ${values.name} created`);
           }
