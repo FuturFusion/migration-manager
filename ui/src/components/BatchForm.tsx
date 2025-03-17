@@ -174,7 +174,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               onBlur={formik.handleBlur}
               isInvalid={!!formik.errors.migration_window_start && formik.touched.migration_window_start}/>
             <Form.Text className="text-muted">
-              YYYY-MM-DD HH:MM:SS / YYYY-MM-DD HH:MM:SS UTC
+              YYYY-MM-DD HH:MM:SS / YYYY-MM-DD HH:MM:SS UTC (e.g., {formatDate(new Date().toISOString())})
             </Form.Text>
             <Form.Control.Feedback type="invalid">
               {formik.errors.migration_window_start}
@@ -190,7 +190,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               onBlur={formik.handleBlur}
               isInvalid={!!formik.errors.migration_window_end && formik.touched.migration_window_end}/>
             <Form.Text className="text-muted">
-              YYYY-MM-DD HH:MM:SS / YYYY-MM-DD HH:MM:SS UTC
+              YYYY-MM-DD HH:MM:SS / YYYY-MM-DD HH:MM:SS UTC (e.g., {formatDate(new Date().toISOString())})
             </Form.Text>
             <Form.Control.Feedback type="invalid">
               {formik.errors.migration_window_end}
