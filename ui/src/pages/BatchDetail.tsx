@@ -1,37 +1,92 @@
 import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Button from 'react-bootstrap/Button';
-import Modal from 'react-bootstrap/Modal';
 import { useNavigate, useParams } from 'react-router';
-import { deleteBatch } from 'api/batches';
+import { fetchBatch } from 'api/batches';
 import BatchConfiguration from 'components/BatchConfiguration';
+import BatchDeleteModal from 'components/BatchDeleteModal';
 import BatchInstances from 'components/BatchInstances';
 import BatchOverview from 'components/BatchOverview';
 import TabView from 'components/TabView';
 import { useNotification } from 'context/notification';
+import {
+  canStartBatch,
+  canStopBatch,
+  handleStartBatch,
+  handleStopBatch
+} from 'util/batch';
 
 const BatchDetail = () => {
-  const { notify } = useNotification();
   const { name, activeTab }  = useParams<{name: string, activeTab: string}>();
   const [show, setShow] = useState(false);
+  const [opInprogress, setOpInprogress]  = useState(false);
   const navigate = useNavigate();
+  const { notify } = useNotification();
+  const queryClient = useQueryClient();
+
+  const {
+    data: batch = null,
+    error,
+    isLoading,
+  } = useQuery({
+    queryKey: ['batches', name],
+    queryFn: () =>
+      fetchBatch(name)
+    });
+
+  if(isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error || !batch) {
+    return (
+      <div>Error while loading batch</div>
+    );
+  }
 
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);
 
-  const onDelete = () => {
-    handleClose();
-    deleteBatch(name ?? "")
-      .then((response) => {
-        if (response.error_code == 0) {
-          notify.success(`Batch ${name} deleted`);
-          navigate('/ui/batches');
-          return;
-        }
-        notify.error(response.error);
-      })
-      .catch((e) => {
-        notify.error(`Error during batch deletion: ${e}`);
-     });
+  const onStop = () => {
+    if (!canStopBatch(batch) || opInprogress) {
+      return;
+    }
+
+    setOpInprogress(true);
+
+    handleStopBatch(
+      batch.name,
+      (message) => {
+        setOpInprogress(false);
+        void queryClient.invalidateQueries({queryKey: ['batches']});
+        notify.success(message);
+      },
+      (message) => {
+        setOpInprogress(false);
+        notify.error(message);
+      },
+    );
+  }
+
+  const onStart = () => {
+    if (!canStartBatch(batch) || opInprogress) {
+      return;
+    }
+
+    setOpInprogress(true);
+
+    handleStartBatch(
+      batch.name,
+      (message) => {
+        setOpInprogress(false);
+        void queryClient.invalidateQueries({queryKey: ['batches']});
+        notify.success(message);
+      },
+      (message) => {
+        setOpInprogress(false);
+        notify.error(message);
+      },
+    );
   }
 
   const tabs = [
@@ -63,24 +118,15 @@ const BatchDetail = () => {
       </div>
       <div className="fixed-footer p-3">
         {(!activeTab || activeTab == 'overview') && (
-        <Button className="float-end" variant="danger" onClick={handleShow}>Delete</Button>
+          <div className="d-flex justify-content-end gap-2">
+            {canStartBatch(batch) && <Button variant="success" onClick={onStart}>Start</Button>}
+            {canStopBatch(batch) && <Button variant="success" onClick={onStop}>Stop</Button>}
+            <Button variant="danger" onClick={handleShow}>Delete</Button>
+          </div>
         )}
       </div>
 
-      <Modal show={show} onHide={handleClose}>
-        <Modal.Header closeButton>
-          <Modal.Title>Delete Batch?</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>Are you sure you want to delete the batch {name}? This action cannot be undone.</Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
-            Close
-          </Button>
-          <Button variant="danger" onClick={onDelete}>
-            Delete
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <BatchDeleteModal batchName={name ?? ""} show={show} handleClose={handleClose} onSuccess={() => navigate('/ui/batches/')}/>
     </div>
   );
 };

@@ -1,19 +1,15 @@
 import { FC, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { MdOutlinePlayCircle, MdOutlineStopCircle } from "react-icons/md";
-import { startBatch, stopBatch } from 'api/batches';
+import { MdOutlineDelete, MdOutlinePlayCircle, MdOutlineStopCircle } from 'react-icons/md';
+import BatchDeleteModal from 'components/BatchDeleteModal';
 import { useNotification } from 'context/notification';
 import { Batch } from 'types/batch';
-
-enum BatchStatus {
-  Unknown,
-  Defined,
-  Queued,
-  Running,
-  Stopped,
-  Finished,
-  Error
-}
+import {
+  canStartBatch,
+  canStopBatch,
+  handleStartBatch,
+  handleStopBatch
+} from 'util/batch';
 
 interface Props {
   batch: Batch;
@@ -22,78 +18,77 @@ interface Props {
 const BatchActions: FC<Props> = ({batch}) => {
   const queryClient = useQueryClient();
   const [opInprogress, setOpInprogress]  = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { notify } = useNotification();
 
-  const isStartEnabled = () => {
-    const status = batch.status;
-    if (status != BatchStatus.Defined && status != BatchStatus.Stopped && status != BatchStatus.Error) {
-      return false;
-    }
-
-    return true;
-  }
-
-  const isStopEnabled = () => {
-    const status = batch.status;
-    if (status != BatchStatus.Queued && status != BatchStatus.Running) {
-      return false;
-    }
-
-    return true;
-  }
-
-  const stop = () => {
-    if (!isStopEnabled() || opInprogress) {
+  const onStop = () => {
+    if (!canStopBatch(batch) || opInprogress) {
       return;
     }
 
     setOpInprogress(true);
 
-    void stopBatch(batch.name)
-      .then(() => {
+    handleStopBatch(
+      batch.name,
+      (message) => {
+        setOpInprogress(false);
         void queryClient.invalidateQueries({queryKey: ['batches']});
+        notify.success(message);
+      },
+      (message) => {
         setOpInprogress(false);
-        notify.success(`Batch ${batch.name} stopped`);
-      })
-      .catch((e) => {
-        setOpInprogress(false);
-        notify.error(`Error when stopping batch ${batch.name}. ${e}`);
-    });
+        notify.error(message);
+      },
+    );
   }
 
-  const start = () => {
-    if (!isStartEnabled() || opInprogress) {
+  const onStart = () => {
+    if (!canStartBatch(batch) || opInprogress) {
       return;
     }
 
     setOpInprogress(true);
 
-    void startBatch(batch.name)
-      .then(() => {
+    handleStartBatch(
+      batch.name,
+      (message) => {
+        setOpInprogress(false);
         void queryClient.invalidateQueries({queryKey: ['batches']});
+        notify.success(message);
+      },
+      (message) => {
         setOpInprogress(false);
-        notify.success(`Batch ${batch.name} started`);
-      })
-      .catch((e) => {
-        setOpInprogress(false);
-        notify.error(`Error when starting batch ${batch.name}. ${e}`);
-    });
+        notify.error(message);
+      },
+    );
   }
 
   const startStyle = {
     cursor: 'pointer',
-    color: isStartEnabled() ? 'grey' : 'lightgrey'
-  }
+    color: canStartBatch(batch) ? 'grey' : 'lightgrey'
+  };
 
   const stopStyle = {
     cursor: 'pointer',
-    color: isStopEnabled() ? 'grey' : 'lightgrey'
+    color: canStopBatch(batch) ? 'grey' : 'lightgrey'
+  };
+
+  const deleteStyle = {
+    cursor: 'pointer',
+    color: 'grey',
+  };
+
+  const onDelete = () => {
+    setShowDeleteModal(true);
   }
 
   return (
     <div>
-      <MdOutlinePlayCircle size={25} style={ startStyle } onClick={() => {start();}} />
-      <MdOutlineStopCircle size={25} style={ stopStyle } onClick={() => {stop();}} />
+      <MdOutlinePlayCircle size={25} style={ startStyle } onClick={() => {onStart();}} />
+      <MdOutlineStopCircle size={25} style={ stopStyle } onClick={() => {onStop();}} />
+      <MdOutlineDelete size={25} style={ deleteStyle } onClick={() => {onDelete();}}/>
+
+      <BatchDeleteModal batchName={batch.name} show={showDeleteModal} handleClose={() => setShowDeleteModal(false)}/>
     </div>
   );
 };
