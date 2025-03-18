@@ -1,7 +1,9 @@
-import { FC } from 'react';
+import { FC, useState } from 'react';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
+import { useSearchParams } from 'react-router';
 import { useFormik } from 'formik';
+import TLSFingerprintConfirmModal from 'components/TLSFingerprintConfirmModal';
 import { Source } from 'types/source';
 import { SourceType, SourceTypeString } from 'util/source';
 
@@ -11,6 +13,19 @@ interface Props {
 }
 
 const SourceForm: FC<Props> = ({ source, onSubmit }) => {
+  const [searchParams] = useSearchParams();
+  const certFingerprint = searchParams.get("fingerprint");
+  const [showFingerprintModal, setShowFingerprintModal] = useState(!!certFingerprint);
+
+  const handleCertFingerprintClose = () => {
+    setShowFingerprintModal(false);
+  };
+
+  const handleCertFingerprintConfirm = () => {
+    formik.values.trustedServerCertificateFingerprint = certFingerprint ?? "";
+    formik.handleSubmit();
+  };
+
   const validateForm = (values: any) => {
     const errors: any = {};
 
@@ -52,7 +67,6 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
   const formik = useFormik({
     initialValues: formikInitialValues,
     validate: validateForm,
-    enableReinitialize: true,
     onSubmit: (values) => {
       const modifiedValues = {
         name: values.name,
@@ -168,6 +182,15 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
           Submit
         </Button>
       </div>
+      {source && certFingerprint && (
+        <TLSFingerprintConfirmModal
+          show={showFingerprintModal}
+          objectName={source.name}
+          objectType="source"
+          fingerprint={certFingerprint}
+          handleClose={handleCertFingerprintClose}
+          handleConfirm={handleCertFingerprintConfirm}
+        />)}
     </div>
   );
 }
