@@ -20,10 +20,10 @@ migration-manager:
 	mkdir -p ./bin/
 	CGO_ENABLED=0 GOARCH=amd64 $(GO) build -o ./bin/migration-manager.linux.amd64 ./cmd/migration-manager
 	CGO_ENABLED=0 GOARCH=arm64 $(GO) build -o ./bin/migration-manager.linux.arm64 ./cmd/migration-manager
-	GOOS=darwin GOARCH=amd64 $(GO) build -o ./bin/migration-manager.macos.amd64 ./cmd/migration-manager
-	GOOS=darwin GOARCH=arm64 $(GO) build -o ./bin/migration-manager.macos.arm64 ./cmd/migration-manager
-	GOOS=windows GOARCH=amd64 $(GO) build -o ./bin/migration-manager.windows.amd64.exe ./cmd/migration-manager
-	GOOS=windows GOARCH=arm64 $(GO) build -o ./bin/migration-manager.windows.arm64.exe ./cmd/migration-manager
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build -o ./bin/migration-manager.macos.amd64 ./cmd/migration-manager
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 $(GO) build -o ./bin/migration-manager.macos.arm64 ./cmd/migration-manager
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build -o ./bin/migration-manager.windows.amd64.exe ./cmd/migration-manager
+	CGO_ENABLED=0 GOOS=windows GOARCH=arm64 $(GO) build -o ./bin/migration-manager.windows.arm64.exe ./cmd/migration-manager
 
 .PHONY: build-all-packages
 build-all-packages:
