@@ -175,7 +175,7 @@ func TestSourceAdd(t *testing.T) {
 			}
 
 			cmd := &cobra.Command{}
-			cmd.SetOutput(io.Discard)
+			cmd.SetOut(io.Discard)
 
 			err := add.Run(cmd, tc.args)
 			tc.assertErr(t, err)
@@ -300,7 +300,7 @@ func TestSourceList(t *testing.T) {
 			buf := bytes.Buffer{}
 
 			cmd := &cobra.Command{}
-			cmd.SetOutput(&buf)
+			cmd.SetOut(&buf)
 
 			err := list.Run(cmd, nil)
 			tc.assertErr(t, err)
@@ -392,7 +392,7 @@ func TestSourceRemove(t *testing.T) {
 			buf := bytes.Buffer{}
 
 			cmd := &cobra.Command{}
-			cmd.SetOutput(&buf)
+			cmd.SetOut(&buf)
 
 			err := remove.Run(cmd, tc.args)
 			tc.assertErr(t, err)
@@ -549,7 +549,7 @@ func TestSourceUpdate(t *testing.T) {
 			buf := bytes.Buffer{}
 
 			cmd := &cobra.Command{}
-			cmd.SetOutput(&buf)
+			cmd.SetOut(&buf)
 
 			err := update.Run(cmd, tc.args)
 			tc.assertErr(t, err)
