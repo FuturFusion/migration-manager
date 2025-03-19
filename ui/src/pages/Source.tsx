@@ -9,12 +9,17 @@ import { ExternalConnectivityStatusString } from 'util/response';
 
 const Source = () => {
   const navigate = useNavigate();
+  const refetchInterval = 5000; // 5 seconds
 
   const {
     data: sources = [],
     error,
     isLoading,
-  } = useQuery({ queryKey: ['sources'], queryFn: fetchSources })
+  } = useQuery({
+    queryKey: ['sources'],
+    queryFn: fetchSources,
+    refetchInterval: refetchInterval,
+  })
 
   const headers = ["Name", "Type", "Endpoint", "Connectivity status", "Username", "Cert fingerprint"];
   const rows = sources.map((item) => {
