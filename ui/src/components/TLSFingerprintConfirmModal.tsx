@@ -23,6 +23,7 @@ const TLSFingerprintConfirmModal: FC<Props> = ({ objectName, objectType, fingerp
       title="Fingerprint confirmation"
       footer={
         <>
+          <Button variant="danger" onClick={handleClose}>Cancel</Button>
           <Button variant="success" onClick={onConfirm}>Confirm</Button>
         </>
       }>

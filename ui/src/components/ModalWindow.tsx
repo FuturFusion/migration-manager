@@ -15,7 +15,7 @@ const ModalWindow: FC<Props> = ({ show, handleClose, title, children, footer }) 
       <Modal.Header closeButton>
         <Modal.Title>{title}</Modal.Title>
       </Modal.Header>
-      <Modal.Body>{children}</Modal.Body>
+      <Modal.Body className="word-wrap">{children}</Modal.Body>
       <Modal.Footer>
         {footer ? footer : <Button variant="secondary" onClick={handleClose}>Close</Button>}
       </Modal.Footer>

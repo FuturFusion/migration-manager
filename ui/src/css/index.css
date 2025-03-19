@@ -38,3 +38,9 @@ body {
   text-decoration: line-through;
   color: gray;
 }
+
+.word-wrap {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
