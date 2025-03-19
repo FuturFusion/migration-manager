@@ -1,3 +1,4 @@
+import { MemoryRouter } from "react-router";
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
@@ -7,7 +8,7 @@ import { SourceType } from 'util/source';
 test('renders and submit SourceForm', async () => {
   const handleSubmit = vi.fn();
 
-  render(<SourceForm onSubmit={handleSubmit}/>);
+  render(<MemoryRouter><SourceForm onSubmit={handleSubmit}/></MemoryRouter>);
 
   const nameInput = screen.getByLabelText('Name');
   const endpointInput = screen.getByLabelText('Endpoint');

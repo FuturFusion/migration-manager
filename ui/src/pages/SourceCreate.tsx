@@ -19,9 +19,13 @@ const SourceCreate = () => {
           const connStatusString = ExternalConnectivityStatusString[connStatus as ExternalConnectivityStatus];
 
           if (connStatus === ExternalConnectivityStatus.TLSConfirmFingerprint) {
-            notify.error(`Successfully added new source ${values.name}, but received an untrusted TLS server certificate with fingerprint ${response.metadata?.["certFingerprint"]}. Please update the source to correct the issue.`);
+            const certFingerprint = response.metadata?.["certFingerprint"];
+            notify.info(`Successfully added new source ${values.name}, but received an untrusted TLS server certificate with fingerprint ${certFingerprint}. Please update the source to correct the issue.`);
+            navigate(`/ui/sources/${values.name}/configuration?fingerprint=${certFingerprint}`);
+            window.location.reload();
+            return;
           } else if (connStatus !== ExternalConnectivityStatus.OK) {
-            notify.error(`Successfully added new source ${values.name}, but connectivity check reported an issue: ${connStatusString}. Please update the source to correct the issue.`);
+            notify.info(`Successfully added new source ${values.name}, but connectivity check reported an issue: ${connStatusString}. Please update the source to correct the issue.`);
           } else {
             notify.success(`Source ${values.name} created`);
           }

@@ -19,7 +19,11 @@ const TargetCreate = () => {
           const connStatusString = ExternalConnectivityStatusString[connStatus as ExternalConnectivityStatus];
 
           if (connStatus === ExternalConnectivityStatus.TLSConfirmFingerprint) {
-            notify.info(`Successfully added new target ${values.name}, but received an untrusted TLS server certificate with fingerprint ${response.metadata?.["certFingerprint"]}. Please update the source to correct the issue.`);
+            const certFingerprint = response.metadata?.["certFingerprint"];
+            notify.info(`Successfully added new target ${values.name}, but received an untrusted TLS server certificate with fingerprint ${certFingerprint}. Please update the source to correct the issue.`);
+            navigate(`/ui/targets/${values.name}/configuration?fingerprint=${certFingerprint}`);
+            window.location.reload();
+            return;
           } else if (connStatus === ExternalConnectivityStatus.WaitingOIDC) {
             const oidcURL = response.metadata?.["OIDCURL"];
             notify.info(`Successfully added new target ${values.name}. Please go to <a href="${oidcURL}" target="_blank" rel="noopener noreferrer" style="color: white">${oidcURL}</a> if your browser didn't open an authentication window for you.`);
