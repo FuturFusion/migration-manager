@@ -1,3 +1,4 @@
+import { MemoryRouter } from "react-router";
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, test, vi } from 'vitest';
@@ -7,7 +8,7 @@ import { TargetType } from 'util/target';
 test('renders and submit TargetForm with OIDC auth', async () => {
   const handleSubmit = vi.fn();
 
-  render(<TargetForm onSubmit={handleSubmit}/>);
+  render(<MemoryRouter><TargetForm onSubmit={handleSubmit}/></MemoryRouter>);
 
   const nameInput = screen.getByLabelText('Name');
   const endpointInput = screen.getByLabelText('Endpoint');
@@ -39,7 +40,7 @@ test('renders and submit TargetForm with OIDC auth', async () => {
 test('renders and submit TargetForm with TLS auth', async () => {
   const handleSubmit = vi.fn();
 
-  render(<TargetForm onSubmit={handleSubmit}/>);
+  render(<MemoryRouter><TargetForm onSubmit={handleSubmit}/></MemoryRouter>);
 
   const authTypeInput = screen.getByLabelText('Auth type');
   await userEvent.selectOptions(authTypeInput, 'tls');
