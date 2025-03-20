@@ -12,7 +12,7 @@ const SourceCreate = () => {
   const navigate = useNavigate();
 
   const onSubmit = (values: any) => {
-    createSource(JSON.stringify(values, null, 2))
+    return createSource(JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           const connStatus = parseInt(response.metadata?.["ConnectivityStatus"] || "0", 10);
