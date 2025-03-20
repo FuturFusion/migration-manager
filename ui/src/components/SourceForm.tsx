@@ -1,8 +1,8 @@
 import { FC, useState } from 'react';
-import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import { useSearchParams } from 'react-router';
 import { useFormik } from 'formik';
+import LoadingButton from 'components/LoadingButton';
 import TLSFingerprintConfirmModal from 'components/TLSFingerprintConfirmModal';
 import { Source } from 'types/source';
 import { SourceType, SourceTypeString } from 'util/source';
@@ -22,6 +22,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
   };
 
   const handleCertFingerprintConfirm = () => {
+    setShowFingerprintModal(false);
     formik.values.trustedServerCertificateFingerprint = certFingerprint ?? "";
     formik.handleSubmit();
   };
@@ -79,7 +80,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
         }
       };
 
-      onSubmit(modifiedValues);
+      return onSubmit(modifiedValues);
      },
    });
 
@@ -98,6 +99,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
               type="text"
               name="name"
               value={formik.values.name}
+              disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               isInvalid={!!formik.errors.name && formik.touched.name}/>
@@ -110,6 +112,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
             <Form.Select
               name="sourceType"
               value={formik.values.sourceType}
+              disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               isInvalid={!!formik.errors.sourceType && formik.touched.sourceType}>
@@ -129,6 +132,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
               type="text"
               name="endpoint"
               value={formik.values.endpoint}
+              disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               isInvalid={!!formik.errors.endpoint && formik.touched.endpoint}/>
@@ -142,6 +146,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
               type="text"
               name="username"
               value={formik.values.username}
+              disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               isInvalid={!!formik.errors.username && formik.touched.username}/>
@@ -155,6 +160,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
               type="password"
               name="password"
               value={formik.values.password}
+              disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               isInvalid={!!formik.errors.password && formik.touched.password}/>
@@ -168,6 +174,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
               type="text"
               name="trustedServerCertificateFingerprint"
               value={formik.values.trustedServerCertificateFingerprint}
+              disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               isInvalid={!!formik.errors.trustedServerCertificateFingerprint && formik.touched.trustedServerCertificateFingerprint}/>
@@ -178,9 +185,9 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
         </Form>
       </div>
       <div className="fixed-footer p-3">
-        <Button className="float-end" variant="success" onClick={() => formik.handleSubmit()}>
+        <LoadingButton isLoading={formik.isSubmitting} className="float-end" variant="success" onClick={() => formik.handleSubmit()}>
           Submit
-        </Button>
+        </LoadingButton>
       </div>
       {source && certFingerprint && (
         <TLSFingerprintConfirmModal
