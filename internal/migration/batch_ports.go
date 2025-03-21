@@ -13,11 +13,12 @@ type BatchService interface {
 	GetAll(ctx context.Context) (Batches, error)
 	GetAllByState(ctx context.Context, status api.BatchStatusType) (Batches, error)
 	GetAllNames(ctx context.Context) ([]string, error)
-	GetByID(ctx context.Context, id int) (Batch, error)
-	GetByName(ctx context.Context, name string) (Batch, error)
-	UpdateByID(ctx context.Context, batch Batch) (Batch, error)
+	GetAllNamesByState(ctx context.Context, status api.BatchStatusType) ([]string, error)
+	GetByName(ctx context.Context, name string) (*Batch, error)
+	Update(ctx context.Context, batch Batch) error
 	UpdateInstancesAssignedToBatch(ctx context.Context, batch Batch) error
-	UpdateStatusByID(ctx context.Context, id int, status api.BatchStatusType, statusString string) (Batch, error)
+	UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusString string) (*Batch, error)
+	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 	StartBatchByName(ctx context.Context, name string) error
 	StopBatchByName(ctx context.Context, name string) error
@@ -28,13 +29,13 @@ type BatchService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i BatchRepo -t prometheus -o ./repo/middleware/batch_prometheus_gen.go
 
 type BatchRepo interface {
-	Create(ctx context.Context, batch Batch) (Batch, error)
+	Create(ctx context.Context, batch Batch) (int64, error)
 	GetAll(ctx context.Context) (Batches, error)
 	GetAllByState(ctx context.Context, status api.BatchStatusType) (Batches, error)
 	GetAllNames(ctx context.Context) ([]string, error)
-	GetByID(ctx context.Context, id int) (Batch, error)
-	GetByName(ctx context.Context, name string) (Batch, error)
-	UpdateByID(ctx context.Context, batch Batch) (Batch, error)
-	UpdateStatusByID(ctx context.Context, id int, status api.BatchStatusType, statusString string) (Batch, error)
+	GetAllNamesByState(ctx context.Context, status api.BatchStatusType) ([]string, error)
+	GetByName(ctx context.Context, name string) (*Batch, error)
+	Update(ctx context.Context, batch Batch) error
+	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 }

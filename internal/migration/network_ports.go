@@ -8,9 +8,8 @@ type NetworkService interface {
 	Create(ctx context.Context, network Network) (Network, error)
 	GetAll(ctx context.Context) (Networks, error)
 	GetAllNames(ctx context.Context) ([]string, error)
-	GetByID(ctx context.Context, id int) (Network, error)
-	GetByName(ctx context.Context, name string) (Network, error)
-	UpdateByID(ctx context.Context, network Network) (Network, error)
+	GetByName(ctx context.Context, name string) (*Network, error)
+	Update(ctx context.Context, network Network) error
 	DeleteByName(ctx context.Context, name string) error
 }
 
@@ -19,11 +18,11 @@ type NetworkService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i NetworkRepo -t prometheus -o ./repo/middleware/network_prometheus_gen.go
 
 type NetworkRepo interface {
-	Create(ctx context.Context, network Network) (Network, error)
+	Create(ctx context.Context, network Network) (int64, error)
 	GetAll(ctx context.Context) (Networks, error)
 	GetAllNames(ctx context.Context) ([]string, error)
-	GetByID(ctx context.Context, id int) (Network, error)
-	GetByName(ctx context.Context, name string) (Network, error)
-	UpdateByID(ctx context.Context, network Network) (Network, error)
+	GetByName(ctx context.Context, name string) (*Network, error)
+	Update(ctx context.Context, network Network) error
+	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 }

@@ -14,22 +14,22 @@ type InstanceService interface {
 	Create(ctx context.Context, instance Instance) (Instance, error)
 	GetAll(ctx context.Context) (Instances, error)
 	GetAllByState(ctx context.Context, status api.MigrationStatusType) (Instances, error)
-	GetAllByBatchID(ctx context.Context, batchID int) (Instances, error)
+	GetAllByBatch(ctx context.Context, batch string) (Instances, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetAllUnassigned(ctx context.Context) (Instances, error)
-	GetByID(ctx context.Context, id uuid.UUID) (Instance, error)
-	GetByIDWithDetails(ctx context.Context, id uuid.UUID) (InstanceWithDetails, error)
+	GetByUUID(ctx context.Context, id uuid.UUID, withOverrides bool) (*Instance, error)
+	GetByUUIDWithDetails(ctx context.Context, id uuid.UUID) (InstanceWithDetails, error)
 	UnassignFromBatch(ctx context.Context, id uuid.UUID) error
-	UpdateByID(ctx context.Context, instance Instance) (Instance, error)
-	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (Instance, error)
+	Update(ctx context.Context, instance Instance) error
+	UpdateStatusByUUID(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (*Instance, error)
 	ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusString string) (Instance, error)
-	DeleteByID(ctx context.Context, id uuid.UUID) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 
 	// Overrride
-	CreateOverrides(ctx context.Context, overrides Overrides) (Overrides, error)
-	GetOverridesByID(ctx context.Context, id uuid.UUID) (Overrides, error)
-	DeleteOverridesByID(ctx context.Context, id uuid.UUID) error
-	UpdateOverridesByID(ctx context.Context, overrides Overrides) (Overrides, error)
+	CreateOverrides(ctx context.Context, overrides InstanceOverride) (InstanceOverride, error)
+	GetOverridesByUUID(ctx context.Context, id uuid.UUID) (*InstanceOverride, error)
+	DeleteOverridesByUUID(ctx context.Context, id uuid.UUID) error
+	UpdateOverrides(ctx context.Context, overrides InstanceOverride) error
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/instance_repo_mock_gen.go -rm . InstanceRepo
@@ -37,20 +37,19 @@ type InstanceService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i InstanceRepo -t prometheus -o ./repo/middleware/instance_prometheus_gen.go
 
 type InstanceRepo interface {
-	Create(ctx context.Context, instance Instance) (Instance, error)
+	Create(ctx context.Context, instance Instance) (int64, error)
 	GetAll(ctx context.Context) (Instances, error)
 	GetAllByState(ctx context.Context, status api.MigrationStatusType) (Instances, error)
-	GetAllByBatchID(ctx context.Context, batchID int) (Instances, error)
+	GetAllByBatch(ctx context.Context, batch string) (Instances, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetAllUnassigned(ctx context.Context) (Instances, error)
-	GetByID(ctx context.Context, id uuid.UUID) (Instance, error)
-	UpdateByID(ctx context.Context, instance Instance) (Instance, error)
-	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (Instance, error)
-	DeleteByID(ctx context.Context, id uuid.UUID) error
+	GetByUUID(ctx context.Context, id uuid.UUID) (*Instance, error)
+	Update(ctx context.Context, instance Instance) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 
 	// Overrides
-	CreateOverrides(ctx context.Context, overrides Overrides) (Overrides, error)
-	GetOverridesByID(ctx context.Context, id uuid.UUID) (Overrides, error)
-	DeleteOverridesByID(ctx context.Context, id uuid.UUID) error
-	UpdateOverridesByID(ctx context.Context, overrides Overrides) (Overrides, error)
+	CreateOverrides(ctx context.Context, overrides InstanceOverride) (int64, error)
+	GetOverridesByUUID(ctx context.Context, id uuid.UUID) (*InstanceOverride, error)
+	DeleteOverridesByUUID(ctx context.Context, id uuid.UUID) error
+	UpdateOverrides(ctx context.Context, overrides InstanceOverride) error
 }

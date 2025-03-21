@@ -13,9 +13,8 @@ type SourceService interface {
 	Create(ctx context.Context, source Source) (Source, error)
 	GetAll(ctx context.Context) (Sources, error)
 	GetAllNames(ctx context.Context) ([]string, error)
-	GetByID(ctx context.Context, id int) (Source, error)
-	GetByName(ctx context.Context, name string) (Source, error)
-	UpdateByID(ctx context.Context, source Source) (Source, error)
+	GetByName(ctx context.Context, name string) (*Source, error)
+	Update(ctx context.Context, source Source) error
 	DeleteByName(ctx context.Context, name string) error
 }
 
@@ -24,12 +23,12 @@ type SourceService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i SourceRepo -t prometheus -o ./repo/middleware/source_prometheus_gen.go
 
 type SourceRepo interface {
-	Create(ctx context.Context, source Source) (Source, error)
+	Create(ctx context.Context, source Source) (int64, error)
 	GetAll(ctx context.Context) (Sources, error)
 	GetAllNames(ctx context.Context) ([]string, error)
-	GetByID(ctx context.Context, id int) (Source, error)
-	GetByName(ctx context.Context, name string) (Source, error)
-	UpdateByID(ctx context.Context, source Source) (Source, error)
+	GetByName(ctx context.Context, name string) (*Source, error)
+	Update(ctx context.Context, source Source) error
+	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 }
 
