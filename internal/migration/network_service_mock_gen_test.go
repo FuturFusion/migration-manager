@@ -32,14 +32,11 @@ var _ migration.NetworkService = &NetworkServiceMock{}
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id int) (migration.Network, error) {
-//				panic("mock out the GetByID method")
-//			},
-//			GetByNameFunc: func(ctx context.Context, name string) (migration.Network, error) {
+//			GetByNameFunc: func(ctx context.Context, name string) (*migration.Network, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateByIDFunc: func(ctx context.Context, network migration.Network) (migration.Network, error) {
-//				panic("mock out the UpdateByID method")
+//			UpdateFunc: func(ctx context.Context, network migration.Network) error {
+//				panic("mock out the Update method")
 //			},
 //		}
 //
@@ -60,14 +57,11 @@ type NetworkServiceMock struct {
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
 
-	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id int) (migration.Network, error)
-
 	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (migration.Network, error)
+	GetByNameFunc func(ctx context.Context, name string) (*migration.Network, error)
 
-	// UpdateByIDFunc mocks the UpdateByID method.
-	UpdateByIDFunc func(ctx context.Context, network migration.Network) (migration.Network, error)
+	// UpdateFunc mocks the Update method.
+	UpdateFunc func(ctx context.Context, network migration.Network) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -95,13 +89,6 @@ type NetworkServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetByID holds details about calls to the GetByID method.
-		GetByID []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ID is the id argument value.
-			ID int
-		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
 			// Ctx is the ctx argument value.
@@ -109,8 +96,8 @@ type NetworkServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// UpdateByID holds details about calls to the UpdateByID method.
-		UpdateByID []struct {
+		// Update holds details about calls to the Update method.
+		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Network is the network argument value.
@@ -121,9 +108,8 @@ type NetworkServiceMock struct {
 	lockDeleteByName sync.RWMutex
 	lockGetAll       sync.RWMutex
 	lockGetAllNames  sync.RWMutex
-	lockGetByID      sync.RWMutex
 	lockGetByName    sync.RWMutex
-	lockUpdateByID   sync.RWMutex
+	lockUpdate       sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -262,44 +248,8 @@ func (mock *NetworkServiceMock) GetAllNamesCalls() []struct {
 	return calls
 }
 
-// GetByID calls GetByIDFunc.
-func (mock *NetworkServiceMock) GetByID(ctx context.Context, id int) (migration.Network, error) {
-	if mock.GetByIDFunc == nil {
-		panic("NetworkServiceMock.GetByIDFunc: method is nil but NetworkService.GetByID was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		ID  int
-	}{
-		Ctx: ctx,
-		ID:  id,
-	}
-	mock.lockGetByID.Lock()
-	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
-	mock.lockGetByID.Unlock()
-	return mock.GetByIDFunc(ctx, id)
-}
-
-// GetByIDCalls gets all the calls that were made to GetByID.
-// Check the length with:
-//
-//	len(mockedNetworkService.GetByIDCalls())
-func (mock *NetworkServiceMock) GetByIDCalls() []struct {
-	Ctx context.Context
-	ID  int
-} {
-	var calls []struct {
-		Ctx context.Context
-		ID  int
-	}
-	mock.lockGetByID.RLock()
-	calls = mock.calls.GetByID
-	mock.lockGetByID.RUnlock()
-	return calls
-}
-
 // GetByName calls GetByNameFunc.
-func (mock *NetworkServiceMock) GetByName(ctx context.Context, name string) (migration.Network, error) {
+func (mock *NetworkServiceMock) GetByName(ctx context.Context, name string) (*migration.Network, error) {
 	if mock.GetByNameFunc == nil {
 		panic("NetworkServiceMock.GetByNameFunc: method is nil but NetworkService.GetByName was just called")
 	}
@@ -334,10 +284,10 @@ func (mock *NetworkServiceMock) GetByNameCalls() []struct {
 	return calls
 }
 
-// UpdateByID calls UpdateByIDFunc.
-func (mock *NetworkServiceMock) UpdateByID(ctx context.Context, network migration.Network) (migration.Network, error) {
-	if mock.UpdateByIDFunc == nil {
-		panic("NetworkServiceMock.UpdateByIDFunc: method is nil but NetworkService.UpdateByID was just called")
+// Update calls UpdateFunc.
+func (mock *NetworkServiceMock) Update(ctx context.Context, network migration.Network) error {
+	if mock.UpdateFunc == nil {
+		panic("NetworkServiceMock.UpdateFunc: method is nil but NetworkService.Update was just called")
 	}
 	callInfo := struct {
 		Ctx     context.Context
@@ -346,17 +296,17 @@ func (mock *NetworkServiceMock) UpdateByID(ctx context.Context, network migratio
 		Ctx:     ctx,
 		Network: network,
 	}
-	mock.lockUpdateByID.Lock()
-	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
-	mock.lockUpdateByID.Unlock()
-	return mock.UpdateByIDFunc(ctx, network)
+	mock.lockUpdate.Lock()
+	mock.calls.Update = append(mock.calls.Update, callInfo)
+	mock.lockUpdate.Unlock()
+	return mock.UpdateFunc(ctx, network)
 }
 
-// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// UpdateCalls gets all the calls that were made to Update.
 // Check the length with:
 //
-//	len(mockedNetworkService.UpdateByIDCalls())
-func (mock *NetworkServiceMock) UpdateByIDCalls() []struct {
+//	len(mockedNetworkService.UpdateCalls())
+func (mock *NetworkServiceMock) UpdateCalls() []struct {
 	Ctx     context.Context
 	Network migration.Network
 } {
@@ -364,8 +314,8 @@ func (mock *NetworkServiceMock) UpdateByIDCalls() []struct {
 		Ctx     context.Context
 		Network migration.Network
 	}
-	mock.lockUpdateByID.RLock()
-	calls = mock.calls.UpdateByID
-	mock.lockUpdateByID.RUnlock()
+	mock.lockUpdate.RLock()
+	calls = mock.calls.Update
+	mock.lockUpdate.RUnlock()
 	return calls
 }

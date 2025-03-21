@@ -26,14 +26,14 @@ func NewTargetRepoWithSlog(base _sourceMigration.TargetRepo, log *slog.Logger) T
 }
 
 // Create implements _sourceMigration.TargetRepo
-func (_d TargetRepoWithSlog) Create(ctx context.Context, target _sourceMigration.Target) (t1 _sourceMigration.Target, err error) {
+func (_d TargetRepoWithSlog) Create(ctx context.Context, target _sourceMigration.Target) (i1 int64, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("target", target),
 	).Debug("TargetRepoWithSlog: calling Create")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("t1", t1),
+			slog.Int64("i1", i1),
 			slog.Any("err", err),
 		)
 		if err != nil {
@@ -102,35 +102,15 @@ func (_d TargetRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, err
 	return _d._base.GetAllNames(ctx)
 }
 
-// GetByID implements _sourceMigration.TargetRepo
-func (_d TargetRepoWithSlog) GetByID(ctx context.Context, id int) (t1 _sourceMigration.Target, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("TargetRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("t1", t1),
-			slog.Any("err", err),
-		)
-		if err != nil {
-			log.Error("TargetRepoWithSlog: method GetByID returned an error")
-		} else {
-			log.Debug("TargetRepoWithSlog: method GetByID finished")
-		}
-	}()
-	return _d._base.GetByID(ctx, id)
-}
-
 // GetByName implements _sourceMigration.TargetRepo
-func (_d TargetRepoWithSlog) GetByName(ctx context.Context, name string) (t1 _sourceMigration.Target, err error) {
+func (_d TargetRepoWithSlog) GetByName(ctx context.Context, name string) (tp1 *_sourceMigration.Target, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.String("name", name),
 	).Debug("TargetRepoWithSlog: calling GetByName")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("t1", t1),
+			slog.Any("tp1", tp1),
 			slog.Any("err", err),
 		)
 		if err != nil {
@@ -142,22 +122,41 @@ func (_d TargetRepoWithSlog) GetByName(ctx context.Context, name string) (t1 _so
 	return _d._base.GetByName(ctx, name)
 }
 
-// UpdateByID implements _sourceMigration.TargetRepo
-func (_d TargetRepoWithSlog) UpdateByID(ctx context.Context, target _sourceMigration.Target) (t1 _sourceMigration.Target, err error) {
+// Rename implements _sourceMigration.TargetRepo
+func (_d TargetRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-		slog.Any("target", target),
-	).Debug("TargetRepoWithSlog: calling UpdateByID")
+		slog.String("oldName", oldName),
+		slog.String("newName", newName),
+	).Debug("TargetRepoWithSlog: calling Rename")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("t1", t1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("TargetRepoWithSlog: method UpdateByID returned an error")
+			log.Error("TargetRepoWithSlog: method Rename returned an error")
 		} else {
-			log.Debug("TargetRepoWithSlog: method UpdateByID finished")
+			log.Debug("TargetRepoWithSlog: method Rename finished")
 		}
 	}()
-	return _d._base.UpdateByID(ctx, target)
+	return _d._base.Rename(ctx, oldName, newName)
+}
+
+// Update implements _sourceMigration.TargetRepo
+func (_d TargetRepoWithSlog) Update(ctx context.Context, target _sourceMigration.Target) (err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("target", target),
+	).Debug("TargetRepoWithSlog: calling Update")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("TargetRepoWithSlog: method Update returned an error")
+		} else {
+			log.Debug("TargetRepoWithSlog: method Update finished")
+		}
+	}()
+	return _d._base.Update(ctx, target)
 }

@@ -32,14 +32,11 @@ var _ migration.SourceService = &SourceServiceMock{}
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id int) (migration.Source, error) {
-//				panic("mock out the GetByID method")
-//			},
-//			GetByNameFunc: func(ctx context.Context, name string) (migration.Source, error) {
+//			GetByNameFunc: func(ctx context.Context, name string) (*migration.Source, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateByIDFunc: func(ctx context.Context, source migration.Source) (migration.Source, error) {
-//				panic("mock out the UpdateByID method")
+//			UpdateFunc: func(ctx context.Context, source migration.Source) error {
+//				panic("mock out the Update method")
 //			},
 //		}
 //
@@ -60,14 +57,11 @@ type SourceServiceMock struct {
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
 
-	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id int) (migration.Source, error)
-
 	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (migration.Source, error)
+	GetByNameFunc func(ctx context.Context, name string) (*migration.Source, error)
 
-	// UpdateByIDFunc mocks the UpdateByID method.
-	UpdateByIDFunc func(ctx context.Context, source migration.Source) (migration.Source, error)
+	// UpdateFunc mocks the Update method.
+	UpdateFunc func(ctx context.Context, source migration.Source) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -95,13 +89,6 @@ type SourceServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetByID holds details about calls to the GetByID method.
-		GetByID []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ID is the id argument value.
-			ID int
-		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
 			// Ctx is the ctx argument value.
@@ -109,8 +96,8 @@ type SourceServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// UpdateByID holds details about calls to the UpdateByID method.
-		UpdateByID []struct {
+		// Update holds details about calls to the Update method.
+		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
@@ -121,9 +108,8 @@ type SourceServiceMock struct {
 	lockDeleteByName sync.RWMutex
 	lockGetAll       sync.RWMutex
 	lockGetAllNames  sync.RWMutex
-	lockGetByID      sync.RWMutex
 	lockGetByName    sync.RWMutex
-	lockUpdateByID   sync.RWMutex
+	lockUpdate       sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -262,44 +248,8 @@ func (mock *SourceServiceMock) GetAllNamesCalls() []struct {
 	return calls
 }
 
-// GetByID calls GetByIDFunc.
-func (mock *SourceServiceMock) GetByID(ctx context.Context, id int) (migration.Source, error) {
-	if mock.GetByIDFunc == nil {
-		panic("SourceServiceMock.GetByIDFunc: method is nil but SourceService.GetByID was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		ID  int
-	}{
-		Ctx: ctx,
-		ID:  id,
-	}
-	mock.lockGetByID.Lock()
-	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
-	mock.lockGetByID.Unlock()
-	return mock.GetByIDFunc(ctx, id)
-}
-
-// GetByIDCalls gets all the calls that were made to GetByID.
-// Check the length with:
-//
-//	len(mockedSourceService.GetByIDCalls())
-func (mock *SourceServiceMock) GetByIDCalls() []struct {
-	Ctx context.Context
-	ID  int
-} {
-	var calls []struct {
-		Ctx context.Context
-		ID  int
-	}
-	mock.lockGetByID.RLock()
-	calls = mock.calls.GetByID
-	mock.lockGetByID.RUnlock()
-	return calls
-}
-
 // GetByName calls GetByNameFunc.
-func (mock *SourceServiceMock) GetByName(ctx context.Context, name string) (migration.Source, error) {
+func (mock *SourceServiceMock) GetByName(ctx context.Context, name string) (*migration.Source, error) {
 	if mock.GetByNameFunc == nil {
 		panic("SourceServiceMock.GetByNameFunc: method is nil but SourceService.GetByName was just called")
 	}
@@ -334,10 +284,10 @@ func (mock *SourceServiceMock) GetByNameCalls() []struct {
 	return calls
 }
 
-// UpdateByID calls UpdateByIDFunc.
-func (mock *SourceServiceMock) UpdateByID(ctx context.Context, source migration.Source) (migration.Source, error) {
-	if mock.UpdateByIDFunc == nil {
-		panic("SourceServiceMock.UpdateByIDFunc: method is nil but SourceService.UpdateByID was just called")
+// Update calls UpdateFunc.
+func (mock *SourceServiceMock) Update(ctx context.Context, source migration.Source) error {
+	if mock.UpdateFunc == nil {
+		panic("SourceServiceMock.UpdateFunc: method is nil but SourceService.Update was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -346,17 +296,17 @@ func (mock *SourceServiceMock) UpdateByID(ctx context.Context, source migration.
 		Ctx:    ctx,
 		Source: source,
 	}
-	mock.lockUpdateByID.Lock()
-	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
-	mock.lockUpdateByID.Unlock()
-	return mock.UpdateByIDFunc(ctx, source)
+	mock.lockUpdate.Lock()
+	mock.calls.Update = append(mock.calls.Update, callInfo)
+	mock.lockUpdate.Unlock()
+	return mock.UpdateFunc(ctx, source)
 }
 
-// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// UpdateCalls gets all the calls that were made to Update.
 // Check the length with:
 //
-//	len(mockedSourceService.UpdateByIDCalls())
-func (mock *SourceServiceMock) UpdateByIDCalls() []struct {
+//	len(mockedSourceService.UpdateCalls())
+func (mock *SourceServiceMock) UpdateCalls() []struct {
 	Ctx    context.Context
 	Source migration.Source
 } {
@@ -364,8 +314,8 @@ func (mock *SourceServiceMock) UpdateByIDCalls() []struct {
 		Ctx    context.Context
 		Source migration.Source
 	}
-	mock.lockUpdateByID.RLock()
-	calls = mock.calls.UpdateByID
-	mock.lockUpdateByID.RUnlock()
+	mock.lockUpdate.RLock()
+	calls = mock.calls.Update
+	mock.lockUpdate.RUnlock()
 	return calls
 }

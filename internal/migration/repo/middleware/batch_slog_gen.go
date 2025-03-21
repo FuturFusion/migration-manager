@@ -27,14 +27,14 @@ func NewBatchRepoWithSlog(base _sourceMigration.BatchRepo, log *slog.Logger) Bat
 }
 
 // Create implements _sourceMigration.BatchRepo
-func (_d BatchRepoWithSlog) Create(ctx context.Context, batch _sourceMigration.Batch) (b1 _sourceMigration.Batch, err error) {
+func (_d BatchRepoWithSlog) Create(ctx context.Context, batch _sourceMigration.Batch) (i1 int64, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("batch", batch),
 	).Debug("BatchRepoWithSlog: calling Create")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("b1", b1),
+			slog.Int64("i1", i1),
 			slog.Any("err", err),
 		)
 		if err != nil {
@@ -123,35 +123,35 @@ func (_d BatchRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, err 
 	return _d._base.GetAllNames(ctx)
 }
 
-// GetByID implements _sourceMigration.BatchRepo
-func (_d BatchRepoWithSlog) GetByID(ctx context.Context, id int) (b1 _sourceMigration.Batch, err error) {
+// GetAllNamesByState implements _sourceMigration.BatchRepo
+func (_d BatchRepoWithSlog) GetAllNamesByState(ctx context.Context, status api.BatchStatusType) (sa1 []string, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("BatchRepoWithSlog: calling GetByID")
+		slog.Any("status", status),
+	).Debug("BatchRepoWithSlog: calling GetAllNamesByState")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("b1", b1),
+			slog.Any("sa1", sa1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("BatchRepoWithSlog: method GetByID returned an error")
+			log.Error("BatchRepoWithSlog: method GetAllNamesByState returned an error")
 		} else {
-			log.Debug("BatchRepoWithSlog: method GetByID finished")
+			log.Debug("BatchRepoWithSlog: method GetAllNamesByState finished")
 		}
 	}()
-	return _d._base.GetByID(ctx, id)
+	return _d._base.GetAllNamesByState(ctx, status)
 }
 
 // GetByName implements _sourceMigration.BatchRepo
-func (_d BatchRepoWithSlog) GetByName(ctx context.Context, name string) (b1 _sourceMigration.Batch, err error) {
+func (_d BatchRepoWithSlog) GetByName(ctx context.Context, name string) (bp1 *_sourceMigration.Batch, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.String("name", name),
 	).Debug("BatchRepoWithSlog: calling GetByName")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("b1", b1),
+			slog.Any("bp1", bp1),
 			slog.Any("err", err),
 		)
 		if err != nil {
@@ -163,44 +163,41 @@ func (_d BatchRepoWithSlog) GetByName(ctx context.Context, name string) (b1 _sou
 	return _d._base.GetByName(ctx, name)
 }
 
-// UpdateByID implements _sourceMigration.BatchRepo
-func (_d BatchRepoWithSlog) UpdateByID(ctx context.Context, batch _sourceMigration.Batch) (b1 _sourceMigration.Batch, err error) {
+// Rename implements _sourceMigration.BatchRepo
+func (_d BatchRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.String("oldName", oldName),
+		slog.String("newName", newName),
+	).Debug("BatchRepoWithSlog: calling Rename")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("BatchRepoWithSlog: method Rename returned an error")
+		} else {
+			log.Debug("BatchRepoWithSlog: method Rename finished")
+		}
+	}()
+	return _d._base.Rename(ctx, oldName, newName)
+}
+
+// Update implements _sourceMigration.BatchRepo
+func (_d BatchRepoWithSlog) Update(ctx context.Context, batch _sourceMigration.Batch) (err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("batch", batch),
-	).Debug("BatchRepoWithSlog: calling UpdateByID")
+	).Debug("BatchRepoWithSlog: calling Update")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("b1", b1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("BatchRepoWithSlog: method UpdateByID returned an error")
+			log.Error("BatchRepoWithSlog: method Update returned an error")
 		} else {
-			log.Debug("BatchRepoWithSlog: method UpdateByID finished")
+			log.Debug("BatchRepoWithSlog: method Update finished")
 		}
 	}()
-	return _d._base.UpdateByID(ctx, batch)
-}
-
-// UpdateStatusByID implements _sourceMigration.BatchRepo
-func (_d BatchRepoWithSlog) UpdateStatusByID(ctx context.Context, id int, status api.BatchStatusType, statusString string) (b1 _sourceMigration.Batch, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-		slog.Any("status", status),
-		slog.String("statusString", statusString),
-	).Debug("BatchRepoWithSlog: calling UpdateStatusByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("b1", b1),
-			slog.Any("err", err),
-		)
-		if err != nil {
-			log.Error("BatchRepoWithSlog: method UpdateStatusByID returned an error")
-		} else {
-			log.Debug("BatchRepoWithSlog: method UpdateStatusByID finished")
-		}
-	}()
-	return _d._base.UpdateStatusByID(ctx, id, status, statusString)
+	return _d._base.Update(ctx, batch)
 }

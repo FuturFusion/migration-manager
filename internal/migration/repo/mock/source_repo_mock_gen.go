@@ -20,7 +20,7 @@ var _ migration.SourceRepo = &SourceRepoMock{}
 //
 //		// make and configure a mocked migration.SourceRepo
 //		mockedSourceRepo := &SourceRepoMock{
-//			CreateFunc: func(ctx context.Context, source migration.Source) (migration.Source, error) {
+//			CreateFunc: func(ctx context.Context, source migration.Source) (int64, error) {
 //				panic("mock out the Create method")
 //			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
@@ -32,14 +32,14 @@ var _ migration.SourceRepo = &SourceRepoMock{}
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id int) (migration.Source, error) {
-//				panic("mock out the GetByID method")
-//			},
-//			GetByNameFunc: func(ctx context.Context, name string) (migration.Source, error) {
+//			GetByNameFunc: func(ctx context.Context, name string) (*migration.Source, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateByIDFunc: func(ctx context.Context, source migration.Source) (migration.Source, error) {
-//				panic("mock out the UpdateByID method")
+//			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
+//				panic("mock out the Rename method")
+//			},
+//			UpdateFunc: func(ctx context.Context, source migration.Source) error {
+//				panic("mock out the Update method")
 //			},
 //		}
 //
@@ -49,7 +49,7 @@ var _ migration.SourceRepo = &SourceRepoMock{}
 //	}
 type SourceRepoMock struct {
 	// CreateFunc mocks the Create method.
-	CreateFunc func(ctx context.Context, source migration.Source) (migration.Source, error)
+	CreateFunc func(ctx context.Context, source migration.Source) (int64, error)
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
@@ -60,14 +60,14 @@ type SourceRepoMock struct {
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
 
-	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id int) (migration.Source, error)
-
 	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (migration.Source, error)
+	GetByNameFunc func(ctx context.Context, name string) (*migration.Source, error)
 
-	// UpdateByIDFunc mocks the UpdateByID method.
-	UpdateByIDFunc func(ctx context.Context, source migration.Source) (migration.Source, error)
+	// RenameFunc mocks the Rename method.
+	RenameFunc func(ctx context.Context, oldName string, newName string) error
+
+	// UpdateFunc mocks the Update method.
+	UpdateFunc func(ctx context.Context, source migration.Source) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -95,13 +95,6 @@ type SourceRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetByID holds details about calls to the GetByID method.
-		GetByID []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ID is the id argument value.
-			ID int
-		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
 			// Ctx is the ctx argument value.
@@ -109,8 +102,17 @@ type SourceRepoMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// UpdateByID holds details about calls to the UpdateByID method.
-		UpdateByID []struct {
+		// Rename holds details about calls to the Rename method.
+		Rename []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// OldName is the oldName argument value.
+			OldName string
+			// NewName is the newName argument value.
+			NewName string
+		}
+		// Update holds details about calls to the Update method.
+		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
@@ -121,13 +123,13 @@ type SourceRepoMock struct {
 	lockDeleteByName sync.RWMutex
 	lockGetAll       sync.RWMutex
 	lockGetAllNames  sync.RWMutex
-	lockGetByID      sync.RWMutex
 	lockGetByName    sync.RWMutex
-	lockUpdateByID   sync.RWMutex
+	lockRename       sync.RWMutex
+	lockUpdate       sync.RWMutex
 }
 
 // Create calls CreateFunc.
-func (mock *SourceRepoMock) Create(ctx context.Context, source migration.Source) (migration.Source, error) {
+func (mock *SourceRepoMock) Create(ctx context.Context, source migration.Source) (int64, error) {
 	if mock.CreateFunc == nil {
 		panic("SourceRepoMock.CreateFunc: method is nil but SourceRepo.Create was just called")
 	}
@@ -262,44 +264,8 @@ func (mock *SourceRepoMock) GetAllNamesCalls() []struct {
 	return calls
 }
 
-// GetByID calls GetByIDFunc.
-func (mock *SourceRepoMock) GetByID(ctx context.Context, id int) (migration.Source, error) {
-	if mock.GetByIDFunc == nil {
-		panic("SourceRepoMock.GetByIDFunc: method is nil but SourceRepo.GetByID was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		ID  int
-	}{
-		Ctx: ctx,
-		ID:  id,
-	}
-	mock.lockGetByID.Lock()
-	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
-	mock.lockGetByID.Unlock()
-	return mock.GetByIDFunc(ctx, id)
-}
-
-// GetByIDCalls gets all the calls that were made to GetByID.
-// Check the length with:
-//
-//	len(mockedSourceRepo.GetByIDCalls())
-func (mock *SourceRepoMock) GetByIDCalls() []struct {
-	Ctx context.Context
-	ID  int
-} {
-	var calls []struct {
-		Ctx context.Context
-		ID  int
-	}
-	mock.lockGetByID.RLock()
-	calls = mock.calls.GetByID
-	mock.lockGetByID.RUnlock()
-	return calls
-}
-
 // GetByName calls GetByNameFunc.
-func (mock *SourceRepoMock) GetByName(ctx context.Context, name string) (migration.Source, error) {
+func (mock *SourceRepoMock) GetByName(ctx context.Context, name string) (*migration.Source, error) {
 	if mock.GetByNameFunc == nil {
 		panic("SourceRepoMock.GetByNameFunc: method is nil but SourceRepo.GetByName was just called")
 	}
@@ -334,10 +300,50 @@ func (mock *SourceRepoMock) GetByNameCalls() []struct {
 	return calls
 }
 
-// UpdateByID calls UpdateByIDFunc.
-func (mock *SourceRepoMock) UpdateByID(ctx context.Context, source migration.Source) (migration.Source, error) {
-	if mock.UpdateByIDFunc == nil {
-		panic("SourceRepoMock.UpdateByIDFunc: method is nil but SourceRepo.UpdateByID was just called")
+// Rename calls RenameFunc.
+func (mock *SourceRepoMock) Rename(ctx context.Context, oldName string, newName string) error {
+	if mock.RenameFunc == nil {
+		panic("SourceRepoMock.RenameFunc: method is nil but SourceRepo.Rename was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		OldName string
+		NewName string
+	}{
+		Ctx:     ctx,
+		OldName: oldName,
+		NewName: newName,
+	}
+	mock.lockRename.Lock()
+	mock.calls.Rename = append(mock.calls.Rename, callInfo)
+	mock.lockRename.Unlock()
+	return mock.RenameFunc(ctx, oldName, newName)
+}
+
+// RenameCalls gets all the calls that were made to Rename.
+// Check the length with:
+//
+//	len(mockedSourceRepo.RenameCalls())
+func (mock *SourceRepoMock) RenameCalls() []struct {
+	Ctx     context.Context
+	OldName string
+	NewName string
+} {
+	var calls []struct {
+		Ctx     context.Context
+		OldName string
+		NewName string
+	}
+	mock.lockRename.RLock()
+	calls = mock.calls.Rename
+	mock.lockRename.RUnlock()
+	return calls
+}
+
+// Update calls UpdateFunc.
+func (mock *SourceRepoMock) Update(ctx context.Context, source migration.Source) error {
+	if mock.UpdateFunc == nil {
+		panic("SourceRepoMock.UpdateFunc: method is nil but SourceRepo.Update was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
@@ -346,17 +352,17 @@ func (mock *SourceRepoMock) UpdateByID(ctx context.Context, source migration.Sou
 		Ctx:    ctx,
 		Source: source,
 	}
-	mock.lockUpdateByID.Lock()
-	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
-	mock.lockUpdateByID.Unlock()
-	return mock.UpdateByIDFunc(ctx, source)
+	mock.lockUpdate.Lock()
+	mock.calls.Update = append(mock.calls.Update, callInfo)
+	mock.lockUpdate.Unlock()
+	return mock.UpdateFunc(ctx, source)
 }
 
-// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// UpdateCalls gets all the calls that were made to Update.
 // Check the length with:
 //
-//	len(mockedSourceRepo.UpdateByIDCalls())
-func (mock *SourceRepoMock) UpdateByIDCalls() []struct {
+//	len(mockedSourceRepo.UpdateCalls())
+func (mock *SourceRepoMock) UpdateCalls() []struct {
 	Ctx    context.Context
 	Source migration.Source
 } {
@@ -364,8 +370,8 @@ func (mock *SourceRepoMock) UpdateByIDCalls() []struct {
 		Ctx    context.Context
 		Source migration.Source
 	}
-	mock.lockUpdateByID.RLock()
-	calls = mock.calls.UpdateByID
-	mock.lockUpdateByID.RUnlock()
+	mock.lockUpdate.RLock()
+	calls = mock.calls.Update
+	mock.lockUpdate.RUnlock()
 	return calls
 }
