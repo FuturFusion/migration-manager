@@ -10,6 +10,8 @@ import (
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 )
 
 func TestNetworkDatabaseActions(t *testing.T) {
@@ -32,14 +34,18 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	_, err = dbschema.EnsureSchema(db, tmpDir)
 	require.NoError(t, err)
 
-	network := sqlite.NewNetwork(db)
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	network := sqlite.NewNetwork(tx)
 
 	// Add networkA.
-	networkA, err = network.Create(ctx, networkA)
+	networkA.ID, err = network.Create(ctx, networkA)
 	require.NoError(t, err)
 
 	// Add networkB.
-	networkB, err = network.Create(ctx, networkB)
+	networkB.ID, err = network.Create(ctx, networkB)
 	require.NoError(t, err)
 
 	// Add networkC.
@@ -59,19 +65,19 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	// Should get back networkA unchanged.
 	dbNetworkA, err := network.GetByName(ctx, networkA.Name)
 	require.NoError(t, err)
-	require.Equal(t, networkA, dbNetworkA)
+	require.Equal(t, networkA, *dbNetworkA)
 
-	dbNetworkA, err = network.GetByID(ctx, networkA.ID)
+	dbNetworkA, err = network.GetByName(ctx, networkA.Name)
 	require.NoError(t, err)
-	require.Equal(t, networkA, dbNetworkA)
+	require.Equal(t, networkA, *dbNetworkA)
 
 	// Test updating a network.
 	networkB.Config = map[string]string{"key": "value"}
-	networkB, err = network.UpdateByID(ctx, networkB)
+	err = network.Update(ctx, networkB)
 	require.NoError(t, err)
 	dbNetworkB, err := network.GetByName(ctx, networkB.Name)
 	require.NoError(t, err)
-	require.Equal(t, networkB, dbNetworkB)
+	require.Equal(t, networkB, *dbNetworkB)
 
 	// Delete a network.
 	err = network.DeleteByName(ctx, networkA.Name)
@@ -89,10 +95,10 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a network that doesn't exist.
-	networkA, err = network.UpdateByID(ctx, networkA)
+	err = network.Update(ctx, networkA)
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate network.
-	networkB, err = network.Create(ctx, networkB)
+	networkB.ID, err = network.Create(ctx, networkB)
 	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 }

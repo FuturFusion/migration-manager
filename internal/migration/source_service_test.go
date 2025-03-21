@@ -50,7 +50,8 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
-  "password": "pass"
+  "password": "pass",
+	"connectivity_status": 1
 }
 `),
 			},
@@ -61,7 +62,8 @@ func TestSourceService_Create(t *testing.T) {
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
-  "password": "pass"
+  "password": "pass",
+	"connectivity_status": 1
 }
 `),
 			},
@@ -227,8 +229,8 @@ func TestSourceService_Create(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.SourceRepoMock{
-				CreateFunc: func(ctx context.Context, in migration.Source) (migration.Source, error) {
-					return tc.repoCreateSource, tc.repoCreateErr
+				CreateFunc: func(ctx context.Context, in migration.Source) (int64, error) {
+					return tc.repoCreateSource.ID, tc.repoCreateErr
 				},
 			}
 
@@ -251,6 +253,15 @@ func TestSourceService_Create(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			if tc.assertErr == nil {
+				require.NotNil(t, tc.repoCreateSource.EndpointFunc)
+				require.NotNil(t, source.EndpointFunc)
+			}
+
+			source.EndpointFunc = nil
+			tc.repoCreateSource.EndpointFunc = nil
+
 			require.Equal(t, tc.repoCreateSource, source)
 		})
 	}
@@ -359,57 +370,11 @@ func TestSourceService_GetAllNames(t *testing.T) {
 	}
 }
 
-func TestSourceService_GetByID(t *testing.T) {
-	tests := []struct {
-		name              string
-		repoGetByIDSource migration.Source
-		repoGetByIDErr    error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name: "success",
-			repoGetByIDSource: migration.Source{
-				ID:   1,
-				Name: "one",
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name:           "error - repo",
-			repoGetByIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &mock.SourceRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (migration.Source, error) {
-					return tc.repoGetByIDSource, tc.repoGetByIDErr
-				},
-			}
-
-			sourceSvc := migration.NewSourceService(repo)
-
-			// Run test
-			source, err := sourceSvc.GetByID(context.Background(), 1)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDSource, source)
-		})
-	}
-}
-
 func TestSourceService_GetByName(t *testing.T) {
 	tests := []struct {
 		name                string
 		nameArg             string
-		repoGetByNameSource migration.Source
+		repoGetByNameSource *migration.Source
 		repoGetByNameErr    error
 
 		assertErr require.ErrorAssertionFunc
@@ -417,7 +382,7 @@ func TestSourceService_GetByName(t *testing.T) {
 		{
 			name:    "success",
 			nameArg: "one",
-			repoGetByNameSource: migration.Source{
+			repoGetByNameSource: &migration.Source{
 				ID:   1,
 				Name: "one",
 			},
@@ -445,7 +410,7 @@ func TestSourceService_GetByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.SourceRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (migration.Source, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Source, error) {
 					return tc.repoGetByNameSource, tc.repoGetByNameErr
 				},
 			}
@@ -464,10 +429,9 @@ func TestSourceService_GetByName(t *testing.T) {
 
 func TestSourceService_UpdateByID(t *testing.T) {
 	tests := []struct {
-		name             string
-		source           migration.Source
-		repoUpdateSource migration.Source
-		repoUpdateErr    error
+		name          string
+		source        migration.Source
+		repoUpdateErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -479,29 +443,12 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				SourceType: api.SOURCETYPE_COMMON,
 				Properties: json.RawMessage(`{}`),
 			},
-			repoUpdateSource: migration.Source{
-				ID:         1,
-				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
-			},
 
 			assertErr: require.NoError,
 		},
 		{
 			name: "success - VMware",
 			source: migration.Source{
-				ID:         1,
-				Name:       "one",
-				SourceType: api.SOURCETYPE_VMWARE,
-				Properties: json.RawMessage(`{
-  "endpoint": "endpoint.url",
-  "username": "user",
-  "password": "pass"
-}
-`),
-			},
-			repoUpdateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
@@ -674,8 +621,8 @@ func TestSourceService_UpdateByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.SourceRepoMock{
-				UpdateByIDFunc: func(ctx context.Context, in migration.Source) (migration.Source, error) {
-					return tc.repoUpdateSource, tc.repoUpdateErr
+				UpdateFunc: func(ctx context.Context, in migration.Source) error {
+					return tc.repoUpdateErr
 				},
 			}
 
@@ -694,11 +641,10 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			tc.source.EndpointFunc = endpointFunc
 
 			// Run test
-			source, err := sourceSvc.UpdateByID(context.Background(), tc.source)
+			err := sourceSvc.Update(context.Background(), tc.source)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpdateSource, source)
 		})
 	}
 }

@@ -11,6 +11,8 @@ import (
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -35,13 +37,17 @@ func TestSourceDatabaseActions(t *testing.T) {
 	_, err = dbschema.EnsureSchema(db, tmpDir)
 	require.NoError(t, err)
 
-	source := sqlite.NewSource(db)
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
 
-	commonSourceA, err = source.Create(ctx, commonSourceA)
+	source := sqlite.NewSource(tx)
+
+	commonSourceA.ID, err = source.Create(ctx, commonSourceA)
 	require.NoError(t, err)
 
 	// Add commonSourceB.
-	commonSourceB, err = source.Create(ctx, commonSourceB)
+	commonSourceB.ID, err = source.Create(ctx, commonSourceB)
 	require.NoError(t, err)
 
 	// Quick mid-addition state check.
@@ -50,21 +56,21 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.Len(t, sources, 2)
 
 	// Should get back commonSourceA by ID unchanged.
-	dbCommonSourceA, err := source.GetByID(ctx, commonSourceA.ID)
+	dbCommonSourceA, err := source.GetByName(ctx, commonSourceA.Name)
 	require.NoError(t, err)
-	require.Equal(t, commonSourceA, dbCommonSourceA)
+	require.Equal(t, commonSourceA, *dbCommonSourceA)
 
 	// Should get back commonSourceB by name unchanged.
 	dbCommonSourceB, err := source.GetByName(ctx, commonSourceB.Name)
 	require.NoError(t, err)
-	require.Equal(t, commonSourceB, dbCommonSourceB)
+	require.Equal(t, commonSourceB, *dbCommonSourceB)
 
 	// Add vmwareSourceA.
-	vmwareSourceA, err = source.Create(ctx, vmwareSourceA)
+	vmwareSourceA.ID, err = source.Create(ctx, vmwareSourceA)
 	require.NoError(t, err)
 
 	// Add vmwareSourceB.
-	vmwareSourceB, err = source.Create(ctx, vmwareSourceB)
+	vmwareSourceB.ID, err = source.Create(ctx, vmwareSourceB)
 	require.NoError(t, err)
 
 	// Ensure we have four entries
@@ -80,17 +86,16 @@ func TestSourceDatabaseActions(t *testing.T) {
 	// Should get back vmwareSourceA unchanged.
 	dbVMwareSourceA, err := source.GetByName(ctx, vmwareSourceA.Name)
 	require.NoError(t, err)
-	require.Equal(t, vmwareSourceA, dbVMwareSourceA)
+	require.Equal(t, vmwareSourceA, *dbVMwareSourceA)
 
 	// Test updating a source.
 	vmwareSourceB.SourceType = api.SOURCETYPE_UNKNOWN
 	vmwareSourceB.Properties = json.RawMessage(`{"connectivity_status": 1}`)
-	dbVMwareSourceB, err := source.UpdateByID(ctx, vmwareSourceB)
+	err = source.Update(ctx, vmwareSourceB)
 	require.NoError(t, err)
-	require.Equal(t, vmwareSourceB, dbVMwareSourceB)
-	dbVMwareSourceB, err = source.GetByName(ctx, vmwareSourceB.Name)
+	dbVMwareSourceB, err := source.GetByName(ctx, vmwareSourceB.Name)
 	require.NoError(t, err)
-	require.Equal(t, vmwareSourceB, dbVMwareSourceB)
+	require.Equal(t, vmwareSourceB, *dbVMwareSourceB)
 
 	// Delete a source.
 	err = source.DeleteByName(ctx, commonSourceA.Name)
@@ -108,7 +113,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a source that doesn't exist.
-	_, err = source.UpdateByID(ctx, commonSourceA)
+	err = source.Update(ctx, commonSourceA)
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate source.

@@ -30,13 +30,13 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": 1}`),
 			},
 			repoCreateTarget: migration.Target{
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": 1}`),
 			},
 
 			assertErr: require.NoError,
@@ -101,8 +101,8 @@ func TestTargetService_Create(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TargetRepoMock{
-				CreateFunc: func(ctx context.Context, in migration.Target) (migration.Target, error) {
-					return tc.repoCreateTarget, tc.repoCreateErr
+				CreateFunc: func(ctx context.Context, in migration.Target) (int64, error) {
+					return tc.repoCreateTarget.ID, tc.repoCreateErr
 				},
 			}
 
@@ -128,6 +128,15 @@ func TestTargetService_Create(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+
+			if tc.assertErr == nil {
+				require.NotNil(t, tc.repoCreateTarget.EndpointFunc)
+				require.NotNil(t, target.EndpointFunc)
+			}
+
+			target.EndpointFunc = nil
+			tc.repoCreateTarget.EndpointFunc = nil
+
 			require.Equal(t, tc.repoCreateTarget, target)
 		})
 	}
@@ -240,7 +249,7 @@ func TestTargetService_GetByName(t *testing.T) {
 	tests := []struct {
 		name                string
 		nameArg             string
-		repoGetByNameTarget migration.Target
+		repoGetByNameTarget *migration.Target
 		repoGetByNameErr    error
 
 		assertErr require.ErrorAssertionFunc
@@ -248,7 +257,7 @@ func TestTargetService_GetByName(t *testing.T) {
 		{
 			name:    "success",
 			nameArg: "one",
-			repoGetByNameTarget: migration.Target{
+			repoGetByNameTarget: &migration.Target{
 				ID:   1,
 				Name: "one",
 			},
@@ -276,7 +285,7 @@ func TestTargetService_GetByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TargetRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (migration.Target, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Target, error) {
 					return tc.repoGetByNameTarget, tc.repoGetByNameErr
 				},
 			}
@@ -293,73 +302,17 @@ func TestTargetService_GetByName(t *testing.T) {
 	}
 }
 
-func TestTargetService_GetByID(t *testing.T) {
-	tests := []struct {
-		name              string
-		idArg             int
-		repoGetByIDTarget migration.Target
-		repoGetByIDErr    error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:  "success",
-			idArg: 1,
-			repoGetByIDTarget: migration.Target{
-				ID:   1,
-				Name: "one",
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name:           "error - repo",
-			idArg:          1,
-			repoGetByIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &mock.TargetRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (migration.Target, error) {
-					return tc.repoGetByIDTarget, tc.repoGetByIDErr
-				},
-			}
-
-			targetSvc := migration.NewTargetService(repo)
-
-			// Run test
-			target, err := targetSvc.GetByID(context.Background(), tc.idArg)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDTarget, target)
-		})
-	}
-}
-
 func TestTargetService_UpdateByID(t *testing.T) {
 	tests := []struct {
-		name             string
-		target           migration.Target
-		repoUpdateTarget migration.Target
-		repoUpdateErr    error
+		name          string
+		target        migration.Target
+		repoUpdateErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
 			target: migration.Target{
-				ID:         1,
-				Name:       "one",
-				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
-			},
-			repoUpdateTarget: migration.Target{
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
@@ -428,8 +381,8 @@ func TestTargetService_UpdateByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TargetRepoMock{
-				UpdateByIDFunc: func(ctx context.Context, in migration.Target) (migration.Target, error) {
-					return tc.repoUpdateTarget, tc.repoUpdateErr
+				UpdateFunc: func(ctx context.Context, in migration.Target) error {
+					return tc.repoUpdateErr
 				},
 			}
 
@@ -451,11 +404,10 @@ func TestTargetService_UpdateByID(t *testing.T) {
 			tc.target.EndpointFunc = endpointFunc
 
 			// Run test
-			target, err := targetSvc.UpdateByID(context.Background(), tc.target)
+			err := targetSvc.Update(context.Background(), tc.target)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpdateTarget, target)
 		})
 	}
 }
