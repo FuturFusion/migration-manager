@@ -133,7 +133,6 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.Target, 0, len(targets))
 		for _, target := range targets {
 			result = append(result, api.Target{
-				DatabaseID: target.ID,
 				Name:       target.Name,
 				TargetType: target.TargetType,
 				Properties: target.Properties,
@@ -260,7 +259,7 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 			return apiTarget.NewInternalIncusTargetFrom(t)
 		}
 
-		_, _ = d.target.UpdateByID(context.TODO(), tgt)
+		_ = d.target.Update(context.TODO(), *tgt)
 	}()
 
 	return tokenURL, nil
@@ -340,7 +339,6 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Target{
-			DatabaseID: target.ID,
 			Name:       target.Name,
 			TargetType: target.TargetType,
 			Properties: target.Properties,
@@ -407,7 +405,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	tgt, err := d.target.UpdateByID(ctx, migration.Target{
+	tgt := migration.Target{
 		ID:         currentTarget.ID,
 		Name:       target.Name,
 		TargetType: target.TargetType,
@@ -415,7 +413,9 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
 			return apiTarget.NewInternalIncusTargetFrom(t)
 		},
-	})
+	}
+
+	err = d.target.Update(ctx, tgt)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", target.Name, err))
 	}

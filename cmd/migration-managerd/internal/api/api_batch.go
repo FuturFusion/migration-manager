@@ -153,21 +153,10 @@ func batchesGet(d *Daemon, r *http.Request) response.Response {
 
 		result := make([]api.Batch, 0, len(batches))
 
-		targetMap := make(map[int]string)
-		targets, err := d.target.GetAll(ctx)
-		if err != nil {
-			return response.SmartError(err)
-		}
-
-		for _, t := range targets {
-			targetMap[t.ID] = t.Name
-		}
-
 		for _, batch := range batches {
 			result = append(result, api.Batch{
-				DatabaseID:           batch.ID,
 				Name:                 batch.Name,
-				Target:               targetMap[batch.TargetID],
+				Target:               batch.Target,
 				TargetProject:        batch.TargetProject,
 				Status:               batch.Status,
 				StatusString:         batch.StatusString,
@@ -238,15 +227,9 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	target, err := d.target.GetByName(ctx, apiBatch.Target)
-	if err != nil {
-		return response.SmartError(err)
-	}
-
 	batch := migration.Batch{
-		ID:                   apiBatch.DatabaseID,
 		Name:                 apiBatch.Name,
-		TargetID:             target.ID,
+		Target:               apiBatch.Target,
 		TargetProject:        apiBatch.TargetProject,
 		Status:               api.BATCHSTATUS_DEFINED,
 		StatusString:         api.BATCHSTATUS_DEFINED.String(),
@@ -350,17 +333,11 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	target, err := d.target.GetByID(ctx, batch.TargetID)
-	if err != nil {
-		return response.SmartError(err)
-	}
-
 	return response.SyncResponseETag(
 		true,
 		api.Batch{
-			DatabaseID:           batch.ID,
 			Name:                 batch.Name,
-			Target:               target.Name,
+			Target:               batch.Target,
 			TargetProject:        batch.TargetProject,
 			Status:               batch.Status,
 			StatusString:         batch.StatusString,
@@ -433,15 +410,10 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	target, err := d.target.GetByName(ctx, batch.Target)
-	if err != nil {
-		return response.SmartError(err)
-	}
-
-	_, err = d.batch.UpdateByID(ctx, migration.Batch{
+	err = d.batch.Update(ctx, migration.Batch{
 		ID:                   currentBatch.ID,
 		Name:                 batch.Name,
-		TargetID:             target.ID,
+		Target:               batch.Target,
 		TargetProject:        batch.TargetProject,
 		Status:               batch.Status,
 		StatusString:         batch.StatusString,
@@ -564,7 +536,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	instances, err := d.instance.GetAllByBatchID(ctx, batch.ID)
+	instances, err := d.instance.GetAllByBatch(ctx, batch.Name)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -572,7 +544,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 	if recursion == 1 {
 		result := make([]api.Instance, 0, len(instances))
 
-		sourceMap := make(map[int]string)
+		sourceMap := make(map[int64]string)
 		sources, err := d.source.GetAll(ctx)
 		if err != nil {
 			return response.SmartError(err)
@@ -583,7 +555,38 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 		}
 
 		for _, instance := range instances {
-			result = append(result, instance.Instance)
+			result = append(result, api.Instance{
+				UUID:                  instance.UUID,
+				InventoryPath:         instance.InventoryPath,
+				Annotation:            instance.Annotation,
+				MigrationStatus:       instance.MigrationStatus,
+				MigrationStatusString: instance.MigrationStatusString,
+				LastUpdateFromSource:  instance.LastUpdateFromSource,
+				Source:                instance.Source,
+				Batch:                 instance.Batch,
+				GuestToolsVersion:     instance.GuestToolsVersion,
+				Architecture:          instance.Architecture,
+				HardwareVersion:       instance.HardwareVersion,
+				OS:                    instance.OS,
+				OSVersion:             instance.OSVersion,
+				Devices:               instance.Devices,
+				Disks:                 instance.Disks,
+				NICs:                  instance.NICs,
+				Snapshots:             instance.Snapshots,
+				CPU:                   instance.CPU,
+				Memory:                instance.Memory,
+				UseLegacyBios:         instance.UseLegacyBios,
+				SecureBootEnabled:     instance.SecureBootEnabled,
+				TPMPresent:            instance.TPMPresent,
+				Overrides: &api.InstanceOverride{
+					UUID:             instance.Overrides.UUID,
+					LastUpdate:       instance.Overrides.LastUpdate,
+					Comment:          instance.Overrides.Comment,
+					NumberCPUs:       instance.Overrides.NumberCPUs,
+					MemoryInBytes:    instance.Overrides.MemoryInBytes,
+					DisableMigration: instance.Overrides.DisableMigration,
+				},
+			})
 		}
 
 		return response.SyncResponse(true, result)
@@ -618,9 +621,9 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var batch migration.Batch
+	var batch *migration.Batch
 	var instances migration.Instances
-	var target migration.Target
+	var target *migration.Target
 	err := transaction.Do(r.Context(), func(ctx context.Context) error {
 		var err error
 		batch, err = d.batch.GetByName(ctx, name)
@@ -629,12 +632,12 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 		}
 
 		// Get the target and all instances for this batch.
-		instances, err = d.instance.GetAllByBatchID(ctx, batch.ID)
+		instances, err = d.instance.GetAllByBatch(ctx, batch.Name)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances for batch %q: %w", batch.Name, err)
 		}
 
-		target, err = d.target.GetByID(ctx, batch.TargetID)
+		target, err = d.target.GetByName(ctx, batch.Target)
 		if err != nil {
 			return fmt.Errorf("Failed to get target for batch %q: %w", batch.Name, err)
 		}
@@ -646,7 +649,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Validate that the batch can be queued.
-	_, err = d.validateForQueue(r.Context(), batch, target, instances)
+	_, err = d.validateForQueue(r.Context(), *batch, *target, instances)
 	if err != nil {
 		return response.SmartError(err)
 	}

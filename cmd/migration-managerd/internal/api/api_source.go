@@ -128,7 +128,6 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.Source, 0, len(sources))
 		for _, source := range sources {
 			result = append(result, api.Source{
-				DatabaseID: source.ID,
 				Name:       source.Name,
 				SourceType: source.SourceType,
 				Properties: source.Properties,
@@ -291,7 +290,6 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Source{
-			DatabaseID: source.ID,
 			Name:       source.Name,
 			SourceType: source.SourceType,
 			Properties: source.Properties,
@@ -358,7 +356,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	src, err := d.source.UpdateByID(ctx, migration.Source{
+	src := migration.Source{
 		ID:         currentSource.ID,
 		Name:       source.Name,
 		SourceType: source.SourceType,
@@ -366,7 +364,9 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
 			return apiSource.NewInternalVMwareSourceFrom(s)
 		},
-	})
+	}
+
+	err = d.source.Update(ctx, src)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", source.Name, err))
 	}

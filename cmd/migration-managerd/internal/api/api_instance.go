@@ -141,7 +141,7 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 
 		result := make([]api.Instance, 0, len(instances))
 
-		sourceMap := make(map[int]string)
+		sourceMap := make(map[int64]string)
 		sources, err := d.source.GetAll(ctx)
 		if err != nil {
 			return response.SmartError(err)
@@ -152,7 +152,38 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 		}
 
 		for _, instance := range instances {
-			result = append(result, instance.Instance)
+			result = append(result, api.Instance{
+				UUID:                  instance.UUID,
+				InventoryPath:         instance.InventoryPath,
+				Annotation:            instance.Annotation,
+				MigrationStatus:       instance.MigrationStatus,
+				MigrationStatusString: instance.MigrationStatusString,
+				LastUpdateFromSource:  instance.LastUpdateFromSource,
+				Source:                instance.Source,
+				Batch:                 instance.Batch,
+				GuestToolsVersion:     instance.GuestToolsVersion,
+				Architecture:          instance.Architecture,
+				HardwareVersion:       instance.HardwareVersion,
+				OS:                    instance.OS,
+				OSVersion:             instance.OSVersion,
+				Devices:               instance.Devices,
+				Disks:                 instance.Disks,
+				NICs:                  instance.NICs,
+				Snapshots:             instance.Snapshots,
+				CPU:                   instance.CPU,
+				Memory:                instance.Memory,
+				UseLegacyBios:         instance.UseLegacyBios,
+				SecureBootEnabled:     instance.SecureBootEnabled,
+				TPMPresent:            instance.TPMPresent,
+				Overrides: &api.InstanceOverride{
+					UUID:             instance.Overrides.UUID,
+					LastUpdate:       instance.Overrides.LastUpdate,
+					Comment:          instance.Overrides.Comment,
+					NumberCPUs:       instance.Overrides.NumberCPUs,
+					MemoryInBytes:    instance.Overrides.MemoryInBytes,
+					DisableMigration: instance.Overrides.DisableMigration,
+				},
+			})
 		}
 
 		return response.SyncResponse(true, result)
@@ -221,14 +252,45 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	instance, err := d.instance.GetByID(ctx, UUID)
+	instance, err := d.instance.GetByUUID(ctx, UUID, true)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
 	}
 
 	return response.SyncResponseETag(
 		true,
-		instance.Instance,
+		api.Instance{
+			UUID:                  instance.UUID,
+			InventoryPath:         instance.InventoryPath,
+			Annotation:            instance.Annotation,
+			MigrationStatus:       instance.MigrationStatus,
+			MigrationStatusString: instance.MigrationStatusString,
+			LastUpdateFromSource:  instance.LastUpdateFromSource,
+			Source:                instance.Source,
+			Batch:                 instance.Batch,
+			GuestToolsVersion:     instance.GuestToolsVersion,
+			Architecture:          instance.Architecture,
+			HardwareVersion:       instance.HardwareVersion,
+			OS:                    instance.OS,
+			OSVersion:             instance.OSVersion,
+			Devices:               instance.Devices,
+			Disks:                 instance.Disks,
+			NICs:                  instance.NICs,
+			Snapshots:             instance.Snapshots,
+			CPU:                   instance.CPU,
+			Memory:                instance.Memory,
+			UseLegacyBios:         instance.UseLegacyBios,
+			SecureBootEnabled:     instance.SecureBootEnabled,
+			TPMPresent:            instance.TPMPresent,
+			Overrides: &api.InstanceOverride{
+				UUID:             instance.Overrides.UUID,
+				LastUpdate:       instance.Overrides.LastUpdate,
+				Comment:          instance.Overrides.Comment,
+				NumberCPUs:       instance.Overrides.NumberCPUs,
+				MemoryInBytes:    instance.Overrides.MemoryInBytes,
+				DisableMigration: instance.Overrides.DisableMigration,
+			},
+		},
 		instance,
 	)
 }
@@ -275,14 +337,21 @@ func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	override, err := d.instance.GetOverridesByID(r.Context(), UUID)
+	override, err := d.instance.GetOverridesByUUID(r.Context(), UUID)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get override for instance %q: %w", UUID, err))
 	}
 
 	return response.SyncResponseETag(
 		true,
-		override.InstanceOverride,
+		api.InstanceOverride{
+			UUID:             override.UUID,
+			LastUpdate:       override.LastUpdate,
+			Comment:          override.Comment,
+			NumberCPUs:       override.NumberCPUs,
+			MemoryInBytes:    override.MemoryInBytes,
+			DisableMigration: override.DisableMigration,
+		},
 		override,
 	)
 }
@@ -330,15 +399,13 @@ func instanceOverridePost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = d.instance.CreateOverrides(r.Context(), migration.Overrides{
-		InstanceOverride: api.InstanceOverride{
-			UUID:             UUID,
-			LastUpdate:       time.Now().UTC(),
-			Comment:          override.Comment,
-			NumberCPUs:       override.NumberCPUs,
-			MemoryInBytes:    override.MemoryInBytes,
-			DisableMigration: override.DisableMigration,
-		},
+	_, err = d.instance.CreateOverrides(r.Context(), migration.InstanceOverride{
+		UUID:             UUID,
+		LastUpdate:       time.Now().UTC(),
+		Comment:          override.Comment,
+		NumberCPUs:       override.NumberCPUs,
+		MemoryInBytes:    override.MemoryInBytes,
+		DisableMigration: override.DisableMigration,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating override for instance %s: %w", UUID, err))
@@ -400,7 +467,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 	}()
 
 	// Get the existing instance override.
-	currentOverrides, err := d.instance.GetOverridesByID(ctx, UUID)
+	currentOverrides, err := d.instance.GetOverridesByUUID(ctx, UUID)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get override for instance %q: %w", UUID, err))
 	}
@@ -411,15 +478,13 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = d.instance.UpdateOverridesByID(ctx, migration.Overrides{
-		InstanceOverride: api.InstanceOverride{
-			UUID:             override.UUID,
-			LastUpdate:       time.Now().UTC(),
-			Comment:          override.Comment,
-			NumberCPUs:       override.NumberCPUs,
-			MemoryInBytes:    override.MemoryInBytes,
-			DisableMigration: override.DisableMigration,
-		},
+	err = d.instance.UpdateOverrides(ctx, migration.InstanceOverride{
+		UUID:             override.UUID,
+		LastUpdate:       time.Now().UTC(),
+		Comment:          override.Comment,
+		NumberCPUs:       override.NumberCPUs,
+		MemoryInBytes:    override.MemoryInBytes,
+		DisableMigration: override.DisableMigration,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating override for instance %q: %w", UUID, err))
@@ -459,7 +524,7 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	err = d.instance.DeleteOverridesByID(r.Context(), UUID)
+	err = d.instance.DeleteOverridesByUUID(r.Context(), UUID)
 	if err != nil {
 		return response.SmartError(err)
 	}
