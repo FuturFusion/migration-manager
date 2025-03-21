@@ -45,7 +45,7 @@ func (s queueService) GetAll(ctx context.Context) (QueueEntries, error) {
 				continue
 			}
 
-			instances, err := s.instance.GetAllByBatchID(ctx, batch.ID)
+			instances, err := s.instance.GetAllByBatch(ctx, batch.Name)
 			if err != nil {
 				return fmt.Errorf("Failed to get instances for batch '%s': %w", batch.Name, err)
 			}
@@ -56,7 +56,6 @@ func (s queueService) GetAll(ctx context.Context) (QueueEntries, error) {
 					InstanceName:          i.GetName(),
 					MigrationStatus:       i.MigrationStatus,
 					MigrationStatusString: i.MigrationStatusString,
-					BatchID:               batch.ID,
 					BatchName:             batch.Name,
 				})
 			}
@@ -76,18 +75,18 @@ func (s queueService) GetByInstanceID(ctx context.Context, id uuid.UUID) (QueueE
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the instance.
-		instance, err := s.instance.GetByID(ctx, id)
+		instance, err := s.instance.GetByUUID(ctx, id, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get instance '%s': %w", id, err)
 		}
 
 		// Don't return info for instances that aren't in the migration queue.
-		if instance.BatchID == nil || !instance.IsMigrating() {
+		if instance.Batch == nil || !instance.IsMigrating() {
 			return fmt.Errorf("Instance '%s' isn't in the migration queue: %w", instance.GetName(), ErrNotFound)
 		}
 
 		// Get the corresponding batch.
-		batch, err := s.batch.GetByID(ctx, *instance.BatchID)
+		batch, err := s.batch.GetByName(ctx, *instance.Batch)
 		if err != nil {
 			return fmt.Errorf("Failed to get batch: %w", err)
 		}
@@ -97,7 +96,6 @@ func (s queueService) GetByInstanceID(ctx context.Context, id uuid.UUID) (QueueE
 			InstanceName:          instance.GetName(),
 			MigrationStatus:       instance.MigrationStatus,
 			MigrationStatusString: instance.MigrationStatusString,
-			BatchID:               batch.ID,
 			BatchName:             batch.Name,
 		}
 
@@ -117,13 +115,13 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the instance.
-		instance, err := s.instance.GetByID(ctx, id)
+		instance, err := s.instance.GetByUUID(ctx, id, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get instance '%s': %w", id, err)
 		}
 
 		// Don't return info for instances that aren't in the migration queue.
-		if instance.BatchID == nil {
+		if instance.Batch == nil {
 			return fmt.Errorf("Instance '%s' isn't in the migration queue: %w", instance.GetName(), ErrNotFound)
 		}
 
@@ -133,7 +131,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		}
 
 		// Fetch the source for the instance.
-		source, err := s.source.GetByID(ctx, instance.SourceID)
+		source, err := s.source.GetByName(ctx, instance.Source)
 		if err != nil {
 			return fmt.Errorf("Failed to get source '%s': %w", id, err)
 		}
@@ -143,15 +141,15 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			Command:       api.WORKERCOMMAND_IDLE,
 			InventoryPath: instance.InventoryPath,
 			SourceType:    source.SourceType,
-			Source:        source,
+			Source:        *source,
 			OS:            instance.OS,
 			OSVersion:     instance.OSVersion,
 		}
 
 		// Fetch the batch for the instance.
-		batch, err := s.batch.GetByID(ctx, *instance.BatchID)
+		batch, err := s.batch.GetByName(ctx, *instance.Batch)
 		if err != nil {
-			return fmt.Errorf("Failed to get batch '%d': %w", *instance.BatchID, err)
+			return fmt.Errorf("Failed to get batch %q: %w", *instance.Batch, err)
 		}
 
 		// Determine what action, if any, the worker should start.
@@ -175,7 +173,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 
 		if newStatus != instance.MigrationStatus || newStatusString != instance.MigrationStatusString {
 			// Update instance in the database.
-			_, err = s.instance.UpdateStatusByUUID(ctx, id, newStatus, newStatusString, instance.NeedsDiskImport)
+			_, err = s.instance.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusString, instance.NeedsDiskImport)
 			if err != nil {
 				return fmt.Errorf("Failed updating instance '%s': %w", instance.UUID, err)
 			}

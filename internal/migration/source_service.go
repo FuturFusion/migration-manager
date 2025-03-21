@@ -30,7 +30,12 @@ func (s sourceService) Create(ctx context.Context, newSource Source) (Source, er
 		return Source{}, err
 	}
 
-	return s.repo.Create(ctx, newSource)
+	newSource.ID, err = s.repo.Create(ctx, newSource)
+	if err != nil {
+		return Source{}, err
+	}
+
+	return newSource, nil
 }
 
 func (s sourceService) GetAll(ctx context.Context) (Sources, error) {
@@ -41,22 +46,18 @@ func (s sourceService) GetAllNames(ctx context.Context) ([]string, error) {
 	return s.repo.GetAllNames(ctx)
 }
 
-func (s sourceService) GetByID(ctx context.Context, id int) (Source, error) {
-	return s.repo.GetByID(ctx, id)
-}
-
-func (s sourceService) GetByName(ctx context.Context, name string) (Source, error) {
+func (s sourceService) GetByName(ctx context.Context, name string) (*Source, error) {
 	if name == "" {
-		return Source{}, fmt.Errorf("Source name cannot be empty: %w", ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Source name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s sourceService) UpdateByID(ctx context.Context, newSource Source) (Source, error) {
+func (s sourceService) Update(ctx context.Context, newSource Source) error {
 	err := newSource.Validate()
 	if err != nil {
-		return Source{}, err
+		return err
 	}
 
 	// Reset connectivity status to trigger a scan on update.
@@ -64,10 +65,10 @@ func (s sourceService) UpdateByID(ctx context.Context, newSource Source) (Source
 
 	err = s.updateSourceConnectivity(ctx, &newSource)
 	if err != nil {
-		return Source{}, err
+		return err
 	}
 
-	return s.repo.UpdateByID(ctx, newSource)
+	return s.repo.Update(ctx, newSource)
 }
 
 func (s sourceService) DeleteByName(ctx context.Context, name string) error {

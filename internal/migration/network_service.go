@@ -23,7 +23,12 @@ func (n networkService) Create(ctx context.Context, newNetwork Network) (Network
 		return Network{}, err
 	}
 
-	return n.repo.Create(ctx, newNetwork)
+	newNetwork.ID, err = n.repo.Create(ctx, newNetwork)
+	if err != nil {
+		return Network{}, err
+	}
+
+	return newNetwork, nil
 }
 
 func (n networkService) GetAll(ctx context.Context) (Networks, error) {
@@ -34,25 +39,21 @@ func (n networkService) GetAllNames(ctx context.Context) ([]string, error) {
 	return n.repo.GetAllNames(ctx)
 }
 
-func (n networkService) GetByID(ctx context.Context, id int) (Network, error) {
-	return n.repo.GetByID(ctx, id)
-}
-
-func (n networkService) GetByName(ctx context.Context, name string) (Network, error) {
+func (n networkService) GetByName(ctx context.Context, name string) (*Network, error) {
 	if name == "" {
-		return Network{}, fmt.Errorf("Network name cannot be empty: %w", ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Network name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return n.repo.GetByName(ctx, name)
 }
 
-func (n networkService) UpdateByID(ctx context.Context, newNetwork Network) (Network, error) {
+func (n networkService) Update(ctx context.Context, newNetwork Network) error {
 	err := newNetwork.Validate()
 	if err != nil {
-		return Network{}, err
+		return err
 	}
 
-	return n.repo.UpdateByID(ctx, newNetwork)
+	return n.repo.Update(ctx, newNetwork)
 }
 
 func (n networkService) DeleteByName(ctx context.Context, name string) error {
