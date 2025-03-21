@@ -5,7 +5,6 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -36,14 +35,6 @@ func (s *InternalSource) IsConnected() bool {
 
 func (s *InternalSource) GetName() string {
 	return s.Name
-}
-
-func (s *InternalSource) GetDatabaseID() (int, error) {
-	if s.DatabaseID == internal.INVALID_DATABASE_ID {
-		return internal.INVALID_DATABASE_ID, fmt.Errorf("Source has not been added to database, so it doesn't have an ID")
-	}
-
-	return s.DatabaseID, nil
 }
 
 func (s *InternalSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {

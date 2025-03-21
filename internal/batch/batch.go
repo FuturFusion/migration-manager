@@ -8,7 +8,6 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -23,7 +22,6 @@ func NewBatch(name string, targetID int, targetProject string, storagePool strin
 	return &InternalBatch{
 		Batch: api.Batch{
 			Name:                 name,
-			DatabaseID:           internal.INVALID_DATABASE_ID,
 			TargetProject:        targetProject,
 			Status:               api.BATCHSTATUS_DEFINED,
 			StatusString:         api.BATCHSTATUS_DEFINED.String(),
@@ -38,14 +36,6 @@ func NewBatch(name string, targetID int, targetProject string, storagePool strin
 
 func (b *InternalBatch) GetName() string {
 	return b.Name
-}
-
-func (b *InternalBatch) GetDatabaseID() (int, error) {
-	if b.DatabaseID == internal.INVALID_DATABASE_ID {
-		return internal.INVALID_DATABASE_ID, fmt.Errorf("Batch has not been added to database, so it doesn't have an ID")
-	}
-
-	return b.DatabaseID, nil
 }
 
 func (b *InternalBatch) GetTargetID() int {

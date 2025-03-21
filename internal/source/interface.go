@@ -40,12 +40,6 @@ type Source interface {
 	// Returns the human-readable name for this source.
 	GetName() string
 
-	// Returns a unique ID for this source that can be used when interacting with the database.
-	//
-	// Attempting to get an ID for a freshly-created source that hasn't yet been added to the database
-	// via AddSsource() or retrieved via GetSource()/GetAllSources() will return an error.
-	GetDatabaseID() (int, error)
-
 	// -----------------------------------------------
 
 	// Returns an array of all VMs available from the source, encoded as Instances.
