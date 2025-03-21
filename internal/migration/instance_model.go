@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -11,11 +12,44 @@ import (
 )
 
 type Instance struct {
-	api.Instance `yaml:",inline"`
+	ID                    int64
+	UUID                  uuid.UUID `db:"primary=yes"`
+	InventoryPath         string
+	Annotation            string
+	MigrationStatus       api.MigrationStatusType
+	MigrationStatusString string
+	LastUpdateFromSource  time.Time
+	Source                string  `db:"join=sources.name"`
+	Batch                 *string `db:"leftjoin=batches.name"`
+	GuestToolsVersion     int
+	Architecture          string
+	HardwareVersion       string
+	OS                    string
+	OSVersion             string
+	Devices               []api.InstanceDeviceInfo   `db:"marshal=json"`
+	Disks                 []api.InstanceDiskInfo     `db:"marshal=json"`
+	NICs                  []api.InstanceNICInfo      `db:"marshal=json&sql=instances.nics"`
+	Snapshots             []api.InstanceSnapshotInfo `db:"marshal=json"`
+	CPU                   api.InstanceCPUInfo        `db:"marshal=json&sql=instances.cpu"`
+	Memory                api.InstanceMemoryInfo     `db:"marshal=json"`
+	UseLegacyBios         bool
+	SecureBootEnabled     bool
+	TPMPresent            bool
 
 	NeedsDiskImport bool
 	SecretToken     uuid.UUID
-	SourceID        int
+
+	Overrides *InstanceOverride `db:"ignore"`
+}
+
+type InstanceOverride struct {
+	ID               int64
+	UUID             uuid.UUID `db:"primary=yes"`
+	LastUpdate       time.Time
+	Comment          string
+	NumberCPUs       int `db:"sql=instance_overrides.number_cpus"`
+	MemoryInBytes    int64
+	DisableMigration bool
 }
 
 type InstanceWithDetails struct {
@@ -38,7 +72,7 @@ type InstanceWithDetails struct {
 	TPMPresent        bool
 
 	Source    Source
-	Overrides Overrides
+	Overrides InstanceOverride
 }
 
 func (i Instance) Validate() error {
@@ -54,8 +88,8 @@ func (i Instance) Validate() error {
 		return NewValidationErrf("Invalid instance, inventory path can not be empty")
 	}
 
-	if i.SourceID <= 0 {
-		return NewValidationErrf("Invalid instance, source id can not be 0 or negative")
+	if i.Source == "" {
+		return NewValidationErrf("Invalid instance, source id can not be empty")
 	}
 
 	if i.MigrationStatus < api.MIGRATIONSTATUS_UNKNOWN || i.MigrationStatus > api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
@@ -113,11 +147,7 @@ func (i *Instance) GetOSType() api.OSType {
 
 type Instances []Instance
 
-type Overrides struct {
-	api.InstanceOverride `yaml:",inline"`
-}
-
-func (o Overrides) Validate() error {
+func (o InstanceOverride) Validate() error {
 	if o.UUID == uuid.Nil {
 		return NewValidationErrf("Invalid instance overrides, UUID can not be empty")
 	}

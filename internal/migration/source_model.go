@@ -9,13 +9,13 @@ import (
 )
 
 type Source struct {
-	ID         int
-	Name       string
+	ID         int64
+	Name       string `db:"primary=yes"`
 	SourceType api.SourceType
 
 	Properties json.RawMessage
 
-	EndpointFunc func(api.Source) (SourceEndpoint, error) `json:"-"`
+	EndpointFunc func(api.Source) (SourceEndpoint, error) `json:"-" db:"ignore"`
 }
 
 func (s Source) Validate() error {

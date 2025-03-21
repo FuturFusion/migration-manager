@@ -11,7 +11,6 @@ type QueueEntry struct {
 	InstanceName          string
 	MigrationStatus       api.MigrationStatusType
 	MigrationStatusString string
-	BatchID               int
 	BatchName             string
 }
 
