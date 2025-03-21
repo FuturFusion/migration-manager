@@ -24,10 +24,6 @@ type QueueEntry struct {
 	// Example: "Migration 25% complete"
 	MigrationStatusString string `json:"migration_status_string" yaml:"migration_status_string"`
 
-	// An opaque integer identifier for the batch
-	// Example: 123
-	BatchID int `json:"batch_id" yaml:"batch_id"`
-
 	// A human-friendly name for the batch
 	// Example: MyBatch
 	BatchName string `json:"batch_name" yaml:"batch_name"`

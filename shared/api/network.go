@@ -8,10 +8,6 @@ type Network struct {
 	// Example: network-23
 	Name string `json:"name" yaml:"name"`
 
-	// An opaque integer identifier for the network
-	// Example: 123
-	DatabaseID int `json:"database_id" yaml:"database_id"`
-
 	// Any network-specific config options
 	// Example: {"network": "vmware", "ipv6.address": "none"}
 	Config map[string]string `json:"config" yaml:"config"`

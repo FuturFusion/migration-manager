@@ -47,10 +47,6 @@ type Batch struct {
 	// Example: MyBatch
 	Name string `json:"name" yaml:"name"`
 
-	// An opaque integer identifier for the batch
-	// Example: 123
-	DatabaseID int `json:"database_id" yaml:"database_id"`
-
 	// The destination target name to be used by all instances in this batch
 	// Example: Mytarget
 	Target string `json:"target" yaml:"target"`

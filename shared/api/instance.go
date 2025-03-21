@@ -108,7 +108,7 @@ type Instance struct {
 
 	// The batch ID for this instance
 	// Example: 1
-	BatchID *int `json:"batch_id,omitempty" yaml:"batch_id,omitempty"`
+	Batch *string `json:"batch_id,omitempty" yaml:"batch_id,omitempty"`
 
 	// Guest tools version, if known
 	// Example: 12352

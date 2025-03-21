@@ -35,10 +35,6 @@ type Source struct {
 	// Example: MySource
 	Name string `json:"name" yaml:"name"`
 
-	// An opaque integer identifier for the source
-	// Example: 123
-	DatabaseID int `json:"database_id" yaml:"database_id"`
-
 	// SourceType defines the type of the source
 	SourceType SourceType `json:"source_type" yaml:"source_type"`
 
