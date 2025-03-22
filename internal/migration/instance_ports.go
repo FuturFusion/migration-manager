@@ -12,11 +12,11 @@ import (
 
 type InstanceService interface {
 	Create(ctx context.Context, instance Instance) (Instance, error)
-	GetAll(ctx context.Context) (Instances, error)
-	GetAllByState(ctx context.Context, status api.MigrationStatusType) (Instances, error)
-	GetAllByBatch(ctx context.Context, batch string) (Instances, error)
+	GetAll(ctx context.Context, withOverrides bool) (Instances, error)
+	GetAllByState(ctx context.Context, status api.MigrationStatusType, withOverrides bool) (Instances, error)
+	GetAllByBatch(ctx context.Context, batch string, withOverrides bool) (Instances, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
-	GetAllUnassigned(ctx context.Context) (Instances, error)
+	GetAllUnassigned(ctx context.Context, withOverrides bool) (Instances, error)
 	GetByUUID(ctx context.Context, id uuid.UUID, withOverrides bool) (*Instance, error)
 	GetByUUIDWithDetails(ctx context.Context, id uuid.UUID) (InstanceWithDetails, error)
 	UnassignFromBatch(ctx context.Context, id uuid.UUID) error
