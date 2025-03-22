@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -153,4 +154,48 @@ func (o InstanceOverride) Validate() error {
 	}
 
 	return nil
+}
+
+func (i Instance) ToAPI() api.Instance {
+	apiInst := api.Instance{
+		UUID:                  i.UUID,
+		InventoryPath:         i.InventoryPath,
+		Annotation:            i.Annotation,
+		MigrationStatus:       i.MigrationStatus,
+		MigrationStatusString: i.MigrationStatusString,
+		LastUpdateFromSource:  i.LastUpdateFromSource,
+		Source:                i.Source,
+		Batch:                 i.Batch,
+		GuestToolsVersion:     i.GuestToolsVersion,
+		Architecture:          i.Architecture,
+		HardwareVersion:       i.HardwareVersion,
+		OS:                    i.OS,
+		OSVersion:             i.OSVersion,
+		Devices:               i.Devices,
+		Disks:                 i.Disks,
+		NICs:                  i.NICs,
+		Snapshots:             i.Snapshots,
+		CPU:                   i.CPU,
+		Memory:                i.Memory,
+		UseLegacyBios:         i.UseLegacyBios,
+		SecureBootEnabled:     i.SecureBootEnabled,
+		TPMPresent:            i.TPMPresent,
+	}
+
+	if i.Overrides != nil {
+		apiInst.Overrides = ptr.To(i.Overrides.ToAPI())
+	}
+
+	return apiInst
+}
+
+func (o InstanceOverride) ToAPI() api.InstanceOverride {
+	return api.InstanceOverride{
+		UUID:             o.UUID,
+		LastUpdate:       o.LastUpdate,
+		Comment:          o.Comment,
+		NumberCPUs:       o.NumberCPUs,
+		MemoryInBytes:    o.MemoryInBytes,
+		DisableMigration: o.DisableMigration,
+	}
 }

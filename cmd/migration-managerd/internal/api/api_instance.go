@@ -134,56 +134,14 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 			}
 		}()
 
-		instances, err := d.instance.GetAll(ctx)
+		instances, err := d.instance.GetAll(ctx, true)
 		if err != nil {
 			return response.SmartError(err)
 		}
 
 		result := make([]api.Instance, 0, len(instances))
-
-		sourceMap := make(map[int64]string)
-		sources, err := d.source.GetAll(ctx)
-		if err != nil {
-			return response.SmartError(err)
-		}
-
-		for _, t := range sources {
-			sourceMap[t.ID] = t.Name
-		}
-
 		for _, instance := range instances {
-			result = append(result, api.Instance{
-				UUID:                  instance.UUID,
-				InventoryPath:         instance.InventoryPath,
-				Annotation:            instance.Annotation,
-				MigrationStatus:       instance.MigrationStatus,
-				MigrationStatusString: instance.MigrationStatusString,
-				LastUpdateFromSource:  instance.LastUpdateFromSource,
-				Source:                instance.Source,
-				Batch:                 instance.Batch,
-				GuestToolsVersion:     instance.GuestToolsVersion,
-				Architecture:          instance.Architecture,
-				HardwareVersion:       instance.HardwareVersion,
-				OS:                    instance.OS,
-				OSVersion:             instance.OSVersion,
-				Devices:               instance.Devices,
-				Disks:                 instance.Disks,
-				NICs:                  instance.NICs,
-				Snapshots:             instance.Snapshots,
-				CPU:                   instance.CPU,
-				Memory:                instance.Memory,
-				UseLegacyBios:         instance.UseLegacyBios,
-				SecureBootEnabled:     instance.SecureBootEnabled,
-				TPMPresent:            instance.TPMPresent,
-				Overrides: &api.InstanceOverride{
-					UUID:             instance.Overrides.UUID,
-					LastUpdate:       instance.Overrides.LastUpdate,
-					Comment:          instance.Overrides.Comment,
-					NumberCPUs:       instance.Overrides.NumberCPUs,
-					MemoryInBytes:    instance.Overrides.MemoryInBytes,
-					DisableMigration: instance.Overrides.DisableMigration,
-				},
-			})
+			result = append(result, instance.ToAPI())
 		}
 
 		return response.SyncResponse(true, result)
@@ -259,38 +217,7 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 
 	return response.SyncResponseETag(
 		true,
-		api.Instance{
-			UUID:                  instance.UUID,
-			InventoryPath:         instance.InventoryPath,
-			Annotation:            instance.Annotation,
-			MigrationStatus:       instance.MigrationStatus,
-			MigrationStatusString: instance.MigrationStatusString,
-			LastUpdateFromSource:  instance.LastUpdateFromSource,
-			Source:                instance.Source,
-			Batch:                 instance.Batch,
-			GuestToolsVersion:     instance.GuestToolsVersion,
-			Architecture:          instance.Architecture,
-			HardwareVersion:       instance.HardwareVersion,
-			OS:                    instance.OS,
-			OSVersion:             instance.OSVersion,
-			Devices:               instance.Devices,
-			Disks:                 instance.Disks,
-			NICs:                  instance.NICs,
-			Snapshots:             instance.Snapshots,
-			CPU:                   instance.CPU,
-			Memory:                instance.Memory,
-			UseLegacyBios:         instance.UseLegacyBios,
-			SecureBootEnabled:     instance.SecureBootEnabled,
-			TPMPresent:            instance.TPMPresent,
-			Overrides: &api.InstanceOverride{
-				UUID:             instance.Overrides.UUID,
-				LastUpdate:       instance.Overrides.LastUpdate,
-				Comment:          instance.Overrides.Comment,
-				NumberCPUs:       instance.Overrides.NumberCPUs,
-				MemoryInBytes:    instance.Overrides.MemoryInBytes,
-				DisableMigration: instance.Overrides.DisableMigration,
-			},
-		},
+		instance.ToAPI(),
 		instance,
 	)
 }
@@ -344,14 +271,7 @@ func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
 
 	return response.SyncResponseETag(
 		true,
-		api.InstanceOverride{
-			UUID:             override.UUID,
-			LastUpdate:       override.LastUpdate,
-			Comment:          override.Comment,
-			NumberCPUs:       override.NumberCPUs,
-			MemoryInBytes:    override.MemoryInBytes,
-			DisableMigration: override.DisableMigration,
-		},
+		override.ToAPI(),
 		override,
 	)
 }
