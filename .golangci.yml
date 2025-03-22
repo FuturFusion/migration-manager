@@ -33,6 +33,12 @@ issues:
     # Copied from the Go standard library
     # https://github.com/golang/go/blob/master/src/net/http/internal/testcert/testcert.go, BSD-3-Clause license
     - internal/testcert
+  exclude-rules:
+    # generate-database expects to find declarations of the form //generate-database: in the entities package.
+    - path: '.*/entities'
+      linters:
+        - revive
+      text: "comment-spacing"
 linters-settings:
   gci:
     sections:
