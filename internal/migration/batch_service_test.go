@@ -143,10 +143,10 @@ func TestBatchService_Create(t *testing.T) {
 			}
 
 			instanceSvc := &InstanceServiceMock{
-				GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
+				GetAllByBatchFunc: func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
 					return nil, tc.instanceSvcGetAllByBatchIDErr
 				},
-				GetAllUnassignedFunc: func(ctx context.Context) (migration.Instances, error) {
+				GetAllUnassignedFunc: func(ctx context.Context, withOverrides bool) (migration.Instances, error) {
 					return nil, nil
 				},
 			}
@@ -525,10 +525,10 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			}
 
 			instanceSvc := &InstanceServiceMock{
-				GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
+				GetAllByBatchFunc: func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
 					return nil, tc.instanceSvcGetAllByBatchIDErr
 				},
-				GetAllUnassignedFunc: func(ctx context.Context) (migration.Instances, error) {
+				GetAllUnassignedFunc: func(ctx context.Context, withOverrides bool) (migration.Instances, error) {
 					return nil, nil
 				},
 			}
@@ -841,10 +841,10 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			repo := &mock.BatchRepoMock{}
 
 			instanceSvc := &InstanceServiceMock{
-				GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
+				GetAllByBatchFunc: func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
 					return tc.instanceSvcGetAllByBatchIDInstances, tc.instanceSvcGetAllByBatchIDErr
 				},
-				GetAllUnassignedFunc: func(ctx context.Context) (migration.Instances, error) {
+				GetAllUnassignedFunc: func(ctx context.Context, withOverrides bool) (migration.Instances, error) {
 					return tc.instanceSvcGetAllUnassignedInstances, tc.instanceSvcGetAllUnassignedErr
 				},
 				GetByUUIDWithDetailsFunc: func(ctx context.Context, id uuid.UUID) (migration.InstanceWithDetails, error) {
@@ -1080,7 +1080,7 @@ func TestBatchService_DeleteByName(t *testing.T) {
 			}
 
 			instanceSvc := &InstanceServiceMock{
-				GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
+				GetAllByBatchFunc: func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
 					return tc.instanceSvcGetAllByBatchInstances, tc.instanceSvcGetAllByBatchErr
 				},
 				UnassignFromBatchFunc: func(ctx context.Context, id uuid.UUID) error {

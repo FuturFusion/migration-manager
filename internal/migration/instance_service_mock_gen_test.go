@@ -34,19 +34,19 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			DeleteOverridesByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the DeleteOverridesByUUID method")
 //			},
-//			GetAllFunc: func(ctx context.Context) (migration.Instances, error) {
+//			GetAllFunc: func(ctx context.Context, withOverrides bool) (migration.Instances, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
+//			GetAllByBatchFunc: func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
 //				panic("mock out the GetAllByBatch method")
 //			},
-//			GetAllByStateFunc: func(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error) {
+//			GetAllByStateFunc: func(ctx context.Context, status api.MigrationStatusType, withOverrides bool) (migration.Instances, error) {
 //				panic("mock out the GetAllByState method")
 //			},
 //			GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
 //				panic("mock out the GetAllUUIDs method")
 //			},
-//			GetAllUnassignedFunc: func(ctx context.Context) (migration.Instances, error) {
+//			GetAllUnassignedFunc: func(ctx context.Context, withOverrides bool) (migration.Instances, error) {
 //				panic("mock out the GetAllUnassigned method")
 //			},
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID, withOverrides bool) (*migration.Instance, error) {
@@ -93,19 +93,19 @@ type InstanceServiceMock struct {
 	DeleteOverridesByUUIDFunc func(ctx context.Context, id uuid.UUID) error
 
 	// GetAllFunc mocks the GetAll method.
-	GetAllFunc func(ctx context.Context) (migration.Instances, error)
+	GetAllFunc func(ctx context.Context, withOverrides bool) (migration.Instances, error)
 
 	// GetAllByBatchFunc mocks the GetAllByBatch method.
-	GetAllByBatchFunc func(ctx context.Context, batch string) (migration.Instances, error)
+	GetAllByBatchFunc func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error)
 
 	// GetAllByStateFunc mocks the GetAllByState method.
-	GetAllByStateFunc func(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error)
+	GetAllByStateFunc func(ctx context.Context, status api.MigrationStatusType, withOverrides bool) (migration.Instances, error)
 
 	// GetAllUUIDsFunc mocks the GetAllUUIDs method.
 	GetAllUUIDsFunc func(ctx context.Context) ([]uuid.UUID, error)
 
 	// GetAllUnassignedFunc mocks the GetAllUnassigned method.
-	GetAllUnassignedFunc func(ctx context.Context) (migration.Instances, error)
+	GetAllUnassignedFunc func(ctx context.Context, withOverrides bool) (migration.Instances, error)
 
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID, withOverrides bool) (*migration.Instance, error)
@@ -165,6 +165,8 @@ type InstanceServiceMock struct {
 		GetAll []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// WithOverrides is the withOverrides argument value.
+			WithOverrides bool
 		}
 		// GetAllByBatch holds details about calls to the GetAllByBatch method.
 		GetAllByBatch []struct {
@@ -172,6 +174,8 @@ type InstanceServiceMock struct {
 			Ctx context.Context
 			// Batch is the batch argument value.
 			Batch string
+			// WithOverrides is the withOverrides argument value.
+			WithOverrides bool
 		}
 		// GetAllByState holds details about calls to the GetAllByState method.
 		GetAllByState []struct {
@@ -179,6 +183,8 @@ type InstanceServiceMock struct {
 			Ctx context.Context
 			// Status is the status argument value.
 			Status api.MigrationStatusType
+			// WithOverrides is the withOverrides argument value.
+			WithOverrides bool
 		}
 		// GetAllUUIDs holds details about calls to the GetAllUUIDs method.
 		GetAllUUIDs []struct {
@@ -189,6 +195,8 @@ type InstanceServiceMock struct {
 		GetAllUnassigned []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// WithOverrides is the withOverrides argument value.
+			WithOverrides bool
 		}
 		// GetByUUID holds details about calls to the GetByUUID method.
 		GetByUUID []struct {
@@ -423,19 +431,21 @@ func (mock *InstanceServiceMock) DeleteOverridesByUUIDCalls() []struct {
 }
 
 // GetAll calls GetAllFunc.
-func (mock *InstanceServiceMock) GetAll(ctx context.Context) (migration.Instances, error) {
+func (mock *InstanceServiceMock) GetAll(ctx context.Context, withOverrides bool) (migration.Instances, error) {
 	if mock.GetAllFunc == nil {
 		panic("InstanceServiceMock.GetAllFunc: method is nil but InstanceService.GetAll was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx           context.Context
+		WithOverrides bool
 	}{
-		Ctx: ctx,
+		Ctx:           ctx,
+		WithOverrides: withOverrides,
 	}
 	mock.lockGetAll.Lock()
 	mock.calls.GetAll = append(mock.calls.GetAll, callInfo)
 	mock.lockGetAll.Unlock()
-	return mock.GetAllFunc(ctx)
+	return mock.GetAllFunc(ctx, withOverrides)
 }
 
 // GetAllCalls gets all the calls that were made to GetAll.
@@ -443,10 +453,12 @@ func (mock *InstanceServiceMock) GetAll(ctx context.Context) (migration.Instance
 //
 //	len(mockedInstanceService.GetAllCalls())
 func (mock *InstanceServiceMock) GetAllCalls() []struct {
-	Ctx context.Context
+	Ctx           context.Context
+	WithOverrides bool
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx           context.Context
+		WithOverrides bool
 	}
 	mock.lockGetAll.RLock()
 	calls = mock.calls.GetAll
@@ -455,21 +467,23 @@ func (mock *InstanceServiceMock) GetAllCalls() []struct {
 }
 
 // GetAllByBatch calls GetAllByBatchFunc.
-func (mock *InstanceServiceMock) GetAllByBatch(ctx context.Context, batch string) (migration.Instances, error) {
+func (mock *InstanceServiceMock) GetAllByBatch(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
 	if mock.GetAllByBatchFunc == nil {
 		panic("InstanceServiceMock.GetAllByBatchFunc: method is nil but InstanceService.GetAllByBatch was just called")
 	}
 	callInfo := struct {
-		Ctx   context.Context
-		Batch string
+		Ctx           context.Context
+		Batch         string
+		WithOverrides bool
 	}{
-		Ctx:   ctx,
-		Batch: batch,
+		Ctx:           ctx,
+		Batch:         batch,
+		WithOverrides: withOverrides,
 	}
 	mock.lockGetAllByBatch.Lock()
 	mock.calls.GetAllByBatch = append(mock.calls.GetAllByBatch, callInfo)
 	mock.lockGetAllByBatch.Unlock()
-	return mock.GetAllByBatchFunc(ctx, batch)
+	return mock.GetAllByBatchFunc(ctx, batch, withOverrides)
 }
 
 // GetAllByBatchCalls gets all the calls that were made to GetAllByBatch.
@@ -477,12 +491,14 @@ func (mock *InstanceServiceMock) GetAllByBatch(ctx context.Context, batch string
 //
 //	len(mockedInstanceService.GetAllByBatchCalls())
 func (mock *InstanceServiceMock) GetAllByBatchCalls() []struct {
-	Ctx   context.Context
-	Batch string
+	Ctx           context.Context
+	Batch         string
+	WithOverrides bool
 } {
 	var calls []struct {
-		Ctx   context.Context
-		Batch string
+		Ctx           context.Context
+		Batch         string
+		WithOverrides bool
 	}
 	mock.lockGetAllByBatch.RLock()
 	calls = mock.calls.GetAllByBatch
@@ -491,21 +507,23 @@ func (mock *InstanceServiceMock) GetAllByBatchCalls() []struct {
 }
 
 // GetAllByState calls GetAllByStateFunc.
-func (mock *InstanceServiceMock) GetAllByState(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error) {
+func (mock *InstanceServiceMock) GetAllByState(ctx context.Context, status api.MigrationStatusType, withOverrides bool) (migration.Instances, error) {
 	if mock.GetAllByStateFunc == nil {
 		panic("InstanceServiceMock.GetAllByStateFunc: method is nil but InstanceService.GetAllByState was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Status api.MigrationStatusType
+		Ctx           context.Context
+		Status        api.MigrationStatusType
+		WithOverrides bool
 	}{
-		Ctx:    ctx,
-		Status: status,
+		Ctx:           ctx,
+		Status:        status,
+		WithOverrides: withOverrides,
 	}
 	mock.lockGetAllByState.Lock()
 	mock.calls.GetAllByState = append(mock.calls.GetAllByState, callInfo)
 	mock.lockGetAllByState.Unlock()
-	return mock.GetAllByStateFunc(ctx, status)
+	return mock.GetAllByStateFunc(ctx, status, withOverrides)
 }
 
 // GetAllByStateCalls gets all the calls that were made to GetAllByState.
@@ -513,12 +531,14 @@ func (mock *InstanceServiceMock) GetAllByState(ctx context.Context, status api.M
 //
 //	len(mockedInstanceService.GetAllByStateCalls())
 func (mock *InstanceServiceMock) GetAllByStateCalls() []struct {
-	Ctx    context.Context
-	Status api.MigrationStatusType
+	Ctx           context.Context
+	Status        api.MigrationStatusType
+	WithOverrides bool
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Status api.MigrationStatusType
+		Ctx           context.Context
+		Status        api.MigrationStatusType
+		WithOverrides bool
 	}
 	mock.lockGetAllByState.RLock()
 	calls = mock.calls.GetAllByState
@@ -559,19 +579,21 @@ func (mock *InstanceServiceMock) GetAllUUIDsCalls() []struct {
 }
 
 // GetAllUnassigned calls GetAllUnassignedFunc.
-func (mock *InstanceServiceMock) GetAllUnassigned(ctx context.Context) (migration.Instances, error) {
+func (mock *InstanceServiceMock) GetAllUnassigned(ctx context.Context, withOverrides bool) (migration.Instances, error) {
 	if mock.GetAllUnassignedFunc == nil {
 		panic("InstanceServiceMock.GetAllUnassignedFunc: method is nil but InstanceService.GetAllUnassigned was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx           context.Context
+		WithOverrides bool
 	}{
-		Ctx: ctx,
+		Ctx:           ctx,
+		WithOverrides: withOverrides,
 	}
 	mock.lockGetAllUnassigned.Lock()
 	mock.calls.GetAllUnassigned = append(mock.calls.GetAllUnassigned, callInfo)
 	mock.lockGetAllUnassigned.Unlock()
-	return mock.GetAllUnassignedFunc(ctx)
+	return mock.GetAllUnassignedFunc(ctx, withOverrides)
 }
 
 // GetAllUnassignedCalls gets all the calls that were made to GetAllUnassigned.
@@ -579,10 +601,12 @@ func (mock *InstanceServiceMock) GetAllUnassigned(ctx context.Context) (migratio
 //
 //	len(mockedInstanceService.GetAllUnassignedCalls())
 func (mock *InstanceServiceMock) GetAllUnassignedCalls() []struct {
-	Ctx context.Context
+	Ctx           context.Context
+	WithOverrides bool
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx           context.Context
+		WithOverrides bool
 	}
 	mock.lockGetAllUnassigned.RLock()
 	calls = mock.calls.GetAllUnassigned

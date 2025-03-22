@@ -117,7 +117,7 @@ func (s batchService) UpdateStatusByName(ctx context.Context, name string, statu
 
 func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch Batch) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		instances, err := s.instance.GetAllByBatch(ctx, batch.Name)
+		instances, err := s.instance.GetAllByBatch(ctx, batch.Name, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get instance for batch %q (%d): %w", batch.Name, batch.ID, err)
 		}
@@ -154,7 +154,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 		}
 
 		// Get a list of all unassigned instances.
-		instances, err = s.instance.GetAllUnassigned(ctx)
+		instances, err = s.instance.GetAllUnassigned(ctx, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get unassigned instances for match checking with batch %q (%d): %w", batch.Name, batch.ID, err)
 		}
@@ -210,7 +210,7 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 			return fmt.Errorf("Cannot delete batch %q: Currently in a migration phase: %w", name, ErrOperationNotPermitted)
 		}
 
-		instances, err := s.instance.GetAllByBatch(ctx, oldBatch.Name)
+		instances, err := s.instance.GetAllByBatch(ctx, oldBatch.Name, false)
 		if err != nil {
 			return err
 		}

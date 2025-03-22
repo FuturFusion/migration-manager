@@ -45,7 +45,7 @@ func (s queueService) GetAll(ctx context.Context) (QueueEntries, error) {
 				continue
 			}
 
-			instances, err := s.instance.GetAllByBatch(ctx, batch.Name)
+			instances, err := s.instance.GetAllByBatch(ctx, batch.Name, false)
 			if err != nil {
 				return fmt.Errorf("Failed to get instances for batch '%s': %w", batch.Name, err)
 			}

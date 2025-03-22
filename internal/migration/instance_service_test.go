@@ -193,7 +193,7 @@ func TestInstanceService_GetAll(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			instances, err := instanceSvc.GetAll(context.Background())
+			instances, err := instanceSvc.GetAll(context.Background(), false)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -248,7 +248,7 @@ func TestInstanceService_GetAllByState(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			instances, err := instanceSvc.GetAllByState(context.Background(), api.MIGRATIONSTATUS_ASSIGNED_BATCH)
+			instances, err := instanceSvc.GetAllByState(context.Background(), api.MIGRATIONSTATUS_ASSIGNED_BATCH, false)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -303,7 +303,7 @@ func TestInstanceService_GetAllByBatch(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			instances, err := instanceSvc.GetAllByBatch(context.Background(), "one")
+			instances, err := instanceSvc.GetAllByBatch(context.Background(), "one", false)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -406,7 +406,7 @@ func TestInstanceService_GetAllUnassigned(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			instances, err := instanceSvc.GetAllUnassigned(context.Background())
+			instances, err := instanceSvc.GetAllUnassigned(context.Background(), false)
 
 			// Assert
 			tc.assertErr(t, err)

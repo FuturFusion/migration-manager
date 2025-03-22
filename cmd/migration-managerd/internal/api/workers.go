@@ -110,7 +110,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			return fmt.Errorf("Failed to get internal network records: %w", err)
 		}
 
-		dbInstances, err := d.instance.GetAll(ctx)
+		dbInstances, err := d.instance.GetAll(ctx, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get internal instance records: %w", err)
 		}
@@ -466,7 +466,7 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 
 		for _, b := range batches {
 			// Get the target and all instances for this batch.
-			instances, err := d.instance.GetAllByBatch(ctx, b.Name)
+			instances, err := d.instance.GetAllByBatch(ctx, b.Name, false)
 			if err != nil {
 				return fmt.Errorf("Failed to get instances for batch %q: %w", b.Name, err)
 			}
@@ -659,7 +659,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			return fmt.Errorf("Failed to get batches by state %q: %w", api.BATCHSTATUS_RUNNING.String(), err)
 		}
 
-		allInstances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_CREATING)
+		allInstances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_CREATING, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_CREATING.String(), err)
 		}
@@ -862,7 +862,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 		}
 
 		// Get any instances in the "complete" state.
-		instances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
+		instances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_IMPORT_COMPLETE, true)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_IMPORT_COMPLETE.String(), err)
 		}

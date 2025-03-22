@@ -159,7 +159,7 @@ func TestQueueService_GetAll(t *testing.T) {
 			}
 
 			instanceSvc := &InstanceServiceMock{
-				GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
+				GetAllByBatchFunc: func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
 					return queue.Pop(t, &tc.instanceSvcGetAllByBatchID)
 				},
 			}

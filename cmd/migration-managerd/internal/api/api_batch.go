@@ -536,7 +536,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	instances, err := d.instance.GetAllByBatch(ctx, batch.Name)
+	instances, err := d.instance.GetAllByBatch(ctx, batch.Name, true)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -632,7 +632,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 		}
 
 		// Get the target and all instances for this batch.
-		instances, err = d.instance.GetAllByBatch(ctx, batch.Name)
+		instances, err = d.instance.GetAllByBatch(ctx, batch.Name, true)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances for batch %q: %w", batch.Name, err)
 		}
