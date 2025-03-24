@@ -46,6 +46,12 @@ func Do(ctx context.Context, f func(ctx context.Context) error) (err error) {
 // ForceTx operates like Do, but instead of waiting for the first db call to open a transaction,
 // one is opened immediately and passed to the function argument.
 func ForceTx(ctx context.Context, db DBTX, f func(context.Context, TX) error) (err error) {
+	tx, ok := db.(TX)
+	if ok {
+		// If the object is already a transaction, then just pass it through.
+		return f(ctx, tx)
+	}
+
 	internalDB, ok := db.(dbtx)
 	if !ok {
 		return fmt.Errorf("Database does not support transactions")
@@ -72,7 +78,7 @@ func ForceTx(ctx context.Context, db DBTX, f func(context.Context, TX) error) (e
 		return err
 	}
 
-	tx, ok := begunTx.(TX)
+	tx, ok = begunTx.(TX)
 	if !ok {
 		return fmt.Errorf("Transaction is invalid")
 	}
@@ -88,6 +94,18 @@ func ForceTx(ctx context.Context, db DBTX, f func(context.Context, TX) error) (e
 	}
 
 	return nil
+}
+
+// GetDBTX returns the underlying TX if one exists in the context, otherwise returning the supplied DB.
+func GetDBTX(ctx context.Context, db DBTX) DBTX {
+	tc, ok := ctx.Value(tcKey{}).(*transactionContainer)
+	if ok && tc.tx != nil {
+		// Transaction has started, return the underlying TX.
+		return tc.tx
+	}
+
+	// No transaction has started yet, return the DB.
+	return db
 }
 
 func Begin(ctx context.Context) (context.Context, transaction) {

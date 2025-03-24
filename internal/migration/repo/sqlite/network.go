@@ -22,31 +22,31 @@ func NewNetwork(db repo.DBTX) *network {
 }
 
 func (n network) Create(ctx context.Context, in migration.Network) (int64, error) {
-	return entities.CreateNetwork(ctx, n.db, in)
+	return entities.CreateNetwork(ctx, transaction.GetDBTX(ctx, n.db), in)
 }
 
 func (n network) GetAll(ctx context.Context) (migration.Networks, error) {
-	return entities.GetNetworks(ctx, n.db)
+	return entities.GetNetworks(ctx, transaction.GetDBTX(ctx, n.db))
 }
 
 func (n network) GetAllNames(ctx context.Context) ([]string, error) {
-	return entities.GetNetworkNames(ctx, n.db)
+	return entities.GetNetworkNames(ctx, transaction.GetDBTX(ctx, n.db))
 }
 
 func (n network) GetByName(ctx context.Context, name string) (*migration.Network, error) {
-	return entities.GetNetwork(ctx, n.db, name)
+	return entities.GetNetwork(ctx, transaction.GetDBTX(ctx, n.db), name)
 }
 
 func (n network) Update(ctx context.Context, in migration.Network) error {
-	return transaction.ForceTx(ctx, n.db, func(ctx context.Context, tx transaction.TX) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, n.db), func(ctx context.Context, tx transaction.TX) error {
 		return entities.UpdateNetwork(ctx, tx, in.Name, in)
 	})
 }
 
 func (n network) Rename(ctx context.Context, oldName string, newName string) error {
-	return entities.RenameNetwork(ctx, n.db, oldName, newName)
+	return entities.RenameNetwork(ctx, transaction.GetDBTX(ctx, n.db), oldName, newName)
 }
 
 func (n network) DeleteByName(ctx context.Context, name string) error {
-	return entities.DeleteNetwork(ctx, n.db, name)
+	return entities.DeleteNetwork(ctx, transaction.GetDBTX(ctx, n.db), name)
 }

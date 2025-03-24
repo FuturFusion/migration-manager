@@ -25,27 +25,27 @@ func NewInstance(db repo.DBTX) *instance {
 }
 
 func (i instance) Create(ctx context.Context, in migration.Instance) (int64, error) {
-	return entities.CreateInstance(ctx, i.db, in)
+	return entities.CreateInstance(ctx, transaction.GetDBTX(ctx, i.db), in)
 }
 
 func (i instance) GetAll(ctx context.Context) (migration.Instances, error) {
-	return entities.GetInstances(ctx, i.db)
+	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db))
 }
 
 func (i instance) GetAllByBatch(ctx context.Context, batch string) (migration.Instances, error) {
-	return entities.GetInstances(ctx, i.db, entities.InstanceFilter{Batch: &batch})
+	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{Batch: &batch})
 }
 
 func (i instance) GetAllByState(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error) {
-	return entities.GetInstances(ctx, i.db, entities.InstanceFilter{MigrationStatus: &status})
+	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{MigrationStatus: &status})
 }
 
 func (i instance) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
-	return entities.GetInstanceNames(ctx, i.db)
+	return entities.GetInstanceNames(ctx, transaction.GetDBTX(ctx, i.db))
 }
 
 func (i instance) GetAllUnassigned(ctx context.Context) (migration.Instances, error) {
-	instances, err := entities.GetInstances(ctx, i.db)
+	instances, err := entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db))
 	if err != nil {
 		return nil, err
 	}
@@ -61,33 +61,33 @@ func (i instance) GetAllUnassigned(ctx context.Context) (migration.Instances, er
 }
 
 func (i instance) GetByUUID(ctx context.Context, id uuid.UUID) (*migration.Instance, error) {
-	return entities.GetInstance(ctx, i.db, id)
+	return entities.GetInstance(ctx, transaction.GetDBTX(ctx, i.db), id)
 }
 
 func (i instance) Update(ctx context.Context, in migration.Instance) error {
-	return transaction.ForceTx(ctx, i.db, func(ctx context.Context, tx transaction.TX) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, i.db), func(ctx context.Context, tx transaction.TX) error {
 		return entities.UpdateInstance(ctx, tx, in.UUID, in)
 	})
 }
 
 func (i instance) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	return entities.DeleteInstance(ctx, i.db, id)
+	return entities.DeleteInstance(ctx, transaction.GetDBTX(ctx, i.db), id)
 }
 
 func (i instance) CreateOverrides(ctx context.Context, overrides migration.InstanceOverride) (int64, error) {
-	return entities.CreateInstanceOverride(ctx, i.db, overrides)
+	return entities.CreateInstanceOverride(ctx, transaction.GetDBTX(ctx, i.db), overrides)
 }
 
 func (i instance) GetOverridesByUUID(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error) {
-	return entities.GetInstanceOverride(ctx, i.db, id)
+	return entities.GetInstanceOverride(ctx, transaction.GetDBTX(ctx, i.db), id)
 }
 
 func (i instance) DeleteOverridesByUUID(ctx context.Context, id uuid.UUID) error {
-	return entities.DeleteInstanceOverride(ctx, i.db, id)
+	return entities.DeleteInstanceOverride(ctx, transaction.GetDBTX(ctx, i.db), id)
 }
 
 func (i instance) UpdateOverrides(ctx context.Context, overrides migration.InstanceOverride) error {
-	return transaction.ForceTx(ctx, i.db, func(ctx context.Context, tx transaction.TX) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, i.db), func(ctx context.Context, tx transaction.TX) error {
 		return entities.UpdateInstanceOverride(ctx, tx, overrides.UUID, overrides)
 	})
 }
