@@ -48,7 +48,7 @@ func (s *OS) LocalDatabaseDir() string {
 	return filepath.Join(s.VarDir, "database")
 }
 
-// Returns the name of the virtio drivers ISO image.
+// GetVirtioDriversISOName returns the name of the virtio drivers ISO image.
 func (s *OS) GetVirtioDriversISOName() (string, error) {
 	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win-*.iso", s.CacheDir))
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *OS) GetVirtioDriversISOName() (string, error) {
 	return filepath.Base(files[0]), nil
 }
 
-// GetVMWareVixName returns the name of the VMWare vix disklib tarball.
+// GetVMwareVixName returns the name of the VMWare vix disklib tarball.
 func (s *OS) GetVMwareVixName() (string, error) {
 	files, err := filepath.Glob(filepath.Join(s.VarDir, "VMware-vix-disklib*.tar.gz"))
 	if err != nil {

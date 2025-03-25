@@ -25,7 +25,7 @@ const (
 	MIGRATIONSTATUS_USER_DISABLED_MIGRATION
 )
 
-// Implement the stringer interface.
+// String mplements the stringer interface.
 func (m MigrationStatusType) String() string {
 	switch m {
 	case MIGRATIONSTATUS_UNKNOWN:
@@ -62,7 +62,7 @@ const (
 	OSTYPE_LINUX
 )
 
-// Implement the stringer interface.
+// String implements the stringer interface.
 func (o OSType) String() string {
 	switch o {
 	case OSTYPE_WINDOWS:
@@ -167,7 +167,7 @@ type Instance struct {
 
 var nonalpha = regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
 
-// Returns the name of the instance, which may not be unique among all instances for a given source.
+// GetName returns the name of the instance, which may not be unique among all instances for a given source.
 // If a unique, human-readable identifier is needed, use the InventoryPath property.
 func (i *Instance) GetName() string {
 	// Get the last part of the inventory path to use as a base for the instance name.
@@ -254,7 +254,7 @@ type InstanceMemoryInfo struct {
 	MemoryReservationInBytes int64 `json:"memory_reservation_in_bytes" yaml:"memory_reservation_in_bytes"`
 }
 
-// InstancNICInfo defines network information for an Instance.
+// InstanceNICInfo defines network information for an Instance.
 //
 // swagger:model
 type InstanceNICInfo struct {
@@ -271,7 +271,7 @@ type InstanceNICInfo struct {
 	Hwaddr string `json:"hwaddr" yaml:"hwaddr"`
 }
 
-// InstancSnapshotInfo defines snapshot information for an Instance.
+// InstanceSnapshotInfo defines snapshot information for an Instance.
 //
 // swagger:model
 type InstanceSnapshotInfo struct {

@@ -176,19 +176,22 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		}
 
 		arch := "x86_64"
-		if guestInfo["architecture"] == "X86" {
+		switch guestInfo["architecture"] {
+		case "X86":
 			if guestInfo["bits"] == "64" {
 				arch = "x86_64"
 			} else {
 				arch = "i686"
 			}
-		} else if guestInfo["architecture"] == "Arm" {
+
+		case "Arm":
 			if guestInfo["bits"] == "64" {
 				arch = "aarch64"
 			} else {
 				arch = "armv8l"
 			}
-		} else {
+
+		default:
 			slog.Debug("Unable to determine architecture; defaulting to x86_64", slog.String("name", vmProps.Summary.Config.Name), slog.Any("instance", UUID), slog.String("source", s.Name))
 		}
 

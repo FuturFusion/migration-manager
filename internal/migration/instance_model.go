@@ -102,7 +102,7 @@ func (i Instance) Validate() error {
 
 var nonalpha = regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
 
-// Returns the name of the instance, which may not be unique among all instances for a given source.
+// GetName returns the name of the instance, which may not be unique among all instances for a given source.
 // If a unique, human-readable identifier is needed, use the InventoryPath property.
 func (i Instance) GetName() string {
 	// Get the last part of the inventory path to use as a base for the instance name.
@@ -137,7 +137,7 @@ func (i Instance) IsMigrating() bool {
 	}
 }
 
-// The mapping of OS version strings to OS types is determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
+// GetOSType returns the OS type, as determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
 func (i *Instance) GetOSType() api.OSType {
 	if strings.HasPrefix(i.OS, "win") {
 		return api.OSTYPE_WINDOWS

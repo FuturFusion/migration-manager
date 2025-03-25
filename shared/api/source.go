@@ -13,7 +13,7 @@ const (
 	SOURCETYPE_VMWARE
 )
 
-// Implement the stringer interface.
+// String implements the stringer interface.
 func (s SourceType) String() string {
 	switch s {
 	case SOURCETYPE_UNKNOWN:

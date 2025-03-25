@@ -17,7 +17,7 @@ const (
 	BATCHSTATUS_ERROR
 )
 
-// Implement the stringer interface.
+// String implements the stringer interface.
 func (b BatchStatusType) String() string {
 	switch b {
 	case BATCHSTATUS_UNKNOWN:

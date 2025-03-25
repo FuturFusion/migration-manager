@@ -17,7 +17,7 @@ type InternalBatch struct {
 	TargetID int
 }
 
-// Returns a new Batch ready for use.
+// NewBatch returns a new Batch ready for use.
 func NewBatch(name string, targetID int, targetProject string, storagePool string, includeExpression string, migrationWindowStart time.Time, migrationWindowEnd time.Time) *InternalBatch {
 	return &InternalBatch{
 		Batch: api.Batch{

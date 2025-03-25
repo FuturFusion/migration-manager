@@ -235,7 +235,7 @@ func toHex(in *pongo2.Value, param *pongo2.Value) (out *pongo2.Value, err *pongo
 	return pongo2.AsValue(strings.TrimSuffix(builder.String(), ",")), nil
 }
 
-// Take a full version string and return the abbreviation used by distrobuilder logic.
+// MapWindowsVersionToAbbrev takes a full version string and returns the abbreviation used by distrobuilder logic.
 // Versions supported are an intersection of what's supported by distrobuilder and vCenter.
 func MapWindowsVersionToAbbrev(version string) (string, error) {
 	switch {

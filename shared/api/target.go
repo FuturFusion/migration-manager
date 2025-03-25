@@ -14,7 +14,7 @@ const (
 	TARGETTYPE_INCUS
 )
 
-// Implement the stringer interface.
+// String implements the stringer interface.
 func (t TargetType) String() string {
 	switch t {
 	case TARGETTYPE_UNKNOWN:

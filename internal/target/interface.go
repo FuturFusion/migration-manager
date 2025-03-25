@@ -12,7 +12,7 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-// Interface definition for all migration manager targets.
+// Target interface definition for all migration manager targets.
 type Target interface {
 	// Connects to the target.
 	//

@@ -44,7 +44,7 @@ func OpenDatabase(dir string) (*Node, error) {
 	return node, nil
 }
 
-// Transactionally executes the database interactions invoked by the
+// Transaction executes the database interactions invoked by the
 // given function. If the function returns no error, all database
 // changes are committed to the database, otherwise they are rolled back.
 func (n *Node) Transaction(ctx context.Context, f func(context.Context, *sql.Tx) error) error {

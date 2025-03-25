@@ -10,7 +10,7 @@ import (
 
 //go:generate go run github.com/matryer/moq -fmt goimports -out mock_gen.go -rm . Source
 
-// Interface definition for all migration manager sources.
+// Source interface definition for all migration manager sources.
 type Source interface {
 	// Connects to the source, using any source-specific details when the object was created.
 	//

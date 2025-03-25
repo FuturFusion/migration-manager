@@ -6,7 +6,7 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-// Interface definition for all migration manager batches.
+// Batch interface definition for all migration manager batches.
 type Batch interface {
 	// Returns the name of this batch.
 	GetName() string

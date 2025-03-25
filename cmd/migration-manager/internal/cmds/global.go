@@ -161,9 +161,10 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 		return err
 	}
 
-	if c.config.AuthType == "none" {
+	switch c.config.AuthType {
+	case "none":
 		c.config.AuthType = "untrusted"
-	} else if c.config.AuthType == "tls" {
+	case "tls":
 		c.config.TLSClientCertFile, err = c.Asker.AskString("Please enter the absolute path to client TLS certificate: ", "", validateAbsFilePathExists)
 		if err != nil {
 			return err

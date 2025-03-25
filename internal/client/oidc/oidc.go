@@ -63,6 +63,7 @@ var errRefreshAccessToken = fmt.Errorf("Failed refreshing access token")
 
 var oidcScopes = []string{oidc.ScopeOpenID, oidc.ScopeOfflineAccess, oidc.ScopeEmail}
 
+// OidcClient is a structure encapsulating an HTTP client, OIDC transport, and a token for OpenID Connect (OIDC) operations.
 type OidcClient struct {
 	httpClient    *http.Client
 	oidcTransport *oidcTransport
@@ -70,7 +71,6 @@ type OidcClient struct {
 	tokensFile    string
 }
 
-// OidcClient is a structure encapsulating an HTTP client, OIDC transport, and a token for OpenID Connect (OIDC) operations.
 // NewOIDCClient constructs a new OidcClient, ensuring the token field is non-nil to prevent panics during authentication.
 func NewOIDCClient(tokensFile string, serverCert *x509.Certificate) *OidcClient {
 	transport := &http.Transport{
@@ -249,12 +249,12 @@ func (o *OidcClient) refresh(issuer string, clientID string) error {
 		return errRefreshAccessToken
 	}
 
-	o.tokens.Token.AccessToken = oauthTokens.AccessToken
+	o.tokens.AccessToken = oauthTokens.AccessToken
 	o.tokens.TokenType = oauthTokens.TokenType
 	o.tokens.Expiry = oauthTokens.Expiry
 
 	if oauthTokens.RefreshToken != "" {
-		o.tokens.Token.RefreshToken = oauthTokens.RefreshToken
+		o.tokens.RefreshToken = oauthTokens.RefreshToken
 	}
 
 	return nil
@@ -344,11 +344,11 @@ func (o *OidcClient) WaitForToken(resp *oidc.DeviceAuthorizationResponse, provid
 
 	o.tokens.Expiry = time.Now().Add(time.Duration(token.ExpiresIn))
 	o.tokens.IDToken = token.IDToken
-	o.tokens.Token.AccessToken = token.AccessToken
+	o.tokens.AccessToken = token.AccessToken
 	o.tokens.TokenType = token.TokenType
 
 	if token.RefreshToken != "" {
-		o.tokens.Token.RefreshToken = token.RefreshToken
+		o.tokens.RefreshToken = token.RefreshToken
 	}
 
 	return nil
