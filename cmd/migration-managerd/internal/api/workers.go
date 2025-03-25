@@ -110,7 +110,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			return fmt.Errorf("Failed to get internal network records: %w", err)
 		}
 
-		dbInstances, err := d.instance.GetAll(ctx, false)
+		dbInstances, err := d.instance.GetAllUnassigned(ctx, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get internal instance records: %w", err)
 		}
