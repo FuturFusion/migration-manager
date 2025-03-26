@@ -110,7 +110,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			return fmt.Errorf("Failed to get internal network records: %w", err)
 		}
 
-		dbInstances, err := d.instance.GetAll(ctx)
+		dbInstances, err := d.instance.GetAllUnassigned(ctx, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get internal instance records: %w", err)
 		}
@@ -127,7 +127,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			for _, inst := range dbInstances {
 				src := sourcesByName[srcName]
 
-				if src.ID == inst.SourceID {
+				if src.Name == inst.Source {
 					existingInstances[inst.UUID] = inst
 				}
 			}
@@ -191,7 +191,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 		if !ok {
 			// Delete the instances that don't exist on the source.
 			log.Info("Deleting instance with no source record")
-			err := i.DeleteByID(ctx, instUUID)
+			err := i.DeleteByUUID(ctx, instUUID)
 			if err != nil {
 				return err
 			}
@@ -294,7 +294,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 		if instanceUpdated {
 			log.Info("Syncing changes to instance from source")
 			inst.LastUpdateFromSource = srcInst.LastUpdateFromSource
-			_, err := i.UpdateByID(ctx, inst)
+			err := i.Update(ctx, inst)
 			if err != nil {
 				return fmt.Errorf("Failed to update instance: %w", err)
 			}
@@ -325,7 +325,6 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[string]api.Network, map[uuid.UUID]migration.Instance, error) {
 	s, err := source.NewInternalVMwareSourceFrom(api.Source{
 		Name:       src.Name,
-		DatabaseID: src.ID,
 		SourceType: src.SourceType,
 		Properties: src.Properties,
 	})
@@ -391,7 +390,6 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migr
 
 	it, err := target.NewInternalIncusTargetFrom(api.Target{
 		Name:       t.Name,
-		DatabaseID: t.ID,
 		TargetType: t.TargetType,
 		Properties: t.Properties,
 	})
@@ -422,7 +420,7 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migr
 	}
 
 	for _, inst := range instances {
-		if b.ID != *inst.BatchID {
+		if b.Name != *inst.Batch {
 			return nil, fmt.Errorf("Instance %q is not in batch %q", inst.GetName(), b.Name)
 		}
 
@@ -457,9 +455,9 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migr
 func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 	log := slog.With(slog.String("method", "processQueuedBatches"))
 	// Fetch all QUEUED batches, and their instances and targets.
-	instancesByBatch := map[int]migration.Instances{}
-	targetsByBatch := map[int]migration.Target{}
-	batchesByID := map[int]migration.Batch{}
+	instancesByBatch := map[string]migration.Instances{}
+	targetsByBatch := map[string]migration.Target{}
+	batchesByName := map[string]migration.Batch{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		batches, err := d.batch.GetAllByState(ctx, api.BATCHSTATUS_QUEUED)
 		if err != nil {
@@ -468,19 +466,19 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 
 		for _, b := range batches {
 			// Get the target and all instances for this batch.
-			instances, err := d.instance.GetAllByBatchID(ctx, b.ID)
+			instances, err := d.instance.GetAllByBatch(ctx, b.Name, false)
 			if err != nil {
 				return fmt.Errorf("Failed to get instances for batch %q: %w", b.Name, err)
 			}
 
-			t, err := d.target.GetByID(ctx, b.TargetID)
+			t, err := d.target.GetByName(ctx, b.Target)
 			if err != nil {
 				return fmt.Errorf("Failed to get target for batch %q: %w", b.Name, err)
 			}
 
-			instancesByBatch[b.ID] = instances
-			targetsByBatch[b.ID] = t
-			batchesByID[b.ID] = b
+			instancesByBatch[b.Name] = instances
+			targetsByBatch[b.Name] = *t
+			batchesByName[b.Name] = b
 		}
 
 		return nil
@@ -491,9 +489,9 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 
 	// Validate the batches before updating their state.
 	// If a batch is invalid or unable to be validated, it will be set to ERROR and removed from consideration.
-	for batchID, availableInstances := range instancesByBatch {
-		t := targetsByBatch[batchID]
-		b := batchesByID[batchID]
+	for batchName, availableInstances := range instancesByBatch {
+		t := targetsByBatch[batchName]
+		b := batchesByName[batchName]
 		log := log.With(slog.String("batch", b.Name))
 		it, err := d.validateForQueue(ctx, b, t, availableInstances)
 		if err == nil {
@@ -502,26 +500,26 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 
 		if err != nil {
 			log.Error("Failed to validate batch", logger.Err(err))
-			_, err := d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_ERROR, err.Error())
+			_, err := d.batch.UpdateStatusByName(ctx, b.Name, api.BATCHSTATUS_ERROR, err.Error())
 			if err != nil {
 				return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_ERROR.String(), err)
 			}
 
-			delete(batchesByID, batchID)
+			delete(batchesByName, batchName)
 		}
 	}
 
 	// Set the statuses for any batches that made it this far to RUNNING in preparation for instance creation on the target.
 	// `finalizeCompleteInstances` will pick up these batches, but won't find any instances in them until their associated VMs are created.
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		for _, b := range batchesByID {
+		for _, b := range batchesByName {
 			log.Info("Updating batch status to 'Running'")
-			_, err := d.batch.UpdateStatusByID(ctx, b.ID, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_RUNNING.String())
+			_, err := d.batch.UpdateStatusByName(ctx, b.Name, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_RUNNING.String())
 			if err != nil {
 				return fmt.Errorf("Failed to update batch status: %w", err)
 			}
 
-			for _, inst := range instancesByBatch[b.ID] {
+			for _, inst := range instancesByBatch[b.Name] {
 				_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
 				if err != nil {
 					return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_CREATING.String(), err)
@@ -587,7 +585,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 
 	// If we need to download missing files, or upload them to the target, set a status message.
 	if missingBaseImg || missingDriverISO {
-		_, err := d.batch.UpdateStatusByID(ctx, batch.ID, batch.Status, "Downloading artifacts")
+		_, err := d.batch.UpdateStatusByName(ctx, batch.Name, batch.Status, "Downloading artifacts")
 		if err != nil {
 			return fmt.Errorf("Failed to update batch %q status message: %w", batch.Name, err)
 		}
@@ -651,9 +649,9 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 		slog.String("method", "beginImports"),
 	)
 
-	var batchesByID map[int]migration.Batch
-	var instancesByBatch map[int]migration.Instances
-	targetsByBatch := map[int]migration.Target{}
+	var batchesByName map[string]migration.Batch
+	var instancesByBatch map[string]migration.Instances
+	targetsByBatch := map[string]migration.Target{}
 	sourcesByInstance := map[uuid.UUID]migration.Source{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		batches, err := d.batch.GetAllByState(ctx, api.BATCHSTATUS_RUNNING)
@@ -661,39 +659,42 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			return fmt.Errorf("Failed to get batches by state %q: %w", api.BATCHSTATUS_RUNNING.String(), err)
 		}
 
-		allInstances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_CREATING)
+		allInstances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_CREATING, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_CREATING.String(), err)
 		}
 
-		batchesByID = make(map[int]migration.Batch, len(batches))
+		batchesByName = make(map[string]migration.Batch, len(batches))
 		for _, batch := range batches {
-			batchesByID[batch.ID] = batch
+			batchesByName[batch.Name] = batch
 		}
 
 		// Collect only CREATING instances (and their target and source) for RUNNING batches.
-		instancesByBatch = map[int]migration.Instances{}
+		instancesByBatch = map[string]migration.Instances{}
 		for _, inst := range allInstances {
-			b, ok := batchesByID[*inst.BatchID]
+			b, ok := batchesByName[*inst.Batch]
 			if !ok {
 				continue
 			}
 
-			if instancesByBatch[*inst.BatchID] == nil {
-				instancesByBatch[*inst.BatchID] = migration.Instances{}
+			if instancesByBatch[*inst.Batch] == nil {
+				instancesByBatch[*inst.Batch] = migration.Instances{}
 			}
 
-			instancesByBatch[*inst.BatchID] = append(instancesByBatch[*inst.BatchID], inst)
+			instancesByBatch[*inst.Batch] = append(instancesByBatch[*inst.Batch], inst)
 
-			targetsByBatch[*inst.BatchID], err = d.target.GetByID(ctx, b.TargetID)
+			target, err := d.target.GetByName(ctx, b.Target)
 			if err != nil {
 				return fmt.Errorf("Failed to get target for instance %q: %w", inst.UUID, err)
 			}
 
-			sourcesByInstance[inst.UUID], err = d.source.GetByID(ctx, inst.SourceID)
+			targetsByBatch[*inst.Batch] = *target
+			source, err := d.source.GetByName(ctx, inst.Source)
 			if err != nil {
 				return fmt.Errorf("Failed to get source for instance %q: %w", inst.UUID, err)
 			}
+
+			sourcesByInstance[inst.UUID] = *source
 		}
 
 		return nil
@@ -702,8 +703,8 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 		return err
 	}
 
-	err = util.RunConcurrentMap(instancesByBatch, func(bID int, instances migration.Instances) error {
-		return d.createTargetVMs(ctx, batchesByID[bID], instances, targetsByBatch[bID], sourcesByInstance, cleanupInstances)
+	err = util.RunConcurrentMap(instancesByBatch, func(batchName string, instances migration.Instances) error {
+		return d.createTargetVMs(ctx, batchesByName[batchName], instances, targetsByBatch[batchName], sourcesByInstance, cleanupInstances)
 	})
 	if err != nil {
 		log.Error("Failed to initialize migration workers", logger.Err(err))
@@ -753,7 +754,6 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 
 		it, err := target.NewInternalIncusTargetFrom(api.Target{
 			Name:       t.Name,
-			DatabaseID: t.ID,
 			TargetType: t.TargetType,
 			Properties: t.Properties,
 		})
@@ -847,10 +847,10 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 // finalizeCompleteInstances fetches all instances in RUNNING batches whose status is IMPORT COMPLETE, and for each batch, runs configureMigratedInstances.
 func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 	log := slog.With(slog.String("method", "finalizeCompleteInstances"))
-	batchesByID := map[int]migration.Batch{}
+	batchesByName := map[string]migration.Batch{}
 	networksByName := map[string]migration.Network{}
-	completeInstancesByBatch := map[int]migration.Instances{}
-	targetsByBatch := map[int]migration.Target{}
+	completeInstancesByBatch := map[string]migration.Instances{}
+	targetsByBatch := map[string]*migration.Target{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		batches, err := d.batch.GetAllByState(ctx, api.BATCHSTATUS_RUNNING)
 		if err != nil {
@@ -858,27 +858,27 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 		}
 
 		for _, b := range batches {
-			batchesByID[b.ID] = b
+			batchesByName[b.Name] = b
 		}
 
 		// Get any instances in the "complete" state.
-		instances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
+		instances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_IMPORT_COMPLETE, true)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_IMPORT_COMPLETE.String(), err)
 		}
 
 		for _, i := range instances {
-			if completeInstancesByBatch[*i.BatchID] == nil {
-				completeInstancesByBatch[*i.BatchID] = migration.Instances{}
+			if completeInstancesByBatch[*i.Batch] == nil {
+				completeInstancesByBatch[*i.Batch] = migration.Instances{}
 			}
 
-			completeInstancesByBatch[*i.BatchID] = append(completeInstancesByBatch[*i.BatchID], i)
+			completeInstancesByBatch[*i.Batch] = append(completeInstancesByBatch[*i.Batch], i)
 		}
 
-		for batchID := range completeInstancesByBatch {
+		for batchName := range completeInstancesByBatch {
 			var err error
-			b := batchesByID[batchID]
-			targetsByBatch[b.ID], err = d.target.GetByID(ctx, b.TargetID)
+			b := batchesByName[batchName]
+			targetsByBatch[b.Name], err = d.target.GetByName(ctx, b.Target)
 			if err != nil {
 				return fmt.Errorf("Failed to get all targets: %w", err)
 			}
@@ -899,10 +899,10 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 		return err
 	}
 
-	for batchID, instances := range completeInstancesByBatch {
-		err := d.configureMigratedInstances(ctx, instances, targetsByBatch[batchID], batchesByID[batchID], networksByName)
+	for batchName, instances := range completeInstancesByBatch {
+		err := d.configureMigratedInstances(ctx, instances, *targetsByBatch[batchName], batchesByName[batchName], networksByName)
 		if err != nil {
-			log.Error("Failed to configureMigratedInstances", slog.String("batch", batchesByID[batchID].Name))
+			log.Error("Failed to configureMigratedInstances", slog.String("batch", batchesByName[batchName].Name))
 		}
 	}
 
@@ -939,7 +939,6 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 
 		it, err := target.NewInternalIncusTargetFrom(api.Target{
 			Name:       t.Name,
-			DatabaseID: t.ID,
 			TargetType: t.TargetType,
 			Properties: t.Properties,
 		})

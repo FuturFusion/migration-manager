@@ -1,10 +1,10 @@
 package migration
 
 type Network struct {
-	ID   int
-	Name string
+	ID   int64
+	Name string `db:"primary=yes"`
 
-	Config map[string]string
+	Config map[string]string `db:"marshal=json"`
 }
 
 func (n Network) Validate() error {

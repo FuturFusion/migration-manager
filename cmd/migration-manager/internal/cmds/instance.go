@@ -91,7 +91,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 	// Get nice names for the batches.
 	batches := []api.Batch{}
-	batchesMap := make(map[int]string)
+	batchesMap := make(map[string]string)
 	resp, err = c.global.doHTTPRequestV1("/batches", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, b := range batches {
-		batchesMap[b.DatabaseID] = b.Name
+		batchesMap[b.Name] = b.Name
 	}
 
 	// Render the table.
@@ -158,7 +158,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 				CPUAffinity = string(v)
 			}
 
-			row = []string{i.UUID.String(), i.InventoryPath, i.Annotation, i.Source, getFrom(batchesMap, i.BatchID), i.MigrationStatus.String(), i.MigrationStatusString, i.LastUpdateFromSource.String(), strconv.Itoa(i.GuestToolsVersion), i.Architecture, i.HardwareVersion, i.OS, i.OSVersion, strings.Join(devices, "\n"), strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(i.CPU.NumberCPUs), CPUAffinity, strconv.Itoa(i.CPU.NumberOfCoresPerSocket), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), units.GetByteSizeStringIEC(i.Memory.MemoryReservationInBytes, 2), strconv.FormatBool(i.UseLegacyBios), strconv.FormatBool(i.SecureBootEnabled), strconv.FormatBool(i.TPMPresent)}
+			row = []string{i.UUID.String(), i.InventoryPath, i.Annotation, i.Source, getFrom(batchesMap, i.Batch), i.MigrationStatus.String(), i.MigrationStatusString, i.LastUpdateFromSource.String(), strconv.Itoa(i.GuestToolsVersion), i.Architecture, i.HardwareVersion, i.OS, i.OSVersion, strings.Join(devices, "\n"), strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(i.CPU.NumberCPUs), CPUAffinity, strconv.Itoa(i.CPU.NumberOfCoresPerSocket), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), units.GetByteSizeStringIEC(i.Memory.MemoryReservationInBytes, 2), strconv.FormatBool(i.UseLegacyBios), strconv.FormatBool(i.SecureBootEnabled), strconv.FormatBool(i.TPMPresent)}
 		}
 
 		data = append(data, row)
@@ -169,7 +169,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, instances)
 }
 
-func getFrom(lookupMap map[int]string, key *int) string {
+func getFrom(lookupMap map[string]string, key *string) string {
 	if key == nil {
 		return ""
 	}

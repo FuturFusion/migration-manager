@@ -11,13 +11,15 @@ import (
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 var (
 	batchA = migration.Batch{
 		Name:                 "BatchA",
-		TargetID:             1,
+		Target:               "TestTarget",
 		TargetProject:        "default",
 		StoragePool:          "pool1",
 		IncludeExpression:    "include",
@@ -27,7 +29,7 @@ var (
 
 	batchB = migration.Batch{
 		Name:                 "BatchB",
-		TargetID:             1,
+		Target:               "TestTarget",
 		TargetProject:        "m-project",
 		StoragePool:          "pool2",
 		IncludeExpression:    "",
@@ -37,7 +39,7 @@ var (
 
 	batchC = migration.Batch{
 		Name:                 "BatchC",
-		TargetID:             1,
+		Target:               "TestTarget",
 		TargetProject:        "default",
 		StoragePool:          "pool3",
 		IncludeExpression:    "include",
@@ -62,8 +64,12 @@ func TestBatchDatabaseActions(t *testing.T) {
 	_, err = dbschema.EnsureSchema(db, tmpDir)
 	require.NoError(t, err)
 
-	targetSvc := migration.NewTargetService(sqlite.NewTarget(db))
-	batch := sqlite.NewBatch(db)
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	targetSvc := migration.NewTargetService(sqlite.NewTarget(tx))
+	batch := sqlite.NewBatch(tx)
 
 	// Cannot add a batch with an invalid target.
 	_, err = batch.Create(ctx, batchA)
@@ -72,15 +78,15 @@ func TestBatchDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 
 	// Add batchA.
-	batchA, err = batch.Create(ctx, batchA)
+	batchA.ID, err = batch.Create(ctx, batchA)
 	require.NoError(t, err)
 
 	// Add batchB.
-	batchB, err = batch.Create(ctx, batchB)
+	batchB.ID, err = batch.Create(ctx, batchB)
 	require.NoError(t, err)
 
 	// Add batchC.
-	batchC, err = batch.Create(ctx, batchC)
+	batchC.ID, err = batch.Create(ctx, batchC)
 	require.NoError(t, err)
 
 	// Ensure we have three entries
@@ -95,16 +101,16 @@ func TestBatchDatabaseActions(t *testing.T) {
 	// Should get back batchA unchanged.
 	dbBatchA, err := batch.GetByName(ctx, batchA.Name)
 	require.NoError(t, err)
-	require.Equal(t, batchA, dbBatchA)
+	require.Equal(t, batchA, *dbBatchA)
 
 	// Test updating a batch.
 	batchB.IncludeExpression = "true"
 	batchB.Status = api.BATCHSTATUS_RUNNING
-	batchB, err = batch.UpdateByID(ctx, batchB)
+	err = batch.Update(ctx, batchB)
 	require.NoError(t, err)
 	dbBatchB, err := batch.GetByName(ctx, batchB.Name)
 	require.NoError(t, err)
-	require.Equal(t, batchB, dbBatchB)
+	require.Equal(t, batchB, *dbBatchB)
 
 	// Delete a batch.
 	err = batch.DeleteByName(ctx, batchA.Name)
@@ -122,7 +128,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a batch that doesn't exist.
-	_, err = batch.UpdateByID(ctx, batchA)
+	err = batch.Update(ctx, batchA)
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate batch.

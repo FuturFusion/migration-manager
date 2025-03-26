@@ -12,9 +12,9 @@ import (
 )
 
 type Batch struct {
-	ID                   int
-	Name                 string
-	TargetID             int
+	ID                   int64
+	Name                 string `db:"primary=yes"`
+	Target               string `db:"join=targets.name"`
 	TargetProject        string
 	Status               api.BatchStatusType
 	StatusString         string
@@ -33,8 +33,8 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, name can not be empty")
 	}
 
-	if b.TargetID < 0 {
-		return NewValidationErrf("Invalid batch, target id can not be negative")
+	if b.Target == "" {
+		return NewValidationErrf("Invalid batch, target can not be empty")
 	}
 
 	if b.Status < api.BATCHSTATUS_UNKNOWN || b.Status > api.BATCHSTATUS_ERROR {

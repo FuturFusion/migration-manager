@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
 	"github.com/FuturFusion/migration-manager/internal/server/request"
@@ -192,6 +193,11 @@ func (d *Daemon) Start() error {
 	}
 
 	dbWithTransaction := transaction.Enable(d.db.DB)
+
+	entities.PreparedStmts, err = entities.PrepareStmts(dbWithTransaction, false)
+	if err != nil {
+		return fmt.Errorf("Failed to prepare statements: %w", err)
+	}
 
 	d.network = migration.NewNetworkService(sqlite.NewNetwork(dbWithTransaction))
 	d.target = migration.NewTargetService(sqlite.NewTarget(dbWithTransaction))

@@ -64,7 +64,7 @@ func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
 	}
 
 	// Get the instance.
-	i, err := d.instance.GetByID(r.Context(), instanceUUID)
+	i, err := d.instance.GetByUUID(r.Context(), instanceUUID, true)
 	if err != nil {
 		return false
 	}
@@ -188,7 +188,6 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 				InstanceName:          queueItem.InstanceName,
 				MigrationStatus:       queueItem.MigrationStatus,
 				MigrationStatusString: queueItem.MigrationStatusString,
-				BatchID:               queueItem.BatchID,
 				BatchName:             queueItem.BatchName,
 			})
 		}
@@ -256,7 +255,6 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		InstanceName:          queueItem.InstanceName,
 		MigrationStatus:       queueItem.MigrationStatus,
 		MigrationStatusString: queueItem.MigrationStatusString,
-		BatchID:               queueItem.BatchID,
 		BatchName:             queueItem.BatchName,
 	}, queueItem)
 }
@@ -309,7 +307,6 @@ func queueWorkerCommandPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	apiSource := api.Source{
-		DatabaseID: workerCommand.Source.ID,
 		Name:       workerCommand.Source.Name,
 		SourceType: workerCommand.Source.SourceType,
 		Properties: workerCommand.Source.Properties,

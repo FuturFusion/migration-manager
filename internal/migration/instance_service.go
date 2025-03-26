@@ -53,48 +53,166 @@ func (s instanceService) Create(ctx context.Context, instance Instance) (Instanc
 		return Instance{}, err
 	}
 
-	return s.repo.Create(ctx, instance)
+	instance.ID, err = s.repo.Create(ctx, instance)
+	if err != nil {
+		return Instance{}, nil
+	}
+
+	return instance, nil
 }
 
-func (s instanceService) GetAll(ctx context.Context) (Instances, error) {
-	return s.repo.GetAll(ctx)
+func (s instanceService) GetAll(ctx context.Context, withOverrides bool) (Instances, error) {
+	var instances Instances
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		instances, err = s.repo.GetAll(ctx)
+		if err != nil {
+			return err
+		}
+
+		if withOverrides {
+			for i, inst := range instances {
+				instances[i].Overrides, err = s.repo.GetOverridesByUUID(ctx, inst.UUID)
+				if err != nil && !errors.Is(err, ErrNotFound) {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return instances, nil
 }
 
-func (s instanceService) GetAllByState(ctx context.Context, status api.MigrationStatusType) (Instances, error) {
-	return s.repo.GetAllByState(ctx, status)
+func (s instanceService) GetAllByState(ctx context.Context, status api.MigrationStatusType, withOverrides bool) (Instances, error) {
+	var instances Instances
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		instances, err = s.repo.GetAllByState(ctx, status)
+		if err != nil {
+			return err
+		}
+
+		if withOverrides {
+			for i, inst := range instances {
+				instances[i].Overrides, err = s.repo.GetOverridesByUUID(ctx, inst.UUID)
+				if err != nil && !errors.Is(err, ErrNotFound) {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return instances, nil
 }
 
-func (s instanceService) GetAllByBatchID(ctx context.Context, batchID int) (Instances, error) {
-	return s.repo.GetAllByBatchID(ctx, batchID)
+func (s instanceService) GetAllByBatch(ctx context.Context, batch string, withOverrides bool) (Instances, error) {
+	var instances Instances
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		instances, err = s.repo.GetAllByBatch(ctx, batch)
+		if err != nil {
+			return err
+		}
+
+		if withOverrides {
+			for i, inst := range instances {
+				instances[i].Overrides, err = s.repo.GetOverridesByUUID(ctx, inst.UUID)
+				if err != nil && !errors.Is(err, ErrNotFound) {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return instances, nil
 }
 
 func (s instanceService) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
 	return s.repo.GetAllUUIDs(ctx)
 }
 
-func (s instanceService) GetAllUnassigned(ctx context.Context) (Instances, error) {
-	return s.repo.GetAllUnassigned(ctx)
-}
-
-func (s instanceService) GetByID(ctx context.Context, id uuid.UUID) (Instance, error) {
-	return s.repo.GetByID(ctx, id)
-}
-
-func (s instanceService) GetByIDWithDetails(ctx context.Context, id uuid.UUID) (InstanceWithDetails, error) {
-	var instanceWithDetails InstanceWithDetails
-
+func (s instanceService) GetAllUnassigned(ctx context.Context, withOverrides bool) (Instances, error) {
+	var instances Instances
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		instance, err := s.repo.GetByID(ctx, id)
+		var err error
+		instances, err = s.repo.GetAllUnassigned(ctx)
 		if err != nil {
 			return err
 		}
 
-		overrides, err := s.repo.GetOverridesByID(ctx, id)
+		if withOverrides {
+			for i, inst := range instances {
+				instances[i].Overrides, err = s.repo.GetOverridesByUUID(ctx, inst.UUID)
+				if err != nil && !errors.Is(err, ErrNotFound) {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return instances, nil
+}
+
+func (s instanceService) GetByUUID(ctx context.Context, id uuid.UUID, withOverrides bool) (*Instance, error) {
+	var instance *Instance
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		instance, err = s.repo.GetByUUID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if withOverrides {
+			instance.Overrides, err = s.repo.GetOverridesByUUID(ctx, id)
+			if err != nil && !errors.Is(err, ErrNotFound) {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return instance, nil
+}
+
+func (s instanceService) GetByUUIDWithDetails(ctx context.Context, id uuid.UUID) (InstanceWithDetails, error) {
+	var instanceWithDetails InstanceWithDetails
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		instance, err := s.repo.GetByUUID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		overrides, err := s.repo.GetOverridesByUUID(ctx, id)
 		if err != nil && !errors.Is(err, ErrNotFound) {
 			return err
 		}
 
-		source, err := s.source.GetByID(ctx, instance.SourceID)
+		source, err := s.source.GetByName(ctx, instance.Source)
 		if err != nil {
 			return err
 		}
@@ -122,7 +240,10 @@ func (s instanceService) GetByIDWithDetails(ctx context.Context, id uuid.UUID) (
 				Name:       source.Name,
 				SourceType: source.SourceType,
 			},
-			Overrides: overrides,
+		}
+
+		if overrides != nil {
+			instanceWithDetails.Overrides = *overrides
 		}
 
 		return nil
@@ -136,16 +257,16 @@ func (s instanceService) GetByIDWithDetails(ctx context.Context, id uuid.UUID) (
 
 func (s instanceService) UnassignFromBatch(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		instance, err := s.GetByID(ctx, id)
+		instance, err := s.GetByUUID(ctx, id, false)
 		if err != nil {
 			return err
 		}
 
-		instance.BatchID = nil
+		instance.Batch = nil
 		instance.MigrationStatus = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
 		instance.MigrationStatusString = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String()
 
-		_, err = s.repo.UpdateByID(ctx, instance)
+		err = s.repo.Update(ctx, *instance)
 		if err != nil {
 			return err
 		}
@@ -154,55 +275,71 @@ func (s instanceService) UnassignFromBatch(ctx context.Context, id uuid.UUID) er
 	})
 }
 
-func (s instanceService) UpdateByID(ctx context.Context, instance Instance) (Instance, error) {
+func (s instanceService) Update(ctx context.Context, instance Instance) error {
 	err := instance.Validate()
 	if err != nil {
-		return Instance{}, err
+		return err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		oldInstance, err := s.repo.GetByID(ctx, instance.UUID)
+		oldInstance, err := s.repo.GetByUUID(ctx, instance.UUID)
 		if err != nil {
 			return err
 		}
 
-		if oldInstance.BatchID != nil {
+		if oldInstance.Batch != nil {
 			return fmt.Errorf("Instance %q is already assigned to a batch: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
 		}
 
-		instance, err = s.repo.UpdateByID(ctx, instance)
-
-		return err
+		return s.repo.Update(ctx, instance)
 	})
 	if err != nil {
-		return Instance{}, err
+		return err
+	}
+
+	return nil
+}
+
+func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (*Instance, error) {
+	if status < api.MIGRATIONSTATUS_UNKNOWN || status > api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
+		return nil, NewValidationErrf("Invalid instance, %d is not a valid migration status", status)
+	}
+
+	// FIXME: ensure only valid transitions according to the state machine are possible
+	var instance *Instance
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		instance, err = s.repo.GetByUUID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("Failed to get instance '%s': %w", id, err)
+		}
+
+		instance.MigrationStatus = status
+		instance.MigrationStatusString = statusString
+		instance.NeedsDiskImport = needsDiskImport
+
+		return s.repo.Update(ctx, *instance)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return instance, nil
 }
 
-func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (Instance, error) {
-	if status < api.MIGRATIONSTATUS_UNKNOWN || status > api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
-		return Instance{}, NewValidationErrf("Invalid instance, %d is not a valid migration status", status)
-	}
-
-	// FIXME: ensure only valid transitions according to the state machine are possible
-
-	return s.repo.UpdateStatusByUUID(ctx, id, status, statusString, needsDiskImport)
-}
-
 func (s instanceService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseType api.WorkerResponseType, statusString string) (Instance, error) {
-	var instance Instance
+	var instance *Instance
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the instance.
-		instance, err := s.GetByID(ctx, id)
+		var err error
+		instance, err = s.GetByUUID(ctx, id, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get instance '%s': %w", id, err)
 		}
 
 		// Don't update instances that aren't in the migration queue.
-		if instance.BatchID == nil || !instance.IsMigrating() {
+		if instance.Batch == nil || !instance.IsMigrating() {
 			return fmt.Errorf("Instance '%s' isn't in the migration queue: %w", instance.GetName(), ErrNotFound)
 		}
 
@@ -229,9 +366,10 @@ func (s instanceService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, 
 		}
 
 		// Update instance in the database.
-		instance, err = s.UpdateStatusByUUID(ctx, id, instance.MigrationStatus, instance.MigrationStatusString, instance.NeedsDiskImport)
+		uuid := instance.UUID
+		instance, err = s.UpdateStatusByUUID(ctx, uuid, instance.MigrationStatus, instance.MigrationStatusString, instance.NeedsDiskImport)
 		if err != nil {
-			return fmt.Errorf("Failed updating instance '%s': %w", instance.UUID, err)
+			return fmt.Errorf("Failed updating instance '%s': %w", uuid, err)
 		}
 
 		return nil
@@ -240,33 +378,33 @@ func (s instanceService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, 
 		return Instance{}, err
 	}
 
-	return instance, nil
+	return *instance, nil
 }
 
-func (s instanceService) DeleteByID(ctx context.Context, id uuid.UUID) error {
+func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		oldInstance, err := s.repo.GetByID(ctx, id)
+		oldInstance, err := s.repo.GetByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
 
-		if oldInstance.BatchID != nil || oldInstance.IsMigrating() {
+		if oldInstance.Batch != nil || oldInstance.IsMigrating() {
 			return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
 		}
 
-		err = s.repo.DeleteOverridesByID(ctx, id)
+		err = s.repo.DeleteOverridesByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
 
-		return s.repo.DeleteByID(ctx, id)
+		return s.repo.DeleteByUUID(ctx, id)
 	})
 }
 
-func (s instanceService) CreateOverrides(ctx context.Context, overrides Overrides) (Overrides, error) {
+func (s instanceService) CreateOverrides(ctx context.Context, overrides InstanceOverride) (InstanceOverride, error) {
 	err := overrides.Validate()
 	if err != nil {
-		return Overrides{}, err
+		return InstanceOverride{}, err
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
@@ -279,7 +417,7 @@ func (s instanceService) CreateOverrides(ctx context.Context, overrides Override
 			}
 		}
 
-		overrides, err = s.repo.CreateOverrides(ctx, overrides)
+		overrides.ID, err = s.repo.CreateOverrides(ctx, overrides)
 		if err != nil {
 			return fmt.Errorf("Failed to create overrides: %w", err)
 		}
@@ -287,26 +425,26 @@ func (s instanceService) CreateOverrides(ctx context.Context, overrides Override
 		return nil
 	})
 	if err != nil {
-		return Overrides{}, err
+		return InstanceOverride{}, err
 	}
 
 	return overrides, nil
 }
 
-func (s instanceService) GetOverridesByID(ctx context.Context, id uuid.UUID) (Overrides, error) {
-	return s.repo.GetOverridesByID(ctx, id)
+func (s instanceService) GetOverridesByUUID(ctx context.Context, id uuid.UUID) (*InstanceOverride, error) {
+	return s.repo.GetOverridesByUUID(ctx, id)
 }
 
-func (s instanceService) UpdateOverridesByID(ctx context.Context, overrides Overrides) (Overrides, error) {
+func (s instanceService) UpdateOverrides(ctx context.Context, overrides InstanceOverride) error {
 	err := overrides.Validate()
 	if err != nil {
-		return Overrides{}, err
+		return err
 	}
 
-	err = transaction.Do(ctx, func(ctx context.Context) error {
+	return transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 
-		currentOverrides, err := s.GetOverridesByID(ctx, overrides.UUID)
+		currentOverrides, err := s.GetOverridesByUUID(ctx, overrides.UUID)
 		if err != nil {
 			return err
 		}
@@ -323,30 +461,24 @@ func (s instanceService) UpdateOverridesByID(ctx context.Context, overrides Over
 			}
 		}
 
-		overrides, err = s.repo.UpdateOverridesByID(ctx, overrides)
-		return err
+		return s.repo.UpdateOverrides(ctx, overrides)
 	})
-	if err != nil {
-		return Overrides{}, err
-	}
-
-	return overrides, nil
 }
 
-func (s instanceService) DeleteOverridesByID(ctx context.Context, id uuid.UUID) error {
+func (s instanceService) DeleteOverridesByUUID(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		overrides, err := s.GetOverridesByID(ctx, id)
+		overrides, err := s.GetOverridesByUUID(ctx, id)
 		if err != nil {
 			return err
 		}
 
 		if overrides.DisableMigration {
-			_, err = s.UpdateStatusByUUID(ctx, id, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), true)
+			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), true)
 			if err != nil {
 				return err
 			}
 		}
 
-		return s.repo.DeleteOverridesByID(ctx, id)
+		return s.repo.DeleteOverridesByUUID(ctx, id)
 	})
 }

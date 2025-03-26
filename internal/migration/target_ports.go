@@ -13,9 +13,8 @@ type TargetService interface {
 	Create(ctx context.Context, target Target) (Target, error)
 	GetAll(ctx context.Context) (Targets, error)
 	GetAllNames(ctx context.Context) ([]string, error)
-	GetByID(ctx context.Context, id int) (Target, error)
-	GetByName(ctx context.Context, name string) (Target, error)
-	UpdateByID(ctx context.Context, target Target) (Target, error)
+	GetByName(ctx context.Context, name string) (*Target, error)
+	Update(ctx context.Context, target Target) error
 	DeleteByName(ctx context.Context, name string) error
 }
 
@@ -24,12 +23,12 @@ type TargetService interface {
 // disabled go:generate go run github.com/hexdigest/gowrap/cmd/gowrap gen -g -i TargetRepo -t prometheus -o ./repo/middleware/target_prometheus_gen.go
 
 type TargetRepo interface {
-	Create(ctx context.Context, target Target) (Target, error)
+	Create(ctx context.Context, target Target) (int64, error)
 	GetAll(ctx context.Context) (Targets, error)
 	GetAllNames(ctx context.Context) ([]string, error)
-	GetByID(ctx context.Context, id int) (Target, error)
-	GetByName(ctx context.Context, name string) (Target, error)
-	UpdateByID(ctx context.Context, target Target) (Target, error)
+	GetByName(ctx context.Context, name string) (*Target, error)
+	Update(ctx context.Context, target Target) error
+	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 }
 

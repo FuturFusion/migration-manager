@@ -7,7 +7,7 @@ import (
 	"github.com/lxc/incus/v6/shared/api"
 )
 
-func mapDBError(err error) error {
+func MapDBError(err error) error {
 	if err == nil {
 		return nil
 	}

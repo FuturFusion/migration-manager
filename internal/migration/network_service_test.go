@@ -78,8 +78,8 @@ func TestNetworkService_Create(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.NetworkRepoMock{
-				CreateFunc: func(ctx context.Context, in migration.Network) (migration.Network, error) {
-					return tc.repoCreateNetwork, tc.repoCreateErr
+				CreateFunc: func(ctx context.Context, in migration.Network) (int64, error) {
+					return tc.repoCreateNetwork.ID, tc.repoCreateErr
 				},
 			}
 
@@ -198,57 +198,11 @@ func TestNetworkService_GetAllNames(t *testing.T) {
 	}
 }
 
-func TestNetworkService_GetByID(t *testing.T) {
-	tests := []struct {
-		name               string
-		repoGetByIDNetwork migration.Network
-		repoGetByIDErr     error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name: "success",
-			repoGetByIDNetwork: migration.Network{
-				ID:   1,
-				Name: "one",
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name:           "error - repo",
-			repoGetByIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &mock.NetworkRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (migration.Network, error) {
-					return tc.repoGetByIDNetwork, tc.repoGetByIDErr
-				},
-			}
-
-			networkSvc := migration.NewNetworkService(repo)
-
-			// Run test
-			network, err := networkSvc.GetByID(context.Background(), 1)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDNetwork, network)
-		})
-	}
-}
-
 func TestNetworkService_GetByName(t *testing.T) {
 	tests := []struct {
 		name                 string
 		nameArg              string
-		repoGetByNameNetwork migration.Network
+		repoGetByNameNetwork *migration.Network
 		repoGetByNameErr     error
 
 		assertErr require.ErrorAssertionFunc
@@ -256,7 +210,7 @@ func TestNetworkService_GetByName(t *testing.T) {
 		{
 			name:    "success",
 			nameArg: "one",
-			repoGetByNameNetwork: migration.Network{
+			repoGetByNameNetwork: &migration.Network{
 				ID:   1,
 				Name: "one",
 			},
@@ -284,7 +238,7 @@ func TestNetworkService_GetByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.NetworkRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (migration.Network, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Network, error) {
 					return tc.repoGetByNameNetwork, tc.repoGetByNameErr
 				},
 			}
@@ -303,21 +257,15 @@ func TestNetworkService_GetByName(t *testing.T) {
 
 func TestNetworkService_UpdateByID(t *testing.T) {
 	tests := []struct {
-		name              string
-		network           migration.Network
-		repoUpdateNetwork migration.Network
-		repoUpdateErr     error
+		name          string
+		network       migration.Network
+		repoUpdateErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
 			network: migration.Network{
-				ID:     1,
-				Name:   "one",
-				Config: map[string]string{},
-			},
-			repoUpdateNetwork: migration.Network{
 				ID:     1,
 				Name:   "one",
 				Config: map[string]string{},
@@ -368,19 +316,18 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.NetworkRepoMock{
-				UpdateByIDFunc: func(ctx context.Context, in migration.Network) (migration.Network, error) {
-					return tc.repoUpdateNetwork, tc.repoUpdateErr
+				UpdateFunc: func(ctx context.Context, in migration.Network) error {
+					return tc.repoUpdateErr
 				},
 			}
 
 			networkSvc := migration.NewNetworkService(repo)
 
 			// Run test
-			network, err := networkSvc.UpdateByID(context.Background(), tc.network)
+			err := networkSvc.Update(context.Background(), tc.network)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpdateNetwork, network)
 		})
 	}
 }

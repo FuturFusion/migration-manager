@@ -17,7 +17,7 @@ const (
 	BATCHSTATUS_ERROR
 )
 
-// Implement the stringer interface.
+// String implements the stringer interface.
 func (b BatchStatusType) String() string {
 	switch b {
 	case BATCHSTATUS_UNKNOWN:
@@ -46,10 +46,6 @@ type Batch struct {
 	// A human-friendly name for this batch
 	// Example: MyBatch
 	Name string `json:"name" yaml:"name"`
-
-	// An opaque integer identifier for the batch
-	// Example: 123
-	DatabaseID int `json:"database_id" yaml:"database_id"`
 
 	// The destination target name to be used by all instances in this batch
 	// Example: Mytarget

@@ -10,6 +10,8 @@ import (
 	dbdriver "github.com/FuturFusion/migration-manager/internal/db/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -33,18 +35,22 @@ func TestTargetDatabaseActions(t *testing.T) {
 	_, err = dbschema.EnsureSchema(db, tmpDir)
 	require.NoError(t, err)
 
-	target := sqlite.NewTarget(db)
+	tx := transaction.Enable(db)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	target := sqlite.NewTarget(tx)
 
 	// Add incusTargetA.
-	incusTargetA, err = target.Create(ctx, incusTargetA)
+	incusTargetA.ID, err = target.Create(ctx, incusTargetA)
 	require.NoError(t, err)
 
 	// Add incusTargetB.
-	incusTargetB, err = target.Create(ctx, incusTargetB)
+	incusTargetB.ID, err = target.Create(ctx, incusTargetB)
 	require.NoError(t, err)
 
 	// Add incusTargetC.
-	incusTargetC, err = target.Create(ctx, incusTargetC)
+	incusTargetC.ID, err = target.Create(ctx, incusTargetC)
 	require.NoError(t, err)
 
 	// Ensure we have three entries
@@ -61,24 +67,22 @@ func TestTargetDatabaseActions(t *testing.T) {
 	// Should get back incusTargetA unchanged.
 	dbIncusTargetA, err := target.GetByName(ctx, incusTargetA.Name)
 	require.NoError(t, err)
-	require.Equal(t, incusTargetA, dbIncusTargetA)
+	require.Equal(t, incusTargetA, *dbIncusTargetA)
 
-	dbIncusTargetA, err = target.GetByID(ctx, incusTargetA.ID)
+	dbIncusTargetA, err = target.GetByName(ctx, incusTargetA.Name)
 	require.NoError(t, err)
-	require.Equal(t, incusTargetA, dbIncusTargetA)
+	require.Equal(t, incusTargetA, *dbIncusTargetA)
 
 	dbIncusTargetC, err := target.GetByName(ctx, incusTargetC.Name)
 	require.NoError(t, err)
-	require.Equal(t, incusTargetC, dbIncusTargetC)
+	require.Equal(t, incusTargetC, *dbIncusTargetC)
 
 	// Test updating a target.
 	incusTargetC.Properties = []byte(`{"endpoint": "https://127.0.0.1:6443", "connectivity_status": 1}`)
-	dbIncusTargetC, err = target.UpdateByID(ctx, incusTargetC)
-	require.Equal(t, incusTargetC, dbIncusTargetC)
-	require.NoError(t, err)
+	err = target.Update(ctx, incusTargetC)
 	dbIncusTargetC, err = target.GetByName(ctx, incusTargetC.Name)
 	require.NoError(t, err)
-	require.Equal(t, incusTargetC, dbIncusTargetC)
+	require.Equal(t, incusTargetC, *dbIncusTargetC)
 
 	// Delete a target.
 	err = target.DeleteByName(ctx, incusTargetA.Name)
@@ -96,7 +100,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a target that doesn't exist.
-	_, err = target.UpdateByID(ctx, incusTargetA)
+	err = target.Update(ctx, incusTargetA)
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate target.

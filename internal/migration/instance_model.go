@@ -4,18 +4,53 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type Instance struct {
-	api.Instance `yaml:",inline"`
+	ID                    int64
+	UUID                  uuid.UUID `db:"primary=yes"`
+	InventoryPath         string
+	Annotation            string
+	MigrationStatus       api.MigrationStatusType
+	MigrationStatusString string
+	LastUpdateFromSource  time.Time
+	Source                string  `db:"join=sources.name"`
+	Batch                 *string `db:"leftjoin=batches.name"`
+	GuestToolsVersion     int
+	Architecture          string
+	HardwareVersion       string
+	OS                    string
+	OSVersion             string
+	Devices               []api.InstanceDeviceInfo   `db:"marshal=json"`
+	Disks                 []api.InstanceDiskInfo     `db:"marshal=json"`
+	NICs                  []api.InstanceNICInfo      `db:"marshal=json&sql=instances.nics"`
+	Snapshots             []api.InstanceSnapshotInfo `db:"marshal=json"`
+	CPU                   api.InstanceCPUInfo        `db:"marshal=json&sql=instances.cpu"`
+	Memory                api.InstanceMemoryInfo     `db:"marshal=json"`
+	UseLegacyBios         bool
+	SecureBootEnabled     bool
+	TPMPresent            bool
 
 	NeedsDiskImport bool
 	SecretToken     uuid.UUID
-	SourceID        int
+
+	Overrides *InstanceOverride `db:"ignore"`
+}
+
+type InstanceOverride struct {
+	ID               int64
+	UUID             uuid.UUID `db:"primary=yes"`
+	LastUpdate       time.Time
+	Comment          string
+	NumberCPUs       int `db:"sql=instance_overrides.number_cpus"`
+	MemoryInBytes    int64
+	DisableMigration bool
 }
 
 type InstanceWithDetails struct {
@@ -38,7 +73,7 @@ type InstanceWithDetails struct {
 	TPMPresent        bool
 
 	Source    Source
-	Overrides Overrides
+	Overrides InstanceOverride
 }
 
 func (i Instance) Validate() error {
@@ -54,8 +89,8 @@ func (i Instance) Validate() error {
 		return NewValidationErrf("Invalid instance, inventory path can not be empty")
 	}
 
-	if i.SourceID <= 0 {
-		return NewValidationErrf("Invalid instance, source id can not be 0 or negative")
+	if i.Source == "" {
+		return NewValidationErrf("Invalid instance, source id can not be empty")
 	}
 
 	if i.MigrationStatus < api.MIGRATIONSTATUS_UNKNOWN || i.MigrationStatus > api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
@@ -67,7 +102,7 @@ func (i Instance) Validate() error {
 
 var nonalpha = regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
 
-// Returns the name of the instance, which may not be unique among all instances for a given source.
+// GetName returns the name of the instance, which may not be unique among all instances for a given source.
 // If a unique, human-readable identifier is needed, use the InventoryPath property.
 func (i Instance) GetName() string {
 	// Get the last part of the inventory path to use as a base for the instance name.
@@ -102,7 +137,7 @@ func (i Instance) IsMigrating() bool {
 	}
 }
 
-// The mapping of OS version strings to OS types is determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
+// GetOSType returns the OS type, as determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
 func (i *Instance) GetOSType() api.OSType {
 	if strings.HasPrefix(i.OS, "win") {
 		return api.OSTYPE_WINDOWS
@@ -113,14 +148,54 @@ func (i *Instance) GetOSType() api.OSType {
 
 type Instances []Instance
 
-type Overrides struct {
-	api.InstanceOverride `yaml:",inline"`
-}
-
-func (o Overrides) Validate() error {
+func (o InstanceOverride) Validate() error {
 	if o.UUID == uuid.Nil {
 		return NewValidationErrf("Invalid instance overrides, UUID can not be empty")
 	}
 
 	return nil
+}
+
+func (i Instance) ToAPI() api.Instance {
+	apiInst := api.Instance{
+		UUID:                  i.UUID,
+		InventoryPath:         i.InventoryPath,
+		Annotation:            i.Annotation,
+		MigrationStatus:       i.MigrationStatus,
+		MigrationStatusString: i.MigrationStatusString,
+		LastUpdateFromSource:  i.LastUpdateFromSource,
+		Source:                i.Source,
+		Batch:                 i.Batch,
+		GuestToolsVersion:     i.GuestToolsVersion,
+		Architecture:          i.Architecture,
+		HardwareVersion:       i.HardwareVersion,
+		OS:                    i.OS,
+		OSVersion:             i.OSVersion,
+		Devices:               i.Devices,
+		Disks:                 i.Disks,
+		NICs:                  i.NICs,
+		Snapshots:             i.Snapshots,
+		CPU:                   i.CPU,
+		Memory:                i.Memory,
+		UseLegacyBios:         i.UseLegacyBios,
+		SecureBootEnabled:     i.SecureBootEnabled,
+		TPMPresent:            i.TPMPresent,
+	}
+
+	if i.Overrides != nil {
+		apiInst.Overrides = ptr.To(i.Overrides.ToAPI())
+	}
+
+	return apiInst
+}
+
+func (o InstanceOverride) ToAPI() api.InstanceOverride {
+	return api.InstanceOverride{
+		UUID:             o.UUID,
+		LastUpdate:       o.LastUpdate,
+		Comment:          o.Comment,
+		NumberCPUs:       o.NumberCPUs,
+		MemoryInBytes:    o.MemoryInBytes,
+		DisableMigration: o.DisableMigration,
+	}
 }

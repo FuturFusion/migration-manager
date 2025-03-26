@@ -176,19 +176,22 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		}
 
 		arch := "x86_64"
-		if guestInfo["architecture"] == "X86" {
+		switch guestInfo["architecture"] {
+		case "X86":
 			if guestInfo["bits"] == "64" {
 				arch = "x86_64"
 			} else {
 				arch = "i686"
 			}
-		} else if guestInfo["architecture"] == "Arm" {
+
+		case "Arm":
 			if guestInfo["bits"] == "64" {
 				arch = "aarch64"
 			} else {
 				arch = "armv8l"
 			}
-		} else {
+
+		default:
 			slog.Debug("Unable to determine architecture; defaulting to x86_64", slog.String("name", vmProps.Summary.Config.Name), slog.Any("instance", UUID), slog.String("source", s.Name))
 		}
 
@@ -366,38 +369,36 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 		secretToken, _ := uuid.NewRandom()
 		ret = append(ret, migration.Instance{
-			Instance: api.Instance{
-				UUID:                  UUID,
-				InventoryPath:         vm.InventoryPath,
-				Annotation:            vmProps.Config.Annotation,
-				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-				LastUpdateFromSource:  time.Now().UTC(),
-				GuestToolsVersion:     guestToolsVersion,
-				Architecture:          arch,
-				HardwareVersion:       vmProps.Summary.Config.HwVersion,
-				OS:                    strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
-				OSVersion:             vmProps.Summary.Config.GuestFullName,
-				Devices:               devices,
-				Disks:                 disks,
-				NICs:                  nics,
-				Snapshots:             snapshots,
-				CPU: api.InstanceCPUInfo{
-					NumberCPUs:             int(vmProps.Config.Hardware.NumCPU),
-					CPUAffinity:            cpuAffinity,
-					NumberOfCoresPerSocket: int(numberOfCoresPerSocket),
-				},
-				Memory: api.InstanceMemoryInfo{
-					MemoryInBytes:            int64(vmProps.Summary.Config.MemorySizeMB) * 1024 * 1024,
-					MemoryReservationInBytes: int64(vmProps.Summary.Config.MemoryReservation) * 1024 * 1024,
-				},
-				UseLegacyBios:     useLegacyBios,
-				SecureBootEnabled: secureBootEnabled,
-				TPMPresent:        tpmPresent,
+			UUID:                  UUID,
+			InventoryPath:         vm.InventoryPath,
+			Annotation:            vmProps.Config.Annotation,
+			MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+			MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
+			LastUpdateFromSource:  time.Now().UTC(),
+			GuestToolsVersion:     guestToolsVersion,
+			Architecture:          arch,
+			HardwareVersion:       vmProps.Summary.Config.HwVersion,
+			OS:                    strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
+			OSVersion:             vmProps.Summary.Config.GuestFullName,
+			Devices:               devices,
+			Disks:                 disks,
+			NICs:                  nics,
+			Snapshots:             snapshots,
+			CPU: api.InstanceCPUInfo{
+				NumberCPUs:             int(vmProps.Config.Hardware.NumCPU),
+				CPUAffinity:            cpuAffinity,
+				NumberOfCoresPerSocket: int(numberOfCoresPerSocket),
 			},
-			NeedsDiskImport: true,
-			SecretToken:     secretToken,
-			SourceID:        s.DatabaseID,
+			Memory: api.InstanceMemoryInfo{
+				MemoryInBytes:            int64(vmProps.Summary.Config.MemorySizeMB) * 1024 * 1024,
+				MemoryReservationInBytes: int64(vmProps.Summary.Config.MemoryReservation) * 1024 * 1024,
+			},
+			UseLegacyBios:     useLegacyBios,
+			SecureBootEnabled: secureBootEnabled,
+			TPMPresent:        tpmPresent,
+			NeedsDiskImport:   true,
+			SecretToken:       secretToken,
+			Source:            s.Name,
 		})
 	}
 

@@ -26,14 +26,14 @@ func NewNetworkRepoWithSlog(base _sourceMigration.NetworkRepo, log *slog.Logger)
 }
 
 // Create implements _sourceMigration.NetworkRepo
-func (_d NetworkRepoWithSlog) Create(ctx context.Context, network _sourceMigration.Network) (n1 _sourceMigration.Network, err error) {
+func (_d NetworkRepoWithSlog) Create(ctx context.Context, network _sourceMigration.Network) (i1 int64, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("network", network),
 	).Debug("NetworkRepoWithSlog: calling Create")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("n1", n1),
+			slog.Int64("i1", i1),
 			slog.Any("err", err),
 		)
 		if err != nil {
@@ -102,35 +102,15 @@ func (_d NetworkRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, er
 	return _d._base.GetAllNames(ctx)
 }
 
-// GetByID implements _sourceMigration.NetworkRepo
-func (_d NetworkRepoWithSlog) GetByID(ctx context.Context, id int) (n1 _sourceMigration.Network, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Int("id", id),
-	).Debug("NetworkRepoWithSlog: calling GetByID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("n1", n1),
-			slog.Any("err", err),
-		)
-		if err != nil {
-			log.Error("NetworkRepoWithSlog: method GetByID returned an error")
-		} else {
-			log.Debug("NetworkRepoWithSlog: method GetByID finished")
-		}
-	}()
-	return _d._base.GetByID(ctx, id)
-}
-
 // GetByName implements _sourceMigration.NetworkRepo
-func (_d NetworkRepoWithSlog) GetByName(ctx context.Context, name string) (n1 _sourceMigration.Network, err error) {
+func (_d NetworkRepoWithSlog) GetByName(ctx context.Context, name string) (np1 *_sourceMigration.Network, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.String("name", name),
 	).Debug("NetworkRepoWithSlog: calling GetByName")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("n1", n1),
+			slog.Any("np1", np1),
 			slog.Any("err", err),
 		)
 		if err != nil {
@@ -142,22 +122,41 @@ func (_d NetworkRepoWithSlog) GetByName(ctx context.Context, name string) (n1 _s
 	return _d._base.GetByName(ctx, name)
 }
 
-// UpdateByID implements _sourceMigration.NetworkRepo
-func (_d NetworkRepoWithSlog) UpdateByID(ctx context.Context, network _sourceMigration.Network) (n1 _sourceMigration.Network, err error) {
+// Rename implements _sourceMigration.NetworkRepo
+func (_d NetworkRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-		slog.Any("network", network),
-	).Debug("NetworkRepoWithSlog: calling UpdateByID")
+		slog.String("oldName", oldName),
+		slog.String("newName", newName),
+	).Debug("NetworkRepoWithSlog: calling Rename")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("n1", n1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("NetworkRepoWithSlog: method UpdateByID returned an error")
+			log.Error("NetworkRepoWithSlog: method Rename returned an error")
 		} else {
-			log.Debug("NetworkRepoWithSlog: method UpdateByID finished")
+			log.Debug("NetworkRepoWithSlog: method Rename finished")
 		}
 	}()
-	return _d._base.UpdateByID(ctx, network)
+	return _d._base.Rename(ctx, oldName, newName)
+}
+
+// Update implements _sourceMigration.NetworkRepo
+func (_d NetworkRepoWithSlog) Update(ctx context.Context, network _sourceMigration.Network) (err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("network", network),
+	).Debug("NetworkRepoWithSlog: calling Update")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("NetworkRepoWithSlog: method Update returned an error")
+		} else {
+			log.Debug("NetworkRepoWithSlog: method Update finished")
+		}
+	}()
+	return _d._base.Update(ctx, network)
 }

@@ -26,7 +26,7 @@ const (
 	EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC
 )
 
-// Implement the stringer interface.
+// String implements the stringer interface.
 func (e ExternalConnectivityStatus) String() string {
 	switch e {
 	case EXTERNALCONNECTIVITYSTATUS_UNKNOWN:

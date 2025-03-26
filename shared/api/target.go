@@ -14,7 +14,7 @@ const (
 	TARGETTYPE_INCUS
 )
 
-// Implement the stringer interface.
+// String implements the stringer interface.
 func (t TargetType) String() string {
 	switch t {
 	case TARGETTYPE_UNKNOWN:
@@ -33,10 +33,6 @@ type Target struct {
 	// A human-friendly name for this target
 	// Example: MyTarget
 	Name string `json:"name" yaml:"name"`
-
-	// An opaque integer identifier for the target
-	// Example: 123
-	DatabaseID int `json:"database_id" yaml:"database_id"`
 
 	// TargetType defines the type of the target
 	TargetType TargetType `json:"target_type" yaml:"target_type"`

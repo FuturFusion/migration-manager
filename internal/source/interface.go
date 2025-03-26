@@ -10,7 +10,7 @@ import (
 
 //go:generate go run github.com/matryer/moq -fmt goimports -out mock_gen.go -rm . Source
 
-// Interface definition for all migration manager sources.
+// Source interface definition for all migration manager sources.
 type Source interface {
 	// Connects to the source, using any source-specific details when the object was created.
 	//
@@ -39,12 +39,6 @@ type Source interface {
 
 	// Returns the human-readable name for this source.
 	GetName() string
-
-	// Returns a unique ID for this source that can be used when interacting with the database.
-	//
-	// Attempting to get an ID for a freshly-created source that hasn't yet been added to the database
-	// via AddSsource() or retrieved via GetSource()/GetAllSources() will return an error.
-	GetDatabaseID() (int, error)
 
 	// -----------------------------------------------
 

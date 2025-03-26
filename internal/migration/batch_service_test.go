@@ -27,13 +27,14 @@ func TestBatchService_Create(t *testing.T) {
 		{
 			name: "success",
 			batch: migration.Batch{
-				ID:                1,
-				Name:              "one",
-				IncludeExpression: "true",
+				ID:     1,
+				Name:   "one",
+				Target: "one", IncludeExpression: "true",
 			},
 			repoCreateBatch: migration.Batch{
 				ID:                1,
 				Name:              "one",
+				Target:            "one",
 				IncludeExpression: "true",
 			},
 
@@ -70,7 +71,7 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				TargetID:          -1, // invalid
+				Target:            "", // invalid
 				IncludeExpression: "true",
 			},
 
@@ -111,6 +112,7 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
+				Target:            "one",
 				IncludeExpression: "true",
 			},
 			repoCreateErr: boom.Error,
@@ -122,6 +124,7 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
+				Target:            "one",
 				IncludeExpression: "true",
 			},
 			instanceSvcGetAllByBatchIDErr: boom.Error,
@@ -134,16 +137,16 @@ func TestBatchService_Create(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.BatchRepoMock{
-				CreateFunc: func(ctx context.Context, in migration.Batch) (migration.Batch, error) {
-					return tc.repoCreateBatch, tc.repoCreateErr
+				CreateFunc: func(ctx context.Context, in migration.Batch) (int64, error) {
+					return tc.repoCreateBatch.ID, tc.repoCreateErr
 				},
 			}
 
 			instanceSvc := &InstanceServiceMock{
-				GetAllByBatchIDFunc: func(ctx context.Context, batchID int) (migration.Instances, error) {
+				GetAllByBatchFunc: func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
 					return nil, tc.instanceSvcGetAllByBatchIDErr
 				},
-				GetAllUnassignedFunc: func(ctx context.Context) (migration.Instances, error) {
+				GetAllUnassignedFunc: func(ctx context.Context, withOverrides bool) (migration.Instances, error) {
 					return nil, nil
 				},
 			}
@@ -320,60 +323,11 @@ func TestBatchService_GetAllNames(t *testing.T) {
 	}
 }
 
-func TestBatchService_GetByID(t *testing.T) {
-	tests := []struct {
-		name             string
-		idArg            int
-		repoGetByIDBatch migration.Batch
-		repoGetByIDErr   error
-
-		assertErr require.ErrorAssertionFunc
-	}{
-		{
-			name:  "success",
-			idArg: 1,
-			repoGetByIDBatch: migration.Batch{
-				ID:   1,
-				Name: "one",
-			},
-
-			assertErr: require.NoError,
-		},
-		{
-			name:           "error - repo",
-			idArg:          1,
-			repoGetByIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &mock.BatchRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (migration.Batch, error) {
-					return tc.repoGetByIDBatch, tc.repoGetByIDErr
-				},
-			}
-
-			batchSvc := migration.NewBatchService(repo, nil)
-
-			// Run test
-			batch, err := batchSvc.GetByID(context.Background(), tc.idArg)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.repoGetByIDBatch, batch)
-		})
-	}
-}
-
 func TestBatchService_GetByName(t *testing.T) {
 	tests := []struct {
 		name               string
 		nameArg            string
-		repoGetByNameBatch migration.Batch
+		repoGetByNameBatch *migration.Batch
 		repoGetByNameErr   error
 
 		assertErr require.ErrorAssertionFunc
@@ -381,7 +335,7 @@ func TestBatchService_GetByName(t *testing.T) {
 		{
 			name:    "success",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:   1,
 				Name: "one",
 			},
@@ -409,7 +363,7 @@ func TestBatchService_GetByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.BatchRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (migration.Batch, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 					return tc.repoGetByNameBatch, tc.repoGetByNameErr
 				},
 			}
@@ -430,9 +384,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 	tests := []struct {
 		name                          string
 		batch                         migration.Batch
-		repoGetByIDBatch              migration.Batch
-		repoGetByIDErr                error
-		repoUpdateBatch               migration.Batch
+		repoGetByNameBatch            *migration.Batch
+		repoGetByNameErr              error
 		repoUpdateErr                 error
 		instanceSvcGetAllByBatchIDErr error
 
@@ -443,18 +396,15 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "new one",
+				Target:            "one",
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
 			},
-			repoGetByIDBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
+				Target:            "one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				IncludeExpression: "true",
-			},
-			repoUpdateBatch: migration.Batch{
-				ID:                1,
-				Name:              "new one",
 				IncludeExpression: "true",
 			},
 
@@ -465,6 +415,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batch: migration.Batch{
 				ID:     -1, // invalid
 				Name:   "new one",
+				Target: "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
 
@@ -478,6 +429,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batch: migration.Batch{
 				ID:     1,
 				Name:   "", // empty
+				Target: "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
 
@@ -492,9 +444,10 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "new one",
 				Status:            api.BATCHSTATUS_DEFINED,
+				Target:            "one",
 				IncludeExpression: "true",
 			},
-			repoGetByIDErr: boom.Error,
+			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -504,12 +457,14 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "new one",
 				Status:            api.BATCHSTATUS_RUNNING,
+				Target:            "one",
 				IncludeExpression: "true",
 			},
-			repoGetByIDBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_RUNNING,
+				Target:            "one",
 				IncludeExpression: "true",
 			},
 
@@ -523,11 +478,13 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_DEFINED,
+				Target:            "one",
 				IncludeExpression: "true",
 			},
-			repoGetByIDBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:     1,
 				Name:   "one",
+				Target: "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
 			repoUpdateErr: boom.Error,
@@ -540,11 +497,13 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_DEFINED,
+				Target:            "one",
 				IncludeExpression: "true",
 			},
-			repoGetByIDBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:     1,
 				Name:   "one",
+				Target: "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
 			instanceSvcGetAllByBatchIDErr: boom.Error,
@@ -557,19 +516,19 @@ func TestBatchService_UpdateByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.BatchRepoMock{
-				GetByIDFunc: func(ctx context.Context, id int) (migration.Batch, error) {
-					return tc.repoGetByIDBatch, tc.repoGetByIDErr
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
+					return tc.repoGetByNameBatch, tc.repoGetByNameErr
 				},
-				UpdateByIDFunc: func(ctx context.Context, in migration.Batch) (migration.Batch, error) {
-					return tc.repoUpdateBatch, tc.repoUpdateErr
+				UpdateFunc: func(ctx context.Context, in migration.Batch) error {
+					return tc.repoUpdateErr
 				},
 			}
 
 			instanceSvc := &InstanceServiceMock{
-				GetAllByBatchIDFunc: func(ctx context.Context, batchID int) (migration.Instances, error) {
+				GetAllByBatchFunc: func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
 					return nil, tc.instanceSvcGetAllByBatchIDErr
 				},
-				GetAllUnassignedFunc: func(ctx context.Context) (migration.Instances, error) {
+				GetAllUnassignedFunc: func(ctx context.Context, withOverrides bool) (migration.Instances, error) {
 					return nil, nil
 				},
 			}
@@ -577,11 +536,10 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batchSvc := migration.NewBatchService(repo, instanceSvc)
 
 			// Run test
-			batch, err := batchSvc.UpdateByID(context.Background(), tc.batch)
+			err := batchSvc.Update(context.Background(), tc.batch)
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpdateBatch, batch)
 		})
 	}
 }
@@ -619,62 +577,46 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						// Matching instance, will get updated.
-						InventoryPath:   "/inventory/path/A",
-						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-					},
+					// Matching instance, will get updated.
+					InventoryPath:   "/inventory/path/A",
+					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 				{
-					Instance: api.Instance{
-						// Not matching instance, will be unassigned from batch
-						InventoryPath:   "/inventory/path/B",
-						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-					},
+					// Not matching instance, will be unassigned from batch
+					InventoryPath:   "/inventory/path/B",
+					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 				{
-					Instance: api.Instance{
-						// Instance in state "user disabled", will be skipped
-						InventoryPath:   "/inventory/path/A user disabled",
-						MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
-					},
+					// Instance in state "user disabled", will be skipped
+					InventoryPath:   "/inventory/path/A user disabled",
+					MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
 				},
 				{
-					Instance: api.Instance{
-						// Instance is already migrating, will be skipped
-						InventoryPath:   "/inventory/path/A already migrating",
-						MigrationStatus: api.MIGRATIONSTATUS_CREATING,
-					},
+					// Instance is already migrating, will be skipped
+					InventoryPath:   "/inventory/path/A already migrating",
+					MigrationStatus: api.MIGRATIONSTATUS_CREATING,
 				},
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						// Matching instance, will get updated.
-						InventoryPath:   "/inventory/path/A unassigned",
-						MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-					},
+					// Matching instance, will get updated.
+					InventoryPath:   "/inventory/path/A unassigned",
+					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				},
 				{
-					Instance: api.Instance{
-						// Matching instance, will get updated.
-						InventoryPath:   "/inventory/path/A unassigned idle state",
-						MigrationStatus: api.MIGRATIONSTATUS_IDLE,
-					},
+					// Matching instance, will get updated.
+					InventoryPath:   "/inventory/path/A unassigned idle state",
+					MigrationStatus: api.MIGRATIONSTATUS_IDLE,
 				},
 				{
-					Instance: api.Instance{
-						// Not matching instance, will stay unassigned from batch
-						InventoryPath:   "/inventory/path/B unassigned",
-						MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-					},
+					// Not matching instance, will stay unassigned from batch
+					InventoryPath:   "/inventory/path/B unassigned",
+					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				},
 				{
-					Instance: api.Instance{
-						// Instance in state "user disabled", will be skipped
-						InventoryPath:   "/inventory/path/A unassigned user disabled",
-						MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
-					},
+					// Instance in state "user disabled", will be skipped
+					InventoryPath:   "/inventory/path/A unassigned user disabled",
+					MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -740,10 +682,8 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						InventoryPath:   "/inventory/path/A",
-						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-					},
+					InventoryPath:   "/inventory/path/A",
+					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -763,10 +703,8 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						InventoryPath:   "/inventory/path/A",
-						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-					},
+					InventoryPath:   "/inventory/path/A",
+					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -789,10 +727,8 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						InventoryPath:   "/inventory/path/B",
-						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-					},
+					InventoryPath:   "/inventory/path/B",
+					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -832,10 +768,8 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						InventoryPath:   "/inventory/path/A",
-						MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-					},
+					InventoryPath:   "/inventory/path/A",
+					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -855,10 +789,8 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						InventoryPath:   "/inventory/path/A",
-						MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-					},
+					InventoryPath:   "/inventory/path/A",
+					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -881,10 +813,8 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						InventoryPath:   "/inventory/path/A",
-						MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-					},
+					InventoryPath:   "/inventory/path/A",
+					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				},
 			},
 			instanceSvcGetByIDWithDetails: []queue.Item[migration.InstanceWithDetails]{
@@ -911,21 +841,22 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			repo := &mock.BatchRepoMock{}
 
 			instanceSvc := &InstanceServiceMock{
-				GetAllByBatchIDFunc: func(ctx context.Context, batchID int) (migration.Instances, error) {
+				GetAllByBatchFunc: func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
 					return tc.instanceSvcGetAllByBatchIDInstances, tc.instanceSvcGetAllByBatchIDErr
 				},
-				GetAllUnassignedFunc: func(ctx context.Context) (migration.Instances, error) {
+				GetAllUnassignedFunc: func(ctx context.Context, withOverrides bool) (migration.Instances, error) {
 					return tc.instanceSvcGetAllUnassignedInstances, tc.instanceSvcGetAllUnassignedErr
 				},
-				GetByIDWithDetailsFunc: func(ctx context.Context, id uuid.UUID) (migration.InstanceWithDetails, error) {
+				GetByUUIDWithDetailsFunc: func(ctx context.Context, id uuid.UUID) (migration.InstanceWithDetails, error) {
 					return queue.Pop(t, &tc.instanceSvcGetByIDWithDetails)
 				},
 				UnassignFromBatchFunc: func(ctx context.Context, id uuid.UUID) error {
 					_, err := queue.Pop(t, &tc.instanceSvcUnassignFromBatch)
 					return err
 				},
-				UpdateByIDFunc: func(ctx context.Context, instance migration.Instance) (migration.Instance, error) {
-					return queue.Pop(t, &tc.instanceSvcUpdateByID)
+				UpdateFunc: func(ctx context.Context, instance migration.Instance) error {
+					_, err := queue.Pop(t, &tc.instanceSvcUpdateByID)
+					return err
 				},
 			}
 
@@ -945,20 +876,21 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 	}
 }
 
-func TestBatchService_UpdateStatusByID(t *testing.T) {
+func TestBatchService_UpdateStatusByName(t *testing.T) {
 	tests := []struct {
-		name                      string
-		idArg                     int
-		repoUpdateStatusByIDBatch migration.Batch
-		repoUpdateStatusByIDErr   error
+		name                        string
+		nameArg                     string
+		repoUpdateStatusByNameBatch *migration.Batch
+		repoUpdateStatusByNameErr   error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:  "success",
-			idArg: 1,
-			repoUpdateStatusByIDBatch: migration.Batch{
+			name:    "success",
+			nameArg: "one",
+			repoUpdateStatusByNameBatch: &migration.Batch{
 				ID:           1,
+				Name:         "one",
 				Status:       api.BATCHSTATUS_QUEUED,
 				StatusString: api.BATCHSTATUS_QUEUED.String(),
 			},
@@ -966,9 +898,9 @@ func TestBatchService_UpdateStatusByID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name:                    "error - repo",
-			idArg:                   1,
-			repoUpdateStatusByIDErr: boom.Error,
+			name:                      "error - repo",
+			nameArg:                   "one",
+			repoUpdateStatusByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -978,68 +910,67 @@ func TestBatchService_UpdateStatusByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.BatchRepoMock{
-				UpdateStatusByIDFunc: func(ctx context.Context, id int, status api.BatchStatusType, statusString string) (migration.Batch, error) {
-					return tc.repoUpdateStatusByIDBatch, tc.repoUpdateStatusByIDErr
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
+					return tc.repoUpdateStatusByNameBatch, tc.repoUpdateStatusByNameErr
+				},
+				UpdateFunc: func(ctx context.Context, b migration.Batch) error {
+					return tc.repoUpdateStatusByNameErr
 				},
 			}
 
 			batchSvc := migration.NewBatchService(repo, nil)
 
 			// Run test
-			batch, err := batchSvc.UpdateStatusByID(context.Background(), tc.idArg, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_QUEUED.String())
+			batch, err := batchSvc.UpdateStatusByName(context.Background(), tc.nameArg, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_QUEUED.String())
 
 			// Assert
 			tc.assertErr(t, err)
-			require.Equal(t, tc.repoUpdateStatusByIDBatch, batch)
+			require.Equal(t, tc.repoUpdateStatusByNameBatch, batch)
 		})
 	}
 }
 
 func TestBatchService_DeleteByName(t *testing.T) {
 	tests := []struct {
-		name                                string
-		nameArg                             string
-		repoGetByNameBatch                  migration.Batch
-		repoGetByNameErr                    error
-		instanceSvcGetAllByBatchIDInstances migration.Instances
-		instanceSvcGetAllByBatchIDErr       error
-		instanceSvcUnassignFromBatchErr     error
-		repoDeleteByNameErr                 error
+		name                              string
+		nameArg                           string
+		repoGetByNameBatch                *migration.Batch
+		repoGetByNameErr                  error
+		instanceSvcGetAllByBatchInstances migration.Instances
+		instanceSvcGetAllByBatchErr       error
+		instanceSvcUnassignFromBatchErr   error
+		repoDeleteByNameErr               error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name:    "success - batch without instances",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:     1,
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
-			instanceSvcGetAllByBatchIDInstances: nil,
+			instanceSvcGetAllByBatchInstances: nil,
 
 			assertErr: require.NoError,
 		},
 		{
 			name:    "success - batch without migrating instances",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:     1,
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
-			instanceSvcGetAllByBatchIDInstances: migration.Instances{
+			instanceSvcGetAllByBatchInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						UUID:            uuidA,
-						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-					},
+					UUID:            uuidA,
+					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 				{
-					Instance: api.Instance{
-						UUID:            uuidB,
-						MigrationStatus: api.MIGRATIONSTATUS_ERROR,
-					},
+					UUID:            uuidB,
+					MigrationStatus: api.MIGRATIONSTATUS_ERROR,
 				},
 			},
 
@@ -1063,7 +994,7 @@ func TestBatchService_DeleteByName(t *testing.T) {
 		{
 			name:    "error - batch without instances",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:     1,
 				Name:   "one",
 				Status: api.BATCHSTATUS_QUEUED,
@@ -1076,29 +1007,27 @@ func TestBatchService_DeleteByName(t *testing.T) {
 		{
 			name:    "error - instance migrating",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:     1,
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
-			instanceSvcGetAllByBatchIDErr: boom.Error,
+			instanceSvcGetAllByBatchErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
 			name:    "error - instance migrating",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:     1,
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
-			instanceSvcGetAllByBatchIDInstances: migration.Instances{
+			instanceSvcGetAllByBatchInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						UUID:            uuidB,
-						MigrationStatus: api.MIGRATIONSTATUS_CREATING,
-					},
+					UUID:            uuidB,
+					MigrationStatus: api.MIGRATIONSTATUS_CREATING,
 				},
 			},
 
@@ -1109,17 +1038,15 @@ func TestBatchService_DeleteByName(t *testing.T) {
 		{
 			name:    "error - batch unassignment",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:     1,
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
-			instanceSvcGetAllByBatchIDInstances: migration.Instances{
+			instanceSvcGetAllByBatchInstances: migration.Instances{
 				{
-					Instance: api.Instance{
-						UUID:            uuidA,
-						MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-					},
+					UUID:            uuidA,
+					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 			},
 			instanceSvcUnassignFromBatchErr: boom.Error,
@@ -1129,7 +1056,7 @@ func TestBatchService_DeleteByName(t *testing.T) {
 		{
 			name:    "error - repo.DeleteByName",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
+			repoGetByNameBatch: &migration.Batch{
 				ID:     1,
 				Name:   "one",
 				Status: api.BATCHSTATUS_DEFINED,
@@ -1144,7 +1071,7 @@ func TestBatchService_DeleteByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.BatchRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (migration.Batch, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 					return tc.repoGetByNameBatch, tc.repoGetByNameErr
 				},
 				DeleteByNameFunc: func(ctx context.Context, name string) error {
@@ -1153,8 +1080,8 @@ func TestBatchService_DeleteByName(t *testing.T) {
 			}
 
 			instanceSvc := &InstanceServiceMock{
-				GetAllByBatchIDFunc: func(ctx context.Context, batchID int) (migration.Instances, error) {
-					return tc.instanceSvcGetAllByBatchIDInstances, tc.instanceSvcGetAllByBatchIDErr
+				GetAllByBatchFunc: func(ctx context.Context, batch string, withOverrides bool) (migration.Instances, error) {
+					return tc.instanceSvcGetAllByBatchInstances, tc.instanceSvcGetAllByBatchErr
 				},
 				UnassignFromBatchFunc: func(ctx context.Context, id uuid.UUID) error {
 					return tc.instanceSvcUnassignFromBatchErr
@@ -1186,9 +1113,11 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 			name:    "success",
 			nameArg: "one",
 			repoGetByNameBatch: migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Status: api.BATCHSTATUS_DEFINED,
+				ID:                1,
+				Name:              "one",
+				Target:            "one",
+				Status:            api.BATCHSTATUS_DEFINED,
+				IncludeExpression: "true",
 			},
 
 			assertErr: require.NoError,
@@ -1212,9 +1141,11 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 			name:    "error - batch state is not ready to be started",
 			nameArg: "one",
 			repoGetByNameBatch: migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Status: api.BATCHSTATUS_QUEUED,
+				ID:                1,
+				Name:              "one",
+				Target:            "one",
+				Status:            api.BATCHSTATUS_QUEUED,
+				IncludeExpression: "true",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -1225,9 +1156,11 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 			name:    "error - batch state is not ready to be started",
 			nameArg: "one",
 			repoGetByNameBatch: migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Status: api.BATCHSTATUS_DEFINED,
+				ID:                1,
+				Name:              "one",
+				Status:            api.BATCHSTATUS_DEFINED,
+				Target:            "one",
+				IncludeExpression: "true",
 			},
 			repoUpdateStatusByIDErr: boom.Error,
 
@@ -1239,11 +1172,11 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.BatchRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (migration.Batch, error) {
-					return tc.repoGetByNameBatch, tc.repoGetByNameErr
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
+					return &tc.repoGetByNameBatch, tc.repoGetByNameErr
 				},
-				UpdateStatusByIDFunc: func(ctx context.Context, id int, status api.BatchStatusType, statusString string) (migration.Batch, error) {
-					return migration.Batch{}, tc.repoUpdateStatusByIDErr
+				UpdateFunc: func(ctx context.Context, b migration.Batch) error {
+					return tc.repoUpdateStatusByIDErr
 				},
 			}
 
@@ -1262,7 +1195,7 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 	tests := []struct {
 		name                    string
 		nameArg                 string
-		repoGetByNameBatch      migration.Batch
+		repoGetByNameBatch      *migration.Batch
 		repoGetByNameErr        error
 		repoUpdateStatusByIDErr error
 
@@ -1271,10 +1204,12 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 		{
 			name:    "success",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Status: api.BATCHSTATUS_QUEUED,
+			repoGetByNameBatch: &migration.Batch{
+				ID:                1,
+				Name:              "one",
+				Status:            api.BATCHSTATUS_QUEUED,
+				Target:            "one",
+				IncludeExpression: "true",
 			},
 
 			assertErr: require.NoError,
@@ -1297,10 +1232,12 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 		{
 			name:    "error - batch state is not ready to be started",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Status: api.BATCHSTATUS_DEFINED,
+			repoGetByNameBatch: &migration.Batch{
+				ID:                1,
+				Name:              "one",
+				Status:            api.BATCHSTATUS_DEFINED,
+				Target:            "one",
+				IncludeExpression: "true",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -1310,10 +1247,12 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 		{
 			name:    "error - batch state is not ready to be started",
 			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Status: api.BATCHSTATUS_QUEUED,
+			repoGetByNameBatch: &migration.Batch{
+				ID:                1,
+				Name:              "one",
+				Status:            api.BATCHSTATUS_QUEUED,
+				Target:            "one",
+				IncludeExpression: "true",
 			},
 			repoUpdateStatusByIDErr: boom.Error,
 
@@ -1325,11 +1264,11 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.BatchRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (migration.Batch, error) {
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 					return tc.repoGetByNameBatch, tc.repoGetByNameErr
 				},
-				UpdateStatusByIDFunc: func(ctx context.Context, id int, status api.BatchStatusType, statusString string) (migration.Batch, error) {
-					return migration.Batch{}, tc.repoUpdateStatusByIDErr
+				UpdateFunc: func(ctx context.Context, b migration.Batch) error {
+					return tc.repoUpdateStatusByIDErr
 				},
 			}
 

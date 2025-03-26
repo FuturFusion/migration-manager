@@ -9,7 +9,6 @@ import (
 	incus "github.com/lxc/incus/v6/client"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 
-	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -48,14 +47,6 @@ func (t *InternalTarget) IsWaitingForOIDCTokens() bool {
 
 func (t *InternalTarget) GetName() string {
 	return t.Name
-}
-
-func (t *InternalTarget) GetDatabaseID() (int, error) {
-	if t.DatabaseID == internal.INVALID_DATABASE_ID {
-		return internal.INVALID_DATABASE_ID, fmt.Errorf("Target has not been added to database, so it doesn't have an ID")
-	}
-
-	return t.DatabaseID, nil
 }
 
 func (t *InternalTarget) GetProperties() json.RawMessage {

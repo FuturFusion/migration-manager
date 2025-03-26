@@ -40,9 +40,6 @@ var _ Source = &SourceMock{}
 //			GetAllVMsFunc: func(ctx context.Context) (migration.Instances, error) {
 //				panic("mock out the GetAllVMs method")
 //			},
-//			GetDatabaseIDFunc: func() (int, error) {
-//				panic("mock out the GetDatabaseID method")
-//			},
 //			GetNameFunc: func() string {
 //				panic("mock out the GetName method")
 //			},
@@ -82,9 +79,6 @@ type SourceMock struct {
 
 	// GetAllVMsFunc mocks the GetAllVMs method.
 	GetAllVMsFunc func(ctx context.Context) (migration.Instances, error)
-
-	// GetDatabaseIDFunc mocks the GetDatabaseID method.
-	GetDatabaseIDFunc func() (int, error)
 
 	// GetNameFunc mocks the GetName method.
 	GetNameFunc func() string
@@ -135,9 +129,6 @@ type SourceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetDatabaseID holds details about calls to the GetDatabaseID method.
-		GetDatabaseID []struct {
-		}
 		// GetName holds details about calls to the GetName method.
 		GetName []struct {
 		}
@@ -172,7 +163,6 @@ type SourceMock struct {
 	lockDoBasicConnectivityCheck      sync.RWMutex
 	lockGetAllNetworks                sync.RWMutex
 	lockGetAllVMs                     sync.RWMutex
-	lockGetDatabaseID                 sync.RWMutex
 	lockGetName                       sync.RWMutex
 	lockImportDisks                   sync.RWMutex
 	lockIsConnected                   sync.RWMutex
@@ -372,33 +362,6 @@ func (mock *SourceMock) GetAllVMsCalls() []struct {
 	mock.lockGetAllVMs.RLock()
 	calls = mock.calls.GetAllVMs
 	mock.lockGetAllVMs.RUnlock()
-	return calls
-}
-
-// GetDatabaseID calls GetDatabaseIDFunc.
-func (mock *SourceMock) GetDatabaseID() (int, error) {
-	if mock.GetDatabaseIDFunc == nil {
-		panic("SourceMock.GetDatabaseIDFunc: method is nil but Source.GetDatabaseID was just called")
-	}
-	callInfo := struct {
-	}{}
-	mock.lockGetDatabaseID.Lock()
-	mock.calls.GetDatabaseID = append(mock.calls.GetDatabaseID, callInfo)
-	mock.lockGetDatabaseID.Unlock()
-	return mock.GetDatabaseIDFunc()
-}
-
-// GetDatabaseIDCalls gets all the calls that were made to GetDatabaseID.
-// Check the length with:
-//
-//	len(mockedSource.GetDatabaseIDCalls())
-func (mock *SourceMock) GetDatabaseIDCalls() []struct {
-} {
-	var calls []struct {
-	}
-	mock.lockGetDatabaseID.RLock()
-	calls = mock.calls.GetDatabaseID
-	mock.lockGetDatabaseID.RUnlock()
 	return calls
 }
 

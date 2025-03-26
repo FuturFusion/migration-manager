@@ -11,13 +11,13 @@ import (
 )
 
 type Target struct {
-	ID         int
-	Name       string
+	ID         int64
+	Name       string `db:"primary=yes"`
 	TargetType api.TargetType
 
 	Properties json.RawMessage
 
-	EndpointFunc func(api.Target) (TargetEndpoint, error) `json:"-"`
+	EndpointFunc func(api.Target) (TargetEndpoint, error) `json:"-" db:"ignore"`
 }
 
 func (t Target) Validate() error {

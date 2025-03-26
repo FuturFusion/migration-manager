@@ -13,7 +13,7 @@ const (
 	SOURCETYPE_VMWARE
 )
 
-// Implement the stringer interface.
+// String implements the stringer interface.
 func (s SourceType) String() string {
 	switch s {
 	case SOURCETYPE_UNKNOWN:
@@ -34,10 +34,6 @@ type Source struct {
 	// A human-friendly name for this source
 	// Example: MySource
 	Name string `json:"name" yaml:"name"`
-
-	// An opaque integer identifier for the source
-	// Example: 123
-	DatabaseID int `json:"database_id" yaml:"database_id"`
 
 	// SourceType defines the type of the source
 	SourceType SourceType `json:"source_type" yaml:"source_type"`

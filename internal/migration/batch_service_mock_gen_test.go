@@ -36,11 +36,14 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id int) (migration.Batch, error) {
-//				panic("mock out the GetByID method")
+//			GetAllNamesByStateFunc: func(ctx context.Context, status api.BatchStatusType) ([]string, error) {
+//				panic("mock out the GetAllNamesByState method")
 //			},
-//			GetByNameFunc: func(ctx context.Context, name string) (migration.Batch, error) {
+//			GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 //				panic("mock out the GetByName method")
+//			},
+//			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
+//				panic("mock out the Rename method")
 //			},
 //			StartBatchByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the StartBatchByName method")
@@ -48,14 +51,14 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			StopBatchByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the StopBatchByName method")
 //			},
-//			UpdateByIDFunc: func(ctx context.Context, batch migration.Batch) (migration.Batch, error) {
-//				panic("mock out the UpdateByID method")
+//			UpdateFunc: func(ctx context.Context, batch migration.Batch) error {
+//				panic("mock out the Update method")
 //			},
 //			UpdateInstancesAssignedToBatchFunc: func(ctx context.Context, batch migration.Batch) error {
 //				panic("mock out the UpdateInstancesAssignedToBatch method")
 //			},
-//			UpdateStatusByIDFunc: func(ctx context.Context, id int, status api.BatchStatusType, statusString string) (migration.Batch, error) {
-//				panic("mock out the UpdateStatusByID method")
+//			UpdateStatusByNameFunc: func(ctx context.Context, name string, status api.BatchStatusType, statusString string) (*migration.Batch, error) {
+//				panic("mock out the UpdateStatusByName method")
 //			},
 //		}
 //
@@ -79,11 +82,14 @@ type BatchServiceMock struct {
 	// GetAllNamesFunc mocks the GetAllNames method.
 	GetAllNamesFunc func(ctx context.Context) ([]string, error)
 
-	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id int) (migration.Batch, error)
+	// GetAllNamesByStateFunc mocks the GetAllNamesByState method.
+	GetAllNamesByStateFunc func(ctx context.Context, status api.BatchStatusType) ([]string, error)
 
 	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (migration.Batch, error)
+	GetByNameFunc func(ctx context.Context, name string) (*migration.Batch, error)
+
+	// RenameFunc mocks the Rename method.
+	RenameFunc func(ctx context.Context, oldName string, newName string) error
 
 	// StartBatchByNameFunc mocks the StartBatchByName method.
 	StartBatchByNameFunc func(ctx context.Context, name string) error
@@ -91,14 +97,14 @@ type BatchServiceMock struct {
 	// StopBatchByNameFunc mocks the StopBatchByName method.
 	StopBatchByNameFunc func(ctx context.Context, name string) error
 
-	// UpdateByIDFunc mocks the UpdateByID method.
-	UpdateByIDFunc func(ctx context.Context, batch migration.Batch) (migration.Batch, error)
+	// UpdateFunc mocks the Update method.
+	UpdateFunc func(ctx context.Context, batch migration.Batch) error
 
 	// UpdateInstancesAssignedToBatchFunc mocks the UpdateInstancesAssignedToBatch method.
 	UpdateInstancesAssignedToBatchFunc func(ctx context.Context, batch migration.Batch) error
 
-	// UpdateStatusByIDFunc mocks the UpdateStatusByID method.
-	UpdateStatusByIDFunc func(ctx context.Context, id int, status api.BatchStatusType, statusString string) (migration.Batch, error)
+	// UpdateStatusByNameFunc mocks the UpdateStatusByName method.
+	UpdateStatusByNameFunc func(ctx context.Context, name string, status api.BatchStatusType, statusString string) (*migration.Batch, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -133,12 +139,12 @@ type BatchServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetByID holds details about calls to the GetByID method.
-		GetByID []struct {
+		// GetAllNamesByState holds details about calls to the GetAllNamesByState method.
+		GetAllNamesByState []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ID is the id argument value.
-			ID int
+			// Status is the status argument value.
+			Status api.BatchStatusType
 		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
@@ -146,6 +152,15 @@ type BatchServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+		}
+		// Rename holds details about calls to the Rename method.
+		Rename []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// OldName is the oldName argument value.
+			OldName string
+			// NewName is the newName argument value.
+			NewName string
 		}
 		// StartBatchByName holds details about calls to the StartBatchByName method.
 		StartBatchByName []struct {
@@ -161,8 +176,8 @@ type BatchServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
-		// UpdateByID holds details about calls to the UpdateByID method.
-		UpdateByID []struct {
+		// Update holds details about calls to the Update method.
+		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Batch is the batch argument value.
@@ -175,12 +190,12 @@ type BatchServiceMock struct {
 			// Batch is the batch argument value.
 			Batch migration.Batch
 		}
-		// UpdateStatusByID holds details about calls to the UpdateStatusByID method.
-		UpdateStatusByID []struct {
+		// UpdateStatusByName holds details about calls to the UpdateStatusByName method.
+		UpdateStatusByName []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// ID is the id argument value.
-			ID int
+			// Name is the name argument value.
+			Name string
 			// Status is the status argument value.
 			Status api.BatchStatusType
 			// StatusString is the statusString argument value.
@@ -192,13 +207,14 @@ type BatchServiceMock struct {
 	lockGetAll                         sync.RWMutex
 	lockGetAllByState                  sync.RWMutex
 	lockGetAllNames                    sync.RWMutex
-	lockGetByID                        sync.RWMutex
+	lockGetAllNamesByState             sync.RWMutex
 	lockGetByName                      sync.RWMutex
+	lockRename                         sync.RWMutex
 	lockStartBatchByName               sync.RWMutex
 	lockStopBatchByName                sync.RWMutex
-	lockUpdateByID                     sync.RWMutex
+	lockUpdate                         sync.RWMutex
 	lockUpdateInstancesAssignedToBatch sync.RWMutex
-	lockUpdateStatusByID               sync.RWMutex
+	lockUpdateStatusByName             sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -373,44 +389,44 @@ func (mock *BatchServiceMock) GetAllNamesCalls() []struct {
 	return calls
 }
 
-// GetByID calls GetByIDFunc.
-func (mock *BatchServiceMock) GetByID(ctx context.Context, id int) (migration.Batch, error) {
-	if mock.GetByIDFunc == nil {
-		panic("BatchServiceMock.GetByIDFunc: method is nil but BatchService.GetByID was just called")
+// GetAllNamesByState calls GetAllNamesByStateFunc.
+func (mock *BatchServiceMock) GetAllNamesByState(ctx context.Context, status api.BatchStatusType) ([]string, error) {
+	if mock.GetAllNamesByStateFunc == nil {
+		panic("BatchServiceMock.GetAllNamesByStateFunc: method is nil but BatchService.GetAllNamesByState was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
-		ID  int
+		Ctx    context.Context
+		Status api.BatchStatusType
 	}{
-		Ctx: ctx,
-		ID:  id,
+		Ctx:    ctx,
+		Status: status,
 	}
-	mock.lockGetByID.Lock()
-	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
-	mock.lockGetByID.Unlock()
-	return mock.GetByIDFunc(ctx, id)
+	mock.lockGetAllNamesByState.Lock()
+	mock.calls.GetAllNamesByState = append(mock.calls.GetAllNamesByState, callInfo)
+	mock.lockGetAllNamesByState.Unlock()
+	return mock.GetAllNamesByStateFunc(ctx, status)
 }
 
-// GetByIDCalls gets all the calls that were made to GetByID.
+// GetAllNamesByStateCalls gets all the calls that were made to GetAllNamesByState.
 // Check the length with:
 //
-//	len(mockedBatchService.GetByIDCalls())
-func (mock *BatchServiceMock) GetByIDCalls() []struct {
-	Ctx context.Context
-	ID  int
+//	len(mockedBatchService.GetAllNamesByStateCalls())
+func (mock *BatchServiceMock) GetAllNamesByStateCalls() []struct {
+	Ctx    context.Context
+	Status api.BatchStatusType
 } {
 	var calls []struct {
-		Ctx context.Context
-		ID  int
+		Ctx    context.Context
+		Status api.BatchStatusType
 	}
-	mock.lockGetByID.RLock()
-	calls = mock.calls.GetByID
-	mock.lockGetByID.RUnlock()
+	mock.lockGetAllNamesByState.RLock()
+	calls = mock.calls.GetAllNamesByState
+	mock.lockGetAllNamesByState.RUnlock()
 	return calls
 }
 
 // GetByName calls GetByNameFunc.
-func (mock *BatchServiceMock) GetByName(ctx context.Context, name string) (migration.Batch, error) {
+func (mock *BatchServiceMock) GetByName(ctx context.Context, name string) (*migration.Batch, error) {
 	if mock.GetByNameFunc == nil {
 		panic("BatchServiceMock.GetByNameFunc: method is nil but BatchService.GetByName was just called")
 	}
@@ -442,6 +458,46 @@ func (mock *BatchServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// Rename calls RenameFunc.
+func (mock *BatchServiceMock) Rename(ctx context.Context, oldName string, newName string) error {
+	if mock.RenameFunc == nil {
+		panic("BatchServiceMock.RenameFunc: method is nil but BatchService.Rename was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		OldName string
+		NewName string
+	}{
+		Ctx:     ctx,
+		OldName: oldName,
+		NewName: newName,
+	}
+	mock.lockRename.Lock()
+	mock.calls.Rename = append(mock.calls.Rename, callInfo)
+	mock.lockRename.Unlock()
+	return mock.RenameFunc(ctx, oldName, newName)
+}
+
+// RenameCalls gets all the calls that were made to Rename.
+// Check the length with:
+//
+//	len(mockedBatchService.RenameCalls())
+func (mock *BatchServiceMock) RenameCalls() []struct {
+	Ctx     context.Context
+	OldName string
+	NewName string
+} {
+	var calls []struct {
+		Ctx     context.Context
+		OldName string
+		NewName string
+	}
+	mock.lockRename.RLock()
+	calls = mock.calls.Rename
+	mock.lockRename.RUnlock()
 	return calls
 }
 
@@ -517,10 +573,10 @@ func (mock *BatchServiceMock) StopBatchByNameCalls() []struct {
 	return calls
 }
 
-// UpdateByID calls UpdateByIDFunc.
-func (mock *BatchServiceMock) UpdateByID(ctx context.Context, batch migration.Batch) (migration.Batch, error) {
-	if mock.UpdateByIDFunc == nil {
-		panic("BatchServiceMock.UpdateByIDFunc: method is nil but BatchService.UpdateByID was just called")
+// Update calls UpdateFunc.
+func (mock *BatchServiceMock) Update(ctx context.Context, batch migration.Batch) error {
+	if mock.UpdateFunc == nil {
+		panic("BatchServiceMock.UpdateFunc: method is nil but BatchService.Update was just called")
 	}
 	callInfo := struct {
 		Ctx   context.Context
@@ -529,17 +585,17 @@ func (mock *BatchServiceMock) UpdateByID(ctx context.Context, batch migration.Ba
 		Ctx:   ctx,
 		Batch: batch,
 	}
-	mock.lockUpdateByID.Lock()
-	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
-	mock.lockUpdateByID.Unlock()
-	return mock.UpdateByIDFunc(ctx, batch)
+	mock.lockUpdate.Lock()
+	mock.calls.Update = append(mock.calls.Update, callInfo)
+	mock.lockUpdate.Unlock()
+	return mock.UpdateFunc(ctx, batch)
 }
 
-// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// UpdateCalls gets all the calls that were made to Update.
 // Check the length with:
 //
-//	len(mockedBatchService.UpdateByIDCalls())
-func (mock *BatchServiceMock) UpdateByIDCalls() []struct {
+//	len(mockedBatchService.UpdateCalls())
+func (mock *BatchServiceMock) UpdateCalls() []struct {
 	Ctx   context.Context
 	Batch migration.Batch
 } {
@@ -547,9 +603,9 @@ func (mock *BatchServiceMock) UpdateByIDCalls() []struct {
 		Ctx   context.Context
 		Batch migration.Batch
 	}
-	mock.lockUpdateByID.RLock()
-	calls = mock.calls.UpdateByID
-	mock.lockUpdateByID.RUnlock()
+	mock.lockUpdate.RLock()
+	calls = mock.calls.Update
+	mock.lockUpdate.RUnlock()
 	return calls
 }
 
@@ -589,46 +645,46 @@ func (mock *BatchServiceMock) UpdateInstancesAssignedToBatchCalls() []struct {
 	return calls
 }
 
-// UpdateStatusByID calls UpdateStatusByIDFunc.
-func (mock *BatchServiceMock) UpdateStatusByID(ctx context.Context, id int, status api.BatchStatusType, statusString string) (migration.Batch, error) {
-	if mock.UpdateStatusByIDFunc == nil {
-		panic("BatchServiceMock.UpdateStatusByIDFunc: method is nil but BatchService.UpdateStatusByID was just called")
+// UpdateStatusByName calls UpdateStatusByNameFunc.
+func (mock *BatchServiceMock) UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusString string) (*migration.Batch, error) {
+	if mock.UpdateStatusByNameFunc == nil {
+		panic("BatchServiceMock.UpdateStatusByNameFunc: method is nil but BatchService.UpdateStatusByName was just called")
 	}
 	callInfo := struct {
 		Ctx          context.Context
-		ID           int
+		Name         string
 		Status       api.BatchStatusType
 		StatusString string
 	}{
 		Ctx:          ctx,
-		ID:           id,
+		Name:         name,
 		Status:       status,
 		StatusString: statusString,
 	}
-	mock.lockUpdateStatusByID.Lock()
-	mock.calls.UpdateStatusByID = append(mock.calls.UpdateStatusByID, callInfo)
-	mock.lockUpdateStatusByID.Unlock()
-	return mock.UpdateStatusByIDFunc(ctx, id, status, statusString)
+	mock.lockUpdateStatusByName.Lock()
+	mock.calls.UpdateStatusByName = append(mock.calls.UpdateStatusByName, callInfo)
+	mock.lockUpdateStatusByName.Unlock()
+	return mock.UpdateStatusByNameFunc(ctx, name, status, statusString)
 }
 
-// UpdateStatusByIDCalls gets all the calls that were made to UpdateStatusByID.
+// UpdateStatusByNameCalls gets all the calls that were made to UpdateStatusByName.
 // Check the length with:
 //
-//	len(mockedBatchService.UpdateStatusByIDCalls())
-func (mock *BatchServiceMock) UpdateStatusByIDCalls() []struct {
+//	len(mockedBatchService.UpdateStatusByNameCalls())
+func (mock *BatchServiceMock) UpdateStatusByNameCalls() []struct {
 	Ctx          context.Context
-	ID           int
+	Name         string
 	Status       api.BatchStatusType
 	StatusString string
 } {
 	var calls []struct {
 		Ctx          context.Context
-		ID           int
+		Name         string
 		Status       api.BatchStatusType
 		StatusString string
 	}
-	mock.lockUpdateStatusByID.RLock()
-	calls = mock.calls.UpdateStatusByID
-	mock.lockUpdateStatusByID.RUnlock()
+	mock.lockUpdateStatusByName.RLock()
+	calls = mock.calls.UpdateStatusByName
+	mock.lockUpdateStatusByName.RUnlock()
 	return calls
 }

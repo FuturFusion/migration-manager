@@ -12,7 +12,7 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-// Interface definition for all migration manager targets.
+// Target interface definition for all migration manager targets.
 type Target interface {
 	// Connects to the target.
 	//
@@ -58,12 +58,6 @@ type Target interface {
 
 	// Returns the human-readable name for this target.
 	GetName() string
-
-	// Returns a unique ID for this target that can be used when interacting with the database.
-	//
-	// Attempting to get an ID for a freshly-created target that hasn't yet been added to the database
-	// via AddTarget() or retrieved via GetTarget()/GetAllTargets() will return an error.
-	GetDatabaseID() (int, error)
 
 	// Returns the json-encoded type specific properties for this target.
 	GetProperties() json.RawMessage

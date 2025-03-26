@@ -125,9 +125,8 @@ func networksGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.Network, 0, len(networks))
 		for _, network := range networks {
 			result = append(result, api.Network{
-				DatabaseID: network.ID,
-				Name:       network.Name,
-				Config:     network.Config,
+				Name:   network.Name,
+				Config: network.Config,
 			})
 		}
 
@@ -184,7 +183,6 @@ func networksPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	_, err = d.network.Create(r.Context(), migration.Network{
-		ID:     network.DatabaseID,
 		Name:   network.Name,
 		Config: network.Config,
 	})
@@ -269,9 +267,8 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		api.Network{
-			DatabaseID: network.ID,
-			Name:       network.Name,
-			Config:     network.Config,
+			Name:   network.Name,
+			Config: network.Config,
 		},
 		network,
 	)
@@ -335,7 +332,7 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	_, err = d.network.UpdateByID(ctx, migration.Network{
+	err = d.network.Update(ctx, migration.Network{
 		ID:     currentNetwork.ID,
 		Name:   network.Name,
 		Config: network.Config,

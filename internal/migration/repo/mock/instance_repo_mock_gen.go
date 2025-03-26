@@ -22,23 +22,23 @@ var _ migration.InstanceRepo = &InstanceRepoMock{}
 //
 //		// make and configure a mocked migration.InstanceRepo
 //		mockedInstanceRepo := &InstanceRepoMock{
-//			CreateFunc: func(ctx context.Context, instance migration.Instance) (migration.Instance, error) {
+//			CreateFunc: func(ctx context.Context, instance migration.Instance) (int64, error) {
 //				panic("mock out the Create method")
 //			},
-//			CreateOverridesFunc: func(ctx context.Context, overrides migration.Overrides) (migration.Overrides, error) {
+//			CreateOverridesFunc: func(ctx context.Context, overrides migration.InstanceOverride) (int64, error) {
 //				panic("mock out the CreateOverrides method")
 //			},
-//			DeleteByIDFunc: func(ctx context.Context, id uuid.UUID) error {
-//				panic("mock out the DeleteByID method")
+//			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the DeleteByUUID method")
 //			},
-//			DeleteOverridesByIDFunc: func(ctx context.Context, id uuid.UUID) error {
-//				panic("mock out the DeleteOverridesByID method")
+//			DeleteOverridesByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the DeleteOverridesByUUID method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (migration.Instances, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetAllByBatchIDFunc: func(ctx context.Context, batchID int) (migration.Instances, error) {
-//				panic("mock out the GetAllByBatchID method")
+//			GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
+//				panic("mock out the GetAllByBatch method")
 //			},
 //			GetAllByStateFunc: func(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error) {
 //				panic("mock out the GetAllByState method")
@@ -49,20 +49,17 @@ var _ migration.InstanceRepo = &InstanceRepoMock{}
 //			GetAllUnassignedFunc: func(ctx context.Context) (migration.Instances, error) {
 //				panic("mock out the GetAllUnassigned method")
 //			},
-//			GetByIDFunc: func(ctx context.Context, id uuid.UUID) (migration.Instance, error) {
-//				panic("mock out the GetByID method")
+//			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.Instance, error) {
+//				panic("mock out the GetByUUID method")
 //			},
-//			GetOverridesByIDFunc: func(ctx context.Context, id uuid.UUID) (migration.Overrides, error) {
-//				panic("mock out the GetOverridesByID method")
+//			GetOverridesByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error) {
+//				panic("mock out the GetOverridesByUUID method")
 //			},
-//			UpdateByIDFunc: func(ctx context.Context, instance migration.Instance) (migration.Instance, error) {
-//				panic("mock out the UpdateByID method")
+//			UpdateFunc: func(ctx context.Context, instance migration.Instance) error {
+//				panic("mock out the Update method")
 //			},
-//			UpdateOverridesByIDFunc: func(ctx context.Context, overrides migration.Overrides) (migration.Overrides, error) {
-//				panic("mock out the UpdateOverridesByID method")
-//			},
-//			UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
-//				panic("mock out the UpdateStatusByUUID method")
+//			UpdateOverridesFunc: func(ctx context.Context, overrides migration.InstanceOverride) error {
+//				panic("mock out the UpdateOverrides method")
 //			},
 //		}
 //
@@ -72,22 +69,22 @@ var _ migration.InstanceRepo = &InstanceRepoMock{}
 //	}
 type InstanceRepoMock struct {
 	// CreateFunc mocks the Create method.
-	CreateFunc func(ctx context.Context, instance migration.Instance) (migration.Instance, error)
+	CreateFunc func(ctx context.Context, instance migration.Instance) (int64, error)
 
 	// CreateOverridesFunc mocks the CreateOverrides method.
-	CreateOverridesFunc func(ctx context.Context, overrides migration.Overrides) (migration.Overrides, error)
+	CreateOverridesFunc func(ctx context.Context, overrides migration.InstanceOverride) (int64, error)
 
-	// DeleteByIDFunc mocks the DeleteByID method.
-	DeleteByIDFunc func(ctx context.Context, id uuid.UUID) error
+	// DeleteByUUIDFunc mocks the DeleteByUUID method.
+	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
 
-	// DeleteOverridesByIDFunc mocks the DeleteOverridesByID method.
-	DeleteOverridesByIDFunc func(ctx context.Context, id uuid.UUID) error
+	// DeleteOverridesByUUIDFunc mocks the DeleteOverridesByUUID method.
+	DeleteOverridesByUUIDFunc func(ctx context.Context, id uuid.UUID) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Instances, error)
 
-	// GetAllByBatchIDFunc mocks the GetAllByBatchID method.
-	GetAllByBatchIDFunc func(ctx context.Context, batchID int) (migration.Instances, error)
+	// GetAllByBatchFunc mocks the GetAllByBatch method.
+	GetAllByBatchFunc func(ctx context.Context, batch string) (migration.Instances, error)
 
 	// GetAllByStateFunc mocks the GetAllByState method.
 	GetAllByStateFunc func(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error)
@@ -98,20 +95,17 @@ type InstanceRepoMock struct {
 	// GetAllUnassignedFunc mocks the GetAllUnassigned method.
 	GetAllUnassignedFunc func(ctx context.Context) (migration.Instances, error)
 
-	// GetByIDFunc mocks the GetByID method.
-	GetByIDFunc func(ctx context.Context, id uuid.UUID) (migration.Instance, error)
+	// GetByUUIDFunc mocks the GetByUUID method.
+	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.Instance, error)
 
-	// GetOverridesByIDFunc mocks the GetOverridesByID method.
-	GetOverridesByIDFunc func(ctx context.Context, id uuid.UUID) (migration.Overrides, error)
+	// GetOverridesByUUIDFunc mocks the GetOverridesByUUID method.
+	GetOverridesByUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error)
 
-	// UpdateByIDFunc mocks the UpdateByID method.
-	UpdateByIDFunc func(ctx context.Context, instance migration.Instance) (migration.Instance, error)
+	// UpdateFunc mocks the Update method.
+	UpdateFunc func(ctx context.Context, instance migration.Instance) error
 
-	// UpdateOverridesByIDFunc mocks the UpdateOverridesByID method.
-	UpdateOverridesByIDFunc func(ctx context.Context, overrides migration.Overrides) (migration.Overrides, error)
-
-	// UpdateStatusByUUIDFunc mocks the UpdateStatusByUUID method.
-	UpdateStatusByUUIDFunc func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error)
+	// UpdateOverridesFunc mocks the UpdateOverrides method.
+	UpdateOverridesFunc func(ctx context.Context, overrides migration.InstanceOverride) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -127,17 +121,17 @@ type InstanceRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Overrides is the overrides argument value.
-			Overrides migration.Overrides
+			Overrides migration.InstanceOverride
 		}
-		// DeleteByID holds details about calls to the DeleteByID method.
-		DeleteByID []struct {
+		// DeleteByUUID holds details about calls to the DeleteByUUID method.
+		DeleteByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
-		// DeleteOverridesByID holds details about calls to the DeleteOverridesByID method.
-		DeleteOverridesByID []struct {
+		// DeleteOverridesByUUID holds details about calls to the DeleteOverridesByUUID method.
+		DeleteOverridesByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
@@ -148,12 +142,12 @@ type InstanceRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetAllByBatchID holds details about calls to the GetAllByBatchID method.
-		GetAllByBatchID []struct {
+		// GetAllByBatch holds details about calls to the GetAllByBatch method.
+		GetAllByBatch []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// BatchID is the batchID argument value.
-			BatchID int
+			// Batch is the batch argument value.
+			Batch string
 		}
 		// GetAllByState holds details about calls to the GetAllByState method.
 		GetAllByState []struct {
@@ -172,66 +166,52 @@ type InstanceRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetByID holds details about calls to the GetByID method.
-		GetByID []struct {
+		// GetByUUID holds details about calls to the GetByUUID method.
+		GetByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
-		// GetOverridesByID holds details about calls to the GetOverridesByID method.
-		GetOverridesByID []struct {
+		// GetOverridesByUUID holds details about calls to the GetOverridesByUUID method.
+		GetOverridesByUUID []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
-		// UpdateByID holds details about calls to the UpdateByID method.
-		UpdateByID []struct {
+		// Update holds details about calls to the Update method.
+		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Instance is the instance argument value.
 			Instance migration.Instance
 		}
-		// UpdateOverridesByID holds details about calls to the UpdateOverridesByID method.
-		UpdateOverridesByID []struct {
+		// UpdateOverrides holds details about calls to the UpdateOverrides method.
+		UpdateOverrides []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Overrides is the overrides argument value.
-			Overrides migration.Overrides
-		}
-		// UpdateStatusByUUID holds details about calls to the UpdateStatusByUUID method.
-		UpdateStatusByUUID []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ID is the id argument value.
-			ID uuid.UUID
-			// Status is the status argument value.
-			Status api.MigrationStatusType
-			// StatusString is the statusString argument value.
-			StatusString string
-			// NeedsDiskImport is the needsDiskImport argument value.
-			NeedsDiskImport bool
+			Overrides migration.InstanceOverride
 		}
 	}
-	lockCreate              sync.RWMutex
-	lockCreateOverrides     sync.RWMutex
-	lockDeleteByID          sync.RWMutex
-	lockDeleteOverridesByID sync.RWMutex
-	lockGetAll              sync.RWMutex
-	lockGetAllByBatchID     sync.RWMutex
-	lockGetAllByState       sync.RWMutex
-	lockGetAllUUIDs         sync.RWMutex
-	lockGetAllUnassigned    sync.RWMutex
-	lockGetByID             sync.RWMutex
-	lockGetOverridesByID    sync.RWMutex
-	lockUpdateByID          sync.RWMutex
-	lockUpdateOverridesByID sync.RWMutex
-	lockUpdateStatusByUUID  sync.RWMutex
+	lockCreate                sync.RWMutex
+	lockCreateOverrides       sync.RWMutex
+	lockDeleteByUUID          sync.RWMutex
+	lockDeleteOverridesByUUID sync.RWMutex
+	lockGetAll                sync.RWMutex
+	lockGetAllByBatch         sync.RWMutex
+	lockGetAllByState         sync.RWMutex
+	lockGetAllUUIDs           sync.RWMutex
+	lockGetAllUnassigned      sync.RWMutex
+	lockGetByUUID             sync.RWMutex
+	lockGetOverridesByUUID    sync.RWMutex
+	lockUpdate                sync.RWMutex
+	lockUpdateOverrides       sync.RWMutex
 }
 
 // Create calls CreateFunc.
-func (mock *InstanceRepoMock) Create(ctx context.Context, instance migration.Instance) (migration.Instance, error) {
+func (mock *InstanceRepoMock) Create(ctx context.Context, instance migration.Instance) (int64, error) {
 	if mock.CreateFunc == nil {
 		panic("InstanceRepoMock.CreateFunc: method is nil but InstanceRepo.Create was just called")
 	}
@@ -267,13 +247,13 @@ func (mock *InstanceRepoMock) CreateCalls() []struct {
 }
 
 // CreateOverrides calls CreateOverridesFunc.
-func (mock *InstanceRepoMock) CreateOverrides(ctx context.Context, overrides migration.Overrides) (migration.Overrides, error) {
+func (mock *InstanceRepoMock) CreateOverrides(ctx context.Context, overrides migration.InstanceOverride) (int64, error) {
 	if mock.CreateOverridesFunc == nil {
 		panic("InstanceRepoMock.CreateOverridesFunc: method is nil but InstanceRepo.CreateOverrides was just called")
 	}
 	callInfo := struct {
 		Ctx       context.Context
-		Overrides migration.Overrides
+		Overrides migration.InstanceOverride
 	}{
 		Ctx:       ctx,
 		Overrides: overrides,
@@ -290,11 +270,11 @@ func (mock *InstanceRepoMock) CreateOverrides(ctx context.Context, overrides mig
 //	len(mockedInstanceRepo.CreateOverridesCalls())
 func (mock *InstanceRepoMock) CreateOverridesCalls() []struct {
 	Ctx       context.Context
-	Overrides migration.Overrides
+	Overrides migration.InstanceOverride
 } {
 	var calls []struct {
 		Ctx       context.Context
-		Overrides migration.Overrides
+		Overrides migration.InstanceOverride
 	}
 	mock.lockCreateOverrides.RLock()
 	calls = mock.calls.CreateOverrides
@@ -302,10 +282,10 @@ func (mock *InstanceRepoMock) CreateOverridesCalls() []struct {
 	return calls
 }
 
-// DeleteByID calls DeleteByIDFunc.
-func (mock *InstanceRepoMock) DeleteByID(ctx context.Context, id uuid.UUID) error {
-	if mock.DeleteByIDFunc == nil {
-		panic("InstanceRepoMock.DeleteByIDFunc: method is nil but InstanceRepo.DeleteByID was just called")
+// DeleteByUUID calls DeleteByUUIDFunc.
+func (mock *InstanceRepoMock) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	if mock.DeleteByUUIDFunc == nil {
+		panic("InstanceRepoMock.DeleteByUUIDFunc: method is nil but InstanceRepo.DeleteByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -314,17 +294,17 @@ func (mock *InstanceRepoMock) DeleteByID(ctx context.Context, id uuid.UUID) erro
 		Ctx: ctx,
 		ID:  id,
 	}
-	mock.lockDeleteByID.Lock()
-	mock.calls.DeleteByID = append(mock.calls.DeleteByID, callInfo)
-	mock.lockDeleteByID.Unlock()
-	return mock.DeleteByIDFunc(ctx, id)
+	mock.lockDeleteByUUID.Lock()
+	mock.calls.DeleteByUUID = append(mock.calls.DeleteByUUID, callInfo)
+	mock.lockDeleteByUUID.Unlock()
+	return mock.DeleteByUUIDFunc(ctx, id)
 }
 
-// DeleteByIDCalls gets all the calls that were made to DeleteByID.
+// DeleteByUUIDCalls gets all the calls that were made to DeleteByUUID.
 // Check the length with:
 //
-//	len(mockedInstanceRepo.DeleteByIDCalls())
-func (mock *InstanceRepoMock) DeleteByIDCalls() []struct {
+//	len(mockedInstanceRepo.DeleteByUUIDCalls())
+func (mock *InstanceRepoMock) DeleteByUUIDCalls() []struct {
 	Ctx context.Context
 	ID  uuid.UUID
 } {
@@ -332,16 +312,16 @@ func (mock *InstanceRepoMock) DeleteByIDCalls() []struct {
 		Ctx context.Context
 		ID  uuid.UUID
 	}
-	mock.lockDeleteByID.RLock()
-	calls = mock.calls.DeleteByID
-	mock.lockDeleteByID.RUnlock()
+	mock.lockDeleteByUUID.RLock()
+	calls = mock.calls.DeleteByUUID
+	mock.lockDeleteByUUID.RUnlock()
 	return calls
 }
 
-// DeleteOverridesByID calls DeleteOverridesByIDFunc.
-func (mock *InstanceRepoMock) DeleteOverridesByID(ctx context.Context, id uuid.UUID) error {
-	if mock.DeleteOverridesByIDFunc == nil {
-		panic("InstanceRepoMock.DeleteOverridesByIDFunc: method is nil but InstanceRepo.DeleteOverridesByID was just called")
+// DeleteOverridesByUUID calls DeleteOverridesByUUIDFunc.
+func (mock *InstanceRepoMock) DeleteOverridesByUUID(ctx context.Context, id uuid.UUID) error {
+	if mock.DeleteOverridesByUUIDFunc == nil {
+		panic("InstanceRepoMock.DeleteOverridesByUUIDFunc: method is nil but InstanceRepo.DeleteOverridesByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -350,17 +330,17 @@ func (mock *InstanceRepoMock) DeleteOverridesByID(ctx context.Context, id uuid.U
 		Ctx: ctx,
 		ID:  id,
 	}
-	mock.lockDeleteOverridesByID.Lock()
-	mock.calls.DeleteOverridesByID = append(mock.calls.DeleteOverridesByID, callInfo)
-	mock.lockDeleteOverridesByID.Unlock()
-	return mock.DeleteOverridesByIDFunc(ctx, id)
+	mock.lockDeleteOverridesByUUID.Lock()
+	mock.calls.DeleteOverridesByUUID = append(mock.calls.DeleteOverridesByUUID, callInfo)
+	mock.lockDeleteOverridesByUUID.Unlock()
+	return mock.DeleteOverridesByUUIDFunc(ctx, id)
 }
 
-// DeleteOverridesByIDCalls gets all the calls that were made to DeleteOverridesByID.
+// DeleteOverridesByUUIDCalls gets all the calls that were made to DeleteOverridesByUUID.
 // Check the length with:
 //
-//	len(mockedInstanceRepo.DeleteOverridesByIDCalls())
-func (mock *InstanceRepoMock) DeleteOverridesByIDCalls() []struct {
+//	len(mockedInstanceRepo.DeleteOverridesByUUIDCalls())
+func (mock *InstanceRepoMock) DeleteOverridesByUUIDCalls() []struct {
 	Ctx context.Context
 	ID  uuid.UUID
 } {
@@ -368,9 +348,9 @@ func (mock *InstanceRepoMock) DeleteOverridesByIDCalls() []struct {
 		Ctx context.Context
 		ID  uuid.UUID
 	}
-	mock.lockDeleteOverridesByID.RLock()
-	calls = mock.calls.DeleteOverridesByID
-	mock.lockDeleteOverridesByID.RUnlock()
+	mock.lockDeleteOverridesByUUID.RLock()
+	calls = mock.calls.DeleteOverridesByUUID
+	mock.lockDeleteOverridesByUUID.RUnlock()
 	return calls
 }
 
@@ -406,39 +386,39 @@ func (mock *InstanceRepoMock) GetAllCalls() []struct {
 	return calls
 }
 
-// GetAllByBatchID calls GetAllByBatchIDFunc.
-func (mock *InstanceRepoMock) GetAllByBatchID(ctx context.Context, batchID int) (migration.Instances, error) {
-	if mock.GetAllByBatchIDFunc == nil {
-		panic("InstanceRepoMock.GetAllByBatchIDFunc: method is nil but InstanceRepo.GetAllByBatchID was just called")
+// GetAllByBatch calls GetAllByBatchFunc.
+func (mock *InstanceRepoMock) GetAllByBatch(ctx context.Context, batch string) (migration.Instances, error) {
+	if mock.GetAllByBatchFunc == nil {
+		panic("InstanceRepoMock.GetAllByBatchFunc: method is nil but InstanceRepo.GetAllByBatch was just called")
 	}
 	callInfo := struct {
-		Ctx     context.Context
-		BatchID int
+		Ctx   context.Context
+		Batch string
 	}{
-		Ctx:     ctx,
-		BatchID: batchID,
+		Ctx:   ctx,
+		Batch: batch,
 	}
-	mock.lockGetAllByBatchID.Lock()
-	mock.calls.GetAllByBatchID = append(mock.calls.GetAllByBatchID, callInfo)
-	mock.lockGetAllByBatchID.Unlock()
-	return mock.GetAllByBatchIDFunc(ctx, batchID)
+	mock.lockGetAllByBatch.Lock()
+	mock.calls.GetAllByBatch = append(mock.calls.GetAllByBatch, callInfo)
+	mock.lockGetAllByBatch.Unlock()
+	return mock.GetAllByBatchFunc(ctx, batch)
 }
 
-// GetAllByBatchIDCalls gets all the calls that were made to GetAllByBatchID.
+// GetAllByBatchCalls gets all the calls that were made to GetAllByBatch.
 // Check the length with:
 //
-//	len(mockedInstanceRepo.GetAllByBatchIDCalls())
-func (mock *InstanceRepoMock) GetAllByBatchIDCalls() []struct {
-	Ctx     context.Context
-	BatchID int
+//	len(mockedInstanceRepo.GetAllByBatchCalls())
+func (mock *InstanceRepoMock) GetAllByBatchCalls() []struct {
+	Ctx   context.Context
+	Batch string
 } {
 	var calls []struct {
-		Ctx     context.Context
-		BatchID int
+		Ctx   context.Context
+		Batch string
 	}
-	mock.lockGetAllByBatchID.RLock()
-	calls = mock.calls.GetAllByBatchID
-	mock.lockGetAllByBatchID.RUnlock()
+	mock.lockGetAllByBatch.RLock()
+	calls = mock.calls.GetAllByBatch
+	mock.lockGetAllByBatch.RUnlock()
 	return calls
 }
 
@@ -542,10 +522,10 @@ func (mock *InstanceRepoMock) GetAllUnassignedCalls() []struct {
 	return calls
 }
 
-// GetByID calls GetByIDFunc.
-func (mock *InstanceRepoMock) GetByID(ctx context.Context, id uuid.UUID) (migration.Instance, error) {
-	if mock.GetByIDFunc == nil {
-		panic("InstanceRepoMock.GetByIDFunc: method is nil but InstanceRepo.GetByID was just called")
+// GetByUUID calls GetByUUIDFunc.
+func (mock *InstanceRepoMock) GetByUUID(ctx context.Context, id uuid.UUID) (*migration.Instance, error) {
+	if mock.GetByUUIDFunc == nil {
+		panic("InstanceRepoMock.GetByUUIDFunc: method is nil but InstanceRepo.GetByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -554,17 +534,17 @@ func (mock *InstanceRepoMock) GetByID(ctx context.Context, id uuid.UUID) (migrat
 		Ctx: ctx,
 		ID:  id,
 	}
-	mock.lockGetByID.Lock()
-	mock.calls.GetByID = append(mock.calls.GetByID, callInfo)
-	mock.lockGetByID.Unlock()
-	return mock.GetByIDFunc(ctx, id)
+	mock.lockGetByUUID.Lock()
+	mock.calls.GetByUUID = append(mock.calls.GetByUUID, callInfo)
+	mock.lockGetByUUID.Unlock()
+	return mock.GetByUUIDFunc(ctx, id)
 }
 
-// GetByIDCalls gets all the calls that were made to GetByID.
+// GetByUUIDCalls gets all the calls that were made to GetByUUID.
 // Check the length with:
 //
-//	len(mockedInstanceRepo.GetByIDCalls())
-func (mock *InstanceRepoMock) GetByIDCalls() []struct {
+//	len(mockedInstanceRepo.GetByUUIDCalls())
+func (mock *InstanceRepoMock) GetByUUIDCalls() []struct {
 	Ctx context.Context
 	ID  uuid.UUID
 } {
@@ -572,16 +552,16 @@ func (mock *InstanceRepoMock) GetByIDCalls() []struct {
 		Ctx context.Context
 		ID  uuid.UUID
 	}
-	mock.lockGetByID.RLock()
-	calls = mock.calls.GetByID
-	mock.lockGetByID.RUnlock()
+	mock.lockGetByUUID.RLock()
+	calls = mock.calls.GetByUUID
+	mock.lockGetByUUID.RUnlock()
 	return calls
 }
 
-// GetOverridesByID calls GetOverridesByIDFunc.
-func (mock *InstanceRepoMock) GetOverridesByID(ctx context.Context, id uuid.UUID) (migration.Overrides, error) {
-	if mock.GetOverridesByIDFunc == nil {
-		panic("InstanceRepoMock.GetOverridesByIDFunc: method is nil but InstanceRepo.GetOverridesByID was just called")
+// GetOverridesByUUID calls GetOverridesByUUIDFunc.
+func (mock *InstanceRepoMock) GetOverridesByUUID(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error) {
+	if mock.GetOverridesByUUIDFunc == nil {
+		panic("InstanceRepoMock.GetOverridesByUUIDFunc: method is nil but InstanceRepo.GetOverridesByUUID was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
@@ -590,17 +570,17 @@ func (mock *InstanceRepoMock) GetOverridesByID(ctx context.Context, id uuid.UUID
 		Ctx: ctx,
 		ID:  id,
 	}
-	mock.lockGetOverridesByID.Lock()
-	mock.calls.GetOverridesByID = append(mock.calls.GetOverridesByID, callInfo)
-	mock.lockGetOverridesByID.Unlock()
-	return mock.GetOverridesByIDFunc(ctx, id)
+	mock.lockGetOverridesByUUID.Lock()
+	mock.calls.GetOverridesByUUID = append(mock.calls.GetOverridesByUUID, callInfo)
+	mock.lockGetOverridesByUUID.Unlock()
+	return mock.GetOverridesByUUIDFunc(ctx, id)
 }
 
-// GetOverridesByIDCalls gets all the calls that were made to GetOverridesByID.
+// GetOverridesByUUIDCalls gets all the calls that were made to GetOverridesByUUID.
 // Check the length with:
 //
-//	len(mockedInstanceRepo.GetOverridesByIDCalls())
-func (mock *InstanceRepoMock) GetOverridesByIDCalls() []struct {
+//	len(mockedInstanceRepo.GetOverridesByUUIDCalls())
+func (mock *InstanceRepoMock) GetOverridesByUUIDCalls() []struct {
 	Ctx context.Context
 	ID  uuid.UUID
 } {
@@ -608,16 +588,16 @@ func (mock *InstanceRepoMock) GetOverridesByIDCalls() []struct {
 		Ctx context.Context
 		ID  uuid.UUID
 	}
-	mock.lockGetOverridesByID.RLock()
-	calls = mock.calls.GetOverridesByID
-	mock.lockGetOverridesByID.RUnlock()
+	mock.lockGetOverridesByUUID.RLock()
+	calls = mock.calls.GetOverridesByUUID
+	mock.lockGetOverridesByUUID.RUnlock()
 	return calls
 }
 
-// UpdateByID calls UpdateByIDFunc.
-func (mock *InstanceRepoMock) UpdateByID(ctx context.Context, instance migration.Instance) (migration.Instance, error) {
-	if mock.UpdateByIDFunc == nil {
-		panic("InstanceRepoMock.UpdateByIDFunc: method is nil but InstanceRepo.UpdateByID was just called")
+// Update calls UpdateFunc.
+func (mock *InstanceRepoMock) Update(ctx context.Context, instance migration.Instance) error {
+	if mock.UpdateFunc == nil {
+		panic("InstanceRepoMock.UpdateFunc: method is nil but InstanceRepo.Update was just called")
 	}
 	callInfo := struct {
 		Ctx      context.Context
@@ -626,17 +606,17 @@ func (mock *InstanceRepoMock) UpdateByID(ctx context.Context, instance migration
 		Ctx:      ctx,
 		Instance: instance,
 	}
-	mock.lockUpdateByID.Lock()
-	mock.calls.UpdateByID = append(mock.calls.UpdateByID, callInfo)
-	mock.lockUpdateByID.Unlock()
-	return mock.UpdateByIDFunc(ctx, instance)
+	mock.lockUpdate.Lock()
+	mock.calls.Update = append(mock.calls.Update, callInfo)
+	mock.lockUpdate.Unlock()
+	return mock.UpdateFunc(ctx, instance)
 }
 
-// UpdateByIDCalls gets all the calls that were made to UpdateByID.
+// UpdateCalls gets all the calls that were made to Update.
 // Check the length with:
 //
-//	len(mockedInstanceRepo.UpdateByIDCalls())
-func (mock *InstanceRepoMock) UpdateByIDCalls() []struct {
+//	len(mockedInstanceRepo.UpdateCalls())
+func (mock *InstanceRepoMock) UpdateCalls() []struct {
 	Ctx      context.Context
 	Instance migration.Instance
 } {
@@ -644,92 +624,44 @@ func (mock *InstanceRepoMock) UpdateByIDCalls() []struct {
 		Ctx      context.Context
 		Instance migration.Instance
 	}
-	mock.lockUpdateByID.RLock()
-	calls = mock.calls.UpdateByID
-	mock.lockUpdateByID.RUnlock()
+	mock.lockUpdate.RLock()
+	calls = mock.calls.Update
+	mock.lockUpdate.RUnlock()
 	return calls
 }
 
-// UpdateOverridesByID calls UpdateOverridesByIDFunc.
-func (mock *InstanceRepoMock) UpdateOverridesByID(ctx context.Context, overrides migration.Overrides) (migration.Overrides, error) {
-	if mock.UpdateOverridesByIDFunc == nil {
-		panic("InstanceRepoMock.UpdateOverridesByIDFunc: method is nil but InstanceRepo.UpdateOverridesByID was just called")
+// UpdateOverrides calls UpdateOverridesFunc.
+func (mock *InstanceRepoMock) UpdateOverrides(ctx context.Context, overrides migration.InstanceOverride) error {
+	if mock.UpdateOverridesFunc == nil {
+		panic("InstanceRepoMock.UpdateOverridesFunc: method is nil but InstanceRepo.UpdateOverrides was just called")
 	}
 	callInfo := struct {
 		Ctx       context.Context
-		Overrides migration.Overrides
+		Overrides migration.InstanceOverride
 	}{
 		Ctx:       ctx,
 		Overrides: overrides,
 	}
-	mock.lockUpdateOverridesByID.Lock()
-	mock.calls.UpdateOverridesByID = append(mock.calls.UpdateOverridesByID, callInfo)
-	mock.lockUpdateOverridesByID.Unlock()
-	return mock.UpdateOverridesByIDFunc(ctx, overrides)
+	mock.lockUpdateOverrides.Lock()
+	mock.calls.UpdateOverrides = append(mock.calls.UpdateOverrides, callInfo)
+	mock.lockUpdateOverrides.Unlock()
+	return mock.UpdateOverridesFunc(ctx, overrides)
 }
 
-// UpdateOverridesByIDCalls gets all the calls that were made to UpdateOverridesByID.
+// UpdateOverridesCalls gets all the calls that were made to UpdateOverrides.
 // Check the length with:
 //
-//	len(mockedInstanceRepo.UpdateOverridesByIDCalls())
-func (mock *InstanceRepoMock) UpdateOverridesByIDCalls() []struct {
+//	len(mockedInstanceRepo.UpdateOverridesCalls())
+func (mock *InstanceRepoMock) UpdateOverridesCalls() []struct {
 	Ctx       context.Context
-	Overrides migration.Overrides
+	Overrides migration.InstanceOverride
 } {
 	var calls []struct {
 		Ctx       context.Context
-		Overrides migration.Overrides
+		Overrides migration.InstanceOverride
 	}
-	mock.lockUpdateOverridesByID.RLock()
-	calls = mock.calls.UpdateOverridesByID
-	mock.lockUpdateOverridesByID.RUnlock()
-	return calls
-}
-
-// UpdateStatusByUUID calls UpdateStatusByUUIDFunc.
-func (mock *InstanceRepoMock) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (migration.Instance, error) {
-	if mock.UpdateStatusByUUIDFunc == nil {
-		panic("InstanceRepoMock.UpdateStatusByUUIDFunc: method is nil but InstanceRepo.UpdateStatusByUUID was just called")
-	}
-	callInfo := struct {
-		Ctx             context.Context
-		ID              uuid.UUID
-		Status          api.MigrationStatusType
-		StatusString    string
-		NeedsDiskImport bool
-	}{
-		Ctx:             ctx,
-		ID:              id,
-		Status:          status,
-		StatusString:    statusString,
-		NeedsDiskImport: needsDiskImport,
-	}
-	mock.lockUpdateStatusByUUID.Lock()
-	mock.calls.UpdateStatusByUUID = append(mock.calls.UpdateStatusByUUID, callInfo)
-	mock.lockUpdateStatusByUUID.Unlock()
-	return mock.UpdateStatusByUUIDFunc(ctx, id, status, statusString, needsDiskImport)
-}
-
-// UpdateStatusByUUIDCalls gets all the calls that were made to UpdateStatusByUUID.
-// Check the length with:
-//
-//	len(mockedInstanceRepo.UpdateStatusByUUIDCalls())
-func (mock *InstanceRepoMock) UpdateStatusByUUIDCalls() []struct {
-	Ctx             context.Context
-	ID              uuid.UUID
-	Status          api.MigrationStatusType
-	StatusString    string
-	NeedsDiskImport bool
-} {
-	var calls []struct {
-		Ctx             context.Context
-		ID              uuid.UUID
-		Status          api.MigrationStatusType
-		StatusString    string
-		NeedsDiskImport bool
-	}
-	mock.lockUpdateStatusByUUID.RLock()
-	calls = mock.calls.UpdateStatusByUUID
-	mock.lockUpdateStatusByUUID.RUnlock()
+	mock.lockUpdateOverrides.RLock()
+	calls = mock.calls.UpdateOverrides
+	mock.lockUpdateOverrides.RUnlock()
 	return calls
 }

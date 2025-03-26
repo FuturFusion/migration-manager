@@ -21,9 +21,11 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/endpoint/mock"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
+	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/testcert"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -360,9 +362,14 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 		TrustedTLSClientCertFingerprints: []string{testcert.LocalhostCertFingerprint},
 	})
 	daemon.db, err = db.OpenDatabase(tmpDir)
-	daemon.source = migration.NewSourceService(sqlite.NewSource(daemon.db.DB))
-	daemon.target = migration.NewTargetService(sqlite.NewTarget(daemon.db.DB))
 	require.NoError(t, err)
+
+	tx := transaction.Enable(daemon.db.DB)
+	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	daemon.source = migration.NewSourceService(sqlite.NewSource(tx))
+	daemon.target = migration.NewTargetService(sqlite.NewTarget(tx))
 
 	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, logger, daemon.config.TrustedTLSClientCertFingerprints)
 	require.NoError(t, err)
