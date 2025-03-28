@@ -142,6 +142,60 @@ func (s instanceService) GetAllByBatch(ctx context.Context, batch string, withOv
 	return instances, nil
 }
 
+func (s instanceService) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType, withOverrides bool) (Instances, error) {
+	var instances Instances
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		instances, err = s.repo.GetAllByBatchAndState(ctx, batch, status)
+		if err != nil {
+			return err
+		}
+
+		if withOverrides {
+			for i, inst := range instances {
+				instances[i].Overrides, err = s.repo.GetOverridesByUUID(ctx, inst.UUID)
+				if err != nil && !errors.Is(err, ErrNotFound) {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return instances, nil
+}
+
+func (s instanceService) GetAllBySource(ctx context.Context, source string, withOverrides bool) (Instances, error) {
+	var instances Instances
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		instances, err = s.repo.GetAllBySource(ctx, source)
+		if err != nil {
+			return err
+		}
+
+		if withOverrides {
+			for i, inst := range instances {
+				instances[i].Overrides, err = s.repo.GetOverridesByUUID(ctx, inst.UUID)
+				if err != nil && !errors.Is(err, ErrNotFound) {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return instances, nil
+}
+
 func (s instanceService) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
 	return s.repo.GetAllUUIDs(ctx)
 }
