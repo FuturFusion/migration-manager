@@ -237,7 +237,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 func sourceDelete(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := d.source.DeleteByName(r.Context(), name)
+	err := d.source.DeleteByName(r.Context(), name, d.instance)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -366,7 +366,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		},
 	}
 
-	err = d.source.Update(ctx, src)
+	err = d.source.Update(ctx, src, d.instance)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", source.Name, err))
 	}
