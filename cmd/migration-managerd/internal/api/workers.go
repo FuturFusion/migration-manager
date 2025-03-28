@@ -466,7 +466,7 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 
 		for _, b := range batches {
 			// Get the target and all instances for this batch.
-			instances, err := d.instance.GetAllByBatch(ctx, b.Name, false)
+			instances, err := d.instance.GetAllByBatchAndState(ctx, b.Name, api.MIGRATIONSTATUS_ASSIGNED_BATCH, false)
 			if err != nil {
 				return fmt.Errorf("Failed to get instances for batch %q: %w", b.Name, err)
 			}
