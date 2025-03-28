@@ -356,7 +356,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	src := migration.Source{
+	src := &migration.Source{
 		ID:         currentSource.ID,
 		Name:       source.Name,
 		SourceType: source.SourceType,
@@ -378,7 +378,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 
 	// Trigger a scan of this new source for instances.
 	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
-		err = d.syncOneSource(r.Context(), src)
+		err = d.syncOneSource(r.Context(), *src)
 		if err != nil {
 			return response.SmartError(fmt.Errorf("Failed to initiate sync from source %q: %w", src.Name, err))
 		}

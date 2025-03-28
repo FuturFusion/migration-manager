@@ -22,7 +22,7 @@ type InstanceService interface {
 	GetByUUID(ctx context.Context, id uuid.UUID, withOverrides bool) (*Instance, error)
 	GetByUUIDWithDetails(ctx context.Context, id uuid.UUID) (InstanceWithDetails, error)
 	UnassignFromBatch(ctx context.Context, id uuid.UUID) error
-	Update(ctx context.Context, instance Instance) error
+	Update(ctx context.Context, instance *Instance) error
 	UpdateStatusByUUID(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (*Instance, error)
 	ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusString string) (Instance, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
@@ -31,7 +31,7 @@ type InstanceService interface {
 	CreateOverrides(ctx context.Context, overrides InstanceOverride) (InstanceOverride, error)
 	GetOverridesByUUID(ctx context.Context, id uuid.UUID) (*InstanceOverride, error)
 	DeleteOverridesByUUID(ctx context.Context, id uuid.UUID) error
-	UpdateOverrides(ctx context.Context, overrides InstanceOverride) error
+	UpdateOverrides(ctx context.Context, overrides *InstanceOverride) error
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/instance_repo_mock_gen.go -rm . InstanceRepo

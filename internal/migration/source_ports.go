@@ -14,7 +14,7 @@ type SourceService interface {
 	GetAll(ctx context.Context) (Sources, error)
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Source, error)
-	Update(ctx context.Context, source Source) error
+	Update(ctx context.Context, source *Source) error
 	DeleteByName(ctx context.Context, name string) error
 }
 

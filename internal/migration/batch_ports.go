@@ -15,7 +15,7 @@ type BatchService interface {
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetAllNamesByState(ctx context.Context, status api.BatchStatusType) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Batch, error)
-	Update(ctx context.Context, batch Batch) error
+	Update(ctx context.Context, batch *Batch) error
 	UpdateInstancesAssignedToBatch(ctx context.Context, batch Batch) error
 	UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusString string) (*Batch, error)
 	Rename(ctx context.Context, oldName string, newName string) error

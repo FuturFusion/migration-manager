@@ -294,7 +294,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 		if instanceUpdated {
 			log.Info("Syncing changes to instance from source")
 			inst.LastUpdateFromSource = srcInst.LastUpdateFromSource
-			err := i.Update(ctx, inst)
+			err := i.Update(ctx, &inst)
 			if err != nil {
 				return fmt.Errorf("Failed to update instance: %w", err)
 			}

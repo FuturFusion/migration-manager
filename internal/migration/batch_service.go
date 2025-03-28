@@ -69,7 +69,7 @@ func (s batchService) GetByName(ctx context.Context, name string) (*Batch, error
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s batchService) Update(ctx context.Context, batch Batch) error {
+func (s batchService) Update(ctx context.Context, batch *Batch) error {
 	err := batch.Validate()
 	if err != nil {
 		return err
@@ -85,12 +85,12 @@ func (s batchService) Update(ctx context.Context, batch Batch) error {
 			return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", batch.Name, ErrOperationNotPermitted)
 		}
 
-		err = s.repo.Update(ctx, batch)
+		err = s.repo.Update(ctx, *batch)
 		if err != nil {
 			return err
 		}
 
-		return s.UpdateInstancesAssignedToBatch(ctx, batch)
+		return s.UpdateInstancesAssignedToBatch(ctx, *batch)
 	})
 }
 
@@ -180,7 +180,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 				instance.Batch = &batch.Name
 				instance.MigrationStatus = api.MIGRATIONSTATUS_ASSIGNED_BATCH
 				instance.MigrationStatusString = api.MIGRATIONSTATUS_ASSIGNED_BATCH.String()
-				err = s.instance.Update(ctx, instance)
+				err = s.instance.Update(ctx, &instance)
 				if err != nil {
 					return err
 				}

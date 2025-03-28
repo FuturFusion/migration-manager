@@ -329,7 +329,7 @@ func (s instanceService) UnassignFromBatch(ctx context.Context, id uuid.UUID) er
 	})
 }
 
-func (s instanceService) Update(ctx context.Context, instance Instance) error {
+func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 	err := instance.Validate()
 	if err != nil {
 		return err
@@ -345,7 +345,7 @@ func (s instanceService) Update(ctx context.Context, instance Instance) error {
 			return fmt.Errorf("Instance %q is already assigned to a batch: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
 		}
 
-		return s.repo.Update(ctx, instance)
+		return s.repo.Update(ctx, *instance)
 	})
 	if err != nil {
 		return err
@@ -489,7 +489,7 @@ func (s instanceService) GetOverridesByUUID(ctx context.Context, id uuid.UUID) (
 	return s.repo.GetOverridesByUUID(ctx, id)
 }
 
-func (s instanceService) UpdateOverrides(ctx context.Context, overrides InstanceOverride) error {
+func (s instanceService) UpdateOverrides(ctx context.Context, overrides *InstanceOverride) error {
 	err := overrides.Validate()
 	if err != nil {
 		return err
@@ -515,7 +515,7 @@ func (s instanceService) UpdateOverrides(ctx context.Context, overrides Instance
 			}
 		}
 
-		return s.repo.UpdateOverrides(ctx, overrides)
+		return s.repo.UpdateOverrides(ctx, *overrides)
 	})
 }
 

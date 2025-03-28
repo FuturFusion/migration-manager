@@ -54,7 +54,7 @@ func (s sourceService) GetByName(ctx context.Context, name string) (*Source, err
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s sourceService) Update(ctx context.Context, newSource Source) error {
+func (s sourceService) Update(ctx context.Context, newSource *Source) error {
 	err := newSource.Validate()
 	if err != nil {
 		return err
@@ -63,12 +63,12 @@ func (s sourceService) Update(ctx context.Context, newSource Source) error {
 	// Reset connectivity status to trigger a scan on update.
 	newSource.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN)
 
-	err = s.updateSourceConnectivity(ctx, &newSource)
+	err = s.updateSourceConnectivity(ctx, newSource)
 	if err != nil {
 		return err
 	}
 
-	return s.repo.Update(ctx, newSource)
+	return s.repo.Update(ctx, *newSource)
 }
 
 func (s sourceService) DeleteByName(ctx context.Context, name string) error {
