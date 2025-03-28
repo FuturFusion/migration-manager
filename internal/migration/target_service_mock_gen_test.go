@@ -35,7 +35,7 @@ var _ migration.TargetService = &TargetServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Target, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateFunc: func(ctx context.Context, target migration.Target) error {
+//			UpdateFunc: func(ctx context.Context, target *migration.Target) error {
 //				panic("mock out the Update method")
 //			},
 //		}
@@ -61,7 +61,7 @@ type TargetServiceMock struct {
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Target, error)
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, target migration.Target) error
+	UpdateFunc func(ctx context.Context, target *migration.Target) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -101,7 +101,7 @@ type TargetServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Target is the target argument value.
-			Target migration.Target
+			Target *migration.Target
 		}
 	}
 	lockCreate       sync.RWMutex
@@ -285,13 +285,13 @@ func (mock *TargetServiceMock) GetByNameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *TargetServiceMock) Update(ctx context.Context, target migration.Target) error {
+func (mock *TargetServiceMock) Update(ctx context.Context, target *migration.Target) error {
 	if mock.UpdateFunc == nil {
 		panic("TargetServiceMock.UpdateFunc: method is nil but TargetService.Update was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Target migration.Target
+		Target *migration.Target
 	}{
 		Ctx:    ctx,
 		Target: target,
@@ -308,11 +308,11 @@ func (mock *TargetServiceMock) Update(ctx context.Context, target migration.Targ
 //	len(mockedTargetService.UpdateCalls())
 func (mock *TargetServiceMock) UpdateCalls() []struct {
 	Ctx    context.Context
-	Target migration.Target
+	Target *migration.Target
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Target migration.Target
+		Target *migration.Target
 	}
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update

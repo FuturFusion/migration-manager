@@ -40,6 +40,12 @@ var _ migration.InstanceRepo = &InstanceRepoMock{}
 //			GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
 //				panic("mock out the GetAllByBatch method")
 //			},
+//			GetAllByBatchAndStateFunc: func(ctx context.Context, batch string, status api.MigrationStatusType) (migration.Instances, error) {
+//				panic("mock out the GetAllByBatchAndState method")
+//			},
+//			GetAllBySourceFunc: func(ctx context.Context, source string) (migration.Instances, error) {
+//				panic("mock out the GetAllBySource method")
+//			},
 //			GetAllByStateFunc: func(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error) {
 //				panic("mock out the GetAllByState method")
 //			},
@@ -85,6 +91,12 @@ type InstanceRepoMock struct {
 
 	// GetAllByBatchFunc mocks the GetAllByBatch method.
 	GetAllByBatchFunc func(ctx context.Context, batch string) (migration.Instances, error)
+
+	// GetAllByBatchAndStateFunc mocks the GetAllByBatchAndState method.
+	GetAllByBatchAndStateFunc func(ctx context.Context, batch string, status api.MigrationStatusType) (migration.Instances, error)
+
+	// GetAllBySourceFunc mocks the GetAllBySource method.
+	GetAllBySourceFunc func(ctx context.Context, source string) (migration.Instances, error)
 
 	// GetAllByStateFunc mocks the GetAllByState method.
 	GetAllByStateFunc func(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error)
@@ -149,6 +161,22 @@ type InstanceRepoMock struct {
 			// Batch is the batch argument value.
 			Batch string
 		}
+		// GetAllByBatchAndState holds details about calls to the GetAllByBatchAndState method.
+		GetAllByBatchAndState []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Batch is the batch argument value.
+			Batch string
+			// Status is the status argument value.
+			Status api.MigrationStatusType
+		}
+		// GetAllBySource holds details about calls to the GetAllBySource method.
+		GetAllBySource []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Source is the source argument value.
+			Source string
+		}
 		// GetAllByState holds details about calls to the GetAllByState method.
 		GetAllByState []struct {
 			// Ctx is the ctx argument value.
@@ -201,6 +229,8 @@ type InstanceRepoMock struct {
 	lockDeleteOverridesByUUID sync.RWMutex
 	lockGetAll                sync.RWMutex
 	lockGetAllByBatch         sync.RWMutex
+	lockGetAllByBatchAndState sync.RWMutex
+	lockGetAllBySource        sync.RWMutex
 	lockGetAllByState         sync.RWMutex
 	lockGetAllUUIDs           sync.RWMutex
 	lockGetAllUnassigned      sync.RWMutex
@@ -419,6 +449,82 @@ func (mock *InstanceRepoMock) GetAllByBatchCalls() []struct {
 	mock.lockGetAllByBatch.RLock()
 	calls = mock.calls.GetAllByBatch
 	mock.lockGetAllByBatch.RUnlock()
+	return calls
+}
+
+// GetAllByBatchAndState calls GetAllByBatchAndStateFunc.
+func (mock *InstanceRepoMock) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (migration.Instances, error) {
+	if mock.GetAllByBatchAndStateFunc == nil {
+		panic("InstanceRepoMock.GetAllByBatchAndStateFunc: method is nil but InstanceRepo.GetAllByBatchAndState was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Batch  string
+		Status api.MigrationStatusType
+	}{
+		Ctx:    ctx,
+		Batch:  batch,
+		Status: status,
+	}
+	mock.lockGetAllByBatchAndState.Lock()
+	mock.calls.GetAllByBatchAndState = append(mock.calls.GetAllByBatchAndState, callInfo)
+	mock.lockGetAllByBatchAndState.Unlock()
+	return mock.GetAllByBatchAndStateFunc(ctx, batch, status)
+}
+
+// GetAllByBatchAndStateCalls gets all the calls that were made to GetAllByBatchAndState.
+// Check the length with:
+//
+//	len(mockedInstanceRepo.GetAllByBatchAndStateCalls())
+func (mock *InstanceRepoMock) GetAllByBatchAndStateCalls() []struct {
+	Ctx    context.Context
+	Batch  string
+	Status api.MigrationStatusType
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Batch  string
+		Status api.MigrationStatusType
+	}
+	mock.lockGetAllByBatchAndState.RLock()
+	calls = mock.calls.GetAllByBatchAndState
+	mock.lockGetAllByBatchAndState.RUnlock()
+	return calls
+}
+
+// GetAllBySource calls GetAllBySourceFunc.
+func (mock *InstanceRepoMock) GetAllBySource(ctx context.Context, source string) (migration.Instances, error) {
+	if mock.GetAllBySourceFunc == nil {
+		panic("InstanceRepoMock.GetAllBySourceFunc: method is nil but InstanceRepo.GetAllBySource was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		Source string
+	}{
+		Ctx:    ctx,
+		Source: source,
+	}
+	mock.lockGetAllBySource.Lock()
+	mock.calls.GetAllBySource = append(mock.calls.GetAllBySource, callInfo)
+	mock.lockGetAllBySource.Unlock()
+	return mock.GetAllBySourceFunc(ctx, source)
+}
+
+// GetAllBySourceCalls gets all the calls that were made to GetAllBySource.
+// Check the length with:
+//
+//	len(mockedInstanceRepo.GetAllBySourceCalls())
+func (mock *InstanceRepoMock) GetAllBySourceCalls() []struct {
+	Ctx    context.Context
+	Source string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Source string
+	}
+	mock.lockGetAllBySource.RLock()
+	calls = mock.calls.GetAllBySource
+	mock.lockGetAllBySource.RUnlock()
 	return calls
 }
 

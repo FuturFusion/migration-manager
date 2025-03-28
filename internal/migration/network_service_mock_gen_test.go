@@ -35,7 +35,7 @@ var _ migration.NetworkService = &NetworkServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Network, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateFunc: func(ctx context.Context, network migration.Network) error {
+//			UpdateFunc: func(ctx context.Context, network *migration.Network) error {
 //				panic("mock out the Update method")
 //			},
 //		}
@@ -61,7 +61,7 @@ type NetworkServiceMock struct {
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Network, error)
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, network migration.Network) error
+	UpdateFunc func(ctx context.Context, network *migration.Network) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -101,7 +101,7 @@ type NetworkServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Network is the network argument value.
-			Network migration.Network
+			Network *migration.Network
 		}
 	}
 	lockCreate       sync.RWMutex
@@ -285,13 +285,13 @@ func (mock *NetworkServiceMock) GetByNameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *NetworkServiceMock) Update(ctx context.Context, network migration.Network) error {
+func (mock *NetworkServiceMock) Update(ctx context.Context, network *migration.Network) error {
 	if mock.UpdateFunc == nil {
 		panic("NetworkServiceMock.UpdateFunc: method is nil but NetworkService.Update was just called")
 	}
 	callInfo := struct {
 		Ctx     context.Context
-		Network migration.Network
+		Network *migration.Network
 	}{
 		Ctx:     ctx,
 		Network: network,
@@ -308,11 +308,11 @@ func (mock *NetworkServiceMock) Update(ctx context.Context, network migration.Ne
 //	len(mockedNetworkService.UpdateCalls())
 func (mock *NetworkServiceMock) UpdateCalls() []struct {
 	Ctx     context.Context
-	Network migration.Network
+	Network *migration.Network
 } {
 	var calls []struct {
 		Ctx     context.Context
-		Network migration.Network
+		Network *migration.Network
 	}
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update

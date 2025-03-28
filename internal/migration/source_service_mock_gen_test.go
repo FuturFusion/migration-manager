@@ -23,7 +23,7 @@ var _ migration.SourceService = &SourceServiceMock{}
 //			CreateFunc: func(ctx context.Context, source migration.Source) (migration.Source, error) {
 //				panic("mock out the Create method")
 //			},
-//			DeleteByNameFunc: func(ctx context.Context, name string) error {
+//			DeleteByNameFunc: func(ctx context.Context, name string, instanceService migration.InstanceService) error {
 //				panic("mock out the DeleteByName method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (migration.Sources, error) {
@@ -35,7 +35,7 @@ var _ migration.SourceService = &SourceServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Source, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateFunc: func(ctx context.Context, source migration.Source) error {
+//			UpdateFunc: func(ctx context.Context, source *migration.Source, instanceService migration.InstanceService) error {
 //				panic("mock out the Update method")
 //			},
 //		}
@@ -49,7 +49,7 @@ type SourceServiceMock struct {
 	CreateFunc func(ctx context.Context, source migration.Source) (migration.Source, error)
 
 	// DeleteByNameFunc mocks the DeleteByName method.
-	DeleteByNameFunc func(ctx context.Context, name string) error
+	DeleteByNameFunc func(ctx context.Context, name string, instanceService migration.InstanceService) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Sources, error)
@@ -61,7 +61,7 @@ type SourceServiceMock struct {
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Source, error)
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, source migration.Source) error
+	UpdateFunc func(ctx context.Context, source *migration.Source, instanceService migration.InstanceService) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -78,6 +78,8 @@ type SourceServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// InstanceService is the instanceService argument value.
+			InstanceService migration.InstanceService
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -101,7 +103,9 @@ type SourceServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Source is the source argument value.
-			Source migration.Source
+			Source *migration.Source
+			// InstanceService is the instanceService argument value.
+			InstanceService migration.InstanceService
 		}
 	}
 	lockCreate       sync.RWMutex
@@ -149,21 +153,23 @@ func (mock *SourceServiceMock) CreateCalls() []struct {
 }
 
 // DeleteByName calls DeleteByNameFunc.
-func (mock *SourceServiceMock) DeleteByName(ctx context.Context, name string) error {
+func (mock *SourceServiceMock) DeleteByName(ctx context.Context, name string, instanceService migration.InstanceService) error {
 	if mock.DeleteByNameFunc == nil {
 		panic("SourceServiceMock.DeleteByNameFunc: method is nil but SourceService.DeleteByName was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx             context.Context
+		Name            string
+		InstanceService migration.InstanceService
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:             ctx,
+		Name:            name,
+		InstanceService: instanceService,
 	}
 	mock.lockDeleteByName.Lock()
 	mock.calls.DeleteByName = append(mock.calls.DeleteByName, callInfo)
 	mock.lockDeleteByName.Unlock()
-	return mock.DeleteByNameFunc(ctx, name)
+	return mock.DeleteByNameFunc(ctx, name, instanceService)
 }
 
 // DeleteByNameCalls gets all the calls that were made to DeleteByName.
@@ -171,12 +177,14 @@ func (mock *SourceServiceMock) DeleteByName(ctx context.Context, name string) er
 //
 //	len(mockedSourceService.DeleteByNameCalls())
 func (mock *SourceServiceMock) DeleteByNameCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx             context.Context
+	Name            string
+	InstanceService migration.InstanceService
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx             context.Context
+		Name            string
+		InstanceService migration.InstanceService
 	}
 	mock.lockDeleteByName.RLock()
 	calls = mock.calls.DeleteByName
@@ -285,21 +293,23 @@ func (mock *SourceServiceMock) GetByNameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *SourceServiceMock) Update(ctx context.Context, source migration.Source) error {
+func (mock *SourceServiceMock) Update(ctx context.Context, source *migration.Source, instanceService migration.InstanceService) error {
 	if mock.UpdateFunc == nil {
 		panic("SourceServiceMock.UpdateFunc: method is nil but SourceService.Update was just called")
 	}
 	callInfo := struct {
-		Ctx    context.Context
-		Source migration.Source
+		Ctx             context.Context
+		Source          *migration.Source
+		InstanceService migration.InstanceService
 	}{
-		Ctx:    ctx,
-		Source: source,
+		Ctx:             ctx,
+		Source:          source,
+		InstanceService: instanceService,
 	}
 	mock.lockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	mock.lockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, source)
+	return mock.UpdateFunc(ctx, source, instanceService)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -307,12 +317,14 @@ func (mock *SourceServiceMock) Update(ctx context.Context, source migration.Sour
 //
 //	len(mockedSourceService.UpdateCalls())
 func (mock *SourceServiceMock) UpdateCalls() []struct {
-	Ctx    context.Context
-	Source migration.Source
+	Ctx             context.Context
+	Source          *migration.Source
+	InstanceService migration.InstanceService
 } {
 	var calls []struct {
-		Ctx    context.Context
-		Source migration.Source
+		Ctx             context.Context
+		Source          *migration.Source
+		InstanceService migration.InstanceService
 	}
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
