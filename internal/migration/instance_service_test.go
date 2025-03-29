@@ -1128,6 +1128,17 @@ func TestInstanceService_DeleteByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:    "success - batch ID set, modifiable",
+			uuidArg: uuidA,
+			repoGetByUUIDInstance: migration.Instance{
+				UUID:            uuidA,
+				MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
+				Batch:           ptr.To("one"),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:             "error - repo.GetByUUID",
 			uuidArg:          uuidA,
 			repoGetByUUIDErr: boom.Error,
@@ -1135,11 +1146,11 @@ func TestInstanceService_DeleteByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:    "error - batch ID set",
+			name:    "error - batch ID set, not modifiable",
 			uuidArg: uuidA,
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:            uuidA,
-				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				Batch:           ptr.To("one"),
 			},
 
