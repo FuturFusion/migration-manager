@@ -761,7 +761,7 @@ func TestInstanceService_Update(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			err := instanceSvc.Update(context.Background(), tc.instance)
+			err := instanceSvc.Update(context.Background(), &tc.instance)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1561,7 +1561,7 @@ func TestInstanceService_UpdateOverridesByUUID(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			err := instanceSvc.UpdateOverrides(context.Background(), tc.overrides)
+			err := instanceSvc.UpdateOverrides(context.Background(), &tc.overrides)
 
 			// Assert
 			tc.assertErr(t, err)
