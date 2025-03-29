@@ -71,7 +71,7 @@ func (s sourceService) Update(ctx context.Context, newSource *Source, instanceSe
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		if instanceService != nil {
-			err := s.canBeModified(ctx, newSource.Name, instanceService)
+			_, err := s.canBeModified(ctx, newSource.Name, instanceService)
 			if err != nil {
 				return fmt.Errorf("Unable to update source %q: %w", newSource.Name, err)
 			}
@@ -88,9 +88,16 @@ func (s sourceService) DeleteByName(ctx context.Context, name string, instanceSe
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		if instanceService != nil {
-			err := s.canBeModified(ctx, name, instanceService)
+			instances, err := s.canBeModified(ctx, name, instanceService)
 			if err != nil {
 				return fmt.Errorf("Unable to remove source %q: %w", name, err)
+			}
+
+			for _, instance := range instances {
+				err = instanceService.DeleteByUUID(ctx, instance.UUID)
+				if err != nil {
+					return fmt.Errorf("Unable to remove instance %q for source %q: %w", instance.UUID.String(), name, err)
+				}
 			}
 		}
 
@@ -99,19 +106,19 @@ func (s sourceService) DeleteByName(ctx context.Context, name string, instanceSe
 }
 
 // canBeModified verifies whether the source with the given name can be modified, given its current instance states.
-func (s sourceService) canBeModified(ctx context.Context, sourceName string, instanceService InstanceService) error {
+func (s sourceService) canBeModified(ctx context.Context, sourceName string, instanceService InstanceService) (Instances, error) {
 	instances, err := instanceService.GetAllBySource(ctx, sourceName, false)
 	if err != nil {
-		return fmt.Errorf("Failed to get instances for source %q: %w", sourceName, err)
+		return nil, fmt.Errorf("Failed to get instances for source %q: %w", sourceName, err)
 	}
 
 	for _, instance := range instances {
 		if !instance.CanBeModified() {
-			return fmt.Errorf("Some instances cannot be modified (Status: %q)", instance.MigrationStatus.String())
+			return nil, fmt.Errorf("Some instances cannot be modified (Status: %q)", instance.MigrationStatus.String())
 		}
 	}
 
-	return nil
+	return instances, nil
 }
 
 func (s sourceService) updateSourceConnectivity(ctx context.Context, src *Source) error {
