@@ -398,7 +398,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	err = d.instance.UpdateOverrides(ctx, migration.InstanceOverride{
+	err = d.instance.UpdateOverrides(ctx, &migration.InstanceOverride{
 		UUID:             override.UUID,
 		LastUpdate:       time.Now().UTC(),
 		Comment:          override.Comment,

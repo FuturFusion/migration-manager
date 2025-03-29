@@ -114,7 +114,8 @@ func (i Instance) GetName() string {
 
 func (i Instance) CanBeModified() bool {
 	switch i.MigrationStatus {
-	case api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+	case api.MIGRATIONSTATUS_UNKNOWN,
+		api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 		api.MIGRATIONSTATUS_FINISHED,
 		api.MIGRATIONSTATUS_ERROR,
 		api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION:

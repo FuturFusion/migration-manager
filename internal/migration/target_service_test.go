@@ -404,7 +404,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 			tc.target.EndpointFunc = endpointFunc
 
 			// Run test
-			err := targetSvc.Update(context.Background(), tc.target)
+			err := targetSvc.Update(context.Background(), &tc.target)
 
 			// Assert
 			tc.assertErr(t, err)

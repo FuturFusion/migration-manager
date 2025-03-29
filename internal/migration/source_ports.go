@@ -14,8 +14,8 @@ type SourceService interface {
 	GetAll(ctx context.Context) (Sources, error)
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Source, error)
-	Update(ctx context.Context, source Source) error
-	DeleteByName(ctx context.Context, name string) error
+	Update(ctx context.Context, source *Source, instanceService InstanceService) error
+	DeleteByName(ctx context.Context, name string, instanceService InstanceService) error
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/source_repo_mock_gen.go -rm . SourceRepo

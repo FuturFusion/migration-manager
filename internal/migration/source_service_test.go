@@ -641,7 +641,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			tc.source.EndpointFunc = endpointFunc
 
 			// Run test
-			err := sourceSvc.Update(context.Background(), tc.source)
+			err := sourceSvc.Update(context.Background(), &tc.source, nil)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -692,7 +692,7 @@ func TestSourceService_DeleteByName(t *testing.T) {
 			sourceSvc := migration.NewSourceService(repo)
 
 			// Run test
-			err := sourceSvc.DeleteByName(context.Background(), tc.nameArg)
+			err := sourceSvc.DeleteByName(context.Background(), tc.nameArg, nil)
 
 			// Assert
 			tc.assertErr(t, err)

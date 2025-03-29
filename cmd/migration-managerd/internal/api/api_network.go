@@ -332,7 +332,7 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	err = d.network.Update(ctx, migration.Network{
+	err = d.network.Update(ctx, &migration.Network{
 		ID:     currentNetwork.ID,
 		Name:   network.Name,
 		Config: network.Config,

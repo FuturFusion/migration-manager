@@ -536,7 +536,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batchSvc := migration.NewBatchService(repo, instanceSvc)
 
 			// Run test
-			err := batchSvc.Update(context.Background(), tc.batch)
+			err := batchSvc.Update(context.Background(), &tc.batch)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -854,7 +854,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 					_, err := queue.Pop(t, &tc.instanceSvcUnassignFromBatch)
 					return err
 				},
-				UpdateFunc: func(ctx context.Context, instance migration.Instance) error {
+				UpdateFunc: func(ctx context.Context, instance *migration.Instance) error {
 					_, err := queue.Pop(t, &tc.instanceSvcUpdateByID)
 					return err
 				},

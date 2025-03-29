@@ -47,13 +47,13 @@ func (n networkService) GetByName(ctx context.Context, name string) (*Network, e
 	return n.repo.GetByName(ctx, name)
 }
 
-func (n networkService) Update(ctx context.Context, newNetwork Network) error {
+func (n networkService) Update(ctx context.Context, newNetwork *Network) error {
 	err := newNetwork.Validate()
 	if err != nil {
 		return err
 	}
 
-	return n.repo.Update(ctx, newNetwork)
+	return n.repo.Update(ctx, *newNetwork)
 }
 
 func (n networkService) DeleteByName(ctx context.Context, name string) error {

@@ -761,7 +761,7 @@ func TestInstanceService_Update(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			err := instanceSvc.Update(context.Background(), tc.instance)
+			err := instanceSvc.Update(context.Background(), &tc.instance)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1128,6 +1128,17 @@ func TestInstanceService_DeleteByUUID(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name:    "success - batch ID set, modifiable",
+			uuidArg: uuidA,
+			repoGetByUUIDInstance: migration.Instance{
+				UUID:            uuidA,
+				MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
+				Batch:           ptr.To("one"),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name:             "error - repo.GetByUUID",
 			uuidArg:          uuidA,
 			repoGetByUUIDErr: boom.Error,
@@ -1135,11 +1146,11 @@ func TestInstanceService_DeleteByUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:    "error - batch ID set",
+			name:    "error - batch ID set, not modifiable",
 			uuidArg: uuidA,
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:            uuidA,
-				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				Batch:           ptr.To("one"),
 			},
 
@@ -1561,7 +1572,7 @@ func TestInstanceService_UpdateOverridesByUUID(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			err := instanceSvc.UpdateOverrides(context.Background(), tc.overrides)
+			err := instanceSvc.UpdateOverrides(context.Background(), &tc.overrides)
 
 			// Assert
 			tc.assertErr(t, err)

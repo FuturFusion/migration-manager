@@ -237,7 +237,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 func sourceDelete(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := d.source.DeleteByName(r.Context(), name)
+	err := d.source.DeleteByName(r.Context(), name, d.instance)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -356,7 +356,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	src := migration.Source{
+	src := &migration.Source{
 		ID:         currentSource.ID,
 		Name:       source.Name,
 		SourceType: source.SourceType,
@@ -366,7 +366,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		},
 	}
 
-	err = d.source.Update(ctx, src)
+	err = d.source.Update(ctx, src, d.instance)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", source.Name, err))
 	}
@@ -378,7 +378,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 
 	// Trigger a scan of this new source for instances.
 	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
-		err = d.syncOneSource(r.Context(), src)
+		err = d.syncOneSource(r.Context(), *src)
 		if err != nil {
 			return response.SmartError(fmt.Errorf("Failed to initiate sync from source %q: %w", src.Name, err))
 		}

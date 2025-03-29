@@ -259,7 +259,7 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 			return apiTarget.NewInternalIncusTargetFrom(t)
 		}
 
-		_ = d.target.Update(context.TODO(), *tgt)
+		_ = d.target.Update(context.TODO(), tgt)
 	}()
 
 	return tokenURL, nil
@@ -405,7 +405,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	tgt := migration.Target{
+	tgt := &migration.Target{
 		ID:         currentTarget.ID,
 		Name:       target.Name,
 		TargetType: target.TargetType,

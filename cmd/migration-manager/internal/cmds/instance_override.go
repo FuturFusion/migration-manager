@@ -290,7 +290,7 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 		disableMigration = "yes"
 	}
 
-	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? (yes/no) [default="+disableMigration+"]: ", strconv.FormatBool(override.DisableMigration))
+	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? (yes/no) [default="+disableMigration+"]: ", disableMigration)
 	if err != nil {
 		return err
 	}
