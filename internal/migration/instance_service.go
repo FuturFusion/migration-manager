@@ -442,12 +442,12 @@ func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		if oldInstance.Batch != nil || oldInstance.IsMigrating() {
+		if !oldInstance.CanBeModified() {
 			return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
 		}
 
 		err = s.repo.DeleteOverridesByUUID(ctx, id)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrNotFound) {
 			return err
 		}
 
