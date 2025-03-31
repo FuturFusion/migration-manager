@@ -9,7 +9,7 @@ type NetworkService interface {
 	GetAll(ctx context.Context) (Networks, error)
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Network, error)
-	Update(ctx context.Context, network Network) error
+	Update(ctx context.Context, network *Network) error
 	DeleteByName(ctx context.Context, name string) error
 }
 

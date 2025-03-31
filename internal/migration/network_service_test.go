@@ -324,7 +324,7 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 			networkSvc := migration.NewNetworkService(repo)
 
 			// Run test
-			err := networkSvc.Update(context.Background(), tc.network)
+			err := networkSvc.Update(context.Background(), &tc.network)
 
 			// Assert
 			tc.assertErr(t, err)

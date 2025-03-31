@@ -410,7 +410,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	err = d.batch.Update(ctx, migration.Batch{
+	err = d.batch.Update(ctx, &migration.Batch{
 		ID:                   currentBatch.ID,
 		Name:                 batch.Name,
 		Target:               batch.Target,
@@ -591,7 +591,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 		}
 
 		// Get the target and all instances for this batch.
-		instances, err = d.instance.GetAllByBatch(ctx, batch.Name, true)
+		instances, err = d.instance.GetAllByBatchAndState(ctx, batch.Name, api.MIGRATIONSTATUS_ASSIGNED_BATCH, true)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances for batch %q: %w", batch.Name, err)
 		}

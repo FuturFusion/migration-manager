@@ -144,6 +144,47 @@ func (_d InstanceRepoWithSlog) GetAllByBatch(ctx context.Context, batch string) 
 	return _d._base.GetAllByBatch(ctx, batch)
 }
 
+// GetAllByBatchAndState implements _sourceMigration.InstanceRepo
+func (_d InstanceRepoWithSlog) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (i1 _sourceMigration.Instances, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.String("batch", batch),
+		slog.Any("status", status),
+	).Debug("InstanceRepoWithSlog: calling GetAllByBatchAndState")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("i1", i1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method GetAllByBatchAndState returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method GetAllByBatchAndState finished")
+		}
+	}()
+	return _d._base.GetAllByBatchAndState(ctx, batch, status)
+}
+
+// GetAllBySource implements _sourceMigration.InstanceRepo
+func (_d InstanceRepoWithSlog) GetAllBySource(ctx context.Context, source string) (i1 _sourceMigration.Instances, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.String("source", source),
+	).Debug("InstanceRepoWithSlog: calling GetAllBySource")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("i1", i1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method GetAllBySource returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method GetAllBySource finished")
+		}
+	}()
+	return _d._base.GetAllBySource(ctx, source)
+}
+
 // GetAllByState implements _sourceMigration.InstanceRepo
 func (_d InstanceRepoWithSlog) GetAllByState(ctx context.Context, status api.MigrationStatusType) (i1 _sourceMigration.Instances, err error) {
 	_d._log.With(

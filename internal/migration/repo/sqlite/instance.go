@@ -32,12 +32,20 @@ func (i instance) GetAll(ctx context.Context) (migration.Instances, error) {
 	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db))
 }
 
+func (i instance) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (migration.Instances, error) {
+	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{Batch: &batch, MigrationStatus: &status})
+}
+
 func (i instance) GetAllByBatch(ctx context.Context, batch string) (migration.Instances, error) {
 	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{Batch: &batch})
 }
 
 func (i instance) GetAllByState(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error) {
 	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{MigrationStatus: &status})
+}
+
+func (i instance) GetAllBySource(ctx context.Context, source string) (migration.Instances, error) {
+	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{Source: &source})
 }
 
 func (i instance) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {

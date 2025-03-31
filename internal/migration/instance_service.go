@@ -142,6 +142,60 @@ func (s instanceService) GetAllByBatch(ctx context.Context, batch string, withOv
 	return instances, nil
 }
 
+func (s instanceService) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType, withOverrides bool) (Instances, error) {
+	var instances Instances
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		instances, err = s.repo.GetAllByBatchAndState(ctx, batch, status)
+		if err != nil {
+			return err
+		}
+
+		if withOverrides {
+			for i, inst := range instances {
+				instances[i].Overrides, err = s.repo.GetOverridesByUUID(ctx, inst.UUID)
+				if err != nil && !errors.Is(err, ErrNotFound) {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return instances, nil
+}
+
+func (s instanceService) GetAllBySource(ctx context.Context, source string, withOverrides bool) (Instances, error) {
+	var instances Instances
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		instances, err = s.repo.GetAllBySource(ctx, source)
+		if err != nil {
+			return err
+		}
+
+		if withOverrides {
+			for i, inst := range instances {
+				instances[i].Overrides, err = s.repo.GetOverridesByUUID(ctx, inst.UUID)
+				if err != nil && !errors.Is(err, ErrNotFound) {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return instances, nil
+}
+
 func (s instanceService) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
 	return s.repo.GetAllUUIDs(ctx)
 }
@@ -275,7 +329,7 @@ func (s instanceService) UnassignFromBatch(ctx context.Context, id uuid.UUID) er
 	})
 }
 
-func (s instanceService) Update(ctx context.Context, instance Instance) error {
+func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 	err := instance.Validate()
 	if err != nil {
 		return err
@@ -291,7 +345,7 @@ func (s instanceService) Update(ctx context.Context, instance Instance) error {
 			return fmt.Errorf("Instance %q is already assigned to a batch: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
 		}
 
-		return s.repo.Update(ctx, instance)
+		return s.repo.Update(ctx, *instance)
 	})
 	if err != nil {
 		return err
@@ -388,12 +442,12 @@ func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		if oldInstance.Batch != nil || oldInstance.IsMigrating() {
+		if !oldInstance.CanBeModified() {
 			return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
 		}
 
 		err = s.repo.DeleteOverridesByUUID(ctx, id)
-		if err != nil {
+		if err != nil && !errors.Is(err, ErrNotFound) {
 			return err
 		}
 
@@ -435,7 +489,7 @@ func (s instanceService) GetOverridesByUUID(ctx context.Context, id uuid.UUID) (
 	return s.repo.GetOverridesByUUID(ctx, id)
 }
 
-func (s instanceService) UpdateOverrides(ctx context.Context, overrides InstanceOverride) error {
+func (s instanceService) UpdateOverrides(ctx context.Context, overrides *InstanceOverride) error {
 	err := overrides.Validate()
 	if err != nil {
 		return err
@@ -461,7 +515,7 @@ func (s instanceService) UpdateOverrides(ctx context.Context, overrides Instance
 			}
 		}
 
-		return s.repo.UpdateOverrides(ctx, overrides)
+		return s.repo.UpdateOverrides(ctx, *overrides)
 	})
 }
 

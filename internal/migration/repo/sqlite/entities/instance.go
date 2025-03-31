@@ -16,6 +16,7 @@ import (
 //generate-database:mapper stmt -e instance objects-by-Batch
 //generate-database:mapper stmt -e instance objects-by-MigrationStatus
 //generate-database:mapper stmt -e instance objects-by-Batch-and-MigrationStatus
+//generate-database:mapper stmt -e instance objects-by-Source
 //generate-database:mapper stmt -e instance names
 //generate-database:mapper stmt -e instance names-by-UUID
 //generate-database:mapper stmt -e instance names-by-Batch
@@ -38,4 +39,5 @@ type InstanceFilter struct {
 	UUID            *uuid.UUID
 	Batch           *string
 	MigrationStatus *api.MigrationStatusType
+	Source          *string
 }

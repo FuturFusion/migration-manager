@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -54,7 +55,7 @@ func (s sourceService) GetByName(ctx context.Context, name string) (*Source, err
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s sourceService) Update(ctx context.Context, newSource Source) error {
+func (s sourceService) Update(ctx context.Context, newSource *Source, instanceService InstanceService) error {
 	err := newSource.Validate()
 	if err != nil {
 		return err
@@ -63,20 +64,61 @@ func (s sourceService) Update(ctx context.Context, newSource Source) error {
 	// Reset connectivity status to trigger a scan on update.
 	newSource.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN)
 
-	err = s.updateSourceConnectivity(ctx, &newSource)
+	err = s.updateSourceConnectivity(ctx, newSource)
 	if err != nil {
 		return err
 	}
 
-	return s.repo.Update(ctx, newSource)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		if instanceService != nil {
+			_, err := s.canBeModified(ctx, newSource.Name, instanceService)
+			if err != nil {
+				return fmt.Errorf("Unable to update source %q: %w", newSource.Name, err)
+			}
+		}
+
+		return s.repo.Update(ctx, *newSource)
+	})
 }
 
-func (s sourceService) DeleteByName(ctx context.Context, name string) error {
+func (s sourceService) DeleteByName(ctx context.Context, name string, instanceService InstanceService) error {
 	if name == "" {
 		return fmt.Errorf("Source name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
-	return s.repo.DeleteByName(ctx, name)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		if instanceService != nil {
+			instances, err := s.canBeModified(ctx, name, instanceService)
+			if err != nil {
+				return fmt.Errorf("Unable to remove source %q: %w", name, err)
+			}
+
+			for _, instance := range instances {
+				err = instanceService.DeleteByUUID(ctx, instance.UUID)
+				if err != nil {
+					return fmt.Errorf("Unable to remove instance %q for source %q: %w", instance.UUID.String(), name, err)
+				}
+			}
+		}
+
+		return s.repo.DeleteByName(ctx, name)
+	})
+}
+
+// canBeModified verifies whether the source with the given name can be modified, given its current instance states.
+func (s sourceService) canBeModified(ctx context.Context, sourceName string, instanceService InstanceService) (Instances, error) {
+	instances, err := instanceService.GetAllBySource(ctx, sourceName, false)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get instances for source %q: %w", sourceName, err)
+	}
+
+	for _, instance := range instances {
+		if !instance.CanBeModified() {
+			return nil, fmt.Errorf("Some instances cannot be modified (Status: %q)", instance.MigrationStatus.String())
+		}
+	}
+
+	return instances, nil
 }
 
 func (s sourceService) updateSourceConnectivity(ctx context.Context, src *Source) error {

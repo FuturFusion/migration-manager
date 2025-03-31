@@ -261,9 +261,30 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(3), instanceC.ID)
 
-	// Cannot delete a source or target if referenced by an instance.
-	err = sourceSvc.DeleteByName(context.TODO(), testSource.Name)
-	require.ErrorIs(t, err, migration.ErrConstraintViolation)
+	// Cannot delete a source or target if referenced by an assigned instance.
+	for _, status := range []api.MigrationStatusType{
+		api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+		api.MIGRATIONSTATUS_CREATING,
+		api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
+		api.MIGRATIONSTATUS_IDLE,
+		api.MIGRATIONSTATUS_FINAL_IMPORT,
+		api.MIGRATIONSTATUS_IMPORT_COMPLETE,
+	} {
+		if instanceA.MigrationStatus != status {
+			instanceA.MigrationStatus = status
+			err = instance.Update(ctx, instanceA)
+			require.NoError(t, err)
+		}
+
+		err = sourceSvc.DeleteByName(context.TODO(), testSource.Name, instanceSvc)
+		require.Error(t, err)
+	}
+
+	// Reset the status of instanceA after changing it.
+	instanceA.MigrationStatus = instanceB.MigrationStatus
+	err = instance.Update(ctx, instanceA)
+	require.NoError(t, err)
+
 	err = targetSvc.DeleteByName(ctx, testTarget.Name)
 	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
@@ -312,13 +333,25 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	_, err = instance.Create(ctx, instanceB)
 	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
-	// Can't delete a source that has at least one associated instance.
-	err = sourceSvc.DeleteByName(ctx, testSource.Name)
-	require.ErrorIs(t, err, migration.ErrConstraintViolation)
+	// Can't delete a source that has at least one associated instance in a batch.
+	err = sourceSvc.DeleteByName(ctx, testSource.Name, instanceSvc)
+	require.Error(t, err)
 
-	// Can't delete a target that has at least one associated instance.
+	instanceB.MigrationStatus = api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION
+	instanceB.MigrationStatusString = instanceB.MigrationStatus.String()
+	err = instance.Update(ctx, instanceB)
+
+	// Can't delete a target that has at least one associated batch.
 	err = targetSvc.DeleteByName(ctx, testTarget.Name)
 	require.ErrorIs(t, err, migration.ErrConstraintViolation)
+
+	// Can delete a source with all unassigned or overridden instances.
+	err = sourceSvc.DeleteByName(ctx, testSource.Name, instanceSvc)
+	require.NoError(t, err)
+
+	instances, err = instance.GetAll(ctx)
+	require.NoError(t, err)
+	require.Empty(t, instances)
 }
 
 var overridesA = migration.InstanceOverride{UUID: instanceAUUID, LastUpdate: time.Now().UTC(), Comment: "A comment", NumberCPUs: 8, MemoryInBytes: 4096, DisableMigration: true}
