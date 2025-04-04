@@ -1,0 +1,251 @@
+- name: cpus
+  description: number of cpus
+  source:
+      vmware:
+          8.0:
+            type: property
+            key: config.hardware.numCPU
+  target:
+      incus:
+          6.0:
+            type: config
+            key: limits.cpu
+
+- name: memory
+  description: available memory
+  source:
+      vmware:
+          8.0:
+            type: property
+            # VMware stores this value as MB so we have to convert it to bytes.
+            key: summary.config.memorySizeMB
+  target:
+      incus:
+          6.0:
+            type: config
+            key: limits.memory
+
+- name: os
+  description: OS name
+  source:
+      vmware:
+          8.0:
+            # VMware appends Guest to the end of the OS name, so we remove it.
+            type: property
+            key: summary.config.guestId
+  target:
+      incus:
+          6.0:
+            type: config
+            key: image.os
+
+- name: os_version
+  description: OS version name
+  source:
+      vmware:
+          8.0:
+            type: property
+            key: summary.config.guestFullName
+  target:
+      incus:
+          6.0:
+            type: config
+            key: image.release
+
+- name: legacy_boot
+  description: use legacy boot
+  source:
+      vmware:
+          8.0:
+            # The appropriate value in VMware for this key is "bios"
+            type: property
+            key: config.firmware
+  target:
+      incus:
+          6.0:
+            type: config
+            key: security.csm
+
+- name: secure_boot
+  description: activates secureboot
+  source:
+      vmware:
+          8.0:
+              type: property
+              key: capability.secureBootSupported
+  target:
+      incus:
+          6.0:
+              type: config
+              key: security.secureboot
+
+- name: tpm
+  description: uses tpm
+  source:
+      vmware:
+          8.0:
+            type: property
+            key: summary.config.tpmPresent
+  target:
+      incus:
+          6.0:
+            # We create a /dev/tpm0 device in Incus.
+            type: tpm
+            key: path
+
+- name: description
+  description: instance description
+  source:
+      vmware:
+          8.0:
+              # This key may not always be set (has omitempty).
+              type: property
+              key: config.annotation
+  target:
+      incus:
+          6.0:
+              type: config
+              key: image.description
+
+- name: uuid
+  description: instance uuid
+  source:
+      vmware:
+          8.0:
+              type: property
+              key: summary.config.instanceUuid
+  target:
+      incus:
+          6.0:
+              type: config
+              key: volatile.uuid
+
+
+- name: location
+  description: location of the instance
+  source:
+      vmware:
+          8.0:
+              # This is not available as a traditional config key from govmomi, instead it is a field on the vm's client object.
+              type: vm_info
+              key: InventoryPath
+
+- name: name
+  description: name of the instance
+  source:
+      vmware:
+          8.0:
+              type: property
+              key: config.name
+
+- name: architecture
+  description: instance cpu architecture
+  source:
+      vmware:
+          8.0:
+              # This is buried in a text object and has to be manually parsed out with string manipulation.
+              # The parent config is config.extraConfig
+              type: guest_info
+              key: guestInfo.detailed.data
+  target:
+      incus:
+          6.0:
+              type: config
+              key: image.architecture
+
+- name: disk
+  description: disk device
+  source:
+      vmware:
+          8.0:
+            # All devices live uner config.hardware.device, but the individual devices are determined by their keys.
+            # govmomi internally deciphers the correct object type, in this case VirtualDisk.
+            type: property_disk
+            key: config.hardware.device
+  target:
+      incus:
+          6.0:
+            type: disk
+  config:
+      disk_name:
+          source:
+              vmware:
+                  8.0:
+                    key: backing.fileName
+      capacity:
+          source:
+              vmware:
+                  8.0:
+                    key: capacityInBytes
+          target:
+              incus:
+                  6.0:
+                    key: size
+      shared:
+          source:
+              vmware:
+                  8.0:
+                    # When sharing is enabled, this key is set to 'sharingMultiWriter'.
+                    # Only certain sub-types of disk (Flat and Raw) support this key.
+                    key: backing.sharing
+          target:
+              incus:
+                  6.0:
+                    key: security.shared
+
+- name: nic
+  description: nic device
+  source:
+      vmware:
+          8.0:
+            # All devices live uner config.hardware.device, but the individual devices are determined by their keys.
+            # govmomi internally deciphers the correct object type, in this case BaseVirtualEthernetCard.
+            type: property_ethernet
+            key: config.hardware.device
+  target:
+      incus:
+          6.0:
+            type: nic
+  config:
+      hardware_address:
+          source:
+              vmware:
+                  8.0:
+                    key: macAddress
+          target:
+              incus:
+                  6.0:
+                    key: hwaddr
+      network:
+          source:
+              vmware:
+                  8.0:
+                    key: backing.deviceName
+      network_id:
+          source:
+              vmware:
+                  8.0:
+                    key: backing.network.value
+
+- name: snapshot
+  description: instance snapshots
+  source:
+      vmware:
+          8.0:
+              # This object may be empty if there are no snapshots (has omitempty).
+              type: property_snapshot
+              key: snapshot.rootSnapshotList
+  config:
+      snapshot_name:
+          source:
+              vmware:
+                  8.0:
+                    key: name
+
+- name: background_import
+  description: supports background import without shutting down source vm
+  source:
+      vmware:
+          8.0:
+              type: property
+              key: config.changeTrackingEnabled
