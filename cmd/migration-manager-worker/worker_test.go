@@ -24,9 +24,9 @@ const uuid = "ced6491e-b614-11ef-a01b-677fcc190026"
 var errGracefulEndOfTest = fmt.Errorf("graceful end of test")
 
 type instanceDetails struct {
-	InventoryPath string
-	OS            string
-	OSVersion     string
+	Location  string
+	OS        string
+	OSVersion string
 }
 
 func TestNewWorker(t *testing.T) {
@@ -389,10 +389,10 @@ func TestRun(t *testing.T) {
 func workerCommandResponse(command api.WorkerCommandType, signalEndOfTest bool) func(instanceSpec instanceDetails, cancel context.CancelCauseFunc, w http.ResponseWriter, r *http.Request) {
 	return func(instanceSpec instanceDetails, cancel context.CancelCauseFunc, w http.ResponseWriter, r *http.Request) {
 		cmd := api.WorkerCommand{
-			Command:       command,
-			OS:            instanceSpec.OS,
-			OSVersion:     instanceSpec.OSVersion,
-			InventoryPath: instanceSpec.InventoryPath,
+			Command:   command,
+			OS:        instanceSpec.OS,
+			OSVersion: instanceSpec.OSVersion,
+			Location:  instanceSpec.Location,
 		}
 
 		metadata, err := json.Marshal(cmd)

@@ -169,13 +169,13 @@ func (w *Worker) importDisks(ctx context.Context, cmd api.WorkerCommand) {
 
 func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) error {
 	// Delete any existing migration snapshot that might be left over.
-	err := w.source.DeleteVMSnapshot(ctx, cmd.InventoryPath, internal.IncusSnapshotName)
+	err := w.source.DeleteVMSnapshot(ctx, cmd.Location, internal.IncusSnapshotName)
 	if err != nil {
 		return err
 	}
 
 	// Do the actual import.
-	return w.source.ImportDisks(ctx, cmd.InventoryPath, func(status string, isImportant bool) {
+	return w.source.ImportDisks(ctx, cmd.Location, func(status string, isImportant bool) {
 		slog.Info(status) //nolint:sloglint
 
 		// Only send updates back to the server if important or once every 5 seconds.
@@ -202,7 +202,7 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 
 	slog.Info("Shutting down source VM")
 
-	err := w.source.PowerOffVM(ctx, cmd.InventoryPath)
+	err := w.source.PowerOffVM(ctx, cmd.Location)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return false
