@@ -1,7 +1,6 @@
 package cmds
 
 import (
-	"encoding/json"
 	"net/http"
 	"sort"
 	"strconv"
@@ -107,58 +106,42 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Source", "Inventory Path", "OS Version", "CPU", "Memory", "Migration Status"}
+	header := []string{"UUID", "Source", "Location", "OS Version", "CPUs", "Memory", "Background Import", "Migration Status"}
 	if c.flagVerbose {
-		header = []string{"UUID", "Inventory Path", "Annotation", "Source", "Batch", "Migration Status", "Migration Status String", "Last Update from Source", "Guest Tools Version", "Architecture", "Hardware Version", "OS", "OS Version", "Devices", "Disks", "NICs", "Snapshots", "CPU", "CPU Affinity", "Cores Per Socket", "Memory", "Memory Reservation", "Use Legacy BIOS", "Secure Boot Enabled", "TPM Present"}
+		header = []string{"UUID", "Location", "Description", "Source", "Batch", "Migration Status", "Migration Status String", "Last Update from Source", "Architecture", "OS", "OS Version", "Disks", "NICs", "Snapshots", "CPUs", "Memory", "Legacy Boot", "Secure Boot", "TPM", "Background Import"}
 	}
 
 	data := [][]string{}
 
 	for _, i := range instances {
+		props := i.Properties
 		if i.Overrides != nil {
-			if i.Overrides.NumberCPUs != 0 {
-				i.CPU.NumberCPUs = i.Overrides.NumberCPUs
-			}
-
-			if i.Overrides.MemoryInBytes != 0 {
-				i.Memory.MemoryInBytes = i.Overrides.MemoryInBytes
-			}
+			props.Apply(i.Overrides.Properties)
 		}
 
 		if i.MigrationStatusString == "" {
 			i.MigrationStatusString = i.MigrationStatus.String()
 		}
 
-		row := []string{i.UUID.String(), i.Source, i.InventoryPath, i.OSVersion, strconv.Itoa(i.CPU.NumberCPUs), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), i.MigrationStatusString}
+		row := []string{props.UUID.String(), i.Source, props.Location, props.OSVersion, strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.BackgroundImport), i.MigrationStatusString}
 
 		if c.flagVerbose {
-			devices := []string{}
-			for _, device := range i.Devices {
-				devices = append(devices, device.Type+": "+device.Label)
-			}
-
 			disks := []string{}
-			for _, disk := range i.Disks {
-				disks = append(disks, disk.Type+": "+disk.Name+" ("+disk.ControllerModel+", "+units.GetByteSizeStringIEC(disk.SizeInBytes, 2)+")")
+			for _, disk := range props.Disks {
+				disks = append(disks, disk.Name+": ("+units.GetByteSizeStringIEC(disk.Capacity, 2)+")")
 			}
 
 			nics := []string{}
-			for _, nic := range i.NICs {
-				nics = append(nics, nic.Hwaddr+" ("+nic.AdapterModel+", "+nic.Network+")")
+			for _, nic := range props.NICs {
+				nics = append(nics, nic.HardwareAddress+" ("+nic.Network+", "+nic.ID+")")
 			}
 
 			snapshots := []string{}
-			for _, snapshot := range i.Snapshots {
-				snapshots = append(snapshots, snapshot.Name+" ("+snapshot.CreationTime.String()+")")
+			for _, snapshot := range props.Snapshots {
+				snapshots = append(snapshots, snapshot.Name)
 			}
 
-			CPUAffinity := ""
-			if len(i.CPU.CPUAffinity) > 0 {
-				v, _ := json.Marshal(i.CPU.CPUAffinity)
-				CPUAffinity = string(v)
-			}
-
-			row = []string{i.UUID.String(), i.InventoryPath, i.Annotation, i.Source, getFrom(batchesMap, i.Batch), i.MigrationStatus.String(), i.MigrationStatusString, i.LastUpdateFromSource.String(), strconv.Itoa(i.GuestToolsVersion), i.Architecture, i.HardwareVersion, i.OS, i.OSVersion, strings.Join(devices, "\n"), strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(i.CPU.NumberCPUs), CPUAffinity, strconv.Itoa(i.CPU.NumberOfCoresPerSocket), units.GetByteSizeStringIEC(i.Memory.MemoryInBytes, 2), units.GetByteSizeStringIEC(i.Memory.MemoryReservationInBytes, 2), strconv.FormatBool(i.UseLegacyBios), strconv.FormatBool(i.SecureBootEnabled), strconv.FormatBool(i.TPMPresent)}
+			row = []string{props.UUID.String(), props.Location, props.Description, i.Source, getFrom(batchesMap, i.Batch), i.MigrationStatus.String(), i.MigrationStatusString, i.LastUpdateFromSource.String(), props.Architecture, props.OS, props.OSVersion, strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.LegacyBoot), strconv.FormatBool(props.SecureBoot), strconv.FormatBool(props.TPM), strconv.FormatBool(props.BackgroundImport)}
 		}
 
 		data = append(data, row)
