@@ -55,7 +55,7 @@ func (s instanceService) Create(ctx context.Context, instance Instance) (Instanc
 
 	instance.ID, err = s.repo.Create(ctx, instance)
 	if err != nil {
-		return Instance{}, nil
+		return Instance{}, err
 	}
 
 	return instance, nil
