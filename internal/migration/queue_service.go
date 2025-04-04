@@ -127,7 +127,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 
 		// If the instance is already doing something, don't start something else.
 		if instance.MigrationStatus != api.MIGRATIONSTATUS_IDLE {
-			return fmt.Errorf("Instance '%s' isn't idle: %s (%s): %w", instance.InventoryPath, instance.MigrationStatus.String(), instance.MigrationStatusString, ErrOperationNotPermitted)
+			return fmt.Errorf("Instance '%s' isn't idle: %s (%s): %w", instance.Properties.Location, instance.MigrationStatus.String(), instance.MigrationStatusString, ErrOperationNotPermitted)
 		}
 
 		// Fetch the source for the instance.
@@ -138,12 +138,12 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 
 		// Setup the default "idle" command
 		workerCommand = WorkerCommand{
-			Command:       api.WORKERCOMMAND_IDLE,
-			InventoryPath: instance.InventoryPath,
-			SourceType:    source.SourceType,
-			Source:        *source,
-			OS:            instance.OS,
-			OSVersion:     instance.OSVersion,
+			Command:    api.WORKERCOMMAND_IDLE,
+			Location:   instance.Properties.Location,
+			SourceType: source.SourceType,
+			Source:     *source,
+			OS:         instance.Properties.OS,
+			OSVersion:  instance.Properties.OSVersion,
 		}
 
 		// Fetch the batch for the instance.
@@ -156,7 +156,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		newStatus := instance.MigrationStatus
 		newStatusString := instance.MigrationStatusString
 		switch {
-		case instance.NeedsDiskImport && disksSupportDifferentialSync(instance.Disks):
+		case instance.NeedsDiskImport && instance.Properties.BackgroundImport:
 			// If we can do a background disk sync, kick it off.
 			workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
 
@@ -186,14 +186,4 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 	}
 
 	return workerCommand, nil
-}
-
-func disksSupportDifferentialSync(disks []api.InstanceDiskInfo) bool {
-	for _, disk := range disks {
-		if disk.Type == "HDD" && disk.DifferentialSyncSupported {
-			return true
-		}
-	}
-
-	return false
 }
