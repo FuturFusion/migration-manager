@@ -110,7 +110,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			return fmt.Errorf("Failed to get internal network records: %w", err)
 		}
 
-		dbInstances, err := d.instance.GetAllUnassigned(ctx, false)
+		dbInstances, err := d.instance.GetAll(ctx, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get internal instance records: %w", err)
 		}
@@ -123,8 +123,18 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 
 		for srcName, srcInstances := range instancesBySrc {
 			// Ensure we only compare instances in the same source.
-			existingInstances := make(map[uuid.UUID]migration.Instance, len(dbInstances))
+			existingInstances := map[uuid.UUID]migration.Instance{}
 			for _, inst := range dbInstances {
+				// If the instance is already assigned, then omit it from consideration.
+				if inst.Batch != nil {
+					_, ok := srcInstances[inst.UUID]
+					if ok {
+						delete(srcInstances, inst.UUID)
+					}
+
+					continue
+				}
+
 				src := sourcesByName[srcName]
 
 				if src.Name == inst.Source {
