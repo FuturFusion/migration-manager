@@ -209,7 +209,7 @@ func (d *Daemon) Start() error {
 	d.target = migration.NewTargetService(sqlite.NewTarget(dbWithTransaction))
 	d.source = migration.NewSourceService(sqlite.NewSource(dbWithTransaction))
 	d.instance = migration.NewInstanceService(sqlite.NewInstance(dbWithTransaction), d.source)
-	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance)
+	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance, d.source)
 	d.queue = migration.NewQueueService(d.batch, d.instance, d.source)
 
 	// Set default authorizer.

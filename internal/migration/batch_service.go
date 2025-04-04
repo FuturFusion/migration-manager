@@ -11,14 +11,16 @@ import (
 type batchService struct {
 	repo     BatchRepo
 	instance InstanceService
+	source   SourceService
 }
 
 var _ BatchService = &batchService{}
 
-func NewBatchService(repo BatchRepo, instance InstanceService) batchService {
+func NewBatchService(repo BatchRepo, instance InstanceService, source SourceService) batchService {
 	return batchService{
 		repo:     repo,
 		instance: instance,
+		source:   source,
 	}
 }
 
@@ -139,7 +141,12 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 				return err
 			}
 
-			isMatch, err := batch.InstanceMatchesCriteria(*instanceWithOverrides)
+			source, err := s.source.GetByName(ctx, instance.Source)
+			if err != nil {
+				return err
+			}
+
+			isMatch, err := batch.InstanceMatchesCriteria(*instanceWithOverrides, *source)
 			if err != nil {
 				return err
 			}
@@ -171,7 +178,12 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 				return err
 			}
 
-			isMatch, err := batch.InstanceMatchesCriteria(*instanceWithOverrides)
+			source, err := s.source.GetByName(ctx, instance.Source)
+			if err != nil {
+				return err
+			}
+
+			isMatch, err := batch.InstanceMatchesCriteria(*instanceWithOverrides, *source)
 			if err != nil {
 				return err
 			}

@@ -60,8 +60,8 @@ func (b Batch) CanBeModified() bool {
 	}
 }
 
-func (b Batch) InstanceMatchesCriteria(instance Instance) (bool, error) {
-	filterable := instance.ToFilterable()
+func (b Batch) InstanceMatchesCriteria(instance Instance, source Source) (bool, error) {
+	filterable := instance.ToFilterable(source)
 	includeExpr, err := b.CompileIncludeExpression(filterable)
 	if err != nil {
 		return false, fmt.Errorf("Failed to compile include expression %q: %v", b.IncludeExpression, err)

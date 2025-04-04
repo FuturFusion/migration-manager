@@ -212,7 +212,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	instance := sqlite.NewInstance(tx)
 	instanceSvc := migration.NewInstanceService(instance, sourceSvc)
 
-	batchSvc := migration.NewBatchService(sqlite.NewBatch(tx), instanceSvc)
+	batchSvc := migration.NewBatchService(sqlite.NewBatch(tx), instanceSvc, sourceSvc)
 
 	// Cannot add an instance with an invalid source.
 	_, err = instance.Create(ctx, instanceA)

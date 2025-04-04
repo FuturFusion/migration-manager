@@ -151,7 +151,7 @@ func TestBatchService_Create(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, instanceSvc)
+			batchSvc := migration.NewBatchService(repo, instanceSvc, nil)
 
 			// Run test
 			batch, err := batchSvc.Create(context.Background(), tc.batch)
@@ -206,7 +206,7 @@ func TestBatchService_GetAll(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, nil)
+			batchSvc := migration.NewBatchService(repo, nil, nil)
 
 			// Run test
 			batches, err := batchSvc.GetAll(context.Background())
@@ -263,7 +263,7 @@ func TestBatchService_GetAllByState(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, nil)
+			batchSvc := migration.NewBatchService(repo, nil, nil)
 
 			// Run test
 			batches, err := batchSvc.GetAllByState(context.Background(), api.BATCHSTATUS_QUEUED)
@@ -311,7 +311,7 @@ func TestBatchService_GetAllNames(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, nil)
+			batchSvc := migration.NewBatchService(repo, nil, nil)
 
 			// Run test
 			inventoryNames, err := batchSvc.GetAllNames(context.Background())
@@ -368,7 +368,7 @@ func TestBatchService_GetByName(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, nil)
+			batchSvc := migration.NewBatchService(repo, nil, nil)
 
 			// Run test
 			batch, err := batchSvc.GetByName(context.Background(), tc.nameArg)
@@ -533,7 +533,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, instanceSvc)
+			batchSvc := migration.NewBatchService(repo, instanceSvc, nil)
 
 			// Run test
 			err := batchSvc.Update(context.Background(), &tc.batch)
@@ -552,7 +552,8 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 		instanceSvcGetAllByBatchIDErr        error
 		instanceSvcGetAllUnassignedInstances migration.Instances
 		instanceSvcGetAllUnassignedErr       error
-		instanceSvcGetByIDWithDetails        []queue.Item[migration.Instance]
+		instanceSvcGetByUUID                 []queue.Item[migration.Instance]
+		sourceSvcGetByName                   []queue.Item[migration.Source]
 		instanceSvcUnassignFromBatch         []queue.Item[struct{}]
 		instanceSvcUpdateByID                []queue.Item[migration.Instance]
 
@@ -619,7 +620,14 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 					MigrationStatus: api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION,
 				},
 			},
-			instanceSvcGetByIDWithDetails: []queue.Item[migration.Instance]{
+			sourceSvcGetByName: []queue.Item[migration.Source]{
+				{Value: migration.Source{Name: "src", SourceType: api.SOURCETYPE_VMWARE}},
+				{Value: migration.Source{Name: "src", SourceType: api.SOURCETYPE_VMWARE}},
+				{Value: migration.Source{Name: "src", SourceType: api.SOURCETYPE_VMWARE}},
+				{Value: migration.Source{Name: "src", SourceType: api.SOURCETYPE_VMWARE}},
+				{Value: migration.Source{Name: "src", SourceType: api.SOURCETYPE_VMWARE}},
+			},
+			instanceSvcGetByUUID: []queue.Item[migration.Instance]{
 				{
 					Value: migration.Instance{
 						Properties: api.InstanceProperties{
@@ -684,7 +692,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - svcInstance.GetByIDWithDetails",
+			name: "error - svcInstance.GetByUUID",
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
@@ -696,13 +704,42 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 			},
-			instanceSvcGetByIDWithDetails: []queue.Item[migration.Instance]{
+			instanceSvcGetByUUID: []queue.Item[migration.Instance]{
 				{
 					Err: boom.Error,
 				},
 			},
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - svcSource.GetByName",
+			batch: migration.Batch{
+				ID:                1,
+				Name:              "one",
+				IncludeExpression: `Location matches "^/inventory/path/A`, // invalid expression, missing " at the end
+			},
+			instanceSvcGetAllByBatchIDInstances: migration.Instances{
+				{
+					Properties:      api.InstanceProperties{Location: "/inventory/path/A"},
+					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+				},
+			},
+			instanceSvcGetByUUID: []queue.Item[migration.Instance]{
+				{
+					Value: migration.Instance{
+						Properties: api.InstanceProperties{
+							Name:     "A",
+							Location: "/inventory/path/A",
+						},
+					},
+				},
+			},
+			sourceSvcGetByName: []queue.Item[migration.Source]{
+				{Err: boom.Error},
+			},
+
+			assertErr: require.Error,
 		},
 		{
 			name: "error - batch.InstanceMatchesCriteria",
@@ -717,7 +754,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 			},
-			instanceSvcGetByIDWithDetails: []queue.Item[migration.Instance]{
+			instanceSvcGetByUUID: []queue.Item[migration.Instance]{
 				{
 					Value: migration.Instance{
 						Properties: api.InstanceProperties{
@@ -726,6 +763,9 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			sourceSvcGetByName: []queue.Item[migration.Source]{
+				{Value: migration.Source{Name: "src", SourceType: api.SOURCETYPE_VMWARE}},
 			},
 
 			assertErr: require.Error,
@@ -743,7 +783,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 					MigrationStatus: api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				},
 			},
-			instanceSvcGetByIDWithDetails: []queue.Item[migration.Instance]{
+			instanceSvcGetByUUID: []queue.Item[migration.Instance]{
 				{
 					Value: migration.Instance{
 						Properties: api.InstanceProperties{
@@ -752,6 +792,9 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			sourceSvcGetByName: []queue.Item[migration.Source]{
+				{Value: migration.Source{Name: "src", SourceType: api.SOURCETYPE_VMWARE}},
 			},
 			instanceSvcUnassignFromBatch: []queue.Item[struct{}]{
 				{
@@ -774,7 +817,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - svcInstance.GetByIDWithDetails for unassigned",
+			name: "error - svcInstance.GetByUUID for unassigned",
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
@@ -786,13 +829,42 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				},
 			},
-			instanceSvcGetByIDWithDetails: []queue.Item[migration.Instance]{
+			instanceSvcGetByUUID: []queue.Item[migration.Instance]{
 				{
 					Err: boom.Error,
 				},
 			},
 
 			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - svcSource.GetByName for unassigned",
+			batch: migration.Batch{
+				ID:                1,
+				Name:              "one",
+				IncludeExpression: `Location matches "^/inventory/path/A`, // invalid expression, missing " at the end
+			},
+			instanceSvcGetAllUnassignedInstances: migration.Instances{
+				{
+					Properties:      api.InstanceProperties{Location: "/inventory/path/A"},
+					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				},
+			},
+			instanceSvcGetByUUID: []queue.Item[migration.Instance]{
+				{
+					Value: migration.Instance{
+						Properties: api.InstanceProperties{
+							Name:     "A",
+							Location: "/inventory/path/A",
+						},
+					},
+				},
+			},
+			sourceSvcGetByName: []queue.Item[migration.Source]{
+				{Err: boom.Error},
+			},
+
+			assertErr: require.Error,
 		},
 		{
 			name: "error - batch.InstanceMatchesCriteria for unassigned",
@@ -807,7 +879,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				},
 			},
-			instanceSvcGetByIDWithDetails: []queue.Item[migration.Instance]{
+			instanceSvcGetByUUID: []queue.Item[migration.Instance]{
 				{
 					Value: migration.Instance{
 						Properties: api.InstanceProperties{
@@ -816,6 +888,9 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			sourceSvcGetByName: []queue.Item[migration.Source]{
+				{Value: migration.Source{Name: "src", SourceType: api.SOURCETYPE_VMWARE}},
 			},
 
 			assertErr: require.Error,
@@ -833,7 +908,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 					MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				},
 			},
-			instanceSvcGetByIDWithDetails: []queue.Item[migration.Instance]{
+			instanceSvcGetByUUID: []queue.Item[migration.Instance]{
 				{
 					Value: migration.Instance{
 						Properties: api.InstanceProperties{
@@ -842,6 +917,9 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 						},
 					},
 				},
+			},
+			sourceSvcGetByName: []queue.Item[migration.Source]{
+				{Value: migration.Source{Name: "src", SourceType: api.SOURCETYPE_VMWARE}},
 			},
 			instanceSvcUpdateByID: []queue.Item[migration.Instance]{
 				{
@@ -866,7 +944,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 					return tc.instanceSvcGetAllUnassignedInstances, tc.instanceSvcGetAllUnassignedErr
 				},
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID, withOverrides bool) (*migration.Instance, error) {
-					i, err := queue.Pop(t, &tc.instanceSvcGetByIDWithDetails)
+					i, err := queue.Pop(t, &tc.instanceSvcGetByUUID)
 					if err != nil {
 						return nil, err
 					}
@@ -883,7 +961,18 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, instanceSvc)
+			sourceSvc := &SourceServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Source, error) {
+					s, err := queue.Pop(t, &tc.sourceSvcGetByName)
+					if err != nil {
+						return nil, err
+					}
+
+					return &s, nil
+				},
+			}
+
+			batchSvc := migration.NewBatchService(repo, instanceSvc, sourceSvc)
 
 			// Run test
 			err := batchSvc.UpdateInstancesAssignedToBatch(context.Background(), tc.batch)
@@ -892,7 +981,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			tc.assertErr(t, err)
 
 			// Ensure queues are completely drained.
-			require.Empty(t, tc.instanceSvcGetByIDWithDetails)
+			require.Empty(t, tc.instanceSvcGetByUUID)
 			require.Empty(t, tc.instanceSvcUnassignFromBatch)
 			require.Empty(t, tc.instanceSvcUpdateByID)
 		})
@@ -941,7 +1030,7 @@ func TestBatchService_UpdateStatusByName(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, nil)
+			batchSvc := migration.NewBatchService(repo, nil, nil)
 
 			// Run test
 			batch, err := batchSvc.UpdateStatusByName(context.Background(), tc.nameArg, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_QUEUED.String())
@@ -1111,7 +1200,7 @@ func TestBatchService_DeleteByName(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, instanceSvc)
+			batchSvc := migration.NewBatchService(repo, instanceSvc, nil)
 
 			// Run test
 			err := batchSvc.DeleteByName(context.Background(), tc.nameArg)
@@ -1203,7 +1292,7 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, nil)
+			batchSvc := migration.NewBatchService(repo, nil, nil)
 
 			// Run test
 			err := batchSvc.StartBatchByName(context.Background(), tc.nameArg)
@@ -1295,7 +1384,7 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, nil)
+			batchSvc := migration.NewBatchService(repo, nil, nil)
 
 			// Run test
 			err := batchSvc.StopBatchByName(context.Background(), tc.nameArg)
@@ -1453,7 +1542,12 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 				Source: "vcenter01",
 			}
 
-			res, err := currentBatch.InstanceMatchesCriteria(instance)
+			source := migration.Source{
+				Name:       "vcenter01",
+				SourceType: api.SOURCETYPE_VMWARE,
+			}
+
+			res, err := currentBatch.InstanceMatchesCriteria(instance, source)
 			tc.assertErr(t, err)
 
 			require.Equal(t, tc.wantResult, res)
