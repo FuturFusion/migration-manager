@@ -118,6 +118,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		t.Properties = t.GetProperties()
 	}
 
+	t.version = srv.Environment.ServerVersion
 	t.isConnected = true
 	return nil
 }

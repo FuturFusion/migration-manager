@@ -99,6 +99,8 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 
 	s.setVDDKConfig(endpointURL, thumbprint)
 
+	s.version = s.govmomiClient.ServiceContent.About.Version
+
 	s.isConnected = true
 	return nil
 }
