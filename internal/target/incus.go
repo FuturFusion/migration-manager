@@ -21,6 +21,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/properties"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -39,9 +40,9 @@ func NewInternalIncusTargetFrom(apiTarget api.Target) (*InternalIncusTarget, err
 		return nil, errors.New("Target is not of type Incus")
 	}
 
-	var properties api.IncusProperties
+	var connProperties api.IncusProperties
 
-	err := json.Unmarshal(apiTarget.Properties, &properties)
+	err := json.Unmarshal(apiTarget.Properties, &connProperties)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func NewInternalIncusTargetFrom(apiTarget api.Target) (*InternalIncusTarget, err
 		InternalTarget: InternalTarget{
 			Target: apiTarget,
 		},
-		IncusProperties: properties,
+		IncusProperties: connProperties,
 	}, nil
 }
 
@@ -167,10 +168,10 @@ func (t *InternalIncusTarget) IsWaitingForOIDCTokens() bool {
 func (t *InternalIncusTarget) GetProperties() json.RawMessage {
 	content, _ := json.Marshal(t)
 
-	properties := api.IncusProperties{}
-	_ = json.Unmarshal(content, &properties)
+	connProperties := api.IncusProperties{}
+	_ = json.Unmarshal(content, &connProperties)
 
-	ret, _ := json.Marshal(properties)
+	ret, _ := json.Marshal(connProperties)
 
 	return ret
 }
@@ -187,22 +188,37 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 
 // SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
 func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, allNetworks map[string]migration.Network) error {
+	props := i.Properties
+	if i.Overrides != nil {
+		props.Apply(i.Overrides.Properties)
+	}
+
+	defs, err := properties.Definitions(t.TargetType, t.version)
+	if err != nil {
+		return err
+	}
+
+	nicDefs, err := defs.GetSubProperties(properties.InstanceNIC)
+	if err != nil {
+		return err
+	}
+
 	// Stop the instance.
-	err := t.StopVM(i.GetName(), true)
+	err = t.StopVM(props.Name, true)
 	if err != nil {
-		return fmt.Errorf("Failed to stop instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+		return fmt.Errorf("Failed to stop instance %q on target %q: %w", props.Name, t.GetName(), err)
 	}
 
-	apiDef, _, err := t.GetInstance(i.GetName())
+	apiDef, _, err := t.GetInstance(props.Name)
 	if err != nil {
-		return fmt.Errorf("Failed to get configuration for instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+		return fmt.Errorf("Failed to get configuration for instance %q on target %q: %w", props.Name, t.GetName(), err)
 	}
 
-	for idx, nic := range i.NICs {
+	for idx, nic := range props.NICs {
 		nicDeviceName := fmt.Sprintf("eth%d", idx)
-		baseNetwork, ok := allNetworks[nic.Network]
+		baseNetwork, ok := allNetworks[nic.ID]
 		if !ok {
-			err = fmt.Errorf("No network %q associated with instance %q on target %q", nic.Network, i.GetName(), t.GetName())
+			err = fmt.Errorf("No network %q associated with instance %q on target %q", nic.ID, props.Name, t.GetName())
 			return err
 		}
 
@@ -226,7 +242,13 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 		// Set a few forced overrides.
 		apiDef.Devices[nicDeviceName]["type"] = "nic"
 		apiDef.Devices[nicDeviceName]["name"] = nicDeviceName
-		apiDef.Devices[nicDeviceName]["hwaddr"] = nic.Hwaddr
+
+		hwAddrInfo, err := nicDefs.Get(properties.InstanceNICHardwareAddress)
+		if err != nil {
+			return err
+		}
+
+		apiDef.Devices[nicDeviceName][hwAddrInfo.Key] = nic.HardwareAddress
 	}
 
 	// Remove the migration ISO image.
@@ -235,17 +257,22 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 	// Don't set any profiles by default.
 	apiDef.Profiles = []string{}
 
+	osInfo, err := defs.Get(properties.InstanceOS)
+	if err != nil {
+		return err
+	}
+
 	// Handle Windows-specific completion steps.
-	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
+	if strings.Contains(apiDef.Config[osInfo.Key], "swodniw") {
 		// Remove the drivers ISO image.
 		delete(apiDef.Devices, "drivers")
 
 		// Fixup the OS name.
-		apiDef.Config["image.os"] = strings.Replace(apiDef.Config["image.os"], "swodniw", "windows", 1)
+		apiDef.Config[osInfo.Key] = strings.Replace(apiDef.Config[osInfo.Key], "swodniw", "windows", 1)
 	}
 
 	// Handle RHEL (and derivative) specific completion steps.
-	if util.IsRHELOrDerivative(apiDef.Config["image.os"]) {
+	if util.IsRHELOrDerivative(apiDef.Config[osInfo.Key]) {
 		// RHEL7+ don't support 9p, so make agent config available via cdrom.
 		apiDef.Devices["agent"] = map[string]string{
 			"type":   "disk",
@@ -254,141 +281,192 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 	}
 
 	// Set the instance's UUID copied from the source.
-	apiDef.Config["volatile.uuid"] = i.UUID.String()
-	apiDef.Config["volatile.uuid.generation"] = i.UUID.String()
+	apiDef.Config["volatile.uuid"] = props.UUID.String()
+	apiDef.Config["volatile.uuid.generation"] = props.UUID.String()
 
 	// Apply CPU and memory limits.
-	apiDef.Config["limits.cpu"] = fmt.Sprintf("%d", i.CPU.NumberCPUs)
-	if i.Overrides != nil && i.Overrides.NumberCPUs != 0 {
-		apiDef.Config["limits.cpu"] = fmt.Sprintf("%d", i.Overrides.NumberCPUs)
+	for name, info := range defs.GetAll() {
+		switch name {
+		case properties.InstanceCPUs:
+			apiDef.Config[info.Key] = fmt.Sprintf("%d", props.CPUs)
+		case properties.InstanceMemory:
+			apiDef.Config[info.Key] = fmt.Sprintf("%dB", props.Memory)
+		case properties.InstanceLegacyBoot:
+			apiDef.Config[info.Key] = strconv.FormatBool(props.LegacyBoot)
+		case properties.InstanceSecureBoot:
+			apiDef.Config[info.Key] = strconv.FormatBool(props.SecureBoot)
+		}
 	}
 
-	apiDef.Config["limits.memory"] = fmt.Sprintf("%dB", i.Memory.MemoryInBytes)
-	if i.Overrides != nil && i.Overrides.MemoryInBytes != 0 {
-		apiDef.Config["limits.memory"] = fmt.Sprintf("%dB", i.Overrides.MemoryInBytes)
-	}
-
-	// Set UEFI and secure boot configs.
-	if i.UseLegacyBios {
-		apiDef.Config["security.csm"] = "true"
-		apiDef.Config["security.secureboot"] = "false"
-	} else {
-		apiDef.Config["security.csm"] = "false"
-		apiDef.Config["security.secureboot"] = strconv.FormatBool(i.SecureBootEnabled)
-	}
-
-	// Add TPM if needed.
-	if i.TPMPresent {
+	if i.Properties.TPM {
 		apiDef.Devices["vtpm"] = map[string]string{
 			"type": "tpm",
 			"path": "/dev/tpm0",
 		}
 	}
 
+	if i.Properties.LegacyBoot {
+		secBootInfo, err := defs.Get(properties.InstanceSecureBoot)
+		if err != nil {
+			return err
+		}
+
+		apiDef.Config[secBootInfo.Key] = "false"
+	}
+
 	// Update the instance in Incus.
-	op, err := t.UpdateInstance(i.GetName(), apiDef.Writable(), "")
+	op, err := t.UpdateInstance(i.Properties.Name, apiDef.Writable(), "")
 	if err != nil {
-		return fmt.Errorf("Failed to update instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+		return fmt.Errorf("Failed to update instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
 	}
 
 	err = op.Wait()
 	if err != nil {
-		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
 	}
 
-	err = t.StartVM(i.GetName())
+	err = t.StartVM(i.Properties.Name)
 	if err != nil {
-		return fmt.Errorf("Failed to start instance %q on target %q: %w", i.GetName(), t.GetName(), err)
+		return fmt.Errorf("Failed to start instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
 	}
 
 	return nil
 }
 
-func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) incusAPI.InstancesPost {
-	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
-	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
-
-	ret := incusAPI.InstancesPost{
-		Name: instanceDef.GetName(),
-		Source: incusAPI.InstanceSource{
-			Type: "none",
-		},
-		Type: incusAPI.InstanceTypeVM,
+func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesPost, p api.InstanceProperties, storagePool string, defs properties.RawPropertySet[api.TargetType]) (incusAPI.InstancesPost, error) {
+	diskDefs, err := defs.GetSubProperties(properties.InstanceDisk)
+	if err != nil {
+		return incusAPI.InstancesPost{}, err
 	}
 
-	ret.Config = make(map[string]string)
-	ret.Devices = make(map[string]map[string]string)
-
-	// Set basic config fields.
-	ret.Architecture = instanceDef.Architecture
-	ret.Config["image.architecture"] = instanceDef.Architecture
-	ret.Config["image.description"] = "Auto-imported from VMware"
-
-	if instanceDef.Annotation != "" {
-		ret.Config["image.description"] = instanceDef.Annotation
+	instance.Config = map[string]string{}
+	for name, info := range defs.GetAll() {
+		switch name {
+		case properties.InstanceCPUs:
+			instance.Config[info.Key] = "2"
+		case properties.InstanceMemory:
+			instance.Config[info.Key] = "4GiB"
+		case properties.InstanceLegacyBoot:
+			instance.Config[info.Key] = "false"
+		case properties.InstanceSecureBoot:
+			instance.Config[info.Key] = "false"
+		case properties.InstanceArchitecture:
+			instance.Config[info.Key] = p.Architecture
+			instance.Architecture = p.Architecture
+		case properties.InstanceDescription:
+			instance.Config[info.Key] = p.Description
+			instance.Description = p.Description
+		case properties.InstanceOS:
+			instance.Config[info.Key] = p.OS
+		case properties.InstanceOSVersion:
+			instance.Config[info.Key] = p.OSVersion
+		}
 	}
 
-	ret.Config["image.os"] = instanceDef.OS
-	ret.Config["image.release"] = instanceDef.OSVersion
+	// Fallback to x86_64 if no architecture property was found.
+	if p.Architecture == "" {
+		info, err := defs.Get(properties.InstanceArchitecture)
+		if err != nil {
+			return incusAPI.InstancesPost{}, err
+		}
 
-	// Apply minimal CPU and memory limits.
-	ret.Config["limits.cpu"] = "2"
-	ret.Config["limits.memory"] = "4GiB"
+		instance.Config[info.Key] = "x86_64"
+		instance.Architecture = instance.Config[info.Key]
+	}
 
-	// Define the default disk settings.
+	// Set default description if no description property was found.
+	if p.Description == "" {
+		info, err := defs.Get(properties.InstanceDescription)
+		if err != nil {
+			return incusAPI.InstancesPost{}, err
+		}
+
+		instance.Config[info.Key] = "Auto-imported from VMware"
+		instance.Description = instance.Config[info.Key]
+	}
+
 	defaultDiskDef := map[string]string{
 		"path": "/",
 		"pool": storagePool,
 		"type": "disk",
 	}
 
-	// Add empty disk(s) from VM definition that will be synced later.
+	instance.Devices = map[string]map[string]string{}
 	numDisks := 0
-	for _, disk := range instanceDef.Disks {
-		// Currently we only attach normal drives.
-		if disk.Type != "HDD" {
-			continue
-		}
-
+	for _, disk := range p.Disks {
 		diskKey := "root"
 		if numDisks != 0 {
 			diskKey = fmt.Sprintf("disk%d", numDisks)
 		}
 
-		ret.Devices[diskKey] = make(map[string]string)
+		instance.Devices[diskKey] = map[string]string{}
 		for k, v := range defaultDiskDef {
-			ret.Devices[diskKey][k] = v
+			instance.Devices[diskKey][k] = v
 		}
-
-		ret.Devices[diskKey]["size"] = fmt.Sprintf("%dB", disk.SizeInBytes)
 
 		if numDisks != 0 {
-			ret.Devices[diskKey]["path"] = diskKey
+			instance.Devices[diskKey]["path"] = diskKey
 		}
+
+		info, err := diskDefs.Get(properties.InstanceDiskCapacity)
+		if err != nil {
+			return incusAPI.InstancesPost{}, nil
+		}
+
+		instance.Devices[diskKey][info.Key] = strconv.Itoa(int(disk.Capacity)) + "B"
 
 		numDisks++
 	}
 
-	ret.Config["security.csm"] = "false"
-	ret.Config["security.secureboot"] = "false"
-	ret.Description = ret.Config["image.description"]
+	return instance, nil
+}
 
-	// Set the migration source as a user tag to allow easy filtering.
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) (incusAPI.InstancesPost, error) {
+	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
+	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
+
+	ret := incusAPI.InstancesPost{
+		Name: instanceDef.Properties.Name,
+		Source: incusAPI.InstanceSource{
+			Type: "none",
+		},
+		Type: incusAPI.InstanceTypeVM,
+	}
+
+	props := instanceDef.Properties
+	if instanceDef.Overrides != nil {
+		props.Apply(instanceDef.Overrides.Properties)
+	}
+
+	defs, err := properties.Definitions(t.TargetType, t.version)
+	if err != nil {
+		return incusAPI.InstancesPost{}, err
+	}
+
+	ret, err = t.fillInitialProperties(ret, props, storagePool, defs)
+	if err != nil {
+		return incusAPI.InstancesPost{}, err
+	}
+
 	ret.Config["user.migration.source_type"] = "VMware"
-	ret.Config["user.migration.source"] = sourceName
+	ret.Config["user.migration.source"] = instanceDef.Source
 
-	// Handle Windows-specific configuration.
-	if strings.Contains(ret.Config["image.os"], "windows") {
+	info, err := defs.Get(properties.InstanceOS)
+	if err != nil {
+		return incusAPI.InstancesPost{}, err
+	}
+
+	if strings.Contains(ret.Config[info.Key], "windows") {
 		// Set some additional QEMU options.
 		ret.Config["raw.qemu"] = "-device intel-hda -device hda-duplex -audio spice"
 
 		// If image.os contains the string "Windows", then the incus-agent config drive won't be mapped.
 		// But we need that when running the initial migration logic from the ISO image. Reverse the string
 		// for now, and un-reverse it before finalizing the VM.
-		ret.Config["image.os"] = strings.Replace(ret.Config["image.os"], "windows", "swodniw", 1)
+		ret.Config[info.Key] = strings.Replace(ret.Config[info.Key], "windows", "swodniw", 1)
 	}
 
-	return ret
+	return ret, nil
 }
 
 func (t *InternalIncusTarget) CreateNewVM(apiDef incusAPI.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error {
