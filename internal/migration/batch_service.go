@@ -134,12 +134,12 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 				continue
 			}
 
-			instanceWithDetails, err := s.instance.GetByUUIDWithDetails(ctx, instance.UUID)
+			instanceWithOverrides, err := s.instance.GetByUUID(ctx, instance.UUID, true)
 			if err != nil {
 				return err
 			}
 
-			isMatch, err := batch.InstanceMatchesCriteria(instanceWithDetails)
+			isMatch, err := batch.InstanceMatchesCriteria(*instanceWithOverrides)
 			if err != nil {
 				return err
 			}
@@ -166,12 +166,12 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 				continue
 			}
 
-			instanceWithDetails, err := s.instance.GetByUUIDWithDetails(ctx, instance.UUID)
+			instanceWithOverrides, err := s.instance.GetByUUID(ctx, instance.UUID, true)
 			if err != nil {
 				return err
 			}
 
-			isMatch, err := batch.InstanceMatchesCriteria(instanceWithDetails)
+			isMatch, err := batch.InstanceMatchesCriteria(*instanceWithOverrides)
 			if err != nil {
 				return err
 			}
