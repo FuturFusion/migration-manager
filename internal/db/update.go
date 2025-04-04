@@ -78,7 +78,7 @@ CREATE TABLE networks (
 CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    source_type INTEGER NOT NULL,
+    source_type TEXT NOT NULL,
     properties TEXT NOT NULL,
     UNIQUE (name)
 );
@@ -86,7 +86,7 @@ CREATE TABLE sources (
 CREATE TABLE targets (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    target_type INTEGER NOT NULL,
+    target_type TEXT NOT NULL,
     properties TEXT NOT NULL,
     UNIQUE (name)
 );

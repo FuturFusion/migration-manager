@@ -289,7 +289,7 @@ func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, s
 	}
 
 	if sourceType != src.SourceType {
-		return fmt.Errorf("Source type mismatch; expecting %s but got %s", sourceType.String(), src.SourceType.String())
+		return fmt.Errorf("Source type mismatch; expecting %s but got %s", sourceType, src.SourceType)
 	}
 
 	switch src.SourceType {
@@ -300,7 +300,7 @@ func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, s
 		}
 
 	default:
-		return fmt.Errorf("Provided source type %q is not usable with `migration-manager-worker`", sourceType.String())
+		return fmt.Errorf("Provided source type %q is not usable with `migration-manager-worker`", sourceType)
 	}
 
 	return w.source.Connect(ctx)
