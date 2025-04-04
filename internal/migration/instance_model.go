@@ -46,7 +46,8 @@ type InstanceFilterable struct {
 	MigrationStatusString string
 	LastUpdateFromSource  time.Time
 
-	Source string
+	Source     string
+	SourceType api.SourceType
 }
 
 func (i Instance) Validate() error {
@@ -128,7 +129,7 @@ func (o InstanceOverride) Validate() error {
 	return nil
 }
 
-func (i Instance) ToFilterable() InstanceFilterable {
+func (i Instance) ToFilterable(s Source) InstanceFilterable {
 	props := i.Properties
 	if i.Overrides != nil {
 		props.Apply(i.Overrides.Properties)
@@ -140,6 +141,7 @@ func (i Instance) ToFilterable() InstanceFilterable {
 		MigrationStatusString: i.MigrationStatusString,
 		LastUpdateFromSource:  i.LastUpdateFromSource,
 		Source:                i.Source,
+		SourceType:            s.SourceType,
 	}
 }
 
