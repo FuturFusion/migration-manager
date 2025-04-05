@@ -14,9 +14,9 @@ type Instance struct {
 	ID   int64
 	UUID uuid.UUID `db:"primary=yes"`
 
-	MigrationStatus       api.MigrationStatusType
-	MigrationStatusString string
-	LastUpdateFromSource  time.Time
+	MigrationStatus        api.MigrationStatusType
+	MigrationStatusMessage string
+	LastUpdateFromSource   time.Time
 
 	Source string  `db:"join=sources.name"`
 	Batch  *string `db:"leftjoin=batches.name"`
@@ -42,9 +42,9 @@ type InstanceOverride struct {
 type InstanceFilterable struct {
 	api.InstanceProperties
 
-	MigrationStatus       api.MigrationStatusType
-	MigrationStatusString string
-	LastUpdateFromSource  time.Time
+	MigrationStatus        api.MigrationStatusType
+	MigrationStatusMessage string
+	LastUpdateFromSource   time.Time
 
 	Source     string
 	SourceType api.SourceType
@@ -71,8 +71,9 @@ func (i Instance) Validate() error {
 		return NewValidationErrf("Invalid instance, source id can not be empty")
 	}
 
-	if i.MigrationStatus < api.MIGRATIONSTATUS_UNKNOWN || i.MigrationStatus > api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
-		return NewValidationErrf("Invalid instance, %d is not a valid migration status", i.MigrationStatus)
+	err := i.MigrationStatus.Validate()
+	if err != nil {
+		return NewValidationErrf("Invalid migration status: %v", err)
 	}
 
 	return nil
@@ -86,8 +87,7 @@ func (i Instance) GetName() string {
 
 func (i Instance) CanBeModified() bool {
 	switch i.MigrationStatus {
-	case api.MIGRATIONSTATUS_UNKNOWN,
-		api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+	case api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 		api.MIGRATIONSTATUS_FINISHED,
 		api.MIGRATIONSTATUS_ERROR,
 		api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION:
@@ -136,23 +136,23 @@ func (i Instance) ToFilterable(s Source) InstanceFilterable {
 	}
 
 	return InstanceFilterable{
-		InstanceProperties:    props,
-		MigrationStatus:       i.MigrationStatus,
-		MigrationStatusString: i.MigrationStatusString,
-		LastUpdateFromSource:  i.LastUpdateFromSource,
-		Source:                i.Source,
-		SourceType:            s.SourceType,
+		InstanceProperties:     props,
+		MigrationStatus:        i.MigrationStatus,
+		MigrationStatusMessage: i.MigrationStatusMessage,
+		LastUpdateFromSource:   i.LastUpdateFromSource,
+		Source:                 i.Source,
+		SourceType:             s.SourceType,
 	}
 }
 
 func (i Instance) ToAPI() api.Instance {
 	apiInst := api.Instance{
-		MigrationStatus:       i.MigrationStatus,
-		MigrationStatusString: i.MigrationStatusString,
-		LastUpdateFromSource:  i.LastUpdateFromSource,
-		Source:                i.Source,
-		Batch:                 i.Batch,
-		Properties:            i.Properties,
+		MigrationStatus:        i.MigrationStatus,
+		MigrationStatusMessage: i.MigrationStatusMessage,
+		LastUpdateFromSource:   i.LastUpdateFromSource,
+		Source:                 i.Source,
+		Batch:                  i.Batch,
+		Properties:             i.Properties,
 	}
 
 	if i.Overrides != nil {

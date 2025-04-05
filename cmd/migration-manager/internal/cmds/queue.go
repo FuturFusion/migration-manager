@@ -90,11 +90,11 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, q := range queueEntries {
-		if q.MigrationStatusString == "" {
-			q.MigrationStatusString = q.MigrationStatus.String()
+		if q.MigrationStatusMessage == "" {
+			q.MigrationStatusMessage = string(q.MigrationStatus)
 		}
 
-		row := []string{q.InstanceName, q.BatchName, q.MigrationStatus.String(), q.MigrationStatusString}
+		row := []string{q.InstanceName, q.BatchName, string(q.MigrationStatus), q.MigrationStatusMessage}
 		if c.flagVerbose {
 			row = append(row, q.InstanceUUID.String())
 		}

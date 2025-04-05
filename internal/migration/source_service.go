@@ -114,7 +114,7 @@ func (s sourceService) canBeModified(ctx context.Context, sourceName string, ins
 
 	for _, instance := range instances {
 		if !instance.CanBeModified() {
-			return nil, fmt.Errorf("Some instances cannot be modified (Status: %q)", instance.MigrationStatus.String())
+			return nil, fmt.Errorf("Some instances cannot be modified (Status: %q)", instance.MigrationStatus)
 		}
 	}
 

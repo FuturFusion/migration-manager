@@ -405,7 +405,7 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migr
 		}
 
 		if inst.MigrationStatus != api.MIGRATIONSTATUS_ASSIGNED_BATCH {
-			return nil, fmt.Errorf("Instance %q in batch %q has status %q, expected %q", inst.GetName(), b.Name, inst.MigrationStatus.String(), api.MIGRATIONSTATUS_ASSIGNED_BATCH.String())
+			return nil, fmt.Errorf("Instance %q in batch %q has status %q, expected %q", inst.GetName(), b.Name, inst.MigrationStatus, api.MIGRATIONSTATUS_ASSIGNED_BATCH)
 		}
 
 		if targetInstanceMap[inst.GetName()] {
@@ -500,9 +500,9 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 			}
 
 			for _, inst := range instancesByBatch[b.Name] {
-				_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, api.MIGRATIONSTATUS_CREATING.String(), true)
+				_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, string(api.MIGRATIONSTATUS_CREATING), true)
 				if err != nil {
-					return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_CREATING.String(), err)
+					return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_CREATING, err)
 				}
 			}
 		}
@@ -641,7 +641,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 
 		allInstances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_CREATING, false)
 		if err != nil {
-			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_CREATING.String(), err)
+			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_CREATING, err)
 		}
 
 		batchesByName = make(map[string]migration.Batch, len(batches))
@@ -728,7 +728,7 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 			// Try to set the instance state to ERRORED if it failed.
 			_, err := d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, errString, true)
 			if err != nil {
-				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR.String()), logger.Err(err))
+				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 			}
 		})
 
@@ -796,9 +796,9 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 		}
 
 		// Set the instance state to IDLE before triggering the worker.
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_IDLE.String(), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, string(api.MIGRATIONSTATUS_IDLE), true)
 		if err != nil {
-			return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_IDLE.String(), err)
+			return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_IDLE, err)
 		}
 
 		// At this point, the import is about to begin, so we won't try to delete instances anymore.
@@ -848,7 +848,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 		// Get any instances in the "complete" state.
 		instances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_IMPORT_COMPLETE, true)
 		if err != nil {
-			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_IMPORT_COMPLETE.String(), err)
+			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_IMPORT_COMPLETE, err)
 		}
 
 		for _, i := range instances {
@@ -917,7 +917,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 			// Try to set the instance state to ERRORED if it failed.
 			_, err := d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, true)
 			if err != nil {
-				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR.String()), logger.Err(err))
+				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 			}
 		})
 
@@ -948,9 +948,9 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 		}
 
 		// Update the instance status.
-		_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_FINISHED, api.MIGRATIONSTATUS_FINISHED.String(), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_FINISHED, string(api.MIGRATIONSTATUS_FINISHED), true)
 		if err != nil {
-			return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_FINISHED.String(), err)
+			return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_FINISHED, err)
 		}
 
 		reverter.Success()

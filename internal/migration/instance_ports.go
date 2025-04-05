@@ -23,8 +23,8 @@ type InstanceService interface {
 
 	UnassignFromBatch(ctx context.Context, id uuid.UUID) error
 	Update(ctx context.Context, instance *Instance) error
-	UpdateStatusByUUID(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (*Instance, error)
-	ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusString string) (Instance, error)
+	UpdateStatusByUUID(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*Instance, error)
+	ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (Instance, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 
 	// Overrride

@@ -191,7 +191,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 			if isMatch && instance.CanBeModified() {
 				instance.Batch = &batch.Name
 				instance.MigrationStatus = api.MIGRATIONSTATUS_ASSIGNED_BATCH
-				instance.MigrationStatusString = api.MIGRATIONSTATUS_ASSIGNED_BATCH.String()
+				instance.MigrationStatusMessage = string(api.MIGRATIONSTATUS_ASSIGNED_BATCH)
 				err = s.instance.Update(ctx, &instance)
 				if err != nil {
 					return err

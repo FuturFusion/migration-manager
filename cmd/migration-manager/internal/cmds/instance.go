@@ -119,11 +119,11 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 			props.Apply(i.Overrides.Properties)
 		}
 
-		if i.MigrationStatusString == "" {
-			i.MigrationStatusString = i.MigrationStatus.String()
+		if i.MigrationStatusMessage == "" {
+			i.MigrationStatusMessage = string(i.MigrationStatus)
 		}
 
-		row := []string{props.UUID.String(), i.Source, props.Location, props.OSVersion, strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.BackgroundImport), i.MigrationStatusString}
+		row := []string{props.UUID.String(), i.Source, props.Location, props.OSVersion, strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.BackgroundImport), i.MigrationStatusMessage}
 
 		if c.flagVerbose {
 			disks := []string{}
@@ -141,7 +141,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 				snapshots = append(snapshots, snapshot.Name)
 			}
 
-			row = []string{props.UUID.String(), props.Location, props.Description, i.Source, getFrom(batchesMap, i.Batch), i.MigrationStatus.String(), i.MigrationStatusString, i.LastUpdateFromSource.String(), props.Architecture, props.OS, props.OSVersion, strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.LegacyBoot), strconv.FormatBool(props.SecureBoot), strconv.FormatBool(props.TPM), strconv.FormatBool(props.BackgroundImport)}
+			row = []string{props.UUID.String(), props.Location, props.Description, i.Source, getFrom(batchesMap, i.Batch), string(i.MigrationStatus), i.MigrationStatusMessage, i.LastUpdateFromSource.String(), props.Architecture, props.OS, props.OSVersion, strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.LegacyBoot), strconv.FormatBool(props.SecureBoot), strconv.FormatBool(props.TPM), strconv.FormatBool(props.BackgroundImport)}
 		}
 
 		data = append(data, row)

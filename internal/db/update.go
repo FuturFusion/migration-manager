@@ -28,8 +28,8 @@ CREATE TABLE batches (
 CREATE TABLE instances (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     uuid TEXT NOT NULL,
-    migration_status INTEGER NOT NULL,
-    migration_status_string TEXT NOT NULL,
+    migration_status TEXT NOT NULL,
+    migration_status_message TEXT NOT NULL,
     last_update_from_source DATETIME NOT NULL,
     source_id INTEGER NOT NULL,
     batch_id INTEGER NULL,
