@@ -15,7 +15,7 @@ import (
 )
 
 var instanceObjects = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_string, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
   LEFT JOIN batches ON instances.batch_id = batches.id
@@ -23,7 +23,7 @@ SELECT instances.id, instances.uuid, instances.migration_status, instances.migra
 `)
 
 var instanceObjectsByUUID = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_string, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
   LEFT JOIN batches ON instances.batch_id = batches.id
@@ -32,7 +32,7 @@ SELECT instances.id, instances.uuid, instances.migration_status, instances.migra
 `)
 
 var instanceObjectsByBatch = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_string, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
   LEFT JOIN batches ON instances.batch_id = batches.id
@@ -41,7 +41,7 @@ SELECT instances.id, instances.uuid, instances.migration_status, instances.migra
 `)
 
 var instanceObjectsByMigrationStatus = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_string, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
   LEFT JOIN batches ON instances.batch_id = batches.id
@@ -50,7 +50,7 @@ SELECT instances.id, instances.uuid, instances.migration_status, instances.migra
 `)
 
 var instanceObjectsByBatchAndMigrationStatus = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_string, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
   LEFT JOIN batches ON instances.batch_id = batches.id
@@ -59,7 +59,7 @@ SELECT instances.id, instances.uuid, instances.migration_status, instances.migra
 `)
 
 var instanceObjectsBySource = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_string, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
   LEFT JOIN batches ON instances.batch_id = batches.id
@@ -109,13 +109,13 @@ SELECT instances.id FROM instances
 `)
 
 var instanceCreate = RegisterStmt(`
-INSERT INTO instances (uuid, migration_status, migration_status_string, last_update_from_source, source_id, batch_id, needs_disk_import, secret_token, properties)
+INSERT INTO instances (uuid, migration_status, migration_status_message, last_update_from_source, source_id, batch_id, needs_disk_import, secret_token, properties)
   VALUES (?, ?, ?, ?, (SELECT sources.id FROM sources WHERE sources.name = ?), (SELECT batches.id FROM batches WHERE batches.name = ?), ?, ?, ?)
 `)
 
 var instanceUpdate = RegisterStmt(`
 UPDATE instances
-  SET uuid = ?, migration_status = ?, migration_status_string = ?, last_update_from_source = ?, source_id = (SELECT sources.id FROM sources WHERE sources.name = ?), batch_id = (SELECT batches.id FROM batches WHERE batches.name = ?), needs_disk_import = ?, secret_token = ?, properties = ?
+  SET uuid = ?, migration_status = ?, migration_status_message = ?, last_update_from_source = ?, source_id = (SELECT sources.id FROM sources WHERE sources.name = ?), batch_id = (SELECT batches.id FROM batches WHERE batches.name = ?), needs_disk_import = ?, secret_token = ?, properties = ?
  WHERE id = ?
 `)
 
@@ -177,7 +177,7 @@ func GetInstance(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *migration.Ins
 // instanceColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Instance entity.
 func instanceColumns() string {
-	return "instances.id, instances.uuid, instances.migration_status, instances.migration_status_string, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties"
+	return "instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties"
 }
 
 // getInstances can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -187,7 +187,7 @@ func getInstances(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migration
 	dest := func(scan func(dest ...any) error) error {
 		i := migration.Instance{}
 		var propertiesStr string
-		err := scan(&i.ID, &i.UUID, &i.MigrationStatus, &i.MigrationStatusString, &i.LastUpdateFromSource, &i.Source, &i.Batch, &i.NeedsDiskImport, &i.SecretToken, &propertiesStr)
+		err := scan(&i.ID, &i.UUID, &i.MigrationStatus, &i.MigrationStatusMessage, &i.LastUpdateFromSource, &i.Source, &i.Batch, &i.NeedsDiskImport, &i.SecretToken, &propertiesStr)
 		if err != nil {
 			return err
 		}
@@ -217,7 +217,7 @@ func getInstancesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]m
 	dest := func(scan func(dest ...any) error) error {
 		i := migration.Instance{}
 		var propertiesStr string
-		err := scan(&i.ID, &i.UUID, &i.MigrationStatus, &i.MigrationStatusString, &i.LastUpdateFromSource, &i.Source, &i.Batch, &i.NeedsDiskImport, &i.SecretToken, &propertiesStr)
+		err := scan(&i.ID, &i.UUID, &i.MigrationStatus, &i.MigrationStatusMessage, &i.LastUpdateFromSource, &i.Source, &i.Batch, &i.NeedsDiskImport, &i.SecretToken, &propertiesStr)
 		if err != nil {
 			return err
 		}
@@ -579,7 +579,7 @@ func CreateInstance(ctx context.Context, db dbtx, object migration.Instance) (_ 
 	// Populate the statement arguments.
 	args[0] = object.UUID
 	args[1] = object.MigrationStatus
-	args[2] = object.MigrationStatusString
+	args[2] = object.MigrationStatusMessage
 	args[3] = object.LastUpdateFromSource
 	args[4] = object.Source
 	args[5] = object.Batch
@@ -641,7 +641,7 @@ func UpdateInstance(ctx context.Context, db tx, uuid uuid.UUID, object migration
 		return err
 	}
 
-	result, err := stmt.Exec(object.UUID, object.MigrationStatus, object.MigrationStatusString, object.LastUpdateFromSource, object.Source, object.Batch, object.NeedsDiskImport, object.SecretToken, marshaledProperties, id)
+	result, err := stmt.Exec(object.UUID, object.MigrationStatus, object.MigrationStatusMessage, object.LastUpdateFromSource, object.Source, object.Batch, object.NeedsDiskImport, object.SecretToken, marshaledProperties, id)
 	if err != nil {
 		return fmt.Errorf("Update \"instances\" entry failed: %w", err)
 	}
