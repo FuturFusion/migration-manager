@@ -323,8 +323,7 @@ func instanceOverridePost(d *Daemon, r *http.Request) response.Response {
 		UUID:             UUID,
 		LastUpdate:       time.Now().UTC(),
 		Comment:          override.Comment,
-		NumberCPUs:       override.NumberCPUs,
-		MemoryInBytes:    override.MemoryInBytes,
+		Properties:       override.Properties,
 		DisableMigration: override.DisableMigration,
 	})
 	if err != nil {
@@ -402,8 +401,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 		UUID:             override.UUID,
 		LastUpdate:       time.Now().UTC(),
 		Comment:          override.Comment,
-		NumberCPUs:       override.NumberCPUs,
-		MemoryInBytes:    override.MemoryInBytes,
+		Properties:       override.Properties,
 		DisableMigration: override.DisableMigration,
 	})
 	if err != nil {

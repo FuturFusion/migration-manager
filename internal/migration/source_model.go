@@ -27,8 +27,8 @@ func (s Source) Validate() error {
 		return NewValidationErrf("Invalid source, name can not be empty")
 	}
 
-	if s.SourceType < api.SOURCETYPE_COMMON || s.SourceType > api.SOURCETYPE_VMWARE {
-		return NewValidationErrf("Invalid source, %d is not a valid source type", s.SourceType)
+	if s.SourceType != api.SOURCETYPE_COMMON && s.SourceType != api.SOURCETYPE_VMWARE {
+		return NewValidationErrf("Invalid source, %s is not a valid source type", s.SourceType)
 	}
 
 	if s.Properties == nil {

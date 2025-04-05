@@ -15,13 +15,13 @@ import (
 )
 
 var instanceOverrideObjects = RegisterStmt(`
-SELECT instance_overrides.id, instance_overrides.uuid, instance_overrides.last_update, instance_overrides.comment, instance_overrides.number_cpus, instance_overrides.memory_in_bytes, instance_overrides.disable_migration
+SELECT instance_overrides.properties, instance_overrides.id, instance_overrides.uuid, instance_overrides.last_update, instance_overrides.comment, instance_overrides.disable_migration
   FROM instance_overrides
   ORDER BY instance_overrides.uuid
 `)
 
 var instanceOverrideObjectsByUUID = RegisterStmt(`
-SELECT instance_overrides.id, instance_overrides.uuid, instance_overrides.last_update, instance_overrides.comment, instance_overrides.number_cpus, instance_overrides.memory_in_bytes, instance_overrides.disable_migration
+SELECT instance_overrides.properties, instance_overrides.id, instance_overrides.uuid, instance_overrides.last_update, instance_overrides.comment, instance_overrides.disable_migration
   FROM instance_overrides
   WHERE ( instance_overrides.uuid = ? )
   ORDER BY instance_overrides.uuid
@@ -33,13 +33,13 @@ SELECT instance_overrides.id FROM instance_overrides
 `)
 
 var instanceOverrideCreate = RegisterStmt(`
-INSERT INTO instance_overrides (uuid, last_update, comment, number_cpus, memory_in_bytes, disable_migration)
-  VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO instance_overrides (properties, uuid, last_update, comment, disable_migration)
+  VALUES (?, ?, ?, ?, ?)
 `)
 
 var instanceOverrideUpdate = RegisterStmt(`
 UPDATE instance_overrides
-  SET uuid = ?, last_update = ?, comment = ?, number_cpus = ?, memory_in_bytes = ?, disable_migration = ?
+  SET properties = ?, uuid = ?, last_update = ?, comment = ?, disable_migration = ?
  WHERE id = ?
 `)
 
@@ -101,7 +101,7 @@ func GetInstanceOverride(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *migra
 // instanceOverrideColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the InstanceOverride entity.
 func instanceOverrideColumns() string {
-	return "instance_overrides.id, instance_overrides.uuid, instance_overrides.last_update, instance_overrides.comment, instance_overrides.number_cpus, instance_overrides.memory_in_bytes, instance_overrides.disable_migration"
+	return "instance_overrides.properties, instance_overrides.id, instance_overrides.uuid, instance_overrides.last_update, instance_overrides.comment, instance_overrides.disable_migration"
 }
 
 // getInstanceOverrides can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -110,7 +110,13 @@ func getInstanceOverrides(ctx context.Context, stmt *sql.Stmt, args ...any) ([]m
 
 	dest := func(scan func(dest ...any) error) error {
 		i := migration.InstanceOverride{}
-		err := scan(&i.ID, &i.UUID, &i.LastUpdate, &i.Comment, &i.NumberCPUs, &i.MemoryInBytes, &i.DisableMigration)
+		var propertiesStr string
+		err := scan(&propertiesStr, &i.ID, &i.UUID, &i.LastUpdate, &i.Comment, &i.DisableMigration)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(propertiesStr, &i.Properties)
 		if err != nil {
 			return err
 		}
@@ -134,7 +140,13 @@ func getInstanceOverridesRaw(ctx context.Context, db dbtx, sql string, args ...a
 
 	dest := func(scan func(dest ...any) error) error {
 		i := migration.InstanceOverride{}
-		err := scan(&i.ID, &i.UUID, &i.LastUpdate, &i.Comment, &i.NumberCPUs, &i.MemoryInBytes, &i.DisableMigration)
+		var propertiesStr string
+		err := scan(&propertiesStr, &i.ID, &i.UUID, &i.LastUpdate, &i.Comment, &i.DisableMigration)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(propertiesStr, &i.Properties)
 		if err != nil {
 			return err
 		}
@@ -230,15 +242,19 @@ func CreateInstanceOverride(ctx context.Context, db dbtx, object migration.Insta
 		_err = mapErr(_err, "Instance_override")
 	}()
 
-	args := make([]any, 6)
+	args := make([]any, 5)
 
 	// Populate the statement arguments.
-	args[0] = object.UUID
-	args[1] = object.LastUpdate
-	args[2] = object.Comment
-	args[3] = object.NumberCPUs
-	args[4] = object.MemoryInBytes
-	args[5] = object.DisableMigration
+	marshaledProperties, err := marshalJSON(object.Properties)
+	if err != nil {
+		return -1, err
+	}
+
+	args[0] = marshaledProperties
+	args[1] = object.UUID
+	args[2] = object.LastUpdate
+	args[3] = object.Comment
+	args[4] = object.DisableMigration
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, instanceOverrideCreate)
@@ -284,7 +300,12 @@ func UpdateInstanceOverride(ctx context.Context, db tx, uuid uuid.UUID, object m
 		return fmt.Errorf("Failed to get \"instanceOverrideUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.UUID, object.LastUpdate, object.Comment, object.NumberCPUs, object.MemoryInBytes, object.DisableMigration, id)
+	marshaledProperties, err := marshalJSON(object.Properties)
+	if err != nil {
+		return err
+	}
+
+	result, err := stmt.Exec(marshaledProperties, object.UUID, object.LastUpdate, object.Comment, object.DisableMigration, id)
 	if err != nil {
 		return fmt.Errorf("Update \"instance_overrides\" entry failed: %w", err)
 	}

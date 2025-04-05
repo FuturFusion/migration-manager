@@ -89,7 +89,6 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.Equal(t, vmwareSourceA, *dbVMwareSourceA)
 
 	// Test updating a source.
-	vmwareSourceB.SourceType = api.SOURCETYPE_UNKNOWN
 	vmwareSourceB.Properties = json.RawMessage(`{"connectivity_status": 1}`)
 	err = source.Update(ctx, vmwareSourceB)
 	require.NoError(t, err)

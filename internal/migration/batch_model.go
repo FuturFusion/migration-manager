@@ -41,7 +41,7 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, %d is not a valid migration status", b.Status)
 	}
 
-	_, err := b.CompileIncludeExpression(InstanceWithDetails{})
+	_, err := b.CompileIncludeExpression(InstanceFilterable{})
 	if err != nil {
 		return NewValidationErrf("Invalid batch %q is not a valid include expression: %v", b.IncludeExpression, err)
 	}
@@ -60,15 +60,16 @@ func (b Batch) CanBeModified() bool {
 	}
 }
 
-func (b Batch) InstanceMatchesCriteria(instanceWithDetails InstanceWithDetails) (bool, error) {
-	includeExpr, err := b.CompileIncludeExpression(instanceWithDetails)
+func (b Batch) InstanceMatchesCriteria(instance Instance, source Source) (bool, error) {
+	filterable := instance.ToFilterable(source)
+	includeExpr, err := b.CompileIncludeExpression(filterable)
 	if err != nil {
 		return false, fmt.Errorf("Failed to compile include expression %q: %v", b.IncludeExpression, err)
 	}
 
-	output, err := expr.Run(includeExpr, instanceWithDetails)
+	output, err := expr.Run(includeExpr, filterable)
 	if err != nil {
-		return false, fmt.Errorf("Failed to run include expression %q with instance %v: %v", b.IncludeExpression, instanceWithDetails, err)
+		return false, fmt.Errorf("Failed to run include expression %q with instance %v: %v", b.IncludeExpression, filterable, err)
 	}
 
 	result, ok := output.(bool)
@@ -79,7 +80,7 @@ func (b Batch) InstanceMatchesCriteria(instanceWithDetails InstanceWithDetails) 
 	return result, nil
 }
 
-func (b Batch) CompileIncludeExpression(i InstanceWithDetails) (*vm.Program, error) {
+func (b Batch) CompileIncludeExpression(i InstanceFilterable) (*vm.Program, error) {
 	customFunctions := []expr.Option{
 		expr.Function("path_base", func(params ...any) (any, error) {
 			if len(params) != 1 {

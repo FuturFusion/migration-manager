@@ -29,8 +29,8 @@ func (t Target) Validate() error {
 		return NewValidationErrf("Invalid target, name can not be empty")
 	}
 
-	if t.TargetType < api.TARGETTYPE_INCUS || t.TargetType > api.TARGETTYPE_INCUS {
-		return NewValidationErrf("Invalid target, %d is not a valid target type", t.TargetType)
+	if t.TargetType != api.TARGETTYPE_INCUS {
+		return NewValidationErrf("Invalid target, %s is not a valid target type", t.TargetType)
 	}
 
 	if t.Properties == nil {

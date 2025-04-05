@@ -66,7 +66,7 @@ func TestQueueService_GetAll(t *testing.T) {
 					Value: migration.Instances{
 						{
 							UUID:                  uuidA,
-							InventoryPath:         "/some/instance/A",
+							Properties:            api.InstanceProperties{Location: "/some/instance/A", Name: "A"},
 							MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
 							MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
 							Batch:                 ptr.To("three"),
@@ -78,7 +78,7 @@ func TestQueueService_GetAll(t *testing.T) {
 					Value: migration.Instances{
 						{
 							UUID:                  uuidB,
-							InventoryPath:         "/some/instance/B",
+							Properties:            api.InstanceProperties{Location: "/some/instance/B", Name: "B"},
 							MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
 							MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
 							Batch:                 ptr.To("four"),
@@ -90,7 +90,7 @@ func TestQueueService_GetAll(t *testing.T) {
 					Value: migration.Instances{
 						{
 							UUID:                  uuidC,
-							InventoryPath:         "/some/instance/C",
+							Properties:            api.InstanceProperties{Location: "/some/instance/C", Name: "C"},
 							MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
 							MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
 							Batch:                 ptr.To("five"),
@@ -196,7 +196,7 @@ func TestInstanceService_GetByInstanceID(t *testing.T) {
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				Properties:            api.InstanceProperties{Location: "/some/instance/A", Name: "A"},
 				MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
 				MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
 				Batch:                 ptr.To("one"),
@@ -227,7 +227,7 @@ func TestInstanceService_GetByInstanceID(t *testing.T) {
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				Properties:            api.InstanceProperties{Location: "/some/instance/A", Name: "A"},
 				MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
 				MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
 				Batch:                 nil, // not assigned to batch
@@ -242,7 +242,7 @@ func TestInstanceService_GetByInstanceID(t *testing.T) {
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				Properties:            api.InstanceProperties{Location: "/some/instance/A", Name: "A"},
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, // not in migration state
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				Batch:                 ptr.To("one"),
@@ -257,7 +257,7 @@ func TestInstanceService_GetByInstanceID(t *testing.T) {
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				Properties:            api.InstanceProperties{Location: "/some/instance/A", Name: "A"},
 				MigrationStatus:       api.MIGRATIONSTATUS_CREATING,
 				MigrationStatusString: api.MIGRATIONSTATUS_CREATING.String(),
 				Batch:                 ptr.To("one"),
@@ -316,20 +316,18 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:    "success - without migration window start time",
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				UUID: uuidA,
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					Name:      "A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+					Disks:     []api.InstancePropertiesDisk{{}},
+				},
 				MigrationStatus:       api.MIGRATIONSTATUS_IDLE,
 				MigrationStatusString: api.MIGRATIONSTATUS_IDLE.String(),
 				Batch:                 ptr.To("one"),
-				OS:                    "ubuntu",
-				OSVersion:             "24.04",
-				Disks: []api.InstanceDiskInfo{
-					{
-						Type:                      "HDD",
-						DifferentialSyncSupported: false,
-					},
-				},
-				NeedsDiskImport: true,
+				NeedsDiskImport:       true,
 			},
 			sourceSvcGetByIDSource: migration.Source{
 				ID:         1,
@@ -343,9 +341,9 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
-				Command:       api.WORKERCOMMAND_FINALIZE_IMPORT,
-				InventoryPath: "/some/instance/A",
-				SourceType:    api.SOURCETYPE_VMWARE,
+				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
 				Source: migration.Source{
 					ID:         1,
 					Name:       "one",
@@ -361,20 +359,19 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:    "success - background disk sync",
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				UUID: uuidA,
+				Properties: api.InstanceProperties{
+					Location:         "/some/instance/A",
+					Name:             "A",
+					OS:               "ubuntu",
+					OSVersion:        "24.04",
+					BackgroundImport: true,
+					Disks:            []api.InstancePropertiesDisk{{}},
+				},
 				MigrationStatus:       api.MIGRATIONSTATUS_IDLE,
 				MigrationStatusString: api.MIGRATIONSTATUS_IDLE.String(),
 				Batch:                 ptr.To("one"),
-				OS:                    "ubuntu",
-				OSVersion:             "24.04",
-				Disks: []api.InstanceDiskInfo{
-					{
-						Type:                      "HDD",
-						DifferentialSyncSupported: true,
-					},
-				},
-				NeedsDiskImport: true,
+				NeedsDiskImport:       true,
 			},
 			sourceSvcGetByIDSource: migration.Source{
 				ID:         1,
@@ -388,9 +385,9 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
-				Command:       api.WORKERCOMMAND_IMPORT_DISKS,
-				InventoryPath: "/some/instance/A",
-				SourceType:    api.SOURCETYPE_VMWARE,
+				Command:    api.WORKERCOMMAND_IMPORT_DISKS,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
 				Source: migration.Source{
 					ID:         1,
 					Name:       "one",
@@ -406,20 +403,18 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:    "success - migration window started",
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				UUID: uuidA,
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					Name:      "A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+					Disks:     []api.InstancePropertiesDisk{{}},
+				},
 				MigrationStatus:       api.MIGRATIONSTATUS_IDLE,
 				MigrationStatusString: api.MIGRATIONSTATUS_IDLE.String(),
 				Batch:                 ptr.To("one"),
-				OS:                    "ubuntu",
-				OSVersion:             "24.04",
-				Disks: []api.InstanceDiskInfo{
-					{
-						Type:                      "HDD",
-						DifferentialSyncSupported: false,
-					},
-				},
-				NeedsDiskImport: true,
+				NeedsDiskImport:       true,
 			},
 			sourceSvcGetByIDSource: migration.Source{
 				ID:         1,
@@ -434,9 +429,9 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
-				Command:       api.WORKERCOMMAND_FINALIZE_IMPORT,
-				InventoryPath: "/some/instance/A",
-				SourceType:    api.SOURCETYPE_VMWARE,
+				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
 				Source: migration.Source{
 					ID:         1,
 					Name:       "one",
@@ -459,20 +454,18 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:    "error - not assigned to batch",
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				UUID: uuidA,
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					Name:      "A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+					Disks:     []api.InstancePropertiesDisk{{}},
+				},
 				MigrationStatus:       api.MIGRATIONSTATUS_IDLE,
 				MigrationStatusString: api.MIGRATIONSTATUS_IDLE.String(),
 				Batch:                 nil, // not assigned to batch
-				OS:                    "ubuntu",
-				OSVersion:             "24.04",
-				Disks: []api.InstanceDiskInfo{
-					{
-						Type:                      "HDD",
-						DifferentialSyncSupported: false,
-					},
-				},
-				NeedsDiskImport: true,
+				NeedsDiskImport:       true,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -483,20 +476,18 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:    "error - instance is not in idle state",
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				UUID: uuidA,
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					Name:      "A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+					Disks:     []api.InstancePropertiesDisk{{}},
+				},
 				MigrationStatus:       api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(),
 				Batch:                 ptr.To("one"),
-				OS:                    "ubuntu",
-				OSVersion:             "24.04",
-				Disks: []api.InstanceDiskInfo{
-					{
-						Type:                      "HDD",
-						DifferentialSyncSupported: false,
-					},
-				},
-				NeedsDiskImport: true,
+				NeedsDiskImport:       true,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -507,20 +498,18 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:    "error - source.GetByID",
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				UUID: uuidA,
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					Name:      "A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+					Disks:     []api.InstancePropertiesDisk{{}},
+				},
 				MigrationStatus:       api.MIGRATIONSTATUS_IDLE,
 				MigrationStatusString: api.MIGRATIONSTATUS_IDLE.String(),
 				Batch:                 ptr.To("one"),
-				OS:                    "ubuntu",
-				OSVersion:             "24.04",
-				Disks: []api.InstanceDiskInfo{
-					{
-						Type:                      "HDD",
-						DifferentialSyncSupported: false,
-					},
-				},
-				NeedsDiskImport: true,
+				NeedsDiskImport:       true,
 			},
 			sourceSvcGetByIDErr: boom.Error,
 
@@ -530,20 +519,18 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:    "error - batch.GetByID",
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				UUID: uuidA,
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					Name:      "A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+					Disks:     []api.InstancePropertiesDisk{{}},
+				},
 				MigrationStatus:       api.MIGRATIONSTATUS_IDLE,
 				MigrationStatusString: api.MIGRATIONSTATUS_IDLE.String(),
 				Batch:                 ptr.To("one"),
-				OS:                    "ubuntu",
-				OSVersion:             "24.04",
-				Disks: []api.InstanceDiskInfo{
-					{
-						Type:                      "HDD",
-						DifferentialSyncSupported: false,
-					},
-				},
-				NeedsDiskImport: true,
+				NeedsDiskImport:       true,
 			},
 			sourceSvcGetByIDSource: migration.Source{
 				ID:         1,
@@ -558,20 +545,18 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:    "error - instance.UpdateStatusByID",
 			uuidArg: uuidA,
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID:                  uuidA,
-				InventoryPath:         "/some/instance/A",
+				UUID: uuidA,
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					Name:      "A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+					Disks:     []api.InstancePropertiesDisk{{}},
+				},
 				MigrationStatus:       api.MIGRATIONSTATUS_IDLE,
 				MigrationStatusString: api.MIGRATIONSTATUS_IDLE.String(),
 				Batch:                 ptr.To("one"),
-				OS:                    "ubuntu",
-				OSVersion:             "24.04",
-				Disks: []api.InstanceDiskInfo{
-					{
-						Type:                      "HDD",
-						DifferentialSyncSupported: false,
-					},
-				},
-				NeedsDiskImport: true,
+				NeedsDiskImport:       true,
 			},
 			sourceSvcGetByIDSource: migration.Source{
 				ID:         1,

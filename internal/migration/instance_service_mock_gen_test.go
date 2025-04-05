@@ -58,9 +58,6 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID, withOverrides bool) (*migration.Instance, error) {
 //				panic("mock out the GetByUUID method")
 //			},
-//			GetByUUIDWithDetailsFunc: func(ctx context.Context, id uuid.UUID) (migration.InstanceWithDetails, error) {
-//				panic("mock out the GetByUUIDWithDetails method")
-//			},
 //			GetOverridesByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error) {
 //				panic("mock out the GetOverridesByUUID method")
 //			},
@@ -121,9 +118,6 @@ type InstanceServiceMock struct {
 
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID, withOverrides bool) (*migration.Instance, error)
-
-	// GetByUUIDWithDetailsFunc mocks the GetByUUIDWithDetails method.
-	GetByUUIDWithDetailsFunc func(ctx context.Context, id uuid.UUID) (migration.InstanceWithDetails, error)
 
 	// GetOverridesByUUIDFunc mocks the GetOverridesByUUID method.
 	GetOverridesByUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error)
@@ -239,13 +233,6 @@ type InstanceServiceMock struct {
 			// WithOverrides is the withOverrides argument value.
 			WithOverrides bool
 		}
-		// GetByUUIDWithDetails holds details about calls to the GetByUUIDWithDetails method.
-		GetByUUIDWithDetails []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// ID is the id argument value.
-			ID uuid.UUID
-		}
 		// GetOverridesByUUID holds details about calls to the GetOverridesByUUID method.
 		GetOverridesByUUID []struct {
 			// Ctx is the ctx argument value.
@@ -311,7 +298,6 @@ type InstanceServiceMock struct {
 	lockGetAllUUIDs           sync.RWMutex
 	lockGetAllUnassigned      sync.RWMutex
 	lockGetByUUID             sync.RWMutex
-	lockGetByUUIDWithDetails  sync.RWMutex
 	lockGetOverridesByUUID    sync.RWMutex
 	lockProcessWorkerUpdate   sync.RWMutex
 	lockUnassignFromBatch     sync.RWMutex
@@ -769,42 +755,6 @@ func (mock *InstanceServiceMock) GetByUUIDCalls() []struct {
 	mock.lockGetByUUID.RLock()
 	calls = mock.calls.GetByUUID
 	mock.lockGetByUUID.RUnlock()
-	return calls
-}
-
-// GetByUUIDWithDetails calls GetByUUIDWithDetailsFunc.
-func (mock *InstanceServiceMock) GetByUUIDWithDetails(ctx context.Context, id uuid.UUID) (migration.InstanceWithDetails, error) {
-	if mock.GetByUUIDWithDetailsFunc == nil {
-		panic("InstanceServiceMock.GetByUUIDWithDetailsFunc: method is nil but InstanceService.GetByUUIDWithDetails was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-		ID  uuid.UUID
-	}{
-		Ctx: ctx,
-		ID:  id,
-	}
-	mock.lockGetByUUIDWithDetails.Lock()
-	mock.calls.GetByUUIDWithDetails = append(mock.calls.GetByUUIDWithDetails, callInfo)
-	mock.lockGetByUUIDWithDetails.Unlock()
-	return mock.GetByUUIDWithDetailsFunc(ctx, id)
-}
-
-// GetByUUIDWithDetailsCalls gets all the calls that were made to GetByUUIDWithDetails.
-// Check the length with:
-//
-//	len(mockedInstanceService.GetByUUIDWithDetailsCalls())
-func (mock *InstanceServiceMock) GetByUUIDWithDetailsCalls() []struct {
-	Ctx context.Context
-	ID  uuid.UUID
-} {
-	var calls []struct {
-		Ctx context.Context
-		ID  uuid.UUID
-	}
-	mock.lockGetByUUIDWithDetails.RLock()
-	calls = mock.calls.GetByUUIDWithDetails
-	mock.lockGetByUUIDWithDetails.RUnlock()
 	return calls
 }
 

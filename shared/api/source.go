@@ -2,30 +2,14 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 )
 
-type SourceType int
+type SourceType string
 
 const (
-	SOURCETYPE_UNKNOWN SourceType = iota
-	SOURCETYPE_COMMON
-	SOURCETYPE_VMWARE
+	SOURCETYPE_COMMON SourceType = "common"
+	SOURCETYPE_VMWARE SourceType = "vmware"
 )
-
-// String implements the stringer interface.
-func (s SourceType) String() string {
-	switch s {
-	case SOURCETYPE_UNKNOWN:
-		return "Unknown"
-	case SOURCETYPE_COMMON:
-		return "Common"
-	case SOURCETYPE_VMWARE:
-		return "VMware"
-	default:
-		return fmt.Sprintf("SourceType(%d)", s)
-	}
-}
 
 // Source defines properties common to all sources.
 //

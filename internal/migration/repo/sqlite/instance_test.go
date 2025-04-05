@@ -62,143 +62,127 @@ var (
 
 	instanceA = migration.Instance{
 		UUID:                  instanceAUUID,
-		InventoryPath:         "/path/UbuntuVM",
-		Annotation:            "annotation",
 		MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 		MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 		LastUpdateFromSource:  time.Now().UTC(),
 		Batch:                 nil,
-		GuestToolsVersion:     123,
-		Architecture:          "x86_64",
-		HardwareVersion:       "hw version",
-		OS:                    "Ubuntu",
-		OSVersion:             "24.04",
-		Devices:               nil,
-		Disks: []api.InstanceDiskInfo{
-			{
-				Name:                      "disk",
-				DifferentialSyncSupported: true,
-				SizeInBytes:               123,
+		Properties: api.InstanceProperties{
+			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
+				Description: "annotation",
+				CPUs:        2,
+				Memory:      4294967296,
 			},
-		},
-		NICs: []api.InstanceNICInfo{
-			{
-				Network: "net",
-				Hwaddr:  "mac",
+			Location:         "/path/UbuntuVM",
+			Architecture:     "x86_64",
+			OS:               "Ubuntu",
+			OSVersion:        "24.04",
+			BackgroundImport: true,
+			Disks: []api.InstancePropertiesDisk{
+				{
+					Name:     "disk",
+					Capacity: 123,
+				},
 			},
+			NICs: []api.InstancePropertiesNIC{
+				{
+					ID:              "network-123",
+					Network:         "net",
+					HardwareAddress: "mac",
+				},
+			},
+			Snapshots:  nil,
+			LegacyBoot: false,
+			SecureBoot: false,
+			TPM:        false,
 		},
-		Snapshots: nil,
-		CPU: api.InstanceCPUInfo{
-			NumberCPUs:             2,
-			CPUAffinity:            []int32{},
-			NumberOfCoresPerSocket: 2,
-		},
-		Memory: api.InstanceMemoryInfo{
-			MemoryInBytes:            4294967296,
-			MemoryReservationInBytes: 4294967296,
-		},
-		UseLegacyBios:     false,
-		SecureBootEnabled: false,
-		TPMPresent:        false,
-		NeedsDiskImport:   false,
-		SecretToken:       uuid.Must(uuid.NewRandom()),
-		Source:            "TestSource",
+		NeedsDiskImport: false,
+		SecretToken:     uuid.Must(uuid.NewRandom()),
+		Source:          "TestSource",
 	}
 
 	instanceBUUID = uuid.Must(uuid.NewRandom())
 	instanceB     = migration.Instance{
 		UUID:                  instanceBUUID,
-		InventoryPath:         "/path/WindowsVM",
-		Annotation:            "annotation",
 		MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 		MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 		LastUpdateFromSource:  time.Now().UTC(),
 		Batch:                 nil,
-		GuestToolsVersion:     123,
-		Architecture:          "x86_64",
-		HardwareVersion:       "hw version",
-		OS:                    "Windows",
-		OSVersion:             "11",
-		Devices:               nil,
-		Disks: []api.InstanceDiskInfo{
-			{
-				Name:                      "disk",
-				DifferentialSyncSupported: false,
-				SizeInBytes:               321,
+		Properties: api.InstanceProperties{
+			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
+				Description: "annotation",
+				CPUs:        2,
+				Memory:      4294967296,
 			},
-		},
-		NICs: []api.InstanceNICInfo{
-			{
-				Network: "net1",
-				Hwaddr:  "mac1",
+			Location:         "/path/WindowsVM",
+			Architecture:     "x86_64",
+			OS:               "Windows",
+			OSVersion:        "11",
+			BackgroundImport: false,
+			Disks: []api.InstancePropertiesDisk{
+				{
+					Name:     "disk",
+					Capacity: 321,
+				},
 			},
-			{
-				Network: "net2",
-				Hwaddr:  "mac2",
+			NICs: []api.InstancePropertiesNIC{
+				{
+					ID:              "network-123",
+					Network:         "net1",
+					HardwareAddress: "mac1",
+				},
+				{
+					ID:              "network-456",
+					Network:         "net2",
+					HardwareAddress: "mac2",
+				},
 			},
+			Snapshots:  nil,
+			LegacyBoot: false,
+			SecureBoot: true,
+			TPM:        true,
 		},
-		Snapshots: nil,
-		CPU: api.InstanceCPUInfo{
-			NumberCPUs:             2,
-			CPUAffinity:            []int32{0, 1},
-			NumberOfCoresPerSocket: 2,
-		},
-		Memory: api.InstanceMemoryInfo{
-			MemoryInBytes:            4294967296,
-			MemoryReservationInBytes: 4294967296,
-		},
-		UseLegacyBios:     false,
-		SecureBootEnabled: true,
-		TPMPresent:        true,
-		NeedsDiskImport:   false,
-		SecretToken:       uuid.Must(uuid.NewRandom()),
-		Source:            "TestSource",
+		NeedsDiskImport: false,
+		SecretToken:     uuid.Must(uuid.NewRandom()),
+		Source:          "TestSource",
 	}
 
 	instanceCUUID = uuid.Must(uuid.NewRandom())
 	instanceC     = migration.Instance{
 		UUID:                  instanceCUUID,
-		InventoryPath:         "/path/DebianVM",
-		Annotation:            "annotation",
 		MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 		MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 		LastUpdateFromSource:  time.Now().UTC(),
 		Batch:                 ptr.To("TestBatch"),
-		GuestToolsVersion:     123,
-		Architecture:          "arm64",
-		HardwareVersion:       "hw version",
-		OS:                    "Debian",
-		OSVersion:             "bookworm",
-		Devices:               nil,
-		Disks: []api.InstanceDiskInfo{
-			{
-				Name:                      "disk1",
-				DifferentialSyncSupported: true,
-				SizeInBytes:               123,
+		Properties: api.InstanceProperties{
+			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
+				Description: "annotation",
+				CPUs:        4,
+				Memory:      4294967296,
 			},
-			{
-				Name:                      "disk2",
-				DifferentialSyncSupported: true,
-				SizeInBytes:               321,
+			Location:         "/path/DebianVM",
+			Architecture:     "arm64",
+			OS:               "Debian",
+			OSVersion:        "bookworm",
+			BackgroundImport: true,
+			Disks: []api.InstancePropertiesDisk{
+				{
+					Name:     "disk1",
+					Capacity: 123,
+				},
+				{
+					Name:     "disk2",
+					Capacity: 321,
+				},
 			},
+			NICs:       nil,
+			Snapshots:  nil,
+			LegacyBoot: true,
+			SecureBoot: false,
+			TPM:        false,
 		},
-		NICs:      nil,
-		Snapshots: nil,
-		CPU: api.InstanceCPUInfo{
-			NumberCPUs:             4,
-			CPUAffinity:            []int32{0, 1, 2, 3},
-			NumberOfCoresPerSocket: 2,
-		},
-		Memory: api.InstanceMemoryInfo{
-			MemoryInBytes:            4294967296,
-			MemoryReservationInBytes: 4294967296,
-		},
-		UseLegacyBios:     true,
-		SecureBootEnabled: false,
-		TPMPresent:        false,
-		NeedsDiskImport:   false,
-		SecretToken:       uuid.Must(uuid.NewRandom()),
-		Source:            "TestSource",
+		NeedsDiskImport: false,
+		SecretToken:     uuid.Must(uuid.NewRandom()),
+		Source:          "TestSource",
 	}
 )
 
@@ -228,7 +212,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	instance := sqlite.NewInstance(tx)
 	instanceSvc := migration.NewInstanceService(instance, sourceSvc)
 
-	batchSvc := migration.NewBatchService(sqlite.NewBatch(tx), instanceSvc)
+	batchSvc := migration.NewBatchService(sqlite.NewBatch(tx), instanceSvc, sourceSvc)
 
 	// Cannot add an instance with an invalid source.
 	_, err = instance.Create(ctx, instanceA)
@@ -299,8 +283,8 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Equal(t, instanceA, *dbInstanceA)
 
 	// Test updating an instance.
-	instanceB.InventoryPath = "/foo/bar"
-	instanceB.CPU.NumberCPUs = 8
+	instanceB.Properties.Location = "/foo/bar"
+	instanceB.Properties.CPUs = 8
 	instanceB.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
 	instanceB.MigrationStatusString = instanceB.MigrationStatus.String()
 	err = instance.Update(ctx, instanceB)
@@ -354,7 +338,16 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Empty(t, instances)
 }
 
-var overridesA = migration.InstanceOverride{UUID: instanceAUUID, LastUpdate: time.Now().UTC(), Comment: "A comment", NumberCPUs: 8, MemoryInBytes: 4096, DisableMigration: true}
+var overridesA = migration.InstanceOverride{
+	UUID:       instanceAUUID,
+	LastUpdate: time.Now().UTC(),
+	Comment:    "A comment",
+	Properties: api.InstancePropertiesConfigurable{
+		CPUs:   8,
+		Memory: 4096,
+	},
+	DisableMigration: true,
+}
 
 func TestInstanceOverridesDatabaseActions(t *testing.T) {
 	ctx := context.Background()
@@ -484,7 +477,7 @@ func TestInstanceGetAll(t *testing.T) {
 	for i := 0; i < maxInstances; i++ {
 		instanceN := instanceA
 		instanceN.UUID = uuid.Must(uuid.NewRandom())
-		instanceN.InventoryPath = fmt.Sprintf("/%d", i)
+		instanceN.Properties.Location = fmt.Sprintf("/%d", i)
 
 		_, err = instance.Create(ctx, instanceN)
 		require.NoError(t, err)

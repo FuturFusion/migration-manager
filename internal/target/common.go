@@ -16,6 +16,7 @@ import (
 type InternalTarget struct {
 	api.Target `yaml:",inline"`
 
+	version     string
 	isConnected bool
 }
 

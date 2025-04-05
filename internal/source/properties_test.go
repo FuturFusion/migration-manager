@@ -1,0 +1,540 @@
+package source
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/osarch"
+	"github.com/stretchr/testify/require"
+	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/vim25/mo"
+	"github.com/vmware/govmomi/vim25/types"
+
+	"github.com/FuturFusion/migration-manager/internal/properties"
+	"github.com/FuturFusion/migration-manager/internal/ptr"
+	"github.com/FuturFusion/migration-manager/shared/api"
+)
+
+func TestGetProperties(t *testing.T) {
+	s := InternalVMwareSource{
+		InternalSource: InternalSource{
+			Source: api.Source{
+				SourceType: api.SOURCETYPE_VMWARE,
+			},
+
+			version: "8.0",
+		},
+	}
+
+	expectedUUID, err := uuid.NewRandom()
+	require.NoError(t, err)
+
+	expectedArch, err := osarch.ArchitectureName(osarch.ARCH_64BIT_ARMV8_LITTLE_ENDIAN)
+	require.NoError(t, err)
+
+	fallbackArch, err := osarch.ArchitectureName(osarch.ARCH_64BIT_INTEL_X86)
+	require.NoError(t, err)
+
+	cases := []struct {
+		name      string
+		expectErr bool
+
+		expectedUUID             string
+		expectedLocation         string
+		expectedDescription      string
+		expectedFirmware         string
+		expectedName             string
+		expectedBackgroundImport bool
+		expectedArchitecture     string
+		expectedCPUs             int32
+		expectedMemory           int32
+		expectedOS               string
+		expectedOSVersion        string
+		expectedTPM              bool
+		expectedSecureBoot       bool
+
+		expectedDiskName     string
+		expectedDiskShared   string
+		expectedDiskCapacity int64
+
+		expectedNetwork   string
+		expectedNetworkID string
+		expectedMac       string
+
+		expectedSnapshotName string
+
+		numDisks     int
+		numNICs      int
+		numSnapshots int
+
+		archProperty string
+	}{
+		{
+			name:      "success",
+			expectErr: false,
+
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
+			expectedDiskCapacity:     2147483648,
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOS:               "osGuest",
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+
+			archProperty: expectedArch,
+		},
+		{
+			name:      "success - disk doesn't support sharing",
+			expectErr: false,
+
+			expectedDiskShared:       "",
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskCapacity:     2147483648,
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOS:               "osGuest",
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+
+			archProperty: expectedArch,
+		},
+		{
+			name:      "success - disabled sharing",
+			expectErr: false,
+
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingNone),
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskCapacity:     2147483648,
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOS:               "osGuest",
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+
+			archProperty: expectedArch,
+		},
+		{
+			name:      "success - no csm",
+			expectErr: false,
+
+			expectedFirmware:         "any other value",
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
+			expectedDiskCapacity:     2147483648,
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOS:               "osGuest",
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+
+			archProperty: expectedArch,
+		},
+		{
+			name:      "success - OS has no Guest suffix",
+			expectErr: false,
+
+			expectedOS:               "os",
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
+			expectedDiskCapacity:     2147483648,
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+
+			archProperty: expectedArch,
+		},
+		{
+			name:      "success - missing description",
+			expectErr: false,
+
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
+			expectedDiskCapacity:     2147483648,
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOS:               "osGuest",
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+
+			archProperty: expectedArch,
+		},
+		{
+			name:      "success - missing devices",
+			expectErr: false,
+
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
+			expectedDiskCapacity:     2147483648,
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOS:               "osGuest",
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     0,
+			numNICs:      0,
+			numSnapshots: 0,
+
+			archProperty: expectedArch,
+		},
+		{
+			name:      "success - fallback architecture",
+			expectErr: false,
+
+			expectedArchitecture:     "any other value",
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
+			expectedDiskCapacity:     2147483648,
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOS:               "osGuest",
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+
+			archProperty: fallbackArch,
+		},
+		{
+			name:      "fail - missing defined fields",
+			expectErr: true,
+		},
+
+		{
+			name:      "fail - invalid sub-property keys",
+			expectErr: true,
+
+			expectedDiskCapacity:     0,
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOS:               "osGuest",
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+		},
+
+		{
+			name:      "fail - missing sub-property keys",
+			expectErr: true,
+
+			expectedDiskName:         "",
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedCPUs:             4,
+			expectedDiskCapacity:     2147483648,
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOS:               "osGuest",
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+		},
+
+		{
+			name:      "fail - invalid UUID",
+			expectErr: true,
+
+			expectedUUID:             "any other value",
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
+			expectedDiskCapacity:     2147483648,
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedOS:               "osGuest",
+			expectedOSVersion:        "os version",
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+		},
+	}
+
+	err = properties.InitDefinitions()
+	require.NoError(t, err)
+
+	for i, c := range cases {
+		t.Logf("Case %d: %s", i, c.name)
+
+		vmInfo := &object.VirtualMachine{Common: object.Common{InventoryPath: c.expectedLocation}}
+		vmProps := mo.VirtualMachine{
+			Config: &types.VirtualMachineConfigInfo{
+				Annotation:            c.expectedDescription,
+				Firmware:              c.expectedFirmware,
+				Name:                  c.expectedName,
+				ChangeTrackingEnabled: ptr.To(c.expectedBackgroundImport),
+				ExtraConfig:           object.OptionValueListFromMap(map[string]string{"guestInfo.detailed.data": c.expectedArchitecture}),
+				Hardware: types.VirtualHardware{
+					NumCPU: c.expectedCPUs,
+					Device: []types.BaseVirtualDevice{},
+				},
+			},
+			Summary: types.VirtualMachineSummary{
+				Config: types.VirtualMachineConfigSummary{
+					MemorySizeMB:  c.expectedMemory,
+					GuestId:       c.expectedOS,
+					GuestFullName: c.expectedOSVersion,
+					TpmPresent:    ptr.To(c.expectedTPM),
+					InstanceUuid:  c.expectedUUID,
+				},
+			},
+			Capability: types.VirtualMachineCapability{
+				SecureBootSupported: ptr.To(c.expectedSecureBoot),
+			},
+		}
+
+		for i := 0; i < c.numDisks; i++ {
+			if vmProps.Config.Hardware.Device == nil {
+				vmProps.Config.Hardware.Device = []types.BaseVirtualDevice{}
+			}
+
+			// Sharing is set on a particular disk type only.
+			var backing types.BaseVirtualDeviceBackingInfo
+			if c.expectedDiskShared != "" {
+				backing = &types.VirtualDiskFlatVer2BackingInfo{
+					VirtualDeviceFileBackingInfo: types.VirtualDeviceFileBackingInfo{FileName: c.expectedDiskName},
+					Sharing:                      c.expectedDiskShared,
+				}
+			} else {
+				backing = &types.VirtualDeviceFileBackingInfo{FileName: c.expectedDiskName}
+			}
+
+			vmProps.Config.Hardware.Device = append(vmProps.Config.Hardware.Device,
+				&types.VirtualDisk{
+					VirtualDevice:   types.VirtualDevice{Backing: backing},
+					CapacityInBytes: c.expectedDiskCapacity,
+				})
+		}
+
+		for i := 0; i < c.numNICs; i++ {
+			if vmProps.Config.Hardware.Device == nil {
+				vmProps.Config.Hardware.Device = []types.BaseVirtualDevice{}
+			}
+
+			vmProps.Config.Hardware.Device = append(vmProps.Config.Hardware.Device,
+				&types.VirtualVmxnet3{
+					VirtualVmxnet: types.VirtualVmxnet{
+						VirtualEthernetCard: types.VirtualEthernetCard{
+							VirtualDevice: types.VirtualDevice{Backing: &types.VirtualEthernetCardNetworkBackingInfo{
+								VirtualDeviceDeviceBackingInfo: types.VirtualDeviceDeviceBackingInfo{DeviceName: c.expectedNetwork},
+								Network:                        &types.ManagedObjectReference{Value: c.expectedNetworkID},
+							}},
+							MacAddress: c.expectedMac,
+						},
+					},
+				})
+		}
+
+		for i := 0; i < c.numSnapshots; i++ {
+			if vmProps.Snapshot == nil {
+				vmProps.Snapshot = &types.VirtualMachineSnapshotInfo{RootSnapshotList: []types.VirtualMachineSnapshotTree{}}
+			}
+
+			vmProps.Snapshot.RootSnapshotList = append(vmProps.Snapshot.RootSnapshotList, types.VirtualMachineSnapshotTree{Name: c.expectedSnapshotName})
+		}
+
+		props, err := s.getVMProperties(vmInfo, vmProps)
+		if c.expectErr {
+			require.Error(t, err)
+		} else {
+			require.NoError(t, err)
+
+			require.Equal(t, c.expectedUUID, props.UUID.String())
+			require.Equal(t, c.expectedName, props.Name)
+			require.Equal(t, c.expectedTPM, props.TPM)
+			require.Equal(t, c.expectedFirmware == string(types.GuestOsDescriptorFirmwareTypeBios), props.LegacyBoot)
+			require.Equal(t, c.expectedBackgroundImport, props.BackgroundImport)
+			require.Equal(t, c.expectedSecureBoot, props.SecureBoot)
+			require.Equal(t, c.expectedLocation, props.Location)
+			require.Equal(t, c.archProperty, props.Architecture)
+			require.Equal(t, int64(c.expectedMemory)*1024*1024, props.Memory)
+			require.Equal(t, int64(c.expectedCPUs), props.CPUs)
+			os, _ := strings.CutSuffix(c.expectedOS, "Guest")
+			require.Equal(t, os, props.OS)
+			require.Equal(t, c.expectedOSVersion, props.OSVersion)
+			require.Equal(t, c.expectedDescription, props.Description)
+			require.LessOrEqual(t, c.numDisks, len(props.Disks))
+			require.LessOrEqual(t, c.numNICs, len(props.NICs))
+			require.LessOrEqual(t, c.numSnapshots, len(props.Snapshots))
+
+			for _, d := range props.Disks {
+				require.Equal(t, c.expectedDiskName, d.Name)
+				require.Equal(t, c.expectedDiskCapacity, d.Capacity)
+				require.Equal(t, c.expectedDiskShared == string(types.VirtualDiskSharingSharingMultiWriter), d.Shared)
+			}
+
+			for _, d := range props.NICs {
+				require.Equal(t, c.expectedNetworkID, d.ID)
+				require.Equal(t, c.expectedMac, d.HardwareAddress)
+				require.Equal(t, c.expectedNetwork, d.Network)
+			}
+
+			for _, d := range props.Snapshots {
+				require.Equal(t, c.expectedSnapshotName, d.Name)
+			}
+		}
+	}
+}

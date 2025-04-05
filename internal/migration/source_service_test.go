@@ -103,7 +103,7 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				SourceType: api.SourceType(-1), // invalid
+				SourceType: api.SourceType(""), // invalid
 				Properties: json.RawMessage(`{}`),
 			},
 
@@ -495,7 +495,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				SourceType: api.SourceType(-1), // invalid
+				SourceType: api.SourceType(""), // invalid
 				Properties: json.RawMessage(`{}`),
 			},
 

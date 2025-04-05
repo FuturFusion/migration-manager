@@ -12,6 +12,7 @@ import (
 type InternalSource struct {
 	api.Source `yaml:",inline"`
 
+	version     string
 	isConnected bool
 }
 

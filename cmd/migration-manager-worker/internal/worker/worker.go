@@ -169,13 +169,13 @@ func (w *Worker) importDisks(ctx context.Context, cmd api.WorkerCommand) {
 
 func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) error {
 	// Delete any existing migration snapshot that might be left over.
-	err := w.source.DeleteVMSnapshot(ctx, cmd.InventoryPath, internal.IncusSnapshotName)
+	err := w.source.DeleteVMSnapshot(ctx, cmd.Location, internal.IncusSnapshotName)
 	if err != nil {
 		return err
 	}
 
 	// Do the actual import.
-	return w.source.ImportDisks(ctx, cmd.InventoryPath, func(status string, isImportant bool) {
+	return w.source.ImportDisks(ctx, cmd.Location, func(status string, isImportant bool) {
 		slog.Info(status) //nolint:sloglint
 
 		// Only send updates back to the server if important or once every 5 seconds.
@@ -202,7 +202,7 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 
 	slog.Info("Shutting down source VM")
 
-	err := w.source.PowerOffVM(ctx, cmd.InventoryPath)
+	err := w.source.PowerOffVM(ctx, cmd.Location)
 	if err != nil {
 		w.sendErrorResponse(err)
 		return false
@@ -289,7 +289,7 @@ func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, s
 	}
 
 	if sourceType != src.SourceType {
-		return fmt.Errorf("Source type mismatch; expecting %s but got %s", sourceType.String(), src.SourceType.String())
+		return fmt.Errorf("Source type mismatch; expecting %s but got %s", sourceType, src.SourceType)
 	}
 
 	switch src.SourceType {
@@ -300,7 +300,7 @@ func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, s
 		}
 
 	default:
-		return fmt.Errorf("Provided source type %q is not usable with `migration-manager-worker`", sourceType.String())
+		return fmt.Errorf("Provided source type %q is not usable with `migration-manager-worker`", sourceType)
 	}
 
 	return w.source.Connect(ctx)

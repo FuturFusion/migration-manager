@@ -23,6 +23,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
+	"github.com/FuturFusion/migration-manager/internal/properties"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
 	"github.com/FuturFusion/migration-manager/internal/server/request"
@@ -199,11 +200,16 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("Failed to prepare statements: %w", err)
 	}
 
+	err = properties.InitDefinitions()
+	if err != nil {
+		return err
+	}
+
 	d.network = migration.NewNetworkService(sqlite.NewNetwork(dbWithTransaction))
 	d.target = migration.NewTargetService(sqlite.NewTarget(dbWithTransaction))
 	d.source = migration.NewSourceService(sqlite.NewSource(dbWithTransaction))
 	d.instance = migration.NewInstanceService(sqlite.NewInstance(dbWithTransaction), d.source)
-	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance)
+	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance, d.source)
 	d.queue = migration.NewQueueService(d.batch, d.instance, d.source)
 
 	// Set default authorizer.

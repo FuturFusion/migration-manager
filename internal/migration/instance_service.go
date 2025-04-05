@@ -55,7 +55,7 @@ func (s instanceService) Create(ctx context.Context, instance Instance) (Instanc
 
 	instance.ID, err = s.repo.Create(ctx, instance)
 	if err != nil {
-		return Instance{}, nil
+		return Instance{}, err
 	}
 
 	return instance, nil
@@ -252,63 +252,6 @@ func (s instanceService) GetByUUID(ctx context.Context, id uuid.UUID, withOverri
 	return instance, nil
 }
 
-func (s instanceService) GetByUUIDWithDetails(ctx context.Context, id uuid.UUID) (InstanceWithDetails, error) {
-	var instanceWithDetails InstanceWithDetails
-
-	err := transaction.Do(ctx, func(ctx context.Context) error {
-		instance, err := s.repo.GetByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
-
-		overrides, err := s.repo.GetOverridesByUUID(ctx, id)
-		if err != nil && !errors.Is(err, ErrNotFound) {
-			return err
-		}
-
-		source, err := s.source.GetByName(ctx, instance.Source)
-		if err != nil {
-			return err
-		}
-
-		// FIXME: source and overrides should be stripped to the actually needed attributes.
-		instanceWithDetails = InstanceWithDetails{
-			Name:              instance.GetName(),
-			InventoryPath:     instance.InventoryPath,
-			Annotation:        instance.Annotation,
-			GuestToolsVersion: instance.GuestToolsVersion,
-			Architecture:      instance.Architecture,
-			HardwareVersion:   instance.HardwareVersion,
-			OS:                instance.OS,
-			OSVersion:         instance.OSVersion,
-			Devices:           instance.Devices,
-			Disks:             instance.Disks,
-			NICs:              instance.NICs,
-			Snapshots:         instance.Snapshots,
-			CPU:               instance.CPU,
-			Memory:            instance.Memory,
-			UseLegacyBios:     instance.UseLegacyBios,
-			SecureBootEnabled: instance.SecureBootEnabled,
-			TPMPresent:        instance.TPMPresent,
-			Source: Source{
-				Name:       source.Name,
-				SourceType: source.SourceType,
-			},
-		}
-
-		if overrides != nil {
-			instanceWithDetails.Overrides = *overrides
-		}
-
-		return nil
-	})
-	if err != nil {
-		return InstanceWithDetails{}, err
-	}
-
-	return instanceWithDetails, nil
-}
-
 func (s instanceService) UnassignFromBatch(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		instance, err := s.GetByUUID(ctx, id, false)
@@ -342,7 +285,7 @@ func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 		}
 
 		if oldInstance.Batch != nil {
-			return fmt.Errorf("Instance %q is already assigned to a batch: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
+			return fmt.Errorf("Instance %q is already assigned to a batch: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
 		}
 
 		return s.repo.Update(ctx, *instance)
@@ -443,7 +386,7 @@ func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 		}
 
 		if !oldInstance.CanBeModified() {
-			return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating: %w", oldInstance.InventoryPath, ErrOperationNotPermitted)
+			return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
 		}
 
 		err = s.repo.DeleteOverridesByUUID(ctx, id)

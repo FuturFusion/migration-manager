@@ -257,9 +257,9 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 				authType = "TLS"
 			}
 
-			data = append(data, []string{t.Name, t.TargetType.String(), incusProperties.Endpoint, incusProperties.ConnectivityStatus.String(), authType, incusProperties.TrustedServerCertificateFingerprint})
+			data = append(data, []string{t.Name, string(t.TargetType), incusProperties.Endpoint, incusProperties.ConnectivityStatus.String(), authType, incusProperties.TrustedServerCertificateFingerprint})
 		default:
-			return fmt.Errorf("Unsupported target type %d", t.TargetType)
+			return fmt.Errorf("Unsupported target type %s", t.TargetType)
 		}
 	}
 
@@ -425,7 +425,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		newTargetName = tgt.Name
 
 	default:
-		return fmt.Errorf("Unsupported target type %d; must be one of %q", tgt.TargetType, supportedTargetTypes)
+		return fmt.Errorf("Unsupported target type %s; must be one of %q", tgt.TargetType, supportedTargetTypes)
 	}
 
 	// Update the target.

@@ -1,8 +1,6 @@
 package migration
 
 import (
-	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -13,67 +11,43 @@ import (
 )
 
 type Instance struct {
-	ID                    int64
-	UUID                  uuid.UUID `db:"primary=yes"`
-	InventoryPath         string
-	Annotation            string
+	ID   int64
+	UUID uuid.UUID `db:"primary=yes"`
+
 	MigrationStatus       api.MigrationStatusType
 	MigrationStatusString string
 	LastUpdateFromSource  time.Time
-	Source                string  `db:"join=sources.name"`
-	Batch                 *string `db:"leftjoin=batches.name"`
-	GuestToolsVersion     int
-	Architecture          string
-	HardwareVersion       string
-	OS                    string
-	OSVersion             string
-	Devices               []api.InstanceDeviceInfo   `db:"marshal=json"`
-	Disks                 []api.InstanceDiskInfo     `db:"marshal=json"`
-	NICs                  []api.InstanceNICInfo      `db:"marshal=json&sql=instances.nics"`
-	Snapshots             []api.InstanceSnapshotInfo `db:"marshal=json"`
-	CPU                   api.InstanceCPUInfo        `db:"marshal=json&sql=instances.cpu"`
-	Memory                api.InstanceMemoryInfo     `db:"marshal=json"`
-	UseLegacyBios         bool
-	SecureBootEnabled     bool
-	TPMPresent            bool
+
+	Source string  `db:"join=sources.name"`
+	Batch  *string `db:"leftjoin=batches.name"`
 
 	NeedsDiskImport bool
 	SecretToken     uuid.UUID
 
 	Overrides *InstanceOverride `db:"ignore"`
+
+	Properties api.InstanceProperties `db:"marshal=json"`
 }
 
 type InstanceOverride struct {
+	Properties api.InstancePropertiesConfigurable `db:"marshal=json"`
+
 	ID               int64
 	UUID             uuid.UUID `db:"primary=yes"`
 	LastUpdate       time.Time
 	Comment          string
-	NumberCPUs       int `db:"sql=instance_overrides.number_cpus"`
-	MemoryInBytes    int64
 	DisableMigration bool
 }
 
-type InstanceWithDetails struct {
-	Name              string
-	InventoryPath     string
-	Annotation        string
-	GuestToolsVersion int
-	Architecture      string
-	HardwareVersion   string
-	OS                string
-	OSVersion         string
-	Devices           []api.InstanceDeviceInfo
-	Disks             []api.InstanceDiskInfo
-	NICs              []api.InstanceNICInfo
-	Snapshots         []api.InstanceSnapshotInfo
-	CPU               api.InstanceCPUInfo
-	Memory            api.InstanceMemoryInfo
-	UseLegacyBios     bool
-	SecureBootEnabled bool
-	TPMPresent        bool
+type InstanceFilterable struct {
+	api.InstanceProperties
 
-	Source    Source
-	Overrides InstanceOverride
+	MigrationStatus       api.MigrationStatusType
+	MigrationStatusString string
+	LastUpdateFromSource  time.Time
+
+	Source     string
+	SourceType api.SourceType
 }
 
 func (i Instance) Validate() error {
@@ -85,8 +59,12 @@ func (i Instance) Validate() error {
 		return NewValidationErrf("Invalid instance, SecretToken can not be empty")
 	}
 
-	if i.InventoryPath == "" {
+	if i.Properties.Location == "" {
 		return NewValidationErrf("Invalid instance, inventory path can not be empty")
+	}
+
+	if i.Properties.Name == "" {
+		return NewValidationErrf("Invalid instance, name can not be empty")
 	}
 
 	if i.Source == "" {
@@ -100,16 +78,10 @@ func (i Instance) Validate() error {
 	return nil
 }
 
-var nonalpha = regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
-
 // GetName returns the name of the instance, which may not be unique among all instances for a given source.
-// If a unique, human-readable identifier is needed, use the InventoryPath property.
+// If a unique, human-readable identifier is needed, use the Location property.
 func (i Instance) GetName() string {
-	// Get the last part of the inventory path to use as a base for the instance name.
-	base := filepath.Base(i.InventoryPath)
-
-	// An instance name can only contain alphanumeric and hyphen characters.
-	return nonalpha.ReplaceAllString(base, "")
+	return i.Properties.Name
 }
 
 func (i Instance) CanBeModified() bool {
@@ -140,7 +112,7 @@ func (i Instance) IsMigrating() bool {
 
 // GetOSType returns the OS type, as determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
 func (i *Instance) GetOSType() api.OSType {
-	if strings.HasPrefix(i.OS, "win") {
+	if strings.HasPrefix(i.Properties.OS, "win") {
 		return api.OSTYPE_WINDOWS
 	}
 
@@ -157,30 +129,30 @@ func (o InstanceOverride) Validate() error {
 	return nil
 }
 
+func (i Instance) ToFilterable(s Source) InstanceFilterable {
+	props := i.Properties
+	if i.Overrides != nil {
+		props.Apply(i.Overrides.Properties)
+	}
+
+	return InstanceFilterable{
+		InstanceProperties:    props,
+		MigrationStatus:       i.MigrationStatus,
+		MigrationStatusString: i.MigrationStatusString,
+		LastUpdateFromSource:  i.LastUpdateFromSource,
+		Source:                i.Source,
+		SourceType:            s.SourceType,
+	}
+}
+
 func (i Instance) ToAPI() api.Instance {
 	apiInst := api.Instance{
-		UUID:                  i.UUID,
-		InventoryPath:         i.InventoryPath,
-		Annotation:            i.Annotation,
 		MigrationStatus:       i.MigrationStatus,
 		MigrationStatusString: i.MigrationStatusString,
 		LastUpdateFromSource:  i.LastUpdateFromSource,
 		Source:                i.Source,
 		Batch:                 i.Batch,
-		GuestToolsVersion:     i.GuestToolsVersion,
-		Architecture:          i.Architecture,
-		HardwareVersion:       i.HardwareVersion,
-		OS:                    i.OS,
-		OSVersion:             i.OSVersion,
-		Devices:               i.Devices,
-		Disks:                 i.Disks,
-		NICs:                  i.NICs,
-		Snapshots:             i.Snapshots,
-		CPU:                   i.CPU,
-		Memory:                i.Memory,
-		UseLegacyBios:         i.UseLegacyBios,
-		SecureBootEnabled:     i.SecureBootEnabled,
-		TPMPresent:            i.TPMPresent,
+		Properties:            i.Properties,
 	}
 
 	if i.Overrides != nil {
@@ -195,8 +167,7 @@ func (o InstanceOverride) ToAPI() api.InstanceOverride {
 		UUID:             o.UUID,
 		LastUpdate:       o.LastUpdate,
 		Comment:          o.Comment,
-		NumberCPUs:       o.NumberCPUs,
-		MemoryInBytes:    o.MemoryInBytes,
 		DisableMigration: o.DisableMigration,
+		Properties:       o.Properties,
 	}
 }

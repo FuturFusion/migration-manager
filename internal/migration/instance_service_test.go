@@ -36,7 +36,7 @@ func TestInstanceService_Create(t *testing.T) {
 			name: "success",
 			instance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "/inventory/path",
+				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource:  now,
@@ -47,7 +47,7 @@ func TestInstanceService_Create(t *testing.T) {
 			assertErr: require.NoError,
 			wantInstance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "/inventory/path",
+				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource:  now,
@@ -59,7 +59,7 @@ func TestInstanceService_Create(t *testing.T) {
 			name: "error - missing uuid",
 			instance: migration.Instance{
 				UUID:                  uuid.Nil,
-				InventoryPath:         "/inventory/path",
+				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource:  now,
@@ -76,7 +76,7 @@ func TestInstanceService_Create(t *testing.T) {
 			name: "error - missing secret token",
 			instance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "/inventory/path",
+				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource:  now,
@@ -93,7 +93,6 @@ func TestInstanceService_Create(t *testing.T) {
 			name: "error - invalid inventory path",
 			instance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "",
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource:  now,
@@ -110,7 +109,7 @@ func TestInstanceService_Create(t *testing.T) {
 			name: "error - source id",
 			instance: migration.Instance{
 				UUID:                  uuid.Nil,
-				InventoryPath:         "/inventory/path",
+				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 				LastUpdateFromSource:  now,
@@ -160,12 +159,12 @@ func TestInstanceService_GetAll(t *testing.T) {
 			name: "success",
 			repoGetAllInstances: migration.Instances{
 				migration.Instance{
-					UUID:          uuidA,
-					InventoryPath: "/inventory/path/A",
+					UUID:       uuidA,
+					Properties: api.InstanceProperties{Location: "/inventory/path/A"},
 				},
 				migration.Instance{
-					UUID:          uuidB,
-					InventoryPath: "/inventory/path/B",
+					UUID:       uuidB,
+					Properties: api.InstanceProperties{Location: "/inventory/path/B"},
 				},
 			},
 
@@ -215,12 +214,12 @@ func TestInstanceService_GetAllByState(t *testing.T) {
 			name: "success",
 			repoGetAllByStateInstances: migration.Instances{
 				migration.Instance{
-					UUID:          uuidA,
-					InventoryPath: "/inventory/path/A",
+					UUID:       uuidA,
+					Properties: api.InstanceProperties{Location: "/inventory/path/A"},
 				},
 				migration.Instance{
-					UUID:          uuidB,
-					InventoryPath: "/inventory/path/B",
+					UUID:       uuidB,
+					Properties: api.InstanceProperties{Location: "/inventory/path/B"},
 				},
 			},
 
@@ -270,12 +269,12 @@ func TestInstanceService_GetAllByBatch(t *testing.T) {
 			name: "success",
 			repoGetAllByBatchInstances: migration.Instances{
 				migration.Instance{
-					UUID:          uuidA,
-					InventoryPath: "/inventory/path/A",
+					UUID:       uuidA,
+					Properties: api.InstanceProperties{Location: "/inventory/path/A"},
 				},
 				migration.Instance{
-					UUID:          uuidB,
-					InventoryPath: "/inventory/path/B",
+					UUID:       uuidB,
+					Properties: api.InstanceProperties{Location: "/inventory/path/B"},
 				},
 			},
 
@@ -312,7 +311,7 @@ func TestInstanceService_GetAllByBatch(t *testing.T) {
 	}
 }
 
-func TestInstanceService_GetAllInventoryPaths(t *testing.T) {
+func TestInstanceService_GetAllLocations(t *testing.T) {
 	tests := []struct {
 		name            string
 		repoGetAllUUIDs []uuid.UUID
@@ -373,12 +372,12 @@ func TestInstanceService_GetAllUnassigned(t *testing.T) {
 			name: "success",
 			repoGetAllUnassignedInstances: migration.Instances{
 				migration.Instance{
-					UUID:          uuidA,
-					InventoryPath: "/inventory/path/A",
+					UUID:       uuidA,
+					Properties: api.InstanceProperties{Location: "/inventory/path/A"},
 				},
 				migration.Instance{
-					UUID:          uuidB,
-					InventoryPath: "/inventory/path/B",
+					UUID:       uuidB,
+					Properties: api.InstanceProperties{Location: "/inventory/path/B"},
 				},
 			},
 
@@ -428,8 +427,8 @@ func TestInstanceService_GetByUUID(t *testing.T) {
 			name:    "success",
 			uuidArg: uuidA,
 			repoGetByUUIDInstance: &migration.Instance{
-				UUID:          uuidA,
-				InventoryPath: "/inventory/path/A",
+				UUID:       uuidA,
+				Properties: api.InstanceProperties{Location: "/inventory/path/A"},
 			},
 
 			assertErr: require.NoError,
@@ -438,9 +437,9 @@ func TestInstanceService_GetByUUID(t *testing.T) {
 			name:    "success - with overrides",
 			uuidArg: uuidA,
 			repoGetByUUIDInstance: &migration.Instance{
-				UUID:          uuidA,
-				InventoryPath: "/inventory/path/A",
-				Overrides:     &migration.InstanceOverride{UUID: uuidA},
+				UUID:       uuidA,
+				Properties: api.InstanceProperties{Location: "/inventory/path/A"},
+				Overrides:  &migration.InstanceOverride{UUID: uuidA},
 			},
 
 			assertErr: require.NoError,
@@ -480,122 +479,6 @@ func TestInstanceService_GetByUUID(t *testing.T) {
 	}
 }
 
-func TestInstanceService_GetByUUIDWithDetails(t *testing.T) {
-	tests := []struct {
-		name                            string
-		uuidArg                         uuid.UUID
-		repoGetByUUIDInstance           migration.Instance
-		repoGetByUUIDErr                error
-		repoGetOverridesByUUIDOverrides migration.InstanceOverride
-		repoGetOverridesByUUIDErr       error
-		sourceSvcGetByNameSource        migration.Source
-		sourceSvcGetByNameErr           error
-
-		assertErr               require.ErrorAssertionFunc
-		wantInstanceWithDetails migration.InstanceWithDetails
-	}{
-		{
-			name:    "success",
-			uuidArg: uuidA,
-			repoGetByUUIDInstance: migration.Instance{
-				UUID:          uuidA,
-				InventoryPath: "/inventory/path/A",
-				Source:        "one",
-			},
-			repoGetOverridesByUUIDOverrides: migration.InstanceOverride{
-				UUID:          uuidA,
-				NumberCPUs:    2,
-				MemoryInBytes: 4 * 1024 * 1024 * 1024,
-			},
-			sourceSvcGetByNameSource: migration.Source{
-				ID:         1,
-				Name:       "source name",
-				SourceType: api.SOURCETYPE_VMWARE,
-			},
-
-			assertErr: require.NoError,
-			wantInstanceWithDetails: migration.InstanceWithDetails{
-				Name:          "A",
-				InventoryPath: "/inventory/path/A",
-				Source: migration.Source{
-					Name:       "source name",
-					SourceType: api.SOURCETYPE_VMWARE,
-				},
-				Overrides: migration.InstanceOverride{
-					UUID:          uuidA,
-					NumberCPUs:    2,
-					MemoryInBytes: 4 * 1024 * 1024 * 1024,
-				},
-			},
-		},
-		{
-			name:             "error - repo.GetByUUID",
-			uuidArg:          uuidA,
-			repoGetByUUIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name:    "error - repo.GetOverridesByUUID",
-			uuidArg: uuidA,
-			repoGetByUUIDInstance: migration.Instance{
-				UUID:          uuidA,
-				InventoryPath: "/inventory/path/A",
-				Source:        "one",
-			},
-			repoGetOverridesByUUIDErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
-			name:    "error - sourceSvc.GetByName",
-			uuidArg: uuidA,
-			repoGetByUUIDInstance: migration.Instance{
-				UUID:          uuidA,
-				InventoryPath: "/inventory/path/A",
-				Source:        "one",
-			},
-			repoGetOverridesByUUIDOverrides: migration.InstanceOverride{
-				UUID:          uuidA,
-				NumberCPUs:    2,
-				MemoryInBytes: 4 * 1024 * 1024 * 1024,
-			},
-			sourceSvcGetByNameErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &mock.InstanceRepoMock{
-				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.Instance, error) {
-					return &tc.repoGetByUUIDInstance, tc.repoGetByUUIDErr
-				},
-				GetOverridesByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error) {
-					return &tc.repoGetOverridesByUUIDOverrides, tc.repoGetOverridesByUUIDErr
-				},
-			}
-
-			sourceSvc := &SourceServiceMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*migration.Source, error) {
-					return &tc.sourceSvcGetByNameSource, tc.sourceSvcGetByNameErr
-				},
-			}
-
-			instanceSvc := migration.NewInstanceService(repo, sourceSvc)
-
-			// Run test
-			instanceWithDetails, err := instanceSvc.GetByUUIDWithDetails(context.Background(), tc.uuidArg)
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Equal(t, tc.wantInstanceWithDetails, instanceWithDetails)
-		})
-	}
-}
-
 func TestInstanceService_Update(t *testing.T) {
 	tests := []struct {
 		name                  string
@@ -610,14 +493,14 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "success",
 			instance: migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
 				SecretToken:     uuidB,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
 				SecretToken:     uuidB,
@@ -629,7 +512,7 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - invalid UUID",
 			instance: migration.Instance{
 				UUID:            uuid.Nil, // invalid
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
 				SecretToken:     uuidB,
@@ -644,7 +527,6 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - invalid inventory path",
 			instance: migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "",
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
 				SecretToken:     uuidB,
@@ -659,7 +541,7 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - invalid source",
 			instance: migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "",
 				SecretToken:     uuidB,
@@ -674,7 +556,7 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - invalid migration status",
 			instance: migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: -1,
 				Source:          "one",
 				SecretToken:     uuidB,
@@ -689,7 +571,7 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - repo.GetByUUID",
 			instance: migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
 				SecretToken:     uuidB,
@@ -702,14 +584,14 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - already assigned to batch",
 			instance: migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
 				SecretToken:     uuidB,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				Batch:           ptr.To("one"),
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
@@ -724,14 +606,14 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - repo.Update",
 			instance: migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
 				SecretToken:     uuidB,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
 				SecretToken:     uuidB,
@@ -785,7 +667,7 @@ func TestInstanceService_UnassignFromBatch(t *testing.T) {
 			uuidArg: uuidA,
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "/inventory/path",
+				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				Batch:                 ptr.To("one"),
 				MigrationStatus:       api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(),
@@ -795,7 +677,7 @@ func TestInstanceService_UnassignFromBatch(t *testing.T) {
 			assertErr: require.NoError,
 			wantInstance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "/inventory/path",
+				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				Batch:                 nil,
 				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
@@ -813,7 +695,7 @@ func TestInstanceService_UnassignFromBatch(t *testing.T) {
 			uuidArg: uuidA,
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:                  uuidA,
-				InventoryPath:         "/inventory/path",
+				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				Batch:                 ptr.To("one"),
 				MigrationStatus:       api.MIGRATIONSTATUS_ASSIGNED_BATCH,
 				MigrationStatusString: api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(),
@@ -875,7 +757,7 @@ func TestInstanceService_UpdateStatusByUUID(t *testing.T) {
 			statusArg: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 			repoUpdateStatusByUUIDInstance: &migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
 			},
@@ -883,7 +765,7 @@ func TestInstanceService_UpdateStatusByUUID(t *testing.T) {
 			assertErr: require.NoError,
 			wantInstance: &migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 				Source:          "one",
 			},
@@ -954,7 +836,7 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 			statusStringArg:       "creating",
 			repoGetByUUIDInstance: &migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_CREATING,
 				Batch:           ptr.To("one"),
 				Source:          "one",
@@ -971,7 +853,7 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 			statusStringArg:       "done",
 			repoGetByUUIDInstance: &migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
 				Batch:           ptr.To("one"),
 				Source:          "one",
@@ -988,7 +870,7 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 			statusStringArg:       "done",
 			repoGetByUUIDInstance: &migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT,
 				Batch:           ptr.To("one"),
 				Source:          "one",
@@ -1005,7 +887,7 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 			statusStringArg:       "boom!",
 			repoGetByUUIDInstance: &migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_CREATING,
 				Batch:           ptr.To("one"),
 				Source:          "one",
@@ -1031,7 +913,7 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 			statusStringArg:       "creating",
 			repoGetByUUIDInstance: &migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_CREATING,
 				Batch:           nil, // not assigned to batch
 				Source:          "one",
@@ -1048,7 +930,7 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 			statusStringArg:       "creating",
 			repoGetByUUIDInstance: &migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, // not in migration state
 				Batch:           ptr.To("one"),
 				Source:          "one",
@@ -1065,7 +947,7 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 			statusStringArg:       "creating",
 			repoGetByUUIDInstance: &migration.Instance{
 				UUID:            uuidA,
-				InventoryPath:   "/inventory/path",
+				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
 				MigrationStatus: api.MIGRATIONSTATUS_CREATING,
 				Batch:           ptr.To("one"),
 				Source:          "one",
@@ -1228,19 +1110,23 @@ func TestInstanceService_CreateOverrides(t *testing.T) {
 		{
 			name: "success",
 			overrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       lastUpdate,
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: lastUpdate,
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 			repoCreateOverrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       lastUpdate,
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: lastUpdate,
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 
@@ -1249,19 +1135,23 @@ func TestInstanceService_CreateOverrides(t *testing.T) {
 		{
 			name: "success - disable migration",
 			overrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       lastUpdate,
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: lastUpdate,
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: true,
 			},
 			repoCreateOverrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       lastUpdate,
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: lastUpdate,
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: true,
 			},
 
@@ -1271,11 +1161,13 @@ func TestInstanceService_CreateOverrides(t *testing.T) {
 		{
 			name: "error - invalid id",
 			overrides: migration.InstanceOverride{
-				UUID:             uuid.Nil, // invalid
-				LastUpdate:       lastUpdate,
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuid.Nil, // invalid
+				LastUpdate: lastUpdate,
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 
@@ -1287,11 +1179,13 @@ func TestInstanceService_CreateOverrides(t *testing.T) {
 		{
 			name: "success - disable migration",
 			overrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       lastUpdate,
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: lastUpdate,
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: true,
 			},
 			repoUpdateStatusByUUIDErr: boom.Error,
@@ -1302,11 +1196,13 @@ func TestInstanceService_CreateOverrides(t *testing.T) {
 		{
 			name: "error - repo",
 			overrides: migration.InstanceOverride{
-				UUID:             uuid.Must(uuid.NewRandom()),
-				LastUpdate:       lastUpdate,
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuid.Must(uuid.NewRandom()),
+				LastUpdate: lastUpdate,
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 			repoCreateOverridesErr: boom.Error,
@@ -1356,11 +1252,13 @@ func TestInstanceService_GetOverridesByUUID(t *testing.T) {
 			name:    "success",
 			uuidArg: uuidA,
 			repoGetOverridesByUUIDOverrides: &migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 
@@ -1411,19 +1309,23 @@ func TestInstanceService_UpdateOverridesByUUID(t *testing.T) {
 		{
 			name: "success",
 			overrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 			repoGetOverridesByUUIDOverrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "old comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "old comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 
@@ -1432,19 +1334,23 @@ func TestInstanceService_UpdateOverridesByUUID(t *testing.T) {
 		{
 			name: "success - new disable migration",
 			overrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: true,
 			},
 			repoGetOverridesByUUIDOverrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 
@@ -1454,19 +1360,23 @@ func TestInstanceService_UpdateOverridesByUUID(t *testing.T) {
 		{
 			name: "success - new enable migration",
 			overrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 			repoGetOverridesByUUIDOverrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "old comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "old comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: true,
 			},
 
@@ -1476,11 +1386,13 @@ func TestInstanceService_UpdateOverridesByUUID(t *testing.T) {
 		{
 			name: "error - invalid id",
 			overrides: migration.InstanceOverride{
-				UUID:             uuid.Nil, // invalid
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuid.Nil, // invalid
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 
@@ -1492,11 +1404,13 @@ func TestInstanceService_UpdateOverridesByUUID(t *testing.T) {
 		{
 			name: "error - repo.GetOverrideByUUID",
 			overrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 			repoGetOverridesByUUIDErr: boom.Error,
@@ -1506,19 +1420,23 @@ func TestInstanceService_UpdateOverridesByUUID(t *testing.T) {
 		{
 			name: "error - repo.UpdateStatusByUUID",
 			overrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 			repoGetOverridesByUUIDOverrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: true,
 			},
 			repoUpdateStatusByUUIDErr: boom.Error,
@@ -1529,19 +1447,23 @@ func TestInstanceService_UpdateOverridesByUUID(t *testing.T) {
 		{
 			name: "error - repo.UpdateOverrideByUUID",
 			overrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 			repoGetOverridesByUUIDOverrides: migration.InstanceOverride{
-				UUID:             uuidA,
-				LastUpdate:       time.Now().UTC(),
-				Comment:          "comment",
-				NumberCPUs:       4,
-				MemoryInBytes:    8 * 1024 * 1024 * 1024,
+				UUID:       uuidA,
+				LastUpdate: time.Now().UTC(),
+				Comment:    "comment",
+				Properties: api.InstancePropertiesConfigurable{
+					CPUs:   4,
+					Memory: 8 * 1024 * 1024 * 1024,
+				},
 				DisableMigration: false,
 			},
 			repoUpdateOverridesByUUIDErr: boom.Error,

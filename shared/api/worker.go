@@ -32,7 +32,7 @@ type WorkerCommand struct {
 
 	// Internal path to the instance
 	// Example: /SHF/vm/Migration Tests/DebianTest
-	InventoryPath string `json:"inventory_path" yaml:"inventory_path"`
+	Location string `json:"location" yaml:"location"`
 
 	// SourceType declares the type of the worker and is used as a hint to
 	// correctly process the details provided in Source.

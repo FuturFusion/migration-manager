@@ -8,13 +8,12 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/osarch"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
@@ -25,6 +24,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/properties"
 	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -40,9 +40,9 @@ func NewInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, e
 		return nil, errors.New("Source is not of type VMware")
 	}
 
-	var properties api.VMwareProperties
+	var connProperties api.VMwareProperties
 
-	err := json.Unmarshal(apiSource.Properties, &properties)
+	err := json.Unmarshal(apiSource.Properties, &connProperties)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func NewInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, e
 			Source: apiSource,
 		},
 		InternalVMwareSourceSpecific: InternalVMwareSourceSpecific{
-			VMwareProperties: properties,
+			VMwareProperties: connProperties,
 		},
 	}, nil
 }
@@ -98,6 +98,8 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 	}
 
 	s.setVDDKConfig(endpointURL, thumbprint)
+
+	s.version = s.govmomiClient.ServiceContent.About.Version
 
 	s.isConnected = true
 	return nil
@@ -148,325 +150,36 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			continue
 		}
 
-		vmProps, err := s.getVMProperties(ctx, vm)
+		var vmProperties mo.VirtualMachine
+		err := vm.Properties(ctx, vm.Reference(), []string{}, &vmProperties)
 		if err != nil {
 			return nil, err
 		}
 
-		UUID, err := uuid.Parse(vmProps.Summary.Config.InstanceUuid)
+		// If a VM has no configuration, then it's just a stub, so skip it.
+		if vmProperties.Config == nil {
+			continue
+		}
+
+		vmProps, err := s.getVMProperties(vm, vmProperties)
 		if err != nil {
 			return nil, err
-		}
-
-		// Some information, such as the VM's architecture, appears to only available via VMware's guest tools integration(?)
-		guestInfo := make(map[string]string)
-		if vmProps.Config.ExtraConfig != nil {
-			for _, v := range vmProps.Config.ExtraConfig {
-				if v.GetOptionValue().Key == "guestInfo.detailed.data" {
-					re := regexp.MustCompile(`architecture='(.+)' bitness='(\d+)'`)
-					matches := re.FindStringSubmatch(v.GetOptionValue().Value.(string))
-					if matches != nil {
-						guestInfo["architecture"] = matches[1]
-						guestInfo["bits"] = matches[2]
-					}
-
-					break
-				}
-			}
-		}
-
-		arch := "x86_64"
-		switch guestInfo["architecture"] {
-		case "X86":
-			if guestInfo["bits"] == "64" {
-				arch = "x86_64"
-			} else {
-				arch = "i686"
-			}
-
-		case "Arm":
-			if guestInfo["bits"] == "64" {
-				arch = "aarch64"
-			} else {
-				arch = "armv8l"
-			}
-
-		default:
-			slog.Debug("Unable to determine architecture; defaulting to x86_64", slog.String("name", vmProps.Summary.Config.Name), slog.Any("instance", UUID), slog.String("source", s.Name))
-		}
-
-		useLegacyBios := false
-		secureBootEnabled := false
-		tpmPresent := false
-
-		// Detect if secure boot is enabled.
-		if *vmProps.Capability.SecureBootSupported {
-			secureBootEnabled = true
-			tpmPresent = true
-		}
-
-		// Determine if a TPM is present.
-		if *vmProps.Summary.Config.TpmPresent {
-			tpmPresent = true
-		}
-
-		// Handle VMs without UEFI and/or secure boot.
-		if vmProps.Config.Firmware == "bios" {
-			useLegacyBios = true
-			secureBootEnabled = false
-		}
-
-		if !*vmProps.Capability.SecureBootSupported {
-			secureBootEnabled = false
-		}
-
-		// Get list of all devices attached to the VM.
-		vmDevices := object.VirtualDeviceList(vmProps.Config.Hardware.Device)
-
-		// Get information about non-disk or NIC devices.
-		devices := []api.InstanceDeviceInfo{}
-
-		// Devices attached to a PCI controller.
-		for _, device := range vmDevices.SelectByType((*types.VirtualIDEController)(nil)) {
-			controller, ok := device.(*types.VirtualPCIController)
-			if !ok {
-				continue
-			}
-
-			devices = append(devices, getDeviceInfo(vmDevices, controller.Device, "PCI")...)
-		}
-
-		// Devices attached to a PS2 controller.
-		for _, device := range vmDevices.SelectByType((*types.VirtualPS2Controller)(nil)) {
-			controller, ok := device.(*types.VirtualPS2Controller)
-			if !ok {
-				continue
-			}
-
-			devices = append(devices, getDeviceInfo(vmDevices, controller.Device, "PS2")...)
-		}
-
-		// Devices attached to a Super IO controller.
-		for _, device := range vmDevices.SelectByType((*types.VirtualSIOController)(nil)) {
-			controller, ok := device.(*types.VirtualSIOController)
-			if !ok {
-				continue
-			}
-
-			devices = append(devices, getDeviceInfo(vmDevices, controller.Device, "Super IO")...)
-		}
-
-		// Devices attached to a USB controller.
-		for _, device := range vmDevices.SelectByType((*types.VirtualUSBController)(nil)) {
-			controller, ok := device.(*types.VirtualUSBController)
-			if !ok {
-				continue
-			}
-
-			devices = append(devices, getDeviceInfo(vmDevices, controller.Device, "USB")...)
-		}
-
-		// Devices attached to a USBXHCI controller.
-		for _, device := range vmDevices.SelectByType((*types.VirtualUSBXHCIController)(nil)) {
-			controller, ok := device.(*types.VirtualUSBXHCIController)
-			if !ok {
-				continue
-			}
-
-			devices = append(devices, getDeviceInfo(vmDevices, controller.Device, "USB xHCI")...)
-		}
-
-		// Get information about each disk.
-		disks := []api.InstanceDiskInfo{}
-
-		// Disk(s) attached to an IDE controller.
-		for _, device := range vmDevices.SelectByType((*types.VirtualIDEController)(nil)) {
-			switch controller := device.(type) {
-			case *types.VirtualIDEController:
-				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "IDE", *vmProps.Config.ChangeTrackingEnabled)...)
-			}
-		}
-
-		// Disk(s) attached to a SCSI controller.
-		for _, device := range vmDevices.SelectByType((*types.VirtualSCSIController)(nil)) {
-			switch controller := device.(type) {
-			case *types.VirtualSCSIController:
-				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "SCSI", *vmProps.Config.ChangeTrackingEnabled)...)
-			case *types.ParaVirtualSCSIController:
-				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "ParaSCSI", *vmProps.Config.ChangeTrackingEnabled)...)
-			case *types.VirtualLsiLogicSASController:
-				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "LsiLogicSAS", *vmProps.Config.ChangeTrackingEnabled)...)
-			case *types.VirtualLsiLogicController:
-				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "LsiLogic", *vmProps.Config.ChangeTrackingEnabled)...)
-			}
-		}
-
-		// Disk(s) attached to a SATA controller.
-		for _, device := range vmDevices.SelectByType((*types.VirtualSATAController)(nil)) {
-			switch controller := device.(type) {
-			case *types.VirtualSATAController:
-				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "SATA", *vmProps.Config.ChangeTrackingEnabled)...)
-			case *types.VirtualAHCIController:
-				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "AHCI", *vmProps.Config.ChangeTrackingEnabled)...)
-			}
-		}
-
-		// Disk(s) attached to a NVME controller.
-		for _, device := range vmDevices.SelectByType((*types.VirtualNVMEController)(nil)) {
-			switch controller := device.(type) {
-			case *types.VirtualNVMEController:
-				disks = append(disks, getDiskInfo(vmDevices, controller.Device, "NVME", *vmProps.Config.ChangeTrackingEnabled)...)
-			}
-		}
-
-		// Get information about each NIC.
-		nics := []api.InstanceNICInfo{}
-		for _, device := range vmDevices.SelectByType((*types.VirtualEthernetCard)(nil)) {
-			nic := device.(types.BaseVirtualEthernetCard).GetVirtualEthernetCard()
-
-			nics = append(nics, api.InstanceNICInfo{
-				Network:      nic.Backing.(*types.VirtualEthernetCardNetworkBackingInfo).Network.Value,
-				AdapterModel: strings.TrimPrefix(reflect.TypeOf(device).String(), "*types.Virtual"),
-				Hwaddr:       nic.MacAddress,
-			})
-		}
-
-		// Process any snapshots currently defined for the VM.
-		snapshots := []api.InstanceSnapshotInfo{}
-		if vmProps.Snapshot != nil {
-			for _, snapshot := range vmProps.Snapshot.RootSnapshotList {
-				snapshots = append(snapshots, api.InstanceSnapshotInfo{
-					Name:         snapshot.Name,
-					Description:  snapshot.Description,
-					CreationTime: snapshot.CreateTime,
-					ID:           int(snapshot.Id),
-				})
-			}
-		}
-
-		cpuAffinity := []int32{}
-		if vmProps.Config.CpuAffinity != nil {
-			cpuAffinity = vmProps.Config.CpuAffinity.AffinitySet
-		}
-
-		numberOfCoresPerSocket := vmProps.Config.Hardware.NumCPU
-		if *vmProps.Config.Hardware.AutoCoresPerSocket {
-			// Get the VM's current power state.
-			state, err := vm.PowerState(ctx)
-
-			// NumCoresPerSocket is only valid when VM isn't powered off.
-			if err == nil && state != types.VirtualMachinePowerStatePoweredOff {
-				numberOfCoresPerSocket = vmProps.Config.Hardware.NumCoresPerSocket
-			}
-		} else if vmProps.Config.Hardware.NumCoresPerSocket > 0 {
-			numberOfCoresPerSocket = vmProps.Config.Hardware.NumCoresPerSocket
-		}
-
-		guestToolsVersion, err := strconv.Atoi(vmProps.Guest.ToolsVersion)
-		if err != nil {
-			guestToolsVersion = 0
 		}
 
 		secretToken, _ := uuid.NewRandom()
 		ret = append(ret, migration.Instance{
-			UUID:                  UUID,
-			InventoryPath:         vm.InventoryPath,
-			Annotation:            vmProps.Config.Annotation,
+			UUID:                  vmProps.UUID,
 			MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 			MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
 			LastUpdateFromSource:  time.Now().UTC(),
-			GuestToolsVersion:     guestToolsVersion,
-			Architecture:          arch,
-			HardwareVersion:       vmProps.Summary.Config.HwVersion,
-			OS:                    strings.TrimSuffix(vmProps.Summary.Config.GuestId, "Guest"),
-			OSVersion:             vmProps.Summary.Config.GuestFullName,
-			Devices:               devices,
-			Disks:                 disks,
-			NICs:                  nics,
-			Snapshots:             snapshots,
-			CPU: api.InstanceCPUInfo{
-				NumberCPUs:             int(vmProps.Config.Hardware.NumCPU),
-				CPUAffinity:            cpuAffinity,
-				NumberOfCoresPerSocket: int(numberOfCoresPerSocket),
-			},
-			Memory: api.InstanceMemoryInfo{
-				MemoryInBytes:            int64(vmProps.Summary.Config.MemorySizeMB) * 1024 * 1024,
-				MemoryReservationInBytes: int64(vmProps.Summary.Config.MemoryReservation) * 1024 * 1024,
-			},
-			UseLegacyBios:     useLegacyBios,
-			SecureBootEnabled: secureBootEnabled,
-			TPMPresent:        tpmPresent,
-			NeedsDiskImport:   true,
-			SecretToken:       secretToken,
-			Source:            s.Name,
+			NeedsDiskImport:       true,
+			SecretToken:           secretToken,
+			Source:                s.Name,
+			Properties:            *vmProps,
 		})
 	}
 
 	return ret, nil
-}
-
-func getDeviceInfo(vmDevices object.VirtualDeviceList, deviceKeys []int32, controllerType string) []api.InstanceDeviceInfo {
-	ret := []api.InstanceDeviceInfo{}
-
-	for _, key := range deviceKeys {
-		baseDevice := vmDevices.FindByKey(key)
-		if baseDevice == nil {
-			continue
-		}
-
-		ret = append(ret, api.InstanceDeviceInfo{
-			Type:    controllerType,
-			Label:   baseDevice.GetVirtualDevice().DeviceInfo.GetDescription().Label,
-			Summary: baseDevice.GetVirtualDevice().DeviceInfo.GetDescription().Summary,
-		})
-	}
-
-	return ret
-}
-
-func getDiskInfo(vmDevices object.VirtualDeviceList, deviceKeys []int32, controllerType string, cte bool) []api.InstanceDiskInfo {
-	ret := []api.InstanceDiskInfo{}
-
-	for _, key := range deviceKeys {
-		baseDevice := vmDevices.FindByKey(key)
-		if baseDevice == nil {
-			continue
-		}
-
-		// FIXME -- TODO handle non-FileBacked devices
-		switch disk := baseDevice.(type) {
-		case *types.VirtualDisk:
-			fileBacking, ok := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
-			if !ok {
-				continue
-			}
-
-			ret = append(ret, api.InstanceDiskInfo{
-				Name:                      fileBacking.GetVirtualDeviceFileBackingInfo().FileName,
-				Type:                      "HDD",
-				ControllerModel:           controllerType,
-				DifferentialSyncSupported: cte,
-				SizeInBytes:               disk.CapacityInBytes,
-				IsShared:                  false, // FIXME -- TODO dig into datastore to get this info
-			})
-		case *types.VirtualCdrom:
-			fileBacking, ok := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
-			if !ok {
-				continue
-			}
-
-			ret = append(ret, api.InstanceDiskInfo{
-				Name:                      fileBacking.GetVirtualDeviceFileBackingInfo().FileName,
-				Type:                      "CDROM",
-				ControllerModel:           controllerType,
-				DifferentialSyncSupported: false,
-				SizeInBytes:               0,     // FIXME -- TODO dig into datastore to get this info
-				IsShared:                  false, // FIXME -- TODO dig into datastore to get this info
-			})
-		}
-	}
-
-	return ret
 }
 
 func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
@@ -549,8 +262,304 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*objec
 	return finder.VirtualMachine(ctx, vmName)
 }
 
-func (s *InternalVMwareSource) getVMProperties(ctx context.Context, vm *object.VirtualMachine) (mo.VirtualMachine, error) {
-	var v mo.VirtualMachine
-	err := vm.Properties(ctx, vm.Reference(), []string{}, &v)
-	return v, err
+func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProperties mo.VirtualMachine) (*api.InstanceProperties, error) {
+	b, err := json.Marshal(vmProperties)
+	if err != nil {
+		return nil, err
+	}
+
+	var rawObj map[string]any
+	err = json.Unmarshal(b, &rawObj)
+	if err != nil {
+		return nil, err
+	}
+
+	props, err := properties.Definitions(s.SourceType, s.version)
+	if err != nil {
+		return nil, err
+	}
+
+	for defName, info := range props.GetAll() {
+		switch info.Type {
+		case properties.TypeVMInfo:
+			if defName == properties.InstanceLocation {
+				err := props.Add(defName, vm.InventoryPath)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+		case properties.TypeGuestInfo:
+			if vmProperties.Config.ExtraConfig == nil {
+				continue
+			}
+
+			err := s.getVMExtraConfig(vm, vmProperties, &props, defName, info)
+			if err != nil {
+				return nil, err
+			}
+
+		case properties.TypeVMProperty:
+			obj, err := getPropFromKeys(info.Key, rawObj)
+			if err != nil && defName == properties.InstanceDescription {
+				// The description key has the omitempty tag, so we may not find it.
+				continue
+			}
+
+			if err != nil {
+				return nil, err
+			}
+
+			val, err := parseValue(defName, obj)
+			if err != nil {
+				return nil, err
+			}
+
+			err = props.Add(defName, val)
+			if err != nil {
+				return nil, err
+			}
+
+		case properties.TypeVMPropertySnapshot:
+			if vmProperties.Snapshot == nil {
+				continue
+			}
+
+			for _, snap := range vmProperties.Snapshot.RootSnapshotList {
+				err = s.getDeviceProperties(snap, &props, defName)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+		case properties.TypeVMPropertyEthernet:
+			for _, dev := range vmProperties.Config.Hardware.Device {
+				eth, ok := dev.(types.BaseVirtualEthernetCard)
+				if !ok {
+					continue
+				}
+
+				err = s.getDeviceProperties(eth, &props, defName)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+		case properties.TypeVMPropertyDisk:
+			for _, dev := range vmProperties.Config.Hardware.Device {
+				disk, ok := dev.(*types.VirtualDisk)
+				if !ok {
+					continue
+				}
+
+				err = s.getDeviceProperties(disk, &props, defName)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+		default:
+			return nil, fmt.Errorf("Property type %q is not supported by %s version %s", info.Type, s.SourceType, s.version)
+		}
+	}
+
+	return props.ToAPI()
+}
+
+func (s *InternalVMwareSource) getVMExtraConfig(vm *object.VirtualMachine, vmProperties mo.VirtualMachine, props *properties.RawPropertySet[api.SourceType], defName properties.Name, info properties.PropertyInfo) error {
+	switch defName {
+	case properties.InstanceArchitecture:
+		var arch, bits string
+		for _, v := range vmProperties.Config.ExtraConfig {
+			if v.GetOptionValue().Key == info.Key {
+				re := regexp.MustCompile(`architecture='(.+)' bitness='(\d+)'`)
+				matches := re.FindStringSubmatch(v.GetOptionValue().Value.(string))
+				if matches != nil {
+					arch = matches[1]
+					bits = matches[2]
+				}
+
+				break
+			}
+		}
+
+		arch, err := parseArchitecture(arch, bits, vm.InventoryPath)
+		if err != nil {
+			return err
+		}
+
+		return props.Add(defName, arch)
+	}
+
+	return nil
+}
+
+func parseArchitecture(archName string, archBits string, location string) (string, error) {
+	archID := osarch.ARCH_64BIT_INTEL_X86
+	var fallback bool
+	switch archName {
+	case "X86":
+		if archBits == "32" {
+			archID = osarch.ARCH_32BIT_INTEL_X86
+		}
+
+	case "Arm":
+		if archBits == "64" {
+			archID = osarch.ARCH_64BIT_ARMV8_LITTLE_ENDIAN
+		} else {
+			archID = osarch.ARCH_32BIT_ARMV8_LITTLE_ENDIAN
+		}
+
+	default:
+		fallback = true
+	}
+
+	arch, err := osarch.ArchitectureName(archID)
+	if err != nil {
+		return "", err
+	}
+
+	if fallback {
+		slog.Debug("Unable to determine architecture; Using fallback", slog.String("instance", location), slog.String("architecture", arch))
+	}
+
+	return arch, nil
+}
+
+func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties.RawPropertySet[api.SourceType], defName properties.Name) error {
+	b, err := json.Marshal(device)
+	if err != nil {
+		return err
+	}
+
+	var rawObj map[string]any
+	err = json.Unmarshal(b, &rawObj)
+	if err != nil {
+		return err
+	}
+
+	subProps, err := props.GetSubProperties(defName)
+	if err != nil {
+		return err
+	}
+
+	for key, info := range subProps.GetAll() {
+		if key == properties.InstanceDiskShared {
+			// Only particular sub-types of disk have sharing set.
+			_, ok := device.(*types.VirtualDisk).GetVirtualDevice().Backing.(*types.VirtualDiskFlatVer2BackingInfo)
+			if !ok {
+				_, ok := device.(*types.VirtualDisk).GetVirtualDevice().Backing.(*types.VirtualDiskRawDiskVer2BackingInfo)
+				if !ok {
+					continue
+				}
+			}
+		}
+
+		obj, err := getPropFromKeys(info.Key, rawObj)
+		if err != nil {
+			return err
+		}
+
+		value, err := parseValue(key, obj)
+		if err != nil {
+			return err
+		}
+
+		err = subProps.Add(key, value)
+		if err != nil {
+			return err
+		}
+	}
+
+	return props.Add(defName, subProps)
+}
+
+// parseValue handles necessary transformation from the VMware property value to the more generic Migration Manager representation.
+func parseValue(propName properties.Name, value any) (any, error) {
+	switch propName {
+	case properties.InstanceName:
+		strVal, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%q value %v must be a string", propName, value)
+		}
+
+		nonalpha := regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
+		return nonalpha.ReplaceAllString(strVal, ""), nil
+	case properties.InstanceOS:
+		strVal, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%q value %v must be a string", propName, value)
+		}
+
+		strVal, _ = strings.CutSuffix(strVal, "Guest")
+
+		return strVal, nil
+	case properties.InstanceLegacyBoot:
+		strVal, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%q value %v must be a string", propName, value)
+		}
+
+		return strVal == string(types.GuestOsDescriptorFirmwareTypeBios), nil
+	case properties.InstanceMemory:
+		intVal, ok := value.(float64)
+		if !ok {
+			return nil, fmt.Errorf("%q value %v must be a number", propName, value)
+		}
+
+		return int64(intVal) * 1024 * 1024, nil
+	case properties.InstanceDiskCapacity:
+		intVal, ok := value.(float64)
+		if !ok {
+			return nil, fmt.Errorf("%q value %v must be a number", propName, value)
+		}
+
+		return int64(intVal), nil
+	case properties.InstanceDiskShared:
+		strVal, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%q value %v must be a string", propName, value)
+		}
+
+		return strVal == string(types.VirtualDiskSharingSharingMultiWriter), nil
+	case properties.InstanceUUID:
+		strVal, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%q value %v must be a string", propName, value)
+		}
+
+		return uuid.Parse(strVal)
+	default:
+		return value, nil
+	}
+}
+
+// getPropFromKeys iterates over the keys in the keyset (delimited by '.'),
+// assuming each nested object is a map[string]any, and returning the final object.
+func getPropFromKeys(keySet string, obj any) (any, error) {
+	getMapValue := func(key string, obj any) (any, error) {
+		valMap, ok := obj.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("No object found for the key %q", key)
+		}
+
+		value, ok := valMap[key]
+		if !ok {
+			return nil, fmt.Errorf("Object does not contain key %q", key)
+		}
+
+		return value, nil
+	}
+
+	keys := strings.Split(keySet, ".")
+	for _, key := range keys {
+		val, err := getMapValue(key, obj)
+		if err != nil {
+			return nil, err
+		}
+
+		obj = val
+	}
+
+	return obj, nil
 }

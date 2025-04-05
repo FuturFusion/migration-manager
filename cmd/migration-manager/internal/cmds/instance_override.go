@@ -105,7 +105,7 @@ func (c *cmdInstanceOverrideAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	override.NumberCPUs = int(val)
+	override.Properties.CPUs = val
 
 	memoryString, err := c.global.Asker.AskString("Memory (empty to skip): ", "0B", func(s string) error {
 		_, err := units.ParseByteSizeString(s)
@@ -115,7 +115,7 @@ func (c *cmdInstanceOverrideAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	override.MemoryInBytes, _ = units.ParseByteSizeString(memoryString)
+	override.Properties.Memory, _ = units.ParseByteSizeString(memoryString)
 
 	// Insert into database.
 	content, err := json.Marshal(override)
@@ -212,13 +212,13 @@ func (c *cmdInstanceOverrideShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	numCPUSDisplay := strconv.Itoa(override.NumberCPUs)
-	if override.NumberCPUs == 0 {
+	numCPUSDisplay := strconv.Itoa(int(override.Properties.CPUs))
+	if override.Properties.CPUs == 0 {
 		numCPUSDisplay = ""
 	}
 
-	memoryDisplay := units.GetByteSizeStringIEC(override.MemoryInBytes, 2)
-	if override.MemoryInBytes == 0 {
+	memoryDisplay := units.GetByteSizeStringIEC(override.Properties.Memory, 2)
+	if override.Properties.Memory == 0 {
 		memoryDisplay = ""
 	}
 
@@ -296,28 +296,28 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 	}
 
 	displayOverride := ""
-	if override.NumberCPUs != 0 {
-		displayOverride = "default=[" + strconv.Itoa(override.NumberCPUs) + "]: "
+	if override.Properties.CPUs != 0 {
+		displayOverride = "default=[" + strconv.Itoa(int(override.Properties.CPUs)) + "]: "
 	} else {
 		displayOverride = "(empty to skip): "
 	}
 
-	val, err := c.global.Asker.AskInt("Number of vCPUs "+displayOverride, 0, 1024, strconv.Itoa(override.NumberCPUs), nil)
+	val, err := c.global.Asker.AskInt("Number of vCPUs "+displayOverride, 0, 1024, strconv.Itoa(int(override.Properties.CPUs)), nil)
 	if err != nil {
 		return err
 	}
 
-	if override.NumberCPUs != int(val) {
-		override.NumberCPUs = int(val)
+	if override.Properties.CPUs != val {
+		override.Properties.CPUs = val
 	}
 
-	if override.MemoryInBytes != 0 {
-		displayOverride = "[" + units.GetByteSizeStringIEC(override.MemoryInBytes, 2) + "]: "
+	if override.Properties.Memory != 0 {
+		displayOverride = "[" + units.GetByteSizeStringIEC(override.Properties.Memory, 2) + "]: "
 	} else {
 		displayOverride = "(empty to skip): "
 	}
 
-	memoryString, err := c.global.Asker.AskString("Memory "+displayOverride, fmt.Sprintf("%dB", override.MemoryInBytes), func(s string) error {
+	memoryString, err := c.global.Asker.AskString("Memory "+displayOverride, fmt.Sprintf("%dB", override.Properties.Memory), func(s string) error {
 		_, err := units.ParseByteSizeString(s)
 		return err
 	})
@@ -327,8 +327,8 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 
 	val, _ = units.ParseByteSizeString(memoryString)
 
-	if override.MemoryInBytes != val {
-		override.MemoryInBytes = val
+	if override.Properties.Memory != val {
+		override.Properties.Memory = val
 	}
 
 	content, err := json.Marshal(override)
