@@ -113,7 +113,7 @@ func TestSourceAdd(t *testing.T) {
 			username:                            vcUser,
 			password:                            vcPassword,
 			migrationManagerdHTTPStatus:         http.StatusOK,
-			migrationManagerdResponse:           `{"Metadata": {"ConnectivityStatus": "1"}}`,
+			migrationManagerdResponse:           `{"Metadata": {"ConnectivityStatus": "OK"}}`,
 
 			assertErr: require.NoError,
 		},
@@ -123,7 +123,7 @@ func TestSourceAdd(t *testing.T) {
 			username:                    vcUser,
 			password:                    vcPassword,
 			migrationManagerdHTTPStatus: http.StatusOK,
-			migrationManagerdResponse:   `{"Metadata": {"ConnectivityStatus": "1"}}`,
+			migrationManagerdResponse:   `{"Metadata": {"ConnectivityStatus": "OK"}}`,
 
 			assertErr: require.NoError,
 		},
@@ -198,6 +198,7 @@ func TestSourceList(t *testing.T) {
       "database_id": 2,
       "source_type": "vmware",
       "properties": {
+				"connectivity_status": "Unknown",
         "endpoint": "https://127.0.0.2:8989/",
         "username": "user2",
         "password": "pass2",
@@ -209,6 +210,7 @@ func TestSourceList(t *testing.T) {
       "database_id": 3,
       "source_type": "vmware",
       "properties": {
+				"connectivity_status": "Unknown",
         "endpoint": "https://127.0.0.3:8989/",
         "username": "user3",
         "password": "pass3",
@@ -429,7 +431,7 @@ func TestSourceUpdate(t *testing.T) {
 		successfulPutResponse = `{
   "status_code": 200,
   "status": "Success",
-  "metadata": {"ConnectivityStatus": "1"}
+  "metadata": {"ConnectivityStatus": "OK"}
 }`
 	)
 

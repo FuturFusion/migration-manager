@@ -57,7 +57,7 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			UpdateInstancesAssignedToBatchFunc: func(ctx context.Context, batch migration.Batch) error {
 //				panic("mock out the UpdateInstancesAssignedToBatch method")
 //			},
-//			UpdateStatusByNameFunc: func(ctx context.Context, name string, status api.BatchStatusType, statusString string) (*migration.Batch, error) {
+//			UpdateStatusByNameFunc: func(ctx context.Context, name string, status api.BatchStatusType, statusMessage string) (*migration.Batch, error) {
 //				panic("mock out the UpdateStatusByName method")
 //			},
 //		}
@@ -104,7 +104,7 @@ type BatchServiceMock struct {
 	UpdateInstancesAssignedToBatchFunc func(ctx context.Context, batch migration.Batch) error
 
 	// UpdateStatusByNameFunc mocks the UpdateStatusByName method.
-	UpdateStatusByNameFunc func(ctx context.Context, name string, status api.BatchStatusType, statusString string) (*migration.Batch, error)
+	UpdateStatusByNameFunc func(ctx context.Context, name string, status api.BatchStatusType, statusMessage string) (*migration.Batch, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -198,8 +198,8 @@ type BatchServiceMock struct {
 			Name string
 			// Status is the status argument value.
 			Status api.BatchStatusType
-			// StatusString is the statusString argument value.
-			StatusString string
+			// StatusMessage is the statusMessage argument value.
+			StatusMessage string
 		}
 	}
 	lockCreate                         sync.RWMutex
@@ -646,25 +646,25 @@ func (mock *BatchServiceMock) UpdateInstancesAssignedToBatchCalls() []struct {
 }
 
 // UpdateStatusByName calls UpdateStatusByNameFunc.
-func (mock *BatchServiceMock) UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusString string) (*migration.Batch, error) {
+func (mock *BatchServiceMock) UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusMessage string) (*migration.Batch, error) {
 	if mock.UpdateStatusByNameFunc == nil {
 		panic("BatchServiceMock.UpdateStatusByNameFunc: method is nil but BatchService.UpdateStatusByName was just called")
 	}
 	callInfo := struct {
-		Ctx          context.Context
-		Name         string
-		Status       api.BatchStatusType
-		StatusString string
+		Ctx           context.Context
+		Name          string
+		Status        api.BatchStatusType
+		StatusMessage string
 	}{
-		Ctx:          ctx,
-		Name:         name,
-		Status:       status,
-		StatusString: statusString,
+		Ctx:           ctx,
+		Name:          name,
+		Status:        status,
+		StatusMessage: statusMessage,
 	}
 	mock.lockUpdateStatusByName.Lock()
 	mock.calls.UpdateStatusByName = append(mock.calls.UpdateStatusByName, callInfo)
 	mock.lockUpdateStatusByName.Unlock()
-	return mock.UpdateStatusByNameFunc(ctx, name, status, statusString)
+	return mock.UpdateStatusByNameFunc(ctx, name, status, statusMessage)
 }
 
 // UpdateStatusByNameCalls gets all the calls that were made to UpdateStatusByName.
@@ -672,16 +672,16 @@ func (mock *BatchServiceMock) UpdateStatusByName(ctx context.Context, name strin
 //
 //	len(mockedBatchService.UpdateStatusByNameCalls())
 func (mock *BatchServiceMock) UpdateStatusByNameCalls() []struct {
-	Ctx          context.Context
-	Name         string
-	Status       api.BatchStatusType
-	StatusString string
+	Ctx           context.Context
+	Name          string
+	Status        api.BatchStatusType
+	StatusMessage string
 } {
 	var calls []struct {
-		Ctx          context.Context
-		Name         string
-		Status       api.BatchStatusType
-		StatusString string
+		Ctx           context.Context
+		Name          string
+		Status        api.BatchStatusType
+		StatusMessage string
 	}
 	mock.lockUpdateStatusByName.RLock()
 	calls = mock.calls.UpdateStatusByName

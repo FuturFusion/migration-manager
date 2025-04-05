@@ -61,7 +61,7 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			GetOverridesByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error) {
 //				panic("mock out the GetOverridesByUUID method")
 //			},
-//			ProcessWorkerUpdateFunc: func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusString string) (migration.Instance, error) {
+//			ProcessWorkerUpdateFunc: func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.Instance, error) {
 //				panic("mock out the ProcessWorkerUpdate method")
 //			},
 //			UnassignFromBatchFunc: func(ctx context.Context, id uuid.UUID) error {
@@ -73,7 +73,7 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			UpdateOverridesFunc: func(ctx context.Context, overrides *migration.InstanceOverride) error {
 //				panic("mock out the UpdateOverrides method")
 //			},
-//			UpdateStatusByUUIDFunc: func(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (*migration.Instance, error) {
+//			UpdateStatusByUUIDFunc: func(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*migration.Instance, error) {
 //				panic("mock out the UpdateStatusByUUID method")
 //			},
 //		}
@@ -123,7 +123,7 @@ type InstanceServiceMock struct {
 	GetOverridesByUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error)
 
 	// ProcessWorkerUpdateFunc mocks the ProcessWorkerUpdate method.
-	ProcessWorkerUpdateFunc func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusString string) (migration.Instance, error)
+	ProcessWorkerUpdateFunc func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.Instance, error)
 
 	// UnassignFromBatchFunc mocks the UnassignFromBatch method.
 	UnassignFromBatchFunc func(ctx context.Context, id uuid.UUID) error
@@ -135,7 +135,7 @@ type InstanceServiceMock struct {
 	UpdateOverridesFunc func(ctx context.Context, overrides *migration.InstanceOverride) error
 
 	// UpdateStatusByUUIDFunc mocks the UpdateStatusByUUID method.
-	UpdateStatusByUUIDFunc func(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (*migration.Instance, error)
+	UpdateStatusByUUIDFunc func(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*migration.Instance, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -248,8 +248,8 @@ type InstanceServiceMock struct {
 			ID uuid.UUID
 			// WorkerResponseTypeArg is the workerResponseTypeArg argument value.
 			WorkerResponseTypeArg api.WorkerResponseType
-			// StatusString is the statusString argument value.
-			StatusString string
+			// StatusMessage is the statusMessage argument value.
+			StatusMessage string
 		}
 		// UnassignFromBatch holds details about calls to the UnassignFromBatch method.
 		UnassignFromBatch []struct {
@@ -280,8 +280,8 @@ type InstanceServiceMock struct {
 			I uuid.UUID
 			// Status is the status argument value.
 			Status api.MigrationStatusType
-			// StatusString is the statusString argument value.
-			StatusString string
+			// StatusMessage is the statusMessage argument value.
+			StatusMessage string
 			// NeedsDiskImport is the needsDiskImport argument value.
 			NeedsDiskImport bool
 		}
@@ -795,7 +795,7 @@ func (mock *InstanceServiceMock) GetOverridesByUUIDCalls() []struct {
 }
 
 // ProcessWorkerUpdate calls ProcessWorkerUpdateFunc.
-func (mock *InstanceServiceMock) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusString string) (migration.Instance, error) {
+func (mock *InstanceServiceMock) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.Instance, error) {
 	if mock.ProcessWorkerUpdateFunc == nil {
 		panic("InstanceServiceMock.ProcessWorkerUpdateFunc: method is nil but InstanceService.ProcessWorkerUpdate was just called")
 	}
@@ -803,17 +803,17 @@ func (mock *InstanceServiceMock) ProcessWorkerUpdate(ctx context.Context, id uui
 		Ctx                   context.Context
 		ID                    uuid.UUID
 		WorkerResponseTypeArg api.WorkerResponseType
-		StatusString          string
+		StatusMessage         string
 	}{
 		Ctx:                   ctx,
 		ID:                    id,
 		WorkerResponseTypeArg: workerResponseTypeArg,
-		StatusString:          statusString,
+		StatusMessage:         statusMessage,
 	}
 	mock.lockProcessWorkerUpdate.Lock()
 	mock.calls.ProcessWorkerUpdate = append(mock.calls.ProcessWorkerUpdate, callInfo)
 	mock.lockProcessWorkerUpdate.Unlock()
-	return mock.ProcessWorkerUpdateFunc(ctx, id, workerResponseTypeArg, statusString)
+	return mock.ProcessWorkerUpdateFunc(ctx, id, workerResponseTypeArg, statusMessage)
 }
 
 // ProcessWorkerUpdateCalls gets all the calls that were made to ProcessWorkerUpdate.
@@ -824,13 +824,13 @@ func (mock *InstanceServiceMock) ProcessWorkerUpdateCalls() []struct {
 	Ctx                   context.Context
 	ID                    uuid.UUID
 	WorkerResponseTypeArg api.WorkerResponseType
-	StatusString          string
+	StatusMessage         string
 } {
 	var calls []struct {
 		Ctx                   context.Context
 		ID                    uuid.UUID
 		WorkerResponseTypeArg api.WorkerResponseType
-		StatusString          string
+		StatusMessage         string
 	}
 	mock.lockProcessWorkerUpdate.RLock()
 	calls = mock.calls.ProcessWorkerUpdate
@@ -947,7 +947,7 @@ func (mock *InstanceServiceMock) UpdateOverridesCalls() []struct {
 }
 
 // UpdateStatusByUUID calls UpdateStatusByUUIDFunc.
-func (mock *InstanceServiceMock) UpdateStatusByUUID(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (*migration.Instance, error) {
+func (mock *InstanceServiceMock) UpdateStatusByUUID(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*migration.Instance, error) {
 	if mock.UpdateStatusByUUIDFunc == nil {
 		panic("InstanceServiceMock.UpdateStatusByUUIDFunc: method is nil but InstanceService.UpdateStatusByUUID was just called")
 	}
@@ -955,19 +955,19 @@ func (mock *InstanceServiceMock) UpdateStatusByUUID(ctx context.Context, i uuid.
 		Ctx             context.Context
 		I               uuid.UUID
 		Status          api.MigrationStatusType
-		StatusString    string
+		StatusMessage   string
 		NeedsDiskImport bool
 	}{
 		Ctx:             ctx,
 		I:               i,
 		Status:          status,
-		StatusString:    statusString,
+		StatusMessage:   statusMessage,
 		NeedsDiskImport: needsDiskImport,
 	}
 	mock.lockUpdateStatusByUUID.Lock()
 	mock.calls.UpdateStatusByUUID = append(mock.calls.UpdateStatusByUUID, callInfo)
 	mock.lockUpdateStatusByUUID.Unlock()
-	return mock.UpdateStatusByUUIDFunc(ctx, i, status, statusString, needsDiskImport)
+	return mock.UpdateStatusByUUIDFunc(ctx, i, status, statusMessage, needsDiskImport)
 }
 
 // UpdateStatusByUUIDCalls gets all the calls that were made to UpdateStatusByUUID.
@@ -978,14 +978,14 @@ func (mock *InstanceServiceMock) UpdateStatusByUUIDCalls() []struct {
 	Ctx             context.Context
 	I               uuid.UUID
 	Status          api.MigrationStatusType
-	StatusString    string
+	StatusMessage   string
 	NeedsDiskImport bool
 } {
 	var calls []struct {
 		Ctx             context.Context
 		I               uuid.UUID
 		Status          api.MigrationStatusType
-		StatusString    string
+		StatusMessage   string
 		NeedsDiskImport bool
 	}
 	mock.lockUpdateStatusByUUID.RLock()

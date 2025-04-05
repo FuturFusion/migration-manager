@@ -30,13 +30,13 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": 1}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": "OK"}`),
 			},
 			repoCreateTarget: migration.Target{
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": 1}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": "OK"}`),
 			},
 
 			assertErr: require.NoError,
