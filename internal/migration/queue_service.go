@@ -52,11 +52,11 @@ func (s queueService) GetAll(ctx context.Context) (QueueEntries, error) {
 
 			for _, i := range instances {
 				queueItems = append(queueItems, QueueEntry{
-					InstanceUUID:          i.UUID,
-					InstanceName:          i.GetName(),
-					MigrationStatus:       i.MigrationStatus,
-					MigrationStatusString: i.MigrationStatusString,
-					BatchName:             batch.Name,
+					InstanceUUID:           i.UUID,
+					InstanceName:           i.GetName(),
+					MigrationStatus:        i.MigrationStatus,
+					MigrationStatusMessage: i.MigrationStatusMessage,
+					BatchName:              batch.Name,
 				})
 			}
 		}
@@ -92,11 +92,11 @@ func (s queueService) GetByInstanceID(ctx context.Context, id uuid.UUID) (QueueE
 		}
 
 		queueItem = QueueEntry{
-			InstanceUUID:          instance.UUID,
-			InstanceName:          instance.GetName(),
-			MigrationStatus:       instance.MigrationStatus,
-			MigrationStatusString: instance.MigrationStatusString,
-			BatchName:             batch.Name,
+			InstanceUUID:           instance.UUID,
+			InstanceName:           instance.GetName(),
+			MigrationStatus:        instance.MigrationStatus,
+			MigrationStatusMessage: instance.MigrationStatusMessage,
+			BatchName:              batch.Name,
 		}
 
 		return nil

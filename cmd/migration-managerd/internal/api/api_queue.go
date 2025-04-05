@@ -184,11 +184,11 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.QueueEntry, 0, len(queueItems))
 		for _, queueItem := range queueItems {
 			result = append(result, api.QueueEntry{
-				InstanceUUID:          queueItem.InstanceUUID,
-				InstanceName:          queueItem.InstanceName,
-				MigrationStatus:       queueItem.MigrationStatus,
-				MigrationStatusString: queueItem.MigrationStatusString,
-				BatchName:             queueItem.BatchName,
+				InstanceUUID:           queueItem.InstanceUUID,
+				InstanceName:           queueItem.InstanceName,
+				MigrationStatus:        queueItem.MigrationStatus,
+				MigrationStatusMessage: queueItem.MigrationStatusMessage,
+				BatchName:              queueItem.BatchName,
 			})
 		}
 
@@ -251,11 +251,11 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseETag(true, api.QueueEntry{
-		InstanceUUID:          queueItem.InstanceUUID,
-		InstanceName:          queueItem.InstanceName,
-		MigrationStatus:       queueItem.MigrationStatus,
-		MigrationStatusString: queueItem.MigrationStatusString,
-		BatchName:             queueItem.BatchName,
+		InstanceUUID:           queueItem.InstanceUUID,
+		InstanceName:           queueItem.InstanceName,
+		MigrationStatus:        queueItem.MigrationStatus,
+		MigrationStatusMessage: queueItem.MigrationStatusMessage,
+		BatchName:              queueItem.BatchName,
 	}, queueItem)
 }
 
@@ -371,7 +371,7 @@ func queueWorkerPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = d.instance.ProcessWorkerUpdate(r.Context(), UUID, resp.Status, resp.StatusString)
+	_, err = d.instance.ProcessWorkerUpdate(r.Context(), UUID, resp.Status, resp.StatusMessage)
 	if err != nil {
 		return response.SmartError(err)
 	}
