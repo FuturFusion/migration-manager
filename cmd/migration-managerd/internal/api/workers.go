@@ -351,7 +351,7 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 // - Ensures the correct ISO images exist in the target storage pool.
 func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migration.Target, instances migration.Instances) (*target.InternalIncusTarget, error) {
 	if b.Status != api.BATCHSTATUS_QUEUED && b.Status != api.BATCHSTATUS_DEFINED {
-		return nil, fmt.Errorf("Batch status is %q, not %q or %q", b.Status.String(), api.BATCHSTATUS_QUEUED.String(), api.BATCHSTATUS_DEFINED.String())
+		return nil, fmt.Errorf("Batch status is %q, not %q or %q", b.Status, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_DEFINED)
 	}
 
 	// If a migration window is defined, ensure sure it makes sense.
@@ -482,7 +482,7 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 			log.Error("Failed to validate batch", logger.Err(err))
 			_, err := d.batch.UpdateStatusByName(ctx, b.Name, api.BATCHSTATUS_ERROR, err.Error())
 			if err != nil {
-				return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_ERROR.String(), err)
+				return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_ERROR, err)
 			}
 
 			delete(batchesByName, batchName)
@@ -494,7 +494,7 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 	err = transaction.Do(ctx, func(ctx context.Context) error {
 		for _, b := range batchesByName {
 			log.Info("Updating batch status to 'Running'")
-			_, err := d.batch.UpdateStatusByName(ctx, b.Name, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_RUNNING.String())
+			_, err := d.batch.UpdateStatusByName(ctx, b.Name, api.BATCHSTATUS_RUNNING, string(api.BATCHSTATUS_RUNNING))
 			if err != nil {
 				return fmt.Errorf("Failed to update batch status: %w", err)
 			}
@@ -636,7 +636,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		batches, err := d.batch.GetAllByState(ctx, api.BATCHSTATUS_RUNNING)
 		if err != nil {
-			return fmt.Errorf("Failed to get batches by state %q: %w", api.BATCHSTATUS_RUNNING.String(), err)
+			return fmt.Errorf("Failed to get batches by state %q: %w", api.BATCHSTATUS_RUNNING, err)
 		}
 
 		allInstances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_CREATING, false)
@@ -838,7 +838,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		batches, err := d.batch.GetAllByState(ctx, api.BATCHSTATUS_RUNNING)
 		if err != nil {
-			return fmt.Errorf("Failed to get batches by state %q: %w", api.BATCHSTATUS_RUNNING.String(), err)
+			return fmt.Errorf("Failed to get batches by state %q: %w", api.BATCHSTATUS_RUNNING, err)
 		}
 
 		for _, b := range batches {

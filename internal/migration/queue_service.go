@@ -41,7 +41,7 @@ func (s queueService) GetAll(ctx context.Context) (QueueEntries, error) {
 
 		// For each batch that has entered the "queued" state or later, add its instances.
 		for _, batch := range batches {
-			if batch.Status == api.BATCHSTATUS_UNKNOWN || batch.Status == api.BATCHSTATUS_DEFINED {
+			if batch.Status == api.BATCHSTATUS_DEFINED {
 				continue
 			}
 

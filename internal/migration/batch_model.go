@@ -17,7 +17,7 @@ type Batch struct {
 	Target               string `db:"join=targets.name"`
 	TargetProject        string
 	Status               api.BatchStatusType
-	StatusString         string
+	StatusMessage        string
 	StoragePool          string
 	IncludeExpression    string
 	MigrationWindowStart time.Time
@@ -37,11 +37,12 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, target can not be empty")
 	}
 
-	if b.Status < api.BATCHSTATUS_UNKNOWN || b.Status > api.BATCHSTATUS_ERROR {
-		return NewValidationErrf("Invalid batch, %d is not a valid migration status", b.Status)
+	err := b.Status.Validate()
+	if err != nil {
+		return NewValidationErrf("Invalid status: %v", err)
 	}
 
-	_, err := b.CompileIncludeExpression(InstanceFilterable{})
+	_, err = b.CompileIncludeExpression(InstanceFilterable{})
 	if err != nil {
 		return NewValidationErrf("Invalid batch %q is not a valid include expression: %v", b.IncludeExpression, err)
 	}
