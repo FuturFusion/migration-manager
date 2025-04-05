@@ -204,7 +204,7 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	metadata := make(map[string]string)
-	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", tgt.GetExternalConnectivityStatus())
+	metadata["ConnectivityStatus"] = string(tgt.GetExternalConnectivityStatus())
 
 	// If waiting on fingerprint confirmation, return it to the user.
 	if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
@@ -426,7 +426,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	metadata := make(map[string]string)
-	metadata["ConnectivityStatus"] = fmt.Sprintf("%d", tgt.GetExternalConnectivityStatus())
+	metadata["ConnectivityStatus"] = string(tgt.GetExternalConnectivityStatus())
 
 	// If waiting on fingerprint confirmation, return it to the user.
 	if tgt.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
