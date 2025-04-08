@@ -17,10 +17,10 @@ type QueueEntry struct {
 type QueueEntries []QueueEntry
 
 type WorkerCommand struct {
-	Command       api.WorkerCommandType
-	InventoryPath string
-	SourceType    api.SourceType
-	Source        Source
-	OS            string
-	OSVersion     string
+	Command    api.WorkerCommandType
+	Location   string
+	SourceType api.SourceType
+	Source     Source
+	OS         string
+	OSVersion  string
 }

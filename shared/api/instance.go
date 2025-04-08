@@ -2,11 +2,7 @@ package api
 
 import (
 	"fmt"
-	"path/filepath"
-	"regexp"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type MigrationStatusType int
@@ -78,18 +74,6 @@ func (o OSType) String() string {
 //
 // swagger:model
 type Instance struct {
-	// UUID for this instance; populated from the source and used across all migration manager operations
-	// Example: 26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad
-	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
-
-	// Internal path to the instance
-	// Example: /SHF/vm/Migration Tests/DebianTest
-	InventoryPath string `json:"inventory_path" yaml:"inventory_path"`
-
-	// Description of this instance
-	// Example: "Oracle Database"
-	Annotation string `json:"annotation" yaml:"annotation"`
-
 	// The migration status of this instance
 	// Example: MIGRATIONSTATUS_RUNNING
 	MigrationStatus MigrationStatusType `json:"migration_status" yaml:"migration_status"`
@@ -110,71 +94,17 @@ type Instance struct {
 	// Example: 1
 	Batch *string `json:"batch_id,omitempty" yaml:"batch_id,omitempty"`
 
-	// Guest tools version, if known
-	// Example: 12352
-	GuestToolsVersion int `json:"guest_tools_version" yaml:"guest_tools_version"`
-
-	// The architecture of this instance
-	// Example: x86_64
-	Architecture string `json:"architecture" yaml:"architecture"`
-
-	// The hardware version of the instance
-	// Example: vmx-21
-	HardwareVersion string `json:"hardware_version" yaml:"hardware_version"`
-
-	// The name of the operating system
-	// Example: Ubuntu
-	OS string `json:"os" yaml:"os"`
-
-	// The version of the operating system
-	// Example: 24.04
-	OSVersion string `json:"os_version" yaml:"os_version"`
-
-	// Generic devices for this instance
-	Devices []InstanceDeviceInfo `json:"devices" yaml:"devices"`
-
-	// Disk(s) for this instance
-	Disks []InstanceDiskInfo `json:"disks" yaml:"disks"`
-
-	// NIC(s) for this instance
-	NICs []InstanceNICInfo `json:"nics" yaml:"nics"`
-
-	// Snapshot(s) for this instance
-	Snapshots []InstanceSnapshotInfo `json:"snapshots" yaml:"snapshots"`
-
-	// vCPUs configuration for this instance
-	CPU InstanceCPUInfo `json:"cpu" yaml:"cpu"`
-
-	// Memory configuration for this instance
-	Memory InstanceMemoryInfo `json:"memory" yaml:"memory"`
-
-	// Does this instance boot with legacy BIOS rather than UEFI
-	// Example: false
-	UseLegacyBios bool `json:"use_legacy_bios" yaml:"use_legacy_bios"`
-
-	// Is Secure Boot enabled for this instance
-	// Example: false
-	SecureBootEnabled bool `json:"secure_boot_enabled" yaml:"secure_boot_enabled"`
-
-	// Is a TPM device present for this instance
-	// Example: false
-	TPMPresent bool `json:"tpm_present" yaml:"tpm_present"`
+	Properties InstanceProperties `json:"properties" yaml:"properties"`
 
 	// Overrides, if any, for this instance
 	// Example: {..., NumberCPUs: 16, ...}
 	Overrides *InstanceOverride `json:"overrides" yaml:"overrides"`
 }
 
-var nonalpha = regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
-
 // GetName returns the name of the instance, which may not be unique among all instances for a given source.
-// If a unique, human-readable identifier is needed, use the InventoryPath property.
+// If a unique, human-readable identifier is needed, use the Location property.
 func (i *Instance) GetName() string {
-	// Get the last part of the inventory path to use as a base for the instance name.
-	base := filepath.Base(i.InventoryPath)
-
-	// An instance name can only contain alphanumeric and hyphen characters.
-	return nonalpha.ReplaceAllString(base, "")
+	return i.Properties.Name
 }
 
 // InstanceCPUInfo defines CPU information for an Instance.

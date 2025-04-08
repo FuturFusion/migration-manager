@@ -110,7 +110,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			return fmt.Errorf("Failed to get internal network records: %w", err)
 		}
 
-		dbInstances, err := d.instance.GetAllUnassigned(ctx, false)
+		dbInstances, err := d.instance.GetAll(ctx, false)
 		if err != nil {
 			return fmt.Errorf("Failed to get internal instance records: %w", err)
 		}
@@ -123,8 +123,18 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 
 		for srcName, srcInstances := range instancesBySrc {
 			// Ensure we only compare instances in the same source.
-			existingInstances := make(map[uuid.UUID]migration.Instance, len(dbInstances))
+			existingInstances := map[uuid.UUID]migration.Instance{}
 			for _, inst := range dbInstances {
+				// If the instance is already assigned, then omit it from consideration.
+				if inst.Batch != nil {
+					_, ok := srcInstances[inst.UUID]
+					if ok {
+						delete(srcInstances, inst.UUID)
+					}
+
+					continue
+				}
+
 				src := sourcesByName[srcName]
 
 				if src.Name == inst.Source {
@@ -183,7 +193,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 	)
 	for instUUID, inst := range existingInstances {
 		log := log.With(
-			slog.String("instance", inst.InventoryPath),
+			slog.String("instance", inst.Properties.Location),
 			slog.Any("instance_uuid", inst.UUID),
 		)
 
@@ -201,93 +211,63 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 
 		instanceUpdated := false
 
-		if inst.Annotation != srcInst.Annotation {
-			inst.Annotation = srcInst.Annotation
+		if inst.Properties.Description != srcInst.Properties.Description {
+			inst.Properties.Description = srcInst.Properties.Description
 			instanceUpdated = true
 		}
 
-		if inst.GuestToolsVersion != srcInst.GuestToolsVersion {
-			inst.GuestToolsVersion = srcInst.GuestToolsVersion
+		if inst.Properties.Architecture != srcInst.Properties.Architecture {
+			inst.Properties.Architecture = srcInst.Properties.Architecture
 			instanceUpdated = true
 		}
 
-		if inst.Architecture != srcInst.Architecture {
-			inst.Architecture = srcInst.Architecture
+		if inst.Properties.OS != srcInst.Properties.OS {
+			inst.Properties.OS = srcInst.Properties.OS
 			instanceUpdated = true
 		}
 
-		if inst.HardwareVersion != srcInst.HardwareVersion {
-			inst.HardwareVersion = srcInst.HardwareVersion
+		if inst.Properties.OSVersion != srcInst.Properties.OSVersion {
+			inst.Properties.OSVersion = srcInst.Properties.OSVersion
 			instanceUpdated = true
 		}
 
-		if inst.OS != srcInst.OS {
-			inst.OS = srcInst.OS
+		if !slices.Equal(inst.Properties.Disks, srcInst.Properties.Disks) {
+			inst.Properties.Disks = srcInst.Properties.Disks
 			instanceUpdated = true
 		}
 
-		if inst.OSVersion != srcInst.OSVersion {
-			inst.OSVersion = srcInst.OSVersion
+		if !slices.Equal(inst.Properties.NICs, srcInst.Properties.NICs) {
+			inst.Properties.NICs = srcInst.Properties.NICs
 			instanceUpdated = true
 		}
 
-		if !slices.Equal(inst.Devices, srcInst.Devices) {
-			inst.Devices = srcInst.Devices
+		if !slices.Equal(inst.Properties.Snapshots, srcInst.Properties.Snapshots) {
+			inst.Properties.Snapshots = srcInst.Properties.Snapshots
 			instanceUpdated = true
 		}
 
-		if !slices.Equal(inst.Disks, srcInst.Disks) {
-			inst.Disks = srcInst.Disks
+		if inst.Properties.CPUs != srcInst.Properties.CPUs {
+			inst.Properties.CPUs = srcInst.Properties.CPUs
 			instanceUpdated = true
 		}
 
-		if !slices.Equal(inst.NICs, srcInst.NICs) {
-			inst.NICs = srcInst.NICs
+		if inst.Properties.Memory != srcInst.Properties.Memory {
+			inst.Properties.Memory = srcInst.Properties.Memory
 			instanceUpdated = true
 		}
 
-		if !slices.Equal(inst.Snapshots, srcInst.Snapshots) {
-			inst.Snapshots = srcInst.Snapshots
+		if inst.Properties.LegacyBoot != srcInst.Properties.LegacyBoot {
+			inst.Properties.LegacyBoot = srcInst.Properties.LegacyBoot
 			instanceUpdated = true
 		}
 
-		if inst.CPU.NumberCPUs != srcInst.CPU.NumberCPUs {
-			inst.CPU.NumberCPUs = srcInst.CPU.NumberCPUs
+		if inst.Properties.SecureBoot != srcInst.Properties.SecureBoot {
+			inst.Properties.SecureBoot = srcInst.Properties.SecureBoot
 			instanceUpdated = true
 		}
 
-		if !slices.Equal(inst.CPU.CPUAffinity, srcInst.CPU.CPUAffinity) {
-			inst.CPU.CPUAffinity = srcInst.CPU.CPUAffinity
-			instanceUpdated = true
-		}
-
-		if inst.CPU.NumberOfCoresPerSocket != srcInst.CPU.NumberOfCoresPerSocket {
-			inst.CPU.NumberOfCoresPerSocket = srcInst.CPU.NumberOfCoresPerSocket
-			instanceUpdated = true
-		}
-
-		if inst.Memory.MemoryInBytes != srcInst.Memory.MemoryInBytes {
-			inst.Memory.MemoryInBytes = srcInst.Memory.MemoryInBytes
-			instanceUpdated = true
-		}
-
-		if inst.Memory.MemoryReservationInBytes != srcInst.Memory.MemoryReservationInBytes {
-			inst.Memory.MemoryReservationInBytes = srcInst.Memory.MemoryReservationInBytes
-			instanceUpdated = true
-		}
-
-		if inst.UseLegacyBios != srcInst.UseLegacyBios {
-			inst.UseLegacyBios = srcInst.UseLegacyBios
-			instanceUpdated = true
-		}
-
-		if inst.SecureBootEnabled != srcInst.SecureBootEnabled {
-			inst.SecureBootEnabled = srcInst.SecureBootEnabled
-			instanceUpdated = true
-		}
-
-		if inst.TPMPresent != srcInst.TPMPresent {
-			inst.TPMPresent = srcInst.TPMPresent
+		if inst.Properties.TPM != srcInst.Properties.TPM {
+			inst.Properties.TPM = srcInst.Properties.TPM
 			instanceUpdated = true
 		}
 
@@ -306,7 +286,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 		_, ok := existingInstances[instUUID]
 		if !ok {
 			log := log.With(
-				slog.String("instance", inst.InventoryPath),
+				slog.String("instance", inst.Properties.Location),
 				slog.Any("instance_uuid", inst.UUID),
 			)
 
@@ -726,7 +706,7 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 	err := util.RunConcurrentList(instances, func(inst migration.Instance) (_err error) {
 		s := sources[inst.UUID]
 		log := log.With(
-			slog.String("instance", inst.InventoryPath),
+			slog.String("instance", inst.Properties.Location),
 			slog.String("source", s.Name),
 		)
 
@@ -782,7 +762,11 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 		}
 
 		// Optionally clean up the VMs if we fail to create them.
-		instanceDef := it.CreateVMDefinition(inst, s.Name, b.StoragePool)
+		instanceDef, err := it.CreateVMDefinition(inst, s.Name, b.StoragePool)
+		if err != nil {
+			return fmt.Errorf("Failed to create instance definition: %w", err)
+		}
+
 		if cleanupInstances {
 			reverter.Add(func() {
 				log := log.With(slog.String("revert", "instance cleanup"))
@@ -919,7 +903,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 	)
 
 	return util.RunConcurrentList(instances, func(i migration.Instance) (_err error) {
-		log := log.With(slog.String("instance", i.InventoryPath))
+		log := log.With(slog.String("instance", i.Properties.Location))
 
 		reverter := revert.New()
 		defer reverter.Fail()

@@ -191,12 +191,12 @@ func TestSourceList(t *testing.T) {
     {
       "name": "source 1",
       "database_id": 1,
-      "source_type": 1
+      "source_type": "common"
     },
     {
       "name": "source 2",
       "database_id": 2,
-      "source_type": 2,
+      "source_type": "vmware",
       "properties": {
         "endpoint": "https://127.0.0.2:8989/",
         "username": "user2",
@@ -207,7 +207,7 @@ func TestSourceList(t *testing.T) {
     {
       "name": "source 3",
       "database_id": 3,
-      "source_type": 2,
+      "source_type": "vmware",
       "properties": {
         "endpoint": "https://127.0.0.3:8989/",
         "username": "user3",
@@ -234,11 +234,11 @@ func TestSourceList(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantOutputContains: []string{
-				`source 2,VMware,https://127.0.0.2:8989/,Unknown,user2,`,
-				`source 3,VMware,https://127.0.0.3:8989/,Unknown,user3,ab601914436e58babb17b9166155caf97bd7e5f8deb9b659bcdb66c58b49f323`,
+				`source 2,vmware,https://127.0.0.2:8989/,Unknown,user2,`,
+				`source 3,vmware,https://127.0.0.3:8989/,Unknown,user3,ab601914436e58babb17b9166155caf97bd7e5f8deb9b659bcdb66c58b49f323`,
 			},
 			wantOutputNotContains: []string{
-				`source 1`, // source1 is not VMware and therefore ignored
+				`source 1`, // source1 is not vmware and therefore ignored
 			},
 		},
 		{
@@ -269,7 +269,7 @@ func TestSourceList(t *testing.T) {
     {
       "name": "source 1",
       "database_id": 1,
-      "source_type": -1
+      "source_type": ""
     }
   ]
 }`, // invalid type
@@ -417,7 +417,7 @@ func TestSourceUpdate(t *testing.T) {
   "metadata": {
     "name": "source 1",
     "database_id": 1,
-    "source_type": 2,
+    "source_type": "vmware",
     "properties": {
       "endpoint": "https://old.endpoint/",
       "username": "old user",
@@ -494,7 +494,7 @@ func TestSourceUpdate(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name: "error - source type is not VMware",
+			name: "error - source type is not vmware",
 			args: []string{"source 1"},
 			migrationManagerdResponses: []queue.Item[httpResponse]{
 				{Value: httpResponse{
@@ -508,7 +508,7 @@ func TestSourceUpdate(t *testing.T) {
       "trustedServerCertificateFingerprint": "ab601914436e58babb17b9166155caf97bd7e5f8deb9b659bcdb66c58b49f323"
     }
   }
-}`, // metadata.type is not 2 (VMware)
+}`, // metadata.type is not 2 (vmware)
 				}},
 			},
 

@@ -22,15 +22,9 @@ type InstanceOverride struct {
 	// Example: "Manually tweak number of CPUs"
 	Comment string `json:"comment" yaml:"comment"`
 
-	// The overridden number of vCPUs for this instance; a value of 0 indicates no override
-	// Example: 4
-	NumberCPUs int `json:"number_cpus" yaml:"number_cpus"`
-
-	// The overridden amount of memory for this instance, in bytes; a value of 0 indicates no override
-	// Example: 4294967296
-	MemoryInBytes int64 `json:"memory_in_bytes" yaml:"memory_in_bytes"`
-
 	// If true, migration of this instance will be disabled.
 	// Example: true
 	DisableMigration bool `json:"disable_migration" yaml:"disable_migration"`
+
+	Properties InstancePropertiesConfigurable `json:"properties" yaml:"properties"`
 }

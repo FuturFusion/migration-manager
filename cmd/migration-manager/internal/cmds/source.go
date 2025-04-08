@@ -227,11 +227,11 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			data = append(data, []string{s.Name, s.SourceType.String(), vmwareProperties.Endpoint, vmwareProperties.ConnectivityStatus.String(), vmwareProperties.Username, vmwareProperties.TrustedServerCertificateFingerprint})
+			data = append(data, []string{s.Name, string(s.SourceType), vmwareProperties.Endpoint, vmwareProperties.ConnectivityStatus.String(), vmwareProperties.Username, vmwareProperties.TrustedServerCertificateFingerprint})
 		case api.SOURCETYPE_COMMON:
 			// Nothing to output in this case
 		default:
-			return fmt.Errorf("Unsupported source type %d", s.SourceType)
+			return fmt.Errorf("Unsupported source type %s", s.SourceType)
 		}
 	}
 
@@ -359,7 +359,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 
 		newSourceName = src.Name
 	default:
-		return fmt.Errorf("Unsupported source type %d; must be one of %q", src.SourceType, supportedSourceTypes)
+		return fmt.Errorf("Unsupported source type %s; must be one of %q", src.SourceType, supportedSourceTypes)
 	}
 
 	// Update the source.

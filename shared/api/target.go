@@ -2,29 +2,15 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 )
 
-type TargetType int
+type TargetType string
 
 const (
-	TARGETTYPE_UNKNOWN TargetType = iota
-	TARGETTYPE_INCUS
+	TARGETTYPE_INCUS TargetType = "incus"
 )
-
-// String implements the stringer interface.
-func (t TargetType) String() string {
-	switch t {
-	case TARGETTYPE_UNKNOWN:
-		return "Unknown"
-	case TARGETTYPE_INCUS:
-		return "Incus"
-	default:
-		return fmt.Sprintf("TargetType(%d)", t)
-	}
-}
 
 // Target defines properties common to all targets.
 //

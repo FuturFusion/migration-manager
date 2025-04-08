@@ -20,7 +20,7 @@ type InstanceService interface {
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetAllUnassigned(ctx context.Context, withOverrides bool) (Instances, error)
 	GetByUUID(ctx context.Context, id uuid.UUID, withOverrides bool) (*Instance, error)
-	GetByUUIDWithDetails(ctx context.Context, id uuid.UUID) (InstanceWithDetails, error)
+
 	UnassignFromBatch(ctx context.Context, id uuid.UUID) error
 	Update(ctx context.Context, instance *Instance) error
 	UpdateStatusByUUID(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (*Instance, error)

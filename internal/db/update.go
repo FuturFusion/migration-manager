@@ -28,29 +28,14 @@ CREATE TABLE batches (
 CREATE TABLE instances (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     uuid TEXT NOT NULL,
-    inventory_path VARCHAR(255) NOT NULL,
-    annotation VARCHAR(255) NOT NULL,
     migration_status INTEGER NOT NULL,
     migration_status_string TEXT NOT NULL,
     last_update_from_source DATETIME NOT NULL,
     source_id INTEGER NOT NULL,
     batch_id INTEGER NULL,
-    guest_tools_version INTEGER NOT NULL,
-    architecture VARCHAR(255) NOT NULL,
-    hardware_version VARCHAR(255) NOT NULL,
-    os VARCHAR(255) NOT NULL,
-    os_version VARCHAR(255) NOT NULL,
-    devices TEXT NOT NULL,
-    disks TEXT NOT NULL,
-    nics TEXT NOT NULL,
-    snapshots TEXT NOT NULL,
-    cpu TEXT NOT NULL,
-    memory TEXT NOT NULL,
-    use_legacy_bios INTEGER NOT NULL,
-    secure_boot_enabled INTEGER NOT NULL,
-    tpm_present INTEGER NOT NULL,
     needs_disk_import INTEGER NOT NULL,
     secret_token TEXT NOT NULL,
+	  properties TEXT NOT NULL,
     UNIQUE (uuid),
     FOREIGN KEY(source_id) REFERENCES sources(id),
     FOREIGN KEY(batch_id) REFERENCES batches(id)
@@ -61,9 +46,8 @@ CREATE TABLE instance_overrides (
     uuid TEXT NULL,
     last_update DATETIME NOT NULL,
     comment TEXT NOT NULL,
-    number_cpus INTEGER NOT NULL,
-    memory_in_bytes INTEGER NOT NULL,
     disable_migration INTEGER NOT NULL,
+	  properties TEXT NOT NULL,
     UNIQUE (uuid),
     FOREIGN KEY(uuid) REFERENCES instances(uuid)
 );
@@ -78,7 +62,7 @@ CREATE TABLE networks (
 CREATE TABLE sources (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    source_type INTEGER NOT NULL,
+    source_type TEXT NOT NULL,
     properties TEXT NOT NULL,
     UNIQUE (name)
 );
@@ -86,7 +70,7 @@ CREATE TABLE sources (
 CREATE TABLE targets (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     name VARCHAR(255) NOT NULL,
-    target_type INTEGER NOT NULL,
+    target_type TEXT NOT NULL,
     properties TEXT NOT NULL,
     UNIQUE (name)
 );
