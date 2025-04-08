@@ -239,7 +239,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 			endString = b.MigrationWindowEnd.String()
 		}
 
-		data = append(data, []string{b.Name, b.Status.String(), b.StatusString, b.Target, b.TargetProject, b.StoragePool, b.IncludeExpression, startString, endString})
+		data = append(data, []string{b.Name, string(b.Status), b.StatusMessage, b.Target, b.TargetProject, b.StoragePool, b.IncludeExpression, startString, endString})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
@@ -339,7 +339,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	// Show the details
 	cmd.Printf("Batch: %s\n", b.Name)
-	cmd.Printf("  - Status:             %s\n", b.StatusString)
+	cmd.Printf("  - Status:             %s\n", b.StatusMessage)
 	cmd.Printf("  - Target:             %s\n", b.Target)
 	if b.TargetProject != "" {
 		cmd.Printf("  - Project:            %s\n", b.TargetProject)
@@ -363,7 +363,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	cmd.Printf("\n  - Instances:\n")
 	for _, i := range instances {
-		cmd.Printf("    - %s (%s)\n", i.Properties.Location, i.MigrationStatusString)
+		cmd.Printf("    - %s (%s)\n", i.Properties.Location, i.MigrationStatusMessage)
 	}
 
 	return nil

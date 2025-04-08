@@ -57,15 +57,15 @@ var (
 		},
 	}
 
-	testBatch     = migration.Batch{ID: 1, Name: "TestBatch", Target: "TestTarget", StoragePool: "", IncludeExpression: "true", MigrationWindowStart: time.Time{}, MigrationWindowEnd: time.Time{}}
+	testBatch     = migration.Batch{ID: 1, Name: "TestBatch", Target: "TestTarget", Status: api.BATCHSTATUS_DEFINED, StoragePool: "", IncludeExpression: "true", MigrationWindowStart: time.Time{}, MigrationWindowEnd: time.Time{}}
 	instanceAUUID = uuid.Must(uuid.NewRandom())
 
 	instanceA = migration.Instance{
-		UUID:                  instanceAUUID,
-		MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-		MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-		LastUpdateFromSource:  time.Now().UTC(),
-		Batch:                 nil,
+		UUID:                   instanceAUUID,
+		MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+		MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
+		LastUpdateFromSource:   time.Now().UTC(),
+		Batch:                  nil,
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
 				Description: "annotation",
@@ -102,11 +102,11 @@ var (
 
 	instanceBUUID = uuid.Must(uuid.NewRandom())
 	instanceB     = migration.Instance{
-		UUID:                  instanceBUUID,
-		MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-		MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-		LastUpdateFromSource:  time.Now().UTC(),
-		Batch:                 nil,
+		UUID:                   instanceBUUID,
+		MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+		MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
+		LastUpdateFromSource:   time.Now().UTC(),
+		Batch:                  nil,
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
 				Description: "annotation",
@@ -148,11 +148,11 @@ var (
 
 	instanceCUUID = uuid.Must(uuid.NewRandom())
 	instanceC     = migration.Instance{
-		UUID:                  instanceCUUID,
-		MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-		MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-		LastUpdateFromSource:  time.Now().UTC(),
-		Batch:                 ptr.To("TestBatch"),
+		UUID:                   instanceCUUID,
+		MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+		MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
+		LastUpdateFromSource:   time.Now().UTC(),
+		Batch:                  ptr.To("TestBatch"),
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
 				Description: "annotation",
@@ -286,7 +286,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	instanceB.Properties.Location = "/foo/bar"
 	instanceB.Properties.CPUs = 8
 	instanceB.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
-	instanceB.MigrationStatusString = instanceB.MigrationStatus.String()
+	instanceB.MigrationStatusMessage = string(instanceB.MigrationStatus)
 	err = instance.Update(ctx, instanceB)
 	require.NoError(t, err)
 	dbInstanceB, err := instance.GetByUUID(ctx, instanceB.UUID)
@@ -322,7 +322,7 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.Error(t, err)
 
 	instanceB.MigrationStatus = api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION
-	instanceB.MigrationStatusString = instanceB.MigrationStatus.String()
+	instanceB.MigrationStatusMessage = string(instanceB.MigrationStatus)
 	err = instance.Update(ctx, instanceB)
 
 	// Can't delete a target that has at least one associated batch.

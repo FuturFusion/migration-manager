@@ -327,7 +327,7 @@ func TestRun(t *testing.T) {
 					tc.wantWorkerResponses = tc.wantWorkerResponses[1:]
 
 					if wantResponse != resp.Status {
-						cancel(fmt.Errorf("expected worker response: %d, got: %d (%s)", wantResponse, resp.Status, resp.StatusString))
+						cancel(fmt.Errorf("expected worker response: %d, got: %d (%s)", wantResponse, resp.Status, resp.StatusMessage))
 					}
 
 					_, _ = w.Write([]byte(`{}`))

@@ -306,8 +306,8 @@ func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, s
 	return w.source.Connect(ctx)
 }
 
-func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusString string) {
-	resp := api.WorkerResponse{Status: statusVal, StatusString: statusString}
+func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusMessage string) {
+	resp := api.WorkerResponse{Status: statusVal, StatusMessage: statusMessage}
 
 	content, err := json.Marshal(resp)
 	if err != nil {
@@ -324,7 +324,7 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusStri
 
 func (w *Worker) sendErrorResponse(err error) {
 	slog.Error("worker error", logger.Err(err))
-	resp := api.WorkerResponse{Status: api.WORKERRESPONSE_FAILED, StatusString: err.Error()}
+	resp := api.WorkerResponse{Status: api.WORKERRESPONSE_FAILED, StatusMessage: err.Error()}
 
 	content, err := json.Marshal(resp)
 	if err != nil {

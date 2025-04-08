@@ -261,7 +261,7 @@ func (s instanceService) UnassignFromBatch(ctx context.Context, id uuid.UUID) er
 
 		instance.Batch = nil
 		instance.MigrationStatus = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
-		instance.MigrationStatusString = api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String()
+		instance.MigrationStatusMessage = string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH)
 
 		err = s.repo.Update(ctx, *instance)
 		if err != nil {
@@ -297,14 +297,15 @@ func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 	return nil
 }
 
-func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (*Instance, error) {
-	if status < api.MIGRATIONSTATUS_UNKNOWN || status > api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
-		return nil, NewValidationErrf("Invalid instance, %d is not a valid migration status", status)
+func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*Instance, error) {
+	err := status.Validate()
+	if err != nil {
+		return nil, NewValidationErrf("Invalid migration status: %v", err)
 	}
 
 	// FIXME: ensure only valid transitions according to the state machine are possible
 	var instance *Instance
-	err := transaction.Do(ctx, func(ctx context.Context) error {
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 		instance, err = s.repo.GetByUUID(ctx, id)
 		if err != nil {
@@ -312,7 +313,7 @@ func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, s
 		}
 
 		instance.MigrationStatus = status
-		instance.MigrationStatusString = statusString
+		instance.MigrationStatusMessage = statusMessage
 		instance.NeedsDiskImport = needsDiskImport
 
 		return s.repo.Update(ctx, *instance)
@@ -324,7 +325,7 @@ func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, s
 	return instance, nil
 }
 
-func (s instanceService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseType api.WorkerResponseType, statusString string) (Instance, error) {
+func (s instanceService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseType api.WorkerResponseType, statusMessage string) (Instance, error) {
 	var instance *Instance
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -343,28 +344,28 @@ func (s instanceService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, 
 		// Process the response.
 		switch workerResponseType {
 		case api.WORKERRESPONSE_RUNNING:
-			instance.MigrationStatusString = statusString
+			instance.MigrationStatusMessage = statusMessage
 
 		case api.WORKERRESPONSE_SUCCESS:
 			switch instance.MigrationStatus {
 			case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
 				instance.NeedsDiskImport = false
 				instance.MigrationStatus = api.MIGRATIONSTATUS_IDLE
-				instance.MigrationStatusString = api.MIGRATIONSTATUS_IDLE.String()
+				instance.MigrationStatusMessage = string(api.MIGRATIONSTATUS_IDLE)
 
 			case api.MIGRATIONSTATUS_FINAL_IMPORT:
 				instance.MigrationStatus = api.MIGRATIONSTATUS_IMPORT_COMPLETE
-				instance.MigrationStatusString = api.MIGRATIONSTATUS_IMPORT_COMPLETE.String()
+				instance.MigrationStatusMessage = string(api.MIGRATIONSTATUS_IMPORT_COMPLETE)
 			}
 
 		case api.WORKERRESPONSE_FAILED:
 			instance.MigrationStatus = api.MIGRATIONSTATUS_ERROR
-			instance.MigrationStatusString = statusString
+			instance.MigrationStatusMessage = statusMessage
 		}
 
 		// Update instance in the database.
 		uuid := instance.UUID
-		instance, err = s.UpdateStatusByUUID(ctx, uuid, instance.MigrationStatus, instance.MigrationStatusString, instance.NeedsDiskImport)
+		instance, err = s.UpdateStatusByUUID(ctx, uuid, instance.MigrationStatus, instance.MigrationStatusMessage, instance.NeedsDiskImport)
 		if err != nil {
 			return fmt.Errorf("Failed updating instance '%s': %w", uuid, err)
 		}
@@ -408,7 +409,7 @@ func (s instanceService) CreateOverrides(ctx context.Context, overrides Instance
 		var err error
 
 		if overrides.DisableMigration {
-			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION.String(), true)
+			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION, string(api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION), true)
 			if err != nil {
 				return err
 			}
@@ -452,7 +453,7 @@ func (s instanceService) UpdateOverrides(ctx context.Context, overrides *Instanc
 				newStatus = api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION
 			}
 
-			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, newStatus, newStatus.String(), true)
+			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, newStatus, string(newStatus), true)
 			if err != nil {
 				return err
 			}
@@ -470,7 +471,7 @@ func (s instanceService) DeleteOverridesByUUID(ctx context.Context, id uuid.UUID
 		}
 
 		if overrides.DisableMigration {
-			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(), true)
+			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH), true)
 			if err != nil {
 				return err
 			}

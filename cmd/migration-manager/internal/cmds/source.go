@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/lxc/incus/v6/shared/validate"
@@ -151,17 +150,12 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
-		if err != nil {
-			return err
-		}
-
-		connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+		connectivityStatus := api.ExternalConnectivityStatus(metadata["ConnectivityStatus"])
 
 		if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
 			return fmt.Errorf("Successfully added new source %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the source to correct the issue.", sourceName, metadata["certFingerprint"])
 		} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
-			return fmt.Errorf("Successfully added new source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.", sourceName, connectivityStatus.String())
+			return fmt.Errorf("Successfully added new source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.", sourceName, connectivityStatus)
 		}
 
 		cmd.Printf("Successfully added new source %q.\n", sourceName)
@@ -227,7 +221,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			data = append(data, []string{s.Name, string(s.SourceType), vmwareProperties.Endpoint, vmwareProperties.ConnectivityStatus.String(), vmwareProperties.Username, vmwareProperties.TrustedServerCertificateFingerprint})
+			data = append(data, []string{s.Name, string(s.SourceType), vmwareProperties.Endpoint, string(vmwareProperties.ConnectivityStatus), vmwareProperties.Username, vmwareProperties.TrustedServerCertificateFingerprint})
 		case api.SOURCETYPE_COMMON:
 			// Nothing to output in this case
 		default:
@@ -379,17 +373,12 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
-	if err != nil {
-		return err
-	}
-
-	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+	connectivityStatus := api.ExternalConnectivityStatus(metadata["ConnectivityStatus"])
 
 	if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
 		return fmt.Errorf("Successfully updated source %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the source to correct the issue.", newSourceName, metadata["certFingerprint"])
 	} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
-		return fmt.Errorf("Successfully updated source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.", newSourceName, connectivityStatus.String())
+		return fmt.Errorf("Successfully updated source %q, but connectivity check reported an issue: %s. Please update the source to correct the issue.", newSourceName, connectivityStatus)
 	}
 
 	cmd.Printf("Successfully updated source %q.\n", newSourceName)

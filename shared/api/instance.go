@@ -5,70 +5,47 @@ import (
 	"time"
 )
 
-type MigrationStatusType int
+type MigrationStatusType string
 
 const (
-	MIGRATIONSTATUS_UNKNOWN MigrationStatusType = iota
-	MIGRATIONSTATUS_NOT_ASSIGNED_BATCH
-	MIGRATIONSTATUS_ASSIGNED_BATCH
-	MIGRATIONSTATUS_CREATING
-	MIGRATIONSTATUS_BACKGROUND_IMPORT
-	MIGRATIONSTATUS_IDLE
-	MIGRATIONSTATUS_FINAL_IMPORT
-	MIGRATIONSTATUS_IMPORT_COMPLETE
-	MIGRATIONSTATUS_FINISHED
-	MIGRATIONSTATUS_ERROR
-	MIGRATIONSTATUS_USER_DISABLED_MIGRATION
+	MIGRATIONSTATUS_NOT_ASSIGNED_BATCH      MigrationStatusType = "Not yet assigned to a batch"
+	MIGRATIONSTATUS_ASSIGNED_BATCH          MigrationStatusType = "Assigned to a batch"
+	MIGRATIONSTATUS_CREATING                MigrationStatusType = "Creating new VM"
+	MIGRATIONSTATUS_BACKGROUND_IMPORT       MigrationStatusType = "Performing background import tasks"
+	MIGRATIONSTATUS_IDLE                    MigrationStatusType = "Idle"
+	MIGRATIONSTATUS_FINAL_IMPORT            MigrationStatusType = "Performing final import tasks"
+	MIGRATIONSTATUS_IMPORT_COMPLETE         MigrationStatusType = "Import tasks complete"
+	MIGRATIONSTATUS_FINISHED                MigrationStatusType = "Finished"
+	MIGRATIONSTATUS_ERROR                   MigrationStatusType = "Error"
+	MIGRATIONSTATUS_USER_DISABLED_MIGRATION MigrationStatusType = "User disabled migration"
 )
 
-// String mplements the stringer interface.
-func (m MigrationStatusType) String() string {
+// Validate ensures the MigrationStatusType is valid.
+func (m MigrationStatusType) Validate() error {
 	switch m {
-	case MIGRATIONSTATUS_UNKNOWN:
-		return "Unknown"
-	case MIGRATIONSTATUS_NOT_ASSIGNED_BATCH:
-		return "Not yet assigned to a batch"
 	case MIGRATIONSTATUS_ASSIGNED_BATCH:
-		return "Assigned to a batch"
-	case MIGRATIONSTATUS_CREATING:
-		return "Creating new VM"
 	case MIGRATIONSTATUS_BACKGROUND_IMPORT:
-		return "Performing background import tasks"
-	case MIGRATIONSTATUS_IDLE:
-		return "Idle"
-	case MIGRATIONSTATUS_FINAL_IMPORT:
-		return "Performing final import tasks"
-	case MIGRATIONSTATUS_IMPORT_COMPLETE:
-		return "Import tasks complete"
-	case MIGRATIONSTATUS_FINISHED:
-		return "Finished"
+	case MIGRATIONSTATUS_CREATING:
 	case MIGRATIONSTATUS_ERROR:
-		return "Error"
+	case MIGRATIONSTATUS_FINAL_IMPORT:
+	case MIGRATIONSTATUS_FINISHED:
+	case MIGRATIONSTATUS_IDLE:
+	case MIGRATIONSTATUS_IMPORT_COMPLETE:
+	case MIGRATIONSTATUS_NOT_ASSIGNED_BATCH:
 	case MIGRATIONSTATUS_USER_DISABLED_MIGRATION:
-		return "User disabled migration"
 	default:
-		return fmt.Sprintf("MigrationStatusType(%d)", m)
+		return fmt.Errorf("%s is not a valid migration status", m)
 	}
+
+	return nil
 }
 
-type OSType int
+type OSType string
 
 const (
-	OSTYPE_WINDOWS OSType = iota
-	OSTYPE_LINUX
+	OSTYPE_WINDOWS OSType = "Windows"
+	OSTYPE_LINUX   OSType = "Linux"
 )
-
-// String implements the stringer interface.
-func (o OSType) String() string {
-	switch o {
-	case OSTYPE_WINDOWS:
-		return "Windows"
-	case OSTYPE_LINUX:
-		return "Linux"
-	default:
-		return fmt.Sprintf("OSType(%d)", o)
-	}
-}
 
 // Instance defines a VM instance to be migrated.
 //
@@ -80,7 +57,7 @@ type Instance struct {
 
 	// A free-form string to provide additional information about the migration status
 	// Example: "Migration 25% complete"
-	MigrationStatusString string `json:"migration_status_string" yaml:"migration_status_string"`
+	MigrationStatusMessage string `json:"migration_status_message" yaml:"migration_status_message"`
 
 	// The last time this instance was updated from its source
 	// Example: 2024-11-12 16:15:00 +0000 UTC

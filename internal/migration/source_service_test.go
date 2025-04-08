@@ -51,7 +51,7 @@ func TestSourceService_Create(t *testing.T) {
   "endpoint": "endpoint.url",
   "username": "user",
   "password": "pass",
-	"connectivity_status": 1
+	"connectivity_status": "OK"
 }
 `),
 			},
@@ -63,7 +63,7 @@ func TestSourceService_Create(t *testing.T) {
   "endpoint": "endpoint.url",
   "username": "user",
   "password": "pass",
-	"connectivity_status": 1
+	"connectivity_status": "OK"
 }
 `),
 			},

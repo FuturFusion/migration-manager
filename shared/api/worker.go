@@ -60,5 +60,5 @@ type WorkerResponse struct {
 
 	// A free-form string to provide additional information about the command status
 	// Example: "Migration 25% complete"
-	StatusString string `json:"status_string" yaml:"status_string"`
+	StatusMessage string `json:"status_message" yaml:"status_message"`
 }

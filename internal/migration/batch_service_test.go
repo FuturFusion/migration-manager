@@ -30,12 +30,14 @@ func TestBatchService_Create(t *testing.T) {
 				ID:     1,
 				Name:   "one",
 				Target: "one", IncludeExpression: "true",
+				Status: api.BATCHSTATUS_DEFINED,
 			},
 			repoCreateBatch: migration.Batch{
 				ID:                1,
 				Name:              "one",
 				Target:            "one",
 				IncludeExpression: "true",
+				Status:            api.BATCHSTATUS_DEFINED,
 			},
 
 			assertErr: require.NoError,
@@ -46,6 +48,7 @@ func TestBatchService_Create(t *testing.T) {
 				ID:                -1, // invalid
 				Name:              "one",
 				IncludeExpression: "true",
+				Status:            api.BATCHSTATUS_DEFINED,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -59,6 +62,7 @@ func TestBatchService_Create(t *testing.T) {
 				ID:                1,
 				Name:              "", // empty
 				IncludeExpression: "true",
+				Status:            api.BATCHSTATUS_DEFINED,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -73,6 +77,7 @@ func TestBatchService_Create(t *testing.T) {
 				Name:              "one",
 				Target:            "", // invalid
 				IncludeExpression: "true",
+				Status:            api.BATCHSTATUS_DEFINED,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -85,7 +90,7 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				Status:            -1, // invalid
+				Status:            "", // invalid
 				IncludeExpression: "true",
 			},
 
@@ -114,6 +119,7 @@ func TestBatchService_Create(t *testing.T) {
 				Name:              "one",
 				Target:            "one",
 				IncludeExpression: "true",
+				Status:            api.BATCHSTATUS_DEFINED,
 			},
 			repoCreateErr: boom.Error,
 
@@ -126,6 +132,7 @@ func TestBatchService_Create(t *testing.T) {
 				Name:              "one",
 				Target:            "one",
 				IncludeExpression: "true",
+				Status:            api.BATCHSTATUS_DEFINED,
 			},
 			instanceSvcGetAllByBatchIDErr: boom.Error,
 
@@ -1001,10 +1008,10 @@ func TestBatchService_UpdateStatusByName(t *testing.T) {
 			name:    "success",
 			nameArg: "one",
 			repoUpdateStatusByNameBatch: &migration.Batch{
-				ID:           1,
-				Name:         "one",
-				Status:       api.BATCHSTATUS_QUEUED,
-				StatusString: api.BATCHSTATUS_QUEUED.String(),
+				ID:            1,
+				Name:          "one",
+				Status:        api.BATCHSTATUS_QUEUED,
+				StatusMessage: string(api.BATCHSTATUS_QUEUED),
 			},
 
 			assertErr: require.NoError,
@@ -1033,7 +1040,7 @@ func TestBatchService_UpdateStatusByName(t *testing.T) {
 			batchSvc := migration.NewBatchService(repo, nil, nil)
 
 			// Run test
-			batch, err := batchSvc.UpdateStatusByName(context.Background(), tc.nameArg, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_QUEUED.String())
+			batch, err := batchSvc.UpdateStatusByName(context.Background(), tc.nameArg, api.BATCHSTATUS_QUEUED, string(api.BATCHSTATUS_QUEUED))
 
 			// Assert
 			tc.assertErr(t, err)

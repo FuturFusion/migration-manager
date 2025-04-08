@@ -3,7 +3,6 @@ package api
 import (
 	"crypto/tls"
 	"errors"
-	"fmt"
 	"net"
 	"net/url"
 	"strings"
@@ -14,39 +13,17 @@ const (
 	APIStatus  string = "devel"
 )
 
-type ExternalConnectivityStatus int
+type ExternalConnectivityStatus string
 
 const (
-	EXTERNALCONNECTIVITYSTATUS_UNKNOWN ExternalConnectivityStatus = iota
-	EXTERNALCONNECTIVITYSTATUS_OK
-	EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT
-	EXTERNALCONNECTIVITYSTATUS_TLS_ERROR
-	EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT
-	EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR
-	EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC
+	EXTERNALCONNECTIVITYSTATUS_UNKNOWN                 ExternalConnectivityStatus = "Unknown"
+	EXTERNALCONNECTIVITYSTATUS_OK                      ExternalConnectivityStatus = "OK"
+	EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT          ExternalConnectivityStatus = "Cannot connect"
+	EXTERNALCONNECTIVITYSTATUS_TLS_ERROR               ExternalConnectivityStatus = "TLS error"
+	EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT ExternalConnectivityStatus = "Confirm TLS fingerprint"
+	EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR              ExternalConnectivityStatus = "Authentication error"
+	EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC            ExternalConnectivityStatus = "Waiting for OIDC authentications"
 )
-
-// String implements the stringer interface.
-func (e ExternalConnectivityStatus) String() string {
-	switch e {
-	case EXTERNALCONNECTIVITYSTATUS_UNKNOWN:
-		return "Unknown"
-	case EXTERNALCONNECTIVITYSTATUS_OK:
-		return "OK"
-	case EXTERNALCONNECTIVITYSTATUS_CANNOT_CONNECT:
-		return "Cannot connect"
-	case EXTERNALCONNECTIVITYSTATUS_TLS_ERROR:
-		return "TLS error"
-	case EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT:
-		return "Confirm TLS fingerprint"
-	case EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR:
-		return "Authentication error"
-	case EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC:
-		return "Waiting for OIDC authentications"
-	default:
-		return fmt.Sprintf("ExternalConnectivityStatus(%d)", e)
-	}
-}
 
 func MapExternalConnectivityStatusToStatus(err error) ExternalConnectivityStatus {
 	if err == nil {

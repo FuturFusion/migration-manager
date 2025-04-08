@@ -35,36 +35,36 @@ func TestInstanceService_Create(t *testing.T) {
 		{
 			name: "success",
 			instance: migration.Instance{
-				UUID:                  uuidA,
-				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
-				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-				LastUpdateFromSource:  now,
-				Source:                "one",
-				SecretToken:           uuidB,
+				UUID:                   uuidA,
+				Properties:             api.InstanceProperties{Location: "/inventory/path", Name: "path"},
+				MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
+				LastUpdateFromSource:   now,
+				Source:                 "one",
+				SecretToken:            uuidB,
 			},
 
 			assertErr: require.NoError,
 			wantInstance: migration.Instance{
-				UUID:                  uuidA,
-				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
-				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-				LastUpdateFromSource:  now,
-				Source:                "one",
-				SecretToken:           uuidB,
+				UUID:                   uuidA,
+				Properties:             api.InstanceProperties{Location: "/inventory/path", Name: "path"},
+				MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
+				LastUpdateFromSource:   now,
+				Source:                 "one",
+				SecretToken:            uuidB,
 			},
 		},
 		{
 			name: "error - missing uuid",
 			instance: migration.Instance{
-				UUID:                  uuid.Nil,
-				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
-				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-				LastUpdateFromSource:  now,
-				Source:                "one",
-				SecretToken:           uuidB,
+				UUID:                   uuid.Nil,
+				Properties:             api.InstanceProperties{Location: "/inventory/path", Name: "path"},
+				MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
+				LastUpdateFromSource:   now,
+				Source:                 "one",
+				SecretToken:            uuidB,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -75,13 +75,13 @@ func TestInstanceService_Create(t *testing.T) {
 		{
 			name: "error - missing secret token",
 			instance: migration.Instance{
-				UUID:                  uuidA,
-				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
-				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-				LastUpdateFromSource:  now,
-				Source:                "one",
-				SecretToken:           uuid.Nil,
+				UUID:                   uuidA,
+				Properties:             api.InstanceProperties{Location: "/inventory/path", Name: "path"},
+				MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
+				LastUpdateFromSource:   now,
+				Source:                 "one",
+				SecretToken:            uuid.Nil,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -92,12 +92,12 @@ func TestInstanceService_Create(t *testing.T) {
 		{
 			name: "error - invalid inventory path",
 			instance: migration.Instance{
-				UUID:                  uuidA,
-				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-				LastUpdateFromSource:  now,
-				Source:                "one",
-				SecretToken:           uuidB,
+				UUID:                   uuidA,
+				MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
+				LastUpdateFromSource:   now,
+				Source:                 "one",
+				SecretToken:            uuidB,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -108,13 +108,13 @@ func TestInstanceService_Create(t *testing.T) {
 		{
 			name: "error - source id",
 			instance: migration.Instance{
-				UUID:                  uuid.Nil,
-				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
-				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-				LastUpdateFromSource:  now,
-				Source:                "",
-				SecretToken:           uuidB,
+				UUID:                   uuid.Nil,
+				Properties:             api.InstanceProperties{Location: "/inventory/path", Name: "path"},
+				MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
+				LastUpdateFromSource:   now,
+				Source:                 "",
+				SecretToken:            uuidB,
 			},
 
 			assertErr: require.Error,
@@ -557,7 +557,7 @@ func TestInstanceService_Update(t *testing.T) {
 			instance: migration.Instance{
 				UUID:            uuidA,
 				Properties:      api.InstanceProperties{Location: "/inventory/path", Name: "path"},
-				MigrationStatus: -1,
+				MigrationStatus: "",
 				Source:          "one",
 				SecretToken:     uuidB,
 			},
@@ -666,22 +666,22 @@ func TestInstanceService_UnassignFromBatch(t *testing.T) {
 			name:    "success",
 			uuidArg: uuidA,
 			repoGetByUUIDInstance: migration.Instance{
-				UUID:                  uuidA,
-				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
-				Batch:                 ptr.To("one"),
-				MigrationStatus:       api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(),
-				Source:                "one",
+				UUID:                   uuidA,
+				Properties:             api.InstanceProperties{Location: "/inventory/path", Name: "path"},
+				Batch:                  ptr.To("one"),
+				MigrationStatus:        api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+				MigrationStatusMessage: string(api.MIGRATIONSTATUS_ASSIGNED_BATCH),
+				Source:                 "one",
 			},
 
 			assertErr: require.NoError,
 			wantInstance: migration.Instance{
-				UUID:                  uuidA,
-				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
-				Batch:                 nil,
-				MigrationStatus:       api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH.String(),
-				Source:                "one",
+				UUID:                   uuidA,
+				Properties:             api.InstanceProperties{Location: "/inventory/path", Name: "path"},
+				Batch:                  nil,
+				MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+				MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
+				Source:                 "one",
 			},
 		},
 		{
@@ -694,12 +694,12 @@ func TestInstanceService_UnassignFromBatch(t *testing.T) {
 			name:    "error - repo.Update",
 			uuidArg: uuidA,
 			repoGetByUUIDInstance: migration.Instance{
-				UUID:                  uuidA,
-				Properties:            api.InstanceProperties{Location: "/inventory/path", Name: "path"},
-				Batch:                 ptr.To("one"),
-				MigrationStatus:       api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-				MigrationStatusString: api.MIGRATIONSTATUS_ASSIGNED_BATCH.String(),
-				Source:                "one",
+				UUID:                   uuidA,
+				Properties:             api.InstanceProperties{Location: "/inventory/path", Name: "path"},
+				Batch:                  ptr.To("one"),
+				MigrationStatus:        api.MIGRATIONSTATUS_ASSIGNED_BATCH,
+				MigrationStatusMessage: string(api.MIGRATIONSTATUS_ASSIGNED_BATCH),
+				Source:                 "one",
 			},
 			repoUpdateErr: boom.Error,
 
@@ -773,7 +773,7 @@ func TestInstanceService_UpdateStatusByUUID(t *testing.T) {
 		{
 			name:      "error - invalid status",
 			uuidArg:   uuidA,
-			statusArg: -1, // invalid
+			statusArg: "", // invalid
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				var verr migration.ErrValidation
@@ -783,6 +783,7 @@ func TestInstanceService_UpdateStatusByUUID(t *testing.T) {
 		{
 			name:                      "error - repo",
 			repoUpdateStatusByUUIDErr: boom.Error,
+			statusArg:                 api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
 
 			assertErr: boom.ErrorIs,
 		},
@@ -825,9 +826,9 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 		repoUpdateStatusByUUIDInstance *migration.Instance
 		repoUpdateStatusByUUIDErr      error
 
-		assertErr                 require.ErrorAssertionFunc
-		wantMigrationStatus       api.MigrationStatusType
-		wantMigrationStatusString string
+		assertErr                  require.ErrorAssertionFunc
+		wantMigrationStatus        api.MigrationStatusType
+		wantMigrationStatusMessage string
 	}{
 		{
 			name:                  "success - migration running",
@@ -842,9 +843,9 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 				Source:          "one",
 			},
 
-			assertErr:                 require.NoError,
-			wantMigrationStatus:       api.MIGRATIONSTATUS_CREATING,
-			wantMigrationStatusString: "creating",
+			assertErr:                  require.NoError,
+			wantMigrationStatus:        api.MIGRATIONSTATUS_CREATING,
+			wantMigrationStatusMessage: "creating",
 		},
 		{
 			name:                  "success - migration success background import",
@@ -859,9 +860,9 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 				Source:          "one",
 			},
 
-			assertErr:                 require.NoError,
-			wantMigrationStatus:       api.MIGRATIONSTATUS_IDLE,
-			wantMigrationStatusString: "Idle",
+			assertErr:                  require.NoError,
+			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
+			wantMigrationStatusMessage: "Idle",
 		},
 		{
 			name:                  "success - migration success final import",
@@ -876,9 +877,9 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 				Source:          "one",
 			},
 
-			assertErr:                 require.NoError,
-			wantMigrationStatus:       api.MIGRATIONSTATUS_IMPORT_COMPLETE,
-			wantMigrationStatusString: "Import tasks complete",
+			assertErr:                  require.NoError,
+			wantMigrationStatus:        api.MIGRATIONSTATUS_IMPORT_COMPLETE,
+			wantMigrationStatusMessage: "Import tasks complete",
 		},
 		{
 			name:                  "success - migration failed",
@@ -893,9 +894,9 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 				Source:          "one",
 			},
 
-			assertErr:                 require.NoError,
-			wantMigrationStatus:       api.MIGRATIONSTATUS_ERROR,
-			wantMigrationStatusString: "boom!",
+			assertErr:                  require.NoError,
+			wantMigrationStatus:        api.MIGRATIONSTATUS_ERROR,
+			wantMigrationStatusMessage: "boom!",
 		},
 		{
 			name:                  "error - GetByUUID",
@@ -954,9 +955,9 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 			},
 			repoUpdateStatusByUUIDErr: boom.Error,
 
-			assertErr:                 boom.ErrorIs,
-			wantMigrationStatus:       api.MIGRATIONSTATUS_CREATING,
-			wantMigrationStatusString: "creating",
+			assertErr:                  boom.ErrorIs,
+			wantMigrationStatus:        api.MIGRATIONSTATUS_CREATING,
+			wantMigrationStatusMessage: "creating",
 		},
 	}
 
@@ -969,7 +970,7 @@ func TestInstanceService_ProcessWorkerUpdate(t *testing.T) {
 				},
 				UpdateFunc: func(ctx context.Context, i migration.Instance) error {
 					require.Equal(t, tc.wantMigrationStatus, i.MigrationStatus)
-					require.Equal(t, tc.wantMigrationStatusString, i.MigrationStatusString)
+					require.Equal(t, tc.wantMigrationStatusMessage, i.MigrationStatusMessage)
 					return tc.repoUpdateStatusByUUIDErr
 				},
 				GetOverridesByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error) {
@@ -1053,15 +1054,23 @@ func TestInstanceService_DeleteByUUID(t *testing.T) {
 			},
 		},
 		{
-			name:                         "error - repo.DeleteOverridesByUUID",
-			uuidArg:                      uuidA,
+			name:    "error - repo.DeleteOverridesByUUID",
+			uuidArg: uuidA,
+			repoGetByUUIDInstance: migration.Instance{
+				UUID:            uuidA,
+				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+			},
 			repoDeleteOverridesByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:                "error - repo.DeleteByUUID",
-			uuidArg:             uuidA,
+			name:    "error - repo.DeleteByUUID",
+			uuidArg: uuidA,
+			repoGetByUUIDInstance: migration.Instance{
+				UUID:            uuidA,
+				MigrationStatus: api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
+			},
 			repoDeleteByUUIDErr: boom.Error,
 
 			assertErr: boom.ErrorIs,

@@ -7,11 +7,11 @@ import (
 )
 
 type QueueEntry struct {
-	InstanceUUID          uuid.UUID
-	InstanceName          string
-	MigrationStatus       api.MigrationStatusType
-	MigrationStatusString string
-	BatchName             string
+	InstanceUUID           uuid.UUID
+	InstanceName           string
+	MigrationStatus        api.MigrationStatusType
+	MigrationStatusMessage string
+	BatchName              string
 }
 
 type QueueEntries []QueueEntry

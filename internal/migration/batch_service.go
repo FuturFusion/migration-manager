@@ -96,7 +96,7 @@ func (s batchService) Update(ctx context.Context, batch *Batch) error {
 	})
 }
 
-func (s batchService) UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusString string) (*Batch, error) {
+func (s batchService) UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusMessage string) (*Batch, error) {
 	var batch *Batch
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -106,7 +106,7 @@ func (s batchService) UpdateStatusByName(ctx context.Context, name string, statu
 		}
 
 		batch.Status = status
-		batch.StatusString = statusString
+		batch.StatusMessage = statusMessage
 
 		return s.repo.Update(ctx, *batch)
 	})
@@ -191,7 +191,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 			if isMatch && instance.CanBeModified() {
 				instance.Batch = &batch.Name
 				instance.MigrationStatus = api.MIGRATIONSTATUS_ASSIGNED_BATCH
-				instance.MigrationStatusString = api.MIGRATIONSTATUS_ASSIGNED_BATCH.String()
+				instance.MigrationStatusMessage = string(api.MIGRATIONSTATUS_ASSIGNED_BATCH)
 				err = s.instance.Update(ctx, &instance)
 				if err != nil {
 					return err
@@ -267,7 +267,7 @@ func (s batchService) StartBatchByName(ctx context.Context, name string) (err er
 		}
 
 		batch.Status = api.BATCHSTATUS_QUEUED
-		batch.StatusString = batch.Status.String()
+		batch.StatusMessage = string(batch.Status)
 		return s.repo.Update(ctx, *batch)
 	})
 }
@@ -296,7 +296,7 @@ func (s batchService) StopBatchByName(ctx context.Context, name string) (err err
 
 		// Move batch status to "stopped".
 		batch.Status = api.BATCHSTATUS_STOPPED
-		batch.StatusString = batch.Status.String()
+		batch.StatusMessage = string(batch.Status)
 		return s.repo.Update(ctx, *batch)
 	})
 }

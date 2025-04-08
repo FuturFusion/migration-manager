@@ -41,7 +41,7 @@ func (s queueService) GetAll(ctx context.Context) (QueueEntries, error) {
 
 		// For each batch that has entered the "queued" state or later, add its instances.
 		for _, batch := range batches {
-			if batch.Status == api.BATCHSTATUS_UNKNOWN || batch.Status == api.BATCHSTATUS_DEFINED {
+			if batch.Status == api.BATCHSTATUS_DEFINED {
 				continue
 			}
 
@@ -52,11 +52,11 @@ func (s queueService) GetAll(ctx context.Context) (QueueEntries, error) {
 
 			for _, i := range instances {
 				queueItems = append(queueItems, QueueEntry{
-					InstanceUUID:          i.UUID,
-					InstanceName:          i.GetName(),
-					MigrationStatus:       i.MigrationStatus,
-					MigrationStatusString: i.MigrationStatusString,
-					BatchName:             batch.Name,
+					InstanceUUID:           i.UUID,
+					InstanceName:           i.GetName(),
+					MigrationStatus:        i.MigrationStatus,
+					MigrationStatusMessage: i.MigrationStatusMessage,
+					BatchName:              batch.Name,
 				})
 			}
 		}
@@ -92,11 +92,11 @@ func (s queueService) GetByInstanceID(ctx context.Context, id uuid.UUID) (QueueE
 		}
 
 		queueItem = QueueEntry{
-			InstanceUUID:          instance.UUID,
-			InstanceName:          instance.GetName(),
-			MigrationStatus:       instance.MigrationStatus,
-			MigrationStatusString: instance.MigrationStatusString,
-			BatchName:             batch.Name,
+			InstanceUUID:           instance.UUID,
+			InstanceName:           instance.GetName(),
+			MigrationStatus:        instance.MigrationStatus,
+			MigrationStatusMessage: instance.MigrationStatusMessage,
+			BatchName:              batch.Name,
 		}
 
 		return nil
@@ -127,7 +127,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 
 		// If the instance is already doing something, don't start something else.
 		if instance.MigrationStatus != api.MIGRATIONSTATUS_IDLE {
-			return fmt.Errorf("Instance '%s' isn't idle: %s (%s): %w", instance.Properties.Location, instance.MigrationStatus.String(), instance.MigrationStatusString, ErrOperationNotPermitted)
+			return fmt.Errorf("Instance '%s' isn't idle: %s (%s): %w", instance.Properties.Location, instance.MigrationStatus, instance.MigrationStatusMessage, ErrOperationNotPermitted)
 		}
 
 		// Fetch the source for the instance.
@@ -154,26 +154,26 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 
 		// Determine what action, if any, the worker should start.
 		newStatus := instance.MigrationStatus
-		newStatusString := instance.MigrationStatusString
+		newStatusMessage := instance.MigrationStatusMessage
 		switch {
 		case instance.NeedsDiskImport && instance.Properties.BackgroundImport:
 			// If we can do a background disk sync, kick it off.
 			workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
 
 			newStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
-			newStatusString = api.MIGRATIONSTATUS_BACKGROUND_IMPORT.String()
+			newStatusMessage = string(api.MIGRATIONSTATUS_BACKGROUND_IMPORT)
 
 		case batch.MigrationWindowStart.IsZero() || batch.MigrationWindowStart.Before(time.Now().UTC()):
 			// If a migration window has not been defined, or it has and we have passed the start time, begin the final migration.
 			workerCommand.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
 
 			newStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
-			newStatusString = api.MIGRATIONSTATUS_FINAL_IMPORT.String()
+			newStatusMessage = string(api.MIGRATIONSTATUS_FINAL_IMPORT)
 		}
 
-		if newStatus != instance.MigrationStatus || newStatusString != instance.MigrationStatusString {
+		if newStatus != instance.MigrationStatus || newStatusMessage != instance.MigrationStatusMessage {
 			// Update instance in the database.
-			_, err = s.instance.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusString, instance.NeedsDiskImport)
+			_, err = s.instance.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, instance.NeedsDiskImport)
 			if err != nil {
 				return fmt.Errorf("Failed updating instance '%s': %w", instance.UUID, err)
 			}

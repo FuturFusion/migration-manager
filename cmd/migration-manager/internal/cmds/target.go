@@ -7,7 +7,6 @@ import (
 	"os"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -174,19 +173,14 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
-		if err != nil {
-			return err
-		}
-
-		connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+		connectivityStatus := api.ExternalConnectivityStatus(metadata["ConnectivityStatus"])
 
 		if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
 			return fmt.Errorf("Successfully added new target %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the target to correct the issue.", t.Name, metadata["certFingerprint"])
 		} else if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
 			return fmt.Errorf("Successfully added new target %q; please visit %s to complete OIDC authorization.", t.Name, metadata["OIDCURL"])
 		} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
-			return fmt.Errorf("Successfully added new target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.", t.Name, connectivityStatus.String())
+			return fmt.Errorf("Successfully added new target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.", t.Name, connectivityStatus)
 		}
 
 		cmd.Printf("Successfully added new target %q.\n", t.Name)
@@ -257,7 +251,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 				authType = "TLS"
 			}
 
-			data = append(data, []string{t.Name, string(t.TargetType), incusProperties.Endpoint, incusProperties.ConnectivityStatus.String(), authType, incusProperties.TrustedServerCertificateFingerprint})
+			data = append(data, []string{t.Name, string(t.TargetType), incusProperties.Endpoint, string(incusProperties.ConnectivityStatus), authType, incusProperties.TrustedServerCertificateFingerprint})
 		default:
 			return fmt.Errorf("Unsupported target type %s", t.TargetType)
 		}
@@ -445,19 +439,14 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	connectivityStatusInt, err := strconv.Atoi(metadata["ConnectivityStatus"])
-	if err != nil {
-		return err
-	}
-
-	connectivityStatus := api.ExternalConnectivityStatus(connectivityStatusInt)
+	connectivityStatus := api.ExternalConnectivityStatus(metadata["ConnectivityStatus"])
 
 	if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_TLS_CONFIRM_FINGERPRINT {
 		return fmt.Errorf("Successfully updated target %q, but received an untrusted TLS server certificate with fingerprint %s. Please update the target to correct the issue.", newTargetName, metadata["certFingerprint"])
 	} else if connectivityStatus == api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC {
 		return fmt.Errorf("Successfully updated target %q; please visit %s to complete OIDC authorization.", newTargetName, metadata["OIDCURL"])
 	} else if connectivityStatus != api.EXTERNALCONNECTIVITYSTATUS_OK {
-		return fmt.Errorf("Successfully updated target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.", newTargetName, connectivityStatus.String())
+		return fmt.Errorf("Successfully updated target %q, but connectivity check reported an issue: %s. Please update the target to correct the issue.", newTargetName, connectivityStatus)
 	}
 
 	cmd.Printf("Successfully updated target %q.\n", newTargetName)

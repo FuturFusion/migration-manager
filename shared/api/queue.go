@@ -22,7 +22,7 @@ type QueueEntry struct {
 
 	// A free-form string to provide additional information about the migration status
 	// Example: "Migration 25% complete"
-	MigrationStatusString string `json:"migration_status_string" yaml:"migration_status_string"`
+	MigrationStatusMessage string `json:"migration_status_message" yaml:"migration_status_message"`
 
 	// A human-friendly name for the batch
 	// Example: MyBatch

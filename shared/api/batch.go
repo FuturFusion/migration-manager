@@ -5,38 +5,31 @@ import (
 	"time"
 )
 
-type BatchStatusType int
+type BatchStatusType string
 
 const (
-	BATCHSTATUS_UNKNOWN BatchStatusType = iota
-	BATCHSTATUS_DEFINED
-	BATCHSTATUS_QUEUED
-	BATCHSTATUS_RUNNING
-	BATCHSTATUS_STOPPED
-	BATCHSTATUS_FINISHED
-	BATCHSTATUS_ERROR
+	BATCHSTATUS_DEFINED  BatchStatusType = "Defined"
+	BATCHSTATUS_QUEUED   BatchStatusType = "Queued"
+	BATCHSTATUS_RUNNING  BatchStatusType = "Running"
+	BATCHSTATUS_STOPPED  BatchStatusType = "Stopped"
+	BATCHSTATUS_FINISHED BatchStatusType = "Finished"
+	BATCHSTATUS_ERROR    BatchStatusType = "Error"
 )
 
-// String implements the stringer interface.
-func (b BatchStatusType) String() string {
+// Validate ensures the BatchStatusType is valid.
+func (b BatchStatusType) Validate() error {
 	switch b {
-	case BATCHSTATUS_UNKNOWN:
-		return "Unknown"
 	case BATCHSTATUS_DEFINED:
-		return "Defined"
-	case BATCHSTATUS_QUEUED:
-		return "Queued"
-	case BATCHSTATUS_RUNNING:
-		return "Running"
-	case BATCHSTATUS_STOPPED:
-		return "Stopped"
-	case BATCHSTATUS_FINISHED:
-		return "Finished"
 	case BATCHSTATUS_ERROR:
-		return "Error"
+	case BATCHSTATUS_FINISHED:
+	case BATCHSTATUS_QUEUED:
+	case BATCHSTATUS_RUNNING:
+	case BATCHSTATUS_STOPPED:
 	default:
-		return fmt.Sprintf("BatchStatusType(%d)", b)
+		return fmt.Errorf("%s is not a valid batch status", b)
 	}
+
+	return nil
 }
 
 // Batch defines a collection of Instances to be migrated, possibly during a specific window of time.
@@ -61,7 +54,7 @@ type Batch struct {
 
 	// A free-form string to provide additional information about the status
 	// Example: "4 of 5 instances migrated"
-	StatusString string `json:"status_string" yaml:"status_string"`
+	StatusMessage string `json:"status_message" yaml:"status_message"`
 
 	// The Incus storage pool that this batch should use for creating VMs and mounting ISO images
 	// Example: local
