@@ -1,12 +1,4 @@
 export enum SourceType {
-  Unknown,
-  Common,
-  VMware,
+  Common = "common",
+  VMware = "vmware",
 }
-
-export const SourceTypeString: Record<SourceType, string> = {
-  [SourceType.Unknown]: "Unknown",
-  [SourceType.Common]: "Common",
-  [SourceType.VMware]: "VMware"
-};
-

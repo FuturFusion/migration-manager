@@ -5,7 +5,7 @@ import { useFormik } from 'formik';
 import LoadingButton from 'components/LoadingButton';
 import TLSFingerprintConfirmModal from 'components/TLSFingerprintConfirmModal';
 import { Target } from 'types/target';
-import { TargetType, TargetTypeString } from 'util/target';
+import { TargetType } from 'util/target';
 
 interface Props {
   target?: Target;
@@ -88,7 +88,7 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
    });
 
   const targetTypes = [{
-    name: TargetTypeString[TargetType.Incus],
+    name: TargetType.Incus,
     value: TargetType.Incus,
   }];
 

@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router';
 import { fetchTarget } from 'api/targets';
-import { TargetType, TargetTypeString } from 'util/target';
 
 const TargetOverview = () => {
   const { name } = useParams();
@@ -34,7 +33,7 @@ const TargetOverview = () => {
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Target type</div>
-        <div className="col-10 detail-table-cell"> { TargetTypeString[target?.target_type as TargetType] }</div>
+        <div className="col-10 detail-table-cell"> { target?.target_type }</div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Endpoint</div>

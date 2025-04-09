@@ -30,8 +30,8 @@ const Queue = () => {
         sortKey: item.migration_status,
       },
       {
-        content: item.migration_status_string,
-        sortKey: item.migration_status_string,
+        content: item.migration_status_message,
+        sortKey: item.migration_status_message,
       }];
   });
 

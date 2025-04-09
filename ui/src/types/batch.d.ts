@@ -4,8 +4,8 @@ export interface Batch {
   migration_window_end: Date;
   migration_window_start: Date;
   name: string;
-  status: number;
-  status_string: string;
+  status: string;
+  status_message: string;
   storage_pool: string;
   target: string;
   target_project: string;

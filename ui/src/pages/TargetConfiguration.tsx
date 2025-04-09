@@ -3,10 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import { fetchTarget, updateTarget } from 'api/targets';
 import TargetForm from 'components/TargetForm';
 import { useNotification } from 'context/notification';
-import {
-  ExternalConnectivityStatus,
-  ExternalConnectivityStatusString,
-} from 'util/response';
+import { ExternalConnectivityStatus } from 'util/response';
 
 const TargetConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -17,8 +14,7 @@ const TargetConfiguration = () => {
     return updateTarget(name, JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
-          const connStatus = parseInt(response.metadata?.["ConnectivityStatus"] || "0", 10);
-          const connStatusString = ExternalConnectivityStatusString[connStatus as ExternalConnectivityStatus];
+          const connStatus = response.metadata?.["ConnectivityStatus"];
 
           if (connStatus === ExternalConnectivityStatus.TLSConfirmFingerprint) {
             const certFingerprint = response.metadata?.["certFingerprint"];
@@ -31,7 +27,7 @@ const TargetConfiguration = () => {
             notify.info(`Successfully updated new target ${values.name}. Please go to <a href="${oidcURL}" target="_blank" rel="noopener noreferrer" style="color: white">${oidcURL}</a> if your browser didn't open an authentication window for you.`);
             window.open(oidcURL, "_blank", "noopener,noreferrer");
           } else if (connStatus !== ExternalConnectivityStatus.OK) {
-            notify.info(`Successfully updated target ${values.name}, but connectivity check reported an issue: ${connStatusString}. Please update the source to correct the issue.`);
+            notify.info(`Successfully updated target ${values.name}, but connectivity check reported an issue: ${connStatus}. Please update the source to correct the issue.`);
           } else {
             notify.success(`Target ${values.name} updated`);
           }

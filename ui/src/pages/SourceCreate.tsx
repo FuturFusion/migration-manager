@@ -2,10 +2,7 @@ import { useNavigate } from 'react-router';
 import { useNotification } from 'context/notification';
 import { createSource } from 'api/sources';
 import SourceForm from 'components/SourceForm';
-import {
-  ExternalConnectivityStatus,
-  ExternalConnectivityStatusString,
-} from 'util/response';
+import { ExternalConnectivityStatus } from 'util/response';
 
 const SourceCreate = () => {
   const { notify } = useNotification();
@@ -15,8 +12,7 @@ const SourceCreate = () => {
     return createSource(JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
-          const connStatus = parseInt(response.metadata?.["ConnectivityStatus"] || "0", 10);
-          const connStatusString = ExternalConnectivityStatusString[connStatus as ExternalConnectivityStatus];
+          const connStatus = response.metadata?.["ConnectivityStatus"];
 
           if (connStatus === ExternalConnectivityStatus.TLSConfirmFingerprint) {
             const certFingerprint = response.metadata?.["certFingerprint"];
@@ -25,7 +21,7 @@ const SourceCreate = () => {
             window.location.reload();
             return;
           } else if (connStatus !== ExternalConnectivityStatus.OK) {
-            notify.info(`Successfully added new source ${values.name}, but connectivity check reported an issue: ${connStatusString}. Please update the source to correct the issue.`);
+            notify.info(`Successfully added new source ${values.name}, but connectivity check reported an issue: ${connStatus}. Please update the source to correct the issue.`);
           } else {
             notify.success(`Source ${values.name} created`);
           }

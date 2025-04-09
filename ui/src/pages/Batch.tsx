@@ -27,8 +27,8 @@ const Batch = () => {
         sortKey: item.name,
       },
       {
-        content: item.status_string,
-        sortKey: item.status_string,
+        content: item.status_message,
+        sortKey: item.status_message,
       },
       {
         content: item.target,

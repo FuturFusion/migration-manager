@@ -5,7 +5,7 @@ import { useFormik } from 'formik';
 import LoadingButton from 'components/LoadingButton';
 import TLSFingerprintConfirmModal from 'components/TLSFingerprintConfirmModal';
 import { Source } from 'types/source';
-import { SourceType, SourceTypeString } from 'util/source';
+import { SourceType } from 'util/source';
 
 interface Props {
   source?: Source;
@@ -85,7 +85,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
    });
 
   const sourceTypes = [{
-    name: SourceTypeString[SourceType.VMware],
+    name: SourceType.VMware,
     value: SourceType.VMware,
   }];
 
