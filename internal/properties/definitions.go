@@ -143,7 +143,7 @@ func (p RawPropertySet[T]) GetAll() map[Name]PropertyInfo {
 func (p RawPropertySet[T]) Get(n Name) (PropertyInfo, error) {
 	info, ok := p.props[n]
 	if !ok {
-		return PropertyInfo{}, fmt.Errorf("Property %q is not supported by %q version %q", n, p.propType, p.version)
+		return PropertyInfo{}, fmt.Errorf("Property %q is not supported by %q version %q", n.String(), p.propType, p.version)
 	}
 
 	return info, nil
@@ -152,12 +152,12 @@ func (p RawPropertySet[T]) Get(n Name) (PropertyInfo, error) {
 // GetSubProperties returns the RawPropertySet for the sub-properties of the named property, if supported by this target or source.
 func (p RawPropertySet[T]) GetSubProperties(n Name) (RawPropertySet[T], error) {
 	if !HasSubProperties(n) {
-		return RawPropertySet[T]{}, fmt.Errorf("Property %q does not support sub-properties", n)
+		return RawPropertySet[T]{}, fmt.Errorf("Property %q does not support sub-properties", n.String())
 	}
 
 	subProps, ok := p.subProps[n]
 	if !ok {
-		return RawPropertySet[T]{}, fmt.Errorf("Sub-property %q is not supported by %q version %q", n, p.propType, p.version)
+		return RawPropertySet[T]{}, fmt.Errorf("Sub-property %q is not supported by %q version %q", n.String(), p.propType, p.version)
 	}
 
 	return subProps, nil
@@ -172,7 +172,7 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 		case InstanceName:
 			strVal, ok := val.(string)
 			if !ok {
-				return fmt.Errorf("Cannot convert %q property %v to string", key, val)
+				return fmt.Errorf("Cannot convert %q property %v to string", key.String(), val)
 			}
 
 			// An instance name can only contain alphanumeric and hyphen characters.
@@ -180,19 +180,19 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 			parsedVal := nonalpha.ReplaceAllString(strVal, "")
 
 			if strVal != parsedVal {
-				return fmt.Errorf("%q property %q must only contain alphanumeric or hyphen characters", key, strVal)
+				return fmt.Errorf("%q property %q must only contain alphanumeric or hyphen characters", key.String(), strVal)
 			}
 
 		case InstanceUUID:
 			_, ok := val.(uuid.UUID)
 			if !ok {
-				return fmt.Errorf("Cannot convert %q property %v to uuid", key, val)
+				return fmt.Errorf("Cannot convert %q property %v to uuid", key.String(), val)
 			}
 
 		case InstanceArchitecture:
 			str, ok := val.(string)
 			if !ok {
-				return fmt.Errorf("Cannot convert %q property %v to string", key, val)
+				return fmt.Errorf("Cannot convert %q property %v to string", key.String(), val)
 			}
 
 			_, err := osarch.ArchitectureId(str)
@@ -203,7 +203,7 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 		case InstanceDiskCapacity:
 			flt, ok := val.(int64)
 			if !ok {
-				return fmt.Errorf("Cannot convert %q property %v to number", key, val)
+				return fmt.Errorf("Cannot convert %q property %v to number", key.String(), val)
 			}
 
 			if flt <= 0 {
@@ -221,11 +221,11 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 		case InstanceSnapshotName:
 			str, ok := val.(string)
 			if !ok {
-				return fmt.Errorf("Cannot convert %q property %v to string", key, val)
+				return fmt.Errorf("Cannot convert %q property %v to string", key.String(), val)
 			}
 
 			if str == "" {
-				return fmt.Errorf("Property %q value is empty", key)
+				return fmt.Errorf("Property %q value is empty", key.String())
 			}
 		}
 
@@ -244,7 +244,7 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 
 			p.subPropValues[key] = append(p.subPropValues[key], t.propValues)
 		default:
-			return fmt.Errorf("Expected a map of properties for the device %q. Got %v", key, val)
+			return fmt.Errorf("Expected a map of properties for the device %q. Got %v", key.String(), val)
 		}
 	} else {
 		err := validateProperty(key, val)

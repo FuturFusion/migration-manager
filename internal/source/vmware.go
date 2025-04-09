@@ -480,7 +480,7 @@ func parseValue(propName properties.Name, value any) (any, error) {
 	case properties.InstanceName:
 		strVal, ok := value.(string)
 		if !ok {
-			return nil, fmt.Errorf("%q value %v must be a string", propName, value)
+			return nil, fmt.Errorf("%q value %v must be a string", propName.String(), value)
 		}
 
 		nonalpha := regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
@@ -488,7 +488,7 @@ func parseValue(propName properties.Name, value any) (any, error) {
 	case properties.InstanceOS:
 		strVal, ok := value.(string)
 		if !ok {
-			return nil, fmt.Errorf("%q value %v must be a string", propName, value)
+			return nil, fmt.Errorf("%q value %v must be a string", propName.String(), value)
 		}
 
 		strVal, _ = strings.CutSuffix(strVal, "Guest")
@@ -497,35 +497,35 @@ func parseValue(propName properties.Name, value any) (any, error) {
 	case properties.InstanceLegacyBoot:
 		strVal, ok := value.(string)
 		if !ok {
-			return nil, fmt.Errorf("%q value %v must be a string", propName, value)
+			return nil, fmt.Errorf("%q value %v must be a string", propName.String(), value)
 		}
 
 		return strVal == string(types.GuestOsDescriptorFirmwareTypeBios), nil
 	case properties.InstanceMemory:
 		intVal, ok := value.(float64)
 		if !ok {
-			return nil, fmt.Errorf("%q value %v must be a number", propName, value)
+			return nil, fmt.Errorf("%q value %v must be a number", propName.String(), value)
 		}
 
 		return int64(intVal) * 1024 * 1024, nil
 	case properties.InstanceDiskCapacity:
 		intVal, ok := value.(float64)
 		if !ok {
-			return nil, fmt.Errorf("%q value %v must be a number", propName, value)
+			return nil, fmt.Errorf("%q value %v must be a number", propName.String(), value)
 		}
 
 		return int64(intVal), nil
 	case properties.InstanceDiskShared:
 		strVal, ok := value.(string)
 		if !ok {
-			return nil, fmt.Errorf("%q value %v must be a string", propName, value)
+			return nil, fmt.Errorf("%q value %v must be a string", propName.String(), value)
 		}
 
 		return strVal == string(types.VirtualDiskSharingSharingMultiWriter), nil
 	case properties.InstanceUUID:
 		strVal, ok := value.(string)
 		if !ok {
-			return nil, fmt.Errorf("%q value %v must be a string", propName, value)
+			return nil, fmt.Errorf("%q value %v must be a string", propName.String(), value)
 		}
 
 		return uuid.Parse(strVal)

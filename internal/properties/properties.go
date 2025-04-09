@@ -113,18 +113,18 @@ func InitDefinitions() error {
 		return err
 	}
 
-	validateDefs := func(name Name, def definition, validProperties []Name, isSubProperty bool) error {
+	validateDefs := func(name Name, def mapping, validProperties []Name, isSubProperty bool) error {
 		if !slices.Contains(validProperties, name) {
-			return fmt.Errorf("Unsupported property name %q", name)
+			return fmt.Errorf("Unsupported property name %q", name.String())
 		}
 
 		if len(def.SourceDefinitions) == 0 && len(def.TargetDefinitions) == 0 {
-			return fmt.Errorf("Neither source nor target defintions defined for the property %q", name)
+			return fmt.Errorf("Neither source nor target defintions defined for the property %q", name.String())
 		}
 
 		for tgt, verMap := range def.TargetDefinitions {
 			if len(verMap) == 0 {
-				return fmt.Errorf("Target %q defined with no version for property %q", tgt, name)
+				return fmt.Errorf("Target %q defined with no version for property %q", tgt, name.String())
 			}
 
 			for version, info := range verMap {
@@ -140,21 +140,21 @@ func InitDefinitions() error {
 					}
 
 					if !slices.Contains(validTypes, info.Type) {
-						return fmt.Errorf("Unexpected property type %q for property %q for target %q in version %q", info.Type, name, tgt, version)
+						return fmt.Errorf("Unexpected property type %q for property %q for target %q in version %q", info.Type, name.String(), tgt, version)
 					}
 				} else if info.Type != "" {
-					return fmt.Errorf("Sub-property %q type is set for target %q in version %q", name, tgt, version)
+					return fmt.Errorf("Sub-property %q type is set for target %q in version %q", name.String(), tgt, version)
 				}
 
 				if info.Key == "" && !HasSubProperties(name) {
-					return fmt.Errorf("Property %q key unset for target %q in version %q", name, tgt, version)
+					return fmt.Errorf("Property %q key unset for target %q in version %q", name.String(), tgt, version)
 				}
 			}
 		}
 
 		for src, verMap := range def.SourceDefinitions {
 			if len(verMap) == 0 {
-				return fmt.Errorf("Source %q defined with no version for property %q", src, name)
+				return fmt.Errorf("Source %q defined with no version for property %q", src, name.String())
 			}
 
 			for version, info := range verMap {
@@ -170,14 +170,14 @@ func InitDefinitions() error {
 					}
 
 					if !slices.Contains(validTypes, info.Type) {
-						return fmt.Errorf("Unexpected property type %q for property %q for source %q in version %q", info.Type, name, src, version)
+						return fmt.Errorf("Unexpected property type %q for property %q for source %q in version %q", info.Type, name.String(), src, version)
 					}
 				} else if info.Type != "" {
-					return fmt.Errorf("Sub-property %q type is set for source %q in version %q", name, src, version)
+					return fmt.Errorf("Sub-property %q type is set for source %q in version %q", name.String(), src, version)
 				}
 
 				if info.Key == "" {
-					return fmt.Errorf("Property %q key unset for source %q in version %q", name, src, version)
+					return fmt.Errorf("Property %q key unset for source %q in version %q", name.String(), src, version)
 				}
 			}
 		}
