@@ -139,11 +139,11 @@ func InitDefinitions() error {
 
 		var subProperties []Name
 		switch def.Name {
-		case InstanceDisk:
+		case InstanceDisks:
 			subProperties = allInstanceDiskProperties()
-		case InstanceNIC:
+		case InstanceNICs:
 			subProperties = allInstanceNICProperties()
-		case InstanceSnapshot:
+		case InstanceSnapshots:
 			subProperties = allInstanceSnapshotProperties()
 		}
 

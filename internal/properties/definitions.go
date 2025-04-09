@@ -35,7 +35,7 @@ type RawPropertySet[T api.SourceType | api.TargetType] struct {
 
 // HasSubProperties returns whether this is a property with sub-properties.
 func HasSubProperties(name Name) bool {
-	return slices.Contains([]Name{InstanceDisk, InstanceNIC, InstanceSnapshot}, name)
+	return slices.Contains([]Name{InstanceDisks, InstanceNICs, InstanceSnapshots}, name)
 }
 
 // newRawPropertySet instantiates a new RawPropertySet.

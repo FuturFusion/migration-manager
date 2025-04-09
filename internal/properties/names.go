@@ -4,14 +4,14 @@ package properties
 type Name string
 
 const (
-	// InstanceSnapshot is the property name for instance snapshots.
-	InstanceSnapshot Name = "snapshot"
+	// InstanceSnapshots is the property name for instance snapshots.
+	InstanceSnapshots Name = "snapshots"
 
-	// InstanceDisk is the property name for instance disks.
-	InstanceDisk Name = "disk"
+	// InstanceDisks is the property name for instance disks.
+	InstanceDisks Name = "disks"
 
-	// InstanceNIC is the property name for instance nics.
-	InstanceNIC Name = "nic"
+	// InstanceNICs is the property name for instance nics.
+	InstanceNICs Name = "nics"
 
 	// InstanceUUID is the property name for instance UUID.
 	InstanceUUID Name = "uuid"
@@ -76,9 +76,9 @@ const (
 
 func allInstanceProperties() []Name {
 	return []Name{
-		InstanceSnapshot,
-		InstanceDisk,
-		InstanceNIC,
+		InstanceSnapshots,
+		InstanceDisks,
+		InstanceNICs,
 		InstanceUUID,
 		InstanceName,
 		InstanceLocation,
