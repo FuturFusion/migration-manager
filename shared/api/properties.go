@@ -19,9 +19,9 @@ type InstanceProperties struct {
 	BackgroundImport bool      `json:"background_import" yaml:"background_import"`
 	Architecture     string    `json:"architecture"      yaml:"architecture"`
 
-	NICs      []InstancePropertiesNIC      `json:"nic"      yaml:"nic"`
-	Disks     []InstancePropertiesDisk     `json:"disk"     yaml:"disk"`
-	Snapshots []InstancePropertiesSnapshot `json:"snapshot" yaml:"snapshot"`
+	NICs      []InstancePropertiesNIC      `json:"nics"      yaml:"nics"`
+	Disks     []InstancePropertiesDisk     `json:"disks"     yaml:"disks"`
+	Snapshots []InstancePropertiesSnapshot `json:"snapshots" yaml:"snapshots"`
 }
 
 // InstancePropertiesConfigurable are the configurable properties of an instance.
