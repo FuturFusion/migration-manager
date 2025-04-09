@@ -21,7 +21,7 @@ type cmdDaemon struct {
 
 	// Common options
 	flagGroup          string
-	flagServerIP       string
+	flagServerAddr     string
 	flagServerPort     int
 	flagWorkerEndpoint string
 }
@@ -37,7 +37,7 @@ func (c *cmdDaemon) Command() *cobra.Command {
 `
 	cmd.RunE = c.Run
 	cmd.Flags().StringVar(&c.flagGroup, "group", "", "The group of users that will be allowed to talk to the migration manager")
-	cmd.Flags().StringVar(&c.flagServerIP, "server-ip", "", "IP address to bind to")
+	cmd.Flags().StringVar(&c.flagServerAddr, "server-addr", "", "Address to bind to")
 	cmd.Flags().IntVar(&c.flagServerPort, "server-port", ports.HTTPSDefaultPort, "IP port to bind to")
 	cmd.Flags().StringVar(&c.flagWorkerEndpoint, "worker-endpoint", "", "The endpoint that workers should connect to; defaults to `https://<server-ip>:<server-port>`")
 
@@ -57,7 +57,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	cfg.Group = c.flagGroup
-	cfg.RestServerIPAddr = c.flagServerIP
+	cfg.RestServerIPAddr = c.flagServerAddr
 	cfg.RestServerPort = c.flagServerPort
 	cfg.RestWorkerEndpoint = c.flagWorkerEndpoint
 
