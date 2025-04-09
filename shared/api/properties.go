@@ -33,16 +33,16 @@ type InstancePropertiesConfigurable struct {
 
 // InstancePropertiesNIC are all properties supported by instance NICs.
 type InstancePropertiesNIC struct {
-	ID              string `json:"network_id"       yaml:"network_id"`
+	ID              string `json:"id"               yaml:"id"`
 	HardwareAddress string `json:"hardware_address" yaml:"hardware_address"`
 	Network         string `json:"network"          yaml:"network"`
 }
 
 // InstancePropertiesDisk are all properties supported by instance disks.
 type InstancePropertiesDisk struct {
-	Capacity int64  `json:"capacity"  yaml:"capacity"`
-	Name     string `json:"name"      yaml:"name"`
-	Shared   bool   `json:"shared"    yaml:"shared"`
+	Capacity int64  `json:"capacity" yaml:"capacity"`
+	Name     string `json:"name"     yaml:"name"`
+	Shared   bool   `json:"shared"   yaml:"shared"`
 }
 
 // InstancePropertiesSnapshot are all properties supported by snapshots.

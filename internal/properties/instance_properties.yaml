@@ -167,7 +167,7 @@
           6.0:
             type: disk
   config:
-      disk_name:
+      name:
           source:
               vmware:
                   8.0:
@@ -221,7 +221,7 @@
               vmware:
                   8.0:
                     key: backing.deviceName
-      network_id:
+      id:
           source:
               vmware:
                   8.0:
@@ -236,7 +236,7 @@
               type: property_snapshot
               key: snapshot.rootSnapshotList
   config:
-      snapshot_name:
+      name:
           source:
               vmware:
                   8.0:
