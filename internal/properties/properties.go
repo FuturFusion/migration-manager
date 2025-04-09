@@ -31,20 +31,78 @@ type PropertyInfo struct {
 
 // definition represents a property definition from the schema file.
 type definition struct {
+	mapping
+
 	// Name is the property name.
 	Name Name `json:"name" yaml:"name"`
 
 	// Description is a description of the property.
 	Description string `json:"description" yaml:"description"`
 
+	// SubProperties is the sub-properties of this property.
+	SubProperties map[Name]mapping `json:"config" yaml:"config"`
+}
+
+// mapping is a set of source and target mappings for a property.
+type mapping struct {
 	// SourceDefinitions are a set of property definitions for sources.
 	SourceDefinitions sourcePropertyInfo `json:"source" yaml:"source"`
 
 	// TargetDefinitions are a set of property definitions for targets.
 	TargetDefinitions targetPropertyInfo `json:"target" yaml:"target"`
+}
 
-	// SubProperties is the sub-properties of this property.
-	SubProperties map[Name]definition `json:"config" yaml:"config"`
+func (d *definition) UnmarshalYAML(unmarshal func(any) error) error {
+	type rawDefinition struct {
+		Name              string             `json:"name" yaml:"name"`
+		Description       string             `json:"description" yaml:"description"`
+		SourceDefinitions sourcePropertyInfo `json:"source" yaml:"source"`
+		TargetDefinitions targetPropertyInfo `json:"target" yaml:"target"`
+		SubProperties     map[string]mapping `json:"config" yaml:"config"`
+	}
+
+	var raw rawDefinition
+	err := unmarshal(&raw)
+	if err != nil {
+		return err
+	}
+
+	parsedName, err := ParseInstanceProperty(raw.Name)
+	if err != nil {
+		return err
+	}
+
+	*d = definition{
+		Name:        parsedName,
+		Description: raw.Description,
+		mapping: mapping{
+			SourceDefinitions: raw.SourceDefinitions,
+			TargetDefinitions: raw.TargetDefinitions,
+		},
+		SubProperties: map[Name]mapping{},
+	}
+
+	for name, def := range raw.SubProperties {
+		var parsedName Name
+		switch d.Name {
+		case InstanceDisks:
+			parsedName, err = ParseInstanceDiskProperty(name)
+		case InstanceNICs:
+			parsedName, err = ParseInstanceNICProperty(name)
+		case InstanceSnapshots:
+			parsedName, err = ParseInstanceSnapshotProperty(name)
+		default:
+			return fmt.Errorf("Unexpected sub-property %q for property %q", name, d.Name.String())
+		}
+
+		if err != nil {
+			return err
+		}
+
+		d.SubProperties[parsedName] = def
+	}
+
+	return nil
 }
 
 // InitDefinitions initializes the global property list.
@@ -132,7 +190,7 @@ func InitDefinitions() error {
 	}
 
 	for _, def := range localProperties {
-		err := validateDefs(def.Name, def, allInstanceProperties(), false)
+		err := validateDefs(def.Name, def.mapping, allInstanceProperties(), false)
 		if err != nil {
 			return err
 		}

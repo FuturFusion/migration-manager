@@ -264,11 +264,19 @@ func (p RawPropertySet[T]) ToAPI() (*api.InstanceProperties, error) {
 	data := map[string]any{}
 
 	for k, v := range p.propValues {
-		data[string(k)] = v
+		data[k.String()] = v
 	}
 
 	for k, v := range p.subPropValues {
-		data[string(k)] = v
+		strMap := make([]map[string]any, len(v))
+		for i, valMap := range v {
+			strMap[i] = make(map[string]any, len(valMap))
+			for k, v := range valMap {
+				strMap[i][k.String()] = v
+			}
+		}
+
+		data[k.String()] = strMap
 	}
 
 	b, err := json.Marshal(data)
