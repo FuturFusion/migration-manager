@@ -749,8 +749,13 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 			}
 		}
 
+		cert, err := d.ServerCert().PublicKeyX509()
+		if err != nil {
+			return fmt.Errorf("Failed to parse server certificate: %w", err)
+		}
+
 		// Optionally clean up the VMs if we fail to create them.
-		instanceDef, err := it.CreateVMDefinition(inst, s.Name, b.StoragePool)
+		instanceDef, err := it.CreateVMDefinition(inst, s.Name, b.StoragePool, incusTLS.CertFingerprint(cert), d.getWorkerEndpoint())
 		if err != nil {
 			return fmt.Errorf("Failed to create instance definition: %w", err)
 		}
@@ -776,13 +781,6 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 			return fmt.Errorf("Failed to start instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
 		}
 
-		// Inject the worker binary.
-		workerBinaryName := filepath.Join(d.os.VarDir, "migration-manager-worker")
-		err = it.PushFile(inst.GetName(), workerBinaryName, "/root/")
-		if err != nil {
-			return fmt.Errorf("Failed to push %q to instance %q on target %q: %w", workerBinaryName, instanceDef.Name, it.GetName(), err)
-		}
-
 		// Set the instance state to IDLE before triggering the worker.
 		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, string(api.MIGRATIONSTATUS_IDLE), true)
 		if err != nil {
@@ -792,18 +790,6 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 		// At this point, the import is about to begin, so we won't try to delete instances anymore.
 		// Instead, if an error occurs, we will try to set the instance state to ERROR so that we don't retry.
 		cleanupInstances = false
-
-		cert, err := d.ServerCert().PublicKeyX509()
-		if err != nil {
-			return fmt.Errorf("Failed to parse server certificate: %w", err)
-		}
-
-		// Start the worker binary.
-		// TODO: Periodically check that the worker is actually running.
-		err = it.ExecWithoutWaiting(inst.GetName(), []string{"/root/migration-manager-worker", "-d", "--endpoint", d.getWorkerEndpoint(), "--uuid", inst.UUID.String(), "--token", inst.SecretToken.String(), "--trusted-cert-fingerprint", incusTLS.CertFingerprint(cert)})
-		if err != nil {
-			return fmt.Errorf("Failed to execute worker on instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
-		}
 
 		reverter.Success()
 
