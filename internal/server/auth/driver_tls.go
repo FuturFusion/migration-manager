@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"net/http"
+	"strings"
 
 	"github.com/lxc/incus/v6/shared/api"
 )
@@ -38,8 +39,9 @@ func (t *TLS) CheckPermission(ctx context.Context, r *http.Request, object Objec
 		return nil
 	}
 
-	for _, cert := range t.certificateFingerprints {
-		if cert == details.Username {
+	for _, fingerprint := range t.certificateFingerprints {
+		canonicalFingerprint := strings.ToLower(strings.ReplaceAll(fingerprint, ":", ""))
+		if canonicalFingerprint == details.Username {
 			// Authentication via TLS gives full, unrestricted access.
 			return nil
 		}
