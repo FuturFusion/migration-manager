@@ -1,19 +1,9 @@
 export enum ExternalConnectivityStatus {
-  Unknown,
-  OK,
-  CannotConnect,
-  TLSError,
-  TLSConfirmFingerprint,
-  AuthError,
-  WaitingOIDC,
+  Unknown = "Unknown",
+  OK = "OK",
+  CannotConnect = "Cannot connect",
+  TLSError = "TLS error",
+  TLSConfirmFingerprint = "Confirm TLS fingerprint",
+  AuthError = "Authentication error",
+  WaitingOIDC = "Waiting for OIDC authentications",
 }
-
-export const ExternalConnectivityStatusString: Record<ExternalConnectivityStatus, string> = {
-  [ExternalConnectivityStatus.Unknown]: "Unknown",
-  [ExternalConnectivityStatus.OK]: "OK",
-  [ExternalConnectivityStatus.CannotConnect]: "Cannot connect",
-  [ExternalConnectivityStatus.TLSError]: "TLS error",
-  [ExternalConnectivityStatus.TLSConfirmFingerprint]: "Confirm TLS fingerprint",
-  [ExternalConnectivityStatus.AuthError]: "Authentication error",
-  [ExternalConnectivityStatus.WaitingOIDC]: "Waiting for OIDC authentications",
-};

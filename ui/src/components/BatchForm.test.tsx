@@ -40,6 +40,8 @@ test('renders and submit BaseForm', async () => {
     target_project: "default",
     migration_window_end: null,
     migration_window_start: null,
+    status: "",
+    status_message: "",
   });
 });
 

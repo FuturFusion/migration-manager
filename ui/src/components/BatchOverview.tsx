@@ -34,7 +34,7 @@ const BatchOverview = () => {
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Status</div>
-        <div className="col-10 detail-table-cell"> { batch?.status_string }</div>
+        <div className="col-10 detail-table-cell"> { batch?.status_message }</div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Target</div>

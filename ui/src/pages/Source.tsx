@@ -5,7 +5,6 @@ import { fetchSources } from 'api/sources';
 import DataTable from 'components/DataTable';
 import { VMwareProperties } from 'types/source';
 import { SourceType } from 'util/source';
-import { ExternalConnectivityStatusString } from 'util/response';
 
 const Source = () => {
   const navigate = useNavigate();
@@ -38,7 +37,7 @@ const Source = () => {
           sortKey: props.endpoint
         },
         {
-          content: ExternalConnectivityStatusString[props.connectivity_status],
+          content: props.connectivity_status,
           sortKey: props.connectivity_status
         },
         {

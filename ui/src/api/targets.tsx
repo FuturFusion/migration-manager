@@ -44,7 +44,7 @@ export const updateTarget = (name: string, body: string): Promise<APIResponse<nu
   });
 };
 
-export const deleteTarget = (name: string): Promise<APIResponse<Object>> => {
+export const deleteTarget = (name: string): Promise<APIResponse<object>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/targets/${name}`, {method: "DELETE"})
       .then((response) => response.json())

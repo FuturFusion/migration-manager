@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router';
 import { fetchSource } from 'api/sources';
-import { SourceType, SourceTypeString } from 'util/source';
 
 const SourceOverview = () => {
   const { name } = useParams();
@@ -34,7 +33,7 @@ const SourceOverview = () => {
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Source type</div>
-        <div className="col-10 detail-table-cell"> { SourceTypeString[source?.source_type as SourceType] }</div>
+        <div className="col-10 detail-table-cell"> { source?.source_type }</div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Endpoint</div>

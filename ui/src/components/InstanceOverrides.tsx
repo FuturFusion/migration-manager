@@ -41,8 +41,8 @@ const InstanceOverrides: FC = () => {
   let formikInitialValues = {
       comment: '',
       disable_migration: 'false',
-      number_cpus: 0,
-      memory_in_bytes: '',
+      cpus: 0,
+      memory: '',
   };
 
   if (instance && overrideExists) {
@@ -50,8 +50,8 @@ const InstanceOverrides: FC = () => {
     formikInitialValues = {
       comment: overrides.comment,
       disable_migration: overrides.disable_migration.toString(),
-      number_cpus: overrides.number_cpus,
-      memory_in_bytes: bytesToHumanReadable(overrides.memory_in_bytes),
+      cpus: overrides.properties.cpus,
+      memory: bytesToHumanReadable(overrides.properties.memory),
     };
   }
 
@@ -71,11 +71,11 @@ const InstanceOverrides: FC = () => {
   const validateForm = (values: any) => {
     const errors: any = {};
 
-    if (values.memory_in_bytes) {
+    if (values.memory) {
       try {
-        humanReadableToBytes(values.memory_in_bytes);
+        humanReadableToBytes(values.memory);
       } catch(e: any) {
-        errors.memory_in_bytes = e.toString();
+        errors.memory = e.toString();
       }
     }
 
@@ -89,9 +89,9 @@ const InstanceOverrides: FC = () => {
     onSubmit: (values) => {
       let memoryInBytes = 0;
 
-      if (values.memory_in_bytes) {
+      if (values.memory) {
         try {
-          memoryInBytes = humanReadableToBytes(values.memory_in_bytes);
+          memoryInBytes = humanReadableToBytes(values.memory);
         } catch(e) {
           notify.error(`Failed to save override for ${uuid}. ${e}`);
           return;
@@ -99,10 +99,13 @@ const InstanceOverrides: FC = () => {
       }
 
       const modifiedValues = {
-        ...values,
         uuid: uuid,
-        memory_in_bytes: memoryInBytes,
         disable_migration: values.disable_migration == 'true',
+        comment: values.comment,
+        properties: {
+          memory: memoryInBytes,
+          cpus: values.cpus,
+        }
       };
       if (!overrideExists) {
         createInstanceOverride(uuid ?? '', JSON.stringify(modifiedValues, null, 2))
@@ -184,30 +187,30 @@ const InstanceOverrides: FC = () => {
             {formik.errors.disable_migration}
           </Form.Control.Feedback>
         </Form.Group>
-        <Form.Group className="mb-3" controlId="number_cpus">
+        <Form.Group className="mb-3" controlId="cpus">
           <Form.Label>Num VCPUS</Form.Label>
           <Form.Control
             type="number"
-            name="number_cpus"
-            value={formik.values.number_cpus}
+            name="cpus"
+            value={formik.values.cpus}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            isInvalid={!!formik.errors.number_cpus && formik.touched.number_cpus}/>
+            isInvalid={!!formik.errors.cpus && formik.touched.cpus}/>
           <Form.Control.Feedback type="invalid">
-            {formik.errors.number_cpus}
+            {formik.errors.cpus}
           </Form.Control.Feedback>
         </Form.Group>
-        <Form.Group className="mb-3" controlId="memory_in_bytes">
+        <Form.Group className="mb-3" controlId="memory">
           <Form.Label>Memory</Form.Label>
           <Form.Control
             type="text"
-            name="memory_in_bytes"
-            value={formik.values.memory_in_bytes}
+            name="memory"
+            value={formik.values.memory}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            isInvalid={!!formik.errors.memory_in_bytes && formik.touched.memory_in_bytes}/>
+            isInvalid={!!formik.errors.memory && formik.touched.memory}/>
           <Form.Control.Feedback type="invalid">
-            {formik.errors.memory_in_bytes}
+            {formik.errors.memory}
           </Form.Control.Feedback>
         </Form.Group>
         <Button className="float-end" variant="success" onClick={() => formik.handleSubmit()}>

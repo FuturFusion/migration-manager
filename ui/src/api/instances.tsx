@@ -43,7 +43,7 @@ export const updateInstanceOverride = (uuid: string, body: string): Promise<APIR
   });
 };
 
-export const deleteInstanceOverride = (uuid: string): Promise<APIResponse<Object>> => {
+export const deleteInstanceOverride = (uuid: string): Promise<APIResponse<object>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/instances/${uuid}/override`, {method: "DELETE"})
       .then((response) => response.json())

@@ -53,7 +53,7 @@ export const updateBatch = (name: string, body: string): Promise<APIResponse<nul
   });
 };
 
-export const deleteBatch = (name: string): Promise<APIResponse<Object>> => {
+export const deleteBatch = (name: string): Promise<APIResponse<object>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/batches/${name}`, {method: "DELETE"})
       .then((response) => response.json())

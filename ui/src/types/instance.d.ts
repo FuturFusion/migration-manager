@@ -4,69 +4,61 @@ export interface InstanceDeviceInfo {
   summary: string;
 }
 
-export interface InstanceDiskInfo {
+export interface InstancePropertiesDisk {
   name: string;
-  type: string;
-  controller_model: string;
-  differential_sync_supported: boolean;
-  size_in_bytes: number;
-  is_shared: boolean;
+  capacity: number;
+  shared: boolean;
 }
 
-export interface InstanceNICInfo {
+export interface InstancePropertiesNIC {
+  network_id: string;
+  hardware_address: string;
   network: string;
-  adapter_model: string;
-  hwaddr: string;
 }
 
-export interface InstanceSnapshotInfo {
+export interface InstancePropertiesSnapshot {
+  name: string;
+}
+
+export interface InstanceProperties {
+  uuid: string;
   name: string;
   description: string;
-  id: number;
+  cpus: number;
+  memory: number;
+  location: string;
+  os: string;
+  os_version: string;
+  secure_boot: boolean;
+  legacy_boiot: boolean;
+  tpm: boolean;
+  background_import: boolean;
+  architecture: string;
+  nics: InstancePropertiesNIC[];
+  disks: InstancePropertiesDisk[];
+  snapshots: InstanceSnapshotInfo[];
 }
 
-export interface InstanceCPUInfo {
-  number_cpus: number;
-  cpu_affinity: number[];
-  number_of_cores_per_socket: number;
-}
-
-export interface InstanceMemoryInfo {
-  memory_in_bytes: number;
-  memory_reservation_in_bytes: number;
+export interface InstancePropertiesConfigurable {
+  description: string;
+  cpus: number;
+  memory: number;
 }
 
 export interface InstanceOverride {
   uuid: string;
   last_update: Date;
   comment: string;
-  number_cpus: number;
-  memory_in_bytes: number;
   disable_migration: boolean;
+  properties: InstancePropertiesConfigurable;
 }
 
 export interface Instance {
-  uuid: string;
-  inventory_path: string;
-  annotation: string;
-  migration_status: number;
-  migration_status_string: string;
+  migration_status: string;
+  migration_status_message: string;
+  last_update_from_source: string;
   source: string;
-  target_id: number;
-  batch_id: number;
-  guest_tools_version: number;
-  architecture: string;
-  hardware_version: string;
-  os: string;
-  os_version: string;
-  devices: InstanceDeviceInfo[];
-  disks: InstanceDiskInfo[];
-  nics: InstanceNICInfo[];
-  snapshots: InstanceSnapshotInfo[];
-  cpu: InstanceCPUInfo;
-  memory: InstanceMemoryInfo;
-  use_legacy_bios: boolean;
-  secure_boot_enabled: boolean;
-  tpm_present: boolean;
+  batch_id: string;
+  properties: InstanceProperties;
   overrides: InstanceOverride;
 }

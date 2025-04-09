@@ -1,9 +1,3 @@
 export enum TargetType {
-  Unknown,
-  Incus,
+  Incus = "incus",
 }
-
-export const TargetTypeString: Record<TargetType, string> = {
-  [TargetType.Unknown]: "Unknown",
-  [TargetType.Incus]: "Incus"
-};

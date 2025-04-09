@@ -4,7 +4,6 @@ import { useQuery } from '@tanstack/react-query'
 import DataTable from 'components/DataTable'
 import { IncusProperties } from 'types/target';
 import { fetchTargets } from 'api/targets'
-import { ExternalConnectivityStatusString } from 'util/response';
 
 const Target = () => {
   const navigate = useNavigate();
@@ -42,7 +41,7 @@ const Target = () => {
         sortKey: item.properties.endpoint,
       },
       {
-        content: ExternalConnectivityStatusString[props.connectivity_status],
+        content: props.connectivity_status,
         sortKey: props.connectivity_status
       },
       {

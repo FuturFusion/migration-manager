@@ -3,10 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import { fetchSource, updateSource } from 'api/sources';
 import SourceForm from 'components/SourceForm';
 import { useNotification } from 'context/notification';
-import {
-  ExternalConnectivityStatus,
-  ExternalConnectivityStatusString,
-} from 'util/response';
+import { ExternalConnectivityStatus } from 'util/response';
 
 const SourceConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -17,8 +14,7 @@ const SourceConfiguration = () => {
     return updateSource(name, JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
-          const connStatus = parseInt(response.metadata?.["ConnectivityStatus"] || "0", 10);
-          const connStatusString = ExternalConnectivityStatusString[connStatus as ExternalConnectivityStatus];
+          const connStatus = response.metadata?.["ConnectivityStatus"];
 
           if (connStatus === ExternalConnectivityStatus.TLSConfirmFingerprint) {
             const certFingerprint = response.metadata?.["certFingerprint"];
@@ -27,7 +23,7 @@ const SourceConfiguration = () => {
             window.location.reload();
             return;
           } else if (connStatus !== ExternalConnectivityStatus.OK) {
-            notify.info(`Successfully updated source ${values.name}, but connectivity check reported an issue: ${connStatusString}. Please update the source to correct the issue.`);
+            notify.info(`Successfully updated source ${values.name}, but connectivity check reported an issue: ${connStatus}. Please update the source to correct the issue.`);
           } else {
             notify.success(`Source ${values.name} updated`);
           }

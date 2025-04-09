@@ -2,13 +2,12 @@ import { startBatch, stopBatch } from 'api/batches';
 import { Batch } from 'types/batch';
 
 export enum BatchStatus {
-  Unknown,
-  Defined,
-  Queued,
-  Running,
-  Stopped,
-  Finished,
-  Error
+  Defined = "Defined",
+  Queued = "Queued",
+  Running = "Running",
+  Stopped = "Stopped",
+  Finished = "Finished",
+  Error = "Error",
 }
 
 export const canStartBatch = (batch: Batch) => {
