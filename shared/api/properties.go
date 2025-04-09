@@ -47,7 +47,7 @@ type InstancePropertiesDisk struct {
 
 // InstancePropertiesSnapshot are all properties supported by snapshots.
 type InstancePropertiesSnapshot struct {
-	Name string `json:"snapshot_name" yaml:"snapshot_name"`
+	Name string `json:"name" yaml:"name"`
 }
 
 // Apply updates the properties with the given set of configurable properties.
