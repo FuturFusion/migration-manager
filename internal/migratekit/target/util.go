@@ -3,10 +3,10 @@ package target
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"strconv"
 
 	"github.com/gosimple/slug"
-	log "github.com/sirupsen/logrus"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/types"
 
@@ -24,7 +24,7 @@ func NeedsFullCopy(ctx context.Context, t Target) (bool, bool, error) {
 	}
 
 	if !exists {
-		log.Info("Data does not exist, full copy needed")
+		slog.Info("Data does not exist, full copy needed")
 
 		return true, true, nil
 	}
@@ -35,7 +35,7 @@ func NeedsFullCopy(ctx context.Context, t Target) (bool, bool, error) {
 	}
 
 	if currentChangeId == nil {
-		log.Info("No or invalid change ID found, assuming full copy is needed")
+		slog.Info("No or invalid change ID found, assuming full copy is needed")
 
 		return true, false, nil
 	}
@@ -46,15 +46,11 @@ func NeedsFullCopy(ctx context.Context, t Target) (bool, bool, error) {
 	}
 
 	if currentChangeId.UUID != snapshotChangeId.UUID {
-		log.WithFields(log.Fields{
-			"currentChangeId":  currentChangeId.Value,
-			"snapshotChangeId": snapshotChangeId.Value,
-		}).Warning("Change ID mismatch, full copy needed")
-
+		slog.Warn("Change ID mismatch, full copy needed", slog.String("currentChangeID", currentChangeId.Value), slog.String("snapshotChangeId", snapshotChangeId.Value))
 		return true, false, nil
 	}
 
-	log.Info("Starting incremental copy")
+	slog.Info("Starting incremental copy")
 
 	return false, false, nil
 }

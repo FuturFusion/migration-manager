@@ -3,11 +3,10 @@ package nbdkit
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"time"
-
-	log "github.com/sirupsen/logrus"
 )
 
 type NbdkitServer struct {
@@ -17,17 +16,17 @@ type NbdkitServer struct {
 }
 
 func (s *NbdkitServer) Start() error {
-	log := log.WithFields(log.Fields{"command": "nbdkit"})
+	log := slog.With(slog.String("command", "nbdkit"))
 	stdout := bytes.Buffer{}
 	stderr := bytes.Buffer{}
 	s.cmd.Stdout = &stdout
 	s.cmd.Stderr = &stderr
 
-	log.Info("Running command: ", s.cmd)
+	log.Info("Running command", slog.Any("args", s.cmd))
 	defer func() {
-		log.Debug("stdout", stdout.String())
+		log.Debug("Command ended", slog.Any("stdout", stdout.String()))
 		if len(stderr.String()) > 0 {
-			log.Error("stderr", stderr.String())
+			log.Error("Command errored", slog.Any("stderr", stderr.String()))
 		}
 	}()
 
