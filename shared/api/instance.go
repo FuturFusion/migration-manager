@@ -69,7 +69,7 @@ type Instance struct {
 
 	// The batch ID for this instance
 	// Example: 1
-	Batch *string `json:"batch_id,omitempty" yaml:"batch_id,omitempty"`
+	Batch *string `json:"batch,omitempty" yaml:"batch,omitempty"`
 
 	Properties InstanceProperties `json:"properties" yaml:"properties"`
 
