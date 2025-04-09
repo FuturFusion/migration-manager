@@ -65,7 +65,7 @@ const TargetDetail = () => {
         <Modal.Header closeButton>
           <Modal.Title>Delete Target?</Modal.Title>
         </Modal.Header>
-        <Modal.Body>Are you sure you want to delete the target {name}? This action cannot be undone.</Modal.Body>
+        <Modal.Body>Are you sure you want to delete the target {name}?<br />This action cannot be undone.</Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleClose}>
             Close

@@ -65,7 +65,7 @@ const SourceDetail = () => {
         <Modal.Header closeButton>
           <Modal.Title>Delete Source?</Modal.Title>
         </Modal.Header>
-        <Modal.Body>Are you sure you want to delete the source {name}? This action cannot be undone.</Modal.Body>
+        <Modal.Body>Are you sure you want to delete the source {name}?<br />This action cannot be undone.</Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleClose}>
             Close
