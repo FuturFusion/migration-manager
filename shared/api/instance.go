@@ -188,7 +188,7 @@ type InstanceSnapshotInfo struct {
 
 	// Description of this snapshot
 	// Example: "First snapshot"
-	Description string `json:"description" yaml:"description"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 
 	// Creation time of this snapshot
 	// Example: 2024-11-12 16:15:00 +0000 UTC
