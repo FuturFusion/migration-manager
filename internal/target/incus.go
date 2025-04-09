@@ -198,7 +198,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 		return err
 	}
 
-	nicDefs, err := defs.GetSubProperties(properties.InstanceNIC)
+	nicDefs, err := defs.GetSubProperties(properties.InstanceNICs)
 	if err != nil {
 		return err
 	}
@@ -334,7 +334,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 }
 
 func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesPost, p api.InstanceProperties, storagePool string, defs properties.RawPropertySet[api.TargetType]) (incusAPI.InstancesPost, error) {
-	diskDefs, err := defs.GetSubProperties(properties.InstanceDisk)
+	diskDefs, err := defs.GetSubProperties(properties.InstanceDisks)
 	if err != nil {
 		return incusAPI.InstancesPost{}, err
 	}
