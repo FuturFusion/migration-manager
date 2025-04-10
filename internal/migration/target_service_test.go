@@ -381,7 +381,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.TargetRepoMock{
-				UpdateFunc: func(ctx context.Context, in migration.Target) error {
+				UpdateFunc: func(ctx context.Context, name string, in migration.Target) error {
 					return tc.repoUpdateErr
 				},
 			}
@@ -404,7 +404,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 			tc.target.EndpointFunc = endpointFunc
 
 			// Run test
-			err := targetSvc.Update(context.Background(), &tc.target)
+			err := targetSvc.Update(context.Background(), tc.target.Name, &tc.target)
 
 			// Assert
 			tc.assertErr(t, err)

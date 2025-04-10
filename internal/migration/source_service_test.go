@@ -621,7 +621,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.SourceRepoMock{
-				UpdateFunc: func(ctx context.Context, in migration.Source) error {
+				UpdateFunc: func(ctx context.Context, name string, in migration.Source) error {
 					return tc.repoUpdateErr
 				},
 			}
@@ -641,7 +641,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			tc.source.EndpointFunc = endpointFunc
 
 			// Run test
-			err := sourceSvc.Update(context.Background(), &tc.source, nil)
+			err := sourceSvc.Update(context.Background(), tc.source.Name, &tc.source, nil)
 
 			// Assert
 			tc.assertErr(t, err)

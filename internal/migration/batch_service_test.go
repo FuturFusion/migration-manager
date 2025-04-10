@@ -526,7 +526,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 					return tc.repoGetByNameBatch, tc.repoGetByNameErr
 				},
-				UpdateFunc: func(ctx context.Context, in migration.Batch) error {
+				UpdateFunc: func(ctx context.Context, name string, in migration.Batch) error {
 					return tc.repoUpdateErr
 				},
 			}
@@ -543,7 +543,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batchSvc := migration.NewBatchService(repo, instanceSvc, nil)
 
 			// Run test
-			err := batchSvc.Update(context.Background(), &tc.batch)
+			err := batchSvc.Update(context.Background(), tc.batch.Name, &tc.batch)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1032,7 +1032,7 @@ func TestBatchService_UpdateStatusByName(t *testing.T) {
 				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 					return tc.repoUpdateStatusByNameBatch, tc.repoUpdateStatusByNameErr
 				},
-				UpdateFunc: func(ctx context.Context, b migration.Batch) error {
+				UpdateFunc: func(ctx context.Context, name string, b migration.Batch) error {
 					return tc.repoUpdateStatusByNameErr
 				},
 			}
@@ -1294,7 +1294,7 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 					return &tc.repoGetByNameBatch, tc.repoGetByNameErr
 				},
-				UpdateFunc: func(ctx context.Context, b migration.Batch) error {
+				UpdateFunc: func(ctx context.Context, name string, b migration.Batch) error {
 					return tc.repoUpdateStatusByIDErr
 				},
 			}
@@ -1386,7 +1386,7 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 					return tc.repoGetByNameBatch, tc.repoGetByNameErr
 				},
-				UpdateFunc: func(ctx context.Context, b migration.Batch) error {
+				UpdateFunc: func(ctx context.Context, name string, b migration.Batch) error {
 					return tc.repoUpdateStatusByIDErr
 				},
 			}

@@ -106,7 +106,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 	// Test updating a batch.
 	batchB.IncludeExpression = "true"
 	batchB.Status = api.BATCHSTATUS_RUNNING
-	err = batch.Update(ctx, batchB)
+	err = batch.Update(ctx, batchB.Name, batchB)
 	require.NoError(t, err)
 	dbBatchB, err := batch.GetByName(ctx, batchB.Name)
 	require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a batch that doesn't exist.
-	err = batch.Update(ctx, batchA)
+	err = batch.Update(ctx, batchA.Name, batchA)
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate batch.
