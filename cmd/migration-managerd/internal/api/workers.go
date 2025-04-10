@@ -828,13 +828,31 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 			batchesByName[b.Name] = b
 		}
 
-		// Get any instances in the "complete" state.
-		instances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_IMPORT_COMPLETE, true)
+		// Get any instances with a status that indicates they have a running worker.
+		instances, err := d.instance.GetAllByState(ctx, true,
+			api.MIGRATIONSTATUS_IDLE,
+			api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
+			api.MIGRATIONSTATUS_FINAL_IMPORT,
+			api.MIGRATIONSTATUS_IMPORT_COMPLETE)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_IMPORT_COMPLETE, err)
 		}
 
 		for _, i := range instances {
+			if i.LastUpdateFromWorker.Add(30 * time.Second).Before(time.Now().UTC()) {
+				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, "Timed out waiting for worker", false, false)
+				if err != nil {
+					return fmt.Errorf("Failed to set errored state on instance %q: %w", i.Properties.Location, err)
+				}
+
+				continue
+			}
+
+			// Only consider IMPORT COMPLETE instances moving forward.
+			if i.MigrationStatus != api.MIGRATIONSTATUS_IMPORT_COMPLETE {
+				continue
+			}
+
 			if completeInstancesByBatch[*i.Batch] == nil {
 				completeInstancesByBatch[*i.Batch] = migration.Instances{}
 			}
