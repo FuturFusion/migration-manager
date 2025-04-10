@@ -37,9 +37,9 @@ func (s source) GetByName(ctx context.Context, name string) (*migration.Source, 
 	return entities.GetSource(ctx, transaction.GetDBTX(ctx, s.db), name)
 }
 
-func (s source) Update(ctx context.Context, in migration.Source) error {
+func (s source) Update(ctx context.Context, name string, in migration.Source) error {
 	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, s.db), func(ctx context.Context, tx transaction.TX) error {
-		return entities.UpdateSource(ctx, tx, in.Name, in)
+		return entities.UpdateSource(ctx, tx, name, in)
 	})
 }
 

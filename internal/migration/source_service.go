@@ -55,7 +55,7 @@ func (s sourceService) GetByName(ctx context.Context, name string) (*Source, err
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s sourceService) Update(ctx context.Context, newSource *Source, instanceService InstanceService) error {
+func (s sourceService) Update(ctx context.Context, name string, newSource *Source, instanceService InstanceService) error {
 	err := newSource.Validate()
 	if err != nil {
 		return err
@@ -71,13 +71,13 @@ func (s sourceService) Update(ctx context.Context, newSource *Source, instanceSe
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		if instanceService != nil {
-			_, err := s.canBeModified(ctx, newSource.Name, instanceService)
+			_, err := s.canBeModified(ctx, name, instanceService)
 			if err != nil {
 				return fmt.Errorf("Unable to update source %q: %w", newSource.Name, err)
 			}
 		}
 
-		return s.repo.Update(ctx, *newSource)
+		return s.repo.Update(ctx, name, *newSource)
 	})
 }
 

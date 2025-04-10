@@ -259,7 +259,7 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 			return apiTarget.NewInternalIncusTargetFrom(t)
 		}
 
-		_ = d.target.Update(context.TODO(), tgt)
+		_ = d.target.Update(context.TODO(), targetName, tgt)
 	}()
 
 	return tokenURL, nil
@@ -415,7 +415,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		},
 	}
 
-	err = d.target.Update(ctx, tgt)
+	err = d.target.Update(ctx, name, tgt)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", target.Name, err))
 	}
