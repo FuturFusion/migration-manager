@@ -124,7 +124,9 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		s := api.Source{
-			Name:       sourceName,
+			SourcePut: api.SourcePut{
+				Name: sourceName,
+			},
 			SourceType: api.SOURCETYPE_VMWARE,
 		}
 
@@ -357,7 +359,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Update the source.
-	content, err := json.Marshal(src)
+	content, err := json.Marshal(src.SourcePut)
 	if err != nil {
 		return err
 	}

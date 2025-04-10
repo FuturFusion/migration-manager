@@ -331,7 +331,7 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 		override.Properties.Memory = val
 	}
 
-	content, err := json.Marshal(override)
+	content, err := json.Marshal(override.InstanceOverridePut)
 	if err != nil {
 		return err
 	}

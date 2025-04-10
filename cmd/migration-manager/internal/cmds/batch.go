@@ -104,7 +104,9 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 
 	// Add the batch.
 	b := api.Batch{
-		Name: args[0],
+		BatchPut: api.BatchPut{
+			Name: args[0],
+		},
 	}
 
 	if len(targets) == 1 {
@@ -570,7 +572,7 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 
 	newBatchName := b.Name
 
-	content, err := json.Marshal(b)
+	content, err := json.Marshal(b.BatchPut)
 	if err != nil {
 		return err
 	}
