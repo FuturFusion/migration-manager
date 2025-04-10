@@ -92,9 +92,3 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 }
-
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
