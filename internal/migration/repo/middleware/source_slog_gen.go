@@ -143,9 +143,10 @@ func (_d SourceRepoWithSlog) Rename(ctx context.Context, oldName string, newName
 }
 
 // Update implements _sourceMigration.SourceRepo
-func (_d SourceRepoWithSlog) Update(ctx context.Context, source _sourceMigration.Source) (err error) {
+func (_d SourceRepoWithSlog) Update(ctx context.Context, name string, source _sourceMigration.Source) (err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
+		slog.String("name", name),
 		slog.Any("source", source),
 	).Debug("SourceRepoWithSlog: calling Update")
 	defer func() {
@@ -158,5 +159,5 @@ func (_d SourceRepoWithSlog) Update(ctx context.Context, source _sourceMigration
 			log.Debug("SourceRepoWithSlog: method Update finished")
 		}
 	}()
-	return _d._base.Update(ctx, source)
+	return _d._base.Update(ctx, name, source)
 }

@@ -54,7 +54,7 @@ func (s targetService) GetByName(ctx context.Context, name string) (*Target, err
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s targetService) Update(ctx context.Context, newTarget *Target) error {
+func (s targetService) Update(ctx context.Context, name string, newTarget *Target) error {
 	err := newTarget.Validate()
 	if err != nil {
 		return err
@@ -68,7 +68,7 @@ func (s targetService) Update(ctx context.Context, newTarget *Target) error {
 		return err
 	}
 
-	return s.repo.Update(ctx, *newTarget)
+	return s.repo.Update(ctx, name, *newTarget)
 }
 
 func (s targetService) DeleteByName(ctx context.Context, name string) error {
@@ -89,11 +89,7 @@ func (s targetService) updateTargetConnectivity(ctx context.Context, tgt *Target
 		return fmt.Errorf("Endpoint function not defined for Target %q", tgt.Name)
 	}
 
-	endpoint, err := tgt.EndpointFunc(api.Target{
-		Name:       tgt.Name,
-		TargetType: tgt.TargetType,
-		Properties: tgt.Properties,
-	})
+	endpoint, err := tgt.EndpointFunc(tgt.ToAPI())
 	if err != nil {
 		return err
 	}

@@ -164,10 +164,12 @@ func (i Instance) ToAPI() api.Instance {
 
 func (o InstanceOverride) ToAPI() api.InstanceOverride {
 	return api.InstanceOverride{
-		UUID:             o.UUID,
-		LastUpdate:       o.LastUpdate,
-		Comment:          o.Comment,
-		DisableMigration: o.DisableMigration,
-		Properties:       o.Properties,
+		UUID: o.UUID,
+		InstanceOverridePut: api.InstanceOverridePut{
+			LastUpdate:       o.LastUpdate,
+			Comment:          o.Comment,
+			DisableMigration: o.DisableMigration,
+			Properties:       o.Properties,
+		},
 	}
 }

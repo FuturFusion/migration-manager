@@ -303,11 +303,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 
 // fetchVMWareSourceData connects to a VMWare source and returns the resources we care about, keyed by their unique identifiers.
 func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[string]api.Network, map[uuid.UUID]migration.Instance, error) {
-	s, err := source.NewInternalVMwareSourceFrom(api.Source{
-		Name:       src.Name,
-		SourceType: src.SourceType,
-		Properties: src.Properties,
-	})
+	s, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to create VMwareSource from source: %w", err)
 	}
@@ -368,11 +364,7 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migr
 		return nil, fmt.Errorf("Batch %q has no instances assigned", b.Name)
 	}
 
-	it, err := target.NewInternalIncusTargetFrom(api.Target{
-		Name:       t.Name,
-		TargetType: t.TargetType,
-		Properties: t.Properties,
-	})
+	it, err := target.NewInternalIncusTargetFrom(t.ToAPI())
 	if err != nil {
 		return nil, fmt.Errorf("Failed to connect to target for batch %q: %w", b.Name, err)
 	}
@@ -732,11 +724,7 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 			}
 		})
 
-		it, err := target.NewInternalIncusTargetFrom(api.Target{
-			Name:       t.Name,
-			TargetType: t.TargetType,
-			Properties: t.Properties,
-		})
+		it, err := target.NewInternalIncusTargetFrom(t.ToAPI())
 		if err != nil {
 			return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 		}
@@ -921,11 +909,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 			}
 		})
 
-		it, err := target.NewInternalIncusTargetFrom(api.Target{
-			Name:       t.Name,
-			TargetType: t.TargetType,
-			Properties: t.Properties,
-		})
+		it, err := target.NewInternalIncusTargetFrom(t.ToAPI())
 		if err != nil {
 			return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 		}

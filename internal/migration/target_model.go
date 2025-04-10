@@ -174,3 +174,14 @@ func (t *Target) SetServerCertificate(cert *x509.Certificate) {
 }
 
 type Targets []Target
+
+// ToAPI returns the API representation of a target.
+func (t Target) ToAPI() api.Target {
+	return api.Target{
+		TargetPut: api.TargetPut{
+			Name:       t.Name,
+			Properties: t.Properties,
+		},
+		TargetType: t.TargetType,
+	}
+}

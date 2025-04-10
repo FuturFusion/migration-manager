@@ -45,7 +45,7 @@ var _ migration.BatchRepo = &BatchRepoMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
-//			UpdateFunc: func(ctx context.Context, batch migration.Batch) error {
+//			UpdateFunc: func(ctx context.Context, name string, batch migration.Batch) error {
 //				panic("mock out the Update method")
 //			},
 //		}
@@ -80,7 +80,7 @@ type BatchRepoMock struct {
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, batch migration.Batch) error
+	UpdateFunc func(ctx context.Context, name string, batch migration.Batch) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -142,6 +142,8 @@ type BatchRepoMock struct {
 		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 			// Batch is the batch argument value.
 			Batch migration.Batch
 		}
@@ -442,21 +444,23 @@ func (mock *BatchRepoMock) RenameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *BatchRepoMock) Update(ctx context.Context, batch migration.Batch) error {
+func (mock *BatchRepoMock) Update(ctx context.Context, name string, batch migration.Batch) error {
 	if mock.UpdateFunc == nil {
 		panic("BatchRepoMock.UpdateFunc: method is nil but BatchRepo.Update was just called")
 	}
 	callInfo := struct {
 		Ctx   context.Context
+		Name  string
 		Batch migration.Batch
 	}{
 		Ctx:   ctx,
+		Name:  name,
 		Batch: batch,
 	}
 	mock.lockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	mock.lockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, batch)
+	return mock.UpdateFunc(ctx, name, batch)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -465,10 +469,12 @@ func (mock *BatchRepoMock) Update(ctx context.Context, batch migration.Batch) er
 //	len(mockedBatchRepo.UpdateCalls())
 func (mock *BatchRepoMock) UpdateCalls() []struct {
 	Ctx   context.Context
+	Name  string
 	Batch migration.Batch
 } {
 	var calls []struct {
 		Ctx   context.Context
+		Name  string
 		Batch migration.Batch
 	}
 	mock.lockUpdate.RLock()

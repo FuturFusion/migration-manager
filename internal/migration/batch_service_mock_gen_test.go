@@ -51,7 +51,7 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			StopBatchByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the StopBatchByName method")
 //			},
-//			UpdateFunc: func(ctx context.Context, batch *migration.Batch) error {
+//			UpdateFunc: func(ctx context.Context, name string, batch *migration.Batch) error {
 //				panic("mock out the Update method")
 //			},
 //			UpdateInstancesAssignedToBatchFunc: func(ctx context.Context, batch migration.Batch) error {
@@ -98,7 +98,7 @@ type BatchServiceMock struct {
 	StopBatchByNameFunc func(ctx context.Context, name string) error
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, batch *migration.Batch) error
+	UpdateFunc func(ctx context.Context, name string, batch *migration.Batch) error
 
 	// UpdateInstancesAssignedToBatchFunc mocks the UpdateInstancesAssignedToBatch method.
 	UpdateInstancesAssignedToBatchFunc func(ctx context.Context, batch migration.Batch) error
@@ -180,6 +180,8 @@ type BatchServiceMock struct {
 		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 			// Batch is the batch argument value.
 			Batch *migration.Batch
 		}
@@ -574,21 +576,23 @@ func (mock *BatchServiceMock) StopBatchByNameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *BatchServiceMock) Update(ctx context.Context, batch *migration.Batch) error {
+func (mock *BatchServiceMock) Update(ctx context.Context, name string, batch *migration.Batch) error {
 	if mock.UpdateFunc == nil {
 		panic("BatchServiceMock.UpdateFunc: method is nil but BatchService.Update was just called")
 	}
 	callInfo := struct {
 		Ctx   context.Context
+		Name  string
 		Batch *migration.Batch
 	}{
 		Ctx:   ctx,
+		Name:  name,
 		Batch: batch,
 	}
 	mock.lockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	mock.lockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, batch)
+	return mock.UpdateFunc(ctx, name, batch)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -597,10 +601,12 @@ func (mock *BatchServiceMock) Update(ctx context.Context, batch *migration.Batch
 //	len(mockedBatchService.UpdateCalls())
 func (mock *BatchServiceMock) UpdateCalls() []struct {
 	Ctx   context.Context
+	Name  string
 	Batch *migration.Batch
 } {
 	var calls []struct {
 		Ctx   context.Context
+		Name  string
 		Batch *migration.Batch
 	}
 	mock.lockUpdate.RLock()

@@ -46,9 +46,9 @@ func (b batch) GetByName(ctx context.Context, name string) (*migration.Batch, er
 	return entities.GetBatch(ctx, transaction.GetDBTX(ctx, b.db), name)
 }
 
-func (b batch) Update(ctx context.Context, in migration.Batch) error {
+func (b batch) Update(ctx context.Context, name string, in migration.Batch) error {
 	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, b.db), func(ctx context.Context, tx transaction.TX) error {
-		return entities.UpdateBatch(ctx, tx, in.Name, in)
+		return entities.UpdateBatch(ctx, tx, name, in)
 	})
 }
 

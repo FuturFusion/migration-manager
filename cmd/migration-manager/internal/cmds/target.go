@@ -115,7 +115,9 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		t := api.Target{
-			Name:       targetName,
+			TargetPut: api.TargetPut{
+				Name: targetName,
+			},
 			TargetType: api.TARGETTYPE_INCUS,
 		}
 
@@ -423,7 +425,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Update the target.
-	content, err := json.Marshal(tgt)
+	content, err := json.Marshal(tgt.TargetPut)
 	if err != nil {
 		return err
 	}

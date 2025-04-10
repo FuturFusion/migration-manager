@@ -15,12 +15,18 @@ const (
 //
 // swagger:model
 type Source struct {
+	SourcePut
+	// SourceType defines the type of the source
+	SourceType SourceType `json:"source_type" yaml:"source_type"`
+}
+
+// SourcePut defines the configurable properties of Source.
+//
+// swagger:model
+type SourcePut struct {
 	// A human-friendly name for this source
 	// Example: MySource
 	Name string `json:"name" yaml:"name"`
-
-	// SourceType defines the type of the source
-	SourceType SourceType `json:"source_type" yaml:"source_type"`
 
 	// Properties contains source type specific properties
 	Properties json.RawMessage `json:"properties" yaml:"properties"`

@@ -90,7 +90,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 
 	// Test updating a source.
 	vmwareSourceB.Properties = json.RawMessage(`{"connectivity_status": 1}`)
-	err = source.Update(ctx, vmwareSourceB)
+	err = source.Update(ctx, vmwareSourceB.Name, vmwareSourceB)
 	require.NoError(t, err)
 	dbVMwareSourceB, err := source.GetByName(ctx, vmwareSourceB.Name)
 	require.NoError(t, err)
@@ -112,7 +112,7 @@ func TestSourceDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a source that doesn't exist.
-	err = source.Update(ctx, commonSourceA)
+	err = source.Update(ctx, commonSourceA.Name, commonSourceA)
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate source.

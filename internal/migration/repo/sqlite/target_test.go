@@ -79,7 +79,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 
 	// Test updating a target.
 	incusTargetC.Properties = []byte(`{"endpoint": "https://127.0.0.1:6443", "connectivity_status": 1}`)
-	err = target.Update(ctx, incusTargetC)
+	err = target.Update(ctx, incusTargetC.Name, incusTargetC)
 	dbIncusTargetC, err = target.GetByName(ctx, incusTargetC.Name)
 	require.NoError(t, err)
 	require.Equal(t, incusTargetC, *dbIncusTargetC)
@@ -100,7 +100,7 @@ func TestTargetDatabaseActions(t *testing.T) {
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a target that doesn't exist.
-	err = target.Update(ctx, incusTargetA)
+	err = target.Update(ctx, incusTargetA.Name, incusTargetA)
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't add a duplicate target.

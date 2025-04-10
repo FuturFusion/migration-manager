@@ -14,7 +14,7 @@ type SourceService interface {
 	GetAll(ctx context.Context) (Sources, error)
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Source, error)
-	Update(ctx context.Context, source *Source, instanceService InstanceService) error
+	Update(ctx context.Context, name string, source *Source, instanceService InstanceService) error
 	DeleteByName(ctx context.Context, name string, instanceService InstanceService) error
 }
 
@@ -27,7 +27,7 @@ type SourceRepo interface {
 	GetAll(ctx context.Context) (Sources, error)
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Source, error)
-	Update(ctx context.Context, source Source) error
+	Update(ctx context.Context, name string, source Source) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 }

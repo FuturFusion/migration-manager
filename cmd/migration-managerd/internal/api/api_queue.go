@@ -306,13 +306,7 @@ func queueWorkerCommandPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	apiSource := api.Source{
-		Name:       workerCommand.Source.Name,
-		SourceType: workerCommand.Source.SourceType,
-		Properties: workerCommand.Source.Properties,
-	}
-
-	apiSourceJSON, err := json.Marshal(apiSource)
+	apiSourceJSON, err := json.Marshal(workerCommand.Source.ToAPI())
 	if err != nil {
 		return response.SmartError(err)
 	}

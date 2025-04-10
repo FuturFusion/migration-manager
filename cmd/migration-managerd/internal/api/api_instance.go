@@ -371,7 +371,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Decode into the existing instance override.
-	var override api.InstanceOverride
+	var override api.InstanceOverridePut
 	err = json.NewDecoder(r.Body).Decode(&override)
 	if err != nil {
 		return response.BadRequest(err)
@@ -398,7 +398,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	err = d.instance.UpdateOverrides(ctx, &migration.InstanceOverride{
-		UUID:             override.UUID,
+		UUID:             currentOverrides.UUID,
 		LastUpdate:       time.Now().UTC(),
 		Comment:          override.Comment,
 		Properties:       override.Properties,

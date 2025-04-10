@@ -35,7 +35,7 @@ var _ migration.TargetService = &TargetServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Target, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateFunc: func(ctx context.Context, target *migration.Target) error {
+//			UpdateFunc: func(ctx context.Context, name string, target *migration.Target) error {
 //				panic("mock out the Update method")
 //			},
 //		}
@@ -61,7 +61,7 @@ type TargetServiceMock struct {
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Target, error)
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, target *migration.Target) error
+	UpdateFunc func(ctx context.Context, name string, target *migration.Target) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -100,6 +100,8 @@ type TargetServiceMock struct {
 		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 			// Target is the target argument value.
 			Target *migration.Target
 		}
@@ -285,21 +287,23 @@ func (mock *TargetServiceMock) GetByNameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *TargetServiceMock) Update(ctx context.Context, target *migration.Target) error {
+func (mock *TargetServiceMock) Update(ctx context.Context, name string, target *migration.Target) error {
 	if mock.UpdateFunc == nil {
 		panic("TargetServiceMock.UpdateFunc: method is nil but TargetService.Update was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
+		Name   string
 		Target *migration.Target
 	}{
 		Ctx:    ctx,
+		Name:   name,
 		Target: target,
 	}
 	mock.lockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	mock.lockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, target)
+	return mock.UpdateFunc(ctx, name, target)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -308,10 +312,12 @@ func (mock *TargetServiceMock) Update(ctx context.Context, target *migration.Tar
 //	len(mockedTargetService.UpdateCalls())
 func (mock *TargetServiceMock) UpdateCalls() []struct {
 	Ctx    context.Context
+	Name   string
 	Target *migration.Target
 } {
 	var calls []struct {
 		Ctx    context.Context
+		Name   string
 		Target *migration.Target
 	}
 	mock.lockUpdate.RLock()

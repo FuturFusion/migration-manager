@@ -71,23 +71,23 @@ func (s batchService) GetByName(ctx context.Context, name string) (*Batch, error
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s batchService) Update(ctx context.Context, batch *Batch) error {
+func (s batchService) Update(ctx context.Context, name string, batch *Batch) error {
 	err := batch.Validate()
 	if err != nil {
 		return err
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		oldBatch, err := s.repo.GetByName(ctx, batch.Name)
+		oldBatch, err := s.repo.GetByName(ctx, name)
 		if err != nil {
 			return err
 		}
 
 		if !oldBatch.CanBeModified() {
-			return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", batch.Name, ErrOperationNotPermitted)
+			return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", name, ErrOperationNotPermitted)
 		}
 
-		err = s.repo.Update(ctx, *batch)
+		err = s.repo.Update(ctx, name, *batch)
 		if err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ func (s batchService) UpdateStatusByName(ctx context.Context, name string, statu
 		batch.Status = status
 		batch.StatusMessage = statusMessage
 
-		return s.repo.Update(ctx, *batch)
+		return s.repo.Update(ctx, batch.Name, *batch)
 	})
 	if err != nil {
 		return nil, err
@@ -268,7 +268,7 @@ func (s batchService) StartBatchByName(ctx context.Context, name string) (err er
 
 		batch.Status = api.BATCHSTATUS_QUEUED
 		batch.StatusMessage = string(batch.Status)
-		return s.repo.Update(ctx, *batch)
+		return s.repo.Update(ctx, batch.Name, *batch)
 	})
 }
 
@@ -297,6 +297,6 @@ func (s batchService) StopBatchByName(ctx context.Context, name string) (err err
 		// Move batch status to "stopped".
 		batch.Status = api.BATCHSTATUS_STOPPED
 		batch.StatusMessage = string(batch.Status)
-		return s.repo.Update(ctx, *batch)
+		return s.repo.Update(ctx, batch.Name, *batch)
 	})
 }
