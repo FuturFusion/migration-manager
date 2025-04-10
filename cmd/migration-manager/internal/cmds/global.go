@@ -2,12 +2,10 @@ package cmds
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,7 +13,6 @@ import (
 	"path"
 	"regexp"
 	"strings"
-	"time"
 
 	"github.com/lxc/incus/v6/shared/api"
 	localtls "github.com/lxc/incus/v6/shared/tls"
@@ -235,7 +232,7 @@ func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, content
 	} else {
 		u.Scheme = "http"
 		u.Host = "unix.socket"
-		client = getUnixHTTPClient(c.os.GetUnixSocket())
+		client = internalUtil.UnixHTTPClient(c.os.GetUnixSocket())
 	}
 
 	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))
@@ -320,34 +317,6 @@ func getHTTPSClient(serverCert *x509.Certificate, tlsCertFile string, tlsKeyFile
 	client.Transport = transport
 
 	return client, nil
-}
-
-func getUnixHTTPClient(socketPath string) *http.Client {
-	// Setup a Unix socket dialer
-	unixDial := func(_ context.Context, network, addr string) (net.Conn, error) {
-		raddr, err := net.ResolveUnixAddr("unix", socketPath)
-		if err != nil {
-			return nil, err
-		}
-
-		return net.DialUnix("unix", nil, raddr)
-	}
-
-	// Define the http transport
-	transport := &http.Transport{
-		DialContext:           unixDial,
-		DisableKeepAlives:     true,
-		ExpectContinueTimeout: time.Second * 30,
-		ResponseHeaderTimeout: time.Second * 3600,
-		TLSHandshakeTimeout:   time.Second * 5,
-	}
-
-	// Define the http client
-	client := &http.Client{}
-
-	client.Transport = transport
-
-	return client
 }
 
 func validateAbsFilePathExists(s string) error {
