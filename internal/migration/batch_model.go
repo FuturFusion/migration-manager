@@ -116,3 +116,20 @@ func (b Batch) CompileIncludeExpression(i InstanceFilterable) (*vm.Program, erro
 }
 
 type Batches []Batch
+
+// ToAPI returns the API representation of a batch.
+func (b Batch) ToAPI() api.Batch {
+	return api.Batch{
+		BatchPut: api.BatchPut{
+			Name:                 b.Name,
+			Target:               b.Target,
+			TargetProject:        b.TargetProject,
+			StoragePool:          b.StoragePool,
+			IncludeExpression:    b.IncludeExpression,
+			MigrationWindowStart: b.MigrationWindowStart,
+			MigrationWindowEnd:   b.MigrationWindowEnd,
+		},
+		Status:        b.Status,
+		StatusMessage: b.StatusMessage,
+	}
+}

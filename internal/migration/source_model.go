@@ -163,3 +163,14 @@ func (s *Source) SetServerCertificate(cert *x509.Certificate) {
 }
 
 type Sources []Source
+
+// ToAPI returns the API representation of a source.
+func (s Source) ToAPI() api.Source {
+	return api.Source{
+		SourcePut: api.SourcePut{
+			Name:       s.Name,
+			Properties: s.Properties,
+		},
+		SourceType: s.SourceType,
+	}
+}
