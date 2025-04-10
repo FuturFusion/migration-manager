@@ -492,7 +492,7 @@ func (d *Daemon) processQueuedBatches(ctx context.Context) error {
 			}
 
 			for _, inst := range instancesByBatch[b.Name] {
-				_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, string(api.MIGRATIONSTATUS_CREATING), true)
+				_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, string(api.MIGRATIONSTATUS_CREATING), true, false)
 				if err != nil {
 					return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_CREATING, err)
 				}
@@ -718,7 +718,7 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 			}
 
 			// Try to set the instance state to ERRORED if it failed.
-			_, err := d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, errString, true)
+			_, err := d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, errString, true, false)
 			if err != nil {
 				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 			}
@@ -782,7 +782,8 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 		}
 
 		// Set the instance state to IDLE before triggering the worker.
-		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, string(api.MIGRATIONSTATUS_IDLE), true)
+		// Consider this a worker update as it may take some time for the worker to actually start.
+		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, string(api.MIGRATIONSTATUS_IDLE), true, true)
 		if err != nil {
 			return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_IDLE, err)
 		}
@@ -889,7 +890,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 			}
 
 			// Try to set the instance state to ERRORED if it failed.
-			_, err := d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, true)
+			_, err := d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, true, false)
 			if err != nil {
 				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 			}
@@ -918,7 +919,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, instances migra
 		}
 
 		// Update the instance status.
-		_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_FINISHED, string(api.MIGRATIONSTATUS_FINISHED), true)
+		_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_FINISHED, string(api.MIGRATIONSTATUS_FINISHED), true, false)
 		if err != nil {
 			return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_FINISHED, err)
 		}

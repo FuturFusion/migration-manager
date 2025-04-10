@@ -297,7 +297,7 @@ func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 	return nil
 }
 
-func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*Instance, error) {
+func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool, workerUpdate bool) (*Instance, error) {
 	err := status.Validate()
 	if err != nil {
 		return nil, NewValidationErrf("Invalid migration status: %v", err)
@@ -315,6 +315,10 @@ func (s instanceService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, s
 		instance.MigrationStatus = status
 		instance.MigrationStatusMessage = statusMessage
 		instance.NeedsDiskImport = needsDiskImport
+
+		if workerUpdate {
+			instance.LastUpdateFromWorker = time.Now().UTC()
+		}
 
 		return s.repo.Update(ctx, *instance)
 	})
@@ -365,7 +369,7 @@ func (s instanceService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, 
 
 		// Update instance in the database.
 		uuid := instance.UUID
-		instance, err = s.UpdateStatusByUUID(ctx, uuid, instance.MigrationStatus, instance.MigrationStatusMessage, instance.NeedsDiskImport)
+		instance, err = s.UpdateStatusByUUID(ctx, uuid, instance.MigrationStatus, instance.MigrationStatusMessage, instance.NeedsDiskImport, true)
 		if err != nil {
 			return fmt.Errorf("Failed updating instance '%s': %w", uuid, err)
 		}
@@ -409,7 +413,7 @@ func (s instanceService) CreateOverrides(ctx context.Context, overrides Instance
 		var err error
 
 		if overrides.DisableMigration {
-			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION, string(api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION), true)
+			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION, string(api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION), true, false)
 			if err != nil {
 				return err
 			}
@@ -453,7 +457,7 @@ func (s instanceService) UpdateOverrides(ctx context.Context, overrides *Instanc
 				newStatus = api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION
 			}
 
-			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, newStatus, string(newStatus), true)
+			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, newStatus, string(newStatus), true, false)
 			if err != nil {
 				return err
 			}
@@ -471,7 +475,7 @@ func (s instanceService) DeleteOverridesByUUID(ctx context.Context, id uuid.UUID
 		}
 
 		if overrides.DisableMigration {
-			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH), true)
+			_, err = s.UpdateStatusByUUID(ctx, overrides.UUID, api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH, string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH), true, false)
 			if err != nil {
 				return err
 			}
