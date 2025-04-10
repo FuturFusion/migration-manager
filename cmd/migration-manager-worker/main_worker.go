@@ -12,16 +12,11 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager-worker/internal/worker"
+	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )
 
 type cmdWorker struct {
 	global *cmdGlobal
-
-	// Common options
-	flagMMEndpoint         string
-	flagUUID               string
-	flagToken              string
-	flagTrustedFingerprint string
 }
 
 func (c *cmdWorker) Command() *cobra.Command {
@@ -34,13 +29,6 @@ func (c *cmdWorker) Command() *cobra.Command {
   This is the migration manager worker that is run within a new Incus VM.
 `
 	cmd.RunE = c.Run
-	cmd.Flags().StringVar(&c.flagMMEndpoint, "endpoint", "", "Controlling migration manager endpoint")
-	must(cmd.MarkFlagRequired("endpoint"))
-	cmd.Flags().StringVar(&c.flagUUID, "uuid", "", "UUID of instance to migrate")
-	must(cmd.MarkFlagRequired("uuid"))
-	cmd.Flags().StringVar(&c.flagToken, "token", "", "Secret token used by the worker to authenticate when sending status updates")
-	must(cmd.MarkFlagRequired("token"))
-	cmd.Flags().StringVar(&c.flagTrustedFingerprint, "trusted-cert-fingerprint", "", "Trusted SHA256 fingerprint of the Migration Manager's TLS certificate")
 
 	return cmd
 }
@@ -51,14 +39,19 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if os.Geteuid() != 0 {
-		return fmt.Errorf("This tool must be run as root\n")
+		return fmt.Errorf("This tool must be run as root")
 	}
 
 	if !util.PathExists("/dev/virtio-ports/org.linuxcontainers.incus") {
-		return fmt.Errorf("This tool is designed to be run within an Incus VM\n")
+		return fmt.Errorf("This tool is designed to be run within an Incus VM")
 	}
 
-	w, err := worker.NewWorker(c.flagMMEndpoint, c.flagUUID, c.flagToken, worker.SetTrustedFingerprint(c.flagTrustedFingerprint))
+	if !util.PathExists("/dev/incus/sock") {
+		return fmt.Errorf("Unable to find Incus socket")
+	}
+
+	client := internalUtil.UnixHTTPClient("/dev/incus/sock")
+	w, err := worker.NewWorker(cmd.Context(), client)
 	if err != nil {
 		return err
 	}

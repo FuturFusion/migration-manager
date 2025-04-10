@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -41,20 +42,42 @@ type Worker struct {
 
 type WorkerOption func(*Worker) error
 
-func NewWorker(endpoint string, uuid string, token string, opts ...WorkerOption) (*Worker, error) {
+func NewWorker(ctx context.Context, client *http.Client, opts ...WorkerOption) (*Worker, error) {
 	// Parse the provided URL for the migration manager endpoint.
+
+	endpoint, err := getIncusConfig(ctx, client, "user.migration.endpoint")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to find worker endpoint from Incus: %w", err)
+	}
+
+	token, err := getIncusConfig(ctx, client, "user.migration.token")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to find connection token from Incus: %w", err)
+	}
+
+	fingerprint, err := getIncusConfig(ctx, client, "user.migration.fingerprint")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to find trusted certificate fingerprint from Incus: %w", err)
+	}
+
+	uuid, err := getIncusConfig(ctx, client, "user.migration.uuid")
+	if err != nil {
+		return nil, fmt.Errorf("Failed to find instance UUID from Incus: %w", err)
+	}
+
 	parsedURL, err := url.Parse(endpoint)
 	if err != nil {
 		return nil, err
 	}
 
 	wrkr := &Worker{
-		endpoint:   parsedURL,
-		source:     nil,
-		uuid:       uuid,
-		token:      token,
-		lastUpdate: time.Now().UTC(),
-		idleSleep:  10 * time.Second,
+		endpoint:           parsedURL,
+		source:             nil,
+		uuid:               uuid,
+		token:              token,
+		trustedFingerprint: fingerprint,
+		lastUpdate:         time.Now().UTC(),
+		idleSleep:          10 * time.Second,
 	}
 
 	for _, opt := range opts {
@@ -83,13 +106,6 @@ func WithIdleSleep(sleep time.Duration) WorkerOption {
 func WithSource(src source.Source) WorkerOption {
 	return func(w *Worker) error {
 		w.source = src
-		return nil
-	}
-}
-
-func SetTrustedFingerprint(fingerprint string) WorkerOption {
-	return func(w *Worker) error {
-		w.trustedFingerprint = fingerprint
 		return nil
 	}
 }
@@ -405,4 +421,27 @@ func (w *Worker) doHTTPRequestV1(endpoint string, method string, query string, c
 
 func responseToStruct(response *incusAPI.Response, targetStruct any) error {
 	return json.Unmarshal(response.Metadata, &targetStruct)
+}
+
+func getIncusConfig(ctx context.Context, client *http.Client, key string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://unix.socket/1.0/config/%s", key), nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
 }
