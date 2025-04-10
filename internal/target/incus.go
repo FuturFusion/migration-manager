@@ -421,7 +421,7 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 	return instance, nil
 }
 
-func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) (incusAPI.InstancesPost, error) {
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string, fingerprint string, endpoint string) (incusAPI.InstancesPost, error) {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
@@ -450,6 +450,10 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 
 	ret.Config["user.migration.source_type"] = "VMware"
 	ret.Config["user.migration.source"] = instanceDef.Source
+	ret.Config["user.migration.token"] = instanceDef.SecretToken.String()
+	ret.Config["user.migration.fingerprint"] = fingerprint
+	ret.Config["user.migration.endpoint"] = endpoint
+	ret.Config["user.migration.uuid"] = instanceDef.UUID.String()
 
 	info, err := defs.Get(properties.InstanceOS)
 	if err != nil {
