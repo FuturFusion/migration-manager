@@ -88,11 +88,11 @@ func (s instanceService) GetAll(ctx context.Context, withOverrides bool) (Instan
 	return instances, nil
 }
 
-func (s instanceService) GetAllByState(ctx context.Context, status api.MigrationStatusType, withOverrides bool) (Instances, error) {
+func (s instanceService) GetAllByState(ctx context.Context, withOverrides bool, statuses ...api.MigrationStatusType) (Instances, error) {
 	var instances Instances
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
-		instances, err = s.repo.GetAllByState(ctx, status)
+		instances, err = s.repo.GetAllByState(ctx, statuses...)
 		if err != nil {
 			return err
 		}

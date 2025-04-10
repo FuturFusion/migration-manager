@@ -631,7 +631,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			return fmt.Errorf("Failed to get batches by state %q: %w", api.BATCHSTATUS_RUNNING, err)
 		}
 
-		allInstances, err := d.instance.GetAllByState(ctx, api.MIGRATIONSTATUS_CREATING, false)
+		allInstances, err := d.instance.GetAllByState(ctx, false, api.MIGRATIONSTATUS_CREATING)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances by state %q: %w", api.MIGRATIONSTATUS_CREATING, err)
 		}

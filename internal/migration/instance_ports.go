@@ -13,7 +13,7 @@ import (
 type InstanceService interface {
 	Create(ctx context.Context, instance Instance) (Instance, error)
 	GetAll(ctx context.Context, withOverrides bool) (Instances, error)
-	GetAllByState(ctx context.Context, status api.MigrationStatusType, withOverrides bool) (Instances, error)
+	GetAllByState(ctx context.Context, withOverrides bool, statuses ...api.MigrationStatusType) (Instances, error)
 	GetAllByBatch(ctx context.Context, batch string, withOverrides bool) (Instances, error)
 	GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType, withOverrides bool) (Instances, error)
 	GetAllBySource(ctx context.Context, source string, withOverrides bool) (Instances, error)
@@ -41,7 +41,7 @@ type InstanceService interface {
 type InstanceRepo interface {
 	Create(ctx context.Context, instance Instance) (int64, error)
 	GetAll(ctx context.Context) (Instances, error)
-	GetAllByState(ctx context.Context, status api.MigrationStatusType) (Instances, error)
+	GetAllByState(ctx context.Context, status ...api.MigrationStatusType) (Instances, error)
 	GetAllByBatch(ctx context.Context, batch string) (Instances, error)
 	GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (Instances, error)
 	GetAllBySource(ctx context.Context, source string) (Instances, error)
