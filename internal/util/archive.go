@@ -9,8 +9,9 @@ import (
 	"path/filepath"
 )
 
-// CreateTarballFromDir creates a tarball from a given directory, inclusive of the containing directory.
-func CreateTarballFromDir(target string, contentDir string) error {
+// CreateTarball creates a tarball from a given path.
+// If the path is a directory, the tarball will include the directory.
+func CreateTarball(target string, contentPath string) error {
 	f, err := os.Create(target)
 	if err != nil {
 		return err
@@ -24,7 +25,21 @@ func CreateTarballFromDir(target string, contentDir string) error {
 	tarWriter := tar.NewWriter(gzipWriter)
 	defer func() { _ = tarWriter.Close() }()
 
-	return filepath.Walk(contentDir, archiveDir(tarWriter, contentDir))
+	info, err := os.Stat(contentPath)
+	if err != nil {
+		return err
+	}
+
+	if info.IsDir() {
+		return filepath.Walk(contentPath, archiveDir(tarWriter, contentPath))
+	}
+
+	return makeTarball(contentPath, tarWriter, &tar.Header{
+		Name:    filepath.Base(contentPath),
+		Size:    info.Size(),
+		Mode:    int64(info.Mode()),
+		ModTime: info.ModTime(),
+	})
 }
 
 func archiveDir(tarWriter *tar.Writer, contentDir string) filepath.WalkFunc {
@@ -43,25 +58,29 @@ func archiveDir(tarWriter *tar.Writer, contentDir string) filepath.WalkFunc {
 			return err
 		}
 
-		err = tarWriter.WriteHeader(&tar.Header{
+		return makeTarball(path, tarWriter, &tar.Header{
 			Name:    relPath,
 			Size:    info.Size(),
 			Mode:    int64(info.Mode()),
 			ModTime: info.ModTime(),
 		})
-		if err != nil {
-			return err
-		}
+	}
+}
 
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-
-		defer func() { _ = f.Close() }()
-
-		_, err = io.Copy(tarWriter, f)
-
+func makeTarball(filePath string, tarWriter *tar.Writer, header *tar.Header) error {
+	err := tarWriter.WriteHeader(header)
+	if err != nil {
 		return err
 	}
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = f.Close() }()
+
+	_, err = io.Copy(tarWriter, f)
+
+	return err
 }

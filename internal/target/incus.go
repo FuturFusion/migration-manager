@@ -815,5 +815,5 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 		return err
 	}
 
-	return util.CreateTarballFromDir(backupPath, filepath.Join(tmpDir, "backup"))
+	return util.CreateTarball(backupPath, filepath.Join(tmpDir, "backup"))
 }
