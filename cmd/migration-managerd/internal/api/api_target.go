@@ -132,11 +132,7 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 
 		result := make([]api.Target, 0, len(targets))
 		for _, target := range targets {
-			result = append(result, api.Target{
-				Name:       target.Name,
-				TargetType: target.TargetType,
-				Properties: target.Properties,
-			})
+			result = append(result, target.ToAPI())
 		}
 
 		return response.SyncResponse(true, result)
@@ -338,11 +334,7 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 
 	return response.SyncResponseETag(
 		true,
-		api.Target{
-			Name:       target.Name,
-			TargetType: target.TargetType,
-			Properties: target.Properties,
-		},
+		target.ToAPI(),
 		target,
 	)
 }
@@ -379,7 +371,7 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 func targetPut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var target api.Target
+	var target api.TargetPut
 
 	err := json.NewDecoder(r.Body).Decode(&target)
 	if err != nil {
@@ -408,7 +400,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 	tgt := &migration.Target{
 		ID:         currentTarget.ID,
 		Name:       target.Name,
-		TargetType: target.TargetType,
+		TargetType: currentTarget.TargetType,
 		Properties: target.Properties,
 		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
 			return apiTarget.NewInternalIncusTargetFrom(t)

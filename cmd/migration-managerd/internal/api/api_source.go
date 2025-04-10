@@ -127,11 +127,7 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 
 		result := make([]api.Source, 0, len(sources))
 		for _, source := range sources {
-			result = append(result, api.Source{
-				Name:       source.Name,
-				SourceType: source.SourceType,
-				Properties: source.Properties,
-			})
+			result = append(result, source.ToAPI())
 		}
 
 		return response.SyncResponse(true, result)
@@ -289,11 +285,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 
 	return response.SyncResponseETag(
 		true,
-		api.Source{
-			Name:       source.Name,
-			SourceType: source.SourceType,
-			Properties: source.Properties,
-		},
+		source.ToAPI(),
 		source,
 	)
 }
@@ -330,7 +322,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 func sourcePut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var source api.Source
+	var source api.SourcePut
 
 	err := json.NewDecoder(r.Body).Decode(&source)
 	if err != nil {
@@ -359,7 +351,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 	src := &migration.Source{
 		ID:         currentSource.ID,
 		Name:       source.Name,
-		SourceType: source.SourceType,
+		SourceType: currentSource.SourceType,
 		Properties: source.Properties,
 		EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
 			return apiSource.NewInternalVMwareSourceFrom(s)

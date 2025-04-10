@@ -154,17 +154,7 @@ func batchesGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.Batch, 0, len(batches))
 
 		for _, batch := range batches {
-			result = append(result, api.Batch{
-				Name:                 batch.Name,
-				Target:               batch.Target,
-				TargetProject:        batch.TargetProject,
-				Status:               batch.Status,
-				StatusMessage:        batch.StatusMessage,
-				StoragePool:          batch.StoragePool,
-				IncludeExpression:    batch.IncludeExpression,
-				MigrationWindowStart: batch.MigrationWindowStart,
-				MigrationWindowEnd:   batch.MigrationWindowEnd,
-			})
+			result = append(result, batch.ToAPI())
 		}
 
 		return response.SyncResponse(true, result)
@@ -335,17 +325,7 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 
 	return response.SyncResponseETag(
 		true,
-		api.Batch{
-			Name:                 batch.Name,
-			Target:               batch.Target,
-			TargetProject:        batch.TargetProject,
-			Status:               batch.Status,
-			StatusMessage:        batch.StatusMessage,
-			StoragePool:          batch.StoragePool,
-			IncludeExpression:    batch.IncludeExpression,
-			MigrationWindowStart: batch.MigrationWindowStart,
-			MigrationWindowEnd:   batch.MigrationWindowEnd,
-		},
+		batch.ToAPI(),
 		batch,
 	)
 }
@@ -382,7 +362,7 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 func batchPut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var batch api.Batch
+	var batch api.BatchPut
 
 	// Decode into the existing batch.
 	err := json.NewDecoder(r.Body).Decode(&batch)
@@ -415,8 +395,8 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		Name:                 batch.Name,
 		Target:               batch.Target,
 		TargetProject:        batch.TargetProject,
-		Status:               batch.Status,
-		StatusMessage:        batch.StatusMessage,
+		Status:               currentBatch.Status,
+		StatusMessage:        currentBatch.StatusMessage,
 		StoragePool:          batch.StoragePool,
 		IncludeExpression:    batch.IncludeExpression,
 		MigrationWindowStart: batch.MigrationWindowStart,
