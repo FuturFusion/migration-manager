@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -62,10 +65,31 @@ func TestNewWorker(t *testing.T) {
 	}
 
 	for _, tc := range tests {
+		var devincus *httptest.Server //nolint:staticcheck
+		devincus = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = w.Write([]byte(tc.endpoint))
+		}))
+
+		testURL, err := url.Parse(devincus.URL)
+		require.NoError(t, err)
+		client := &http.Client{
+			Transport: &http.Transport{
+				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+					if strings.Contains(addr, "unix.socket") {
+						addr = testURL.Host
+					}
+
+					return net.Dial("tcp", addr)
+				},
+			},
+		}
+
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := worker.NewWorker(tc.endpoint, uuid, "")
+			_, err := worker.NewWorker(context.Background(), client)
 			tc.assertErr(t, err)
 		})
+
+		devincus.Close()
 	}
 }
 
@@ -338,6 +362,32 @@ func TestRun(t *testing.T) {
 			}))
 			defer ts.Close()
 
+			var devincus *httptest.Server //nolint:staticcheck
+			devincus = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.RequestURI {
+				case "/1.0/config/user.migration.endpoint":
+					_, _ = w.Write([]byte(ts.URL))
+				case "/1.0/config/user.migration.uuid":
+					_, _ = w.Write([]byte(uuid))
+				}
+			}))
+
+			defer devincus.Close()
+
+			testURL, err := url.Parse(devincus.URL)
+			require.NoError(t, err)
+			client := &http.Client{
+				Transport: &http.Transport{
+					DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+						if strings.Contains(addr, "unix.socket") {
+							addr = testURL.Host
+						}
+
+						return net.Dial("tcp", addr)
+					},
+				},
+			}
+
 			source := &source.SourceMock{
 				DeleteVMSnapshotFunc: func(ctx context.Context, vmName string, snapshotName string) error {
 					return tc.sourceDeleteVMSnapshotErr
@@ -350,7 +400,7 @@ func TestRun(t *testing.T) {
 				},
 			}
 
-			worker, err := worker.NewWorker(ts.URL, uuid, "",
+			worker, err := worker.NewWorker(context.Background(), client,
 				// Inject source into worker.
 				worker.WithSource(source),
 				// No need to wait for a long time during tests.
