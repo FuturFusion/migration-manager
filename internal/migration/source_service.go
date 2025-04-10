@@ -131,11 +131,7 @@ func (s sourceService) updateSourceConnectivity(ctx context.Context, src *Source
 		return fmt.Errorf("Endpoint function not defined for Source %q", src.Name)
 	}
 
-	endpoint, err := src.EndpointFunc(api.Source{
-		Name:       src.Name,
-		SourceType: src.SourceType,
-		Properties: src.Properties,
-	})
+	endpoint, err := src.EndpointFunc(src.ToAPI())
 	if err != nil {
 		return err
 	}

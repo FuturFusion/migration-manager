@@ -89,11 +89,7 @@ func (s targetService) updateTargetConnectivity(ctx context.Context, tgt *Target
 		return fmt.Errorf("Endpoint function not defined for Target %q", tgt.Name)
 	}
 
-	endpoint, err := tgt.EndpointFunc(api.Target{
-		Name:       tgt.Name,
-		TargetType: tgt.TargetType,
-		Properties: tgt.Properties,
-	})
+	endpoint, err := tgt.EndpointFunc(tgt.ToAPI())
 	if err != nil {
 		return err
 	}
