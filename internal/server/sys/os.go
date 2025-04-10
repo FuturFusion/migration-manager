@@ -92,6 +92,20 @@ func (s *OS) LoadWorkerImage(ctx context.Context) error {
 		return err
 	}
 
+	// Create a tarball for the worker binary.
+	binaryPath := filepath.Join(s.CacheDir, "migration-manager-worker.tar.gz")
+	err = util.CreateTarball(binaryPath, filepath.Join(s.VarDir, "migration-manager-worker"))
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = os.Remove(binaryPath) }()
+
+	binaryFile, err := os.Open(binaryPath)
+	if err != nil {
+		return err
+	}
+
 	rawWorkerPath := filepath.Join(s.CacheDir, util.RawWorkerImage())
 	_, err = os.Stat(rawWorkerPath)
 	if err != nil && !os.IsNotExist(err) {
@@ -125,6 +139,7 @@ func (s *OS) LoadWorkerImage(ctx context.Context) error {
 
 	defer vixFile.Close()
 
+	// Move to the first partition offset.
 	_, err = rawImgFile.Seek(616448*512, io.SeekStart)
 	if err != nil {
 		return err
@@ -132,6 +147,18 @@ func (s *OS) LoadWorkerImage(ctx context.Context) error {
 
 	// Write the VIX tarball at the offset.
 	_, err = io.Copy(rawImgFile, vixFile)
+	if err != nil {
+		return err
+	}
+
+	// Move to the next partition offset.
+	_, err = rawImgFile.Seek(821248*512, io.SeekStart)
+	if err != nil {
+		return err
+	}
+
+	// Write the migration manager worker at the offset.
+	_, err = io.Copy(rawImgFile, binaryFile)
 	if err != nil {
 		return err
 	}
