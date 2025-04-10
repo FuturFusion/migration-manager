@@ -606,6 +606,32 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 	return err
 }
 
+// CheckIncusAgent repeatedly calls Exec on the instance until the context errors out, or the exec succeeds.
+func (t *InternalIncusTarget) CheckIncusAgent(ctx context.Context, instanceName string) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*120)
+	defer cancel()
+
+	var err error
+	for ctx.Err() == nil {
+		// Limit each exec to 5s.
+		execCtx, cancel := context.WithTimeout(ctx, time.Second*5)
+		err = t.Exec(execCtx, instanceName, []string{"echo"})
+		cancel()
+
+		// If there is no error, then the agent is running.
+		if err == nil {
+			return nil
+		}
+	}
+
+	// If we got here, then Exec still did not complete successfully, so return the error.
+	if err != nil {
+		return fmt.Errorf("Instance failed to start: %w", err)
+	}
+
+	return fmt.Errorf("Instance failed to start: %w", ctx.Err())
+}
+
 func (t *InternalIncusTarget) Exec(ctx context.Context, instanceName string, cmd []string) error {
 	req := incusAPI.InstanceExecPost{
 		Command:     cmd,
