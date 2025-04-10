@@ -16,12 +16,19 @@ const (
 //
 // swagger:model
 type Target struct {
-	// A human-friendly name for this target
-	// Example: MyTarget
-	Name string `json:"name" yaml:"name"`
+	TargetPut
 
 	// TargetType defines the type of the target
 	TargetType TargetType `json:"target_type" yaml:"target_type"`
+}
+
+// TargetPut defines the configurable properties of Target.
+//
+// swagger:model
+type TargetPut struct {
+	// A human-friendly name for this target
+	// Example: MyTarget
+	Name string `json:"name" yaml:"name"`
 
 	// Properties contains target type specific properties
 	Properties json.RawMessage `json:"properties" yaml:"properties"`

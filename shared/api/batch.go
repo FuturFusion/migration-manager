@@ -36,6 +36,21 @@ func (b BatchStatusType) Validate() error {
 //
 // swagger:model
 type Batch struct {
+	BatchPut
+
+	// The status of this batch
+	// Example: BATCHSTATUS_DEFINED
+	Status BatchStatusType `json:"status" yaml:"status"`
+
+	// A free-form string to provide additional information about the status
+	// Example: "4 of 5 instances migrated"
+	StatusMessage string `json:"status_message" yaml:"status_message"`
+}
+
+// BatchPut defines the configurable fields of Batch.
+//
+// swagger:model
+type BatchPut struct {
 	// A human-friendly name for this batch
 	// Example: MyBatch
 	Name string `json:"name" yaml:"name"`
@@ -47,14 +62,6 @@ type Batch struct {
 	// The target project to use
 	// Example: default
 	TargetProject string `json:"target_project" yaml:"target_project"`
-
-	// The status of this batch
-	// Example: BATCHSTATUS_DEFINED
-	Status BatchStatusType `json:"status" yaml:"status"`
-
-	// A free-form string to provide additional information about the status
-	// Example: "4 of 5 instances migrated"
-	StatusMessage string `json:"status_message" yaml:"status_message"`
 
 	// The Incus storage pool that this batch should use for creating VMs and mounting ISO images
 	// Example: local
