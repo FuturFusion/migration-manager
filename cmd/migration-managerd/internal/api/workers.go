@@ -781,6 +781,14 @@ func (d *Daemon) createTargetVMs(ctx context.Context, b migration.Batch, instanc
 			return fmt.Errorf("Failed to start instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
 		}
 
+		// Wait up to 90s for the Incus agent.
+		waitCtx, cancel := context.WithTimeout(ctx, time.Second*90)
+		defer cancel()
+		err = it.CheckIncusAgent(waitCtx, instanceDef.Name)
+		if err != nil {
+			return err
+		}
+
 		// Set the instance state to IDLE before triggering the worker.
 		// Consider this a worker update as it may take some time for the worker to actually start.
 		_, err = d.instance.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, string(api.MIGRATIONSTATUS_IDLE), true, true)
