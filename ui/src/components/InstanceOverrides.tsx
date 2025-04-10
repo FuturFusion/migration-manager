@@ -226,7 +226,7 @@ const InstanceOverrides: FC = () => {
         <Modal.Header closeButton>
           <Modal.Title>Delete instance override?</Modal.Title>
         </Modal.Header>
-        <Modal.Body>Are you sure you want to delete the override for {uuid}? This action cannot be undone.</Modal.Body>
+        <Modal.Body>Are you sure you want to delete the override for {uuid}?<br />This action cannot be undone.</Modal.Body>
         <Modal.Footer>
           <Button variant="secondary" onClick={handleOverrideModalClose}>
             Close
