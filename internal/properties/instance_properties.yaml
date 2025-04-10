@@ -153,7 +153,7 @@
               type: config
               key: image.architecture
 
-- name: disk
+- name: disks
   description: disk device
   source:
       vmware:
@@ -167,7 +167,7 @@
           6.0:
             type: disk
   config:
-      disk_name:
+      name:
           source:
               vmware:
                   8.0:
@@ -193,7 +193,7 @@
                   6.0:
                     key: security.shared
 
-- name: nic
+- name: nics
   description: nic device
   source:
       vmware:
@@ -221,13 +221,13 @@
               vmware:
                   8.0:
                     key: backing.deviceName
-      network_id:
+      id:
           source:
               vmware:
                   8.0:
                     key: backing.network.value
 
-- name: snapshot
+- name: snapshots
   description: instance snapshots
   source:
       vmware:
@@ -236,7 +236,7 @@
               type: property_snapshot
               key: snapshot.rootSnapshotList
   config:
-      snapshot_name:
+      name:
           source:
               vmware:
                   8.0:

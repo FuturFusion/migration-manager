@@ -69,7 +69,7 @@ type Instance struct {
 
 	// The batch ID for this instance
 	// Example: 1
-	Batch *string `json:"batch_id,omitempty" yaml:"batch_id,omitempty"`
+	Batch *string `json:"batch,omitempty" yaml:"batch,omitempty"`
 
 	Properties InstanceProperties `json:"properties" yaml:"properties"`
 
@@ -188,7 +188,7 @@ type InstanceSnapshotInfo struct {
 
 	// Description of this snapshot
 	// Example: "First snapshot"
-	Description string `json:"description" yaml:"description"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 
 	// Creation time of this snapshot
 	// Example: 2024-11-12 16:15:00 +0000 UTC

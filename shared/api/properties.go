@@ -19,35 +19,35 @@ type InstanceProperties struct {
 	BackgroundImport bool      `json:"background_import" yaml:"background_import"`
 	Architecture     string    `json:"architecture"      yaml:"architecture"`
 
-	NICs      []InstancePropertiesNIC      `json:"nic"      yaml:"nic"`
-	Disks     []InstancePropertiesDisk     `json:"disk"     yaml:"disk"`
-	Snapshots []InstancePropertiesSnapshot `json:"snapshot" yaml:"snapshot"`
+	NICs      []InstancePropertiesNIC      `json:"nics"      yaml:"nics"`
+	Disks     []InstancePropertiesDisk     `json:"disks"     yaml:"disks"`
+	Snapshots []InstancePropertiesSnapshot `json:"snapshots" yaml:"snapshots"`
 }
 
 // InstancePropertiesConfigurable are the configurable properties of an instance.
 type InstancePropertiesConfigurable struct {
-	Description string `json:"description" yaml:"description"`
-	CPUs        int64  `json:"cpus"        yaml:"cpus"`
-	Memory      int64  `json:"memory"      yaml:"memory"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	CPUs        int64  `json:"cpus"                  yaml:"cpus"`
+	Memory      int64  `json:"memory"                yaml:"memory"`
 }
 
 // InstancePropertiesNIC are all properties supported by instance NICs.
 type InstancePropertiesNIC struct {
-	ID              string `json:"network_id"       yaml:"network_id"`
+	ID              string `json:"id"               yaml:"id"`
 	HardwareAddress string `json:"hardware_address" yaml:"hardware_address"`
 	Network         string `json:"network"          yaml:"network"`
 }
 
 // InstancePropertiesDisk are all properties supported by instance disks.
 type InstancePropertiesDisk struct {
-	Capacity int64  `json:"capacity"  yaml:"capacity"`
-	Name     string `json:"disk_name" yaml:"disk_name"`
-	Shared   bool   `json:"shared"    yaml:"shared"`
+	Capacity int64  `json:"capacity" yaml:"capacity"`
+	Name     string `json:"name"     yaml:"name"`
+	Shared   bool   `json:"shared"   yaml:"shared"`
 }
 
 // InstancePropertiesSnapshot are all properties supported by snapshots.
 type InstancePropertiesSnapshot struct {
-	Name string `json:"snapshot_name" yaml:"snapshot_name"`
+	Name string `json:"name" yaml:"name"`
 }
 
 // Apply updates the properties with the given set of configurable properties.
