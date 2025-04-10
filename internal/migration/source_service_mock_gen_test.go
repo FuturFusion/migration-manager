@@ -35,7 +35,7 @@ var _ migration.SourceService = &SourceServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Source, error) {
 //				panic("mock out the GetByName method")
 //			},
-//			UpdateFunc: func(ctx context.Context, source *migration.Source, instanceService migration.InstanceService) error {
+//			UpdateFunc: func(ctx context.Context, name string, source *migration.Source, instanceService migration.InstanceService) error {
 //				panic("mock out the Update method")
 //			},
 //		}
@@ -61,7 +61,7 @@ type SourceServiceMock struct {
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Source, error)
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, source *migration.Source, instanceService migration.InstanceService) error
+	UpdateFunc func(ctx context.Context, name string, source *migration.Source, instanceService migration.InstanceService) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -102,6 +102,8 @@ type SourceServiceMock struct {
 		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 			// Source is the source argument value.
 			Source *migration.Source
 			// InstanceService is the instanceService argument value.
@@ -293,23 +295,25 @@ func (mock *SourceServiceMock) GetByNameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *SourceServiceMock) Update(ctx context.Context, source *migration.Source, instanceService migration.InstanceService) error {
+func (mock *SourceServiceMock) Update(ctx context.Context, name string, source *migration.Source, instanceService migration.InstanceService) error {
 	if mock.UpdateFunc == nil {
 		panic("SourceServiceMock.UpdateFunc: method is nil but SourceService.Update was just called")
 	}
 	callInfo := struct {
 		Ctx             context.Context
+		Name            string
 		Source          *migration.Source
 		InstanceService migration.InstanceService
 	}{
 		Ctx:             ctx,
+		Name:            name,
 		Source:          source,
 		InstanceService: instanceService,
 	}
 	mock.lockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	mock.lockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, source, instanceService)
+	return mock.UpdateFunc(ctx, name, source, instanceService)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -318,11 +322,13 @@ func (mock *SourceServiceMock) Update(ctx context.Context, source *migration.Sou
 //	len(mockedSourceService.UpdateCalls())
 func (mock *SourceServiceMock) UpdateCalls() []struct {
 	Ctx             context.Context
+	Name            string
 	Source          *migration.Source
 	InstanceService migration.InstanceService
 } {
 	var calls []struct {
 		Ctx             context.Context
+		Name            string
 		Source          *migration.Source
 		InstanceService migration.InstanceService
 	}

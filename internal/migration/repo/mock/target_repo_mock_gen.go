@@ -38,7 +38,7 @@ var _ migration.TargetRepo = &TargetRepoMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
-//			UpdateFunc: func(ctx context.Context, target migration.Target) error {
+//			UpdateFunc: func(ctx context.Context, name string, target migration.Target) error {
 //				panic("mock out the Update method")
 //			},
 //		}
@@ -67,7 +67,7 @@ type TargetRepoMock struct {
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, target migration.Target) error
+	UpdateFunc func(ctx context.Context, name string, target migration.Target) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -115,6 +115,8 @@ type TargetRepoMock struct {
 		Update []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Name is the name argument value.
+			Name string
 			// Target is the target argument value.
 			Target migration.Target
 		}
@@ -341,21 +343,23 @@ func (mock *TargetRepoMock) RenameCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *TargetRepoMock) Update(ctx context.Context, target migration.Target) error {
+func (mock *TargetRepoMock) Update(ctx context.Context, name string, target migration.Target) error {
 	if mock.UpdateFunc == nil {
 		panic("TargetRepoMock.UpdateFunc: method is nil but TargetRepo.Update was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
+		Name   string
 		Target migration.Target
 	}{
 		Ctx:    ctx,
+		Name:   name,
 		Target: target,
 	}
 	mock.lockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	mock.lockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, target)
+	return mock.UpdateFunc(ctx, name, target)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -364,10 +368,12 @@ func (mock *TargetRepoMock) Update(ctx context.Context, target migration.Target)
 //	len(mockedTargetRepo.UpdateCalls())
 func (mock *TargetRepoMock) UpdateCalls() []struct {
 	Ctx    context.Context
+	Name   string
 	Target migration.Target
 } {
 	var calls []struct {
 		Ctx    context.Context
+		Name   string
 		Target migration.Target
 	}
 	mock.lockUpdate.RLock()

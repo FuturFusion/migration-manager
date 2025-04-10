@@ -184,9 +184,10 @@ func (_d BatchRepoWithSlog) Rename(ctx context.Context, oldName string, newName 
 }
 
 // Update implements _sourceMigration.BatchRepo
-func (_d BatchRepoWithSlog) Update(ctx context.Context, batch _sourceMigration.Batch) (err error) {
+func (_d BatchRepoWithSlog) Update(ctx context.Context, name string, batch _sourceMigration.Batch) (err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
+		slog.String("name", name),
 		slog.Any("batch", batch),
 	).Debug("BatchRepoWithSlog: calling Update")
 	defer func() {
@@ -199,5 +200,5 @@ func (_d BatchRepoWithSlog) Update(ctx context.Context, batch _sourceMigration.B
 			log.Debug("BatchRepoWithSlog: method Update finished")
 		}
 	}()
-	return _d._base.Update(ctx, batch)
+	return _d._base.Update(ctx, name, batch)
 }
