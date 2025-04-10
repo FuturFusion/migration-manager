@@ -606,7 +606,7 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 	return err
 }
 
-func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []string) error {
+func (t *InternalIncusTarget) Exec(ctx context.Context, instanceName string, cmd []string) error {
 	req := incusAPI.InstanceExecPost{
 		Command:     cmd,
 		WaitForWS:   true,
@@ -615,8 +615,12 @@ func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []stri
 
 	args := incus.InstanceExecArgs{}
 
-	_, err := t.incusClient.ExecInstance(instanceName, req, &args)
-	return err
+	op, err := t.incusClient.ExecInstance(instanceName, req, &args)
+	if err != nil {
+		return err
+	}
+
+	return op.WaitContext(ctx)
 }
 
 func (t *InternalIncusTarget) GetInstanceNames() ([]string, error) {

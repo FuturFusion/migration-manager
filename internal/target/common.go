@@ -86,7 +86,7 @@ func (t *InternalTarget) PushFile(instanceName string, file string, destDir stri
 	return fmt.Errorf("Not implemented by InternalTarget")
 }
 
-func (t *InternalTarget) ExecWithoutWaiting(instanceName string, cmd []string) error {
+func (t *InternalTarget) Exec(ctx context.Context, instanceName string, cmd []string) error {
 	return fmt.Errorf("Not implemented by InternalTarget")
 }
 
