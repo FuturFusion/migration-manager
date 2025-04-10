@@ -46,7 +46,7 @@ var _ migration.InstanceRepo = &InstanceRepoMock{}
 //			GetAllBySourceFunc: func(ctx context.Context, source string) (migration.Instances, error) {
 //				panic("mock out the GetAllBySource method")
 //			},
-//			GetAllByStateFunc: func(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error) {
+//			GetAllByStateFunc: func(ctx context.Context, status ...api.MigrationStatusType) (migration.Instances, error) {
 //				panic("mock out the GetAllByState method")
 //			},
 //			GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
@@ -99,7 +99,7 @@ type InstanceRepoMock struct {
 	GetAllBySourceFunc func(ctx context.Context, source string) (migration.Instances, error)
 
 	// GetAllByStateFunc mocks the GetAllByState method.
-	GetAllByStateFunc func(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error)
+	GetAllByStateFunc func(ctx context.Context, status ...api.MigrationStatusType) (migration.Instances, error)
 
 	// GetAllUUIDsFunc mocks the GetAllUUIDs method.
 	GetAllUUIDsFunc func(ctx context.Context) ([]uuid.UUID, error)
@@ -182,7 +182,7 @@ type InstanceRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Status is the status argument value.
-			Status api.MigrationStatusType
+			Status []api.MigrationStatusType
 		}
 		// GetAllUUIDs holds details about calls to the GetAllUUIDs method.
 		GetAllUUIDs []struct {
@@ -529,13 +529,13 @@ func (mock *InstanceRepoMock) GetAllBySourceCalls() []struct {
 }
 
 // GetAllByState calls GetAllByStateFunc.
-func (mock *InstanceRepoMock) GetAllByState(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error) {
+func (mock *InstanceRepoMock) GetAllByState(ctx context.Context, status ...api.MigrationStatusType) (migration.Instances, error) {
 	if mock.GetAllByStateFunc == nil {
 		panic("InstanceRepoMock.GetAllByStateFunc: method is nil but InstanceRepo.GetAllByState was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
-		Status api.MigrationStatusType
+		Status []api.MigrationStatusType
 	}{
 		Ctx:    ctx,
 		Status: status,
@@ -543,7 +543,7 @@ func (mock *InstanceRepoMock) GetAllByState(ctx context.Context, status api.Migr
 	mock.lockGetAllByState.Lock()
 	mock.calls.GetAllByState = append(mock.calls.GetAllByState, callInfo)
 	mock.lockGetAllByState.Unlock()
-	return mock.GetAllByStateFunc(ctx, status)
+	return mock.GetAllByStateFunc(ctx, status...)
 }
 
 // GetAllByStateCalls gets all the calls that were made to GetAllByState.
@@ -552,11 +552,11 @@ func (mock *InstanceRepoMock) GetAllByState(ctx context.Context, status api.Migr
 //	len(mockedInstanceRepo.GetAllByStateCalls())
 func (mock *InstanceRepoMock) GetAllByStateCalls() []struct {
 	Ctx    context.Context
-	Status api.MigrationStatusType
+	Status []api.MigrationStatusType
 } {
 	var calls []struct {
 		Ctx    context.Context
-		Status api.MigrationStatusType
+		Status []api.MigrationStatusType
 	}
 	mock.lockGetAllByState.RLock()
 	calls = mock.calls.GetAllByState

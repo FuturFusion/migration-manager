@@ -186,7 +186,7 @@ func (_d InstanceRepoWithSlog) GetAllBySource(ctx context.Context, source string
 }
 
 // GetAllByState implements _sourceMigration.InstanceRepo
-func (_d InstanceRepoWithSlog) GetAllByState(ctx context.Context, status api.MigrationStatusType) (i1 _sourceMigration.Instances, err error) {
+func (_d InstanceRepoWithSlog) GetAllByState(ctx context.Context, status ...api.MigrationStatusType) (i1 _sourceMigration.Instances, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("status", status),
@@ -202,7 +202,7 @@ func (_d InstanceRepoWithSlog) GetAllByState(ctx context.Context, status api.Mig
 			log.Debug("InstanceRepoWithSlog: method GetAllByState finished")
 		}
 	}()
-	return _d._base.GetAllByState(ctx, status)
+	return _d._base.GetAllByState(ctx, status...)
 }
 
 // GetAllUUIDs implements _sourceMigration.InstanceRepo
