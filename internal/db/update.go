@@ -31,6 +31,7 @@ CREATE TABLE instances (
     migration_status TEXT NOT NULL,
     migration_status_message TEXT NOT NULL,
     last_update_from_source DATETIME NOT NULL,
+    last_update_from_worker DATETIME NOT NULL,
     source_id INTEGER NOT NULL,
     batch_id INTEGER NULL,
     needs_disk_import INTEGER NOT NULL,

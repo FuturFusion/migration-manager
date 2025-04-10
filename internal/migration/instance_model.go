@@ -17,6 +17,7 @@ type Instance struct {
 	MigrationStatus        api.MigrationStatusType
 	MigrationStatusMessage string
 	LastUpdateFromSource   time.Time
+	LastUpdateFromWorker   time.Time
 
 	Source string  `db:"join=sources.name"`
 	Batch  *string `db:"leftjoin=batches.name"`
@@ -150,6 +151,7 @@ func (i Instance) ToAPI() api.Instance {
 		MigrationStatus:        i.MigrationStatus,
 		MigrationStatusMessage: i.MigrationStatusMessage,
 		LastUpdateFromSource:   i.LastUpdateFromSource,
+		LastUpdateFromWorker:   i.LastUpdateFromWorker,
 		Source:                 i.Source,
 		Batch:                  i.Batch,
 		Properties:             i.Properties,
