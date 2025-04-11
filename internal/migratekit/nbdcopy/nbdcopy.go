@@ -4,22 +4,21 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/FuturFusion/migration-manager/internal/migratekit/progress"
 )
 
 func Run(source, destination string, size int64, targetIsClean bool, diskName string, statusCallback func(string, bool)) error {
-	logger := log.WithFields(log.Fields{
-		"command":     "nbdcopy",
-		"source":      source,
-		"destination": destination,
-	})
+	log := slog.With(
+		slog.String("command", "nbdcopy"),
+		slog.String("source", source),
+		slog.String("destination", destination),
+	)
 
 	progressRead, progressWrite, err := os.Pipe()
 	if err != nil {
@@ -48,11 +47,11 @@ func Run(source, destination string, size int64, targetIsClean bool, diskName st
 	cmd.Stderr = &stderr
 	cmd.ExtraFiles = []*os.File{progressWrite}
 
-	logger.Info("Running command: ", cmd)
+	log.Info("Running command", slog.String("args", cmd.String()))
 	defer func() {
-		log.Debug("stdout", stdout.String())
+		log.Debug("Command ended", slog.String("stdout", stdout.String()))
 		if len(stderr.String()) > 0 {
-			log.Error("stderr", stderr.String())
+			log.Error("Command errored", slog.String("stderr", stderr.String()))
 		}
 	}()
 
@@ -71,7 +70,7 @@ func Run(source, destination string, size int64, targetIsClean bool, diskName st
 			progressParts := strings.Split(scanner.Text(), "/")
 			progress, err := strconv.ParseInt(progressParts[0], 10, 64)
 			if err != nil {
-				log.Error("Error parsing progress: ", err)
+				log.Error("Error parsing progress: ", slog.Any("error", err))
 				continue
 			}
 
@@ -80,7 +79,7 @@ func Run(source, destination string, size int64, targetIsClean bool, diskName st
 		}
 
 		if err := scanner.Err(); err != nil {
-			log.Error("Error reading progress: ", err)
+			log.Error("Error reading progress: ", slog.Any("error", err))
 		}
 	}()
 

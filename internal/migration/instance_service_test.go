@@ -239,7 +239,7 @@ func TestInstanceService_GetAllByState(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.InstanceRepoMock{
-				GetAllByStateFunc: func(ctx context.Context, state api.MigrationStatusType) (migration.Instances, error) {
+				GetAllByStateFunc: func(ctx context.Context, states ...api.MigrationStatusType) (migration.Instances, error) {
 					return tc.repoGetAllByStateInstances, tc.repoGetAllByStateErr
 				},
 			}
@@ -247,7 +247,7 @@ func TestInstanceService_GetAllByState(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			instances, err := instanceSvc.GetAllByState(context.Background(), api.MIGRATIONSTATUS_ASSIGNED_BATCH, false)
+			instances, err := instanceSvc.GetAllByState(context.Background(), false, api.MIGRATIONSTATUS_ASSIGNED_BATCH)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -805,7 +805,7 @@ func TestInstanceService_UpdateStatusByUUID(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo, nil)
 
 			// Run test
-			instance, err := instanceSvc.UpdateStatusByUUID(context.Background(), tc.uuidArg, tc.statusArg, "", false)
+			instance, err := instanceSvc.UpdateStatusByUUID(context.Background(), tc.uuidArg, tc.statusArg, "", false, false)
 
 			// Assert
 			tc.assertErr(t, err)

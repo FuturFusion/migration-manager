@@ -1,0 +1,13 @@
+[Unit]
+Description=Migration Manager Worker
+After=network-online.target incus-agent.service worker-unpack.service seed-unpack.service
+StartLimitIntervalSec=60
+StartLimitBurst=10
+
+[Service]
+ExecStart=/opt/migration-manager-worker
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

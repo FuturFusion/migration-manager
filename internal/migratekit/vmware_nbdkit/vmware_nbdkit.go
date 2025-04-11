@@ -3,13 +3,13 @@ package vmware_nbdkit
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/methods"
 	"github.com/vmware/govmomi/vim25/mo"
@@ -129,11 +129,11 @@ func (s *NbdkitServers) Start(ctx context.Context) error {
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		log.Warn("Received interrupt signal, cleaning up...")
+		slog.Warn("Received interrupt signal, cleaning up...")
 
 		err := s.Stop(ctx)
 		if err != nil {
-			log.WithError(err).Error("Failed to stop nbdkit servers")
+			slog.Error("Failed to stop nbdkit servers", slog.Any("error", err))
 		}
 
 		os.Exit(1)
@@ -189,7 +189,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	defer func() {
 		err := s.Stop(ctx)
 		if err != nil {
-			log.WithError(err).Error("Failed to stop nbdkit servers")
+			slog.Error("Failed to stop nbdkit servers", slog.Any("error", err))
 		}
 	}()
 
@@ -213,12 +213,12 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 }
 
 func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsClean bool, statusCallback func(string, bool)) error {
-	logger := log.WithFields(log.Fields{
-		"vm":   s.Servers.VirtualMachine.Name(),
-		"disk": s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName,
-	})
+	log := slog.With(
+		slog.String("vm", s.Servers.VirtualMachine.Name()),
+		slog.String("disk", s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName),
+	)
 
-	logger.Info("Starting full copy")
+	log.Info("Starting full copy")
 
 	err := nbdcopy.Run(
 		s.Nbdkit.LibNBDExportName(),
@@ -232,18 +232,18 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 		return err
 	}
 
-	logger.Info("Full copy completed")
+	log.Info("Full copy completed")
 
 	return nil
 }
 
 func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Target, path string, statusCallback func(string, bool)) error {
-	logger := log.WithFields(log.Fields{
-		"vm":   s.Servers.VirtualMachine.Name(),
-		"disk": s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName,
-	})
+	log := slog.With(
+		slog.String("vm", s.Servers.VirtualMachine.Name()),
+		slog.String("disk", s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName),
+	)
 
-	logger.Info("Starting incremental copy")
+	log.Info("Starting incremental copy")
 
 	currentChangeId, err := t.GetCurrentChangeID(ctx)
 	if err != nil {
@@ -350,11 +350,11 @@ func (s *NbdkitServer) SyncToTarget(ctx context.Context, t target.Target, runV2V
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
-		log.Warn("Received interrupt signal, cleaning up...")
+		slog.Warn("Received interrupt signal, cleaning up...")
 
 		err := t.Disconnect(ctx)
 		if err != nil {
-			log.WithError(err).Error("Failed to disconnect from target")
+			slog.Error("Failed to disconnect from target", slog.Any("error", err))
 		}
 
 		os.Exit(1)
@@ -378,7 +378,7 @@ func (s *NbdkitServer) SyncToTarget(ctx context.Context, t target.Target, runV2V
 	}
 
 	if runV2V {
-		log.Info("Running virt-v2v-in-place")
+		slog.Info("Running virt-v2v-in-place")
 
 		os.Setenv("LIBGUESTFS_BACKEND", "direct")
 

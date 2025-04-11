@@ -1,0 +1,9 @@
+[Unit]
+Description=Migration Manager - Unpack worker
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/tar zxvf /dev/disk/by-partlabel/worker -C /opt/
+
+[Install]
+WantedBy=multi-user.target

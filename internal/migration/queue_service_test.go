@@ -577,7 +577,7 @@ func TestInstanceService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID, withOverrides bool) (*migration.Instance, error) {
 					return &tc.instanceSvcGetByIDInstance, tc.instanceSvcGetByIDErr
 				},
-				UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool) (*migration.Instance, error) {
+				UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusString string, needsDiskImport bool, workerUpdate bool) (*migration.Instance, error) {
 					require.Equal(t, tc.wantMigrationStatus, status)
 					require.Equal(t, tc.wantMigrationStatusMessage, statusString)
 					return nil, tc.instanceSvcUpdateStatusByIDErr

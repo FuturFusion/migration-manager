@@ -46,7 +46,7 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			GetAllBySourceFunc: func(ctx context.Context, source string, withOverrides bool) (migration.Instances, error) {
 //				panic("mock out the GetAllBySource method")
 //			},
-//			GetAllByStateFunc: func(ctx context.Context, status api.MigrationStatusType, withOverrides bool) (migration.Instances, error) {
+//			GetAllByStateFunc: func(ctx context.Context, withOverrides bool, statuses ...api.MigrationStatusType) (migration.Instances, error) {
 //				panic("mock out the GetAllByState method")
 //			},
 //			GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
@@ -73,7 +73,7 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			UpdateOverridesFunc: func(ctx context.Context, overrides *migration.InstanceOverride) error {
 //				panic("mock out the UpdateOverrides method")
 //			},
-//			UpdateStatusByUUIDFunc: func(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*migration.Instance, error) {
+//			UpdateStatusByUUIDFunc: func(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool, workerUpdate bool) (*migration.Instance, error) {
 //				panic("mock out the UpdateStatusByUUID method")
 //			},
 //		}
@@ -108,7 +108,7 @@ type InstanceServiceMock struct {
 	GetAllBySourceFunc func(ctx context.Context, source string, withOverrides bool) (migration.Instances, error)
 
 	// GetAllByStateFunc mocks the GetAllByState method.
-	GetAllByStateFunc func(ctx context.Context, status api.MigrationStatusType, withOverrides bool) (migration.Instances, error)
+	GetAllByStateFunc func(ctx context.Context, withOverrides bool, statuses ...api.MigrationStatusType) (migration.Instances, error)
 
 	// GetAllUUIDsFunc mocks the GetAllUUIDs method.
 	GetAllUUIDsFunc func(ctx context.Context) ([]uuid.UUID, error)
@@ -135,7 +135,7 @@ type InstanceServiceMock struct {
 	UpdateOverridesFunc func(ctx context.Context, overrides *migration.InstanceOverride) error
 
 	// UpdateStatusByUUIDFunc mocks the UpdateStatusByUUID method.
-	UpdateStatusByUUIDFunc func(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*migration.Instance, error)
+	UpdateStatusByUUIDFunc func(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool, workerUpdate bool) (*migration.Instance, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -207,10 +207,10 @@ type InstanceServiceMock struct {
 		GetAllByState []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-			// Status is the status argument value.
-			Status api.MigrationStatusType
 			// WithOverrides is the withOverrides argument value.
 			WithOverrides bool
+			// Statuses is the statuses argument value.
+			Statuses []api.MigrationStatusType
 		}
 		// GetAllUUIDs holds details about calls to the GetAllUUIDs method.
 		GetAllUUIDs []struct {
@@ -284,6 +284,8 @@ type InstanceServiceMock struct {
 			StatusMessage string
 			// NeedsDiskImport is the needsDiskImport argument value.
 			NeedsDiskImport bool
+			// WorkerUpdate is the workerUpdate argument value.
+			WorkerUpdate bool
 		}
 	}
 	lockCreate                sync.RWMutex
@@ -611,23 +613,23 @@ func (mock *InstanceServiceMock) GetAllBySourceCalls() []struct {
 }
 
 // GetAllByState calls GetAllByStateFunc.
-func (mock *InstanceServiceMock) GetAllByState(ctx context.Context, status api.MigrationStatusType, withOverrides bool) (migration.Instances, error) {
+func (mock *InstanceServiceMock) GetAllByState(ctx context.Context, withOverrides bool, statuses ...api.MigrationStatusType) (migration.Instances, error) {
 	if mock.GetAllByStateFunc == nil {
 		panic("InstanceServiceMock.GetAllByStateFunc: method is nil but InstanceService.GetAllByState was just called")
 	}
 	callInfo := struct {
 		Ctx           context.Context
-		Status        api.MigrationStatusType
 		WithOverrides bool
+		Statuses      []api.MigrationStatusType
 	}{
 		Ctx:           ctx,
-		Status:        status,
 		WithOverrides: withOverrides,
+		Statuses:      statuses,
 	}
 	mock.lockGetAllByState.Lock()
 	mock.calls.GetAllByState = append(mock.calls.GetAllByState, callInfo)
 	mock.lockGetAllByState.Unlock()
-	return mock.GetAllByStateFunc(ctx, status, withOverrides)
+	return mock.GetAllByStateFunc(ctx, withOverrides, statuses...)
 }
 
 // GetAllByStateCalls gets all the calls that were made to GetAllByState.
@@ -636,13 +638,13 @@ func (mock *InstanceServiceMock) GetAllByState(ctx context.Context, status api.M
 //	len(mockedInstanceService.GetAllByStateCalls())
 func (mock *InstanceServiceMock) GetAllByStateCalls() []struct {
 	Ctx           context.Context
-	Status        api.MigrationStatusType
 	WithOverrides bool
+	Statuses      []api.MigrationStatusType
 } {
 	var calls []struct {
 		Ctx           context.Context
-		Status        api.MigrationStatusType
 		WithOverrides bool
+		Statuses      []api.MigrationStatusType
 	}
 	mock.lockGetAllByState.RLock()
 	calls = mock.calls.GetAllByState
@@ -947,7 +949,7 @@ func (mock *InstanceServiceMock) UpdateOverridesCalls() []struct {
 }
 
 // UpdateStatusByUUID calls UpdateStatusByUUIDFunc.
-func (mock *InstanceServiceMock) UpdateStatusByUUID(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*migration.Instance, error) {
+func (mock *InstanceServiceMock) UpdateStatusByUUID(ctx context.Context, i uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool, workerUpdate bool) (*migration.Instance, error) {
 	if mock.UpdateStatusByUUIDFunc == nil {
 		panic("InstanceServiceMock.UpdateStatusByUUIDFunc: method is nil but InstanceService.UpdateStatusByUUID was just called")
 	}
@@ -957,17 +959,19 @@ func (mock *InstanceServiceMock) UpdateStatusByUUID(ctx context.Context, i uuid.
 		Status          api.MigrationStatusType
 		StatusMessage   string
 		NeedsDiskImport bool
+		WorkerUpdate    bool
 	}{
 		Ctx:             ctx,
 		I:               i,
 		Status:          status,
 		StatusMessage:   statusMessage,
 		NeedsDiskImport: needsDiskImport,
+		WorkerUpdate:    workerUpdate,
 	}
 	mock.lockUpdateStatusByUUID.Lock()
 	mock.calls.UpdateStatusByUUID = append(mock.calls.UpdateStatusByUUID, callInfo)
 	mock.lockUpdateStatusByUUID.Unlock()
-	return mock.UpdateStatusByUUIDFunc(ctx, i, status, statusMessage, needsDiskImport)
+	return mock.UpdateStatusByUUIDFunc(ctx, i, status, statusMessage, needsDiskImport, workerUpdate)
 }
 
 // UpdateStatusByUUIDCalls gets all the calls that were made to UpdateStatusByUUID.
@@ -980,6 +984,7 @@ func (mock *InstanceServiceMock) UpdateStatusByUUIDCalls() []struct {
 	Status          api.MigrationStatusType
 	StatusMessage   string
 	NeedsDiskImport bool
+	WorkerUpdate    bool
 } {
 	var calls []struct {
 		Ctx             context.Context
@@ -987,6 +992,7 @@ func (mock *InstanceServiceMock) UpdateStatusByUUIDCalls() []struct {
 		Status          api.MigrationStatusType
 		StatusMessage   string
 		NeedsDiskImport bool
+		WorkerUpdate    bool
 	}
 	mock.lockUpdateStatusByUUID.RLock()
 	calls = mock.calls.UpdateStatusByUUID

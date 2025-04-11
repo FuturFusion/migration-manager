@@ -90,8 +90,8 @@ type Target interface {
 	// Push a file into a running instance.
 	PushFile(instanceName string, file string, destDir string) error
 
-	// Run a command within an instance and return immediately without waiting for it to complete.
-	ExecWithoutWaiting(instanceName string, cmd []string) error
+	// Exec runs a command within an instance and wait for it to complete.
+	Exec(ctx context.Context, instanceName string, cmd []string) error
 
 	// Wrapper around Incus' GetInstanceNames method.
 	GetInstanceNames() ([]string, error)

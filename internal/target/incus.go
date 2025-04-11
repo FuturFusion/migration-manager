@@ -421,7 +421,7 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 	return instance, nil
 }
 
-func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) (incusAPI.InstancesPost, error) {
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string, fingerprint string, endpoint string) (incusAPI.InstancesPost, error) {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
@@ -450,6 +450,10 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 
 	ret.Config["user.migration.source_type"] = "VMware"
 	ret.Config["user.migration.source"] = instanceDef.Source
+	ret.Config["user.migration.token"] = instanceDef.SecretToken.String()
+	ret.Config["user.migration.fingerprint"] = fingerprint
+	ret.Config["user.migration.endpoint"] = endpoint
+	ret.Config["user.migration.uuid"] = instanceDef.UUID.String()
 
 	info, err := defs.Get(properties.InstanceOS)
 	if err != nil {
@@ -602,7 +606,33 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 	return err
 }
 
-func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []string) error {
+// CheckIncusAgent repeatedly calls Exec on the instance until the context errors out, or the exec succeeds.
+func (t *InternalIncusTarget) CheckIncusAgent(ctx context.Context, instanceName string) error {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*120)
+	defer cancel()
+
+	var err error
+	for ctx.Err() == nil {
+		// Limit each exec to 5s.
+		execCtx, cancel := context.WithTimeout(ctx, time.Second*5)
+		err = t.Exec(execCtx, instanceName, []string{"echo"})
+		cancel()
+
+		// If there is no error, then the agent is running.
+		if err == nil {
+			return nil
+		}
+	}
+
+	// If we got here, then Exec still did not complete successfully, so return the error.
+	if err != nil {
+		return fmt.Errorf("Instance failed to start: %w", err)
+	}
+
+	return fmt.Errorf("Instance failed to start: %w", ctx.Err())
+}
+
+func (t *InternalIncusTarget) Exec(ctx context.Context, instanceName string, cmd []string) error {
 	req := incusAPI.InstanceExecPost{
 		Command:     cmd,
 		WaitForWS:   true,
@@ -611,8 +641,12 @@ func (t *InternalIncusTarget) ExecWithoutWaiting(instanceName string, cmd []stri
 
 	args := incus.InstanceExecArgs{}
 
-	_, err := t.incusClient.ExecInstance(instanceName, req, &args)
-	return err
+	op, err := t.incusClient.ExecInstance(instanceName, req, &args)
+	if err != nil {
+		return err
+	}
+
+	return op.WaitContext(ctx)
 }
 
 func (t *InternalIncusTarget) GetInstanceNames() ([]string, error) {
@@ -811,5 +845,5 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 		return err
 	}
 
-	return util.CreateTarballFromDir(backupPath, filepath.Join(tmpDir, "backup"))
+	return util.CreateTarball(backupPath, filepath.Join(tmpDir, "backup"))
 }

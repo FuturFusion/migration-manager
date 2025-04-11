@@ -5,10 +5,10 @@ package source
 
 import (
 	"context"
+	"log/slog"
 	"net/url"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/vmware/govmomi"
 
 	"github.com/FuturFusion/migration-manager/internal/migratekit/nbdkit"
@@ -38,8 +38,7 @@ func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, s
 			break
 		}
 
-		logger := log.WithFields(log.Fields{"error": err, "attempt": i + 1})
-		logger.Error("Disk import attempt failed")
+		slog.Error("Disk import attempt failed", slog.Int("attempt", i+1), slog.Any("error", err))
 
 		time.Sleep(time.Second * 1)
 	}

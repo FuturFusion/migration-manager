@@ -40,8 +40,13 @@ func (i instance) GetAllByBatch(ctx context.Context, batch string) (migration.In
 	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{Batch: &batch})
 }
 
-func (i instance) GetAllByState(ctx context.Context, status api.MigrationStatusType) (migration.Instances, error) {
-	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{MigrationStatus: &status})
+func (i instance) GetAllByState(ctx context.Context, statuses ...api.MigrationStatusType) (migration.Instances, error) {
+	filters := []entities.InstanceFilter{}
+	for _, s := range statuses {
+		filters = append(filters, entities.InstanceFilter{MigrationStatus: &s})
+	}
+
+	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), filters...)
 }
 
 func (i instance) GetAllBySource(ctx context.Context, source string) (migration.Instances, error) {

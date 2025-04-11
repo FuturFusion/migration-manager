@@ -172,8 +172,8 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		}
 
 		if newStatus != instance.MigrationStatus || newStatusMessage != instance.MigrationStatusMessage {
-			// Update instance in the database.
-			_, err = s.instance.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, instance.NeedsDiskImport)
+			// Update instance in the database, and set the worker update time.
+			_, err = s.instance.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, instance.NeedsDiskImport, true)
 			if err != nil {
 				return fmt.Errorf("Failed updating instance '%s': %w", instance.UUID, err)
 			}
