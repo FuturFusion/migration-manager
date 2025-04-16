@@ -23,14 +23,16 @@ func TestNetworkService_Create(t *testing.T) {
 		{
 			name: "success",
 			network: migration.Network{
-				ID:     1,
-				Name:   "one",
-				Config: map[string]string{},
+				ID:       1,
+				Name:     "one",
+				Location: "/path/to/one",
+				Config:   map[string]string{},
 			},
 			repoCreateNetwork: migration.Network{
-				ID:     1,
-				Name:   "one",
-				Config: map[string]string{},
+				ID:       1,
+				Name:     "one",
+				Location: "/path/to/one",
+				Config:   map[string]string{},
 			},
 
 			assertErr: require.NoError,
@@ -38,9 +40,10 @@ func TestNetworkService_Create(t *testing.T) {
 		{
 			name: "error - invalid id",
 			network: migration.Network{
-				ID:     -1, // invalid
-				Name:   "one",
-				Config: map[string]string{},
+				ID:       -1, // invalid
+				Name:     "one",
+				Location: "/path/to/one",
+				Config:   map[string]string{},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -51,9 +54,24 @@ func TestNetworkService_Create(t *testing.T) {
 		{
 			name: "error - name empty",
 			network: migration.Network{
-				ID:     1,
-				Name:   "", // empty
-				Config: map[string]string{},
+				ID:       1,
+				Name:     "", // empty
+				Location: "/path/to/one",
+				Config:   map[string]string{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - location empty",
+			network: migration.Network{
+				ID:       1,
+				Name:     "one",
+				Location: "", // empty
+				Config:   map[string]string{},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -64,9 +82,10 @@ func TestNetworkService_Create(t *testing.T) {
 		{
 			name: "error - repo",
 			network: migration.Network{
-				ID:     1,
-				Name:   "one",
-				Config: map[string]string{},
+				ID:       1,
+				Name:     "one",
+				Location: "/path/to/one",
+				Config:   map[string]string{},
 			},
 			repoCreateErr: boom.Error,
 
@@ -266,9 +285,10 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		{
 			name: "success",
 			network: migration.Network{
-				ID:     1,
-				Name:   "one",
-				Config: map[string]string{},
+				ID:       1,
+				Name:     "one",
+				Location: "/path/to/one",
+				Config:   map[string]string{},
 			},
 
 			assertErr: require.NoError,
@@ -276,9 +296,10 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		{
 			name: "error - invalid id",
 			network: migration.Network{
-				ID:     -1, // invalid
-				Name:   "one",
-				Config: map[string]string{},
+				ID:       -1, // invalid
+				Name:     "one",
+				Location: "/path/to/one",
+				Config:   map[string]string{},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -289,9 +310,10 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		{
 			name: "error - name empty",
 			network: migration.Network{
-				ID:     1,
-				Name:   "", // empty
-				Config: map[string]string{},
+				ID:       1,
+				Name:     "", // empty
+				Location: "/path/to/one",
+				Config:   map[string]string{},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -302,9 +324,10 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		{
 			name: "error - repo",
 			network: migration.Network{
-				ID:     1,
-				Name:   "one",
-				Config: map[string]string{},
+				ID:       1,
+				Name:     "one",
+				Location: "/path/to/one",
+				Config:   map[string]string{},
 			},
 			repoUpdateErr: boom.Error,
 
