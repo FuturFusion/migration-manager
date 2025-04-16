@@ -472,6 +472,23 @@ func parseArchitecture(archName string, archBits string, location string) (strin
 }
 
 func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties.RawPropertySet[api.SourceType], defName properties.Name) error {
+	diskHasSubProperty := func(subProp properties.Name, device *types.VirtualDisk) bool {
+		if subProp == properties.InstanceDiskShared {
+			// Not every disk type supports sharing.
+			_, ok1 := device.GetVirtualDevice().Backing.(*types.VirtualDiskFlatVer2BackingInfo)
+			_, ok2 := device.GetVirtualDevice().Backing.(*types.VirtualDiskRawDiskVer2BackingInfo)
+
+			return ok1 || ok2
+		}
+
+		return true
+	}
+
+	nicHasSubProperty := func(subProp properties.Name) bool {
+		// The network name will be applied later.
+		return subProp != properties.InstanceNICNetwork
+	}
+
 	b, err := json.Marshal(device)
 	if err != nil {
 		return err
@@ -489,14 +506,25 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 	}
 
 	for key, info := range subProps.GetAll() {
-		if key == properties.InstanceDiskShared {
-			// Only particular sub-types of disk have sharing set.
-			_, ok := device.(*types.VirtualDisk).GetVirtualDevice().Backing.(*types.VirtualDiskFlatVer2BackingInfo)
+		switch defName {
+		case properties.InstanceDisks:
+			disk, ok := device.(*types.VirtualDisk)
 			if !ok {
-				_, ok := device.(*types.VirtualDisk).GetVirtualDevice().Backing.(*types.VirtualDiskRawDiskVer2BackingInfo)
-				if !ok {
-					continue
-				}
+				return fmt.Errorf("Invalid disk type: %v", device)
+			}
+
+			if !diskHasSubProperty(key, disk) {
+				continue
+			}
+
+		case properties.InstanceNICs:
+			_, ok := device.(types.BaseVirtualEthernetCard)
+			if !ok {
+				return fmt.Errorf("Invalid NIC type: %v", device)
+			}
+
+			if !nicHasSubProperty(key) {
+				continue
 			}
 		}
 
@@ -581,7 +609,7 @@ func parseValue(propName properties.Name, value any) (any, error) {
 
 // getPropFromKeys iterates over the keys in the keyset (delimited by '.'),
 // assuming each nested object is a map[string]any, and returning the final object.
-func getPropFromKeys(keySet string, obj any) (any, error) {
+func getPropFromKeys(keySets string, obj any) (any, error) {
 	getMapValue := func(key string, obj any) (any, error) {
 		valMap, ok := obj.(map[string]any)
 		if !ok {
@@ -596,15 +624,29 @@ func getPropFromKeys(keySet string, obj any) (any, error) {
 		return value, nil
 	}
 
-	keys := strings.Split(keySet, ".")
-	for _, key := range keys {
-		val, err := getMapValue(key, obj)
-		if err != nil {
-			return nil, err
+	var err error
+	for _, keySet := range strings.Split(keySets, ",") {
+		objCopy := obj
+		keys := strings.Split(keySet, ".")
+		for _, key := range keys {
+			var val any
+			val, err = getMapValue(key, objCopy)
+			if err != nil {
+				err = fmt.Errorf("Failed to find value for key set %q: %w", keySet, err)
+				break
+			}
+
+			objCopy = val
 		}
 
-		obj = val
+		if err == nil {
+			return objCopy, nil
+		}
 	}
 
-	return obj, nil
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf("No object found for any of %v", keySets)
 }
