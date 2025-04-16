@@ -14,13 +14,13 @@ import (
 )
 
 var networkObjects = RegisterStmt(`
-SELECT networks.id, networks.name, networks.config
+SELECT networks.id, networks.name, networks.location, networks.config
   FROM networks
   ORDER BY networks.name
 `)
 
 var networkObjectsByName = RegisterStmt(`
-SELECT networks.id, networks.name, networks.config
+SELECT networks.id, networks.name, networks.location, networks.config
   FROM networks
   WHERE ( networks.name = ? )
   ORDER BY networks.name
@@ -38,13 +38,13 @@ SELECT networks.id FROM networks
 `)
 
 var networkCreate = RegisterStmt(`
-INSERT INTO networks (name, config)
-  VALUES (?, ?)
+INSERT INTO networks (name, location, config)
+  VALUES (?, ?, ?)
 `)
 
 var networkUpdate = RegisterStmt(`
 UPDATE networks
-  SET name = ?, config = ?
+  SET name = ?, location = ?, config = ?
  WHERE id = ?
 `)
 
@@ -136,7 +136,7 @@ func GetNetwork(ctx context.Context, db dbtx, name string) (_ *migration.Network
 // networkColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Network entity.
 func networkColumns() string {
-	return "networks.id, networks.name, networks.config"
+	return "networks.id, networks.name, networks.location, networks.config"
 }
 
 // getNetworks can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -146,7 +146,7 @@ func getNetworks(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migration.
 	dest := func(scan func(dest ...any) error) error {
 		n := migration.Network{}
 		var configStr string
-		err := scan(&n.ID, &n.Name, &configStr)
+		err := scan(&n.ID, &n.Name, &n.Location, &configStr)
 		if err != nil {
 			return err
 		}
@@ -176,7 +176,7 @@ func getNetworksRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]mi
 	dest := func(scan func(dest ...any) error) error {
 		n := migration.Network{}
 		var configStr string
-		err := scan(&n.ID, &n.Name, &configStr)
+		err := scan(&n.ID, &n.Name, &n.Location, &configStr)
 		if err != nil {
 			return err
 		}
@@ -341,16 +341,17 @@ func CreateNetwork(ctx context.Context, db dbtx, object migration.Network) (_ in
 		_err = mapErr(_err, "Network")
 	}()
 
-	args := make([]any, 2)
+	args := make([]any, 3)
 
 	// Populate the statement arguments.
 	args[0] = object.Name
+	args[1] = object.Location
 	marshaledConfig, err := marshalJSON(object.Config)
 	if err != nil {
 		return -1, err
 	}
 
-	args[1] = marshaledConfig
+	args[2] = marshaledConfig
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, networkCreate)
@@ -401,7 +402,7 @@ func UpdateNetwork(ctx context.Context, db tx, name string, object migration.Net
 		return err
 	}
 
-	result, err := stmt.Exec(object.Name, marshaledConfig, id)
+	result, err := stmt.Exec(object.Name, object.Location, marshaledConfig, id)
 	if err != nil {
 		return fmt.Errorf("Update \"networks\" entry failed: %w", err)
 	}
