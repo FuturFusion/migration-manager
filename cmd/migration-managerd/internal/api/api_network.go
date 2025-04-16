@@ -124,10 +124,7 @@ func networksGet(d *Daemon, r *http.Request) response.Response {
 
 		result := make([]api.Network, 0, len(networks))
 		for _, network := range networks {
-			result = append(result, api.Network{
-				Name:   network.Name,
-				Config: network.Config,
-			})
+			result = append(result, network.ToAPI())
 		}
 
 		return response.SyncResponse(true, result)
@@ -183,8 +180,9 @@ func networksPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	_, err = d.network.Create(r.Context(), migration.Network{
-		Name:   network.Name,
-		Config: network.Config,
+		Name:     network.Name,
+		Location: network.Location,
+		Config:   network.Config,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating network %q: %w", network.Name, err))
@@ -266,10 +264,7 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 
 	return response.SyncResponseETag(
 		true,
-		api.Network{
-			Name:   network.Name,
-			Config: network.Config,
-		},
+		network.ToAPI(),
 		network,
 	)
 }
@@ -306,7 +301,7 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 func networkPut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var network api.Network
+	var network api.NetworkPut
 
 	err := json.NewDecoder(r.Body).Decode(&network)
 	if err != nil {
@@ -333,12 +328,13 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	err = d.network.Update(ctx, &migration.Network{
-		ID:     currentNetwork.ID,
-		Name:   network.Name,
-		Config: network.Config,
+		ID:       currentNetwork.ID,
+		Name:     currentNetwork.Name,
+		Location: currentNetwork.Location,
+		Config:   network.Config,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", network.Name, err))
+		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", currentNetwork.Name, err))
 	}
 
 	err = trans.Commit()
@@ -346,5 +342,5 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+network.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+currentNetwork.Name)
 }

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -144,6 +146,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		return nil, err
 	}
 
+	networks, err := finder.NetworkList(ctx, "/...")
+	if err != nil {
+		return nil, err
+	}
+
 	for _, vm := range vms {
 		// Ignore any vCLS instances.
 		if regexp.MustCompile(`/vCLS/`).Match([]byte(vm.InventoryPath)) {
@@ -161,9 +168,16 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			continue
 		}
 
-		vmProps, err := s.getVMProperties(vm, vmProperties)
+		vmProps, err := s.getVMProperties(vm, vmProperties, networks)
 		if err != nil {
-			return nil, err
+			b, marshalErr := json.Marshal(vmProperties)
+			if marshalErr == nil {
+				// Dump the VM properties to the cache dir on errors.
+				fileName := filepath.Join(util.CachePath(), strings.ReplaceAll(vm.InventoryPath, "/", "_"))
+				_ = os.WriteFile(fileName, b, 0o644)
+			}
+
+			return nil, fmt.Errorf("Failed to record properties for %q: %w", vm.InventoryPath, err)
 		}
 
 		secretToken, _ := uuid.NewRandom()
@@ -192,7 +206,7 @@ func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) ([]api.Networ
 	}
 
 	for _, n := range networks {
-		ret = append(ret, api.Network{Name: n.Reference().Value})
+		ret = append(ret, api.Network{Name: parseNetworkID(n), Location: n.GetInventoryPath()})
 	}
 
 	return ret, nil
@@ -262,7 +276,7 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*objec
 	return finder.VirtualMachine(ctx, vmName)
 }
 
-func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProperties mo.VirtualMachine) (*api.InstanceProperties, error) {
+func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProperties mo.VirtualMachine, networks []object.NetworkReference) (*api.InstanceProperties, error) {
 	b, err := json.Marshal(vmProperties)
 	if err != nil {
 		return nil, err
@@ -328,7 +342,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 			for _, snap := range vmProperties.Snapshot.RootSnapshotList {
 				err = s.getDeviceProperties(snap, &props, defName)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
 				}
 			}
 
@@ -340,6 +354,37 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 				}
 
 				err = s.getDeviceProperties(eth, &props, defName)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
+				}
+
+				def, err := props.GetSubProperties(defName)
+				if err != nil {
+					return nil, err
+				}
+
+				val, err := def.GetValue(properties.InstanceNICNetworkID)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, network := range networks {
+					str, ok := val.(string)
+					if !ok {
+						return nil, fmt.Errorf("Unexpected network ID value: %v", val)
+					}
+
+					if parseNetworkID(network) == str {
+						err := def.Add(properties.InstanceNICNetwork, network.GetInventoryPath())
+						if err != nil {
+							return nil, err
+						}
+
+						break
+					}
+				}
+
+				err = props.Add(defName, def)
 				if err != nil {
 					return nil, err
 				}
@@ -354,7 +399,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 
 				err = s.getDeviceProperties(disk, &props, defName)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
 				}
 			}
 
@@ -427,6 +472,23 @@ func parseArchitecture(archName string, archBits string, location string) (strin
 }
 
 func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties.RawPropertySet[api.SourceType], defName properties.Name) error {
+	diskHasSubProperty := func(subProp properties.Name, device *types.VirtualDisk) bool {
+		if subProp == properties.InstanceDiskShared {
+			// Not every disk type supports sharing.
+			_, ok1 := device.GetVirtualDevice().Backing.(*types.VirtualDiskFlatVer2BackingInfo)
+			_, ok2 := device.GetVirtualDevice().Backing.(*types.VirtualDiskRawDiskVer2BackingInfo)
+
+			return ok1 || ok2
+		}
+
+		return true
+	}
+
+	nicHasSubProperty := func(subProp properties.Name) bool {
+		// The network name will be applied later.
+		return subProp != properties.InstanceNICNetwork
+	}
+
 	b, err := json.Marshal(device)
 	if err != nil {
 		return err
@@ -444,14 +506,25 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 	}
 
 	for key, info := range subProps.GetAll() {
-		if key == properties.InstanceDiskShared {
-			// Only particular sub-types of disk have sharing set.
-			_, ok := device.(*types.VirtualDisk).GetVirtualDevice().Backing.(*types.VirtualDiskFlatVer2BackingInfo)
+		switch defName {
+		case properties.InstanceDisks:
+			disk, ok := device.(*types.VirtualDisk)
 			if !ok {
-				_, ok := device.(*types.VirtualDisk).GetVirtualDevice().Backing.(*types.VirtualDiskRawDiskVer2BackingInfo)
-				if !ok {
-					continue
-				}
+				return fmt.Errorf("Invalid disk type: %v", device)
+			}
+
+			if !diskHasSubProperty(key, disk) {
+				continue
+			}
+
+		case properties.InstanceNICs:
+			_, ok := device.(types.BaseVirtualEthernetCard)
+			if !ok {
+				return fmt.Errorf("Invalid NIC type: %v", device)
+			}
+
+			if !nicHasSubProperty(key) {
+				continue
 			}
 		}
 
@@ -472,6 +545,18 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 	}
 
 	return props.Add(defName, subProps)
+}
+
+// parseNetworkID returns an API-compatible representation of the network ID from VMware.
+func parseNetworkID(network object.NetworkReference) string {
+	networkID := network.Reference().Value
+	_, ok := network.(*object.DistributedVirtualPortgroup)
+	if ok {
+		parts := strings.Split(networkID, " ")
+		networkID = parts[len(parts)-1]
+	}
+
+	return strings.ReplaceAll(networkID, " ", "_")
 }
 
 // parseValue handles necessary transformation from the VMware property value to the more generic Migration Manager representation.
@@ -536,7 +621,7 @@ func parseValue(propName properties.Name, value any) (any, error) {
 
 // getPropFromKeys iterates over the keys in the keyset (delimited by '.'),
 // assuming each nested object is a map[string]any, and returning the final object.
-func getPropFromKeys(keySet string, obj any) (any, error) {
+func getPropFromKeys(keySets string, obj any) (any, error) {
 	getMapValue := func(key string, obj any) (any, error) {
 		valMap, ok := obj.(map[string]any)
 		if !ok {
@@ -551,15 +636,29 @@ func getPropFromKeys(keySet string, obj any) (any, error) {
 		return value, nil
 	}
 
-	keys := strings.Split(keySet, ".")
-	for _, key := range keys {
-		val, err := getMapValue(key, obj)
-		if err != nil {
-			return nil, err
+	var err error
+	for _, keySet := range strings.Split(keySets, ",") {
+		objCopy := obj
+		keys := strings.Split(keySet, ".")
+		for _, key := range keys {
+			var val any
+			val, err = getMapValue(key, objCopy)
+			if err != nil {
+				err = fmt.Errorf("Failed to find value for key set %q: %w", keySet, err)
+				break
+			}
+
+			objCopy = val
 		}
 
-		obj = val
+		if err == nil {
+			return objCopy, nil
+		}
 	}
 
-	return obj, nil
+	if err != nil {
+		return nil, err
+	}
+
+	return nil, fmt.Errorf("No object found for any of %v", keySets)
 }

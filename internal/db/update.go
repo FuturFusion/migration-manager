@@ -80,7 +80,6 @@ CREATE TABLE targets (
 // Schema for the local database.
 func Schema() *schema.Schema {
 	dbSchema := schema.NewFromMap(updates)
-	dbSchema.Fresh(freshSchema + `INSERT INTO schema (version, updated_at) VALUES (1, strftime("%s"));`)
 
 	return dbSchema
 }
@@ -104,6 +103,26 @@ func Schema() *schema.Schema {
 
 var updates = map[int]schema.Update{
 	1: updateFromV0,
+	2: updateFromV1,
+}
+
+func updateFromV1(ctx context.Context, tx *sql.Tx) error {
+	stmt := `
+CREATE TABLE networks_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+	  location TEXT NOT NULL,
+    config INTEGER NOT NULL,
+    UNIQUE (name)
+);
+
+INSERT INTO networks_new (id, name, location, config) SELECT id, name, '', config from networks;
+DROP TABLE networks;
+ALTER TABLE networks_new RENAME TO networks;
+	`
+
+	_, err := tx.ExecContext(ctx, stmt)
+	return err
 }
 
 func updateFromV0(ctx context.Context, tx *sql.Tx) error {

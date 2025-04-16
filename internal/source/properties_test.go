@@ -16,6 +16,17 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
+type testNetwork struct {
+	object.DistributedVirtualSwitch
+	NetworkID string
+}
+
+func (m *testNetwork) Reference() types.ManagedObjectReference {
+	return types.ManagedObjectReference{
+		Value: m.NetworkID,
+	}
+}
+
 func TestGetProperties(t *testing.T) {
 	s := InternalVMwareSource{
 		InternalSource: InternalSource{
@@ -474,18 +485,31 @@ func TestGetProperties(t *testing.T) {
 				vmProps.Config.Hardware.Device = []types.BaseVirtualDevice{}
 			}
 
+			// Alternate between network types.
+			var backing types.BaseVirtualDeviceBackingInfo
+			if i%2 == 0 {
+				backing = &types.VirtualEthernetCardNetworkBackingInfo{
+					Network: &types.ManagedObjectReference{Value: c.expectedNetworkID},
+				}
+			} else {
+				backing = &types.VirtualEthernetCardDistributedVirtualPortBackingInfo{
+					VirtualDeviceBackingInfo: types.VirtualDeviceBackingInfo{},
+					Port: types.DistributedVirtualSwitchPortConnection{
+						PortgroupKey: c.expectedNetworkID,
+					},
+				}
+			}
+
 			vmProps.Config.Hardware.Device = append(vmProps.Config.Hardware.Device,
 				&types.VirtualVmxnet3{
 					VirtualVmxnet: types.VirtualVmxnet{
 						VirtualEthernetCard: types.VirtualEthernetCard{
-							VirtualDevice: types.VirtualDevice{Backing: &types.VirtualEthernetCardNetworkBackingInfo{
-								VirtualDeviceDeviceBackingInfo: types.VirtualDeviceDeviceBackingInfo{DeviceName: c.expectedNetwork},
-								Network:                        &types.ManagedObjectReference{Value: c.expectedNetworkID},
-							}},
-							MacAddress: c.expectedMac,
+							VirtualDevice: types.VirtualDevice{Backing: backing},
+							MacAddress:    c.expectedMac,
 						},
 					},
-				})
+				},
+			)
 		}
 
 		for i := 0; i < c.numSnapshots; i++ {
@@ -496,7 +520,16 @@ func TestGetProperties(t *testing.T) {
 			vmProps.Snapshot.RootSnapshotList = append(vmProps.Snapshot.RootSnapshotList, types.VirtualMachineSnapshotTree{Name: c.expectedSnapshotName})
 		}
 
-		props, err := s.getVMProperties(vmInfo, vmProps)
+		networks := []object.NetworkReference{
+			&testNetwork{
+				NetworkID: c.expectedNetworkID,
+				DistributedVirtualSwitch: object.DistributedVirtualSwitch{
+					Common: object.Common{InventoryPath: c.expectedNetwork},
+				},
+			},
+		}
+
+		props, err := s.getVMProperties(vmInfo, vmProps, networks)
 		if c.expectErr {
 			require.Error(t, err)
 		} else {

@@ -154,7 +154,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Config"}
+	header := []string{"Name", "Location", "Config"}
 	data := [][]string{}
 
 	for _, n := range networks {
@@ -163,7 +163,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 			configString, _ = json.Marshal(n.Config)
 		}
 
-		data = append(data, []string{n.Name, string(configString)})
+		data = append(data, []string{n.Name, n.Location, string(configString)})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
@@ -258,11 +258,6 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	network.Name, err = c.global.Asker.AskString("Network name [default="+network.Name+"]: ", network.Name, nil)
-	if err != nil {
-		return err
-	}
-
 	defaultConfig := "(empty to skip): "
 	if len(configString) > 0 {
 		defaultConfig = "[default=" + string(configString) + "]: "
@@ -282,7 +277,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	newNetworkName := network.Name
 
 	// Update the network.
-	content, err := json.Marshal(network)
+	content, err := json.Marshal(network.NetworkPut)
 	if err != nil {
 		return err
 	}

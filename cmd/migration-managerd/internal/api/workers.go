@@ -166,8 +166,28 @@ func syncNetworksFromSource(ctx context.Context, sourceName string, n migration.
 		slog.String("source", sourceName),
 	)
 
-	// TODO: Do more than pick up new networks, also delete removed networks and update existing networks with any changes.
-	// Currently, the entire network list is given in existingNetworks for each source, so we will need to be smarter about filtering that as well.
+	for name, network := range existingNetworks {
+		srcNet, ok := srcNetworks[name]
+		if !ok {
+			// TODO: Do more than pick up new networks, also delete removed networks and update existing networks with any changes.
+			// Currently, the entire network list is given in existingNetworks for each source, so we will need to be smarter about filtering that as well.
+			continue
+		}
+
+		networkUpdated := false
+		if network.Location != srcNet.Location {
+			network.Location = srcNet.Location
+			networkUpdated = true
+		}
+
+		if networkUpdated {
+			log.Info("Syncing changes to network from source")
+			err := n.Update(ctx, &network)
+			if err != nil {
+				return fmt.Errorf("Failed to update network: %w", err)
+			}
+		}
+	}
 
 	// Create any missing networks.
 	for name, network := range srcNetworks {
@@ -175,7 +195,7 @@ func syncNetworksFromSource(ctx context.Context, sourceName string, n migration.
 		if !ok {
 			log := log.With(slog.String("network", network.Name))
 			log.Info("Recording new network detected on source")
-			_, err := n.Create(ctx, migration.Network{Name: network.Name, Config: network.Config})
+			_, err := n.Create(ctx, migration.Network{Name: network.Name, Config: network.Config, Location: network.Location})
 			if err != nil {
 				return err
 			}
