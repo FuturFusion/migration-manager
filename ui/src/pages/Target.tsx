@@ -37,7 +37,7 @@ const Target = () => {
         sortKey: item.target_type,
       },
       {
-        content: item.properties.endpoint,
+        content: <Link to={item.properties.endpoint} className="data-table-link" target="_blank">{item.properties.endpoint}</Link>,
         sortKey: item.properties.endpoint,
       },
       {

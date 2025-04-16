@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { fetchTarget } from 'api/targets';
 
 const TargetOverview = () => {
@@ -37,7 +37,7 @@ const TargetOverview = () => {
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Endpoint</div>
-        <div className="col-10 detail-table-cell">{ target?.properties.endpoint }</div>
+        <div className="col-10 detail-table-cell"><Link to={target?.properties.endpoint || ""} className="data-table-link" target="_blank">{ target?.properties.endpoint }</Link></div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Trusted server certificate fingerprint</div>
