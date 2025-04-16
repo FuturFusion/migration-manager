@@ -33,7 +33,7 @@ const Source = () => {
           content: "VMware"
         },
         {
-          content: props.endpoint,
+          content: <Link to={props.endpoint} className="data-table-link" target="_blank">{props.endpoint}</Link>,
           sortKey: props.endpoint
         },
         {

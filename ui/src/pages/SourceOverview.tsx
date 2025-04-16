@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { fetchSource } from 'api/sources';
 
 const SourceOverview = () => {
@@ -37,7 +37,7 @@ const SourceOverview = () => {
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Endpoint</div>
-        <div className="col-10 detail-table-cell">{ source?.properties.endpoint }</div>
+        <div className="col-10 detail-table-cell"><Link to={source?.properties.endpoint || ""} className="data-table-link" target="_blank">{ source?.properties.endpoint }</Link></div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Username</div>
