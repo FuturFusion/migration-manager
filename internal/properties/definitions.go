@@ -149,6 +149,20 @@ func (p RawPropertySet[T]) Get(n Name) (PropertyInfo, error) {
 	return info, nil
 }
 
+// GetValue returns the stored value for the property, if one exists. Cannot be used to fetch a group of sub-properties.
+func (p RawPropertySet[T]) GetValue(n Name) (any, error) {
+	if HasSubProperties(n) {
+		return nil, fmt.Errorf("Cannot fetch value of property %q with sub-properties", n.String())
+	}
+
+	val, ok := p.propValues[n]
+	if !ok {
+		return nil, fmt.Errorf("No value assigned to property %q", n.String())
+	}
+
+	return val, nil
+}
+
 // GetSubProperties returns the RawPropertySet for the sub-properties of the named property, if supported by this target or source.
 func (p RawPropertySet[T]) GetSubProperties(n Name) (RawPropertySet[T], error) {
 	if !HasSubProperties(n) {
