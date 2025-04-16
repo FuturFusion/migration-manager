@@ -163,7 +163,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 		vmProps, err := s.getVMProperties(vm, vmProperties)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Failed to record properties for %q: %w", vm.InventoryPath, err)
 		}
 
 		secretToken, _ := uuid.NewRandom()
@@ -328,7 +328,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 			for _, snap := range vmProperties.Snapshot.RootSnapshotList {
 				err = s.getDeviceProperties(snap, &props, defName)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
 				}
 			}
 
@@ -341,7 +341,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 
 				err = s.getDeviceProperties(eth, &props, defName)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
 				}
 			}
 
@@ -354,7 +354,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 
 				err = s.getDeviceProperties(disk, &props, defName)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
 				}
 			}
 
