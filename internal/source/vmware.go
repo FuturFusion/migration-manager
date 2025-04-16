@@ -206,7 +206,7 @@ func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) ([]api.Networ
 	}
 
 	for _, n := range networks {
-		ret = append(ret, api.Network{Name: n.Reference().Value, Location: n.GetInventoryPath()})
+		ret = append(ret, api.Network{Name: parseNetworkID(n), Location: n.GetInventoryPath()})
 	}
 
 	return ret, nil
@@ -374,7 +374,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 						return nil, fmt.Errorf("Unexpected network ID value: %v", val)
 					}
 
-					if network.Reference().Value == str {
+					if parseNetworkID(network) == str {
 						err := def.Add(properties.InstanceNICNetwork, network.GetInventoryPath())
 						if err != nil {
 							return nil, err
@@ -545,6 +545,18 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 	}
 
 	return props.Add(defName, subProps)
+}
+
+// parseNetworkID returns an API-compatible representation of the network ID from VMware.
+func parseNetworkID(network object.NetworkReference) string {
+	networkID := network.Reference().Value
+	_, ok := network.(*object.DistributedVirtualPortgroup)
+	if ok {
+		parts := strings.Split(networkID, " ")
+		networkID = parts[len(parts)-1]
+	}
+
+	return strings.ReplaceAll(networkID, " ", "_")
 }
 
 // parseValue handles necessary transformation from the VMware property value to the more generic Migration Manager representation.
