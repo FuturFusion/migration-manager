@@ -225,7 +225,9 @@
           source:
               vmware:
                   8.0:
-                    key: backing.network.value
+                    # For networks, there are many possible objects holding the ID.
+                    # Each set is delimited by commas.
+                    key: backing.network.value,backing.port.portgroupKey
 
 - name: snapshots
   description: instance snapshots
