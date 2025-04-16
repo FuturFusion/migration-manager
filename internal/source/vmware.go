@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
@@ -163,6 +165,13 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 		vmProps, err := s.getVMProperties(vm, vmProperties)
 		if err != nil {
+			b, marshalErr := json.Marshal(vmProperties)
+			if marshalErr == nil {
+				// Dump the VM properties to the cache dir on errors.
+				fileName := filepath.Join(util.CachePath(), strings.ReplaceAll(vm.InventoryPath, "/", "_"))
+				_ = os.WriteFile(fileName, b, 0o644)
+			}
+
 			return nil, fmt.Errorf("Failed to record properties for %q: %w", vm.InventoryPath, err)
 		}
 
