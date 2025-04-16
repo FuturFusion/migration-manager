@@ -175,7 +175,7 @@ func syncNetworksFromSource(ctx context.Context, sourceName string, n migration.
 		if !ok {
 			log := log.With(slog.String("network", network.Name))
 			log.Info("Recording new network detected on source")
-			_, err := n.Create(ctx, migration.Network{Name: network.Name, Config: network.Config})
+			_, err := n.Create(ctx, migration.Network{Name: network.Name, Config: network.Config, Location: network.Location})
 			if err != nil {
 				return err
 			}

@@ -8,6 +8,10 @@ type Network struct {
 	// Example: network-23
 	Name string `json:"name" yaml:"name"`
 
+	// The location of the network
+	// Example: /path/to/network
+	Location string `json:"location" yaml:"location"`
+
 	// Any network-specific config options
 	// Example: {"network": "vmware", "ipv6.address": "none"}
 	Config map[string]string `json:"config" yaml:"config"`

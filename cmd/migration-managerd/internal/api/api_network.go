@@ -124,10 +124,7 @@ func networksGet(d *Daemon, r *http.Request) response.Response {
 
 		result := make([]api.Network, 0, len(networks))
 		for _, network := range networks {
-			result = append(result, api.Network{
-				Name:   network.Name,
-				Config: network.Config,
-			})
+			result = append(result, network.ToAPI())
 		}
 
 		return response.SyncResponse(true, result)
@@ -183,8 +180,9 @@ func networksPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	_, err = d.network.Create(r.Context(), migration.Network{
-		Name:   network.Name,
-		Config: network.Config,
+		Name:     network.Name,
+		Location: network.Location,
+		Config:   network.Config,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed creating network %q: %w", network.Name, err))
@@ -266,10 +264,7 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 
 	return response.SyncResponseETag(
 		true,
-		api.Network{
-			Name:   network.Name,
-			Config: network.Config,
-		},
+		network.ToAPI(),
 		network,
 	)
 }

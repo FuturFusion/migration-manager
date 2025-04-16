@@ -206,7 +206,7 @@ func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) ([]api.Networ
 	}
 
 	for _, n := range networks {
-		ret = append(ret, api.Network{Name: n.Reference().Value})
+		ret = append(ret, api.Network{Name: n.Reference().Value, Location: n.GetInventoryPath()})
 	}
 
 	return ret, nil

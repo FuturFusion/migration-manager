@@ -1,5 +1,9 @@
 package migration
 
+import (
+	"github.com/FuturFusion/migration-manager/shared/api"
+)
+
 type Network struct {
 	ID       int64
 	Name     string `db:"primary=yes"`
@@ -25,3 +29,12 @@ func (n Network) Validate() error {
 }
 
 type Networks []Network
+
+// ToAPI returns the API representation of a network.
+func (n Network) ToAPI() api.Network {
+	return api.Network{
+		Name:     n.Name,
+		Location: n.Location,
+		Config:   n.Config,
+	}
+}
