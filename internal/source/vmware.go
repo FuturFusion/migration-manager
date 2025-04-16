@@ -146,6 +146,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		return nil, err
 	}
 
+	networks, err := finder.NetworkList(ctx, "/...")
+	if err != nil {
+		return nil, err
+	}
+
 	for _, vm := range vms {
 		// Ignore any vCLS instances.
 		if regexp.MustCompile(`/vCLS/`).Match([]byte(vm.InventoryPath)) {
@@ -163,7 +168,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			continue
 		}
 
-		vmProps, err := s.getVMProperties(vm, vmProperties)
+		vmProps, err := s.getVMProperties(vm, vmProperties, networks)
 		if err != nil {
 			b, marshalErr := json.Marshal(vmProperties)
 			if marshalErr == nil {
@@ -271,7 +276,7 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*objec
 	return finder.VirtualMachine(ctx, vmName)
 }
 
-func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProperties mo.VirtualMachine) (*api.InstanceProperties, error) {
+func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProperties mo.VirtualMachine, networks []object.NetworkReference) (*api.InstanceProperties, error) {
 	b, err := json.Marshal(vmProperties)
 	if err != nil {
 		return nil, err
@@ -351,6 +356,37 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 				err = s.getDeviceProperties(eth, &props, defName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
+				}
+
+				def, err := props.GetSubProperties(defName)
+				if err != nil {
+					return nil, err
+				}
+
+				val, err := def.GetValue(properties.InstanceNICNetworkID)
+				if err != nil {
+					return nil, err
+				}
+
+				for _, network := range networks {
+					str, ok := val.(string)
+					if !ok {
+						return nil, fmt.Errorf("Unexpected network ID value: %v", val)
+					}
+
+					if network.Reference().Value == str {
+						err := def.Add(properties.InstanceNICNetwork, network.GetInventoryPath())
+						if err != nil {
+							return nil, err
+						}
+
+						break
+					}
+				}
+
+				err = props.Add(defName, def)
+				if err != nil {
+					return nil, err
 				}
 			}
 
