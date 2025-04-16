@@ -35,6 +35,8 @@ func (n Network) ToAPI() api.Network {
 	return api.Network{
 		Name:     n.Name,
 		Location: n.Location,
-		Config:   n.Config,
+		NetworkPut: api.NetworkPut{
+			Config: n.Config,
+		},
 	}
 }

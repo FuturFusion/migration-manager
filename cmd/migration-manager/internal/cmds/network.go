@@ -258,11 +258,6 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	network.Name, err = c.global.Asker.AskString("Network name [default="+network.Name+"]: ", network.Name, nil)
-	if err != nil {
-		return err
-	}
-
 	defaultConfig := "(empty to skip): "
 	if len(configString) > 0 {
 		defaultConfig = "[default=" + string(configString) + "]: "
@@ -282,7 +277,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	newNetworkName := network.Name
 
 	// Update the network.
-	content, err := json.Marshal(network)
+	content, err := json.Marshal(network.NetworkPut)
 	if err != nil {
 		return err
 	}
