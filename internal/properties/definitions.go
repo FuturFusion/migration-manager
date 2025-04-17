@@ -256,7 +256,15 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 				}
 			}
 
-			p.subPropValues[key] = append(p.subPropValues[key], t.propValues)
+			propValues := make(map[Name]any, len(t.propValues))
+			for k, v := range t.propValues {
+				propValues[k] = v
+			}
+
+			p.subPropValues[key] = append(p.subPropValues[key], propValues)
+
+			// Reset the property values for the sub-property object after the parent inherits them.
+			t.propValues = map[Name]any{}
 		default:
 			return fmt.Errorf("Expected a map of properties for the device %q. Got %v", key.String(), val)
 		}
