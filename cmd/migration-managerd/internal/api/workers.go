@@ -144,14 +144,14 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 
 			err = syncInstancesFromSource(ctx, srcName, d.instance, existingInstances, srcInstances)
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to sync instances from %q: %w", srcName, err)
 			}
 		}
 
 		for srcName, srcNetworks := range networksBySrc {
 			err = syncNetworksFromSource(ctx, srcName, d.network, existingNetworks, srcNetworks)
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to sync networks from %q: %w", srcName, err)
 			}
 		}
 
@@ -197,7 +197,7 @@ func syncNetworksFromSource(ctx context.Context, sourceName string, n migration.
 			log.Info("Recording new network detected on source")
 			_, err := n.Create(ctx, migration.Network{Name: network.Name, Config: network.Config, Location: network.Location})
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to create network %q (%q): %w", network.Name, network.Location, err)
 			}
 		}
 	}
@@ -313,7 +313,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			log.Info("Recording new instance detected on source")
 			_, err := i.Create(ctx, inst)
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to create instance %q (%q): %w", inst.UUID.String(), inst.Properties.Location, err)
 			}
 		}
 	}
