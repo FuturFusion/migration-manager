@@ -142,7 +142,7 @@ const DataTable: FC<Props> = ({ headers, rows}) => {
   }
 
   return (
-    <div className="container mt-4">
+    <div className="mx-2 mx-md-4 mt-4">
       <Row className="justify-content-end">
         <Col xs="auto">
           <Form.Control

@@ -19,7 +19,7 @@ const Target = () => {
     refetchInterval: refetchInterval,
   })
 
-  const headers = ["Name", "Type", "Endpoint", "Connectivity status", "Auth Type", "Cert fingerprint"];
+  const headers = ["Name", "Type", "Endpoint", "Connectivity status", "Auth Type"];
   const rows = targets.map((item) => {
     const props = item.properties as IncusProperties;
     let authType = "OIDC";
@@ -48,10 +48,6 @@ const Target = () => {
         content: authType,
         sortKey: authType,
       },
-      {
-        content: props.trusted_server_certificate_fingerprint,
-        sortKey: props.trusted_server_certificate_fingerprint,
-      },
     ];
   });
 
@@ -69,15 +65,15 @@ const Target = () => {
 
   return (
     <>
-      <div className="container">
-        <div className="row">
-          <div className="col-12">
-          <Button variant="success" className="float-end" onClick={() => navigate('/ui/targets/create')}>Create target</Button>
+      <div className="d-flex flex-column">
+        <div className="mx-2 mx-md-4">
+          <div className="row">
+            <div className="col-12">
+            <Button variant="success" className="float-end" onClick={() => navigate('/ui/targets/create')}>Create target</Button>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="d-flex flex-column">
-        <div className="scroll-container flex-grow-1 p-3">
+        <div className="scroll-container flex-grow-1">
           <DataTable headers={headers} rows={rows} />
         </div>
       </div>

@@ -73,15 +73,15 @@ const Batch = () => {
 
   return (
     <>
-      <div className="container">
-        <div className="row">
-          <div className="col-12">
-          <Button variant="success" className="float-end" onClick={() => navigate('/ui/batches/create')}>Create batch</Button>
+      <div className="d-flex flex-column">
+        <div className="mx-2 mx-md-4">
+          <div className="row">
+            <div className="col-12">
+            <Button variant="success" className="float-end" onClick={() => navigate('/ui/batches/create')}>Create batch</Button>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="d-flex flex-column">
-        <div className="scroll-container flex-grow-1 p-3">
+        <div className="scroll-container flex-grow-1">
           <DataTable headers={headers} rows={rows} />
         </div>
       </div>

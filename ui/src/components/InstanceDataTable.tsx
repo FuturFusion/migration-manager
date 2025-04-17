@@ -15,24 +15,19 @@ interface Props {
 
 const InstanceDataTable: FC<Props> = ({instances}) => {
 
-  const headers = ["UUID", "Source", "Location", "OS version", "CPU", "Memory", "Migration status", ""];
+  const headers = ["Source", "Location", "OS version", "CPU", "Memory", "Migration status", ""];
   const rows = instances.map((item) => {
     const className = item.overrides?.disable_migration === true ? 'item-deleted' : '';
     const isOverrideDefined = hasOverride(item);
 
     return [
       {
-        content: <Link to={`/ui/instances/${item.properties.uuid}`} className="data-table-link">{item.properties.uuid}</Link>,
-        sortKey: item.properties.uuid,
-        class: className,
-      },
-      {
-        content: item.source,
+        content: <Link to={`/ui/sources/${item.source}`} className="data-table-link">{item.source}</Link>,
         sortKey: item.source,
         class: className,
       },
       {
-        content: item.properties.location,
+        content: <Link to={`/ui/instances/${item.properties.uuid}`} className="data-table-link">{item.properties.location}</Link>,
         sortKey: item.properties.location,
         class: className,
       },
