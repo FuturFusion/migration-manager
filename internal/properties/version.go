@@ -28,7 +28,14 @@ func compareSourceVersions(src api.SourceType, srcVer string, defVer string) err
 		srcVer, _, _ = strings.Cut(srcVer, "-")
 
 		// Major versions must match.
-		if semver.Compare(semver.Major("v"+srcVer), semver.Major("v"+defVer)) == 0 {
+		srcMajor := semver.Major("v" + srcVer)
+		defMajor := semver.Major("v" + defVer)
+		if semver.Compare(srcMajor, defMajor) == 0 {
+			return nil
+		}
+
+		// Use v8 definitions for v7.
+		if srcMajor == "v7" && defMajor == "v8" {
 			return nil
 		}
 
