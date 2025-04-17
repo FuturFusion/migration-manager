@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"sync"
 
 	"github.com/google/uuid"
 
@@ -14,6 +15,9 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
+
+// syncLock ensures source syncing is sequential.
+var syncLock sync.Mutex
 
 // trySyncAllSources connects to each source in the database and updates the in-memory record of all networks and instances.
 // skipNonResponsiveSources - If true, if a connection to a source returns an error, syncing from that source will be skipped.
@@ -75,6 +79,9 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 
 // syncSourceData is a helper that opens a transaction and updates the internal record of all sources with the supplied data.
 func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]migration.Source, instancesBySrc map[string]map[uuid.UUID]migration.Instance, networksBySrc map[string]map[string]api.Network) error {
+	syncLock.Lock()
+	defer syncLock.Unlock()
+
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the list of configured sources.
 		dbNetworks, err := d.network.GetAll(ctx)
