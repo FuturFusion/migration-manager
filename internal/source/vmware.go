@@ -340,9 +340,14 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 			}
 
 			for _, snap := range vmProperties.Snapshot.RootSnapshotList {
-				err = s.getDeviceProperties(snap, &props, defName)
+				subProps, err := s.getDeviceProperties(snap, &props, defName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
+				}
+
+				err = props.Add(defName, *subProps)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to apply %q properties: %w", defName.String(), err)
 				}
 			}
 
@@ -353,17 +358,12 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					continue
 				}
 
-				err = s.getDeviceProperties(eth, &props, defName)
+				subProps, err := s.getDeviceProperties(eth, &props, defName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
 				}
 
-				def, err := props.GetSubProperties(defName)
-				if err != nil {
-					return nil, err
-				}
-
-				val, err := def.GetValue(properties.InstanceNICNetworkID)
+				val, err := subProps.GetValue(properties.InstanceNICNetworkID)
 				if err != nil {
 					return nil, err
 				}
@@ -375,7 +375,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					}
 
 					if parseNetworkID(network) == str {
-						err := def.Add(properties.InstanceNICNetwork, network.GetInventoryPath())
+						err := subProps.Add(properties.InstanceNICNetwork, network.GetInventoryPath())
 						if err != nil {
 							return nil, err
 						}
@@ -384,9 +384,9 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					}
 				}
 
-				err = props.Add(defName, def)
+				err = props.Add(defName, *subProps)
 				if err != nil {
-					return nil, err
+					return nil, fmt.Errorf("Failed to apply %q properties: %w", defName.String(), err)
 				}
 			}
 
@@ -397,9 +397,14 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					continue
 				}
 
-				err = s.getDeviceProperties(disk, &props, defName)
+				subProps, err := s.getDeviceProperties(disk, &props, defName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
+				}
+
+				err = props.Add(defName, *subProps)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to apply %q properties: %w", defName.String(), err)
 				}
 			}
 
@@ -471,7 +476,7 @@ func parseArchitecture(archName string, archBits string, location string) (strin
 	return arch, nil
 }
 
-func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties.RawPropertySet[api.SourceType], defName properties.Name) error {
+func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties.RawPropertySet[api.SourceType], defName properties.Name) (*properties.RawPropertySet[api.SourceType], error) {
 	diskHasSubProperty := func(subProp properties.Name, device *types.VirtualDisk) bool {
 		if subProp == properties.InstanceDiskShared {
 			// Not every disk type supports sharing.
@@ -491,18 +496,18 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 
 	b, err := json.Marshal(device)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	var rawObj map[string]any
 	err = json.Unmarshal(b, &rawObj)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	subProps, err := props.GetSubProperties(defName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for key, info := range subProps.GetAll() {
@@ -510,7 +515,7 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 		case properties.InstanceDisks:
 			disk, ok := device.(*types.VirtualDisk)
 			if !ok {
-				return fmt.Errorf("Invalid disk type: %v", device)
+				return nil, fmt.Errorf("Invalid disk type: %v", device)
 			}
 
 			if !diskHasSubProperty(key, disk) {
@@ -520,7 +525,7 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 		case properties.InstanceNICs:
 			_, ok := device.(types.BaseVirtualEthernetCard)
 			if !ok {
-				return fmt.Errorf("Invalid NIC type: %v", device)
+				return nil, fmt.Errorf("Invalid NIC type: %v", device)
 			}
 
 			if !nicHasSubProperty(key) {
@@ -530,21 +535,21 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 
 		obj, err := getPropFromKeys(info.Key, rawObj)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		value, err := parseValue(key, obj)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		err = subProps.Add(key, value)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return props.Add(defName, subProps)
+	return &subProps, nil
 }
 
 // parseNetworkID returns an API-compatible representation of the network ID from VMware.
