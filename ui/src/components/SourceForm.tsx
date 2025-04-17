@@ -3,6 +3,7 @@ import Form from 'react-bootstrap/Form';
 import { useSearchParams } from 'react-router';
 import { useFormik } from 'formik';
 import LoadingButton from 'components/LoadingButton';
+import PasswordField from 'components/PasswordField';
 import TLSFingerprintConfirmModal from 'components/TLSFingerprintConfirmModal';
 import { Source } from 'types/source';
 import { SourceType } from 'util/source';
@@ -156,8 +157,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
           </Form.Group>
           <Form.Group className="mb-3" controlId="password">
             <Form.Label>Password</Form.Label>
-            <Form.Control
-              type="password"
+            <PasswordField
               name="password"
               value={formik.values.password}
               disabled={formik.isSubmitting}
