@@ -20,7 +20,7 @@ const Sidebar = () => {
       {/* Sidebar Navbar */}
       <Navbar bg="dark" variant="dark" className="flex-column vh-100">
         <Navbar.Brand href="/ui/" style={{ margin: '5px 15px' }}>
-          Migration manager
+          Migration Manager
         </Navbar.Brand>
 
         {/* Sidebar content */}

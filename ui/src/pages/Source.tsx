@@ -20,7 +20,7 @@ const Source = () => {
     refetchInterval: refetchInterval,
   })
 
-  const headers = ["Name", "Type", "Endpoint", "Connectivity status", "Username", "Cert fingerprint"];
+  const headers = ["Name", "Type", "Endpoint", "Connectivity status", "Username"];
   const rows = sources.map((item) => {
     if (item.source_type == SourceType.VMware) {
       const props = item.properties as VMwareProperties;
@@ -44,10 +44,6 @@ const Source = () => {
           content: props.username,
           sortKey: props.username
         },
-        {
-          content: props.trusted_server_certificate_fingerprint,
-          sortKey: props.trusted_server_certificate_fingerprint,
-        },
       ];
     }
 
@@ -68,15 +64,15 @@ const Source = () => {
 
   return (
     <>
-      <div className="container">
-        <div className="row">
-          <div className="col-12">
-          <Button variant="success" className="float-end" onClick={() => navigate('/ui/sources/create')}>Create source</Button>
-          </div>
-        </div>
-      </div>
       <div className="d-flex flex-column">
-        <div className="scroll-container flex-grow-1 p-3">
+        <div className="mx-2 mx-md-4">
+          <div className="row">
+            <div className="col-12">
+              <Button variant="success" className="float-end" onClick={() => navigate('/ui/sources/create')}>Create source</Button>
+            </div>
+          </div>
+	</div>
+        <div className="scroll-container flex-grow-1">
           <DataTable headers={headers} rows={rows} />
         </div>
       </div>
