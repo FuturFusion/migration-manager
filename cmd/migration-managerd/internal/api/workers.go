@@ -543,17 +543,15 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 		}
 
 		for _, i := range instances {
-			if i.LastUpdateFromWorker.Add(30 * time.Second).Before(time.Now().UTC()) {
-				_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, "Timed out waiting for worker", false, false)
-				if err != nil {
-					return fmt.Errorf("Failed to set errored state on instance %q: %w", i.Properties.Location, err)
+			if i.MigrationStatus != api.MIGRATIONSTATUS_IMPORT_COMPLETE {
+				if i.LastUpdateFromWorker.Add(30 * time.Second).Before(time.Now().UTC()) {
+					_, err = d.instance.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, "Timed out waiting for worker", false, false)
+					if err != nil {
+						return fmt.Errorf("Failed to set errored state on instance %q: %w", i.Properties.Location, err)
+					}
 				}
 
-				continue
-			}
-
-			// Only consider IMPORT COMPLETE instances moving forward.
-			if i.MigrationStatus != api.MIGRATIONSTATUS_IMPORT_COMPLETE {
+				// Only consider IMPORT COMPLETE instances moving forward.
 				continue
 			}
 
