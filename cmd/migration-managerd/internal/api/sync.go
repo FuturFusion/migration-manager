@@ -61,6 +61,37 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 		instancesBySrc[src.Name] = srcInstances
 	}
 
+	// Filter out instances with duplicate UUIDs.
+	allInstancesByUUID := map[uuid.UUID]migration.Instance{}
+	for srcName, instancesByUUID := range instancesBySrc {
+		duplicateUUIDs := []uuid.UUID{}
+		for _, inst := range instancesByUUID {
+			existing, ok := allInstancesByUUID[inst.UUID]
+			if !ok {
+				allInstancesByUUID[inst.UUID] = inst
+				continue
+			}
+
+			// Record the instance to ignore.
+			duplicateUUIDs = append(duplicateUUIDs, inst.UUID)
+
+			log := log.With(
+				slog.String("source_recorded", existing.Source),
+				slog.String("location_recorded", existing.Properties.Location),
+				slog.String("source_ignored", inst.Source),
+				slog.String("location_ignored", inst.Properties.Location))
+
+			log.Warn("Detected instance with duplicate UUID on different sources. Update instance configuration on one source to register both instances")
+		}
+
+		// Remove duplicate UUID instances from consideration for this source.
+		for _, instUUID := range duplicateUUIDs {
+			delete(instancesByUUID, instUUID)
+		}
+
+		instancesBySrc[srcName] = instancesByUUID
+	}
+
 	return d.syncSourceData(ctx, sourcesByName, instancesBySrc, networksBySrc)
 }
 
@@ -330,6 +361,17 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 	}
 
 	for _, inst := range instances {
+		existing, ok := instanceMap[inst.UUID]
+		if ok {
+			log := slog.With(
+				slog.String("source", src.Name),
+				slog.String("location_recorded", existing.Properties.Location),
+				slog.String("location_ignored", inst.Properties.Location))
+
+			log.Warn("Detected instance with duplicate UUID. Update instance configuration on source to register this instance")
+			continue
+		}
+
 		instanceMap[inst.UUID] = inst
 	}
 
