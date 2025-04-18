@@ -142,13 +142,25 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 	finder := find.NewFinder(s.govmomiClient.Client)
 	vms, err := finder.VirtualMachineList(ctx, "/...")
+	var notFoundErr *find.NotFoundError
 	if err != nil {
+		if errors.As(err, &notFoundErr) {
+			slog.Warn("Registered source has no VMs", slog.String("source", s.Name))
+
+			return ret, nil
+		}
+
 		return nil, err
 	}
 
-	networks, err := finder.NetworkList(ctx, "/...")
+	var networks []object.NetworkReference
+	networks, err = finder.NetworkList(ctx, "/...")
 	if err != nil {
-		return nil, err
+		if !errors.As(err, &notFoundErr) {
+			return nil, err
+		}
+
+		slog.Warn("Registered source has no networks", slog.String("source", s.Name))
 	}
 
 	for _, vm := range vms {
@@ -202,6 +214,12 @@ func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) ([]api.Networ
 	finder := find.NewFinder(s.govmomiClient.Client)
 	networks, err := finder.NetworkList(ctx, "/...")
 	if err != nil {
+		var notFoundErr *find.NotFoundError
+		if errors.As(err, &notFoundErr) {
+			slog.Warn("Registered source has no networks", slog.String("source", s.Name))
+			return ret, nil
+		}
+
 		return nil, err
 	}
 
