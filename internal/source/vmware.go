@@ -189,7 +189,8 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 				_ = os.WriteFile(fileName, b, 0o644)
 			}
 
-			return nil, fmt.Errorf("Failed to record properties for %q: %w", vm.InventoryPath, err)
+			slog.Error("Failed to record vm properties", slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.Any("error", err))
+			continue
 		}
 
 		secretToken, _ := uuid.NewRandom()
