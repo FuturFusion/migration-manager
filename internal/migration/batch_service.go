@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -85,6 +86,12 @@ func (s batchService) Update(ctx context.Context, name string, batch *Batch) err
 
 		if !oldBatch.CanBeModified() {
 			return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", name, ErrOperationNotPermitted)
+		}
+
+		// Reset batch state in testing mode.
+		if util.InTestingMode() {
+			batch.Status = api.BATCHSTATUS_DEFINED
+			batch.StatusMessage = string(api.BATCHSTATUS_DEFINED)
 		}
 
 		err = s.repo.Update(ctx, name, *batch)
@@ -193,6 +200,24 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 				instance.MigrationStatus = api.MIGRATIONSTATUS_ASSIGNED_BATCH
 				instance.MigrationStatusMessage = string(api.MIGRATIONSTATUS_ASSIGNED_BATCH)
 				err = s.instance.Update(ctx, &instance)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		// Reset instance state in testing mode.
+		if util.InTestingMode() {
+			instances, err := s.instance.GetAllByBatch(ctx, batch.Name, false)
+			if err != nil {
+				return fmt.Errorf("Failed to get instance for batch %q (%d): %w", batch.Name, batch.ID, err)
+			}
+
+			for _, inst := range instances {
+				inst.MigrationStatus = api.MIGRATIONSTATUS_ASSIGNED_BATCH
+				inst.MigrationStatusMessage = string(api.MIGRATIONSTATUS_ASSIGNED_BATCH)
+
+				err = s.instance.Update(ctx, &inst)
 				if err != nil {
 					return err
 				}
