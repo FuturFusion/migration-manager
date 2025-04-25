@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -159,7 +160,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 		}
 
 		for srcName, srcNetworks := range networksBySrc {
-			err = syncNetworksFromSource(ctx, srcName, d.network, existingNetworks, srcNetworks)
+			err = d.syncNetworksFromSource(ctx, srcName, d.network, existingNetworks, srcNetworks)
 			if err != nil {
 				return fmt.Errorf("Failed to sync networks from %q: %w", srcName, err)
 			}
@@ -170,7 +171,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 }
 
 // syncNetworksFromSource updates migration manager's internal record of networks from the source.
-func syncNetworksFromSource(ctx context.Context, sourceName string, n migration.NetworkService, existingNetworks map[string]migration.Network, srcNetworks map[string]api.Network) error {
+func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, n migration.NetworkService, existingNetworks map[string]migration.Network, srcNetworks map[string]api.Network) error {
 	log := slog.With(
 		slog.String("method", "syncNetworksFromSource"),
 		slog.String("source", sourceName),
@@ -199,15 +200,41 @@ func syncNetworksFromSource(ctx context.Context, sourceName string, n migration.
 		}
 	}
 
+	srcInstances, err := d.instance.GetAllBySource(ctx, sourceName, false)
+	if err != nil {
+		return err
+	}
+
 	// Create any missing networks.
 	for name, network := range srcNetworks {
 		_, ok := existingNetworks[name]
 		if !ok {
-			log := log.With(slog.String("network", network.Name))
+			log := log.With(slog.String("network_id", network.Name), slog.String("network", network.Location))
 			log.Info("Recording new network detected on source")
 			_, err := n.Create(ctx, migration.Network{Name: network.Name, Config: network.Config, Location: network.Location})
 			if err != nil {
-				return fmt.Errorf("Failed to create network %q (%q): %w", network.Name, network.Location, err)
+				// FIXME: Have better handling of duplicate networks by associating them with a source in the database.
+				// For now we just skip the network and any instances that are using it.
+				if !errors.Is(err, migration.ErrConstraintViolation) {
+					return fmt.Errorf("Failed to create network %q (%q): %w", network.Name, network.Location, err)
+				}
+
+				log.Error("Skipping network record with duplicate ID")
+				for _, inst := range srcInstances {
+					for _, nic := range inst.Properties.NICs {
+						if nic.ID != network.Name {
+							continue
+						}
+
+						log.Error("Skipping instance associated with duplicate network record", slog.String("location", inst.Properties.Location))
+						err = d.instance.DeleteByUUID(ctx, inst.UUID)
+						if err != nil {
+							return err
+						}
+
+						break
+					}
+				}
 			}
 		}
 	}
