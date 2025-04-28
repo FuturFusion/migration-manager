@@ -38,6 +38,8 @@ const (
 	InstanceBackgroundImport
 	// InstanceArchitecture is the property name for the architecture of the instance.
 	InstanceArchitecture
+	// InstanceConfig is the property name for generic instance config.
+	InstanceConfig
 	// InstanceNICHardwareAddress is the property name for an instance nic's hardware address.
 	InstanceNICHardwareAddress
 	// InstanceNICNetwork is the property name for the name of the network entity used by the instance.
@@ -63,6 +65,8 @@ func (n Name) String() string {
 		return "background_import"
 	case InstanceCPUs:
 		return "cpus"
+	case InstanceConfig:
+		return "config"
 	case InstanceDescription:
 		return "description"
 	case InstanceLegacyBoot:
@@ -117,6 +121,8 @@ func ParseInstanceProperty(s string) (Name, error) {
 		return InstanceBackgroundImport, nil
 	case InstanceCPUs.String():
 		return InstanceCPUs, nil
+	case InstanceConfig.String():
+		return InstanceConfig, nil
 	case InstanceDescription.String():
 		return InstanceDescription, nil
 	case InstanceDisks.String():
@@ -204,6 +210,7 @@ func allInstanceProperties() []Name {
 		InstanceDescription,
 		InstanceBackgroundImport,
 		InstanceArchitecture,
+		InstanceConfig,
 	}
 }
 

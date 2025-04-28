@@ -26,9 +26,10 @@ type InstanceProperties struct {
 
 // InstancePropertiesConfigurable are the configurable properties of an instance.
 type InstancePropertiesConfigurable struct {
-	Description string `json:"description,omitempty" yaml:"description,omitempty"`
-	CPUs        int64  `json:"cpus"                  yaml:"cpus"`
-	Memory      int64  `json:"memory"                yaml:"memory"`
+	Description string            `json:"description,omitempty" yaml:"description,omitempty"`
+	CPUs        int64             `json:"cpus"                  yaml:"cpus"`
+	Memory      int64             `json:"memory"                yaml:"memory"`
+	Config      map[string]string `json:"config"          yaml:"config"`
 }
 
 // InstancePropertiesNIC are all properties supported by instance NICs.

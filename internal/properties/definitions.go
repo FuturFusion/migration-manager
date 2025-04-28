@@ -224,6 +224,12 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 				return fmt.Errorf("Invalid disk capacity %d", flt)
 			}
 
+		case InstanceConfig:
+			_, ok := val.(map[string]string)
+			if !ok {
+				return fmt.Errorf("Cannot convert %q property %v to map", key.String(), val)
+			}
+
 		case InstanceDiskName:
 			fallthrough
 		case InstanceNICHardwareAddress:
@@ -310,6 +316,10 @@ func (p RawPropertySet[T]) ToAPI() (*api.InstanceProperties, error) {
 	err = json.Unmarshal(b, &detectedProperties)
 	if err != nil {
 		return nil, err
+	}
+
+	if detectedProperties.Config == nil {
+		detectedProperties.Config = map[string]string{}
 	}
 
 	return &detectedProperties, nil
