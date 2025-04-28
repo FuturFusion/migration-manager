@@ -368,18 +368,25 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 
 		case properties.TypeVMProperty:
 			obj, err := getPropFromKeys(info.Key, rawObj)
-			if err != nil && defName == properties.InstanceDescription {
-				// The description key has the omitempty tag, so we may not find it.
-				continue
-			}
-
 			if err != nil {
+				if defName == properties.InstanceDescription || defName == properties.InstanceConfig {
+					// The description and attribute keys have the omitempty tag, so we may not find it.
+					continue
+				}
+
 				return nil, err
 			}
 
 			val, err := parseValue(defName, obj)
 			if err != nil {
 				return nil, err
+			}
+
+			if defName == properties.InstanceConfig {
+				val, err = parseAttribute(vmProperties, val)
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			err = props.Add(defName, val)
@@ -675,6 +682,37 @@ func parseValue(propName properties.Name, value any) (any, error) {
 	default:
 		return value, nil
 	}
+}
+
+func parseAttribute(vmProperties mo.VirtualMachine, value any) (map[string]string, error) {
+	var attributes []types.CustomFieldStringValue
+	b, err := json.Marshal(value)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal attributes: %w", err)
+	}
+
+	err = json.Unmarshal(b, &attributes)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal attributes: %w", err)
+	}
+
+	config := map[string]string{}
+	for _, entry := range attributes {
+		for _, field := range vmProperties.AvailableField {
+			if entry.Key != field.Key {
+				continue
+			}
+
+			fieldType := "global"
+			if field.ManagedObjectType != "" {
+				fieldType = field.ManagedObjectType
+			}
+
+			config["attribute."+fieldType+"."+field.Name] = entry.Value
+		}
+	}
+
+	return config, nil
 }
 
 // getPropFromKeys iterates over the keys in the keyset (delimited by '.'),
