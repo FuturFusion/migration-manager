@@ -20,6 +20,8 @@ import (
 	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/vapi/rest"
+	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
@@ -163,6 +165,24 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		slog.Warn("Registered source has no networks", slog.String("source", s.Name))
 	}
 
+	c := rest.NewClient(s.govmomiClient.Client)
+	err = c.Login(ctx, url.UserPassword(s.Username, s.Password))
+	if err != nil {
+		return nil, err
+	}
+
+	tc := tags.NewManager(c)
+
+	allCats, err := tc.GetCategories(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("No tag categories found: %w", err)
+	}
+
+	catMap := make(map[string]string, len(allCats))
+	for _, cat := range allCats {
+		catMap[cat.ID] = cat.Name
+	}
+
 	for _, vm := range vms {
 		// Ignore any vCLS instances.
 		if regexp.MustCompile(`/vCLS/`).Match([]byte(vm.InventoryPath)) {
@@ -191,6 +211,20 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 			slog.Error("Failed to record vm properties", slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.Any("error", err))
 			continue
+		}
+
+		vmTags, err := tc.GetAttachedTags(ctx, vm.Reference())
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tag := range vmTags {
+			prefix := "tag." + catMap[tag.CategoryID]
+			if vmProps.Config[prefix] == "" {
+				vmProps.Config[prefix] = tag.Name
+			} else {
+				vmProps.Config[prefix] = vmProps.Config[prefix] + "," + tag.Name
+			}
 		}
 
 		secretToken, _ := uuid.NewRandom()
