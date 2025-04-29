@@ -252,3 +252,12 @@
           8.0:
               type: property
               key: config.changeTrackingEnabled
+
+- name: config
+  description: generic instance config
+  source:
+      vmware:
+          8.0:
+              type: property
+              # This stores an object with a key ID and a value. The associated key name to ID mapping is in .availableField.
+              key: summary.customValue

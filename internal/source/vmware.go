@@ -20,6 +20,8 @@ import (
 	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/vapi/rest"
+	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
@@ -163,6 +165,24 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		slog.Warn("Registered source has no networks", slog.String("source", s.Name))
 	}
 
+	c := rest.NewClient(s.govmomiClient.Client)
+	err = c.Login(ctx, url.UserPassword(s.Username, s.Password))
+	if err != nil {
+		return nil, err
+	}
+
+	tc := tags.NewManager(c)
+
+	allCats, err := tc.GetCategories(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("No tag categories found: %w", err)
+	}
+
+	catMap := make(map[string]string, len(allCats))
+	for _, cat := range allCats {
+		catMap[cat.ID] = cat.Name
+	}
+
 	for _, vm := range vms {
 		// Ignore any vCLS instances.
 		if regexp.MustCompile(`/vCLS/`).Match([]byte(vm.InventoryPath)) {
@@ -191,6 +211,20 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 			slog.Error("Failed to record vm properties", slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.Any("error", err))
 			continue
+		}
+
+		vmTags, err := tc.GetAttachedTags(ctx, vm.Reference())
+		if err != nil {
+			return nil, err
+		}
+
+		for _, tag := range vmTags {
+			prefix := "tag." + catMap[tag.CategoryID]
+			if vmProps.Config[prefix] == "" {
+				vmProps.Config[prefix] = tag.Name
+			} else {
+				vmProps.Config[prefix] = vmProps.Config[prefix] + "," + tag.Name
+			}
 		}
 
 		secretToken, _ := uuid.NewRandom()
@@ -334,18 +368,25 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 
 		case properties.TypeVMProperty:
 			obj, err := getPropFromKeys(info.Key, rawObj)
-			if err != nil && defName == properties.InstanceDescription {
-				// The description key has the omitempty tag, so we may not find it.
-				continue
-			}
-
 			if err != nil {
+				if defName == properties.InstanceDescription || defName == properties.InstanceConfig {
+					// The description and attribute keys have the omitempty tag, so we may not find it.
+					continue
+				}
+
 				return nil, err
 			}
 
 			val, err := parseValue(defName, obj)
 			if err != nil {
 				return nil, err
+			}
+
+			if defName == properties.InstanceConfig {
+				val, err = parseAttribute(vmProperties, val)
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			err = props.Add(defName, val)
@@ -641,6 +682,37 @@ func parseValue(propName properties.Name, value any) (any, error) {
 	default:
 		return value, nil
 	}
+}
+
+func parseAttribute(vmProperties mo.VirtualMachine, value any) (map[string]string, error) {
+	var attributes []types.CustomFieldStringValue
+	b, err := json.Marshal(value)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to marshal attributes: %w", err)
+	}
+
+	err = json.Unmarshal(b, &attributes)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to unmarshal attributes: %w", err)
+	}
+
+	config := map[string]string{}
+	for _, entry := range attributes {
+		for _, field := range vmProperties.AvailableField {
+			if entry.Key != field.Key {
+				continue
+			}
+
+			fieldType := "global"
+			if field.ManagedObjectType != "" {
+				fieldType = field.ManagedObjectType
+			}
+
+			config["attribute."+fieldType+"."+field.Name] = entry.Value
+		}
+	}
+
+	return config, nil
 }
 
 // getPropFromKeys iterates over the keys in the keyset (delimited by '.'),

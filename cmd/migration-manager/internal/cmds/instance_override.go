@@ -117,6 +117,42 @@ func (c *cmdInstanceOverrideAdd) Run(cmd *cobra.Command, args []string) error {
 
 	override.Properties.Memory, _ = units.ParseByteSizeString(memoryString)
 
+	addKey := true
+	for addKey {
+		addKey, err = c.global.Asker.AskBool("Add or replace a config entry? (yes/no) [default=no]: ", "no")
+		if err != nil {
+			return err
+		}
+
+		if !addKey {
+			break
+		}
+
+		key, err := c.global.Asker.AskString("Config key (empty to skip): ", "", validate.IsAny)
+		if err != nil {
+			return err
+		}
+
+		if key == "" {
+			break
+		}
+
+		value, err := c.global.Asker.AskString("Config value (empty to skip): ", "", validate.IsAny)
+		if err != nil {
+			return err
+		}
+
+		if value == "" {
+			break
+		}
+
+		if override.Properties.Config == nil {
+			override.Properties.Config = map[string]string{}
+		}
+
+		override.Properties.Config[key] = value
+	}
+
 	// Insert into database.
 	content, err := json.Marshal(override)
 	if err != nil {
@@ -329,6 +365,67 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 
 	if override.Properties.Memory != val {
 		override.Properties.Memory = val
+	}
+
+	if len(override.Properties.Config) > 0 {
+		removeKey, err := c.global.Asker.AskBool("Remove config entries? (yes/no) [default=no]: ", "no")
+		if err != nil {
+			return err
+		}
+
+		if removeKey {
+			toRemove := []string{}
+			for k, v := range override.Properties.Config {
+				remove, err := c.global.Asker.AskBool(fmt.Sprintf("Remove entry %q = %q? (yes/no) [default=no]: ", k, v), "no")
+				if err != nil {
+					return err
+				}
+
+				if remove {
+					toRemove = append(toRemove, k)
+				}
+			}
+
+			for _, k := range toRemove {
+				delete(override.Properties.Config, k)
+			}
+		}
+	}
+
+	addKey := true
+	for addKey {
+		addKey, err = c.global.Asker.AskBool("Add or replace a config entry? (yes/no) [default=no]: ", "no")
+		if err != nil {
+			return err
+		}
+
+		if !addKey {
+			break
+		}
+
+		key, err := c.global.Asker.AskString("Config key (empty to skip): ", "", validate.IsAny)
+		if err != nil {
+			return err
+		}
+
+		if key == "" {
+			break
+		}
+
+		value, err := c.global.Asker.AskString("Config value (empty to skip): ", "", validate.IsAny)
+		if err != nil {
+			return err
+		}
+
+		if value == "" {
+			break
+		}
+
+		if override.Properties.Config == nil {
+			override.Properties.Config = map[string]string{}
+		}
+
+		override.Properties.Config[key] = value
 	}
 
 	content, err := json.Marshal(override.InstanceOverridePut)
