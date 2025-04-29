@@ -65,4 +65,8 @@ func (i *InstanceProperties) Apply(cfg InstancePropertiesConfigurable) {
 	if cfg.Memory != 0 {
 		i.Memory = cfg.Memory
 	}
+
+	for k, v := range cfg.Config {
+		i.Config[k] = v
+	}
 }
