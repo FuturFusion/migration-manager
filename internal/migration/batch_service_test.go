@@ -581,7 +581,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				IncludeExpression: `Location matches "^/inventory/path/A"`,
+				IncludeExpression: `location matches "^/inventory/path/A"`,
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
@@ -703,7 +703,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				IncludeExpression: `Location matches "^/inventory/path/A"`,
+				IncludeExpression: `location matches "^/inventory/path/A"`,
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
@@ -724,7 +724,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				IncludeExpression: `Location matches "^/inventory/path/A`, // invalid expression, missing " at the end
+				IncludeExpression: `location matches "^/inventory/path/A`, // invalid expression, missing " at the end
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
@@ -753,7 +753,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				IncludeExpression: `Location matches "^/inventory/path/A`, // invalid expression, missing " at the end
+				IncludeExpression: `location matches "^/inventory/path/A`, // invalid expression, missing " at the end
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
@@ -782,7 +782,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				IncludeExpression: `Location matches "^/inventory/path/A"`,
+				IncludeExpression: `location matches "^/inventory/path/A"`,
 			},
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
@@ -828,7 +828,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				IncludeExpression: `Location matches "^/inventory/path/A"`,
+				IncludeExpression: `location matches "^/inventory/path/A"`,
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
@@ -849,7 +849,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				IncludeExpression: `Location matches "^/inventory/path/A`, // invalid expression, missing " at the end
+				IncludeExpression: `location matches "^/inventory/path/A`, // invalid expression, missing " at the end
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
@@ -878,7 +878,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				IncludeExpression: `Location matches "^/inventory/path/A`, // invalid expression, missing " at the end
+				IncludeExpression: `location matches "^/inventory/path/A`, // invalid expression, missing " at the end
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
@@ -907,7 +907,7 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				IncludeExpression: `Location matches "^/inventory/path/A"`,
+				IncludeExpression: `location matches "^/inventory/path/A"`,
 			},
 			instanceSvcGetAllUnassignedInstances: migration.Instances{
 				{
@@ -1426,49 +1426,49 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 		},
 		{
 			name:       "Inventory path exact match",
-			expression: `Location == "/a/b/c"`,
+			expression: `location == "/a/b/c"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "Inventory path regex match",
-			expression: `Location matches "^/a/[^/]+/c*"`,
+			expression: `location matches "^/a/[^/]+/c*"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "Name exact match",
-			expression: `Name == "c"`,
+			expression: `name == "c"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "boolean or expression",
-			expression: `Location matches "^/e/f/.*" || Name == "c"`,
+			expression: `location matches "^/e/f/.*" || name == "c"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "boolean and expression",
-			expression: `Location == "/a/b/c" && TPM`,
+			expression: `location == "/a/b/c" && tpm`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "exclude regex",
-			expression: `!(Location matches "^/a/e/.*$")`,
+			expression: `!(location matches "^/a/e/.*$")`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
 		},
 		{
 			name:       "custom path_base function exact match",
-			expression: `path_base(Location) == "c"`,
+			expression: `path_base(location) == "c"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
@@ -1489,7 +1489,7 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 		},
 		{
 			name:       "custom path_dir function exact match",
-			expression: `path_dir(Location) == "/a/b"`,
+			expression: `path_dir(location) == "/a/b"`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
@@ -1517,7 +1517,7 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 		},
 		{
 			name:       "complex expression",
-			expression: `Source in ["vcenter01", "vcenter02", "vcenter03"] && (Location startsWith "/a/b" || Location startsWith "/e/f") && CPUs <= 4 && Memory <= 1024*1024*1024*8 && len(Disks) == 1 && !Disks[0].Shared && OS in ["Ubuntu 22.04", "Ubuntu 24.04"]`,
+			expression: `source in ["vcenter01", "vcenter02", "vcenter03"] && (location startsWith "/a/b" || location startsWith "/e/f") && cpus <= 4 && memory <= 1024*1024*1024*8 && len(disks) == 1 && !disks[0].shared && os in ["Ubuntu 22.04", "Ubuntu 24.04"]`,
 
 			assertErr:  require.NoError,
 			wantResult: true,
