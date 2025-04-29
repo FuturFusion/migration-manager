@@ -43,12 +43,12 @@ type InstanceOverride struct {
 type InstanceFilterable struct {
 	api.InstanceProperties
 
-	MigrationStatus        api.MigrationStatusType
-	MigrationStatusMessage string
-	LastUpdateFromSource   time.Time
+	MigrationStatus        api.MigrationStatusType `json:"migration_status" expr:"migration_status"`
+	MigrationStatusMessage string                  `json:"migration_status_message" expr:"migration_status_message"`
+	LastUpdateFromSource   time.Time               `json:"last_update_from_source" expr:"last_update_from_source"`
 
-	Source     string
-	SourceType api.SourceType
+	Source     string         `json:"source" expr:"source"`
+	SourceType api.SourceType `json:"source_type" expr:"source_type"`
 }
 
 func (i Instance) Validate() error {
