@@ -48,8 +48,9 @@ func NewMigrationHandler(b migration.BatchService, i migration.InstanceService, 
 
 // MigrationState is a cache of all migration data for a batch, queued by instance.
 type MigrationState struct {
-	Batch  migration.Batch
-	Target migration.Target
+	Batch            migration.Batch
+	Target           migration.Target
+	MigrationWindows migration.MigrationWindows
 
 	QueueEntries map[uuid.UUID]migration.QueueEntry
 	Instances    map[uuid.UUID]migration.Instance
@@ -97,6 +98,7 @@ func (s *Handler) GetMigrationState(ctx context.Context, batchStatus api.BatchSt
 	var targets migration.Targets
 	var sources migration.Sources
 	var instances migration.Instances
+	windowsByBatch := map[string]migration.MigrationWindows{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 		entries, err = s.queue.GetAllByState(ctx, migrationStatuses...)
@@ -107,6 +109,13 @@ func (s *Handler) GetMigrationState(ctx context.Context, batchStatus api.BatchSt
 		batches, err = s.batch.GetAllByState(ctx, batchStatus)
 		if err != nil {
 			return err
+		}
+
+		for _, b := range batches {
+			windowsByBatch[b.Name], err = s.batch.GetMigrationWindows(ctx, b.Name)
+			if err != nil {
+				return err
+			}
 		}
 
 		targets, err = s.target.GetAll(ctx)
@@ -159,11 +168,12 @@ func (s *Handler) GetMigrationState(ctx context.Context, batchStatus api.BatchSt
 
 	for _, b := range batchMap {
 		state := MigrationState{
-			Batch:        b,
-			QueueEntries: queueMap[b.Name],
-			Target:       tgtMap[b.Target],
-			Instances:    map[uuid.UUID]migration.Instance{},
-			Sources:      map[uuid.UUID]migration.Source{},
+			Batch:            b,
+			MigrationWindows: windowsByBatch[b.Name],
+			QueueEntries:     queueMap[b.Name],
+			Target:           tgtMap[b.Target],
+			Instances:        map[uuid.UUID]migration.Instance{},
+			Sources:          map[uuid.UUID]migration.Source{},
 		}
 
 		for _, inst := range instances {
