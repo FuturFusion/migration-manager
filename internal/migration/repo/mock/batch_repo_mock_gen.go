@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/google/uuid"
 )
 
 // Ensure, that BatchRepoMock does implement migration.BatchRepo.
@@ -21,6 +22,12 @@ var _ migration.BatchRepo = &BatchRepoMock{}
 //
 //		// make and configure a mocked migration.BatchRepo
 //		mockedBatchRepo := &BatchRepoMock{
+//			AssignBatchFunc: func(ctx context.Context, batchName string, instanceUUID uuid.UUID) error {
+//				panic("mock out the AssignBatch method")
+//			},
+//			AssignMigrationWindowsFunc: func(ctx context.Context, batch string, windows migration.MigrationWindows) error {
+//				panic("mock out the AssignMigrationWindows method")
+//			},
 //			CreateFunc: func(ctx context.Context, batch migration.Batch) (int64, error) {
 //				panic("mock out the Create method")
 //			},
@@ -42,8 +49,17 @@ var _ migration.BatchRepo = &BatchRepoMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			GetMigrationWindowsByBatchFunc: func(ctx context.Context, batch string) (migration.MigrationWindows, error) {
+//				panic("mock out the GetMigrationWindowsByBatch method")
+//			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
+//			},
+//			UnassignBatchFunc: func(ctx context.Context, batchName string, instanceUUID uuid.UUID) error {
+//				panic("mock out the UnassignBatch method")
+//			},
+//			UnassignMigrationWindowsFunc: func(ctx context.Context, batch string) error {
+//				panic("mock out the UnassignMigrationWindows method")
 //			},
 //			UpdateFunc: func(ctx context.Context, name string, batch migration.Batch) error {
 //				panic("mock out the Update method")
@@ -55,6 +71,12 @@ var _ migration.BatchRepo = &BatchRepoMock{}
 //
 //	}
 type BatchRepoMock struct {
+	// AssignBatchFunc mocks the AssignBatch method.
+	AssignBatchFunc func(ctx context.Context, batchName string, instanceUUID uuid.UUID) error
+
+	// AssignMigrationWindowsFunc mocks the AssignMigrationWindows method.
+	AssignMigrationWindowsFunc func(ctx context.Context, batch string, windows migration.MigrationWindows) error
+
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, batch migration.Batch) (int64, error)
 
@@ -76,14 +98,41 @@ type BatchRepoMock struct {
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Batch, error)
 
+	// GetMigrationWindowsByBatchFunc mocks the GetMigrationWindowsByBatch method.
+	GetMigrationWindowsByBatchFunc func(ctx context.Context, batch string) (migration.MigrationWindows, error)
+
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
+
+	// UnassignBatchFunc mocks the UnassignBatch method.
+	UnassignBatchFunc func(ctx context.Context, batchName string, instanceUUID uuid.UUID) error
+
+	// UnassignMigrationWindowsFunc mocks the UnassignMigrationWindows method.
+	UnassignMigrationWindowsFunc func(ctx context.Context, batch string) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, name string, batch migration.Batch) error
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// AssignBatch holds details about calls to the AssignBatch method.
+		AssignBatch []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BatchName is the batchName argument value.
+			BatchName string
+			// InstanceUUID is the instanceUUID argument value.
+			InstanceUUID uuid.UUID
+		}
+		// AssignMigrationWindows holds details about calls to the AssignMigrationWindows method.
+		AssignMigrationWindows []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Batch is the batch argument value.
+			Batch string
+			// Windows is the windows argument value.
+			Windows migration.MigrationWindows
+		}
 		// Create holds details about calls to the Create method.
 		Create []struct {
 			// Ctx is the ctx argument value.
@@ -129,6 +178,13 @@ type BatchRepoMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetMigrationWindowsByBatch holds details about calls to the GetMigrationWindowsByBatch method.
+		GetMigrationWindowsByBatch []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Batch is the batch argument value.
+			Batch string
+		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
 			// Ctx is the ctx argument value.
@@ -137,6 +193,22 @@ type BatchRepoMock struct {
 			OldName string
 			// NewName is the newName argument value.
 			NewName string
+		}
+		// UnassignBatch holds details about calls to the UnassignBatch method.
+		UnassignBatch []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// BatchName is the batchName argument value.
+			BatchName string
+			// InstanceUUID is the instanceUUID argument value.
+			InstanceUUID uuid.UUID
+		}
+		// UnassignMigrationWindows holds details about calls to the UnassignMigrationWindows method.
+		UnassignMigrationWindows []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Batch is the batch argument value.
+			Batch string
 		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
@@ -148,15 +220,100 @@ type BatchRepoMock struct {
 			Batch migration.Batch
 		}
 	}
-	lockCreate             sync.RWMutex
-	lockDeleteByName       sync.RWMutex
-	lockGetAll             sync.RWMutex
-	lockGetAllByState      sync.RWMutex
-	lockGetAllNames        sync.RWMutex
-	lockGetAllNamesByState sync.RWMutex
-	lockGetByName          sync.RWMutex
-	lockRename             sync.RWMutex
-	lockUpdate             sync.RWMutex
+	lockAssignBatch                sync.RWMutex
+	lockAssignMigrationWindows     sync.RWMutex
+	lockCreate                     sync.RWMutex
+	lockDeleteByName               sync.RWMutex
+	lockGetAll                     sync.RWMutex
+	lockGetAllByState              sync.RWMutex
+	lockGetAllNames                sync.RWMutex
+	lockGetAllNamesByState         sync.RWMutex
+	lockGetByName                  sync.RWMutex
+	lockGetMigrationWindowsByBatch sync.RWMutex
+	lockRename                     sync.RWMutex
+	lockUnassignBatch              sync.RWMutex
+	lockUnassignMigrationWindows   sync.RWMutex
+	lockUpdate                     sync.RWMutex
+}
+
+// AssignBatch calls AssignBatchFunc.
+func (mock *BatchRepoMock) AssignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error {
+	if mock.AssignBatchFunc == nil {
+		panic("BatchRepoMock.AssignBatchFunc: method is nil but BatchRepo.AssignBatch was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		BatchName    string
+		InstanceUUID uuid.UUID
+	}{
+		Ctx:          ctx,
+		BatchName:    batchName,
+		InstanceUUID: instanceUUID,
+	}
+	mock.lockAssignBatch.Lock()
+	mock.calls.AssignBatch = append(mock.calls.AssignBatch, callInfo)
+	mock.lockAssignBatch.Unlock()
+	return mock.AssignBatchFunc(ctx, batchName, instanceUUID)
+}
+
+// AssignBatchCalls gets all the calls that were made to AssignBatch.
+// Check the length with:
+//
+//	len(mockedBatchRepo.AssignBatchCalls())
+func (mock *BatchRepoMock) AssignBatchCalls() []struct {
+	Ctx          context.Context
+	BatchName    string
+	InstanceUUID uuid.UUID
+} {
+	var calls []struct {
+		Ctx          context.Context
+		BatchName    string
+		InstanceUUID uuid.UUID
+	}
+	mock.lockAssignBatch.RLock()
+	calls = mock.calls.AssignBatch
+	mock.lockAssignBatch.RUnlock()
+	return calls
+}
+
+// AssignMigrationWindows calls AssignMigrationWindowsFunc.
+func (mock *BatchRepoMock) AssignMigrationWindows(ctx context.Context, batch string, windows migration.MigrationWindows) error {
+	if mock.AssignMigrationWindowsFunc == nil {
+		panic("BatchRepoMock.AssignMigrationWindowsFunc: method is nil but BatchRepo.AssignMigrationWindows was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Batch   string
+		Windows migration.MigrationWindows
+	}{
+		Ctx:     ctx,
+		Batch:   batch,
+		Windows: windows,
+	}
+	mock.lockAssignMigrationWindows.Lock()
+	mock.calls.AssignMigrationWindows = append(mock.calls.AssignMigrationWindows, callInfo)
+	mock.lockAssignMigrationWindows.Unlock()
+	return mock.AssignMigrationWindowsFunc(ctx, batch, windows)
+}
+
+// AssignMigrationWindowsCalls gets all the calls that were made to AssignMigrationWindows.
+// Check the length with:
+//
+//	len(mockedBatchRepo.AssignMigrationWindowsCalls())
+func (mock *BatchRepoMock) AssignMigrationWindowsCalls() []struct {
+	Ctx     context.Context
+	Batch   string
+	Windows migration.MigrationWindows
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Batch   string
+		Windows migration.MigrationWindows
+	}
+	mock.lockAssignMigrationWindows.RLock()
+	calls = mock.calls.AssignMigrationWindows
+	mock.lockAssignMigrationWindows.RUnlock()
+	return calls
 }
 
 // Create calls CreateFunc.
@@ -403,6 +560,42 @@ func (mock *BatchRepoMock) GetByNameCalls() []struct {
 	return calls
 }
 
+// GetMigrationWindowsByBatch calls GetMigrationWindowsByBatchFunc.
+func (mock *BatchRepoMock) GetMigrationWindowsByBatch(ctx context.Context, batch string) (migration.MigrationWindows, error) {
+	if mock.GetMigrationWindowsByBatchFunc == nil {
+		panic("BatchRepoMock.GetMigrationWindowsByBatchFunc: method is nil but BatchRepo.GetMigrationWindowsByBatch was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Batch string
+	}{
+		Ctx:   ctx,
+		Batch: batch,
+	}
+	mock.lockGetMigrationWindowsByBatch.Lock()
+	mock.calls.GetMigrationWindowsByBatch = append(mock.calls.GetMigrationWindowsByBatch, callInfo)
+	mock.lockGetMigrationWindowsByBatch.Unlock()
+	return mock.GetMigrationWindowsByBatchFunc(ctx, batch)
+}
+
+// GetMigrationWindowsByBatchCalls gets all the calls that were made to GetMigrationWindowsByBatch.
+// Check the length with:
+//
+//	len(mockedBatchRepo.GetMigrationWindowsByBatchCalls())
+func (mock *BatchRepoMock) GetMigrationWindowsByBatchCalls() []struct {
+	Ctx   context.Context
+	Batch string
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Batch string
+	}
+	mock.lockGetMigrationWindowsByBatch.RLock()
+	calls = mock.calls.GetMigrationWindowsByBatch
+	mock.lockGetMigrationWindowsByBatch.RUnlock()
+	return calls
+}
+
 // Rename calls RenameFunc.
 func (mock *BatchRepoMock) Rename(ctx context.Context, oldName string, newName string) error {
 	if mock.RenameFunc == nil {
@@ -440,6 +633,82 @@ func (mock *BatchRepoMock) RenameCalls() []struct {
 	mock.lockRename.RLock()
 	calls = mock.calls.Rename
 	mock.lockRename.RUnlock()
+	return calls
+}
+
+// UnassignBatch calls UnassignBatchFunc.
+func (mock *BatchRepoMock) UnassignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error {
+	if mock.UnassignBatchFunc == nil {
+		panic("BatchRepoMock.UnassignBatchFunc: method is nil but BatchRepo.UnassignBatch was just called")
+	}
+	callInfo := struct {
+		Ctx          context.Context
+		BatchName    string
+		InstanceUUID uuid.UUID
+	}{
+		Ctx:          ctx,
+		BatchName:    batchName,
+		InstanceUUID: instanceUUID,
+	}
+	mock.lockUnassignBatch.Lock()
+	mock.calls.UnassignBatch = append(mock.calls.UnassignBatch, callInfo)
+	mock.lockUnassignBatch.Unlock()
+	return mock.UnassignBatchFunc(ctx, batchName, instanceUUID)
+}
+
+// UnassignBatchCalls gets all the calls that were made to UnassignBatch.
+// Check the length with:
+//
+//	len(mockedBatchRepo.UnassignBatchCalls())
+func (mock *BatchRepoMock) UnassignBatchCalls() []struct {
+	Ctx          context.Context
+	BatchName    string
+	InstanceUUID uuid.UUID
+} {
+	var calls []struct {
+		Ctx          context.Context
+		BatchName    string
+		InstanceUUID uuid.UUID
+	}
+	mock.lockUnassignBatch.RLock()
+	calls = mock.calls.UnassignBatch
+	mock.lockUnassignBatch.RUnlock()
+	return calls
+}
+
+// UnassignMigrationWindows calls UnassignMigrationWindowsFunc.
+func (mock *BatchRepoMock) UnassignMigrationWindows(ctx context.Context, batch string) error {
+	if mock.UnassignMigrationWindowsFunc == nil {
+		panic("BatchRepoMock.UnassignMigrationWindowsFunc: method is nil but BatchRepo.UnassignMigrationWindows was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Batch string
+	}{
+		Ctx:   ctx,
+		Batch: batch,
+	}
+	mock.lockUnassignMigrationWindows.Lock()
+	mock.calls.UnassignMigrationWindows = append(mock.calls.UnassignMigrationWindows, callInfo)
+	mock.lockUnassignMigrationWindows.Unlock()
+	return mock.UnassignMigrationWindowsFunc(ctx, batch)
+}
+
+// UnassignMigrationWindowsCalls gets all the calls that were made to UnassignMigrationWindows.
+// Check the length with:
+//
+//	len(mockedBatchRepo.UnassignMigrationWindowsCalls())
+func (mock *BatchRepoMock) UnassignMigrationWindowsCalls() []struct {
+	Ctx   context.Context
+	Batch string
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Batch string
+	}
+	mock.lockUnassignMigrationWindows.RLock()
+	calls = mock.calls.UnassignMigrationWindows
+	mock.lockUnassignMigrationWindows.RUnlock()
 	return calls
 }
 

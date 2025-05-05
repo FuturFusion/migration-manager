@@ -10,6 +10,7 @@ import (
 
 	_sourceMigration "github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/google/uuid"
 )
 
 // BatchRepoWithSlog implements _sourceMigration.BatchRepo that is instrumented with slog logger
@@ -24,6 +25,46 @@ func NewBatchRepoWithSlog(base _sourceMigration.BatchRepo, log *slog.Logger) Bat
 		_base: base,
 		_log:  log,
 	}
+}
+
+// AssignBatch implements _sourceMigration.BatchRepo
+func (_d BatchRepoWithSlog) AssignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) (err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.String("batchName", batchName),
+		slog.Any("instanceUUID", instanceUUID),
+	).Debug("BatchRepoWithSlog: calling AssignBatch")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("BatchRepoWithSlog: method AssignBatch returned an error")
+		} else {
+			log.Debug("BatchRepoWithSlog: method AssignBatch finished")
+		}
+	}()
+	return _d._base.AssignBatch(ctx, batchName, instanceUUID)
+}
+
+// AssignMigrationWindows implements _sourceMigration.BatchRepo
+func (_d BatchRepoWithSlog) AssignMigrationWindows(ctx context.Context, batch string, windows _sourceMigration.MigrationWindows) (err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.String("batch", batch),
+		slog.Any("windows", windows),
+	).Debug("BatchRepoWithSlog: calling AssignMigrationWindows")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("BatchRepoWithSlog: method AssignMigrationWindows returned an error")
+		} else {
+			log.Debug("BatchRepoWithSlog: method AssignMigrationWindows finished")
+		}
+	}()
+	return _d._base.AssignMigrationWindows(ctx, batch, windows)
 }
 
 // Create implements _sourceMigration.BatchRepo
@@ -163,6 +204,26 @@ func (_d BatchRepoWithSlog) GetByName(ctx context.Context, name string) (bp1 *_s
 	return _d._base.GetByName(ctx, name)
 }
 
+// GetMigrationWindowsByBatch implements _sourceMigration.BatchRepo
+func (_d BatchRepoWithSlog) GetMigrationWindowsByBatch(ctx context.Context, batch string) (m1 _sourceMigration.MigrationWindows, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.String("batch", batch),
+	).Debug("BatchRepoWithSlog: calling GetMigrationWindowsByBatch")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("m1", m1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("BatchRepoWithSlog: method GetMigrationWindowsByBatch returned an error")
+		} else {
+			log.Debug("BatchRepoWithSlog: method GetMigrationWindowsByBatch finished")
+		}
+	}()
+	return _d._base.GetMigrationWindowsByBatch(ctx, batch)
+}
+
 // Rename implements _sourceMigration.BatchRepo
 func (_d BatchRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
 	_d._log.With(
@@ -181,6 +242,45 @@ func (_d BatchRepoWithSlog) Rename(ctx context.Context, oldName string, newName 
 		}
 	}()
 	return _d._base.Rename(ctx, oldName, newName)
+}
+
+// UnassignBatch implements _sourceMigration.BatchRepo
+func (_d BatchRepoWithSlog) UnassignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) (err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.String("batchName", batchName),
+		slog.Any("instanceUUID", instanceUUID),
+	).Debug("BatchRepoWithSlog: calling UnassignBatch")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("BatchRepoWithSlog: method UnassignBatch returned an error")
+		} else {
+			log.Debug("BatchRepoWithSlog: method UnassignBatch finished")
+		}
+	}()
+	return _d._base.UnassignBatch(ctx, batchName, instanceUUID)
+}
+
+// UnassignMigrationWindows implements _sourceMigration.BatchRepo
+func (_d BatchRepoWithSlog) UnassignMigrationWindows(ctx context.Context, batch string) (err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.String("batch", batch),
+	).Debug("BatchRepoWithSlog: calling UnassignMigrationWindows")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("BatchRepoWithSlog: method UnassignMigrationWindows returned an error")
+		} else {
+			log.Debug("BatchRepoWithSlog: method UnassignMigrationWindows finished")
+		}
+	}()
+	return _d._base.UnassignMigrationWindows(ctx, batch)
 }
 
 // Update implements _sourceMigration.BatchRepo

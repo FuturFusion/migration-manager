@@ -9,7 +9,6 @@ import (
 	"log/slog"
 
 	_sourceMigration "github.com/FuturFusion/migration-manager/internal/migration"
-	"github.com/FuturFusion/migration-manager/shared/api"
 	"github.com/google/uuid"
 )
 
@@ -47,26 +46,6 @@ func (_d InstanceRepoWithSlog) Create(ctx context.Context, instance _sourceMigra
 	return _d._base.Create(ctx, instance)
 }
 
-// CreateOverrides implements _sourceMigration.InstanceRepo
-func (_d InstanceRepoWithSlog) CreateOverrides(ctx context.Context, overrides _sourceMigration.InstanceOverride) (i1 int64, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("overrides", overrides),
-	).Debug("InstanceRepoWithSlog: calling CreateOverrides")
-	defer func() {
-		log := _d._log.With(
-			slog.Int64("i1", i1),
-			slog.Any("err", err),
-		)
-		if err != nil {
-			log.Error("InstanceRepoWithSlog: method CreateOverrides returned an error")
-		} else {
-			log.Debug("InstanceRepoWithSlog: method CreateOverrides finished")
-		}
-	}()
-	return _d._base.CreateOverrides(ctx, overrides)
-}
-
 // DeleteByUUID implements _sourceMigration.InstanceRepo
 func (_d InstanceRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (err error) {
 	_d._log.With(
@@ -84,25 +63,6 @@ func (_d InstanceRepoWithSlog) DeleteByUUID(ctx context.Context, id uuid.UUID) (
 		}
 	}()
 	return _d._base.DeleteByUUID(ctx, id)
-}
-
-// DeleteOverridesByUUID implements _sourceMigration.InstanceRepo
-func (_d InstanceRepoWithSlog) DeleteOverridesByUUID(ctx context.Context, id uuid.UUID) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("id", id),
-	).Debug("InstanceRepoWithSlog: calling DeleteOverridesByUUID")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
-		)
-		if err != nil {
-			log.Error("InstanceRepoWithSlog: method DeleteOverridesByUUID returned an error")
-		} else {
-			log.Debug("InstanceRepoWithSlog: method DeleteOverridesByUUID finished")
-		}
-	}()
-	return _d._base.DeleteOverridesByUUID(ctx, id)
 }
 
 // GetAll implements _sourceMigration.InstanceRepo
@@ -144,27 +104,6 @@ func (_d InstanceRepoWithSlog) GetAllByBatch(ctx context.Context, batch string) 
 	return _d._base.GetAllByBatch(ctx, batch)
 }
 
-// GetAllByBatchAndState implements _sourceMigration.InstanceRepo
-func (_d InstanceRepoWithSlog) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (i1 _sourceMigration.Instances, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("batch", batch),
-		slog.Any("status", status),
-	).Debug("InstanceRepoWithSlog: calling GetAllByBatchAndState")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("i1", i1),
-			slog.Any("err", err),
-		)
-		if err != nil {
-			log.Error("InstanceRepoWithSlog: method GetAllByBatchAndState returned an error")
-		} else {
-			log.Debug("InstanceRepoWithSlog: method GetAllByBatchAndState finished")
-		}
-	}()
-	return _d._base.GetAllByBatchAndState(ctx, batch, status)
-}
-
 // GetAllBySource implements _sourceMigration.InstanceRepo
 func (_d InstanceRepoWithSlog) GetAllBySource(ctx context.Context, source string) (i1 _sourceMigration.Instances, err error) {
 	_d._log.With(
@@ -185,24 +124,24 @@ func (_d InstanceRepoWithSlog) GetAllBySource(ctx context.Context, source string
 	return _d._base.GetAllBySource(ctx, source)
 }
 
-// GetAllByState implements _sourceMigration.InstanceRepo
-func (_d InstanceRepoWithSlog) GetAllByState(ctx context.Context, status ...api.MigrationStatusType) (i1 _sourceMigration.Instances, err error) {
+// GetAllByUUIDs implements _sourceMigration.InstanceRepo
+func (_d InstanceRepoWithSlog) GetAllByUUIDs(ctx context.Context, id ...uuid.UUID) (i1 _sourceMigration.Instances, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-		slog.Any("status", status),
-	).Debug("InstanceRepoWithSlog: calling GetAllByState")
+		slog.Any("id", id),
+	).Debug("InstanceRepoWithSlog: calling GetAllByUUIDs")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("i1", i1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method GetAllByState returned an error")
+			log.Error("InstanceRepoWithSlog: method GetAllByUUIDs returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method GetAllByState finished")
+			log.Debug("InstanceRepoWithSlog: method GetAllByUUIDs finished")
 		}
 	}()
-	return _d._base.GetAllByState(ctx, status...)
+	return _d._base.GetAllByUUIDs(ctx, id...)
 }
 
 // GetAllUUIDs implements _sourceMigration.InstanceRepo
@@ -224,6 +163,26 @@ func (_d InstanceRepoWithSlog) GetAllUUIDs(ctx context.Context) (ua1 []uuid.UUID
 	return _d._base.GetAllUUIDs(ctx)
 }
 
+// GetAllUUIDsBySource implements _sourceMigration.InstanceRepo
+func (_d InstanceRepoWithSlog) GetAllUUIDsBySource(ctx context.Context, source string) (ua1 []uuid.UUID, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.String("source", source),
+	).Debug("InstanceRepoWithSlog: calling GetAllUUIDsBySource")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("ua1", ua1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method GetAllUUIDsBySource returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method GetAllUUIDsBySource finished")
+		}
+	}()
+	return _d._base.GetAllUUIDsBySource(ctx, source)
+}
+
 // GetAllUnassigned implements _sourceMigration.InstanceRepo
 func (_d InstanceRepoWithSlog) GetAllUnassigned(ctx context.Context) (i1 _sourceMigration.Instances, err error) {
 	_d._log.With(
@@ -241,6 +200,26 @@ func (_d InstanceRepoWithSlog) GetAllUnassigned(ctx context.Context) (i1 _source
 		}
 	}()
 	return _d._base.GetAllUnassigned(ctx)
+}
+
+// GetBatchesByUUID implements _sourceMigration.InstanceRepo
+func (_d InstanceRepoWithSlog) GetBatchesByUUID(ctx context.Context, instanceUUID uuid.UUID) (b1 _sourceMigration.Batches, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("instanceUUID", instanceUUID),
+	).Debug("InstanceRepoWithSlog: calling GetBatchesByUUID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("b1", b1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method GetBatchesByUUID returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method GetBatchesByUUID finished")
+		}
+	}()
+	return _d._base.GetBatchesByUUID(ctx, instanceUUID)
 }
 
 // GetByUUID implements _sourceMigration.InstanceRepo
@@ -263,24 +242,23 @@ func (_d InstanceRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (ip1
 	return _d._base.GetByUUID(ctx, id)
 }
 
-// GetOverridesByUUID implements _sourceMigration.InstanceRepo
-func (_d InstanceRepoWithSlog) GetOverridesByUUID(ctx context.Context, id uuid.UUID) (ip1 *_sourceMigration.InstanceOverride, err error) {
+// RemoveFromQueue implements _sourceMigration.InstanceRepo
+func (_d InstanceRepoWithSlog) RemoveFromQueue(ctx context.Context, id uuid.UUID) (err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.Any("id", id),
-	).Debug("InstanceRepoWithSlog: calling GetOverridesByUUID")
+	).Debug("InstanceRepoWithSlog: calling RemoveFromQueue")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("ip1", ip1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("InstanceRepoWithSlog: method GetOverridesByUUID returned an error")
+			log.Error("InstanceRepoWithSlog: method RemoveFromQueue returned an error")
 		} else {
-			log.Debug("InstanceRepoWithSlog: method GetOverridesByUUID finished")
+			log.Debug("InstanceRepoWithSlog: method RemoveFromQueue finished")
 		}
 	}()
-	return _d._base.GetOverridesByUUID(ctx, id)
+	return _d._base.RemoveFromQueue(ctx, id)
 }
 
 // Update implements _sourceMigration.InstanceRepo
@@ -300,23 +278,4 @@ func (_d InstanceRepoWithSlog) Update(ctx context.Context, instance _sourceMigra
 		}
 	}()
 	return _d._base.Update(ctx, instance)
-}
-
-// UpdateOverrides implements _sourceMigration.InstanceRepo
-func (_d InstanceRepoWithSlog) UpdateOverrides(ctx context.Context, overrides _sourceMigration.InstanceOverride) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.Any("overrides", overrides),
-	).Debug("InstanceRepoWithSlog: calling UpdateOverrides")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
-		)
-		if err != nil {
-			log.Error("InstanceRepoWithSlog: method UpdateOverrides returned an error")
-		} else {
-			log.Debug("InstanceRepoWithSlog: method UpdateOverrides finished")
-		}
-	}()
-	return _d._base.UpdateOverrides(ctx, overrides)
 }
