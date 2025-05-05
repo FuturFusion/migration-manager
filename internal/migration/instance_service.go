@@ -109,13 +109,28 @@ func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 			return err
 		}
 
-		batches, err := s.repo.GetBatchesByUUID(ctx, instance.UUID)
-		if err != nil {
-			return err
-		}
+		if !oldInstance.Overrides.DisableMigration {
+			batches, err := s.repo.GetBatchesByUUID(ctx, instance.UUID)
+			if err != nil {
+				return err
+			}
 
-		if len(batches) > 0 {
-			return fmt.Errorf("Instance %q is already assigned to a batch: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
+			if len(batches) > 0 {
+				modifiable := false
+				if instance.Overrides.DisableMigration {
+					modifiable = true
+					for _, b := range batches {
+						if !b.CanBeModified() {
+							modifiable = false
+							break
+						}
+					}
+				}
+
+				if !modifiable {
+					return fmt.Errorf("Instance %q is already assigned to a batch: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
+				}
+			}
 		}
 
 		return s.repo.Update(ctx, *instance)
@@ -134,13 +149,15 @@ func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		batches, err := s.repo.GetBatchesByUUID(ctx, id)
-		if err != nil {
-			return err
-		}
+		if !oldInstance.Overrides.DisableMigration {
+			batches, err := s.repo.GetBatchesByUUID(ctx, id)
+			if err != nil {
+				return err
+			}
 
-		if len(batches) > 0 {
-			return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
+			if len(batches) > 0 {
+				return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
+			}
 		}
 
 		return s.repo.DeleteByUUID(ctx, id)
