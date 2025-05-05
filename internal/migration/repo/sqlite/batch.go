@@ -3,6 +3,8 @@ package sqlite
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
@@ -20,6 +22,38 @@ func NewBatch(db repo.DBTX) *batch {
 	return &batch{
 		db: db,
 	}
+}
+
+func (b batch) AssignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, b.db), func(ctx context.Context, tx transaction.TX) error {
+		batch, err := entities.GetBatch(ctx, tx, batchName)
+		if err != nil {
+			return err
+		}
+
+		instance, err := entities.GetInstance(ctx, tx, instanceUUID)
+		if err != nil {
+			return err
+		}
+
+		return entities.CreateInstanceBatches(ctx, tx, []entities.InstanceBatch{{InstanceID: instance.ID, BatchID: batch.ID}})
+	})
+}
+
+func (b batch) UnassignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, b.db), func(ctx context.Context, tx transaction.TX) error {
+		batch, err := entities.GetBatch(ctx, tx, batchName)
+		if err != nil {
+			return err
+		}
+
+		instance, err := entities.GetInstance(ctx, tx, instanceUUID)
+		if err != nil {
+			return err
+		}
+
+		return entities.DeleteInstanceBatch(ctx, tx, int(instance.ID), int(batch.ID))
+	})
 }
 
 func (b batch) Create(ctx context.Context, in migration.Batch) (int64, error) {

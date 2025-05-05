@@ -12,16 +12,14 @@ import (
 type batchService struct {
 	repo     BatchRepo
 	instance InstanceService
-	source   SourceService
 }
 
 var _ BatchService = &batchService{}
 
-func NewBatchService(repo BatchRepo, instance InstanceService, source SourceService) batchService {
+func NewBatchService(repo BatchRepo, instance InstanceService) batchService {
 	return batchService{
 		repo:     repo,
 		instance: instance,
-		source:   source,
 	}
 }
 
@@ -125,81 +123,47 @@ func (s batchService) UpdateStatusByName(ctx context.Context, name string, statu
 }
 
 func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch Batch) error {
+	if !batch.CanBeModified() {
+		return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", batch.Name, ErrOperationNotPermitted)
+	}
+
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		instances, err := s.instance.GetAllByBatch(ctx, batch.Name, false)
+		instances, err := s.instance.GetAllByBatch(ctx, batch.Name)
 		if err != nil {
 			return fmt.Errorf("Failed to get instance for batch %q (%d): %w", batch.Name, batch.ID, err)
 		}
 
 		// Update each instance for this batch.
 		for _, instance := range instances {
-			// Check if the instance should still be assigned to this batch.
-			if instance.MigrationStatus == api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
-				continue
-			}
-
-			if instance.IsMigrating() {
-				// Batch can no longer be changed, instance is already migrating.
-				continue
-			}
-
-			instanceWithOverrides, err := s.instance.GetByUUID(ctx, instance.UUID, true)
-			if err != nil {
-				return err
-			}
-
-			source, err := s.source.GetByName(ctx, instance.Source)
-			if err != nil {
-				return err
-			}
-
-			isMatch, err := batch.InstanceMatchesCriteria(*instanceWithOverrides, *source)
+			isMatch, err := batch.InstanceMatchesCriteria(instance)
 			if err != nil {
 				return err
 			}
 
 			if !isMatch {
 				// Instance does not belong to this batch
-				err := s.instance.UnassignFromBatch(ctx, instance.UUID)
+				err := s.repo.UnassignBatch(ctx, batch.Name, instance.UUID)
 				if err != nil {
 					return err
 				}
 			}
 		}
 
-		// Get a list of all unassigned instances.
-		instances, err = s.instance.GetAllUnassigned(ctx, false)
+		// Get a list of all instances.
+		instances, err = s.instance.GetAll(ctx)
 		if err != nil {
-			return fmt.Errorf("Failed to get unassigned instances for match checking with batch %q (%d): %w", batch.Name, batch.ID, err)
+			return fmt.Errorf("Failed to get instances for match checking with batch %q (%d): %w", batch.Name, batch.ID, err)
 		}
 
 		// Check if any unassigned instances should be assigned to this batch.
 		for _, instance := range instances {
-			// Check if the instance should still be assigned to this batch.
-			if instance.MigrationStatus == api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION {
-				continue
-			}
-
-			instanceWithOverrides, err := s.instance.GetByUUID(ctx, instance.UUID, true)
+			isMatch, err := batch.InstanceMatchesCriteria(instance)
 			if err != nil {
 				return err
 			}
 
-			source, err := s.source.GetByName(ctx, instance.Source)
-			if err != nil {
-				return err
-			}
-
-			isMatch, err := batch.InstanceMatchesCriteria(*instanceWithOverrides, *source)
-			if err != nil {
-				return err
-			}
-
-			if isMatch && instance.CanBeModified() {
-				instance.Batch = &batch.Name
-				instance.MigrationStatus = api.MIGRATIONSTATUS_ASSIGNED_BATCH
-				instance.MigrationStatusMessage = string(api.MIGRATIONSTATUS_ASSIGNED_BATCH)
-				err = s.instance.Update(ctx, &instance)
+			if isMatch {
+				err := s.repo.AssignBatch(ctx, batch.Name, instance.UUID)
 				if err != nil {
 					return err
 				}
@@ -208,15 +172,12 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 
 		// Reset instance state in testing mode.
 		if util.InTestingMode() {
-			instances, err := s.instance.GetAllByBatch(ctx, batch.Name, false)
+			instances, err := s.instance.GetAllByBatch(ctx, batch.Name)
 			if err != nil {
 				return fmt.Errorf("Failed to get instance for batch %q (%d): %w", batch.Name, batch.ID, err)
 			}
 
 			for _, inst := range instances {
-				inst.MigrationStatus = api.MIGRATIONSTATUS_ASSIGNED_BATCH
-				inst.MigrationStatusMessage = string(api.MIGRATIONSTATUS_ASSIGNED_BATCH)
-
 				err = s.instance.Update(ctx, &inst)
 				if err != nil {
 					return err
@@ -234,7 +195,7 @@ func (s batchService) Rename(ctx context.Context, oldName string, newName string
 
 func (s batchService) DeleteByName(ctx context.Context, name string) error {
 	if name == "" {
-		return fmt.Errorf("Instance name cannot be empty: %w", ErrOperationNotPermitted)
+		return fmt.Errorf("Batch name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
@@ -247,18 +208,14 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 			return fmt.Errorf("Cannot delete batch %q: Currently in a migration phase: %w", name, ErrOperationNotPermitted)
 		}
 
-		instances, err := s.instance.GetAllByBatch(ctx, oldBatch.Name, false)
+		instances, err := s.instance.GetAllByBatch(ctx, oldBatch.Name)
 		if err != nil {
 			return err
 		}
 
 		// Verify all instances for this batch aren't in a migration phase and remove their association with this batch.
 		for _, inst := range instances {
-			if inst.IsMigrating() {
-				return fmt.Errorf("Cannot delete batch %q: At least one assigned instance is in a migration phase: %w", name, ErrOperationNotPermitted)
-			}
-
-			err = s.instance.UnassignFromBatch(ctx, inst.UUID)
+			err = s.repo.UnassignBatch(ctx, name, inst.UUID)
 			if err != nil {
 				return err
 			}

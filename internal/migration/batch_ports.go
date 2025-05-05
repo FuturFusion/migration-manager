@@ -3,6 +3,8 @@ package migration
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -16,7 +18,6 @@ type BatchService interface {
 	GetAllNamesByState(ctx context.Context, status api.BatchStatusType) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Batch, error)
 	Update(ctx context.Context, name string, batch *Batch) error
-	UpdateInstancesAssignedToBatch(ctx context.Context, batch Batch) error
 	UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusMessage string) (*Batch, error)
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
@@ -38,4 +39,6 @@ type BatchRepo interface {
 	Update(ctx context.Context, name string, batch Batch) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
+	AssignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error
+	UnassignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error
 }
