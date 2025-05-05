@@ -1,8 +1,39 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 )
+
+type MigrationStatusType string
+
+const (
+	MIGRATIONSTATUS_CREATING          MigrationStatusType = "Creating new VM"
+	MIGRATIONSTATUS_BACKGROUND_IMPORT MigrationStatusType = "Performing background import tasks"
+	MIGRATIONSTATUS_IDLE              MigrationStatusType = "Idle"
+	MIGRATIONSTATUS_FINAL_IMPORT      MigrationStatusType = "Performing final import tasks"
+	MIGRATIONSTATUS_IMPORT_COMPLETE   MigrationStatusType = "Import tasks complete"
+	MIGRATIONSTATUS_FINISHED          MigrationStatusType = "Finished"
+	MIGRATIONSTATUS_ERROR             MigrationStatusType = "Error"
+)
+
+// Validate ensures the MigrationStatusType is valid.
+func (m MigrationStatusType) Validate() error {
+	switch m {
+	case MIGRATIONSTATUS_BACKGROUND_IMPORT:
+	case MIGRATIONSTATUS_CREATING:
+	case MIGRATIONSTATUS_ERROR:
+	case MIGRATIONSTATUS_FINAL_IMPORT:
+	case MIGRATIONSTATUS_FINISHED:
+	case MIGRATIONSTATUS_IDLE:
+	case MIGRATIONSTATUS_IMPORT_COMPLETE:
+	default:
+		return fmt.Errorf("%s is not a valid migration status", m)
+	}
+
+	return nil
+}
 
 // QueueEntry provides a high-level status for an instance that is in a migration stage.
 //
