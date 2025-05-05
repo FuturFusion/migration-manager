@@ -23,6 +23,8 @@ type InstanceService interface {
 
 	Update(ctx context.Context, instance *Instance) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
+
+	RemoveFromQueue(ctx context.Context, id uuid.UUID) error
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/instance_repo_mock_gen.go -rm . InstanceRepo
@@ -42,4 +44,6 @@ type InstanceRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Instance, error)
 	Update(ctx context.Context, instance Instance) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
+
+	RemoveFromQueue(ctx context.Context, id uuid.UUID) error
 }

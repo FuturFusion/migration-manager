@@ -77,3 +77,7 @@ func (i instance) Update(ctx context.Context, in migration.Instance) error {
 func (i instance) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return entities.DeleteInstance(ctx, transaction.GetDBTX(ctx, i.db), id)
 }
+
+func (i instance) RemoveFromQueue(ctx context.Context, id uuid.UUID) error {
+	return entities.DeleteQueueEntry(ctx, transaction.GetDBTX(ctx, i.db), id)
+}

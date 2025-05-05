@@ -173,13 +173,8 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 
 		// Reset instance state in testing mode.
 		if util.InTestingMode() {
-			instances, err := s.instance.GetAllByBatch(ctx, batch.Name)
-			if err != nil {
-				return fmt.Errorf("Failed to get instance for batch %q (%d): %w", batch.Name, batch.ID, err)
-			}
-
 			for _, inst := range instances {
-				err = s.instance.Update(ctx, &inst)
+				err := s.instance.RemoveFromQueue(ctx, inst.UUID)
 				if err != nil {
 					return err
 				}

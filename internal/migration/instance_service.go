@@ -163,3 +163,7 @@ func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 		return s.repo.DeleteByUUID(ctx, id)
 	})
 }
+
+func (s instanceService) RemoveFromQueue(ctx context.Context, id uuid.UUID) error {
+	return s.repo.RemoveFromQueue(ctx, id)
+}
