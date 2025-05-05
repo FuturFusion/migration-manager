@@ -22,6 +22,15 @@ SELECT instances.id, instances.uuid, instances.migration_status, instances.migra
   ORDER BY instances.uuid
 `)
 
+var instanceObjectsByID = RegisterStmt(`
+SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, instances.last_update_from_worker, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+  FROM instances
+  JOIN sources ON instances.source_id = sources.id
+  LEFT JOIN batches ON instances.batch_id = batches.id
+  WHERE ( instances.id = ? )
+  ORDER BY instances.uuid
+`)
+
 var instanceObjectsByUUID = RegisterStmt(`
 SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, instances.last_update_from_worker, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
   FROM instances
@@ -265,7 +274,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...InstanceFilter) (_ []
 	}
 
 	for i, filter := range filters {
-		if filter.Batch != nil && filter.MigrationStatus != nil && filter.UUID == nil && filter.Source == nil {
+		if filter.Batch != nil && filter.MigrationStatus != nil && filter.ID == nil && filter.UUID == nil && filter.Source == nil {
 			args = append(args, []any{filter.Batch, filter.MigrationStatus}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceObjectsByBatchAndMigrationStatus)
@@ -289,7 +298,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...InstanceFilter) (_ []
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID != nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		} else if filter.UUID != nil && filter.ID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceObjectsByUUID)
@@ -313,7 +322,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...InstanceFilter) (_ []
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Source != nil && filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil {
+		} else if filter.Source != nil && filter.ID == nil && filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil {
 			args = append(args, []any{filter.Source}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceObjectsBySource)
@@ -337,7 +346,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...InstanceFilter) (_ []
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.MigrationStatus != nil && filter.UUID == nil && filter.Batch == nil && filter.Source == nil {
+		} else if filter.MigrationStatus != nil && filter.ID == nil && filter.UUID == nil && filter.Batch == nil && filter.Source == nil {
 			args = append(args, []any{filter.MigrationStatus}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceObjectsByMigrationStatus)
@@ -361,7 +370,31 @@ func GetInstances(ctx context.Context, db dbtx, filters ...InstanceFilter) (_ []
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Batch != nil && filter.UUID == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		} else if filter.ID != nil && filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
+			args = append(args, []any{filter.ID}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, instanceObjectsByID)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"instanceObjectsByID\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(instanceObjectsByID)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"instanceObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.Batch != nil && filter.ID == nil && filter.UUID == nil && filter.MigrationStatus == nil && filter.Source == nil {
 			args = append(args, []any{filter.Batch}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceObjectsByBatch)
@@ -385,7 +418,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...InstanceFilter) (_ []
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		} else if filter.ID == nil && filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
 			return nil, fmt.Errorf("Cannot filter on empty InstanceFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")
@@ -432,7 +465,7 @@ func GetInstanceNames(ctx context.Context, db dbtx, filters ...InstanceFilter) (
 	}
 
 	for i, filter := range filters {
-		if filter.Batch != nil && filter.MigrationStatus != nil && filter.UUID == nil && filter.Source == nil {
+		if filter.Batch != nil && filter.MigrationStatus != nil && filter.ID == nil && filter.UUID == nil && filter.Source == nil {
 			args = append(args, []any{filter.Batch, filter.MigrationStatus}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceNamesByBatchAndMigrationStatus)
@@ -456,7 +489,7 @@ func GetInstanceNames(ctx context.Context, db dbtx, filters ...InstanceFilter) (
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID != nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		} else if filter.UUID != nil && filter.ID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceNamesByUUID)
@@ -480,7 +513,7 @@ func GetInstanceNames(ctx context.Context, db dbtx, filters ...InstanceFilter) (
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.MigrationStatus != nil && filter.UUID == nil && filter.Batch == nil && filter.Source == nil {
+		} else if filter.MigrationStatus != nil && filter.ID == nil && filter.UUID == nil && filter.Batch == nil && filter.Source == nil {
 			args = append(args, []any{filter.MigrationStatus}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceNamesByMigrationStatus)
@@ -504,7 +537,7 @@ func GetInstanceNames(ctx context.Context, db dbtx, filters ...InstanceFilter) (
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Batch != nil && filter.UUID == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		} else if filter.Batch != nil && filter.ID == nil && filter.UUID == nil && filter.MigrationStatus == nil && filter.Source == nil {
 			args = append(args, []any{filter.Batch}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceNamesByBatch)
@@ -528,7 +561,7 @@ func GetInstanceNames(ctx context.Context, db dbtx, filters ...InstanceFilter) (
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		} else if filter.ID == nil && filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
 			return nil, fmt.Errorf("Cannot filter on empty InstanceFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")

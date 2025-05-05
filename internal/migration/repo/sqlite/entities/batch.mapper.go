@@ -20,6 +20,14 @@ SELECT batches.id, batches.name, targets.name AS target, batches.target_project,
   ORDER BY batches.name
 `)
 
+var batchObjectsByID = RegisterStmt(`
+SELECT batches.id, batches.name, targets.name AS target, batches.target_project, batches.status, batches.status_message, batches.storage_pool, batches.include_expression, batches.migration_window_start, batches.migration_window_end
+  FROM batches
+  JOIN targets ON batches.target_id = targets.id
+  WHERE ( batches.id = ? )
+  ORDER BY batches.name
+`)
+
 var batchObjectsByName = RegisterStmt(`
 SELECT batches.id, batches.name, targets.name AS target, batches.target_project, batches.status, batches.status_message, batches.storage_pool, batches.include_expression, batches.migration_window_start, batches.migration_window_end
   FROM batches
@@ -229,7 +237,7 @@ func GetBatches(ctx context.Context, db dbtx, filters ...BatchFilter) (_ []migra
 	}
 
 	for i, filter := range filters {
-		if filter.Status != nil && filter.Name == nil {
+		if filter.Status != nil && filter.ID == nil && filter.Name == nil {
 			args = append(args, []any{filter.Status}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, batchObjectsByStatus)
@@ -253,7 +261,7 @@ func GetBatches(ctx context.Context, db dbtx, filters ...BatchFilter) (_ []migra
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Name != nil && filter.Status == nil {
+		} else if filter.Name != nil && filter.ID == nil && filter.Status == nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, batchObjectsByName)
@@ -277,7 +285,31 @@ func GetBatches(ctx context.Context, db dbtx, filters ...BatchFilter) (_ []migra
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Name == nil && filter.Status == nil {
+		} else if filter.ID != nil && filter.Name == nil && filter.Status == nil {
+			args = append(args, []any{filter.ID}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, batchObjectsByID)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"batchObjectsByID\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(batchObjectsByID)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"batchObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.ID == nil && filter.Name == nil && filter.Status == nil {
 			return nil, fmt.Errorf("Cannot filter on empty BatchFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")
@@ -324,7 +356,7 @@ func GetBatchNames(ctx context.Context, db dbtx, filters ...BatchFilter) (_ []st
 	}
 
 	for i, filter := range filters {
-		if filter.Status != nil && filter.Name == nil {
+		if filter.Status != nil && filter.ID == nil && filter.Name == nil {
 			args = append(args, []any{filter.Status}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, batchNamesByStatus)
@@ -348,7 +380,7 @@ func GetBatchNames(ctx context.Context, db dbtx, filters ...BatchFilter) (_ []st
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Name == nil && filter.Status == nil {
+		} else if filter.ID == nil && filter.Name == nil && filter.Status == nil {
 			return nil, fmt.Errorf("Cannot filter on empty BatchFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")

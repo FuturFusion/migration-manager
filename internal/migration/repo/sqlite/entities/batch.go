@@ -10,6 +10,7 @@ import (
 //generate-database:mapper reset
 //
 //generate-database:mapper stmt -e batch objects
+//generate-database:mapper stmt -e batch objects-by-ID
 //generate-database:mapper stmt -e batch objects-by-Name
 //generate-database:mapper stmt -e batch objects-by-Status
 //generate-database:mapper stmt -e batch names
@@ -31,6 +32,7 @@ import (
 //generate-database:mapper method -e batch DeleteOne-by-Name
 
 type BatchFilter struct {
+	ID     *int64
 	Name   *string
 	Status *api.BatchStatusType
 }

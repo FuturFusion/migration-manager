@@ -12,6 +12,7 @@ import (
 //generate-database:mapper reset
 //
 //generate-database:mapper stmt -e instance objects
+//generate-database:mapper stmt -e instance objects-by-ID
 //generate-database:mapper stmt -e instance objects-by-UUID
 //generate-database:mapper stmt -e instance objects-by-Batch
 //generate-database:mapper stmt -e instance objects-by-MigrationStatus
@@ -36,6 +37,7 @@ import (
 //generate-database:mapper method -e instance DeleteOne-by-UUID
 
 type InstanceFilter struct {
+	ID              *int64
 	UUID            *uuid.UUID
 	Batch           *string
 	MigrationStatus *api.MigrationStatusType
