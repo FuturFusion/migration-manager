@@ -18,33 +18,42 @@ import (
 
 var (
 	batchA = migration.Batch{
-		Name:                 "BatchA",
-		Target:               "TestTarget",
-		TargetProject:        "default",
-		StoragePool:          "pool1",
-		IncludeExpression:    "include",
-		MigrationWindowStart: time.Time{},
-		MigrationWindowEnd:   time.Time{},
+		Name:              "BatchA",
+		Target:            "TestTarget",
+		TargetProject:     "default",
+		StoragePool:       "pool1",
+		IncludeExpression: "include",
 	}
 
 	batchB = migration.Batch{
-		Name:                 "BatchB",
-		Target:               "TestTarget",
-		TargetProject:        "m-project",
-		StoragePool:          "pool2",
-		IncludeExpression:    "",
-		MigrationWindowStart: time.Now().UTC(),
-		MigrationWindowEnd:   time.Time{},
+		Name:              "BatchB",
+		Target:            "TestTarget",
+		TargetProject:     "m-project",
+		StoragePool:       "pool2",
+		IncludeExpression: "",
 	}
 
 	batchC = migration.Batch{
-		Name:                 "BatchC",
-		Target:               "TestTarget",
-		TargetProject:        "default",
-		StoragePool:          "pool3",
-		IncludeExpression:    "include",
-		MigrationWindowStart: time.Time{},
-		MigrationWindowEnd:   time.Now().UTC(),
+		Name:              "BatchC",
+		Target:            "TestTarget",
+		TargetProject:     "default",
+		StoragePool:       "pool3",
+		IncludeExpression: "include",
+	}
+
+	windows = migration.MigrationWindows{
+		{
+			Start: time.Time{},
+			End:   time.Time{},
+		},
+		{
+			Start: time.Now().UTC(),
+			End:   time.Time{},
+		},
+		{
+			Start: time.Time{},
+			End:   time.Now().UTC(),
+		},
 	}
 )
 
@@ -93,6 +102,39 @@ func TestBatchDatabaseActions(t *testing.T) {
 	batches, err := batch.GetAll(ctx)
 	require.NoError(t, err)
 	require.Len(t, batches, 3)
+
+	err = batch.AssignMigrationWindows(ctx, batchA.Name, windows)
+	require.NoError(t, err)
+
+	wA, err := batch.GetMigrationWindowsByBatch(ctx, batchA.Name)
+	require.NoError(t, err)
+	require.Len(t, wA, 3)
+
+	wB, err := batch.GetMigrationWindowsByBatch(ctx, batchB.Name)
+	require.NoError(t, err)
+	require.Empty(t, wB)
+
+	err = batch.AssignMigrationWindows(ctx, batchB.Name, windows)
+	require.NoError(t, err)
+
+	wA, err = batch.GetMigrationWindowsByBatch(ctx, batchA.Name)
+	require.NoError(t, err)
+	require.Len(t, wA, 3)
+
+	wB, err = batch.GetMigrationWindowsByBatch(ctx, batchB.Name)
+	require.NoError(t, err)
+	require.Len(t, wB, 3)
+
+	err = batch.UnassignMigrationWindows(ctx, batchA.Name)
+	require.NoError(t, err)
+
+	wA, err = batch.GetMigrationWindowsByBatch(ctx, batchA.Name)
+	require.NoError(t, err)
+	require.Empty(t, wA)
+
+	wB, err = batch.GetMigrationWindowsByBatch(ctx, batchB.Name)
+	require.NoError(t, err)
+	require.Len(t, wB, 3)
 
 	// Cannot delete a target if referenced by a batch.
 	err = targetSvc.DeleteByName(ctx, testTarget.Name)
