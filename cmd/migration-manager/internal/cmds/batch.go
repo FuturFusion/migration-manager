@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
 
@@ -136,36 +137,46 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
-		if s != "" {
-			_, err := time.Parse(time.DateTime, s)
+	addWindows := true
+	for addWindows {
+		windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
+			if s != "" {
+				_, err := time.Parse(time.DateTime, s)
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 
-		return nil
-	})
-	if err != nil {
-		return err
-	}
+		windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
+			if s != "" {
+				_, err := time.Parse(time.DateTime, s)
+				return err
+			}
 
-	if windowStart != "" {
-		b.MigrationWindowStart, _ = time.Parse(time.DateTime, windowStart)
-	}
-
-	windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
-		if s != "" {
-			_, err := time.Parse(time.DateTime, s)
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 
-		return nil
-	})
-	if err != nil {
-		return err
-	}
+		if windowStart != "" || windowEnd != "" {
+			if b.MigrationWindows == nil {
+				b.MigrationWindows = []api.MigrationWindow{}
+			}
 
-	if windowEnd != "" {
-		b.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
+			start, _ := time.Parse(time.DateTime, windowStart)
+			end, _ := time.Parse(time.DateTime, windowEnd)
+			b.MigrationWindows = append(b.MigrationWindows, api.MigrationWindow{Start: start, End: end})
+		}
+
+		addWindows, err = c.global.Asker.AskBool("Add more migration windows? (yes/no) [default=no]: ", "no")
+		if err != nil {
+			return err
+		}
 	}
 
 	// Insert into database.
@@ -228,21 +239,11 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Status", "Status String", "Target", "Project", "Storage Pool", "Include Expression", "Window Start", "Window End"}
+	header := []string{"Name", "Status", "Status String", "Target", "Project", "Storage Pool", "Include Expression", "Migration Windows"}
 	data := [][]string{}
 
 	for _, b := range batches {
-		startString := ""
-		endString := ""
-		if !b.MigrationWindowStart.IsZero() {
-			startString = b.MigrationWindowStart.String()
-		}
-
-		if !b.MigrationWindowEnd.IsZero() {
-			endString = b.MigrationWindowEnd.String()
-		}
-
-		data = append(data, []string{b.Name, string(b.Status), b.StatusMessage, b.Target, b.TargetProject, b.StoragePool, b.IncludeExpression, startString, endString})
+		data = append(data, []string{b.Name, string(b.Status), b.StatusMessage, b.Target, b.TargetProject, b.StoragePool, b.IncludeExpression, strconv.Itoa(len(b.MigrationWindows))})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
@@ -340,6 +341,22 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	resp, err = c.global.doHTTPRequestV1("/queue", http.MethodGet, "recursion=1", nil)
+	if err != nil {
+		return err
+	}
+
+	queueEntries := []api.QueueEntry{}
+	err = responseToStruct(resp, &queueEntries)
+	if err != nil {
+		return err
+	}
+
+	queueMap := make(map[uuid.UUID]api.QueueEntry, len(queueEntries))
+	for _, q := range queueEntries {
+		queueMap[q.InstanceUUID] = q
+	}
+
 	// Show the details
 	cmd.Printf("Batch: %s\n", b.Name)
 	cmd.Printf("  - Status:             %s\n", b.StatusMessage)
@@ -356,17 +373,42 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 		cmd.Printf("  - Include expression: %s\n", b.IncludeExpression)
 	}
 
-	if !b.MigrationWindowStart.IsZero() {
-		cmd.Printf("  - Window start:       %s\n", b.MigrationWindowStart)
+	for i, w := range b.MigrationWindows {
+		nonZero := false
+		if !w.Start.IsZero() {
+			nonZero = true
+			cmd.Printf("  - Window start:       %s\n", w.Start)
+		}
+
+		if !w.End.IsZero() {
+			nonZero = true
+			cmd.Printf("  - Window end:         %s\n", w.End)
+		}
+
+		if nonZero && i != len(b.MigrationWindows)-1 {
+			cmd.Println()
+		}
 	}
 
-	if !b.MigrationWindowEnd.IsZero() {
-		cmd.Printf("  - Window end:         %s\n", b.MigrationWindowEnd)
-	}
-
-	cmd.Printf("\n  - Instances:\n")
+	cmd.Printf("\n  - Matched Instances:\n")
 	for _, i := range instances {
-		cmd.Printf("    - %s (%s)\n", i.Properties.Location, strconv.FormatBool(i.Overrides.DisableMigration))
+		disabled := ""
+		if i.Overrides.DisableMigration {
+			disabled = " (Migration Disabled)"
+		}
+
+		cmd.Printf("    - %s%s\n", i.Properties.Location, disabled)
+	}
+
+	cmd.Printf("\n  - Queued Instances:\n")
+
+	for _, i := range instances {
+		q, ok := queueMap[i.Properties.UUID]
+		if !ok || q.BatchName != name {
+			continue
+		}
+
+		cmd.Printf("    - %s (%s)\n", i.Properties.Location, q.MigrationStatus)
 	}
 
 	return nil
@@ -529,46 +571,54 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	windowStartValue := ""
-	if !b.MigrationWindowStart.IsZero() {
-		windowStartValue = b.MigrationWindowStart.Format(time.DateTime)
-	}
-
-	windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS) [default-"+windowStartValue+"]: ", windowStartValue, func(s string) error {
-		if s != "" {
-			_, err := time.Parse(time.DateTime, s)
-			return err
-		}
-
-		return nil
-	})
+	addWindows, err := c.global.Asker.AskBool("Replace migration windows? (yes/no) [default=no]: ", "no")
 	if err != nil {
 		return err
 	}
 
-	if windowStart != "" {
-		b.MigrationWindowStart, _ = time.Parse(time.DateTime, windowStart)
+	if addWindows {
+		b.MigrationWindows = []api.MigrationWindow{}
 	}
 
-	windowEndValue := ""
-	if !b.MigrationWindowEnd.IsZero() {
-		windowEndValue = b.MigrationWindowEnd.Format(time.DateTime)
-	}
+	for addWindows {
+		windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
+			if s != "" {
+				_, err := time.Parse(time.DateTime, s)
+				return err
+			}
 
-	windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS) [default="+windowEndValue+"]: ", windowEndValue, func(s string) error {
-		if s != "" {
-			_, err := time.Parse(time.DateTime, s)
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 
-		return nil
-	})
-	if err != nil {
-		return err
-	}
+		windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
+			if s != "" {
+				_, err := time.Parse(time.DateTime, s)
+				return err
+			}
 
-	if windowEnd != "" {
-		b.MigrationWindowEnd, _ = time.Parse(time.DateTime, windowEnd)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		if windowStart != "" || windowEnd != "" {
+			if b.MigrationWindows == nil {
+				b.MigrationWindows = []api.MigrationWindow{}
+			}
+
+			start, _ := time.Parse(time.DateTime, windowStart)
+			end, _ := time.Parse(time.DateTime, windowEnd)
+			b.MigrationWindows = append(b.MigrationWindows, api.MigrationWindow{Start: start, End: end})
+		}
+
+		addWindows, err = c.global.Asker.AskBool("Add more migration windows? (yes/no) [default=no]: ", "no")
+		if err != nil {
+			return err
+		}
 	}
 
 	newBatchName := b.Name
