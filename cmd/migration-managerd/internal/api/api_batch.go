@@ -158,7 +158,12 @@ func batchesGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.Batch, 0, len(batches))
 
 		for _, batch := range batches {
-			result = append(result, batch.ToAPI())
+			windows, err := d.batch.GetMigrationWindows(ctx, batch.Name)
+			if err != nil {
+				return response.SmartError(err)
+			}
+
+			result = append(result, batch.ToAPI(windows))
 		}
 
 		return response.SyncResponse(true, result)
@@ -222,18 +227,26 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 	}()
 
 	batch := migration.Batch{
-		Name:                 apiBatch.Name,
-		Target:               apiBatch.Target,
-		TargetProject:        apiBatch.TargetProject,
-		Status:               api.BATCHSTATUS_DEFINED,
-		StatusMessage:        string(api.BATCHSTATUS_DEFINED),
-		StoragePool:          apiBatch.StoragePool,
-		IncludeExpression:    apiBatch.IncludeExpression,
-		MigrationWindowStart: apiBatch.MigrationWindowStart,
-		MigrationWindowEnd:   apiBatch.MigrationWindowEnd,
+		Name:              apiBatch.Name,
+		Target:            apiBatch.Target,
+		TargetProject:     apiBatch.TargetProject,
+		Status:            api.BATCHSTATUS_DEFINED,
+		StatusMessage:     string(api.BATCHSTATUS_DEFINED),
+		StoragePool:       apiBatch.StoragePool,
+		IncludeExpression: apiBatch.IncludeExpression,
 	}
 
 	_, err = d.batch.Create(ctx, batch)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	windows := make(migration.MigrationWindows, len(apiBatch.MigrationWindows))
+	for i, w := range apiBatch.MigrationWindows {
+		windows[i] = migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
+	}
+
+	err = d.batch.AssignMigrationWindows(ctx, batch.Name, windows)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -327,9 +340,14 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	windows, err := d.batch.GetMigrationWindows(ctx, name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
 	return response.SyncResponseETag(
 		true,
-		batch.ToAPI(),
+		batch.ToAPI(windows),
 		batch,
 	)
 }
@@ -394,20 +412,51 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
+	dbWindows, err := d.batch.GetMigrationWindows(ctx, batch.Name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get current migration windows for batch %q: %w", batch.Name, err))
+	}
+
+	var changedWindows migration.MigrationWindows
+	if len(dbWindows) != len(batch.MigrationWindows) {
+		changedWindows = make(migration.MigrationWindows, len(batch.MigrationWindows))
+		for i, w := range batch.MigrationWindows {
+			changedWindows[i] = migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
+		}
+	} else {
+		windowMap := map[string]bool{}
+		for _, w := range dbWindows {
+			windowMap[w.Key()] = true
+		}
+
+		changedWindows = migration.MigrationWindows{}
+		for _, w := range batch.MigrationWindows {
+			newWindow := migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
+			if !windowMap[newWindow.Key()] {
+				changedWindows = append(changedWindows, newWindow)
+			}
+		}
+	}
+
 	err = d.batch.Update(ctx, name, &migration.Batch{
-		ID:                   currentBatch.ID,
-		Name:                 batch.Name,
-		Target:               batch.Target,
-		TargetProject:        batch.TargetProject,
-		Status:               currentBatch.Status,
-		StatusMessage:        currentBatch.StatusMessage,
-		StoragePool:          batch.StoragePool,
-		IncludeExpression:    batch.IncludeExpression,
-		MigrationWindowStart: batch.MigrationWindowStart,
-		MigrationWindowEnd:   batch.MigrationWindowEnd,
+		ID:                currentBatch.ID,
+		Name:              batch.Name,
+		Target:            batch.Target,
+		TargetProject:     batch.TargetProject,
+		Status:            currentBatch.Status,
+		StatusMessage:     currentBatch.StatusMessage,
+		StoragePool:       batch.StoragePool,
+		IncludeExpression: batch.IncludeExpression,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))
+	}
+
+	if changedWindows != nil {
+		err := d.batch.ChangeMigrationWindows(ctx, batch.Name, changedWindows)
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Failed to update migration windows for batch %q: %w", batch.Name, err))
+		}
 	}
 
 	err = trans.Commit()
