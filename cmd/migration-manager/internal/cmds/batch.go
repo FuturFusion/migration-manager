@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -365,7 +366,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 
 	cmd.Printf("\n  - Instances:\n")
 	for _, i := range instances {
-		cmd.Printf("    - %s (%s)\n", i.Properties.Location, i.MigrationStatusMessage)
+		cmd.Printf("    - %s (%s)\n", i.Properties.Location, strconv.FormatBool(i.Overrides.DisableMigration))
 	}
 
 	return nil

@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/units"
 	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
@@ -28,10 +27,6 @@ func (c *CmdInstanceOverride) Command() *cobra.Command {
   Override specific instance configuration values
 `
 
-	// Add
-	instanceOverrideAddCmd := cmdInstanceOverrideAdd{global: c.Global}
-	cmd.AddCommand(instanceOverrideAddCmd.Command())
-
 	// Remove
 	instanceOverrideRemoveCmd := cmdInstanceOverrideRemove{global: c.Global}
 	cmd.AddCommand(instanceOverrideRemoveCmd.Command())
@@ -40,7 +35,7 @@ func (c *CmdInstanceOverride) Command() *cobra.Command {
 	instanceOverrideShowCmd := cmdInstanceOverrideShow{global: c.Global}
 	cmd.AddCommand(instanceOverrideShowCmd.Command())
 
-	// Update
+	// Set
 	instanceOverrideUpdateCmd := cmdInstanceOverrideUpdate{global: c.Global}
 	cmd.AddCommand(instanceOverrideUpdateCmd.Command())
 
@@ -49,123 +44,6 @@ func (c *CmdInstanceOverride) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	return cmd
-}
-
-// Add an instance override.
-type cmdInstanceOverrideAdd struct {
-	global *CmdGlobal
-}
-
-func (c *cmdInstanceOverrideAdd) Command() *cobra.Command {
-	cmd := &cobra.Command{}
-	cmd.Use = "add <uuid>"
-	cmd.Short = "Add an instance override"
-	cmd.Long = `Description:
-  Add an instance override
-
-  Only a few fields can be set, such as the number of vCPUs or memory. Updating
-  other values must be done on through the UI/API of the instance's Source.
-`
-
-	cmd.RunE = c.Run
-
-	return cmd
-}
-
-func (c *cmdInstanceOverrideAdd) Run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
-	if exit {
-		return err
-	}
-
-	UUIDString := args[0]
-	UUID, err := uuid.Parse(UUIDString)
-	if err != nil {
-		return err
-	}
-
-	// Add the override.
-	override := api.InstanceOverride{
-		UUID: UUID,
-	}
-
-	override.Comment, err = c.global.Asker.AskString("Comment (empty to skip):", "", validate.IsAny)
-	if err != nil {
-		return err
-	}
-
-	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? (yes/no) [default=no]: ", "no")
-	if err != nil {
-		return err
-	}
-
-	val, err := c.global.Asker.AskInt("Number of vCPUs (empty to skip): ", 0, 1024, "0", nil)
-	if err != nil {
-		return err
-	}
-
-	override.Properties.CPUs = val
-
-	memoryString, err := c.global.Asker.AskString("Memory (empty to skip): ", "0B", func(s string) error {
-		_, err := units.ParseByteSizeString(s)
-		return err
-	})
-	if err != nil {
-		return err
-	}
-
-	override.Properties.Memory, _ = units.ParseByteSizeString(memoryString)
-
-	addKey := true
-	for addKey {
-		addKey, err = c.global.Asker.AskBool("Add or replace a config entry? (yes/no) [default=no]: ", "no")
-		if err != nil {
-			return err
-		}
-
-		if !addKey {
-			break
-		}
-
-		key, err := c.global.Asker.AskString("Config key (empty to skip): ", "", validate.IsAny)
-		if err != nil {
-			return err
-		}
-
-		if key == "" {
-			break
-		}
-
-		value, err := c.global.Asker.AskString("Config value (empty to skip): ", "", validate.IsAny)
-		if err != nil {
-			return err
-		}
-
-		if value == "" {
-			break
-		}
-
-		if override.Properties.Config == nil {
-			override.Properties.Config = map[string]string{}
-		}
-
-		override.Properties.Config[key] = value
-	}
-
-	// Insert into database.
-	content, err := json.Marshal(override)
-	if err != nil {
-		return err
-	}
-
-	_, err = c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodPost, "", content)
-	if err != nil {
-		return err
-	}
-
-	cmd.Printf("Successfully added new override for instance %q.\n", UUIDString)
-	return nil
 }
 
 // Remove an instance overrirde.
@@ -259,8 +137,8 @@ func (c *cmdInstanceOverrideShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Last Update", "Comment", "Migration Disabled", "Num vCPUs", "Memory"}
-	data := [][]string{{override.UUID.String(), override.LastUpdate.String(), override.Comment, strconv.FormatBool(override.DisableMigration), numCPUSDisplay, memoryDisplay}}
+	header := []string{"Last Update", "Comment", "Migration Disabled", "Num vCPUs", "Memory"}
+	data := [][]string{{override.LastUpdate.String(), override.Comment, strconv.FormatBool(override.DisableMigration), numCPUSDisplay, memoryDisplay}}
 
 	sort.Sort(util.SortColumnsNaturally(data))
 
@@ -274,8 +152,8 @@ type cmdInstanceOverrideUpdate struct {
 
 func (c *cmdInstanceOverrideUpdate) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "update <uuid>"
-	cmd.Short = "Update instance override"
+	cmd.Use = "set <uuid>"
+	cmd.Short = "Set instance overrides"
 	cmd.Long = `Description:
   Update instance override
 
@@ -428,7 +306,7 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 		override.Properties.Config[key] = value
 	}
 
-	content, err := json.Marshal(override.InstanceOverridePut)
+	content, err := json.Marshal(override)
 	if err != nil {
 		return err
 	}
