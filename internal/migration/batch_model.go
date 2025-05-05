@@ -50,6 +50,23 @@ func (b Batch) Validate() error {
 	return nil
 }
 
+func (b Batch) CanStart() error {
+	if b.Status != api.BATCHSTATUS_DEFINED && b.Status != api.BATCHSTATUS_QUEUED {
+		return fmt.Errorf("Batch %q in state %q cannot be started", b.Name, string(b.Status))
+	}
+
+	// If a migration window is defined, ensure sure it makes sense.
+	if !b.MigrationWindowStart.IsZero() && !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(b.MigrationWindowStart) {
+		return fmt.Errorf("Batch %q window end time is before start time", b.Name)
+	}
+
+	if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(time.Now().UTC()) {
+		return fmt.Errorf("Batch %q migration window has already passed", b.Name)
+	}
+
+	return nil
+}
+
 func (b Batch) CanBeModified() bool {
 	switch b.Status {
 	case api.BATCHSTATUS_DEFINED,

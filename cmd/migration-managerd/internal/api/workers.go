@@ -49,18 +49,10 @@ func (d *Daemon) runPeriodicTask(ctx context.Context, task string, f func(contex
 // - Ensures the target and project are reachable.
 // - Ensures there are no conflicting instances on the target.
 // - Ensures the correct ISO images exist in the target storage pool.
-func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migration.Target, instances migration.Instances) (*target.InternalIncusTarget, error) {
-	if b.Status != api.BATCHSTATUS_QUEUED && b.Status != api.BATCHSTATUS_DEFINED {
-		return nil, fmt.Errorf("Batch status is %q, not %q or %q", b.Status, api.BATCHSTATUS_QUEUED, api.BATCHSTATUS_DEFINED)
-	}
-
-	// If a migration window is defined, ensure sure it makes sense.
-	if !b.MigrationWindowStart.IsZero() && !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(b.MigrationWindowStart) {
-		return nil, fmt.Errorf("Batch %q window end time is before start time", b.Name)
-	}
-
-	if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(time.Now().UTC()) {
-		return nil, fmt.Errorf("Batch %q migration window has already passed", b.Name)
+func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migration.Target, instances map[uuid.UUID]migration.Instance) (*target.InternalIncusTarget, error) {
+	err := b.CanStart()
+	if err != nil {
+		return nil, err
 	}
 
 	// If no instances apply to this batch, return nil, an error.
@@ -73,40 +65,9 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migr
 		return nil, fmt.Errorf("Failed to connect to target for batch %q: %w", b.Name, err)
 	}
 
-	// Connect to the target.
-	err = it.Connect(ctx)
+	err = it.ReadyForMigration(ctx, b.TargetProject, instances)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to connect to target for batch %q: %w", b.Name, err)
-	}
-
-	// Set the project.
-	err = it.SetProject(b.TargetProject)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to set project %q for target of batch %q: %w", b.TargetProject, b.Name, err)
-	}
-
-	targetInstances, err := it.GetInstanceNames()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get instancs in project %q of target %q for batch %q: %w", b.TargetProject, it.GetName(), b.Name, err)
-	}
-
-	targetInstanceMap := make(map[string]bool, len(targetInstances))
-	for _, inst := range targetInstances {
-		targetInstanceMap[inst] = true
-	}
-
-	for _, inst := range instances {
-		if b.Name != *inst.Batch {
-			return nil, fmt.Errorf("Instance %q is not in batch %q", inst.GetName(), b.Name)
-		}
-
-		if inst.MigrationStatus != api.MIGRATIONSTATUS_ASSIGNED_BATCH {
-			return nil, fmt.Errorf("Instance %q in batch %q has status %q, expected %q", inst.GetName(), b.Name, inst.MigrationStatus, api.MIGRATIONSTATUS_ASSIGNED_BATCH)
-		}
-
-		if targetInstanceMap[inst.GetName()] {
-			return nil, fmt.Errorf("Another instance with name %q already exists", inst.GetName())
-		}
+		return nil, fmt.Errorf("Failed to validate target for batch %q: %w", b.Name, err)
 	}
 
 	// Ensure VMware VIX tarball exists.

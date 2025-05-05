@@ -844,3 +844,39 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 
 	return util.CreateTarball(backupPath, filepath.Join(tmpDir, "backup"))
 }
+
+func (t *InternalIncusTarget) ReadyForMigration(ctx context.Context, targetProject string, instances map[uuid.UUID]migration.Instance) error {
+	// Connect to the target.
+	err := t.Connect(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to target %q: %w", t.GetName(), err)
+	}
+
+	// Set the project.
+	err = t.SetProject(targetProject)
+	if err != nil {
+		return fmt.Errorf("Failed to set project %q for target %q: %w", targetProject, t.GetName(), err)
+	}
+
+	targetInstances, err := t.GetInstanceNames()
+	if err != nil {
+		return fmt.Errorf("Failed to get instancs in project %q of target %q: %w", targetProject, t.GetName(), err)
+	}
+
+	targetInstanceMap := make(map[string]bool, len(targetInstances))
+	for _, inst := range targetInstances {
+		targetInstanceMap[inst] = true
+	}
+
+	for _, inst := range instances {
+		if inst.Overrides.DisableMigration {
+			return fmt.Errorf("Migration is disabled for instance %q", inst.Properties.Location)
+		}
+
+		if targetInstanceMap[inst.GetName()] {
+			return fmt.Errorf("Another instance with name %q already exists", inst.GetName())
+		}
+	}
+
+	return nil
+}
