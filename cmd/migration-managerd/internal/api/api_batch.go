@@ -4,8 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
+	"sync"
+
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
@@ -516,7 +520,7 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	instances, err := d.instance.GetAllByBatch(ctx, batch.Name, true)
+	instances, err := d.instance.GetAllByBatch(ctx, batch.Name)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -557,28 +561,55 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func batchStartPost(d *Daemon, r *http.Request) response.Response {
-	name := r.PathValue("name")
+var batchStartLock sync.Mutex
 
+func batchStartPost(d *Daemon, r *http.Request) response.Response {
+	batchStartLock.Lock()
+	defer batchStartLock.Unlock()
+	batchName := r.PathValue("name")
+
+	instances := map[uuid.UUID]migration.Instance{}
 	var batch *migration.Batch
-	var instances migration.Instances
 	var target *migration.Target
 	err := transaction.Do(r.Context(), func(ctx context.Context) error {
 		var err error
-		batch, err = d.batch.GetByName(ctx, name)
+		batch, err = d.batch.GetByName(ctx, batchName)
 		if err != nil {
-			return fmt.Errorf("Failed to get batch %q: %w", name, err)
-		}
-
-		// Get the target and all instances for this batch.
-		instances, err = d.instance.GetAllByBatchAndState(ctx, batch.Name, api.MIGRATIONSTATUS_ASSIGNED_BATCH, true)
-		if err != nil {
-			return fmt.Errorf("Failed to get instances for batch %q: %w", batch.Name, err)
+			return fmt.Errorf("Failed to get batch %q: %w", batchName, err)
 		}
 
 		target, err = d.target.GetByName(ctx, batch.Target)
 		if err != nil {
 			return fmt.Errorf("Failed to get target for batch %q: %w", batch.Name, err)
+		}
+
+		queueEntries, err := d.queue.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get queue entries: %w", err)
+		}
+
+		queueMap := make(map[uuid.UUID]bool, len(queueEntries))
+		for _, entry := range queueEntries {
+			queueMap[entry.InstanceUUID] = true
+		}
+
+		batchInstances, err := d.instance.GetAllByBatch(ctx, batch.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get instances for batch %q: %w", batch.Name, err)
+		}
+
+		for _, inst := range batchInstances {
+			if queueMap[inst.UUID] {
+				slog.Warn("Instance is already queued in a different batch, ignoring", slog.String("batch", batchName), slog.String("instance", inst.Properties.Location))
+				continue
+			}
+
+			if inst.Overrides.DisableMigration {
+				slog.Warn("Migration is disabled for instance, ignoring", slog.String("instance", inst.Properties.Location))
+				continue
+			}
+
+			instances[inst.UUID] = inst
 		}
 
 		return nil
@@ -593,7 +624,33 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	err = d.batch.StartBatchByName(r.Context(), name)
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		err := d.batch.StartBatchByName(ctx, batchName)
+		if err != nil {
+			return err
+		}
+
+		for _, inst := range instances {
+			secret, err := uuid.NewRandom()
+			if err != nil {
+				return err
+			}
+
+			_, err = d.queue.CreateEntry(ctx, migration.QueueEntry{
+				InstanceUUID:           inst.UUID,
+				BatchName:              batchName,
+				NeedsDiskImport:        true,
+				SecretToken:            secret,
+				MigrationStatus:        api.MIGRATIONSTATUS_CREATING,
+				MigrationStatusMessage: "Creating target instance definition",
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
