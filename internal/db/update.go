@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"time"
 
 	"github.com/FuturFusion/migration-manager/internal/db/schema"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -199,6 +200,33 @@ func updateFromV2(ctx context.Context, tx *sql.Tx) error {
 		return err
 	}
 
+	batchIDs := []int64{}
+	rows, err = tx.QueryContext(ctx, "SELECT id from batches;")
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var batchID int64
+		err := rows.Scan(&batchID)
+		if err != nil {
+			return err
+		}
+
+		batchIDs = append(batchIDs, batchID)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return err
+	}
+
 	stmt := `CREATE TABLE queue (
     id                       INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     instance_id              INTEGER NOT NULL,
@@ -236,6 +264,21 @@ CREATE TABLE batches_migration_windows (
     UNIQUE(batch_id, migration_window_id)
 );
 
+CREATE TABLE batches_new (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name               TEXT NOT NULL,
+    target_id          INTEGER NOT NULL,
+    target_project     TEXT NOT NULL,
+    status             TEXT NOT NULL,
+    status_message     TEXT NOT NULL,
+    storage_pool       TEXT NOT NULL,
+    include_expression TEXT NOT NULL,
+    UNIQUE (name),
+    FOREIGN KEY(target_id) REFERENCES targets(id)
+);
+
+INSERT INTO batches_new (id, name, target_id, target_project, status, status_message, storage_pool, include_expression) SELECT id, name, target_id, target_project, status, status_message, storage_pool, include_expression FROM batches;
+
 CREATE TABLE instances_new (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     uuid TEXT NOT NULL,
@@ -251,6 +294,23 @@ DROP TABLE instance_overrides;
 `
 
 	_, err = tx.ExecContext(ctx, stmt)
+	if err != nil {
+		return err
+	}
+
+	for _, id := range batchIDs {
+		_, err = tx.ExecContext(ctx, "INSERT OR REPLACE INTO migration_windows (lockout, start, end) SELECT ?, migration_window_start, migration_window_end FROM batches WHERE batches.id = ?;", time.Time{}, id)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = tx.ExecContext(ctx, `
+INSERT INTO batches_migration_windows (migration_window_id, batch_id) SELECT migration_windows.id, batches.id FROM migration_windows JOIN batches ON migration_windows.start = batches.migration_window_start AND migration_windows.end = batches.migration_window_end;
+
+DROP TABLE batches;
+ALTER TABLE batches_new RENAME TO batches;
+`)
 	if err != nil {
 		return err
 	}
