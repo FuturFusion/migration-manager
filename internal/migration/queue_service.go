@@ -3,7 +3,6 @@ package migration
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -147,10 +146,9 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			OSVersion:  instance.Properties.OSVersion,
 		}
 
-		// Fetch the batch for the instance.
-		batch, err := s.batch.GetByName(ctx, queueEntry.BatchName)
+		window, err := s.batch.GetEarliestWindow(ctx, queueEntry.BatchName)
 		if err != nil {
-			return fmt.Errorf("Failed to get batch %q: %w", queueEntry.BatchName, err)
+			return fmt.Errorf("Failed to get earliest migration window for batch %q: %w", queueEntry.BatchName, err)
 		}
 
 		// Determine what action, if any, the worker should start.
@@ -164,7 +162,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			newStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
 			newStatusMessage = string(api.MIGRATIONSTATUS_BACKGROUND_IMPORT)
 
-		case batch.MigrationWindowStart.IsZero() || batch.MigrationWindowStart.Before(time.Now().UTC()):
+		case window.Begun():
 			// If a migration window has not been defined, or it has and we have passed the start time, begin the final migration.
 			workerCommand.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
 
