@@ -52,8 +52,8 @@ func (d *Daemon) runPeriodicTask(ctx context.Context, task string, f func(contex
 // - Ensures the target and project are reachable.
 // - Ensures there are no conflicting instances on the target.
 // - Ensures the correct ISO images exist in the target storage pool.
-func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, t migration.Target, instances map[uuid.UUID]migration.Instance) (*target.InternalIncusTarget, error) {
-	err := b.CanStart()
+func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, w migration.MigrationWindows, t migration.Target, instances map[uuid.UUID]migration.Instance) (*target.InternalIncusTarget, error) {
+	err := b.CanStart(w)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 	// Concurrently validate batches, and create the necessary volumes to begin migration.
 	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
 		log := log.With(slog.String("batch", state.Batch.Name))
-		it, err := d.validateForQueue(ctx, state.Batch, state.Target, state.Instances)
+		it, err := d.validateForQueue(ctx, state.Batch, state.MigrationWindows, state.Target, state.Instances)
 		if err != nil {
 			log.Warn("Batch does not meet requirements to start, ignoring", slog.String("batch", batchName), slog.Any("error", err))
 			ignoredBatches = append(ignoredBatches, state.Batch.Name)

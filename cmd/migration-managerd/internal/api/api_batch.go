@@ -620,11 +620,17 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	instances := map[uuid.UUID]migration.Instance{}
 	var batch *migration.Batch
 	var target *migration.Target
+	var windows migration.MigrationWindows
 	err := transaction.Do(r.Context(), func(ctx context.Context) error {
 		var err error
 		batch, err = d.batch.GetByName(ctx, batchName)
 		if err != nil {
 			return fmt.Errorf("Failed to get batch %q: %w", batchName, err)
+		}
+
+		windows, err = d.batch.GetMigrationWindows(ctx, batchName)
+		if err != nil {
+			return fmt.Errorf("Failed to get migration windows for batch %q: %w", batchName, err)
 		}
 
 		target, err = d.target.GetByName(ctx, batch.Target)
@@ -668,7 +674,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Validate that the batch can be queued.
-	_, err = d.validateForQueue(r.Context(), *batch, *target, instances)
+	_, err = d.validateForQueue(r.Context(), *batch, windows, *target, instances)
 	if err != nil {
 		return response.SmartError(err)
 	}
