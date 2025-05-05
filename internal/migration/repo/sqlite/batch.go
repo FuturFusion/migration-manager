@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 
@@ -92,4 +93,88 @@ func (b batch) Rename(ctx context.Context, oldName string, newName string) error
 
 func (b batch) DeleteByName(ctx context.Context, name string) error {
 	return entities.DeleteBatch(ctx, transaction.GetDBTX(ctx, b.db), name)
+}
+
+func (b batch) GetMigrationWindowsByBatch(ctx context.Context, batch string) (migration.MigrationWindows, error) {
+	return entities.GetMigrationWindowsByBatch(ctx, transaction.GetDBTX(ctx, b.db), &batch)
+}
+
+func (b batch) AssignMigrationWindows(ctx context.Context, batch string, windows migration.MigrationWindows) error {
+	if len(windows) == 0 {
+		return nil
+	}
+
+	seen := map[string]bool{}
+	for _, w := range windows {
+		if seen[w.Key()] {
+			return fmt.Errorf("Duplicate migration window: start: %q, end: %q, lockout: %q", w.Start.String(), w.End.String(), w.Lockout.String())
+		}
+
+		seen[w.Key()] = true
+	}
+
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, b.db), func(ctx context.Context, tx transaction.TX) error {
+		batchID, err := entities.GetBatchID(ctx, tx, batch)
+		if err != nil {
+			return err
+		}
+
+		existing, err := entities.GetMigrationWindows(ctx, tx)
+		if err != nil {
+			return err
+		}
+
+		existingMap := make(map[string]migration.MigrationWindow, len(existing))
+		for _, w := range existing {
+			existingMap[w.Key()] = w
+		}
+
+		payloads := []entities.BatchMigrationWindow{}
+		for _, window := range windows {
+			existing, ok := existingMap[window.Key()]
+			if ok {
+				// If an existing window exists, we can just assign that one.
+				window = existing
+			} else {
+				window.ID, err = entities.CreateMigrationWindow(ctx, tx, window)
+				if err != nil {
+					return err
+				}
+			}
+
+			payloads = append(payloads, entities.BatchMigrationWindow{BatchID: batchID, MigrationWindowID: window.ID})
+		}
+
+		return entities.CreateBatchMigrationWindows(ctx, tx, payloads)
+	})
+}
+
+func (b batch) UnassignMigrationWindows(ctx context.Context, batch string) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, b.db), func(ctx context.Context, tx transaction.TX) error {
+		batchID, err := entities.GetBatchID(ctx, tx, batch)
+		if err != nil {
+			return err
+		}
+
+		// Delete all associations.
+		err = entities.DeleteBatchMigrationWindows(ctx, tx, int(batchID))
+		if err != nil {
+			return err
+		}
+
+		// Remove any migration windows with no batches assigned.
+		unassignedWindows, err := entities.GetMigrationWindowsByBatch(ctx, tx, nil)
+		if err != nil {
+			return err
+		}
+
+		for _, w := range unassignedWindows {
+			err := entities.DeleteMigrationWindow(ctx, tx, w.Start, w.End, w.Lockout)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }

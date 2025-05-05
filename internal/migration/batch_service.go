@@ -3,6 +3,7 @@ package migration
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -281,4 +282,49 @@ func (s batchService) StopBatchByName(ctx context.Context, name string) (err err
 		batch.StatusMessage = string(batch.Status)
 		return s.repo.Update(ctx, batch.Name, *batch)
 	})
+}
+
+func (s batchService) AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error {
+	for _, w := range windows {
+		err := w.Validate()
+		if err != nil {
+			return fmt.Errorf("Failed to assign migration window to batch %q: %w", batch, err)
+		}
+	}
+
+	return s.repo.AssignMigrationWindows(ctx, batch, windows)
+}
+
+func (s batchService) ChangeMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error {
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		err := s.repo.UnassignMigrationWindows(ctx, batch)
+		if err != nil {
+			return fmt.Errorf("Failed to clean up migration windows for batch %q: %w", batch, err)
+		}
+
+		return s.repo.AssignMigrationWindows(ctx, batch, windows)
+	})
+}
+
+func (s batchService) GetMigrationWindows(ctx context.Context, batch string) (MigrationWindows, error) {
+	return s.repo.GetMigrationWindowsByBatch(ctx, batch)
+}
+
+func (s batchService) GetEarliestWindow(ctx context.Context, batch string) (*MigrationWindow, error) {
+	windows, err := s.repo.GetMigrationWindowsByBatch(ctx, batch)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get batch %q migration windows: %w", batch, err)
+	}
+
+	// If there are no explicit windows exist, return a zeroed MigrationWindow.
+	if len(windows) == 0 {
+		return &MigrationWindow{Start: time.Time{}, End: time.Time{}, Lockout: time.Time{}}, nil
+	}
+
+	earliest, err := windows.GetEarliest()
+	if err != nil {
+		return nil, fmt.Errorf("Failed to get earliest migration window for batch %q: %w", batch, err)
+	}
+
+	return earliest, nil
 }
