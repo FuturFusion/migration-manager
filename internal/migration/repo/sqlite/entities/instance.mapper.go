@@ -15,63 +15,32 @@ import (
 )
 
 var instanceObjects = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, instances.last_update_from_worker, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+SELECT instances.id, instances.uuid, sources.name AS source, sources.source_type AS source_type, instances.last_update_from_source, instances.overrides, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
-  LEFT JOIN batches ON instances.batch_id = batches.id
   ORDER BY instances.uuid
 `)
 
 var instanceObjectsByID = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, instances.last_update_from_worker, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+SELECT instances.id, instances.uuid, sources.name AS source, sources.source_type AS source_type, instances.last_update_from_source, instances.overrides, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
-  LEFT JOIN batches ON instances.batch_id = batches.id
   WHERE ( instances.id = ? )
   ORDER BY instances.uuid
 `)
 
 var instanceObjectsByUUID = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, instances.last_update_from_worker, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+SELECT instances.id, instances.uuid, sources.name AS source, sources.source_type AS source_type, instances.last_update_from_source, instances.overrides, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
-  LEFT JOIN batches ON instances.batch_id = batches.id
   WHERE ( instances.uuid = ? )
   ORDER BY instances.uuid
 `)
 
-var instanceObjectsByBatch = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, instances.last_update_from_worker, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
-  FROM instances
-  JOIN sources ON instances.source_id = sources.id
-  LEFT JOIN batches ON instances.batch_id = batches.id
-  WHERE ( batch = ? )
-  ORDER BY instances.uuid
-`)
-
-var instanceObjectsByMigrationStatus = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, instances.last_update_from_worker, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
-  FROM instances
-  JOIN sources ON instances.source_id = sources.id
-  LEFT JOIN batches ON instances.batch_id = batches.id
-  WHERE ( instances.migration_status = ? )
-  ORDER BY instances.uuid
-`)
-
-var instanceObjectsByBatchAndMigrationStatus = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, instances.last_update_from_worker, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
-  FROM instances
-  JOIN sources ON instances.source_id = sources.id
-  LEFT JOIN batches ON instances.batch_id = batches.id
-  WHERE ( batch = ? AND instances.migration_status = ? )
-  ORDER BY instances.uuid
-`)
-
 var instanceObjectsBySource = RegisterStmt(`
-SELECT instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, instances.last_update_from_worker, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties
+SELECT instances.id, instances.uuid, sources.name AS source, sources.source_type AS source_type, instances.last_update_from_source, instances.overrides, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
-  LEFT JOIN batches ON instances.batch_id = batches.id
   WHERE ( source = ? )
   ORDER BY instances.uuid
 `)
@@ -89,26 +58,11 @@ SELECT instances.uuid
   ORDER BY instances.uuid
 `)
 
-var instanceNamesByBatch = RegisterStmt(`
+var instanceNamesBySource = RegisterStmt(`
 SELECT instances.uuid
   FROM instances
-  LEFT JOIN batches ON instances.batch_id = batches.id
-  WHERE ( batches.name = ? )
-  ORDER BY instances.uuid
-`)
-
-var instanceNamesByMigrationStatus = RegisterStmt(`
-SELECT instances.uuid
-  FROM instances
-  WHERE ( instances.migration_status = ? )
-  ORDER BY instances.uuid
-`)
-
-var instanceNamesByBatchAndMigrationStatus = RegisterStmt(`
-SELECT instances.uuid
-  FROM instances
-  LEFT JOIN batches ON instances.batch_id = batches.id
-  WHERE ( batches.name = ? AND instances.migration_status = ? )
+  JOIN sources ON instances.source_id = sources.id
+  WHERE ( sources.name = ? )
   ORDER BY instances.uuid
 `)
 
@@ -118,13 +72,13 @@ SELECT instances.id FROM instances
 `)
 
 var instanceCreate = RegisterStmt(`
-INSERT INTO instances (uuid, migration_status, migration_status_message, last_update_from_source, last_update_from_worker, source_id, batch_id, needs_disk_import, secret_token, properties)
-  VALUES (?, ?, ?, ?, ?, (SELECT sources.id FROM sources WHERE sources.name = ?), (SELECT batches.id FROM batches WHERE batches.name = ?), ?, ?, ?)
+INSERT INTO instances (uuid, source_id, last_update_from_source, overrides, properties)
+  VALUES (?, (SELECT sources.id FROM sources WHERE sources.name = ?), ?, ?, ?)
 `)
 
 var instanceUpdate = RegisterStmt(`
 UPDATE instances
-  SET uuid = ?, migration_status = ?, migration_status_message = ?, last_update_from_source = ?, last_update_from_worker = ?, source_id = (SELECT sources.id FROM sources WHERE sources.name = ?), batch_id = (SELECT batches.id FROM batches WHERE batches.name = ?), needs_disk_import = ?, secret_token = ?, properties = ?
+  SET uuid = ?, source_id = (SELECT sources.id FROM sources WHERE sources.name = ?), last_update_from_source = ?, overrides = ?, properties = ?
  WHERE id = ?
 `)
 
@@ -186,7 +140,7 @@ func GetInstance(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *migration.Ins
 // instanceColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Instance entity.
 func instanceColumns() string {
-	return "instances.id, instances.uuid, instances.migration_status, instances.migration_status_message, instances.last_update_from_source, instances.last_update_from_worker, sources.name AS source, batches.name AS batch, instances.needs_disk_import, instances.secret_token, instances.properties"
+	return "instances.id, instances.uuid, sources.name AS source, sources.source_type AS source_type, instances.last_update_from_source, instances.overrides, instances.properties"
 }
 
 // getInstances can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -195,8 +149,14 @@ func getInstances(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migration
 
 	dest := func(scan func(dest ...any) error) error {
 		i := migration.Instance{}
+		var overridesStr string
 		var propertiesStr string
-		err := scan(&i.ID, &i.UUID, &i.MigrationStatus, &i.MigrationStatusMessage, &i.LastUpdateFromSource, &i.LastUpdateFromWorker, &i.Source, &i.Batch, &i.NeedsDiskImport, &i.SecretToken, &propertiesStr)
+		err := scan(&i.ID, &i.UUID, &i.Source, &i.SourceType, &i.LastUpdateFromSource, &overridesStr, &propertiesStr)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(overridesStr, &i.Overrides)
 		if err != nil {
 			return err
 		}
@@ -225,8 +185,14 @@ func getInstancesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]m
 
 	dest := func(scan func(dest ...any) error) error {
 		i := migration.Instance{}
+		var overridesStr string
 		var propertiesStr string
-		err := scan(&i.ID, &i.UUID, &i.MigrationStatus, &i.MigrationStatusMessage, &i.LastUpdateFromSource, &i.LastUpdateFromWorker, &i.Source, &i.Batch, &i.NeedsDiskImport, &i.SecretToken, &propertiesStr)
+		err := scan(&i.ID, &i.UUID, &i.Source, &i.SourceType, &i.LastUpdateFromSource, &overridesStr, &propertiesStr)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(overridesStr, &i.Overrides)
 		if err != nil {
 			return err
 		}
@@ -274,31 +240,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...InstanceFilter) (_ []
 	}
 
 	for i, filter := range filters {
-		if filter.Batch != nil && filter.MigrationStatus != nil && filter.ID == nil && filter.UUID == nil && filter.Source == nil {
-			args = append(args, []any{filter.Batch, filter.MigrationStatus}...)
-			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, instanceObjectsByBatchAndMigrationStatus)
-				if err != nil {
-					return nil, fmt.Errorf("Failed to get \"instanceObjectsByBatchAndMigrationStatus\" prepared statement: %w", err)
-				}
-
-				break
-			}
-
-			query, err := StmtString(instanceObjectsByBatchAndMigrationStatus)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to get \"instanceObjects\" prepared statement: %w", err)
-			}
-
-			parts := strings.SplitN(query, "ORDER BY", 2)
-			if i == 0 {
-				copy(queryParts[:], parts)
-				continue
-			}
-
-			_, where, _ := strings.Cut(parts[0], "WHERE")
-			queryParts[0] += "OR" + where
-		} else if filter.UUID != nil && filter.ID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		if filter.UUID != nil && filter.ID == nil && filter.Source == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceObjectsByUUID)
@@ -322,7 +264,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...InstanceFilter) (_ []
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Source != nil && filter.ID == nil && filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil {
+		} else if filter.Source != nil && filter.ID == nil && filter.UUID == nil {
 			args = append(args, []any{filter.Source}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceObjectsBySource)
@@ -346,31 +288,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...InstanceFilter) (_ []
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.MigrationStatus != nil && filter.ID == nil && filter.UUID == nil && filter.Batch == nil && filter.Source == nil {
-			args = append(args, []any{filter.MigrationStatus}...)
-			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, instanceObjectsByMigrationStatus)
-				if err != nil {
-					return nil, fmt.Errorf("Failed to get \"instanceObjectsByMigrationStatus\" prepared statement: %w", err)
-				}
-
-				break
-			}
-
-			query, err := StmtString(instanceObjectsByMigrationStatus)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to get \"instanceObjects\" prepared statement: %w", err)
-			}
-
-			parts := strings.SplitN(query, "ORDER BY", 2)
-			if i == 0 {
-				copy(queryParts[:], parts)
-				continue
-			}
-
-			_, where, _ := strings.Cut(parts[0], "WHERE")
-			queryParts[0] += "OR" + where
-		} else if filter.ID != nil && filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		} else if filter.ID != nil && filter.UUID == nil && filter.Source == nil {
 			args = append(args, []any{filter.ID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceObjectsByID)
@@ -394,31 +312,7 @@ func GetInstances(ctx context.Context, db dbtx, filters ...InstanceFilter) (_ []
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Batch != nil && filter.ID == nil && filter.UUID == nil && filter.MigrationStatus == nil && filter.Source == nil {
-			args = append(args, []any{filter.Batch}...)
-			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, instanceObjectsByBatch)
-				if err != nil {
-					return nil, fmt.Errorf("Failed to get \"instanceObjectsByBatch\" prepared statement: %w", err)
-				}
-
-				break
-			}
-
-			query, err := StmtString(instanceObjectsByBatch)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to get \"instanceObjects\" prepared statement: %w", err)
-			}
-
-			parts := strings.SplitN(query, "ORDER BY", 2)
-			if i == 0 {
-				copy(queryParts[:], parts)
-				continue
-			}
-
-			_, where, _ := strings.Cut(parts[0], "WHERE")
-			queryParts[0] += "OR" + where
-		} else if filter.ID == nil && filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		} else if filter.ID == nil && filter.UUID == nil && filter.Source == nil {
 			return nil, fmt.Errorf("Cannot filter on empty InstanceFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")
@@ -465,31 +359,7 @@ func GetInstanceNames(ctx context.Context, db dbtx, filters ...InstanceFilter) (
 	}
 
 	for i, filter := range filters {
-		if filter.Batch != nil && filter.MigrationStatus != nil && filter.ID == nil && filter.UUID == nil && filter.Source == nil {
-			args = append(args, []any{filter.Batch, filter.MigrationStatus}...)
-			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, instanceNamesByBatchAndMigrationStatus)
-				if err != nil {
-					return nil, fmt.Errorf("Failed to get \"instanceNamesByBatchAndMigrationStatus\" prepared statement: %w", err)
-				}
-
-				break
-			}
-
-			query, err := StmtString(instanceNamesByBatchAndMigrationStatus)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to get \"instanceNames\" prepared statement: %w", err)
-			}
-
-			parts := strings.SplitN(query, "ORDER BY", 2)
-			if i == 0 {
-				copy(queryParts[:], parts)
-				continue
-			}
-
-			_, where, _ := strings.Cut(parts[0], "WHERE")
-			queryParts[0] += "OR" + where
-		} else if filter.UUID != nil && filter.ID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		if filter.UUID != nil && filter.ID == nil && filter.Source == nil {
 			args = append(args, []any{filter.UUID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, instanceNamesByUUID)
@@ -513,18 +383,18 @@ func GetInstanceNames(ctx context.Context, db dbtx, filters ...InstanceFilter) (
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.MigrationStatus != nil && filter.ID == nil && filter.UUID == nil && filter.Batch == nil && filter.Source == nil {
-			args = append(args, []any{filter.MigrationStatus}...)
+		} else if filter.Source != nil && filter.ID == nil && filter.UUID == nil {
+			args = append(args, []any{filter.Source}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, instanceNamesByMigrationStatus)
+				sqlStmt, err = Stmt(db, instanceNamesBySource)
 				if err != nil {
-					return nil, fmt.Errorf("Failed to get \"instanceNamesByMigrationStatus\" prepared statement: %w", err)
+					return nil, fmt.Errorf("Failed to get \"instanceNamesBySource\" prepared statement: %w", err)
 				}
 
 				break
 			}
 
-			query, err := StmtString(instanceNamesByMigrationStatus)
+			query, err := StmtString(instanceNamesBySource)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to get \"instanceNames\" prepared statement: %w", err)
 			}
@@ -537,31 +407,7 @@ func GetInstanceNames(ctx context.Context, db dbtx, filters ...InstanceFilter) (
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Batch != nil && filter.ID == nil && filter.UUID == nil && filter.MigrationStatus == nil && filter.Source == nil {
-			args = append(args, []any{filter.Batch}...)
-			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, instanceNamesByBatch)
-				if err != nil {
-					return nil, fmt.Errorf("Failed to get \"instanceNamesByBatch\" prepared statement: %w", err)
-				}
-
-				break
-			}
-
-			query, err := StmtString(instanceNamesByBatch)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to get \"instanceNames\" prepared statement: %w", err)
-			}
-
-			parts := strings.SplitN(query, "ORDER BY", 2)
-			if i == 0 {
-				copy(queryParts[:], parts)
-				continue
-			}
-
-			_, where, _ := strings.Cut(parts[0], "WHERE")
-			queryParts[0] += "OR" + where
-		} else if filter.ID == nil && filter.UUID == nil && filter.Batch == nil && filter.MigrationStatus == nil && filter.Source == nil {
+		} else if filter.ID == nil && filter.UUID == nil && filter.Source == nil {
 			return nil, fmt.Errorf("Cannot filter on empty InstanceFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")
@@ -607,24 +453,24 @@ func CreateInstance(ctx context.Context, db dbtx, object migration.Instance) (_ 
 		_err = mapErr(_err, "Instance")
 	}()
 
-	args := make([]any, 10)
+	args := make([]any, 5)
 
 	// Populate the statement arguments.
 	args[0] = object.UUID
-	args[1] = object.MigrationStatus
-	args[2] = object.MigrationStatusMessage
-	args[3] = object.LastUpdateFromSource
-	args[4] = object.LastUpdateFromWorker
-	args[5] = object.Source
-	args[6] = object.Batch
-	args[7] = object.NeedsDiskImport
-	args[8] = object.SecretToken
+	args[1] = object.Source
+	args[2] = object.LastUpdateFromSource
+	marshaledOverrides, err := marshalJSON(object.Overrides)
+	if err != nil {
+		return -1, err
+	}
+
+	args[3] = marshaledOverrides
 	marshaledProperties, err := marshalJSON(object.Properties)
 	if err != nil {
 		return -1, err
 	}
 
-	args[9] = marshaledProperties
+	args[4] = marshaledProperties
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, instanceCreate)
@@ -670,12 +516,17 @@ func UpdateInstance(ctx context.Context, db tx, uuid uuid.UUID, object migration
 		return fmt.Errorf("Failed to get \"instanceUpdate\" prepared statement: %w", err)
 	}
 
+	marshaledOverrides, err := marshalJSON(object.Overrides)
+	if err != nil {
+		return err
+	}
+
 	marshaledProperties, err := marshalJSON(object.Properties)
 	if err != nil {
 		return err
 	}
 
-	result, err := stmt.Exec(object.UUID, object.MigrationStatus, object.MigrationStatusMessage, object.LastUpdateFromSource, object.LastUpdateFromWorker, object.Source, object.Batch, object.NeedsDiskImport, object.SecretToken, marshaledProperties, id)
+	result, err := stmt.Exec(object.UUID, object.Source, object.LastUpdateFromSource, marshaledOverrides, marshaledProperties, id)
 	if err != nil {
 		return fmt.Errorf("Update \"instances\" entry failed: %w", err)
 	}

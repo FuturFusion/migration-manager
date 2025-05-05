@@ -2,8 +2,6 @@ package entities
 
 import (
 	"github.com/google/uuid"
-
-	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Code generation directives.
@@ -14,15 +12,10 @@ import (
 //generate-database:mapper stmt -e instance objects
 //generate-database:mapper stmt -e instance objects-by-ID
 //generate-database:mapper stmt -e instance objects-by-UUID
-//generate-database:mapper stmt -e instance objects-by-Batch
-//generate-database:mapper stmt -e instance objects-by-MigrationStatus
-//generate-database:mapper stmt -e instance objects-by-Batch-and-MigrationStatus
 //generate-database:mapper stmt -e instance objects-by-Source
 //generate-database:mapper stmt -e instance names
 //generate-database:mapper stmt -e instance names-by-UUID
-//generate-database:mapper stmt -e instance names-by-Batch
-//generate-database:mapper stmt -e instance names-by-MigrationStatus
-//generate-database:mapper stmt -e instance names-by-Batch-and-MigrationStatus
+//generate-database:mapper stmt -e instance names-by-Source
 //generate-database:mapper stmt -e instance id
 //generate-database:mapper stmt -e instance create
 //generate-database:mapper stmt -e instance update
@@ -37,9 +30,7 @@ import (
 //generate-database:mapper method -e instance DeleteOne-by-UUID
 
 type InstanceFilter struct {
-	ID              *int64
-	UUID            *uuid.UUID
-	Batch           *string
-	MigrationStatus *api.MigrationStatusType
-	Source          *string
+	ID     *int64
+	UUID   *uuid.UUID
+	Source *string
 }
