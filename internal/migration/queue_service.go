@@ -12,6 +12,8 @@ import (
 )
 
 type queueService struct {
+	repo QueueRepo
+
 	batch    BatchService
 	instance InstanceService
 	source   SourceService
@@ -19,8 +21,9 @@ type queueService struct {
 
 var _ QueueService = &queueService{}
 
-func NewQueueService(batch BatchService, instance InstanceService, source SourceService) queueService {
+func NewQueueService(repo QueueRepo, batch BatchService, instance InstanceService, source SourceService) queueService {
 	queueSvc := queueService{
+		repo:     repo,
 		batch:    batch,
 		instance: instance,
 		source:   source,
@@ -29,83 +32,82 @@ func NewQueueService(batch BatchService, instance InstanceService, source Source
 	return queueSvc
 }
 
+func (s queueService) CreateEntry(ctx context.Context, queue QueueEntry) (QueueEntry, error) {
+	err := queue.Validate()
+	if err != nil {
+		return QueueEntry{}, err
+	}
+
+	queue.ID, err = s.repo.Create(ctx, queue)
+	if err != nil {
+		return QueueEntry{}, err
+	}
+
+	return queue, nil
+}
+
 func (s queueService) GetAll(ctx context.Context) (QueueEntries, error) {
-	var queueItems QueueEntries
+	return s.repo.GetAll(ctx)
+}
 
-	err := transaction.Do(ctx, func(ctx context.Context) error {
-		// Get all batches.
-		batches, err := s.batch.GetAll(ctx)
+func (s queueService) GetAllByState(ctx context.Context, status ...api.MigrationStatusType) (QueueEntries, error) {
+	return s.repo.GetAllByState(ctx, status...)
+}
+
+func (s queueService) GetAllByBatch(ctx context.Context, batch string) (QueueEntries, error) {
+	return s.repo.GetAllByBatch(ctx, batch)
+}
+
+func (s queueService) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (QueueEntries, error) {
+	return s.repo.GetAllByBatchAndState(ctx, batch, status)
+}
+
+func (s queueService) GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (QueueEntries, error) {
+	return s.repo.GetAllNeedingImport(ctx, batch, needsDiskImport)
+}
+
+func (s queueService) GetByInstanceUUID(ctx context.Context, id uuid.UUID) (*QueueEntry, error) {
+	return s.repo.GetByInstanceUUID(ctx, id)
+}
+
+func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*QueueEntry, error) {
+	err := status.Validate()
+	if err != nil {
+		return nil, NewValidationErrf("Invalid migration status: %v", err)
+	}
+
+	// FIXME: ensure only valid transitions according to the state machine are possible
+	var q *QueueEntry
+	err = transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		q, err = s.repo.GetByInstanceUUID(ctx, id)
 		if err != nil {
-			return fmt.Errorf("Failed to get batches: %w", err)
+			return fmt.Errorf("Failed to get instance '%s': %w", id, err)
 		}
 
-		// For each batch that has entered the "queued" state or later, add its instances.
-		for _, batch := range batches {
-			if batch.Status == api.BATCHSTATUS_DEFINED {
-				continue
-			}
+		q.MigrationStatus = status
+		q.MigrationStatusMessage = statusMessage
+		q.NeedsDiskImport = needsDiskImport
 
-			instances, err := s.instance.GetAllByBatch(ctx, batch.Name, false)
-			if err != nil {
-				return fmt.Errorf("Failed to get instances for batch '%s': %w", batch.Name, err)
-			}
-
-			for _, i := range instances {
-				queueItems = append(queueItems, QueueEntry{
-					InstanceUUID:           i.UUID,
-					InstanceName:           i.GetName(),
-					MigrationStatus:        i.MigrationStatus,
-					MigrationStatusMessage: i.MigrationStatusMessage,
-					BatchName:              batch.Name,
-				})
-			}
-		}
-
-		return nil
+		return s.repo.Update(ctx, *q)
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	return queueItems, nil
+	return q, nil
 }
 
-func (s queueService) GetByInstanceID(ctx context.Context, id uuid.UUID) (QueueEntry, error) {
-	var queueItem QueueEntry
+func (s queueService) Update(ctx context.Context, entry *QueueEntry) error {
+	return s.repo.Update(ctx, *entry)
+}
 
-	err := transaction.Do(ctx, func(ctx context.Context) error {
-		// Get the instance.
-		instance, err := s.instance.GetByUUID(ctx, id, false)
-		if err != nil {
-			return fmt.Errorf("Failed to get instance '%s': %w", id, err)
-		}
+func (s queueService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteByUUID(ctx, id)
+}
 
-		// Don't return info for instances that aren't in the migration queue.
-		if instance.Batch == nil || !instance.IsMigrating() {
-			return fmt.Errorf("Instance '%s' isn't in the migration queue: %w", instance.GetName(), ErrNotFound)
-		}
-
-		// Get the corresponding batch.
-		batch, err := s.batch.GetByName(ctx, *instance.Batch)
-		if err != nil {
-			return fmt.Errorf("Failed to get batch: %w", err)
-		}
-
-		queueItem = QueueEntry{
-			InstanceUUID:           instance.UUID,
-			InstanceName:           instance.GetName(),
-			MigrationStatus:        instance.MigrationStatus,
-			MigrationStatusMessage: instance.MigrationStatusMessage,
-			BatchName:              batch.Name,
-		}
-
-		return nil
-	})
-	if err != nil {
-		return QueueEntry{}, err
-	}
-
-	return queueItem, nil
+func (s queueService) DeleteAllByBatch(ctx context.Context, batch string) error {
+	return s.repo.DeleteAllByBatch(ctx, batch)
 }
 
 // NewWorkerCommandByInstanceID gets the next worker command for the instance with the given UUID, and updates the instance state accordingly.
@@ -114,26 +116,25 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 	var workerCommand WorkerCommand
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		// Get the instance.
-		instance, err := s.instance.GetByUUID(ctx, id, false)
+		queueEntry, err := s.GetByInstanceUUID(ctx, id)
 		if err != nil {
-			return fmt.Errorf("Failed to get instance '%s': %w", id, err)
+			return fmt.Errorf("Failed to get queue entry for instance %q: %w", id, err)
 		}
 
-		// Don't return info for instances that aren't in the migration queue.
-		if instance.Batch == nil {
-			return fmt.Errorf("Instance '%s' isn't in the migration queue: %w", instance.GetName(), ErrNotFound)
+		instance, err := s.instance.GetByUUID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("Failed to get instance %q: %w", id, err)
 		}
 
 		// If the instance is already doing something, don't start something else.
-		if instance.MigrationStatus != api.MIGRATIONSTATUS_IDLE {
-			return fmt.Errorf("Instance '%s' isn't idle: %s (%s): %w", instance.Properties.Location, instance.MigrationStatus, instance.MigrationStatusMessage, ErrOperationNotPermitted)
+		if queueEntry.MigrationStatus != api.MIGRATIONSTATUS_IDLE {
+			return fmt.Errorf("Instance '%s' isn't idle: %s (%s): %w", instance.Properties.Location, queueEntry.MigrationStatus, queueEntry.MigrationStatusMessage, ErrOperationNotPermitted)
 		}
 
 		// Fetch the source for the instance.
 		source, err := s.source.GetByName(ctx, instance.Source)
 		if err != nil {
-			return fmt.Errorf("Failed to get source '%s': %w", id, err)
+			return fmt.Errorf("Failed to get source %q: %w", id, err)
 		}
 
 		// Setup the default "idle" command
@@ -147,16 +148,16 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		}
 
 		// Fetch the batch for the instance.
-		batch, err := s.batch.GetByName(ctx, *instance.Batch)
+		batch, err := s.batch.GetByName(ctx, queueEntry.BatchName)
 		if err != nil {
-			return fmt.Errorf("Failed to get batch %q: %w", *instance.Batch, err)
+			return fmt.Errorf("Failed to get batch %q: %w", queueEntry.BatchName, err)
 		}
 
 		// Determine what action, if any, the worker should start.
-		newStatus := instance.MigrationStatus
-		newStatusMessage := instance.MigrationStatusMessage
+		newStatus := queueEntry.MigrationStatus
+		newStatusMessage := queueEntry.MigrationStatusMessage
 		switch {
-		case instance.NeedsDiskImport && instance.Properties.BackgroundImport:
+		case queueEntry.NeedsDiskImport && instance.Properties.BackgroundImport:
 			// If we can do a background disk sync, kick it off.
 			workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
 
@@ -171,10 +172,12 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			newStatusMessage = string(api.MIGRATIONSTATUS_FINAL_IMPORT)
 		}
 
-		// Update instance in the database, and set the worker update time.
-		_, err = s.instance.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, instance.NeedsDiskImport, true)
-		if err != nil {
-			return fmt.Errorf("Failed updating instance %q: %w", instance.UUID.String(), err)
+		// Update queueEntry in the database, and set the worker update time.
+		if newStatus != queueEntry.MigrationStatus || newStatusMessage != queueEntry.MigrationStatusMessage {
+			_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, queueEntry.NeedsDiskImport)
+			if err != nil {
+				return fmt.Errorf("Failed updating instance %q: %w", instance.UUID.String(), err)
+			}
 		}
 
 		return nil
@@ -184,4 +187,58 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 	}
 
 	return workerCommand, nil
+}
+
+func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseType api.WorkerResponseType, statusMessage string) (QueueEntry, error) {
+	var entry *QueueEntry
+
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		// Get the instance.
+		var err error
+		entry, err = s.repo.GetByInstanceUUID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("Failed to get instance '%s': %w", id, err)
+		}
+
+		// Don't update instances that aren't in the migration queue.
+		if !entry.IsMigrating() {
+			return fmt.Errorf("Instance %q isn't in the migration queue: %w", entry.InstanceUUID, ErrNotFound)
+		}
+
+		// Process the response.
+		switch workerResponseType {
+		case api.WORKERRESPONSE_RUNNING:
+			entry.MigrationStatusMessage = statusMessage
+
+		case api.WORKERRESPONSE_SUCCESS:
+			switch entry.MigrationStatus {
+			case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
+				entry.NeedsDiskImport = false
+				entry.MigrationStatus = api.MIGRATIONSTATUS_IDLE
+				entry.MigrationStatusMessage = string(api.MIGRATIONSTATUS_IDLE)
+
+			case api.MIGRATIONSTATUS_FINAL_IMPORT:
+				entry.MigrationStatus = api.MIGRATIONSTATUS_IMPORT_COMPLETE
+				entry.MigrationStatusMessage = string(api.MIGRATIONSTATUS_IMPORT_COMPLETE)
+			}
+
+		case api.WORKERRESPONSE_FAILED:
+			entry.MigrationStatus = api.MIGRATIONSTATUS_ERROR
+			entry.MigrationStatusMessage = statusMessage
+		}
+
+		// Update instance in the database.
+		uuid := entry.InstanceUUID
+		entry, err = s.UpdateStatusByUUID(ctx, uuid, entry.MigrationStatus, entry.MigrationStatusMessage, entry.NeedsDiskImport)
+		if err != nil {
+			return fmt.Errorf("Failed updating instance '%s': %w", uuid, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return QueueEntry{}, err
+	}
+
+	return *entry, nil
 }
