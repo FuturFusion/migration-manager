@@ -12,16 +12,23 @@ import (
 )
 
 type Batch struct {
-	ID                   int64
-	Name                 string `db:"primary=yes"`
-	Target               string `db:"join=targets.name"`
-	TargetProject        string
-	Status               api.BatchStatusType
-	StatusMessage        string
-	StoragePool          string
-	IncludeExpression    string
-	MigrationWindowStart time.Time
-	MigrationWindowEnd   time.Time
+	ID                int64
+	Name              string `db:"primary=yes"`
+	Target            string `db:"join=targets.name"`
+	TargetProject     string
+	Status            api.BatchStatusType
+	StatusMessage     string
+	StoragePool       string
+	IncludeExpression string
+}
+
+type MigrationWindows []MigrationWindow
+
+type MigrationWindow struct {
+	ID      int64
+	Start   time.Time `db:"primary=yes"`
+	End     time.Time `db:"primary=yes"`
+	Lockout time.Time `db:"primary=yes"`
 }
 
 func (b Batch) Validate() error {
@@ -50,18 +57,78 @@ func (b Batch) Validate() error {
 	return nil
 }
 
-func (b Batch) CanStart() error {
+// GetEarliest returns the earliest valid migration window, or an error if none are found.
+func (ws MigrationWindows) GetEarliest() (*MigrationWindow, error) {
+	var earliestWindow *MigrationWindow
+	for _, w := range ws {
+		if w.Validate() != nil {
+			continue
+		}
+
+		if earliestWindow == nil || w.Start.Before(earliestWindow.Start) {
+			earliestWindow = &w
+		}
+	}
+
+	if earliestWindow == nil {
+		return nil, fmt.Errorf("No valid migration window found")
+	}
+
+	return earliestWindow, nil
+}
+
+// Begun returns whether the migration window has begun (whether its start time and lockout time are both in the past).
+func (w MigrationWindow) Begun() bool {
+	started := w.Start.IsZero() || w.Start.Before(time.Now().UTC())
+	pastLockout := w.Lockout.IsZero() || w.Lockout.Before(time.Now().UTC())
+
+	return started && pastLockout
+}
+
+// Key returns an identifying key for the MigrationWindow, based on its timings.
+func (w MigrationWindow) Key() string {
+	return w.Start.String() + "_" + w.End.String() + "_" + w.Lockout.String()
+}
+
+func (w MigrationWindow) Validate() error {
+	// If a migration window is defined, ensure sure it makes sense.
+	if !w.Start.IsZero() && !w.End.IsZero() && w.End.Before(w.Start) {
+		return fmt.Errorf("Batch migration window end time is before start time")
+	}
+
+	if !w.End.IsZero() && w.End.Before(time.Now().UTC()) {
+		return fmt.Errorf("Batch migration window has already passed")
+	}
+
+	if !w.Lockout.IsZero() && w.Start.Before(w.Lockout) {
+		return fmt.Errorf("Batch migration window lockout time is after the start time")
+	}
+
+	if !w.Lockout.IsZero() && w.End.Before(w.Lockout) {
+		return fmt.Errorf("Batch migration window lockout time is after the end time")
+	}
+
+	return nil
+}
+
+func (b Batch) CanStart(windows []MigrationWindow) error {
 	if b.Status != api.BATCHSTATUS_DEFINED && b.Status != api.BATCHSTATUS_QUEUED {
 		return fmt.Errorf("Batch %q in state %q cannot be started", b.Name, string(b.Status))
 	}
 
-	// If a migration window is defined, ensure sure it makes sense.
-	if !b.MigrationWindowStart.IsZero() && !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(b.MigrationWindowStart) {
-		return fmt.Errorf("Batch %q window end time is before start time", b.Name)
+	var hasValidWindow bool
+	for _, w := range windows {
+		// Skip any migration windows that have since passed.
+		if w.Validate() != nil {
+			continue
+		}
+
+		hasValidWindow = true
+		break
 	}
 
-	if !b.MigrationWindowEnd.IsZero() && b.MigrationWindowEnd.Before(time.Now().UTC()) {
-		return fmt.Errorf("Batch %q migration window has already passed", b.Name)
+	if !hasValidWindow {
+		return fmt.Errorf("No valid migration windows found for batch %q", b.Name)
 	}
 
 	return nil
@@ -135,16 +202,20 @@ func (b Batch) CompileIncludeExpression(i InstanceFilterable) (*vm.Program, erro
 type Batches []Batch
 
 // ToAPI returns the API representation of a batch.
-func (b Batch) ToAPI() api.Batch {
+func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
+	apiWindows := make([]api.MigrationWindow, len(windows))
+	for i, w := range windows {
+		apiWindows[i] = api.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
+	}
+
 	return api.Batch{
 		BatchPut: api.BatchPut{
-			Name:                 b.Name,
-			Target:               b.Target,
-			TargetProject:        b.TargetProject,
-			StoragePool:          b.StoragePool,
-			IncludeExpression:    b.IncludeExpression,
-			MigrationWindowStart: b.MigrationWindowStart,
-			MigrationWindowEnd:   b.MigrationWindowEnd,
+			Name:              b.Name,
+			Target:            b.Target,
+			TargetProject:     b.TargetProject,
+			StoragePool:       b.StoragePool,
+			IncludeExpression: b.IncludeExpression,
+			MigrationWindows:  apiWindows,
 		},
 		Status:        b.Status,
 		StatusMessage: b.StatusMessage,

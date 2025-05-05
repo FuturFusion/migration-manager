@@ -72,9 +72,18 @@ type BatchPut struct {
 	// Example: GetInventoryPath() matches "^foobar/.*"
 	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
 
-	// If specified, don't start the migration before this time
-	MigrationWindowStart time.Time `json:"migration_window_start" yaml:"migration_window_start"`
+	// Set of migration window timings.
+	MigrationWindows []MigrationWindow
+}
 
-	// If specified, don't start the migration after this time
-	MigrationWindowEnd time.Time `json:"migration_window_end" yaml:"migration_window_end"`
+// MigrationWindow defines the scheduling of a batch migration.
+type MigrationWindow struct {
+	// Start time for finalizing migrations after background import.
+	Start time.Time
+
+	// End time for finalizing migrations after background import.
+	End time.Time
+
+	// Lockout time after which the batch can no longer modify the target instance.
+	Lockout time.Time
 }
