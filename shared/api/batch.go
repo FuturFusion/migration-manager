@@ -73,17 +73,18 @@ type BatchPut struct {
 	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
 
 	// Set of migration window timings.
-	MigrationWindows []MigrationWindow
+	MigrationWindows []MigrationWindow `json:"migration_windows" yaml:"migration_windows"`
 }
 
 // MigrationWindow defines the scheduling of a batch migration.
 type MigrationWindow struct {
 	// Start time for finalizing migrations after background import.
-	Start time.Time
+	Start time.Time `json:"start" yaml:"start"`
 
 	// End time for finalizing migrations after background import.
-	End time.Time
+	End time.Time `json:"end" yaml:"end"`
 
 	// Lockout time after which the batch can no longer modify the target instance.
-	Lockout time.Time
+	Lockout time.Time `json:"lockout" yaml:"lockout"`
+}
 }
