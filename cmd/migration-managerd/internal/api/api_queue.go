@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,8 +10,10 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -64,7 +67,7 @@ func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
 	}
 
 	// Get the instance.
-	i, err := d.instance.GetByUUID(r.Context(), instanceUUID, true)
+	i, err := d.queue.GetByInstanceUUID(r.Context(), instanceUUID)
 	if err != nil {
 		return false
 	}
@@ -175,32 +178,50 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	queueItems, err := d.queue.GetAll(r.Context())
+	var result []api.QueueEntry
+	var paths []string
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		queueItems, err := d.queue.GetAll(r.Context())
+		if err != nil {
+			return err
+		}
+
+		if recursion == 1 {
+			result = make([]api.QueueEntry, 0, len(queueItems))
+			for _, queueItem := range queueItems {
+				instance, err := d.instance.GetByUUID(ctx, queueItem.InstanceUUID)
+				if err != nil {
+					return err
+				}
+
+				result = append(result, api.QueueEntry{
+					InstanceUUID:           queueItem.InstanceUUID,
+					InstanceName:           instance.Properties.Name,
+					MigrationStatus:        queueItem.MigrationStatus,
+					MigrationStatusMessage: queueItem.MigrationStatusMessage,
+					BatchName:              queueItem.BatchName,
+				})
+			}
+
+			return nil
+		}
+
+		paths = make([]string, 0, len(queueItems))
+		for _, queueItem := range queueItems {
+			paths = append(paths, fmt.Sprintf("/%s/queue/%s", api.APIVersion, queueItem.InstanceUUID))
+		}
+
+		return nil
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
 
 	if recursion == 1 {
-		result := make([]api.QueueEntry, 0, len(queueItems))
-		for _, queueItem := range queueItems {
-			result = append(result, api.QueueEntry{
-				InstanceUUID:           queueItem.InstanceUUID,
-				InstanceName:           queueItem.InstanceName,
-				MigrationStatus:        queueItem.MigrationStatus,
-				MigrationStatusMessage: queueItem.MigrationStatusMessage,
-				BatchName:              queueItem.BatchName,
-			})
-		}
-
 		return response.SyncResponse(true, result)
 	}
 
-	result := make([]string, 0, len(queueItems))
-	for _, queueItem := range queueItems {
-		result = append(result, fmt.Sprintf("/%s/queue/%s", api.APIVersion, queueItem.InstanceUUID))
-	}
-
-	return response.SyncResponse(true, result)
+	return response.SyncResponse(true, paths)
 }
 
 // swagger:operation GET /1.0/queue/{uuid} queue queue_get
@@ -245,14 +266,30 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	queueItem, err := d.queue.GetByInstanceID(r.Context(), UUID)
+	var queueItem *migration.QueueEntry
+	var instanceName string
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		instance, err := d.instance.GetByUUID(ctx, UUID)
+		if err != nil {
+			return err
+		}
+
+		queueItem, err = d.queue.GetByInstanceUUID(r.Context(), UUID)
+		if err != nil {
+			return err
+		}
+
+		instanceName = instance.Properties.Name
+
+		return nil
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
 
 	return response.SyncResponseETag(true, api.QueueEntry{
+		InstanceName:           instanceName,
 		InstanceUUID:           queueItem.InstanceUUID,
-		InstanceName:           queueItem.InstanceName,
 		MigrationStatus:        queueItem.MigrationStatus,
 		MigrationStatusMessage: queueItem.MigrationStatusMessage,
 		BatchName:              queueItem.BatchName,
@@ -294,14 +331,14 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func queueWorkerCommandPost(d *Daemon, r *http.Request) response.Response {
-	UUIDString := r.PathValue("uuid")
+	uuidString := r.PathValue("uuid")
 
-	UUID, err := uuid.Parse(UUIDString)
+	instanceUUID, err := uuid.Parse(uuidString)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	workerCommand, err := d.queue.NewWorkerCommandByInstanceUUID(r.Context(), UUID)
+	workerCommand, err := d.queue.NewWorkerCommandByInstanceUUID(r.Context(), instanceUUID)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -311,6 +348,7 @@ func queueWorkerCommandPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	d.queueHandler.RecordWorkerUpdate(instanceUUID)
 	return response.SyncResponseETag(true, api.WorkerCommand{
 		Command:    workerCommand.Command,
 		Location:   workerCommand.Location,
@@ -351,9 +389,9 @@ func queueWorkerCommandPost(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func queueWorkerPost(d *Daemon, r *http.Request) response.Response {
-	UUIDString := r.PathValue("uuid")
+	uuidString := r.PathValue("uuid")
 
-	UUID, err := uuid.Parse(UUIDString)
+	instanceUUID, err := uuid.Parse(uuidString)
 	if err != nil {
 		return response.BadRequest(err)
 	}
@@ -365,10 +403,11 @@ func queueWorkerPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = d.instance.ProcessWorkerUpdate(r.Context(), UUID, resp.Status, resp.StatusMessage)
+	_, err = d.queue.ProcessWorkerUpdate(r.Context(), instanceUUID, resp.Status, resp.StatusMessage)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
+	d.queueHandler.RecordWorkerUpdate(instanceUUID)
 	return response.SyncResponse(true, nil)
 }

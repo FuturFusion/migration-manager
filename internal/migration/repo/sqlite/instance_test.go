@@ -16,7 +16,6 @@ import (
 	endpointMock "github.com/FuturFusion/migration-manager/internal/migration/endpoint/mock"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
-	"github.com/FuturFusion/migration-manager/internal/ptr"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -57,15 +56,12 @@ var (
 		},
 	}
 
-	testBatch     = migration.Batch{ID: 1, Name: "TestBatch", Target: "TestTarget", Status: api.BATCHSTATUS_DEFINED, StoragePool: "", IncludeExpression: "true", MigrationWindowStart: time.Time{}, MigrationWindowEnd: time.Time{}}
+	testBatch     = migration.Batch{ID: 1, Name: "TestBatch", Target: "TestTarget", Status: api.BATCHSTATUS_DEFINED, StoragePool: "", IncludeExpression: "true"}
 	instanceAUUID = uuid.Must(uuid.NewRandom())
 
 	instanceA = migration.Instance{
-		UUID:                   instanceAUUID,
-		MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-		MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
-		LastUpdateFromSource:   time.Now().UTC(),
-		Batch:                  nil,
+		UUID:                 instanceAUUID,
+		LastUpdateFromSource: time.Now().UTC(),
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
 				Description: "annotation",
@@ -95,18 +91,14 @@ var (
 			SecureBoot: false,
 			TPM:        false,
 		},
-		NeedsDiskImport: false,
-		SecretToken:     uuid.Must(uuid.NewRandom()),
-		Source:          "TestSource",
+		Source:     "TestSource",
+		SourceType: api.SOURCETYPE_COMMON,
 	}
 
 	instanceBUUID = uuid.Must(uuid.NewRandom())
 	instanceB     = migration.Instance{
-		UUID:                   instanceBUUID,
-		MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-		MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
-		LastUpdateFromSource:   time.Now().UTC(),
-		Batch:                  nil,
+		UUID:                 instanceBUUID,
+		LastUpdateFromSource: time.Now().UTC(),
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
 				Description: "annotation",
@@ -141,18 +133,14 @@ var (
 			SecureBoot: true,
 			TPM:        true,
 		},
-		NeedsDiskImport: false,
-		SecretToken:     uuid.Must(uuid.NewRandom()),
-		Source:          "TestSource",
+		Source:     "TestSource",
+		SourceType: api.SOURCETYPE_COMMON,
 	}
 
 	instanceCUUID = uuid.Must(uuid.NewRandom())
 	instanceC     = migration.Instance{
-		UUID:                   instanceCUUID,
-		MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-		MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
-		LastUpdateFromSource:   time.Now().UTC(),
-		Batch:                  ptr.To("TestBatch"),
+		UUID:                 instanceCUUID,
+		LastUpdateFromSource: time.Now().UTC(),
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
 				Description: "annotation",
@@ -180,9 +168,8 @@ var (
 			SecureBoot: false,
 			TPM:        false,
 		},
-		NeedsDiskImport: false,
-		SecretToken:     uuid.Must(uuid.NewRandom()),
-		Source:          "TestSource",
+		Source:     "TestSource",
+		SourceType: api.SOURCETYPE_COMMON,
 	}
 )
 
@@ -210,9 +197,10 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	targetSvc := migration.NewTargetService(sqlite.NewTarget(tx))
 
 	instance := sqlite.NewInstance(tx)
-	instanceSvc := migration.NewInstanceService(instance, sourceSvc)
+	instanceSvc := migration.NewInstanceService(instance)
 
-	batchSvc := migration.NewBatchService(sqlite.NewBatch(tx), instanceSvc, sourceSvc)
+	batch := sqlite.NewBatch(tx)
+	batchSvc := migration.NewBatchService(batch, instanceSvc)
 
 	// Cannot add an instance with an invalid source.
 	_, err = instance.Create(ctx, instanceA)
@@ -245,28 +233,16 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(3), instanceC.ID)
 
-	// Cannot delete a source or target if referenced by an assigned instance.
-	for _, status := range []api.MigrationStatusType{
-		api.MIGRATIONSTATUS_ASSIGNED_BATCH,
-		api.MIGRATIONSTATUS_CREATING,
-		api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
-		api.MIGRATIONSTATUS_IDLE,
-		api.MIGRATIONSTATUS_FINAL_IMPORT,
-		api.MIGRATIONSTATUS_IMPORT_COMPLETE,
-	} {
-		if instanceA.MigrationStatus != status {
-			instanceA.MigrationStatus = status
-			err = instance.Update(ctx, instanceA)
-			require.NoError(t, err)
-		}
+	// Assign instanceA to testBatch.
+	err = batch.AssignBatch(ctx, testBatch.Name, instanceA.UUID)
+	require.NoError(t, err)
 
-		err = sourceSvc.DeleteByName(context.TODO(), testSource.Name, instanceSvc)
-		require.Error(t, err)
-	}
+	// Cannot modify source anymore.
+	err = sourceSvc.DeleteByName(context.TODO(), testSource.Name, instanceSvc)
+	require.Error(t, err)
 
-	// Reset the status of instanceA after changing it.
-	instanceA.MigrationStatus = instanceB.MigrationStatus
-	err = instance.Update(ctx, instanceA)
+	// Unassign instanceA from testBatch.
+	err = batch.UnassignBatch(ctx, testBatch.Name, instanceA.UUID)
 	require.NoError(t, err)
 
 	err = targetSvc.DeleteByName(ctx, testTarget.Name)
@@ -285,8 +261,6 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	// Test updating an instance.
 	instanceB.Properties.Location = "/foo/bar"
 	instanceB.Properties.CPUs = 8
-	instanceB.MigrationStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
-	instanceB.MigrationStatusMessage = string(instanceB.MigrationStatus)
 	err = instance.Update(ctx, instanceB)
 	require.NoError(t, err)
 	dbInstanceB, err := instance.GetByUUID(ctx, instanceB.UUID)
@@ -317,14 +291,6 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	_, err = instance.Create(ctx, instanceB)
 	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
-	// Can't delete a source that has at least one associated instance in a batch.
-	err = sourceSvc.DeleteByName(ctx, testSource.Name, instanceSvc)
-	require.Error(t, err)
-
-	instanceB.MigrationStatus = api.MIGRATIONSTATUS_USER_DISABLED_MIGRATION
-	instanceB.MigrationStatusMessage = string(instanceB.MigrationStatus)
-	err = instance.Update(ctx, instanceB)
-
 	// Can't delete a target that has at least one associated batch.
 	err = targetSvc.DeleteByName(ctx, testTarget.Name)
 	require.ErrorIs(t, err, migration.ErrConstraintViolation)
@@ -336,106 +302,6 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	instances, err = instance.GetAll(ctx)
 	require.NoError(t, err)
 	require.Empty(t, instances)
-}
-
-var overridesA = migration.InstanceOverride{
-	UUID:       instanceAUUID,
-	LastUpdate: time.Now().UTC(),
-	Comment:    "A comment",
-	Properties: api.InstancePropertiesConfigurable{
-		CPUs:   8,
-		Memory: 4096,
-	},
-	DisableMigration: true,
-}
-
-func TestInstanceOverridesDatabaseActions(t *testing.T) {
-	ctx := context.Background()
-
-	// Create a new temporary database.
-	tmpDir := t.TempDir()
-	db, err := dbdriver.Open(tmpDir)
-	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		err = db.Close()
-		require.NoError(t, err)
-	})
-
-	_, err = dbschema.EnsureSchema(db, tmpDir)
-	require.NoError(t, err)
-
-	tx := transaction.Enable(db)
-	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
-	require.NoError(t, err)
-
-	sourceSvc := migration.NewSourceService(sqlite.NewSource(tx))
-	targetSvc := migration.NewTargetService(sqlite.NewTarget(tx))
-
-	instance := sqlite.NewInstance(tx)
-
-	// Cannot add an overrides if there's no corresponding instance.
-	_, err = instance.CreateOverrides(ctx, overridesA)
-	require.ErrorIs(t, err, migration.ErrConstraintViolation)
-
-	// Add the corresponding instance.
-	_, err = sourceSvc.Create(ctx, testSource)
-	require.NoError(t, err)
-	_, err = targetSvc.Create(ctx, testTarget)
-	require.NoError(t, err)
-	_, err = instance.Create(ctx, instanceA)
-	require.NoError(t, err)
-
-	// Add the overrides.
-	overridesA.ID, err = instance.CreateOverrides(ctx, overridesA)
-	require.NoError(t, err)
-	require.Equal(t, int64(1), overridesA.ID)
-
-	// Should get back overridesA unchanged.
-	dbOverridesA, err := instance.GetOverridesByUUID(ctx, instanceA.UUID)
-	require.NoError(t, err)
-	require.Equal(t, overridesA, *dbOverridesA)
-
-	// The Instance's returned overrides should match what we set.
-	_, err = instance.GetByUUID(ctx, instanceA.UUID)
-	require.NoError(t, err)
-
-	// Test updating an overrides.
-	overridesA.Comment = "An update"
-	overridesA.DisableMigration = false
-	err = instance.UpdateOverrides(ctx, overridesA)
-	require.NoError(t, err)
-	dbOverridesA, err = instance.GetOverridesByUUID(ctx, instanceA.UUID)
-	require.NoError(t, err)
-	require.Equal(t, overridesA, *dbOverridesA)
-
-	// Can't add a duplicate overrides.
-	_, err = instance.CreateOverrides(ctx, overridesA)
-	require.ErrorIs(t, err, migration.ErrConstraintViolation)
-
-	// Delete an overrides.
-	err = instance.DeleteOverridesByUUID(ctx, instanceA.UUID)
-	require.NoError(t, err)
-	_, err = instance.GetOverridesByUUID(ctx, instanceA.UUID)
-	require.ErrorIs(t, err, migration.ErrNotFound)
-
-	// Can't delete an overrides that doesn't exist.
-	randomUUID := uuid.Must(uuid.NewRandom())
-	err = instance.DeleteOverridesByUUID(ctx, randomUUID)
-	require.ErrorIs(t, err, migration.ErrNotFound)
-
-	// Can't update an overrides that doesn't exist.
-	err = instance.UpdateOverrides(ctx, overridesA)
-	require.ErrorIs(t, err, migration.ErrNotFound)
-
-	// Ensure deletion of instance fails, if an overrides is present
-	// (cascading delete is handled by the business logic and not the DB layer).
-	_, err = instance.CreateOverrides(ctx, overridesA)
-	require.NoError(t, err)
-	_, err = instance.GetOverridesByUUID(ctx, instanceA.UUID)
-	require.NoError(t, err)
-	err = instance.DeleteByUUID(ctx, instanceA.UUID)
-	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 }
 
 func TestInstanceGetAll(t *testing.T) {
@@ -480,11 +346,6 @@ func TestInstanceGetAll(t *testing.T) {
 		instanceN.Properties.Location = fmt.Sprintf("/%d", i)
 
 		_, err = instance.Create(ctx, instanceN)
-		require.NoError(t, err)
-
-		overrideN := overridesA
-		overrideN.UUID = instanceN.UUID
-		_, err = instance.CreateOverrides(ctx, overrideN)
 		require.NoError(t, err)
 	}
 

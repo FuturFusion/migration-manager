@@ -106,24 +106,18 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Source", "Location", "OS Version", "CPUs", "Memory", "Background Import", "Migration Status"}
+	header := []string{"UUID", "Source", "Location", "OS Version", "CPUs", "Memory", "Background Import", "Migration Disabled"}
 	if c.flagVerbose {
-		header = []string{"UUID", "Location", "Description", "Source", "Batch", "Migration Status", "Migration Status String", "Last Update from Source", "Architecture", "OS", "OS Version", "Disks", "NICs", "Snapshots", "CPUs", "Memory", "Legacy Boot", "Secure Boot", "TPM", "Background Import"}
+		header = []string{"UUID", "Location", "Description", "Source", "Last Update From Source", "Architecture", "OS", "OS Version", "Disks", "NICs", "Snapshots", "CPUs", "Memory", "Legacy Boot", "Secure Boot", "TPM", "Background Import", "Migration Disabled"}
 	}
 
 	data := [][]string{}
 
 	for _, i := range instances {
 		props := i.Properties
-		if i.Overrides != nil {
-			props.Apply(i.Overrides.Properties)
-		}
+		props.Apply(i.Overrides.Properties)
 
-		if i.MigrationStatusMessage == "" {
-			i.MigrationStatusMessage = string(i.MigrationStatus)
-		}
-
-		row := []string{props.UUID.String(), i.Source, props.Location, props.OSVersion, strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.BackgroundImport), i.MigrationStatusMessage}
+		row := []string{props.UUID.String(), i.Source, props.Location, props.OSVersion, strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.BackgroundImport), strconv.FormatBool(i.Overrides.DisableMigration)}
 
 		if c.flagVerbose {
 			disks := []string{}
@@ -141,7 +135,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 				snapshots = append(snapshots, snapshot.Name)
 			}
 
-			row = []string{props.UUID.String(), props.Location, props.Description, i.Source, getFrom(batchesMap, i.Batch), string(i.MigrationStatus), i.MigrationStatusMessage, i.LastUpdateFromSource.String(), props.Architecture, props.OS, props.OSVersion, strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.LegacyBoot), strconv.FormatBool(props.SecureBoot), strconv.FormatBool(props.TPM), strconv.FormatBool(props.BackgroundImport)}
+			row = []string{props.UUID.String(), props.Location, props.Description, i.Source, i.LastUpdateFromSource.String(), props.Architecture, props.OS, props.OSVersion, strings.Join(disks, "\n"), strings.Join(nics, "\n"), strings.Join(snapshots, "\n"), strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.LegacyBoot), strconv.FormatBool(props.SecureBoot), strconv.FormatBool(props.TPM), strconv.FormatBool(props.BackgroundImport), strconv.FormatBool(i.Overrides.DisableMigration)}
 		}
 
 		data = append(data, row)
@@ -150,12 +144,4 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	sort.Sort(util.SortColumnsNaturally(data))
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, instances)
-}
-
-func getFrom(lookupMap map[string]string, key *string) string {
-	if key == nil {
-		return ""
-	}
-
-	return lookupMap[*key]
 }

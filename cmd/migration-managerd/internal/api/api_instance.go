@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,7 +10,6 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
@@ -34,7 +34,6 @@ var instanceOverrideCmd = APIEndpoint{
 
 	Delete: APIEndpointAction{Handler: instanceOverrideDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
 	Get:    APIEndpointAction{Handler: instanceOverrideGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
-	Post:   APIEndpointAction{Handler: instanceOverridePost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanCreate)},
 	Put:    APIEndpointAction{Handler: instanceOverridePut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
@@ -134,7 +133,7 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 			}
 		}()
 
-		instances, err := d.instance.GetAll(ctx, true)
+		instances, err := d.instance.GetAll(ctx)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -210,7 +209,7 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	instance, err := d.instance.GetByUUID(ctx, UUID, true)
+	instance, err := d.instance.GetByUUID(ctx, UUID)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
 	}
@@ -264,73 +263,16 @@ func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	override, err := d.instance.GetOverridesByUUID(r.Context(), UUID)
+	instance, err := d.instance.GetByUUID(r.Context(), UUID)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to get override for instance %q: %w", UUID, err))
 	}
 
 	return response.SyncResponseETag(
 		true,
-		override.ToAPI(),
-		override,
+		instance.Overrides,
+		instance.Overrides,
 	)
-}
-
-// swagger:operation POST /1.0/instances/{uuid}/override instances instance_override_post
-//
-//	Add an instance override
-//
-//	Creates a new instance override.
-//
-//	---
-//	consumes:
-//	  - application/json
-//	produces:
-//	  - application/json
-//	parameters:
-//	  - in: body
-//	    name: override
-//	    description: Instance override
-//	    required: true
-//	    schema:
-//	      $ref: "#/definitions/InstanceOverride"
-//	responses:
-//	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
-//	  "400":
-//	    $ref: "#/responses/BadRequest"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-func instanceOverridePost(d *Daemon, r *http.Request) response.Response {
-	UUIDString := r.PathValue("uuid")
-
-	UUID, err := uuid.Parse(UUIDString)
-	if err != nil {
-		return response.BadRequest(err)
-	}
-
-	var override api.InstanceOverride
-
-	// Decode into the new override.
-	err = json.NewDecoder(r.Body).Decode(&override)
-	if err != nil {
-		return response.BadRequest(err)
-	}
-
-	_, err = d.instance.CreateOverrides(r.Context(), migration.InstanceOverride{
-		UUID:             UUID,
-		LastUpdate:       time.Now().UTC(),
-		Comment:          override.Comment,
-		Properties:       override.Properties,
-		DisableMigration: override.DisableMigration,
-	})
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating override for instance %s: %w", UUID, err))
-	}
-
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+UUIDString+"/override")
 }
 
 // swagger:operation PUT /1.0/instances/{uuid}/override instances instance_override_put
@@ -371,7 +313,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Decode into the existing instance override.
-	var override api.InstanceOverridePut
+	var override api.InstanceOverride
 	err = json.NewDecoder(r.Body).Decode(&override)
 	if err != nil {
 		return response.BadRequest(err)
@@ -386,24 +328,21 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 	}()
 
 	// Get the existing instance override.
-	currentOverrides, err := d.instance.GetOverridesByUUID(ctx, UUID)
+	currentInstance, err := d.instance.GetByUUID(ctx, UUID)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get override for instance %q: %w", UUID, err))
+		return response.SmartError(fmt.Errorf("Failed to get instance %q: %w", UUID, err))
 	}
 
 	// Validate ETag
-	err = util.EtagCheck(r, currentOverrides)
+	err = util.EtagCheck(r, currentInstance)
 	if err != nil {
 		return response.PreconditionFailed(err)
 	}
 
-	err = d.instance.UpdateOverrides(ctx, &migration.InstanceOverride{
-		UUID:             currentOverrides.UUID,
-		LastUpdate:       time.Now().UTC(),
-		Comment:          override.Comment,
-		Properties:       override.Properties,
-		DisableMigration: override.DisableMigration,
-	})
+	override.LastUpdate = time.Now().UTC()
+	currentInstance.Overrides = override
+
+	err = d.instance.Update(ctx, currentInstance)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating override for instance %q: %w", UUID, err))
 	}
@@ -435,14 +374,23 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
-	UUIDString := r.PathValue("uuid")
+	uuidString := r.PathValue("uuid")
 
-	UUID, err := uuid.Parse(UUIDString)
+	instanceUUID, err := uuid.Parse(uuidString)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
-	err = d.instance.DeleteOverridesByUUID(r.Context(), UUID)
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		inst, err := d.instance.GetByUUID(ctx, instanceUUID)
+		if err != nil {
+			return err
+		}
+
+		inst.Overrides = api.InstanceOverride{}
+
+		return d.instance.Update(ctx, inst)
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}

@@ -9,7 +9,6 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration/repo"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
-	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type instance struct {
@@ -32,45 +31,37 @@ func (i instance) GetAll(ctx context.Context) (migration.Instances, error) {
 	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db))
 }
 
-func (i instance) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (migration.Instances, error) {
-	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{Batch: &batch, MigrationStatus: &status})
+func (i instance) GetBatchesByUUID(ctx context.Context, instanceUUID uuid.UUID) (migration.Batches, error) {
+	return entities.GetBatchesByInstance(ctx, transaction.GetDBTX(ctx, i.db), &instanceUUID)
 }
 
 func (i instance) GetAllByBatch(ctx context.Context, batch string) (migration.Instances, error) {
-	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{Batch: &batch})
-}
-
-func (i instance) GetAllByState(ctx context.Context, statuses ...api.MigrationStatusType) (migration.Instances, error) {
-	filters := []entities.InstanceFilter{}
-	for _, s := range statuses {
-		filters = append(filters, entities.InstanceFilter{MigrationStatus: &s})
-	}
-
-	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), filters...)
+	return entities.GetInstancesByBatch(ctx, transaction.GetDBTX(ctx, i.db), &batch)
 }
 
 func (i instance) GetAllBySource(ctx context.Context, source string) (migration.Instances, error) {
 	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{Source: &source})
 }
 
+func (i instance) GetAllByUUIDs(ctx context.Context, ids ...uuid.UUID) (migration.Instances, error) {
+	filters := make([]entities.InstanceFilter, len(ids))
+	for i, id := range ids {
+		filters[i].UUID = &id
+	}
+
+	return entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db), filters...)
+}
+
 func (i instance) GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error) {
 	return entities.GetInstanceNames(ctx, transaction.GetDBTX(ctx, i.db))
 }
 
+func (i instance) GetAllUUIDsBySource(ctx context.Context, source string) ([]uuid.UUID, error) {
+	return entities.GetInstanceNames(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{Source: &source})
+}
+
 func (i instance) GetAllUnassigned(ctx context.Context) (migration.Instances, error) {
-	instances, err := entities.GetInstances(ctx, transaction.GetDBTX(ctx, i.db))
-	if err != nil {
-		return nil, err
-	}
-
-	unassignedInstances := migration.Instances{}
-	for _, inst := range instances {
-		if inst.Batch == nil {
-			unassignedInstances = append(unassignedInstances, inst)
-		}
-	}
-
-	return unassignedInstances, nil
+	return entities.GetInstancesByBatch(ctx, transaction.GetDBTX(ctx, i.db), nil)
 }
 
 func (i instance) GetByUUID(ctx context.Context, id uuid.UUID) (*migration.Instance, error) {
@@ -87,20 +78,6 @@ func (i instance) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return entities.DeleteInstance(ctx, transaction.GetDBTX(ctx, i.db), id)
 }
 
-func (i instance) CreateOverrides(ctx context.Context, overrides migration.InstanceOverride) (int64, error) {
-	return entities.CreateInstanceOverride(ctx, transaction.GetDBTX(ctx, i.db), overrides)
-}
-
-func (i instance) GetOverridesByUUID(ctx context.Context, id uuid.UUID) (*migration.InstanceOverride, error) {
-	return entities.GetInstanceOverride(ctx, transaction.GetDBTX(ctx, i.db), id)
-}
-
-func (i instance) DeleteOverridesByUUID(ctx context.Context, id uuid.UUID) error {
-	return entities.DeleteInstanceOverride(ctx, transaction.GetDBTX(ctx, i.db), id)
-}
-
-func (i instance) UpdateOverrides(ctx context.Context, overrides migration.InstanceOverride) error {
-	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, i.db), func(ctx context.Context, tx transaction.TX) error {
-		return entities.UpdateInstanceOverride(ctx, tx, overrides.UUID, overrides)
-	})
+func (i instance) RemoveFromQueue(ctx context.Context, id uuid.UUID) error {
+	return entities.DeleteQueueEntry(ctx, transaction.GetDBTX(ctx, i.db), id)
 }

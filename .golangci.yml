@@ -147,6 +147,10 @@ linters:
         # generate-database expects to find declarations of the form //generate-database: in the entities package.
         source: '^//generate-database:mapper '
         text: comment-spacing
+      - linters:
+          - sqlclosecheck
+        # migration-manager uses globally persisting prepared statements accessed with the Stmt helper. We don't want to close these.
+        source: ' Stmt\('
     paths:
       # Most of the code of internal/migratekit was copied from the excellent project
       # https://github.com/vexxhost/migratekit, Apache-2.0 license.

@@ -24,6 +24,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
 	"github.com/FuturFusion/migration-manager/internal/properties"
+	"github.com/FuturFusion/migration-manager/internal/queue"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
 	"github.com/FuturFusion/migration-manager/internal/server/request"
@@ -60,12 +61,13 @@ type Daemon struct {
 	authorizer   auth.Authorizer
 	oidcVerifier *oidc.Verifier
 
-	batch    migration.BatchService
-	instance migration.InstanceService
-	network  migration.NetworkService
-	source   migration.SourceService
-	target   migration.TargetService
-	queue    migration.QueueService
+	queueHandler *queue.Handler
+	batch        migration.BatchService
+	instance     migration.InstanceService
+	network      migration.NetworkService
+	source       migration.SourceService
+	target       migration.TargetService
+	queue        migration.QueueService
 
 	server     *http.Server
 	serverCert *incusTLS.CertInfo
@@ -208,9 +210,11 @@ func (d *Daemon) Start() error {
 	d.network = migration.NewNetworkService(sqlite.NewNetwork(dbWithTransaction))
 	d.target = migration.NewTargetService(sqlite.NewTarget(dbWithTransaction))
 	d.source = migration.NewSourceService(sqlite.NewSource(dbWithTransaction))
-	d.instance = migration.NewInstanceService(sqlite.NewInstance(dbWithTransaction), d.source)
-	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance, d.source)
-	d.queue = migration.NewQueueService(d.batch, d.instance, d.source)
+	d.instance = migration.NewInstanceService(sqlite.NewInstance(dbWithTransaction))
+	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance)
+	d.queue = migration.NewQueueService(sqlite.NewQueue(dbWithTransaction), d.batch, d.instance, d.source)
+
+	d.queueHandler = queue.NewMigrationHandler(d.batch, d.instance, d.network, d.source, d.target, d.queue)
 
 	// Set default authorizer.
 	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)
@@ -294,7 +298,6 @@ func (d *Daemon) Start() error {
 
 	// Start background workers
 	d.runPeriodicTask(d.ShutdownCtx, "trySyncAllSources", d.trySyncAllSources, 10*time.Minute)
-	d.runPeriodicTask(d.ShutdownCtx, "processQueuedBatches", d.processQueuedBatches, 10*time.Second)
 	d.runPeriodicTask(d.ShutdownCtx, "beginImports", func(ctx context.Context) error {
 		// Cleanup of instances is set to false for testing. In practice we should set it to true, so that we can retry creating VMs in case it fails.
 		return d.beginImports(ctx, false)

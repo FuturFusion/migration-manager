@@ -227,16 +227,12 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			}
 		}
 
-		secretToken, _ := uuid.NewRandom()
 		ret = append(ret, migration.Instance{
-			UUID:                   vmProps.UUID,
-			MigrationStatus:        api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH,
-			MigrationStatusMessage: string(api.MIGRATIONSTATUS_NOT_ASSIGNED_BATCH),
-			LastUpdateFromSource:   time.Now().UTC(),
-			NeedsDiskImport:        true,
-			SecretToken:            secretToken,
-			Source:                 s.Name,
-			Properties:             *vmProps,
+			UUID:                 vmProps.UUID,
+			Source:               s.Name,
+			SourceType:           s.SourceType,
+			LastUpdateFromSource: time.Now().UTC(),
+			Properties:           *vmProps,
 		})
 	}
 

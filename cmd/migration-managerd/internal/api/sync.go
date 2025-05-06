@@ -121,9 +121,19 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			return fmt.Errorf("Failed to get internal network records: %w", err)
 		}
 
-		dbInstances, err := d.instance.GetAll(ctx, false)
+		allInstances, err := d.instance.GetAllUUIDs(ctx)
 		if err != nil {
 			return fmt.Errorf("Failed to get internal instance records: %w", err)
+		}
+
+		unassignedInstances, err := d.instance.GetAllUnassigned(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get unassigned internal instance records: %w", err)
+		}
+
+		unassignedInstancesByUUID := make(map[uuid.UUID]migration.Instance, len(unassignedInstances))
+		for _, inst := range unassignedInstances {
+			unassignedInstancesByUUID[inst.UUID] = inst
 		}
 
 		// Build maps to make comparison easier.
@@ -135,12 +145,13 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 		for srcName, srcInstances := range instancesBySrc {
 			// Ensure we only compare instances in the same source.
 			existingInstances := map[uuid.UUID]migration.Instance{}
-			for _, inst := range dbInstances {
+			for _, instUUID := range allInstances {
 				// If the instance is already assigned, then omit it from consideration.
-				if inst.Batch != nil {
-					_, ok := srcInstances[inst.UUID]
+				inst, ok := unassignedInstancesByUUID[instUUID]
+				if !ok {
+					_, ok := srcInstances[instUUID]
 					if ok {
-						delete(srcInstances, inst.UUID)
+						delete(srcInstances, instUUID)
 					}
 
 					continue
@@ -200,7 +211,7 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 		}
 	}
 
-	srcInstances, err := d.instance.GetAllBySource(ctx, sourceName, false)
+	srcInstances, err := d.instance.GetAllBySource(ctx, sourceName)
 	if err != nil {
 		return err
 	}

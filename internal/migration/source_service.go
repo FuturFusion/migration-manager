@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -93,10 +95,10 @@ func (s sourceService) DeleteByName(ctx context.Context, name string, instanceSe
 				return fmt.Errorf("Unable to remove source %q: %w", name, err)
 			}
 
-			for _, instance := range instances {
-				err = instanceService.DeleteByUUID(ctx, instance.UUID)
+			for _, instanceUUID := range instances {
+				err = instanceService.DeleteByUUID(ctx, instanceUUID)
 				if err != nil {
-					return fmt.Errorf("Unable to remove instance %q for source %q: %w", instance.UUID.String(), name, err)
+					return fmt.Errorf("Unable to remove instance %q for source %q: %w", instanceUUID.String(), name, err)
 				}
 			}
 		}
@@ -106,15 +108,20 @@ func (s sourceService) DeleteByName(ctx context.Context, name string, instanceSe
 }
 
 // canBeModified verifies whether the source with the given name can be modified, given its current instance states.
-func (s sourceService) canBeModified(ctx context.Context, sourceName string, instanceService InstanceService) (Instances, error) {
-	instances, err := instanceService.GetAllBySource(ctx, sourceName, false)
+func (s sourceService) canBeModified(ctx context.Context, sourceName string, instanceService InstanceService) ([]uuid.UUID, error) {
+	instances, err := instanceService.GetAllUUIDsBySource(ctx, sourceName)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get instances for source %q: %w", sourceName, err)
 	}
 
-	for _, instance := range instances {
-		if !instance.CanBeModified() {
-			return nil, fmt.Errorf("Some instances cannot be modified (Status: %q)", instance.MigrationStatus)
+	for _, instanceUUID := range instances {
+		batches, err := instanceService.GetBatchesByUUID(ctx, instanceUUID)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(batches) > 0 {
+			return nil, fmt.Errorf("Instance %q cannot be modified because it is part of a batch: %w", instanceUUID, err)
 		}
 	}
 

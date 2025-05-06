@@ -3,6 +3,8 @@ package migration
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -16,12 +18,17 @@ type BatchService interface {
 	GetAllNamesByState(ctx context.Context, status api.BatchStatusType) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Batch, error)
 	Update(ctx context.Context, name string, batch *Batch) error
-	UpdateInstancesAssignedToBatch(ctx context.Context, batch Batch) error
 	UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusMessage string) (*Batch, error)
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
 	StartBatchByName(ctx context.Context, name string) error
 	StopBatchByName(ctx context.Context, name string) error
+
+	AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
+	ChangeMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
+
+	GetMigrationWindows(ctx context.Context, batch string) (MigrationWindows, error)
+	GetEarliestWindow(ctx context.Context, batch string) (*MigrationWindow, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/batch_repo_mock_gen.go -rm . BatchRepo
@@ -38,4 +45,10 @@ type BatchRepo interface {
 	Update(ctx context.Context, name string, batch Batch) error
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
+	AssignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error
+	UnassignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error
+
+	GetMigrationWindowsByBatch(ctx context.Context, batch string) (MigrationWindows, error)
+	AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
+	UnassignMigrationWindows(ctx context.Context, batch string) error
 }
