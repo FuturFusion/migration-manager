@@ -108,6 +108,32 @@ var updates = map[int]schema.Update{
 	1: updateFromV0,
 	2: updateFromV1,
 	3: updateFromV2,
+	4: updateFromV3,
+}
+
+func updateFromV3(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+CREATE TABLE batches_new (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name               TEXT NOT NULL,
+    target_id          INTEGER NOT NULL,
+    target_project     TEXT NOT NULL,
+    status             TEXT NOT NULL,
+    status_message     TEXT NOT NULL,
+    storage_pool       TEXT NOT NULL,
+    include_expression TEXT NOT NULL,
+    constraints        TEXT NOT NULL,
+    UNIQUE (name),
+    FOREIGN KEY(target_id) REFERENCES targets(id)
+);
+
+INSERT INTO batches_new (id, name, target_id, target_project, status, status_message, storage_pool, include_expression, constraints) SELECT id, name, target_id, target_project, status, status_message, storage_pool, include_expression, '[]' FROM batches;
+
+DROP TABLE batches;
+ALTER TABLE batches_new RENAME TO batches;
+`)
+
+	return err
 }
 
 func updateFromV2(ctx context.Context, tx *sql.Tx) error {
