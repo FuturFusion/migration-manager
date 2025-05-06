@@ -7,6 +7,7 @@ import (
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
+	"github.com/lxc/incus/v6/shared/validate"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -20,6 +21,25 @@ type Batch struct {
 	StatusMessage     string
 	StoragePool       string
 	IncludeExpression string
+
+	Constraints []BatchConstraint `db:"marshal=json"`
+}
+
+type BatchConstraint struct {
+	// Name of the constraint.
+	Name string `json:"name" yaml:"name"`
+
+	// Description of the constraint.
+	Description string `json:"description" yaml:"description"`
+
+	// Expression used to select instances for the constraint.
+	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
+
+	// Maximum amount of matched instances that can concurrently migrate, before moving to the next migration window.
+	MaxConcurrentInstances int `json:"max_concurrent_instances" yaml:"max_concurrent_instances"`
+
+	// Minimum amount of time required for an instance to boot after initial disk import. Migration window duration must be at least this much.
+	MinInstanceBootTime time.Duration `json:"min_instance_boot_time" yaml:"min_instance_boot_time"`
 }
 
 type MigrationWindows []MigrationWindow
@@ -36,15 +56,16 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, id can not be negative")
 	}
 
-	if b.Name == "" {
-		return NewValidationErrf("Invalid batch, name can not be empty")
+	err := validate.IsHostname(b.Name)
+	if err != nil {
+		return NewValidationErrf("Invalid batch, %q is not a valid name: %v", b.Name, err)
 	}
 
 	if b.Target == "" {
 		return NewValidationErrf("Invalid batch, target can not be empty")
 	}
 
-	err := b.Status.Validate()
+	err = b.Status.Validate()
 	if err != nil {
 		return NewValidationErrf("Invalid status: %v", err)
 	}
@@ -52,6 +73,35 @@ func (b Batch) Validate() error {
 	_, err = b.CompileIncludeExpression(InstanceFilterable{})
 	if err != nil {
 		return NewValidationErrf("Invalid batch %q is not a valid include expression: %v", b.IncludeExpression, err)
+	}
+
+	for _, c := range b.Constraints {
+		err := c.Validate()
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (b BatchConstraint) Validate() error {
+	err := validate.IsHostname(b.Name)
+	if err != nil {
+		return NewValidationErrf("Invalid constraint, %q is not a valid name: %v", b.Name, err)
+	}
+
+	_, err = InstanceFilterable{}.CompileIncludeExpression(b.IncludeExpression)
+	if err != nil {
+		return NewValidationErrf("Invalid constraint %q is not a valid include expression: %v", b.IncludeExpression, err)
+	}
+
+	if b.MaxConcurrentInstances < 0 {
+		return NewValidationErrf("Invalid constraint max concurrent instances must not be negative")
+	}
+
+	if b.MinInstanceBootTime < 0 {
+		return NewValidationErrf("Invalid constraint minimum migration time must not be negative")
 	}
 
 	return nil
@@ -208,6 +258,16 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 		apiWindows[i] = api.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
 	}
 
+	constraints := make([]api.BatchConstraint, len(b.Constraints))
+
+	for i, c := range b.Constraints {
+		constraints[i] = api.BatchConstraint{
+			IncludeExpression:      c.IncludeExpression,
+			MaxConcurrentInstances: c.MaxConcurrentInstances,
+			MinInstanceBootTime:    c.MinInstanceBootTime.String(),
+		}
+	}
+
 	return api.Batch{
 		BatchPut: api.BatchPut{
 			Name:              b.Name,
@@ -216,6 +276,7 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 			StoragePool:       b.StoragePool,
 			IncludeExpression: b.IncludeExpression,
 			MigrationWindows:  apiWindows,
+			Constraints:       constraints,
 		},
 		Status:        b.Status,
 		StatusMessage: b.StatusMessage,
