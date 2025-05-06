@@ -13,7 +13,7 @@ require (
 	github.com/hexdigest/gowrap v1.4.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/lxc/distrobuilder v0.0.0-20250505163748-066136f234ea
-	github.com/lxc/incus/v6 v6.12.0
+	github.com/lxc/incus/v6 v6.12.1-0.20250506022743-14a14fd0006d
 	github.com/matryer/moq v0.4.0
 	github.com/mattn/go-sqlite3 v1.14.28
 	github.com/olekukonko/tablewriter v0.0.5
