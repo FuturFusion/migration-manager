@@ -129,5 +129,6 @@ update-openfga:
 .PHONY: update-gomod
 update-gomod:
 	$(GO) get -t -v -u ./...
-	$(GO) mod tidy --go=1.23.0
+	$(GO) get github.com/go-jose/go-jose/v4@v4.0.5
+	$(GO) mod tidy --go=1.23.7
 	$(GO) get toolchain@none
