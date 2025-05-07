@@ -1,0 +1,8 @@
+.no-hover:hover {
+  color: gray !important;
+  background-color: transparent !important;
+}
+
+.key-item {
+  font-size: .875rem
+}

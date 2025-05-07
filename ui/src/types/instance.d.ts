@@ -43,6 +43,7 @@ export interface InstancePropertiesConfigurable {
   description: string;
   cpus: number;
   memory: number;
+  config: Record<string, string>;
 }
 
 export interface InstanceOverride {
