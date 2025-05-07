@@ -107,6 +107,10 @@ func (b BatchConstraint) Validate() error {
 // GetEarliest returns the earliest valid migration window, or an error if none are found.
 func (ws MigrationWindows) GetEarliest() (*MigrationWindow, error) {
 	var earliestWindow *MigrationWindow
+	if len(ws) == 0 {
+		return &MigrationWindow{}, nil
+	}
+
 	for _, w := range ws {
 		if w.Validate() != nil {
 			continue
