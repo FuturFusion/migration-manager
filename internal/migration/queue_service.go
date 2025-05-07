@@ -57,8 +57,8 @@ func (s queueService) GetAllByBatch(ctx context.Context, batch string) (QueueEnt
 	return s.repo.GetAllByBatch(ctx, batch)
 }
 
-func (s queueService) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (QueueEntries, error) {
-	return s.repo.GetAllByBatchAndState(ctx, batch, status)
+func (s queueService) GetAllByBatchAndState(ctx context.Context, batch string, statuses ...api.MigrationStatusType) (QueueEntries, error) {
+	return s.repo.GetAllByBatchAndState(ctx, batch, statuses...)
 }
 
 func (s queueService) GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (QueueEntries, error) {
