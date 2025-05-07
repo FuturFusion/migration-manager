@@ -1,9 +1,13 @@
 package migration
 
 import (
+	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -62,6 +66,60 @@ func (i *Instance) GetOSType() api.OSType {
 	}
 
 	return api.OSTYPE_LINUX
+}
+
+func (i Instance) MatchesCriteria(expression string) (bool, error) {
+	filterable := i.ToFilterable()
+	includeExpr, err := filterable.CompileIncludeExpression(expression)
+	if err != nil {
+		return false, fmt.Errorf("Failed to compile include expression %q: %v", expression, err)
+	}
+
+	output, err := expr.Run(includeExpr, filterable)
+	if err != nil {
+		return false, fmt.Errorf("Failed to run include expression %q with instance %v: %v", expression, filterable, err)
+	}
+
+	result, ok := output.(bool)
+	if !ok {
+		return false, fmt.Errorf("Include expression %q does not evaluate to boolean result: %v", expression, output)
+	}
+
+	return result, nil
+}
+
+func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Program, error) {
+	customFunctions := []expr.Option{
+		expr.Function("path_base", func(params ...any) (any, error) {
+			if len(params) != 1 {
+				return nil, fmt.Errorf("invalid number of arguments, expected 1, got: %d", len(params))
+			}
+
+			path, ok := params[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("invalid argument type, expected string, got: %T", params[0])
+			}
+
+			return filepath.Base(path), nil
+		}),
+
+		expr.Function("path_dir", func(params ...any) (any, error) {
+			if len(params) != 1 {
+				return nil, fmt.Errorf("invalid number of arguments, expected 1, got: %d", len(params))
+			}
+
+			path, ok := params[0].(string)
+			if !ok {
+				return nil, fmt.Errorf("invalid argument type, expected string, got: %T", params[0])
+			}
+
+			return filepath.Dir(path), nil
+		}),
+	}
+
+	options := append([]expr.Option{expr.Env(i)}, customFunctions...)
+
+	return expr.Compile(expression, options...)
 }
 
 type Instances []Instance

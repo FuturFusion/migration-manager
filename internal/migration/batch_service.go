@@ -136,7 +136,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 
 		// Update each instance for this batch.
 		for _, instance := range instances {
-			isMatch, err := batch.InstanceMatchesCriteria(instance)
+			isMatch, err := instance.MatchesCriteria(batch.IncludeExpression)
 			if err != nil {
 				return err
 			}
@@ -158,7 +158,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 
 		// Check if any unassigned instances should be assigned to this batch.
 		for _, instance := range instances {
-			isMatch, err := batch.InstanceMatchesCriteria(instance)
+			isMatch, err := instance.MatchesCriteria(batch.IncludeExpression)
 			if err != nil {
 				return err
 			}
