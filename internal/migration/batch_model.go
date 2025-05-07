@@ -136,6 +136,31 @@ func (w MigrationWindow) Begun() bool {
 	return started && pastLockout
 }
 
+func (w MigrationWindow) FitsDuration(duration time.Duration) bool {
+	if w.Validate() != nil {
+		return false
+	}
+
+	// If the end time is infinite, then the duration fits.
+	if w.End.IsZero() {
+		return true
+	}
+
+	// If the window has already started, make the comparison to now instead.
+	start := w.Start
+	if start.Before(time.Now().UTC()) {
+		start = time.Now().UTC()
+	}
+
+	// TODO: Make this configurable per instance, once we tie instances to a migration window.
+	// Set a buffer for the instance to revert migration.
+	if duration > 0 {
+		duration += time.Minute
+	}
+
+	return start.Add(duration).Before(w.End)
+}
+
 // Key returns an identifying key for the MigrationWindow, based on its timings.
 func (w MigrationWindow) Key() string {
 	return w.Start.String() + "_" + w.End.String() + "_" + w.Lockout.String()
