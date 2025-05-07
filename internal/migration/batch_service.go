@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -135,13 +137,16 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 		}
 
 		// Update each instance for this batch.
+		assignedInstances := map[uuid.UUID]bool{}
 		for _, instance := range instances {
 			isMatch, err := instance.MatchesCriteria(batch.IncludeExpression)
 			if err != nil {
 				return err
 			}
 
-			if !isMatch {
+			if isMatch {
+				assignedInstances[instance.UUID] = true
+			} else {
 				// Instance does not belong to this batch
 				err := s.repo.UnassignBatch(ctx, batch.Name, instance.UUID)
 				if err != nil {
@@ -163,7 +168,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 				return err
 			}
 
-			if isMatch {
+			if isMatch && !assignedInstances[instance.UUID] {
 				err := s.repo.AssignBatch(ctx, batch.Name, instance.UUID)
 				if err != nil {
 					return err
