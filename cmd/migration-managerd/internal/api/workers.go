@@ -458,13 +458,23 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 		delete(migrationState, batchName)
 	}
 
+	finishedBatches := make(map[string][]uuid.UUID, len(migrationState))
 	for _, state := range migrationState {
+		finishedInstances := make([]uuid.UUID, 0, len(state.Instances))
 		err := util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
-			return d.configureMigratedInstances(ctx, instance, state.Target, state.Batch, networksByName)
+			err := d.configureMigratedInstances(ctx, instance, state.Target, state.Batch, networksByName)
+			if err != nil {
+				return err
+			}
+
+			finishedInstances = append(finishedInstances, instUUID)
+			return nil
 		})
 		if err != nil {
 			log.Error("Failed to configureMigratedInstances", slog.String("batch", state.Batch.Name))
 		}
+
+		finishedBatches[state.Batch.Name] = finishedInstances
 	}
 
 	// Remove complete records from the queue cache.
@@ -474,7 +484,19 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 		}
 	}
 
-	return nil
+	// Set fully completed batches to FINISHED state.
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		for batch, instUUIDs := range finishedBatches {
+			if len(migrationState[batch].Instances) == len(instUUIDs) {
+				_, err := d.batch.UpdateStatusByName(ctx, batch, api.BATCHSTATUS_FINISHED, string(api.BATCHSTATUS_FINISHED))
+				if err != nil {
+					return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_FINISHED, err)
+				}
+			}
+		}
+
+		return nil
+	})
 }
 
 // configureMigratedInstances updates the configuration of instances concurrently after they have finished migrating. Errors will result in the instance state becoming ERRORED.
