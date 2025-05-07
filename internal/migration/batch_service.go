@@ -217,6 +217,11 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 			}
 		}
 
+		err = s.repo.UnassignMigrationWindows(ctx, name)
+		if err != nil {
+			return err
+		}
+
 		return s.repo.DeleteByName(ctx, name)
 	})
 }
