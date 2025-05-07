@@ -125,11 +125,11 @@ func (_d QueueRepoWithSlog) GetAllByBatch(ctx context.Context, batch string) (q1
 }
 
 // GetAllByBatchAndState implements _sourceMigration.QueueRepo
-func (_d QueueRepoWithSlog) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (q1 _sourceMigration.QueueEntries, err error) {
+func (_d QueueRepoWithSlog) GetAllByBatchAndState(ctx context.Context, batch string, statuses ...api.MigrationStatusType) (q1 _sourceMigration.QueueEntries, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.String("batch", batch),
-		slog.Any("status", status),
+		slog.Any("statuses", statuses),
 	).Debug("QueueRepoWithSlog: calling GetAllByBatchAndState")
 	defer func() {
 		log := _d._log.With(
@@ -142,7 +142,7 @@ func (_d QueueRepoWithSlog) GetAllByBatchAndState(ctx context.Context, batch str
 			log.Debug("QueueRepoWithSlog: method GetAllByBatchAndState finished")
 		}
 	}()
-	return _d._base.GetAllByBatchAndState(ctx, batch, status)
+	return _d._base.GetAllByBatchAndState(ctx, batch, statuses...)
 }
 
 // GetAllByState implements _sourceMigration.QueueRepo

@@ -37,7 +37,7 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.QueueEntries, error) {
 //				panic("mock out the GetAllByBatch method")
 //			},
-//			GetAllByBatchAndStateFunc: func(ctx context.Context, batch string, status api.MigrationStatusType) (migration.QueueEntries, error) {
+//			GetAllByBatchAndStateFunc: func(ctx context.Context, batch string, status ...api.MigrationStatusType) (migration.QueueEntries, error) {
 //				panic("mock out the GetAllByBatchAndState method")
 //			},
 //			GetAllByStateFunc: func(ctx context.Context, status ...api.MigrationStatusType) (migration.QueueEntries, error) {
@@ -84,7 +84,7 @@ type QueueServiceMock struct {
 	GetAllByBatchFunc func(ctx context.Context, batch string) (migration.QueueEntries, error)
 
 	// GetAllByBatchAndStateFunc mocks the GetAllByBatchAndState method.
-	GetAllByBatchAndStateFunc func(ctx context.Context, batch string, status api.MigrationStatusType) (migration.QueueEntries, error)
+	GetAllByBatchAndStateFunc func(ctx context.Context, batch string, status ...api.MigrationStatusType) (migration.QueueEntries, error)
 
 	// GetAllByStateFunc mocks the GetAllByState method.
 	GetAllByStateFunc func(ctx context.Context, status ...api.MigrationStatusType) (migration.QueueEntries, error)
@@ -149,7 +149,7 @@ type QueueServiceMock struct {
 			// Batch is the batch argument value.
 			Batch string
 			// Status is the status argument value.
-			Status api.MigrationStatusType
+			Status []api.MigrationStatusType
 		}
 		// GetAllByState holds details about calls to the GetAllByState method.
 		GetAllByState []struct {
@@ -405,14 +405,14 @@ func (mock *QueueServiceMock) GetAllByBatchCalls() []struct {
 }
 
 // GetAllByBatchAndState calls GetAllByBatchAndStateFunc.
-func (mock *QueueServiceMock) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (migration.QueueEntries, error) {
+func (mock *QueueServiceMock) GetAllByBatchAndState(ctx context.Context, batch string, status ...api.MigrationStatusType) (migration.QueueEntries, error) {
 	if mock.GetAllByBatchAndStateFunc == nil {
 		panic("QueueServiceMock.GetAllByBatchAndStateFunc: method is nil but QueueService.GetAllByBatchAndState was just called")
 	}
 	callInfo := struct {
 		Ctx    context.Context
 		Batch  string
-		Status api.MigrationStatusType
+		Status []api.MigrationStatusType
 	}{
 		Ctx:    ctx,
 		Batch:  batch,
@@ -421,7 +421,7 @@ func (mock *QueueServiceMock) GetAllByBatchAndState(ctx context.Context, batch s
 	mock.lockGetAllByBatchAndState.Lock()
 	mock.calls.GetAllByBatchAndState = append(mock.calls.GetAllByBatchAndState, callInfo)
 	mock.lockGetAllByBatchAndState.Unlock()
-	return mock.GetAllByBatchAndStateFunc(ctx, batch, status)
+	return mock.GetAllByBatchAndStateFunc(ctx, batch, status...)
 }
 
 // GetAllByBatchAndStateCalls gets all the calls that were made to GetAllByBatchAndState.
@@ -431,12 +431,12 @@ func (mock *QueueServiceMock) GetAllByBatchAndState(ctx context.Context, batch s
 func (mock *QueueServiceMock) GetAllByBatchAndStateCalls() []struct {
 	Ctx    context.Context
 	Batch  string
-	Status api.MigrationStatusType
+	Status []api.MigrationStatusType
 } {
 	var calls []struct {
 		Ctx    context.Context
 		Batch  string
-		Status api.MigrationStatusType
+		Status []api.MigrationStatusType
 	}
 	mock.lockGetAllByBatchAndState.RLock()
 	calls = mock.calls.GetAllByBatchAndState
