@@ -73,17 +73,38 @@ type BatchPut struct {
 	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
 
 	// Set of migration window timings.
-	MigrationWindows []MigrationWindow
+	MigrationWindows []MigrationWindow `json:"migration_windows" yaml:"migration_windows"`
+
+	// Set of constraints to apply to the batch.
+	Constraints []BatchConstraint `json:"constraints" yaml:"constraints"`
 }
 
 // MigrationWindow defines the scheduling of a batch migration.
 type MigrationWindow struct {
 	// Start time for finalizing migrations after background import.
-	Start time.Time
+	Start time.Time `json:"start" yaml:"start"`
 
 	// End time for finalizing migrations after background import.
-	End time.Time
+	End time.Time `json:"end" yaml:"end"`
 
 	// Lockout time after which the batch can no longer modify the target instance.
-	Lockout time.Time
+	Lockout time.Time `json:"lockout" yaml:"lockout"`
+}
+
+// BatchConstraint is a constraint to be applied to a batch to determine which instances can be migrated.
+type BatchConstraint struct {
+	// Name of the constraint.
+	Name string `json:"name" yaml:"name"`
+
+	// Description of the constraint.
+	Description string `json:"description" yaml:"description"`
+
+	// Expression used to select instances for the constraint.
+	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
+
+	// Maximum amount of matched instances that can concurrently migrate, before moving to the next migration window.
+	MaxConcurrentInstances int `json:"max_concurrent_instances" yaml:"max_concurrent_instances"`
+
+	// Minimum amount of time required for an instance to boot after initial disk import. Migration window duration must be at least this much.
+	MinInstanceBootTime string `json:"min_instance_boot_time" yaml:"min_instance_boot_time"`
 }

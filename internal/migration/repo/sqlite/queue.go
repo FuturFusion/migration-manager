@@ -45,8 +45,13 @@ func (q queue) GetAllByBatch(ctx context.Context, batch string) (migration.Queue
 	return entities.GetQueueEntries(ctx, transaction.GetDBTX(ctx, q.db), entities.QueueEntryFilter{BatchName: &batch})
 }
 
-func (q queue) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (migration.QueueEntries, error) {
-	return entities.GetQueueEntries(ctx, transaction.GetDBTX(ctx, q.db), entities.QueueEntryFilter{BatchName: &batch, MigrationStatus: &status})
+func (q queue) GetAllByBatchAndState(ctx context.Context, batch string, statuses ...api.MigrationStatusType) (migration.QueueEntries, error) {
+	filters := []entities.QueueEntryFilter{}
+	for _, s := range statuses {
+		filters = append(filters, entities.QueueEntryFilter{BatchName: &batch, MigrationStatus: &s})
+	}
+
+	return entities.GetQueueEntries(ctx, transaction.GetDBTX(ctx, q.db), filters...)
 }
 
 func (q queue) GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (migration.QueueEntries, error) {

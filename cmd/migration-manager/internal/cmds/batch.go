@@ -107,7 +107,8 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	// Add the batch.
 	b := api.Batch{
 		BatchPut: api.BatchPut{
-			Name: args[0],
+			Name:        args[0],
+			Constraints: []api.BatchConstraint{},
 		},
 	}
 
@@ -174,6 +175,56 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		addWindows, err = c.global.Asker.AskBool("Add more migration windows? (yes/no) [default=no]: ", "no")
+		if err != nil {
+			return err
+		}
+	}
+
+	addConstraints, err := c.global.Asker.AskBool("Add constraints? (yes/no) [default=no]: ", "no")
+	if err != nil {
+		return err
+	}
+
+	for addConstraints {
+		var constraint api.BatchConstraint
+		constraint.Name, err = c.global.Asker.AskString("Constraint name: ", "", nil)
+		if err != nil {
+			return err
+		}
+
+		constraint.Description, err = c.global.Asker.AskString("Constraint description (empty to skip): ", "", validate.IsAny)
+		if err != nil {
+			return err
+		}
+
+		constraint.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances: ", "", validate.IsAny)
+		if err != nil {
+			return err
+		}
+
+		maxConcurrent, err := c.global.Asker.AskString("Maximum concurrent instance (empty to skip): ", "0", validate.IsInt64)
+		if err != nil {
+			return err
+		}
+
+		constraint.MaxConcurrentInstances, err = strconv.Atoi(maxConcurrent)
+		if err != nil {
+			return err
+		}
+
+		constraint.MinInstanceBootTime, err = c.global.Asker.AskString("Minimum instance boot time (empty to skip): ", "", func(s string) error {
+			if s != "" {
+				return validate.IsMinimumDuration(0)(s)
+			}
+
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		b.Constraints = append(b.Constraints, constraint)
+		addConstraints, err = c.global.Asker.AskBool("Add more constraints? (yes/no) [default=no]: ", "no")
 		if err != nil {
 			return err
 		}
@@ -616,6 +667,60 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		addWindows, err = c.global.Asker.AskBool("Add more migration windows? (yes/no) [default=no]: ", "no")
+		if err != nil {
+			return err
+		}
+	}
+
+	addConstraints, err := c.global.Asker.AskBool("Replace constraints? (yes/no) [default=no]: ", "no")
+	if err != nil {
+		return err
+	}
+
+	if addConstraints {
+		b.Constraints = []api.BatchConstraint{}
+	}
+
+	for addConstraints {
+		var constraint api.BatchConstraint
+		constraint.Name, err = c.global.Asker.AskString("Constraint name: ", "", nil)
+		if err != nil {
+			return err
+		}
+
+		constraint.Description, err = c.global.Asker.AskString("Constraint description (empty to skip): ", "", validate.IsAny)
+		if err != nil {
+			return err
+		}
+
+		constraint.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances: ", "", validate.IsAny)
+		if err != nil {
+			return err
+		}
+
+		maxConcurrent, err := c.global.Asker.AskString("Maximum concurrent instance (empty to skip): ", "0", validate.IsInt64)
+		if err != nil {
+			return err
+		}
+
+		constraint.MaxConcurrentInstances, err = strconv.Atoi(maxConcurrent)
+		if err != nil {
+			return err
+		}
+
+		constraint.MinInstanceBootTime, err = c.global.Asker.AskString("Minimum instance boot time (empty to skip): ", "", func(s string) error {
+			if s != "" {
+				return validate.IsMinimumDuration(0)(s)
+			}
+
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		b.Constraints = append(b.Constraints, constraint)
+		addConstraints, err = c.global.Asker.AskBool("Add more constraints? (yes/no) [default=no]: ", "no")
 		if err != nil {
 			return err
 		}

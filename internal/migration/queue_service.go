@@ -3,8 +3,13 @@ package migration
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"net/http"
+	"slices"
+	"sort"
 
 	"github.com/google/uuid"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -57,8 +62,8 @@ func (s queueService) GetAllByBatch(ctx context.Context, batch string) (QueueEnt
 	return s.repo.GetAllByBatch(ctx, batch)
 }
 
-func (s queueService) GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (QueueEntries, error) {
-	return s.repo.GetAllByBatchAndState(ctx, batch, status)
+func (s queueService) GetAllByBatchAndState(ctx context.Context, batch string, statuses ...api.MigrationStatusType) (QueueEntries, error) {
+	return s.repo.GetAllByBatchAndState(ctx, batch, statuses...)
 }
 
 func (s queueService) GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (QueueEntries, error) {
@@ -109,6 +114,144 @@ func (s queueService) DeleteAllByBatch(ctx context.Context, batch string) error 
 	return s.repo.DeleteAllByBatch(ctx, batch)
 }
 
+// GetNextWindow returns the next valid migration window for the instance in the batch.
+// - If the instance does not match any constraint, the earliest valid migration window is used.
+// - The earliest migration window valid for the the first matching constraint will be used otherwise.
+// - Returns a 404 if no migration window can be found, but the instance matched a constraint.
+func (s queueService) GetNextWindow(ctx context.Context, batchName string, instanceUUID uuid.UUID) (*MigrationWindow, error) {
+	var entries QueueEntries
+	var instances Instances
+	var windows MigrationWindows
+	var batch *Batch
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		entries, err = s.GetAllByBatchAndState(ctx, batchName, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_FINAL_IMPORT, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
+		if err != nil {
+			return fmt.Errorf("Failed to get idle queue entries for batch %q: %w", batchName, err)
+		}
+
+		windows, err = s.batch.GetMigrationWindows(ctx, batchName)
+		if err != nil {
+			return fmt.Errorf("Failed to get migration windows for batch %q: %w", batchName, err)
+		}
+
+		instances, err = s.instance.GetAllQueued(ctx, entries)
+		if err != nil {
+			return fmt.Errorf("Failed to get idle instances for batch %q: %w", batchName, err)
+		}
+
+		batch, err = s.batch.GetByName(ctx, batchName)
+		if err != nil {
+			return fmt.Errorf("Failed to get batch %q: %w", batchName, err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	matchedAny := false
+	for _, c := range batch.Constraints {
+		if matchedAny {
+			break
+		}
+
+		for _, inst := range instances {
+			match, err := inst.MatchesCriteria(c.IncludeExpression)
+			if err != nil {
+				return nil, err
+			}
+
+			// Record if this instance in particular matched any constraint.
+			if inst.UUID == instanceUUID && match {
+				matchedAny = true
+				break
+			}
+		}
+	}
+
+	// If there are no constraints on the batch, or if the instance matches none of them, just return the earliest migration window.
+	if !matchedAny || len(batch.Constraints) == 0 {
+		return windows.GetEarliest()
+	}
+
+	statusMap := make(map[uuid.UUID]api.MigrationStatusType, len(entries))
+	for _, e := range entries {
+		statusMap[e.InstanceUUID] = e.MigrationStatus
+	}
+
+	// Sort instances according to their status in the queue.
+	sort.Slice(instances, func(i, j int) bool {
+		aFinal := statusMap[instances[i].UUID] == api.MIGRATIONSTATUS_FINAL_IMPORT
+		bFinal := statusMap[instances[j].UUID] == api.MIGRATIONSTATUS_FINAL_IMPORT
+
+		if aFinal != bFinal {
+			return aFinal
+		}
+
+		aFinal = statusMap[instances[i].UUID] == api.MIGRATIONSTATUS_IMPORT_COMPLETE
+		bFinal = statusMap[instances[j].UUID] == api.MIGRATIONSTATUS_IMPORT_COMPLETE
+
+		if aFinal != bFinal {
+			return aFinal
+		}
+
+		return instances[i].UUID.String() < instances[j].UUID.String()
+	})
+
+	for _, c := range batch.Constraints {
+		var numMatches int
+		matches := map[uuid.UUID]bool{}
+		for _, inst := range instances {
+			// If we hit the limit, then stop and check the list of matches.
+			if c.MaxConcurrentInstances > 0 && numMatches == c.MaxConcurrentInstances {
+				break
+			}
+
+			match, err := inst.MatchesCriteria(c.IncludeExpression)
+			if err != nil {
+				return nil, err
+			}
+
+			if !match {
+				continue
+			}
+
+			// Record that we got a match.
+			numMatches++
+
+			// Keep track of IDLE instances that match.
+			if statusMap[inst.UUID] == api.MIGRATIONSTATUS_IDLE {
+				matches[inst.UUID] = true
+			}
+		}
+
+		// Consider the next constraint if this instance does not match, or does not fit within the max concurrent count.
+		if !matches[instanceUUID] {
+			continue
+		}
+
+		// If there is no minimum migration time, we just use the earliest valid migration window.
+		if c.MinInstanceBootTime == 0 {
+			return windows.GetEarliest()
+		}
+
+		// Get the earliest window that fits the constraint duration.
+		index := slices.IndexFunc(windows, func(w MigrationWindow) bool {
+			return w.FitsDuration(c.MinInstanceBootTime)
+		})
+
+		// If we found a matching window, then stop checking constraints and return.
+		if index != -1 {
+			return &windows[index], nil
+		}
+	}
+
+	// Return a 404 if this instance matched a constraint, but no valid migration window could be found.
+	return nil, incusAPI.StatusErrorf(http.StatusNotFound, "No valid migration window found for instance %q", instanceUUID)
+}
+
 // NewWorkerCommandByInstanceID gets the next worker command for the instance with the given UUID, and updates the instance state accordingly.
 // An instance must be IDLE to have a next worker command.
 func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uuid.UUID) (WorkerCommand, error) {
@@ -146,28 +289,35 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			OSVersion:  instance.Properties.OSVersion,
 		}
 
-		window, err := s.batch.GetEarliestWindow(ctx, queueEntry.BatchName)
-		if err != nil {
-			return fmt.Errorf("Failed to get earliest migration window for batch %q: %w", queueEntry.BatchName, err)
-		}
-
 		// Determine what action, if any, the worker should start.
 		newStatus := queueEntry.MigrationStatus
 		newStatusMessage := queueEntry.MigrationStatusMessage
-		switch {
-		case queueEntry.NeedsDiskImport && instance.Properties.BackgroundImport:
+		if queueEntry.NeedsDiskImport && instance.Properties.BackgroundImport {
 			// If we can do a background disk sync, kick it off.
 			workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
 
 			newStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
 			newStatusMessage = string(api.MIGRATIONSTATUS_BACKGROUND_IMPORT)
+		} else {
+			window, err := s.GetNextWindow(ctx, queueEntry.BatchName, queueEntry.InstanceUUID)
+			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+				return err
+			}
 
-		case window.Begun():
-			// If a migration window has not been defined, or it has and we have passed the start time, begin the final migration.
-			workerCommand.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
+			if err != nil {
+				slog.Warn("No matching migration window found, skipping final import for now", slog.String("instance", instance.Properties.Location), slog.Any("error", err))
+				return nil
+			}
 
-			newStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
-			newStatusMessage = string(api.MIGRATIONSTATUS_FINAL_IMPORT)
+			begun := window.Begun()
+			slog.Info("Selected migration window", slog.String("start", window.Start.String()), slog.String("end", window.End.String()), slog.Bool("begun", begun), slog.String("location", instance.Properties.Location))
+			if begun {
+				// If a migration window has not been defined, or it has and we have passed the start time, begin the final migration.
+				workerCommand.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
+
+				newStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
+				newStatusMessage = string(api.MIGRATIONSTATUS_FINAL_IMPORT)
+			}
 		}
 
 		// Update queueEntry in the database, and set the worker update time.

@@ -403,7 +403,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			name: "success",
 			batch: migration.Batch{
 				ID:                1,
-				Name:              "new one",
+				Name:              "new-one",
 				Target:            "one",
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
@@ -422,7 +422,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			name: "error - invalid id",
 			batch: migration.Batch{
 				ID:     -1, // invalid
-				Name:   "new one",
+				Name:   "new-one",
 				Target: "one",
 				Status: api.BATCHSTATUS_DEFINED,
 			},
@@ -450,7 +450,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			name: "error - repo.GetByID",
 			batch: migration.Batch{
 				ID:                1,
-				Name:              "new one",
+				Name:              "new-one",
 				Status:            api.BATCHSTATUS_DEFINED,
 				Target:            "one",
 				IncludeExpression: "true",
@@ -463,7 +463,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			name: "error - status can not be modified",
 			batch: migration.Batch{
 				ID:                1,
-				Name:              "new one",
+				Name:              "new-one",
 				Status:            api.BATCHSTATUS_RUNNING,
 				Target:            "one",
 				IncludeExpression: "true",
@@ -586,14 +586,17 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			instanceSvcGetAllByBatchIDInstances: migration.Instances{
 				{
 					// Matching instance, will get updated.
+					UUID:       uuid.Must(uuid.NewRandom()),
 					Properties: api.InstanceProperties{Location: "/inventory/path/A"},
 				},
 				{
 					// Not matching instance, will be unassigned from batch
+					UUID:       uuid.Must(uuid.NewRandom()),
 					Properties: api.InstanceProperties{Location: "/inventory/path/B"},
 				},
 				{
 					// Instance in state "user disabled", will be skipped
+					UUID:       uuid.Must(uuid.NewRandom()),
 					Properties: api.InstanceProperties{Location: "/inventory/path/A user disabled"},
 					Overrides:  api.InstanceOverride{DisableMigration: true},
 				},
@@ -601,14 +604,17 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			instanceSvcGetAll: migration.Instances{
 				{
 					// Matching instance, will get updated.
+					UUID:       uuid.Must(uuid.NewRandom()),
 					Properties: api.InstanceProperties{Location: "/inventory/path/A unassigned"},
 				},
 				{
 					// Not matching instance, will stay unassigned from batch
+					UUID:       uuid.Must(uuid.NewRandom()),
 					Properties: api.InstanceProperties{Location: "/inventory/path/B unassigned"},
 				},
 				{
 					// Instance in state "user disabled", will be skipped
+					UUID:       uuid.Must(uuid.NewRandom()),
 					Properties: api.InstanceProperties{Location: "/inventory/path/A unassigned user disabled"},
 					Overrides:  api.InstanceOverride{DisableMigration: true},
 				},
@@ -851,6 +857,7 @@ func TestBatchService_DeleteByName(t *testing.T) {
 		instanceSvcGetAllByBatchErr       error
 		instanceSvcUnassignFromBatchErr   error
 		repoDeleteByNameErr               error
+		repoUnassignWindowsErr            error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -943,6 +950,18 @@ func TestBatchService_DeleteByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
+			name:    "error - repo.UnassignMigrationWindows",
+			nameArg: "one",
+			repoGetByNameBatch: &migration.Batch{
+				ID:     1,
+				Name:   "one",
+				Status: api.BATCHSTATUS_DEFINED,
+			},
+			repoUnassignWindowsErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
 			name:    "error - repo.DeleteByName",
 			nameArg: "one",
 			repoGetByNameBatch: &migration.Batch{
@@ -968,6 +987,10 @@ func TestBatchService_DeleteByName(t *testing.T) {
 				},
 				UnassignBatchFunc: func(ctx context.Context, batchName string, instanceUUID uuid.UUID) error {
 					return tc.instanceSvcUnassignFromBatchErr
+				},
+
+				UnassignMigrationWindowsFunc: func(ctx context.Context, batch string) error {
+					return tc.repoUnassignWindowsErr
 				},
 			}
 
@@ -1297,7 +1320,6 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			currentBatch := migration.Batch{
-				Name:              "test batch",
 				IncludeExpression: tc.expression,
 			}
 
@@ -1320,7 +1342,7 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 				SourceType: api.SOURCETYPE_VMWARE,
 			}
 
-			res, err := currentBatch.InstanceMatchesCriteria(instance)
+			res, err := instance.MatchesCriteria(currentBatch.IncludeExpression)
 			tc.assertErr(t, err)
 
 			require.Equal(t, tc.wantResult, res)

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -226,6 +227,25 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
+	constraints := make([]migration.BatchConstraint, len(apiBatch.Constraints))
+	for i, c := range apiBatch.Constraints {
+		var duration time.Duration
+		if c.MinInstanceBootTime != "" {
+			duration, err = time.ParseDuration(c.MinInstanceBootTime)
+			if err != nil {
+				return response.SmartError(fmt.Errorf("Failed to parse min migration time for batch %q: %w", apiBatch.Name, err))
+			}
+		}
+
+		constraints[i] = migration.BatchConstraint{
+			Name:                   c.Name,
+			Description:            c.Description,
+			IncludeExpression:      c.IncludeExpression,
+			MaxConcurrentInstances: c.MaxConcurrentInstances,
+			MinInstanceBootTime:    duration,
+		}
+	}
+
 	batch := migration.Batch{
 		Name:              apiBatch.Name,
 		Target:            apiBatch.Target,
@@ -234,6 +254,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		StatusMessage:     string(api.BATCHSTATUS_DEFINED),
 		StoragePool:       apiBatch.StoragePool,
 		IncludeExpression: apiBatch.IncludeExpression,
+		Constraints:       constraints,
 	}
 
 	_, err = d.batch.Create(ctx, batch)
@@ -400,6 +421,25 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
+	constraints := make([]migration.BatchConstraint, len(batch.Constraints))
+	for i, c := range batch.Constraints {
+		var duration time.Duration
+		if c.MinInstanceBootTime != "" {
+			duration, err = time.ParseDuration(c.MinInstanceBootTime)
+			if err != nil {
+				return response.SmartError(fmt.Errorf("Failed to parse min migration time for batch %q: %w", batch.Name, err))
+			}
+		}
+
+		constraints[i] = migration.BatchConstraint{
+			Name:                   c.Name,
+			Description:            c.Description,
+			IncludeExpression:      c.IncludeExpression,
+			MaxConcurrentInstances: c.MaxConcurrentInstances,
+			MinInstanceBootTime:    duration,
+		}
+	}
+
 	// Get the existing batch.
 	currentBatch, err := d.batch.GetByName(ctx, name)
 	if err != nil {
@@ -447,6 +487,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		StatusMessage:     currentBatch.StatusMessage,
 		StoragePool:       batch.StoragePool,
 		IncludeExpression: batch.IncludeExpression,
+		Constraints:       constraints,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))

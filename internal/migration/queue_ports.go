@@ -15,7 +15,7 @@ type QueueService interface {
 	GetAll(ctx context.Context) (QueueEntries, error)
 	GetAllByState(ctx context.Context, status ...api.MigrationStatusType) (QueueEntries, error)
 	GetAllByBatch(ctx context.Context, batch string) (QueueEntries, error)
-	GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (QueueEntries, error)
+	GetAllByBatchAndState(ctx context.Context, batch string, status ...api.MigrationStatusType) (QueueEntries, error)
 	GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (QueueEntries, error)
 	GetByInstanceUUID(ctx context.Context, id uuid.UUID) (*QueueEntry, error)
 	Update(ctx context.Context, entry *QueueEntry) error
@@ -37,7 +37,7 @@ type QueueRepo interface {
 	GetAll(ctx context.Context) (QueueEntries, error)
 	GetAllByState(ctx context.Context, status ...api.MigrationStatusType) (QueueEntries, error)
 	GetAllByBatch(ctx context.Context, batch string) (QueueEntries, error)
-	GetAllByBatchAndState(ctx context.Context, batch string, status api.MigrationStatusType) (QueueEntries, error)
+	GetAllByBatchAndState(ctx context.Context, batch string, statuses ...api.MigrationStatusType) (QueueEntries, error)
 	GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (QueueEntries, error)
 	GetByInstanceUUID(ctx context.Context, id uuid.UUID) (*QueueEntry, error)
 	Update(ctx context.Context, entry QueueEntry) error
