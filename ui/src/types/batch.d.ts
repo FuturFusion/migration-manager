@@ -7,9 +7,9 @@ export interface BatchConstraint {
 }
 
 export interface MigrationWindow {
-  start: Date;
-  end: Date;
-  lockout: Date;
+  start: string;
+  end: string;
+  lockout: string;
 }
 
 export interface Batch {

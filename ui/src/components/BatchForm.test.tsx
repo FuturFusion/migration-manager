@@ -40,6 +40,7 @@ test('renders and submit BaseForm', async () => {
     target_project: "default",
     status: "",
     status_message: "",
+    migration_windows: [],
   });
 });
 

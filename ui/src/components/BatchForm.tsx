@@ -4,12 +4,25 @@ import Form from 'react-bootstrap/Form';
 import { useQuery } from '@tanstack/react-query';
 import { useFormik } from 'formik';
 import { fetchTargets } from 'api/targets';
-import { Batch } from 'types/batch';
+import MigrationWindowsWidget from 'components/MigrationWindowsWidget';
+import { Batch, MigrationWindow } from 'types/batch';
+import { formatDate, isMigrationWindowDateValid } from 'util/date';
 
 interface Props {
   batch?: Batch;
   onSubmit: (values: any) => void;
 }
+
+type BatchFormValues = {
+  name: string,
+  target: string,
+  target_project: string,
+  status: string,
+  status_message: string,
+  storage_pool: string,
+  include_expression: string,
+  migration_windows: MigrationWindow[],
+};
 
 const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
   const {
@@ -18,14 +31,42 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     isLoading: isLoadingTargets,
   } = useQuery({ queryKey: ['targets'], queryFn: fetchTargets });
 
-  const validateForm = (values: any) => {
-    const errors: any = {};
+  const validateMigrationWindows = (windows: MigrationWindow[]): string | undefined => {
+    let errors = "";
+
+    windows.forEach((item, index) => {
+      if (!item.start) {
+        errors += `Window ${index+1} is missing a 'start' date.\n`;
+      }
+
+      if (!item.end) {
+        errors += `Window ${index+1} is missing an 'end' date.\n`;
+      }
+
+      if (item.start && !isMigrationWindowDateValid(item.start)) {
+        errors += `Window ${index+1} has an invalid date format in the 'start' field.\n`;
+      }
+
+      if (item.end && !isMigrationWindowDateValid(item.end)) {
+        errors += `Window ${index+1} has an invalid date format in the 'end' field.\n`;
+      }
+
+      if (item.lockout && !isMigrationWindowDateValid(item.lockout)) {
+        errors += `Window ${index+1} has an invalid date format in the 'lockout' field.\n`;
+      }
+    });
+
+    return errors || undefined;
+  }
+
+  const validateForm = (values: BatchFormValues): Partial<Record<keyof BatchFormValues, string>> => {
+    const errors: Partial<Record<keyof BatchFormValues, string>> = {};
 
     if (!values.name) {
       errors.name = 'Name is required';
     }
 
-    if (!values.target || values.target < 1) {
+    if (!values.target || Number(values.target) < 1) {
       errors.target = 'Target is required';
     }
 
@@ -33,10 +74,15 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
       errors.include_expression = 'Include expression is required';
     }
 
+    errors.migration_windows = validateMigrationWindows(values.migration_windows);
+    if (!errors.migration_windows) {
+      delete errors.migration_windows
+    }
+
     return errors;
   };
 
-  let formikInitialValues = {
+  let formikInitialValues: BatchFormValues = {
     name: '',
     target: '',
     target_project: 'default',
@@ -44,9 +90,16 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     status_message: '',
     storage_pool: 'local',
     include_expression: '',
+    migration_windows: [],
   };
 
   if (batch) {
+    const migrationWindows = batch.migration_windows.map(item => ({
+      start: formatDate(item.start.toString()),
+      end: formatDate(item.end.toString()),
+      lockout: formatDate(item.lockout.toString()),
+    }));
+
     formikInitialValues = {
       name: batch.name,
       target: batch.target,
@@ -55,6 +108,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
       status_message: batch.status_message,
       storage_pool: batch.storage_pool,
       include_expression: batch.include_expression,
+      migration_windows: migrationWindows,
     };
   }
 
@@ -63,10 +117,35 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     validate: validateForm,
     enableReinitialize: true,
     onSubmit: (values) => {
+      const formattedMigrationWindows = values.migration_windows.map(item => {
+        let start = null;
+        let end = null;
+        let lockout = null;
+
+        if (item.start) {
+          start = new Date(item.start).toISOString();
+        }
+
+        if (item.end) {
+          end = new Date(item.end).toISOString();
+        }
+
+        if (item.lockout) {
+          lockout = new Date(item.lockout).toISOString();
+        }
+
+        return {
+          start,
+          end,
+          lockout,
+        }
+      });
+
       const modifiedValues = {
         ...values,
         target_project: values.target_project != '' ? values.target_project : 'default',
         storage_pool: values.storage_pool != '' ? values.storage_pool : 'local',
+        migration_windows: formattedMigrationWindows,
       };
 
       onSubmit(modifiedValues);
@@ -141,6 +220,16 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               <Form.Control.Feedback type="invalid">
                 {formik.errors.include_expression}
               </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="migration_windows">
+            <Form.Label>Migration windows</Form.Label>
+            <MigrationWindowsWidget
+              value={formik.values.migration_windows}
+              onChange={(value) => formik.setFieldValue("migration_windows", value)} />
+            <Form.Control.Feedback type="invalid" className="d-block" style={{ whiteSpace: 'pre-line' }}>
+              {typeof formik.errors.migration_windows === 'string' &&
+              formik.errors.migration_windows}
+            </Form.Control.Feedback>
           </Form.Group>
         </Form>
       </div>
