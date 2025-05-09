@@ -234,6 +234,8 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 
 	for i, c := range b.Constraints {
 		constraints[i] = api.BatchConstraint{
+			Name:                   c.Name,
+			Description:            c.Description,
 			IncludeExpression:      c.IncludeExpression,
 			MaxConcurrentInstances: c.MaxConcurrentInstances,
 			MinInstanceBootTime:    c.MinInstanceBootTime.String(),
