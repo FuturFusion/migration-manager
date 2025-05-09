@@ -12,6 +12,7 @@ import {
   fetchInstance
 } from 'api/instances';
 import { useNotification } from 'context/notification';
+import KeyValueWidget from 'components/KeyValueWidget';
 import { APIResponse } from 'types/response';
 import {
   bytesToHumanReadable,
@@ -43,6 +44,7 @@ const InstanceOverrides: FC = () => {
       disable_migration: 'false',
       cpus: 0,
       memory: '',
+      config: {},
   };
 
   if (instance && overrideExists) {
@@ -52,6 +54,7 @@ const InstanceOverrides: FC = () => {
       disable_migration: overrides.disable_migration.toString(),
       cpus: overrides.properties.cpus,
       memory: bytesToHumanReadable(overrides.properties.memory),
+      config: overrides.properties.config,
     };
   }
 
@@ -105,6 +108,7 @@ const InstanceOverrides: FC = () => {
         properties: {
           memory: memoryInBytes,
           cpus: values.cpus,
+          config: values.config,
         }
       };
       if (!overrideExists) {
@@ -212,6 +216,12 @@ const InstanceOverrides: FC = () => {
           <Form.Control.Feedback type="invalid">
             {formik.errors.memory}
           </Form.Control.Feedback>
+        </Form.Group>
+        <Form.Group className="mb-3" controlId="config">
+          <Form.Label>Config</Form.Label>
+          <KeyValueWidget
+            value={formik.values.config}
+            onChange={(value) => formik.setFieldValue("config", value)} />
         </Form.Group>
         <Button className="float-end" variant="success" onClick={() => formik.handleSubmit()}>
           Save
