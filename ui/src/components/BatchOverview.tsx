@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router';
 import { fetchBatch } from 'api/batches';
-import { formatDate } from 'util/date';
 
 const BatchOverview = () => {
   const { name } = useParams();
@@ -51,14 +50,6 @@ const BatchOverview = () => {
       <div className="row">
         <div className="col-2 detail-table-header">Include expression</div>
         <div className="col-10 detail-table-cell">{ batch?.include_expression }</div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Window start</div>
-        <div className="col-10 detail-table-cell">{ formatDate(batch?.migration_window_start.toString()) }</div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Window stop</div>
-        <div className="col-10 detail-table-cell">{ formatDate(batch?.migration_window_end.toString()) }</div>
       </div>
     </div>
   );

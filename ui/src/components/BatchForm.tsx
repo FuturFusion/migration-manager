@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useFormik } from 'formik';
 import { fetchTargets } from 'api/targets';
 import { Batch } from 'types/batch';
-import { formatDate, isMigrationWindowDateValid} from 'util/date';
 
 interface Props {
   batch?: Batch;
@@ -34,14 +33,6 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
       errors.include_expression = 'Include expression is required';
     }
 
-    if (values.migration_window_start && !isMigrationWindowDateValid(values.migration_window_start)) {
-      errors.migration_window_start = 'Not valid date format';
-    }
-
-    if (values.migration_window_end && !isMigrationWindowDateValid(values.migration_window_end)) {
-      errors.migration_window_end = 'Not valid date format';
-    }
-
     return errors;
   };
 
@@ -53,8 +44,6 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     status_message: '',
     storage_pool: 'local',
     include_expression: '',
-    migration_window_start: '',
-    migration_window_end: '',
   };
 
   if (batch) {
@@ -66,8 +55,6 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
       status_message: batch.status_message,
       storage_pool: batch.storage_pool,
       include_expression: batch.include_expression,
-      migration_window_start: formatDate(batch.migration_window_start.toString()),
-      migration_window_end: formatDate(batch.migration_window_end.toString()),
     };
   }
 
@@ -76,23 +63,10 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     validate: validateForm,
     enableReinitialize: true,
     onSubmit: (values) => {
-      let windowStart = null;
-      let windowEnd = null;
-
-      if (values.migration_window_start) {
-        windowStart = new Date(values.migration_window_start).toISOString();
-      }
-
-      if (values.migration_window_end) {
-        windowEnd = new Date(values.migration_window_end).toISOString();
-      }
-
       const modifiedValues = {
         ...values,
         target_project: values.target_project != '' ? values.target_project : 'default',
         storage_pool: values.storage_pool != '' ? values.storage_pool : 'local',
-        migration_window_start: windowStart,
-        migration_window_end: windowEnd,
       };
 
       onSubmit(modifiedValues);
@@ -167,38 +141,6 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               <Form.Control.Feedback type="invalid">
                 {formik.errors.include_expression}
               </Form.Control.Feedback>
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="windowStart">
-            <Form.Label>Migration window start</Form.Label>
-            <Form.Control
-              type="text"
-              name="migration_window_start"
-              value={formik.values.migration_window_start}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.migration_window_start && formik.touched.migration_window_start}/>
-            <Form.Text className="text-muted">
-              YYYY-MM-DD HH:MM:SS / YYYY-MM-DD HH:MM:SS UTC (e.g., {formatDate(new Date().toISOString())})
-            </Form.Text>
-            <Form.Control.Feedback type="invalid">
-              {formik.errors.migration_window_start}
-            </Form.Control.Feedback>
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="windowEnd">
-            <Form.Label>Migration window end</Form.Label>
-            <Form.Control
-              type="text"
-              name="migration_window_end"
-              value={formik.values.migration_window_end}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.migration_window_end && formik.touched.migration_window_end}/>
-            <Form.Text className="text-muted">
-              YYYY-MM-DD HH:MM:SS / YYYY-MM-DD HH:MM:SS UTC (e.g., {formatDate(new Date().toISOString())})
-            </Form.Text>
-            <Form.Control.Feedback type="invalid">
-              {formik.errors.migration_window_end}
-            </Form.Control.Feedback>
           </Form.Group>
         </Form>
       </div>

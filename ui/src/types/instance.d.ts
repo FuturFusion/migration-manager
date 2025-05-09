@@ -47,19 +47,16 @@ export interface InstancePropertiesConfigurable {
 }
 
 export interface InstanceOverride {
-  uuid: string;
-  last_update: Date;
+  last_update: string;
   comment: string;
   disable_migration: boolean;
   properties: InstancePropertiesConfigurable;
 }
 
 export interface Instance {
-  migration_status: string;
-  migration_status_message: string;
   last_update_from_source: string;
   source: string;
-  batch_id: string;
+  source_type: SourceType;
   properties: InstanceProperties;
   overrides: InstanceOverride;
 }

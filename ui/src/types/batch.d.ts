@@ -1,12 +1,25 @@
-export interface Batch {
-  database_id: number;
+export interface BatchConstraint {
+  name: string;
+  description: string;
   include_expression: string;
-  migration_window_end: Date;
-  migration_window_start: Date;
+  max_concurrent_instances: number;
+  min_instance_boot_time: string;
+}
+
+export interface MigrationWindow {
+  start: Date;
+  end: Date;
+  lockout: Date;
+}
+
+export interface Batch {
+  include_expression: string;
   name: string;
   status: string;
   status_message: string;
   storage_pool: string;
   target: string;
   target_project: string;
+  migration_windows: MigrationWindow[];
+  constraints: BatchConstraint[];
 }

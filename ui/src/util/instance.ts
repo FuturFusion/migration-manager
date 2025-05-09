@@ -1,11 +1,12 @@
 import { Instance } from 'types/instance';
+import { formatDate } from 'util/date';
 
 export const hasOverride = (item: Instance | undefined) => {
   if (!item) {
     return false;
   }
 
-  if (item.overrides && item.overrides.uuid !== "00000000-0000-0000-0000-000000000000") {
+  if (item.overrides && formatDate(item.overrides.last_update) !== "") {
     return true;
   }
 

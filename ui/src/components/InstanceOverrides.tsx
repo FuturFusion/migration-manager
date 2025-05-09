@@ -6,7 +6,6 @@ import { useParams } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useFormik } from 'formik';
 import {
-  createInstanceOverride,
   deleteInstanceOverride,
   updateInstanceOverride,
   fetchInstance
@@ -111,23 +110,14 @@ const InstanceOverrides: FC = () => {
           config: values.config,
         }
       };
-      if (!overrideExists) {
-        createInstanceOverride(uuid ?? '', JSON.stringify(modifiedValues, null, 2))
-          .then((response) => {
-            handleSuccessResponse(response);
-          })
-          .catch((e) => {
-            handleErrorResponse(e);
-          });
-      } else {
-        updateInstanceOverride(uuid ?? '', JSON.stringify(modifiedValues, null, 2))
-          .then((response) => {
-            handleSuccessResponse(response);
-          })
-          .catch((e) => {
-            handleErrorResponse(e);
-          });
-      }
+
+      updateInstanceOverride(uuid ?? '', JSON.stringify(modifiedValues, null, 2))
+        .then((response) => {
+          handleSuccessResponse(response);
+        })
+        .catch((e) => {
+          handleErrorResponse(e);
+        });
      },
    });
 

@@ -10,7 +10,7 @@ test('hasOverride', () => {
   expect(hasOverride(undefined)).toBe(false);
 
   const emptyOverride = {
-      uuid: '00000000-0000-0000-0000-000000000000'
+    last_update: "0001-01-01T00:00:00Z",
   } as InstanceOverride;
 
   expect(hasOverride({
@@ -18,7 +18,7 @@ test('hasOverride', () => {
   } as Instance)).toBe(false);
 
   const testOverride = {
-      uuid: '52b2a489-dec6-49ed-b321-93468a05bd51'
+    last_update: "2025-04-17T07:38:46.644478767Z",
   } as InstanceOverride;
 
   expect(hasOverride({

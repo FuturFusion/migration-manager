@@ -15,7 +15,7 @@ interface Props {
 
 const InstanceDataTable: FC<Props> = ({instances}) => {
 
-  const headers = ["Source", "Location", "OS version", "CPU", "Memory", "Migration status", ""];
+  const headers = ["Source", "Location", "OS version", "CPU", "Memory", ""];
   const rows = instances.map((item) => {
     const className = item.overrides?.disable_migration === true ? 'item-deleted' : '';
     const isOverrideDefined = hasOverride(item);
@@ -50,11 +50,6 @@ const InstanceDataTable: FC<Props> = ({instances}) => {
           override={bytesToHumanReadable(item.overrides?.properties.memory)}
           showOverride={isOverrideDefined && item.overrides.properties.memory > 0}/>,
         sortKey: isOverrideDefined && item.overrides.properties.memory > 0 ? item.overrides.properties.memory : item.properties.memory,
-        class: className,
-      },
-      {
-        content: item.migration_status_message,
-        sortKey: item.migration_status_message,
         class: className,
       },
       {
