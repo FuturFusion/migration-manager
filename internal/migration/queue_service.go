@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"sync"
 
 	"github.com/google/uuid"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
@@ -21,16 +22,19 @@ type queueService struct {
 	batch    BatchService
 	instance InstanceService
 	source   SourceService
+
+	workerLock *sync.Mutex
 }
 
 var _ QueueService = &queueService{}
 
 func NewQueueService(repo QueueRepo, batch BatchService, instance InstanceService, source SourceService) queueService {
 	queueSvc := queueService{
-		repo:     repo,
-		batch:    batch,
-		instance: instance,
-		source:   source,
+		repo:       repo,
+		batch:      batch,
+		instance:   instance,
+		source:     source,
+		workerLock: &sync.Mutex{},
 	}
 
 	return queueSvc
@@ -255,6 +259,9 @@ func (s queueService) GetNextWindow(ctx context.Context, batchName string, insta
 // NewWorkerCommandByInstanceID gets the next worker command for the instance with the given UUID, and updates the instance state accordingly.
 // An instance must be IDLE to have a next worker command.
 func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uuid.UUID) (WorkerCommand, error) {
+	s.workerLock.Lock()
+	defer s.workerLock.Unlock()
+
 	var workerCommand WorkerCommand
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
