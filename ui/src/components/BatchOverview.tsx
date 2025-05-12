@@ -76,6 +76,33 @@ const BatchOverview = () => {
           </Table>
         </div>
       </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Constraints</div>
+        <div className="col-10 detail-table-cell">
+          <Table borderless size="sm">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Include expression</th>
+                <th>Max concurrent instances</th>
+                <th>Min instance boot time</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batch?.constraints.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.name}</td>
+                  <td>{item.description}</td>
+                  <td>{item.include_expression}</td>
+                  <td>{item.max_concurrent_instances}</td>
+                  <td>{item.min_instance_boot_time}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      </div>
     </div>
   );
 };
