@@ -469,10 +469,19 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 			windowMap[w.Key()] = true
 		}
 
-		changedWindows = migration.MigrationWindows{}
+		changed := false
 		for _, w := range batch.MigrationWindows {
 			newWindow := migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
 			if !windowMap[newWindow.Key()] {
+				changed = true
+				break
+			}
+		}
+
+		if changed {
+			changedWindows = migration.MigrationWindows{}
+			for _, w := range batch.MigrationWindows {
+				newWindow := migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
 				changedWindows = append(changedWindows, newWindow)
 			}
 		}
