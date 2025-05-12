@@ -347,8 +347,6 @@ github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 h1:P6pPBnrTSX3DEVR4fDembhR
 github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0/go.mod h1:vmVJ0l/dxyfGW6FmdpVm2joNMFikkuWg0EoCKLGUMNw=
 github.com/lxc/distrobuilder v0.0.0-20250505163748-066136f234ea h1:wLYt8qjVzlEJP4c0eRThizqhEYgxjYPzcWsmvgivJaI=
 github.com/lxc/distrobuilder v0.0.0-20250505163748-066136f234ea/go.mod h1:D9Jfo2JdwDurEB5VOuK+UR7ApxzSUKtC7XP6B8lazWQ=
-github.com/lxc/incus/v6 v6.12.0 h1:XMjlk5nvRSIqzqj3bsMrM+lu8X84aKBwKEx1e1JC4g8=
-github.com/lxc/incus/v6 v6.12.0/go.mod h1:8y7uDdiLvApGJVXh2UIB7SL6SSGPBWT96Sti/2LiToM=
 github.com/lxc/incus/v6 v6.12.1-0.20250506022743-14a14fd0006d h1:buU6BT2d11APXAvp7vMp/X7Ath5k7JEUDv9fNIwvcRI=
 github.com/lxc/incus/v6 v6.12.1-0.20250506022743-14a14fd0006d/go.mod h1:ejgQxcEzSB5iSLQlNktFdrFfi2DLfko84JdrxOdbKZ0=
 github.com/magiconair/properties v1.8.5/go.mod h1:y3VJvCyxH9uVvJTWEGAELF3aiYNyPKd5NZ3oSwXrF60=
