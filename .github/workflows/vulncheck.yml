@@ -15,6 +15,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+
+          sudo apt-get install --no-install-recommends -y \
+            libnbd-dev
+
+      - name: Download go dependencies
+        run: |
+          go mod download
+
       - name: govulncheck
         uses: golang/govulncheck-action@v1
         with:
