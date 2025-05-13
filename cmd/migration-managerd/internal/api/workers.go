@@ -414,8 +414,9 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 		return err
 	}
 
-	completedInstances := map[uuid.UUID]bool{}
-	for _, state := range migrationState {
+	importedBatches := map[string]map[uuid.UUID]bool{}
+	for batchName, state := range migrationState {
+		importedEntries := map[uuid.UUID]bool{}
 		for _, entry := range state.QueueEntries {
 			if entry.MigrationStatus != api.MIGRATIONSTATUS_IMPORT_COMPLETE {
 				_, err := d.queueHandler.ReceivedWorkerUpdate(entry.InstanceUUID, time.Second*30)
@@ -430,38 +431,24 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 				continue
 			}
 
-			completedInstances[entry.InstanceUUID] = true
-		}
-	}
-
-	runningBatches := map[string]bool{}
-	for _, state := range migrationState {
-		runningInstances := []uuid.UUID{}
-		for instUUID := range state.QueueEntries {
-			if !completedInstances[instUUID] {
-				runningInstances = append(runningInstances, instUUID)
-			}
+			importedEntries[entry.InstanceUUID] = true
 		}
 
-		for _, instUUID := range runningInstances {
-			delete(state.QueueEntries, instUUID)
-			delete(state.Instances, instUUID)
-			delete(state.Sources, instUUID)
+		if len(importedEntries) > 0 {
+			importedBatches[batchName] = importedEntries
 		}
-
-		if len(state.QueueEntries) == 0 {
-			runningBatches[state.Batch.Name] = true
-		}
-	}
-
-	for batchName := range runningBatches {
-		delete(migrationState, batchName)
 	}
 
 	finishedBatches := make(map[string][]uuid.UUID, len(migrationState))
-	for _, state := range migrationState {
-		finishedInstances := make([]uuid.UUID, 0, len(state.Instances))
+	for batchName, batches := range importedBatches {
+		finishedInstances := []uuid.UUID{}
+		state := migrationState[batchName]
 		err := util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
+			if !batches[instance.UUID] {
+				// Skip instances that haven't finished background import.
+				return nil
+			}
+
 			err := d.configureMigratedInstances(ctx, instance, state.Target, state.Batch, networksByName)
 			if err != nil {
 				return err
@@ -478,8 +465,8 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 	}
 
 	// Remove complete records from the queue cache.
-	for _, state := range migrationState {
-		for instanceUUID := range state.QueueEntries {
+	for batchName := range finishedBatches {
+		for instanceUUID := range migrationState[batchName].QueueEntries {
 			d.queueHandler.RemoveFromCache(instanceUUID)
 		}
 	}

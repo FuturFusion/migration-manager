@@ -174,7 +174,14 @@ func (p RawPropertySet[T]) GetSubProperties(n Name) (RawPropertySet[T], error) {
 		return RawPropertySet[T]{}, fmt.Errorf("Sub-property %q is not supported by %q version %q", n.String(), p.propType, p.version)
 	}
 
-	return subProps, nil
+	return RawPropertySet[T]{
+		propType:      subProps.propType,
+		version:       subProps.version,
+		props:         subProps.props,
+		subProps:      subProps.subProps,
+		propValues:    map[Name]any{},
+		subPropValues: map[Name][]map[Name]any{},
+	}, nil
 }
 
 // Add stores the given value for the named property, performing type validation.
