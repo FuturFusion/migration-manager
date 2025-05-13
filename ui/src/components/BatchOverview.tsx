@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { Table } from 'react-bootstrap';
 import { useParams } from 'react-router';
 import { fetchBatch } from 'api/batches';
 import { formatDate } from 'util/date';
@@ -53,12 +54,27 @@ const BatchOverview = () => {
         <div className="col-10 detail-table-cell">{ batch?.include_expression }</div>
       </div>
       <div className="row">
-        <div className="col-2 detail-table-header">Window start</div>
-        <div className="col-10 detail-table-cell">{ formatDate(batch?.migration_window_start.toString()) }</div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Window stop</div>
-        <div className="col-10 detail-table-cell">{ formatDate(batch?.migration_window_end.toString()) }</div>
+        <div className="col-2 detail-table-header">Migration windows</div>
+        <div className="col-10 detail-table-cell">
+          <Table borderless size="sm">
+            <thead>
+              <tr>
+                <th>Start</th>
+                <th>End</th>
+                <th>Lockout</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batch?.migration_windows.map((item, index) => (
+                <tr key={index}>
+                  <td>{formatDate(item.start.toString())}</td>
+                  <td>{formatDate(item.end.toString())}</td>
+                  <td>{formatDate(item.lockout.toString())}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
       </div>
     </div>
   );

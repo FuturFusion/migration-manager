@@ -42,6 +42,10 @@ const InstanceOverview = () => {
         <div className="col-10 detail-table-cell"> { instance.source }</div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">Source type</div>
+        <div className="col-10 detail-table-cell"> { instance.source_type }</div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Location</div>
         <div className="col-10 detail-table-cell">{ instance.properties.location }</div>
       </div>
@@ -70,10 +74,6 @@ const InstanceOverview = () => {
             override={bytesToHumanReadable(instance.overrides?.properties.memory)}
             showOverride={hasOverride(instance) && instance.overrides.properties.memory > 0}/>
         </div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Migration status</div>
-        <div className="col-10 detail-table-cell">{ instance.migration_status_message }</div>
       </div>
     </div>
   );

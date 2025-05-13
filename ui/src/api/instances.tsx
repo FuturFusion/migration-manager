@@ -19,18 +19,6 @@ export const fetchInstance = (uuid: string): Promise<Instance> => {
   });
 };
 
-export const createInstanceOverride = (uuid: string, body: string): Promise<APIResponse<null>> => {
-  return new Promise((resolve, reject) => {
-    fetch(`/1.0/instances/${uuid}/override`, {
-      method: "POST",
-      body: body,
-    })
-      .then((response) => response.json())
-      .then((data) => resolve(data))
-      .catch(reject);
-  });
-};
-
 export const updateInstanceOverride = (uuid: string, body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/instances/${uuid}/override`, {
