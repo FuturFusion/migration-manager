@@ -192,7 +192,7 @@ func (b Batch) CanStart(windows []MigrationWindow) error {
 		return fmt.Errorf("Batch %q in state %q cannot be started", b.Name, string(b.Status))
 	}
 
-	var hasValidWindow bool
+	hasValidWindow := len(windows) == 0
 	for _, w := range windows {
 		// Skip any migration windows that have since passed.
 		if w.Validate() != nil {
