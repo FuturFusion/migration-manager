@@ -41,6 +41,7 @@ test('renders and submit BaseForm', async () => {
     status: "",
     status_message: "",
     migration_windows: [],
+    constraints: [],
   });
 });
 

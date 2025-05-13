@@ -4,8 +4,9 @@ import Form from 'react-bootstrap/Form';
 import { useQuery } from '@tanstack/react-query';
 import { useFormik } from 'formik';
 import { fetchTargets } from 'api/targets';
+import BatchConstraintsWidget from 'components/BatchConstraintsWidget';
 import MigrationWindowsWidget from 'components/MigrationWindowsWidget';
-import { Batch, MigrationWindow } from 'types/batch';
+import { Batch, BatchConstraint, MigrationWindow } from 'types/batch';
 import { formatDate, isMigrationWindowDateValid } from 'util/date';
 
 interface Props {
@@ -22,6 +23,7 @@ type BatchFormValues = {
   storage_pool: string,
   include_expression: string,
   migration_windows: MigrationWindow[],
+  constraints: BatchConstraint[],
 };
 
 const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
@@ -91,6 +93,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     storage_pool: 'local',
     include_expression: '',
     migration_windows: [],
+    constraints: [],
   };
 
   if (batch) {
@@ -109,6 +112,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
       storage_pool: batch.storage_pool,
       include_expression: batch.include_expression,
       migration_windows: migrationWindows,
+      constraints: batch.constraints,
     };
   }
 
@@ -229,6 +233,16 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
             <Form.Control.Feedback type="invalid" className="d-block" style={{ whiteSpace: 'pre-line' }}>
               {typeof formik.errors.migration_windows === 'string' &&
               formik.errors.migration_windows}
+            </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="constraints">
+            <Form.Label>Constraints</Form.Label>
+            <BatchConstraintsWidget
+              value={formik.values.constraints}
+              onChange={(value) => formik.setFieldValue("constraints", value)} />
+            <Form.Control.Feedback type="invalid" className="d-block" style={{ whiteSpace: 'pre-line' }}>
+              {typeof formik.errors.constraints === 'string' &&
+              formik.errors.constraints}
             </Form.Control.Feedback>
           </Form.Group>
         </Form>
