@@ -295,7 +295,7 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 
 // ToAPI converts the raw properties list to an API compatible type.
 // Since we already validated the inputs when calling Add, this just remarshals the value maps as the API type.
-func (p RawPropertySet[T]) ToAPI() (*api.InstanceProperties, error) {
+func (p RawPropertySet[T]) ToAPI(unsupportedDisks map[string]bool) (*api.InstanceProperties, error) {
 	data := map[string]any{}
 
 	for k, v := range p.propValues {
@@ -327,6 +327,10 @@ func (p RawPropertySet[T]) ToAPI() (*api.InstanceProperties, error) {
 
 	if detectedProperties.Config == nil {
 		detectedProperties.Config = map[string]string{}
+	}
+
+	for i, disk := range detectedProperties.Disks {
+		detectedProperties.Disks[i].Supported = !unsupportedDisks[disk.Name]
 	}
 
 	return &detectedProperties, nil
