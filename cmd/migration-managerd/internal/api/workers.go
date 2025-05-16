@@ -414,7 +414,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 			if entry.MigrationStatus != api.MIGRATIONSTATUS_IMPORT_COMPLETE {
 				_, err := d.queueHandler.ReceivedWorkerUpdate(entry.InstanceUUID, time.Second*30)
 				if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
-					_, err = d.queue.UpdateStatusByUUID(ctx, entry.InstanceUUID, api.MIGRATIONSTATUS_ERROR, "Timed out waiting for worker", false)
+					_, err = d.queue.UpdateStatusByUUID(ctx, entry.InstanceUUID, entry.MigrationStatus, "Timed out waiting for worker", false)
 					if err != nil {
 						return fmt.Errorf("Failed to set errored state on instance %q: %w", state.Instances[entry.InstanceUUID].Properties.Location, err)
 					}
