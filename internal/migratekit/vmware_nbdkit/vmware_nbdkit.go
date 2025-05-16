@@ -295,12 +295,25 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 
 	log.Info("Starting full copy")
 
+	diskName := s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
+
+	index := 1
+	for i, server := range s.Servers.Servers {
+		serverDiskName := server.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
+		if serverDiskName == diskName {
+			index = i + 1
+			break
+		}
+	}
+
+	msg := fmt.Sprintf("(%d/%d) Importing disk", index, len(s.Servers.Servers))
 	err := nbdcopy.Run(
+		msg,
 		s.Nbdkit.LibNBDExportName(),
 		path,
 		s.Disk.CapacityInBytes,
 		targetIsClean,
-		s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName,
+		diskName,
 		statusCallback,
 	)
 	if err != nil {

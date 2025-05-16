@@ -13,7 +13,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migratekit/progress"
 )
 
-func Run(source, destination string, size int64, targetIsClean bool, diskName string, statusCallback func(string, bool)) error {
+func Run(message string, source string, destination string, size int64, targetIsClean bool, diskName string, statusCallback func(string, bool)) error {
 	log := slog.With(
 		slog.String("command", "nbdcopy"),
 		slog.String("source", source),
@@ -75,7 +75,7 @@ func Run(source, destination string, size int64, targetIsClean bool, diskName st
 			}
 
 			bar.Set64(progress * size / 100)
-			statusCallback(fmt.Sprintf("Importing disk %q: %02.2f%% complete", diskName, float64(progress)), false)
+			statusCallback(fmt.Sprintf("%s %q: %02.2f%% complete", message, diskName, float64(progress)), false)
 		}
 
 		if err := scanner.Err(); err != nil {
