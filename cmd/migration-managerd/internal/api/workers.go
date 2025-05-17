@@ -338,19 +338,16 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to create instance definition: %w", err)
 	}
 
-	if cleanupInstances {
-		reverter.Add(func() {
-			log := log.With(slog.String("revert", "instance cleanup"))
-			err := it.DeleteVM(instanceDef.Name)
-			if err != nil {
-				log.Error("Failed to delete new instance after failure", logger.Err(err))
-			}
-		})
-	}
-
-	err = it.CreateNewVM(instanceDef, b.StoragePool, util.WorkerVolume(), driverISOName)
+	cleanup, err := it.CreateNewVM(inst, instanceDef, b.StoragePool, util.WorkerVolume(), driverISOName)
 	if err != nil {
 		return fmt.Errorf("Failed to create new instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
+	}
+
+	if cleanupInstances {
+		reverter.Add(func() {
+			slog.Error("Cleaning up new instance after failure", slog.String("revert", "instance cleanup"), slog.Any("error", err))
+			cleanup()
+		})
 	}
 
 	// Start the instance.
@@ -375,10 +372,6 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 
 	// Now that the VM agent is up, expect a worker update to come soon..
 	d.queueHandler.RecordWorkerUpdate(inst.UUID)
-
-	// At this point, the import is about to begin, so we won't try to delete instances anymore.
-	// Instead, if an error occurs, we will try to set the instance state to ERROR so that we don't retry.
-	cleanupInstances = false
 
 	reverter.Success()
 
@@ -421,7 +414,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 			if entry.MigrationStatus != api.MIGRATIONSTATUS_IMPORT_COMPLETE {
 				_, err := d.queueHandler.ReceivedWorkerUpdate(entry.InstanceUUID, time.Second*30)
 				if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
-					_, err = d.queue.UpdateStatusByUUID(ctx, entry.InstanceUUID, api.MIGRATIONSTATUS_ERROR, "Timed out waiting for worker", false)
+					_, err = d.queue.UpdateStatusByUUID(ctx, entry.InstanceUUID, entry.MigrationStatus, "Timed out waiting for worker", false)
 					if err != nil {
 						return fmt.Errorf("Failed to set errored state on instance %q: %w", state.Instances[entry.InstanceUUID].Properties.Location, err)
 					}

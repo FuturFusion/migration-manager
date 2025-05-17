@@ -50,3 +50,42 @@ func GetChangeID(disk *types.VirtualDisk) (*ChangeID, error) {
 
 	return ParseChangeID(changeId)
 }
+
+// IsSupportedDisk checks whether the given VMware disk is supported by migration manager.
+func IsSupportedDisk(disk *types.VirtualDisk) (string, error) {
+	isSupported := func(diskMode string, sharing string) error {
+		if diskMode == string(types.VirtualDiskModeIndependent_persistent) || diskMode == string(types.VirtualDiskModeIndependent_nonpersistent) {
+			return fmt.Errorf("Disk does not support snapshots")
+		}
+
+		if sharing == "" || sharing == string(types.VirtualDiskSharingSharingNone) {
+			return nil
+		}
+
+		return fmt.Errorf("Disk has sharing enabled")
+	}
+
+	// Ignore raw disks or disks that are excluded from snapshots.
+	switch t := disk.GetVirtualDevice().Backing.(type) {
+	case *types.VirtualDiskRawDiskMappingVer1BackingInfo:
+		return t.FileName, fmt.Errorf("Raw disk cannot be migrated")
+	case *types.VirtualDiskRawDiskVer2BackingInfo:
+		return t.DeviceName, fmt.Errorf("Raw disk cannot be migrated")
+	case *types.VirtualDiskPartitionedRawDiskVer2BackingInfo:
+		return t.DeviceName, fmt.Errorf("Raw disk cannot be migrated")
+	case *types.VirtualDiskFlatVer2BackingInfo:
+		return t.FileName, isSupported(t.DiskMode, t.Sharing)
+	case *types.VirtualDiskFlatVer1BackingInfo:
+		return t.FileName, isSupported(t.DiskMode, "")
+	case *types.VirtualDiskLocalPMemBackingInfo:
+		return t.FileName, isSupported(t.DiskMode, "")
+	case *types.VirtualDiskSeSparseBackingInfo:
+		return t.FileName, isSupported(t.DiskMode, "")
+	case *types.VirtualDiskSparseVer1BackingInfo:
+		return t.FileName, isSupported(t.DiskMode, "")
+	case *types.VirtualDiskSparseVer2BackingInfo:
+		return t.FileName, isSupported(t.DiskMode, "")
+	default:
+		return "unknown", fmt.Errorf("Unknown disk type %T", t)
+	}
+}

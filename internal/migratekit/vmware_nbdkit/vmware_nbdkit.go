@@ -8,6 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
+	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/vmware/govmomi/object"
@@ -95,6 +98,12 @@ func (s *NbdkitServers) Start(ctx context.Context) error {
 	for _, device := range snapshot.Config.Hardware.Device {
 		switch disk := device.(type) {
 		case *types.VirtualDisk:
+			// Ignore raw disks or those excluded from snapshots.
+			_, err := vmware.IsSupportedDisk(disk)
+			if err != nil {
+				continue
+			}
+
 			backing := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
 			info := backing.GetVirtualDeviceFileBackingInfo()
 
@@ -181,6 +190,64 @@ func (s *NbdkitServers) Stop(ctx context.Context) error {
 	return nil
 }
 
+func resolveRootDisk() (string, error) {
+	entries, err := os.ReadDir("/dev/disk/by-id")
+	if err != nil {
+		return "", err
+	}
+
+	for _, e := range entries {
+		if !strings.HasSuffix(e.Name(), "_incus_root") {
+			continue
+		}
+
+		diskID, err := filepath.EvalSymlinks(filepath.Join("/dev/disk/by-id", e.Name()))
+		if err != nil {
+			return "", err
+		}
+
+		return diskID, nil
+	}
+
+	return "", fmt.Errorf("Failed to find root disk device")
+}
+
+func resolveDiskBySize(disk *types.VirtualDisk) (string, error) {
+	entries, err := os.ReadDir("/dev/disk/by-id")
+	if err != nil {
+		return "", err
+	}
+
+	for _, e := range entries {
+		// Skip the root disk.
+		if strings.HasSuffix(e.Name(), "_incus_root") {
+			continue
+		}
+
+		diskPath, err := filepath.EvalSymlinks(filepath.Join("/dev/disk/by-id", e.Name()))
+		if err != nil {
+			return "", err
+		}
+
+		sizePath := filepath.Join(filepath.Join("/sys/class/block", filepath.Base(diskPath)), "size")
+		b, err := os.ReadFile(sizePath)
+		if err != nil {
+			return "", err
+		}
+
+		value, err := strconv.ParseUint(strings.TrimSpace(string(b)), 10, 64)
+		if err != nil {
+			return "", err
+		}
+
+		if disk.CapacityInBytes == int64(value)*512 {
+			return diskPath, nil
+		}
+	}
+
+	return "", fmt.Errorf("Failed to find disk with capacity %d", disk.CapacityInBytes)
+}
+
 func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	err := s.Start(ctx)
 	if err != nil {
@@ -194,13 +261,21 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	}()
 
 	for index, server := range s.Servers {
-		t, err := target.NewDiskTarget(s.VirtualMachine, server.Disk, fmt.Sprintf("/dev/sd%c", 'a'+index))
+		var diskID string
+		if index == 0 {
+			diskID, err = resolveRootDisk()
+		} else {
+			runV2V = false
+			diskID, err = resolveDiskBySize(server.Disk)
+		}
+
 		if err != nil {
 			return err
 		}
 
-		if index != 0 {
-			runV2V = false
+		t, err := target.NewDiskTarget(s.VirtualMachine, server.Disk, diskID)
+		if err != nil {
+			return err
 		}
 
 		err = server.SyncToTarget(ctx, t, runV2V, s.StatusCallback)
@@ -220,12 +295,25 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 
 	log.Info("Starting full copy")
 
+	diskName := s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
+
+	index := 1
+	for i, server := range s.Servers.Servers {
+		serverDiskName := server.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
+		if serverDiskName == diskName {
+			index = i + 1
+			break
+		}
+	}
+
+	msg := fmt.Sprintf("(%d/%d) Importing disk", index, len(s.Servers.Servers))
 	err := nbdcopy.Run(
+		msg,
 		s.Nbdkit.LibNBDExportName(),
 		path,
 		s.Disk.CapacityInBytes,
 		targetIsClean,
-		s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName,
+		diskName,
 		statusCallback,
 	)
 	if err != nil {

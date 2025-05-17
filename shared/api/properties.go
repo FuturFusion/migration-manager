@@ -41,9 +41,10 @@ type InstancePropertiesNIC struct {
 
 // InstancePropertiesDisk are all properties supported by instance disks.
 type InstancePropertiesDisk struct {
-	Capacity int64  `json:"capacity" yaml:"capacity" expr:"capacity"`
-	Name     string `json:"name"     yaml:"name"     expr:"name"`
-	Shared   bool   `json:"shared"   yaml:"shared"   expr:"shared"`
+	Capacity  int64  `json:"capacity"  yaml:"capacity"  expr:"capacity"`
+	Name      string `json:"name"      yaml:"name"      expr:"name"`
+	Shared    bool   `json:"shared"    yaml:"shared"    expr:"shared"`
+	Supported bool   `json:"supported" yaml:"supported" expr:"supported"`
 }
 
 // InstancePropertiesSnapshot are all properties supported by snapshots.

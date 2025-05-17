@@ -384,37 +384,22 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 		instance.Description = instance.Config[info.Key]
 	}
 
-	defaultDiskDef := map[string]string{
-		"path": "/",
-		"pool": storagePool,
-		"type": "disk",
+	if len(p.Disks) == 0 {
+		return incusAPI.InstancesPost{}, fmt.Errorf("Instance missing root disk")
 	}
 
-	instance.Devices = map[string]map[string]string{}
-	numDisks := 0
-	for _, disk := range p.Disks {
-		diskKey := "root"
-		if numDisks != 0 {
-			diskKey = fmt.Sprintf("disk%d", numDisks)
-		}
+	sizeDef, err := diskDefs.Get(properties.InstanceDiskCapacity)
+	if err != nil {
+		return incusAPI.InstancesPost{}, err
+	}
 
-		instance.Devices[diskKey] = map[string]string{}
-		for k, v := range defaultDiskDef {
-			instance.Devices[diskKey][k] = v
-		}
-
-		if numDisks != 0 {
-			instance.Devices[diskKey]["path"] = diskKey
-		}
-
-		info, err := diskDefs.Get(properties.InstanceDiskCapacity)
-		if err != nil {
-			return incusAPI.InstancesPost{}, nil
-		}
-
-		instance.Devices[diskKey][info.Key] = strconv.Itoa(int(disk.Capacity)) + "B"
-
-		numDisks++
+	instance.Devices = map[string]map[string]string{
+		"root": {
+			"path":      "/",
+			"pool":      storagePool,
+			"type":      "disk",
+			sizeDef.Key: strconv.Itoa(int(p.Disks[0].Capacity)) + "B",
+		},
 	}
 
 	return instance, nil
@@ -470,7 +455,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	return ret, nil
 }
 
-func (t *InternalIncusTarget) CreateNewVM(apiDef incusAPI.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error {
+func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef incusAPI.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) (func(), error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -487,7 +472,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef incusAPI.InstancesPost, storage
 	// If this is a Windows VM, attach the virtio drivers ISO.
 	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
 		if driversISOImage == "" {
-			return fmt.Errorf("Missing Windows drivers ISO image")
+			return nil, fmt.Errorf("Missing Windows drivers ISO image")
 		}
 
 		apiDef.Devices["drivers"] = map[string]string{
@@ -500,7 +485,7 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef incusAPI.InstancesPost, storage
 	// Create the instance.
 	op, err := t.incusClient.CreateInstance(apiDef)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	reverter.Add(func() {
@@ -509,12 +494,75 @@ func (t *InternalIncusTarget) CreateNewVM(apiDef incusAPI.InstancesPost, storage
 
 	err = op.Wait()
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	props := instDef.Properties
+	props.Apply(instDef.Overrides.Properties)
+	// After the scheduler places the instance, get its target and create storage volumes on that member.
+	if len(props.Disks) > 1 {
+		instInfo, etag, err := t.incusClient.GetInstance(apiDef.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		tgtClient := t.incusClient.UseTarget(instInfo.Location)
+		defaultDiskDef := map[string]string{
+			"pool": storagePool,
+			"type": "disk",
+		}
+
+		// Create volumes for the remaining disks.
+		for i, disk := range props.Disks[1:] {
+			if !disk.Supported {
+				continue
+			}
+
+			diskName := strings.ReplaceAll(disk.Name, "/", "_")
+			diskName, _ = strings.CutSuffix(diskName, ".vmdk")
+
+			reverter.Add(func() {
+				_ = tgtClient.DeleteStoragePoolVolume(storagePool, "custom", diskName)
+			})
+
+			err := tgtClient.CreateStoragePoolVolume(storagePool, incusAPI.StorageVolumesPost{
+				StorageVolumePut: incusAPI.StorageVolumePut{
+					Description: fmt.Sprintf("Migrated disk (%s)", disk.Name),
+					Config:      map[string]string{"size": fmt.Sprintf("%dB", disk.Capacity)},
+				},
+				Name:        diskName,
+				Type:        "custom",
+				ContentType: "block",
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			diskKey := fmt.Sprintf("disk%d", i)
+			instInfo.Devices[diskKey] = map[string]string{}
+			for k, v := range defaultDiskDef {
+				instInfo.Devices[diskKey][k] = v
+			}
+
+			instInfo.Devices[diskKey]["source"] = diskName
+		}
+
+		op, err := tgtClient.UpdateInstance(instInfo.Name, instInfo.InstancePut, etag)
+		if err != nil {
+			return nil, err
+		}
+
+		err = op.Wait()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	cleanup := reverter.Clone().Fail
 
 	reverter.Success()
 
-	return nil
+	return cleanup, nil
 }
 
 func (t *InternalIncusTarget) DeleteVM(name string) error {

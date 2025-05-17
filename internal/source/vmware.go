@@ -227,13 +227,22 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			}
 		}
 
-		ret = append(ret, migration.Instance{
+		inst := migration.Instance{
 			UUID:                 vmProps.UUID,
 			Source:               s.Name,
 			SourceType:           s.SourceType,
 			LastUpdateFromSource: time.Now().UTC(),
 			Properties:           *vmProps,
-		})
+		}
+
+		for _, d := range inst.Properties.Disks {
+			if !d.Supported {
+				inst.Overrides.DisableMigration = true
+				break
+			}
+		}
+
+		ret = append(ret, inst)
 	}
 
 	return ret, nil
@@ -326,6 +335,7 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*objec
 }
 
 func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProperties mo.VirtualMachine, networks []object.NetworkReference) (*api.InstanceProperties, error) {
+	log := slog.With(slog.String("source", s.Name), slog.String("location", vm.InventoryPath))
 	b, err := json.Marshal(vmProperties)
 	if err != nil {
 		return nil, err
@@ -342,6 +352,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 		return nil, err
 	}
 
+	unsupportedDisks := map[string]bool{}
 	for defName, info := range props.GetAll() {
 		switch info.Type {
 		case properties.TypeVMInfo:
@@ -453,6 +464,12 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					continue
 				}
 
+				diskName, err := vmware.IsSupportedDisk(disk)
+				if err != nil {
+					log.Warn("VM contains a disk that does not support migration. This disk can not be migrated with the VM", slog.String("disk", diskName), slog.Any("error", err))
+					unsupportedDisks[diskName] = true
+				}
+
 				subProps, err := s.getDeviceProperties(disk, &props, defName)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
@@ -469,7 +486,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 		}
 	}
 
-	return props.ToAPI()
+	return props.ToAPI(unsupportedDisks)
 }
 
 func (s *InternalVMwareSource) getVMExtraConfig(vm *object.VirtualMachine, vmProperties mo.VirtualMachine, props *properties.RawPropertySet[api.SourceType], defName properties.Name, info properties.PropertyInfo) error {

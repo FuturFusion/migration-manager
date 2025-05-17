@@ -3,8 +3,10 @@ package target
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
+	"strings"
 
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/types"
@@ -51,7 +53,8 @@ func (t *DiskTarget) Exists(ctx context.Context) (bool, error) {
 }
 
 func (t *DiskTarget) GetCurrentChangeID(ctx context.Context) (*vmware.ChangeID, error) {
-	data, err := os.ReadFile("/tmp/migration-manager.cid")
+	diskParts := strings.Split(t.DeviceTarget, "/")
+	data, err := os.ReadFile(fmt.Sprintf("/tmp/migration-manager_%s.cid", diskParts[len(diskParts)-1]))
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
 	}
@@ -60,5 +63,6 @@ func (t *DiskTarget) GetCurrentChangeID(ctx context.Context) (*vmware.ChangeID, 
 }
 
 func (t *DiskTarget) WriteChangeID(ctx context.Context, changeID *vmware.ChangeID) error {
-	return os.WriteFile("/tmp/migration-manager.cid", []byte(changeID.Value), 0o644)
+	diskParts := strings.Split(t.DeviceTarget, "/")
+	return os.WriteFile(fmt.Sprintf("/tmp/migration-manager_%s.cid", diskParts[len(diskParts)-1]), []byte(changeID.Value), 0o644)
 }
