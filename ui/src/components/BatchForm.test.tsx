@@ -1,3 +1,4 @@
+import { MemoryRouter } from "react-router";
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useQuery } from '@tanstack/react-query';
@@ -11,11 +12,11 @@ vi.mock('@tanstack/react-query', async () => {
   };
 });
 
-test('renders and submit BaseForm', async () => {
+test('renders and submit BatchForm', async () => {
   (useQuery as ReturnType<typeof vi.fn>).mockReturnValue({ data: [{name: 't1'}], isLoading: false });
   const handleSubmit = vi.fn();
 
-  render(<BatchForm onSubmit={handleSubmit}/>);
+  render(<MemoryRouter><BatchForm onSubmit={handleSubmit}/></MemoryRouter>);
 
   const nameInput = screen.getByLabelText('Name');
   const targetSelect = screen.getByLabelText('Target');

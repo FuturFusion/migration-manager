@@ -1,10 +1,15 @@
 import { Instance } from 'types/instance';
 import { APIResponse } from 'types/response';
+import { handleAPIResponse } from 'util/response';
 
-export const fetchInstances = (): Promise<Instance[]> => {
+export const fetchInstances = (filter: string): Promise<Instance[]> => {
+  let url = `/1.0/instances?recursion=1`;
+    if (filter) {
+      url += `&include_expression=${filter}`;
+    }
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/instances?recursion=1`)
-      .then((response) => response.json())
+    fetch(url)
+      .then(handleAPIResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
