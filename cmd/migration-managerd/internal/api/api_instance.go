@@ -89,6 +89,12 @@ var instanceOverrideCmd = APIEndpoint{
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: include_expression
+//	    description: An expression used to select instances to add to the result
+//	    type: string
+//	    example: name matches 'centos'
 //	responses:
 //	  "200":
 //	    description: API instances
@@ -124,6 +130,13 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 		recursion = 0
 	}
 
+	includeExpression := r.FormValue("include_expression")
+
+	// Set recursion to 1 whenever 'include_expression' is used.
+	if includeExpression != "" {
+		recursion = 1
+	}
+
 	if recursion == 1 {
 		ctx, trans := transaction.Begin(r.Context())
 		defer func() {
@@ -140,7 +153,19 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 
 		result := make([]api.Instance, 0, len(instances))
 		for _, instance := range instances {
-			result = append(result, instance.ToAPI())
+			if includeExpression == "" {
+				result = append(result, instance.ToAPI())
+				continue
+			}
+
+			match, err := instance.MatchesCriteria(includeExpression)
+			if err != nil {
+				return response.SmartError(err)
+			}
+
+			if match {
+				result = append(result, instance.ToAPI())
+			}
 		}
 
 		return response.SyncResponse(true, result)
