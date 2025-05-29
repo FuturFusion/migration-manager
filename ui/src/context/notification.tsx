@@ -1,4 +1,11 @@
-import { FC, createContext, ReactNode, useRef, useState, useContext } from "react";
+import {
+  FC,
+  createContext,
+  ReactNode,
+  useRef,
+  useState,
+  useContext,
+} from "react";
 
 interface ContextProps {
   notify: any;
@@ -11,29 +18,37 @@ const NotificationContext = createContext<ContextProps>({
     success: () => undefined,
     error: () => undefined,
   },
-  notification: {}
+  notification: {},
 });
 
-export const NotificationProvider: FC<{children: ReactNode}> = ({ children }) => {
-  const [notification, setNotification] = useState({message: '', type: 'primary'});
+export const NotificationProvider: FC<{ children: ReactNode }> = ({
+  children,
+}) => {
+  const [notification, setNotification] = useState({
+    message: "",
+    type: "primary",
+  });
   const timeoutRef = useRef(-1);
 
   const setupTimeout = () => {
     clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setNotification({message: '', type: 'primary'}), 5000);
+    timeoutRef.current = setTimeout(
+      () => setNotification({ message: "", type: "primary" }),
+      5000,
+    );
   };
 
   const notify = {
     info: (message: string) => {
-      setNotification({ message: message, type: 'primary' });
+      setNotification({ message: message, type: "primary" });
       setupTimeout();
     },
     success: (message: string) => {
-      setNotification({ message: message, type: 'success' });
+      setNotification({ message: message, type: "success" });
       setupTimeout();
     },
     error: (message: string) => {
-      setNotification({ message: message, type: 'danger' });
+      setNotification({ message: message, type: "danger" });
       setupTimeout();
     },
   };
@@ -48,4 +63,3 @@ export const NotificationProvider: FC<{children: ReactNode}> = ({ children }) =>
 export const useNotification = () => {
   return useContext(NotificationContext);
 };
-

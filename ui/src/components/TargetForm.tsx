@@ -1,11 +1,11 @@
-import { FC, useState } from 'react';
-import Form from 'react-bootstrap/Form';
-import { useSearchParams } from 'react-router';
-import { useFormik } from 'formik';
-import LoadingButton from 'components/LoadingButton';
-import TLSFingerprintConfirmModal from 'components/TLSFingerprintConfirmModal';
-import { Target } from 'types/target';
-import { TargetType } from 'util/target';
+import { FC, useState } from "react";
+import Form from "react-bootstrap/Form";
+import { useSearchParams } from "react-router";
+import { useFormik } from "formik";
+import LoadingButton from "components/LoadingButton";
+import TLSFingerprintConfirmModal from "components/TLSFingerprintConfirmModal";
+import { Target } from "types/target";
+import { TargetType } from "util/target";
 
 interface Props {
   target?: Target;
@@ -15,7 +15,8 @@ interface Props {
 const TargetForm: FC<Props> = ({ target, onSubmit }) => {
   const [searchParams] = useSearchParams();
   const certFingerprint = searchParams.get("fingerprint");
-  const [showFingerprintModal, setShowFingerprintModal] = useState(!!certFingerprint);
+  const [showFingerprintModal, setShowFingerprintModal] =
+    useState(!!certFingerprint);
 
   const handleCertFingerprintClose = () => {
     setShowFingerprintModal(false);
@@ -31,35 +32,36 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
     const errors: any = {};
 
     if (!values.name) {
-      errors.name = 'Name is required';
+      errors.name = "Name is required";
     }
 
     if (!values.endpoint) {
-      errors.endpoint = 'Endpoint is required';
+      errors.endpoint = "Endpoint is required";
     }
 
     return errors;
   };
 
   let formikInitialValues = {
-    name: '',
+    name: "",
     targetType: TargetType.Incus,
-    authType: 'oidc',
-    endpoint: '',
-    tlsClientCert: '',
-    tlsClientKey: '',
-    trustedServerCertificateFingerprint: '',
+    authType: "oidc",
+    endpoint: "",
+    tlsClientCert: "",
+    tlsClientKey: "",
+    trustedServerCertificateFingerprint: "",
   };
 
   if (target) {
     formikInitialValues = {
       name: target.name,
       targetType: TargetType.Incus,
-      authType: target.properties.tls_client_key ? 'tls' : 'oidc',
+      authType: target.properties.tls_client_key ? "tls" : "oidc",
       endpoint: target.properties.endpoint,
       tlsClientCert: target.properties.tls_client_cert,
       tlsClientKey: target.properties.tls_client_key,
-      trustedServerCertificateFingerprint: target.properties.trusted_server_certificate_fingerprint,
+      trustedServerCertificateFingerprint:
+        target.properties.trusted_server_certificate_fingerprint,
     };
   }
 
@@ -74,23 +76,26 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
           endpoint: values.endpoint,
           tls_client_cert: values.tlsClientCert,
           tls_client_key: values.tlsClientKey,
-          trusted_server_certificate_fingerprint: values.trustedServerCertificateFingerprint,
-        }
+          trusted_server_certificate_fingerprint:
+            values.trustedServerCertificateFingerprint,
+        },
       };
 
-      if (values.authType == 'oidc') {
-        modifiedValues.properties.tls_client_cert = '';
-        modifiedValues.properties.tls_client_key = '';
+      if (values.authType == "oidc") {
+        modifiedValues.properties.tls_client_cert = "";
+        modifiedValues.properties.tls_client_key = "";
       }
 
       return onSubmit(modifiedValues);
-     },
-   });
+    },
+  });
 
-  const targetTypes = [{
-    name: TargetType.Incus,
-    value: TargetType.Incus,
-  }];
+  const targetTypes = [
+    {
+      name: TargetType.Incus,
+      value: TargetType.Incus,
+    },
+  ];
 
   return (
     <div className="form-container">
@@ -105,7 +110,8 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
               disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.name && formik.touched.name}/>
+              isInvalid={!!formik.errors.name && formik.touched.name}
+            />
             <Form.Control.Feedback type="invalid">
               {formik.errors.name}
             </Form.Control.Feedback>
@@ -118,12 +124,15 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
               disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.targetType && formik.touched.targetType}>
-                {targetTypes.map((option) => (
+              isInvalid={
+                !!formik.errors.targetType && formik.touched.targetType
+              }
+            >
+              {targetTypes.map((option) => (
                 <option key={option.name} value={option.value}>
                   {option.name}
                 </option>
-                ))}
+              ))}
             </Form.Select>
             <Form.Control.Feedback type="invalid">
               {formik.errors.targetType}
@@ -137,15 +146,20 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
               disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.authType && formik.touched.authType}>
-                <option key="oidc" value="oidc">oidc</option>
-                <option key="tls" value="tls">tls</option>
+              isInvalid={!!formik.errors.authType && formik.touched.authType}
+            >
+              <option key="oidc" value="oidc">
+                oidc
+              </option>
+              <option key="tls" value="tls">
+                tls
+              </option>
             </Form.Select>
             <Form.Control.Feedback type="invalid">
               {formik.errors.authType}
             </Form.Control.Feedback>
           </Form.Group>
-          { formik.values.authType == 'tls' && (
+          {formik.values.authType == "tls" && (
             <>
               <Form.Group className="mb-3" controlId="tlsClientCert">
                 <Form.Label>TLS Client cert</Form.Label>
@@ -157,7 +171,11 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
                   disabled={formik.isSubmitting}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  isInvalid={!!formik.errors.tlsClientCert && formik.touched.tlsClientCert}/>
+                  isInvalid={
+                    !!formik.errors.tlsClientCert &&
+                    formik.touched.tlsClientCert
+                  }
+                />
                 <Form.Control.Feedback type="invalid">
                   {formik.errors.tlsClientCert}
                 </Form.Control.Feedback>
@@ -172,7 +190,10 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
                   disabled={formik.isSubmitting}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
-                  isInvalid={!!formik.errors.tlsClientKey && formik.touched.tlsClientKey}/>
+                  isInvalid={
+                    !!formik.errors.tlsClientKey && formik.touched.tlsClientKey
+                  }
+                />
                 <Form.Control.Feedback type="invalid">
                   {formik.errors.tlsClientKey}
                 </Form.Control.Feedback>
@@ -188,7 +209,8 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
               disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.endpoint && formik.touched.endpoint}/>
+              isInvalid={!!formik.errors.endpoint && formik.touched.endpoint}
+            />
             <Form.Control.Feedback type="invalid">
               {formik.errors.endpoint}
             </Form.Control.Feedback>
@@ -202,7 +224,11 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
               disabled={formik.isSubmitting}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.trustedServerCertificateFingerprint && formik.touched.trustedServerCertificateFingerprint}/>
+              isInvalid={
+                !!formik.errors.trustedServerCertificateFingerprint &&
+                formik.touched.trustedServerCertificateFingerprint
+              }
+            />
             <Form.Control.Feedback type="invalid">
               {formik.errors.trustedServerCertificateFingerprint}
             </Form.Control.Feedback>
@@ -210,7 +236,12 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
         </Form>
       </div>
       <div className="fixed-footer p-3">
-        <LoadingButton isLoading={formik.isSubmitting} className="float-end" variant="success" onClick={() => formik.handleSubmit()}>
+        <LoadingButton
+          isLoading={formik.isSubmitting}
+          className="float-end"
+          variant="success"
+          onClick={() => formik.handleSubmit()}
+        >
           Submit
         </LoadingButton>
       </div>
@@ -222,9 +253,10 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
           fingerprint={certFingerprint}
           handleClose={handleCertFingerprintClose}
           handleConfirm={handleCertFingerprintConfirm}
-        />)}
+        />
+      )}
     </div>
   );
-}
+};
 
 export default TargetForm;

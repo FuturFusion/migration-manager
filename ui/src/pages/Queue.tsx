@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { fetchQueue } from 'api/queue';
-import DataTable from 'components/DataTable';
+import { useQuery } from "@tanstack/react-query";
+import { fetchQueue } from "api/queue";
+import DataTable from "components/DataTable";
 
 const Queue = () => {
   const refetchInterval = 10000; // 10 seconds
@@ -9,10 +9,10 @@ const Queue = () => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ['queue'],
+    queryKey: ["queue"],
     queryFn: fetchQueue,
     refetchInterval: refetchInterval,
-  })
+  });
 
   const headers = ["Name", "Batch", "Status", "Status string"];
   const rows = queue.map((item) => {
@@ -32,19 +32,16 @@ const Queue = () => {
       {
         content: item.migration_status_message,
         sortKey: item.migration_status_message,
-      }];
+      },
+    ];
   });
 
   if (isLoading) {
-    return (
-      <div>Loading queue...</div>
-    );
+    return <div>Loading queue...</div>;
   }
 
   if (error) {
-    return (
-      <div>Error while loading queue</div>
-    );
+    return <div>Error while loading queue</div>;
   }
 
   return (
@@ -56,4 +53,4 @@ const Queue = () => {
   );
 };
 
-export default Queue
+export default Queue;

@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { useParams } from 'react-router';
-import { fetchBatchInstances } from 'api/batches';
-import InstanceDataTable from 'components/InstanceDataTable.tsx';
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "react-router";
+import { fetchBatchInstances } from "api/batches";
+import InstanceDataTable from "components/InstanceDataTable.tsx";
 
 const BatchInstances = () => {
   const { name } = useParams();
@@ -9,21 +9,18 @@ const BatchInstances = () => {
   const {
     data: instances = [],
     error,
-    isLoading
+    isLoading,
   } = useQuery({
-    queryKey: ['batches', name, 'instances'],
-    queryFn: () =>
-      fetchBatchInstances(name)
-    });
+    queryKey: ["batches", name, "instances"],
+    queryFn: () => fetchBatchInstances(name),
+  });
 
-  if(isLoading) {
+  if (isLoading) {
     return <div>Loading...</div>;
   }
 
   if (error) {
-    return (
-      <div>Error while loading instances</div>
-    );
+    return <div>Error while loading instances</div>;
   }
 
   return <InstanceDataTable instances={instances} />;

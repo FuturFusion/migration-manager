@@ -1,15 +1,15 @@
-import { FC, useEffect, useState } from 'react';
-import { Button, Form, InputGroup, Spinner } from 'react-bootstrap';
-import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router';
-import { useFormik } from 'formik';
-import { fetchInstances } from 'api/instances'
-import { fetchTargets } from 'api/targets';
-import BatchConstraintsWidget from 'components/BatchConstraintsWidget';
-import MigrationWindowsWidget from 'components/MigrationWindowsWidget';
-import { Batch, BatchConstraint, MigrationWindow } from 'types/batch';
-import { useDebounce } from 'util/batch';
-import { formatDate, isMigrationWindowDateValid } from 'util/date';
+import { FC, useEffect, useState } from "react";
+import { Button, Form, InputGroup, Spinner } from "react-bootstrap";
+import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router";
+import { useFormik } from "formik";
+import { fetchInstances } from "api/instances";
+import { fetchTargets } from "api/targets";
+import BatchConstraintsWidget from "components/BatchConstraintsWidget";
+import MigrationWindowsWidget from "components/MigrationWindowsWidget";
+import { Batch, BatchConstraint, MigrationWindow } from "types/batch";
+import { useDebounce } from "util/batch";
+import { formatDate, isMigrationWindowDateValid } from "util/date";
 
 interface Props {
   batch?: Batch;
@@ -17,15 +17,15 @@ interface Props {
 }
 
 type BatchFormValues = {
-  name: string,
-  target: string,
-  target_project: string,
-  status: string,
-  status_message: string,
-  storage_pool: string,
-  include_expression: string,
-  migration_windows: MigrationWindow[],
-  constraints: BatchConstraint[],
+  name: string;
+  target: string;
+  target_project: string;
+  status: string;
+  status_message: string;
+  storage_pool: string;
+  include_expression: string;
+  migration_windows: MigrationWindow[];
+  constraints: BatchConstraint[];
 };
 
 const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
@@ -33,75 +33,81 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     data: targets = [],
     error: targetsError,
     isLoading: isLoadingTargets,
-  } = useQuery({ queryKey: ['targets'], queryFn: fetchTargets });
+  } = useQuery({ queryKey: ["targets"], queryFn: fetchTargets });
   const [isInstancesLoading, setIsInstancesLoading] = useState(false);
   const [instancesCount, setInstancesCount] = useState<number>(0);
 
-  const validateMigrationWindows = (windows: MigrationWindow[]): string | undefined => {
+  const validateMigrationWindows = (
+    windows: MigrationWindow[],
+  ): string | undefined => {
     let errors = "";
 
     windows.forEach((item, index) => {
       if (!item.start) {
-        errors += `Window ${index+1} is missing a 'start' date.\n`;
+        errors += `Window ${index + 1} is missing a 'start' date.\n`;
       }
 
       if (!item.end) {
-        errors += `Window ${index+1} is missing an 'end' date.\n`;
+        errors += `Window ${index + 1} is missing an 'end' date.\n`;
       }
 
       if (item.start && !isMigrationWindowDateValid(item.start)) {
-        errors += `Window ${index+1} has an invalid date format in the 'start' field.\n`;
+        errors += `Window ${index + 1} has an invalid date format in the 'start' field.\n`;
       }
 
       if (item.end && !isMigrationWindowDateValid(item.end)) {
-        errors += `Window ${index+1} has an invalid date format in the 'end' field.\n`;
+        errors += `Window ${index + 1} has an invalid date format in the 'end' field.\n`;
       }
 
       if (item.lockout && !isMigrationWindowDateValid(item.lockout)) {
-        errors += `Window ${index+1} has an invalid date format in the 'lockout' field.\n`;
+        errors += `Window ${index + 1} has an invalid date format in the 'lockout' field.\n`;
       }
     });
 
     return errors || undefined;
-  }
+  };
 
-  const validateForm = (values: BatchFormValues): Partial<Record<keyof BatchFormValues, string>> => {
+  const validateForm = (
+    values: BatchFormValues,
+  ): Partial<Record<keyof BatchFormValues, string>> => {
     const errors: Partial<Record<keyof BatchFormValues, string>> = {};
 
     if (!values.name) {
-      errors.name = 'Name is required';
+      errors.name = "Name is required";
     }
 
     if (!values.target || Number(values.target) < 1) {
-      errors.target = 'Target is required';
+      errors.target = "Target is required";
     }
 
     if (!values.include_expression) {
-      errors.include_expression = 'Include expression is required';
+      errors.include_expression = "Include expression is required";
     }
 
-    errors.migration_windows = validateMigrationWindows(values.migration_windows);
+    errors.migration_windows = validateMigrationWindows(
+      values.migration_windows,
+    );
     if (!errors.migration_windows) {
-      delete errors.migration_windows
+      delete errors.migration_windows;
     }
 
     return errors;
   };
 
   let formikInitialValues: BatchFormValues = {
-    name: '',
-    target: '',
-    target_project: 'default',
-    status: '',
-    status_message: '',
-    storage_pool: 'local',
-    include_expression: '',
+    name: "",
+    target: "",
+    target_project: "default",
+    status: "",
+    status_message: "",
+    storage_pool: "local",
+    include_expression: "",
     migration_windows: [],
     constraints: [],
   };
 
   if (batch) {
-    const migrationWindows = batch.migration_windows.map(item => ({
+    const migrationWindows = batch.migration_windows.map((item) => ({
       start: formatDate(item.start.toString()),
       end: formatDate(item.end.toString()),
       lockout: formatDate(item.lockout.toString()),
@@ -125,7 +131,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     validate: validateForm,
     enableReinitialize: true,
     onSubmit: (values) => {
-      const formattedMigrationWindows = values.migration_windows.map(item => {
+      const formattedMigrationWindows = values.migration_windows.map((item) => {
         let start = null;
         let end = null;
         let lockout = null;
@@ -146,19 +152,20 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
           start,
           end,
           lockout,
-        }
+        };
       });
 
       const modifiedValues = {
         ...values,
-        target_project: values.target_project != '' ? values.target_project : 'default',
-        storage_pool: values.storage_pool != '' ? values.storage_pool : 'local',
+        target_project:
+          values.target_project != "" ? values.target_project : "default",
+        storage_pool: values.storage_pool != "" ? values.storage_pool : "local",
         migration_windows: formattedMigrationWindows,
       };
 
       onSubmit(modifiedValues);
-     },
-   });
+    },
+  });
 
   const fetchResults = async (searchTerm: string) => {
     if (!searchTerm) {
@@ -173,7 +180,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     } catch (err) {
       setInstancesCount(-1);
       const errorMessage = (err as Error).message;
-      formik.setFieldError('include_expression', errorMessage);
+      formik.setFieldError("include_expression", errorMessage);
     } finally {
       setIsInstancesLoading(false);
     }
@@ -197,7 +204,8 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               value={formik.values.name}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.name && formik.touched.name}/>
+              isInvalid={!!formik.errors.name && formik.touched.name}
+            />
             <Form.Control.Feedback type="invalid">
               {formik.errors.name}
             </Form.Control.Feedback>
@@ -210,13 +218,14 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
                 value={formik.values.target}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                isInvalid={!!formik.errors.target && formik.touched.target}>
-                  <option value="">-- Select an option --</option>
-                  {targets.map((option) => (
+                isInvalid={!!formik.errors.target && formik.touched.target}
+              >
+                <option value="">-- Select an option --</option>
+                {targets.map((option) => (
                   <option key={option.name} value={option.name}>
                     {option.name}
                   </option>
-                  ))}
+                ))}
               </Form.Select>
             )}
             <Form.Control.Feedback type="invalid">
@@ -230,16 +239,18 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               name="target_project"
               value={formik.values.target_project}
               onChange={formik.handleChange}
-              onBlur={formik.handleBlur}/>
+              onBlur={formik.handleBlur}
+            />
           </Form.Group>
           <Form.Group className="mb-3" controlId="storage">
             <Form.Label>Storage pool</Form.Label>
             <Form.Control
               type="text"
-                name="storage_pool"
-                value={formik.values.storage_pool}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}/>
+              name="storage_pool"
+              value={formik.values.storage_pool}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
           </Form.Group>
           <Form.Group className="mb-3" controlId="include_expression">
             <Form.Label>Expression</Form.Label>
@@ -249,24 +260,30 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
                 name="include_expression"
                 value={formik.values.include_expression}
                 onChange={formik.handleChange}
-                isInvalid={!!formik.errors.include_expression} />
+                isInvalid={!!formik.errors.include_expression}
+              />
               <InputGroup.Text>
-              {isInstancesLoading && (
-                <Spinner
-                  animation="border"
-                  role="status"
-                  size="sm"/>
-              )}
-              {!isInstancesLoading && instancesCount >= 0 && (
-                <span>
-                  <Link to={`/ui/instances?filter=${formik.values.include_expression}`} style={{ textDecoration: 'none' }} target="_blank">{instancesCount}</Link>
-                </span>
-              )}
+                {isInstancesLoading && (
+                  <Spinner animation="border" role="status" size="sm" />
+                )}
+                {!isInstancesLoading && instancesCount >= 0 && (
+                  <span>
+                    <Link
+                      to={`/ui/instances?filter=${formik.values.include_expression}`}
+                      style={{ textDecoration: "none" }}
+                      target="_blank"
+                    >
+                      {instancesCount}
+                    </Link>
+                  </span>
+                )}
               </InputGroup.Text>
-              <Form.Control.Feedback type="invalid" className="d-block" style={{ whiteSpace: 'pre-line' }}>
-                <pre>
-                  {formik.errors.include_expression}
-                </pre>
+              <Form.Control.Feedback
+                type="invalid"
+                className="d-block"
+                style={{ whiteSpace: "pre-line" }}
+              >
+                <pre>{formik.errors.include_expression}</pre>
               </Form.Control.Feedback>
             </InputGroup>
           </Form.Group>
@@ -274,31 +291,47 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
             <Form.Label>Migration windows</Form.Label>
             <MigrationWindowsWidget
               value={formik.values.migration_windows}
-              onChange={(value) => formik.setFieldValue("migration_windows", value)} />
-            <Form.Control.Feedback type="invalid" className="d-block" style={{ whiteSpace: 'pre-line' }}>
-              {typeof formik.errors.migration_windows === 'string' &&
-              formik.errors.migration_windows}
+              onChange={(value) =>
+                formik.setFieldValue("migration_windows", value)
+              }
+            />
+            <Form.Control.Feedback
+              type="invalid"
+              className="d-block"
+              style={{ whiteSpace: "pre-line" }}
+            >
+              {typeof formik.errors.migration_windows === "string" &&
+                formik.errors.migration_windows}
             </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3" controlId="constraints">
             <Form.Label>Constraints</Form.Label>
             <BatchConstraintsWidget
               value={formik.values.constraints}
-              onChange={(value) => formik.setFieldValue("constraints", value)} />
-            <Form.Control.Feedback type="invalid" className="d-block" style={{ whiteSpace: 'pre-line' }}>
-              {typeof formik.errors.constraints === 'string' &&
-              formik.errors.constraints}
+              onChange={(value) => formik.setFieldValue("constraints", value)}
+            />
+            <Form.Control.Feedback
+              type="invalid"
+              className="d-block"
+              style={{ whiteSpace: "pre-line" }}
+            >
+              {typeof formik.errors.constraints === "string" &&
+                formik.errors.constraints}
             </Form.Control.Feedback>
           </Form.Group>
         </Form>
       </div>
       <div className="fixed-footer p-3">
-        <Button className="float-end" variant="success" onClick={() => formik.handleSubmit()}>
+        <Button
+          className="float-end"
+          variant="success"
+          onClick={() => formik.handleSubmit()}
+        >
           Submit
         </Button>
       </div>
     </div>
   );
-}
+};
 
 export default BatchForm;

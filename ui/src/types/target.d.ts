@@ -1,4 +1,4 @@
-import { ExternalConnectivityStatus} from 'util/response';
+import { ExternalConnectivityStatus } from "util/response";
 
 export interface IncusProperties {
   endpoint: string;

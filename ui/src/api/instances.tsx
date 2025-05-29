@@ -1,12 +1,12 @@
-import { Instance } from 'types/instance';
-import { APIResponse } from 'types/response';
-import { handleAPIResponse } from 'util/response';
+import { Instance } from "types/instance";
+import { APIResponse } from "types/response";
+import { handleAPIResponse } from "util/response";
 
 export const fetchInstances = (filter: string): Promise<Instance[]> => {
   let url = `/1.0/instances?recursion=1`;
-    if (filter) {
-      url += `&include_expression=${filter}`;
-    }
+  if (filter) {
+    url += `&include_expression=${filter}`;
+  }
   return new Promise((resolve, reject) => {
     fetch(url)
       .then(handleAPIResponse)
@@ -24,7 +24,10 @@ export const fetchInstance = (uuid: string): Promise<Instance> => {
   });
 };
 
-export const updateInstanceOverride = (uuid: string, body: string): Promise<APIResponse<null>> => {
+export const updateInstanceOverride = (
+  uuid: string,
+  body: string,
+): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/instances/${uuid}/override`, {
       method: "PUT",
@@ -36,9 +39,11 @@ export const updateInstanceOverride = (uuid: string, body: string): Promise<APIR
   });
 };
 
-export const deleteInstanceOverride = (uuid: string): Promise<APIResponse<object>> => {
+export const deleteInstanceOverride = (
+  uuid: string,
+): Promise<APIResponse<object>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/instances/${uuid}/override`, {method: "DELETE"})
+    fetch(`/1.0/instances/${uuid}/override`, { method: "DELETE" })
       .then((response) => response.json())
       .then((data) => resolve(data))
       .catch(reject);

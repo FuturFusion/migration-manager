@@ -1,9 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router';
-import { fetchSource, updateSource } from 'api/sources';
-import SourceForm from 'components/SourceForm';
-import { useNotification } from 'context/notification';
-import { ExternalConnectivityStatus } from 'util/response';
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useParams } from "react-router";
+import { fetchSource, updateSource } from "api/sources";
+import SourceForm from "components/SourceForm";
+import { useNotification } from "context/notification";
+import { ExternalConnectivityStatus } from "util/response";
 
 const SourceConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -18,12 +18,18 @@ const SourceConfiguration = () => {
 
           if (connStatus === ExternalConnectivityStatus.TLSConfirmFingerprint) {
             const certFingerprint = response.metadata?.["certFingerprint"];
-            notify.info(`Successfully updated source ${values.name}, but received an untrusted TLS server certificate with fingerprint ${certFingerprint}. Please update the source to correct the issue.`);
-            navigate(`/ui/sources/${values.name}/configuration?fingerprint=${certFingerprint}`);
+            notify.info(
+              `Successfully updated source ${values.name}, but received an untrusted TLS server certificate with fingerprint ${certFingerprint}. Please update the source to correct the issue.`,
+            );
+            navigate(
+              `/ui/sources/${values.name}/configuration?fingerprint=${certFingerprint}`,
+            );
             window.location.reload();
             return;
           } else if (connStatus !== ExternalConnectivityStatus.OK) {
-            notify.info(`Successfully updated source ${values.name}, but connectivity check reported an issue: ${connStatus}. Please update the source to correct the issue.`);
+            notify.info(
+              `Successfully updated source ${values.name}, but connectivity check reported an issue: ${connStatus}. Please update the source to correct the issue.`,
+            );
           } else {
             notify.success(`Source ${values.name} updated`);
           }
@@ -34,7 +40,7 @@ const SourceConfiguration = () => {
       })
       .catch((e) => {
         notify.error(`Error during source update: ${e}`);
-    });
+      });
   };
 
   const {
@@ -42,22 +48,19 @@ const SourceConfiguration = () => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ['sources', name],
-    queryFn: () =>
-      fetchSource(name)
-    });
+    queryKey: ["sources", name],
+    queryFn: () => fetchSource(name),
+  });
 
-  if(isLoading) {
+  if (isLoading) {
     return <div>Loading...</div>;
   }
 
   if (error) {
-    return (
-      <div>Error while loading source</div>
-    );
+    return <div>Error while loading source</div>;
   }
 
-  return (<SourceForm source={source} onSubmit={onSubmit}/>);
+  return <SourceForm source={source} onSubmit={onSubmit} />;
 };
 
 export default SourceConfiguration;

@@ -1,4 +1,4 @@
-import { APIResponse } from 'types/response';
+import { APIResponse } from "types/response";
 
 export enum ExternalConnectivityStatus {
   Unknown = "Unknown",

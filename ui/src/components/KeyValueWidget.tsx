@@ -16,7 +16,7 @@ const KeyValueWidget: FC<Props> = ({ value, onChange }) => {
 
   const handleAdd = () => {
     if (!newKey || newKey in entries) return;
-    const newValues = {...entries, [newKey]: newValue};
+    const newValues = { ...entries, [newKey]: newValue };
     setEntries(newValues);
     onChange(newValues);
     setNewKey("");
@@ -34,7 +34,7 @@ const KeyValueWidget: FC<Props> = ({ value, onChange }) => {
   };
 
   const handleEdit = (key: string, value: string) => {
-    const newValues = {...entries, [key]: value};
+    const newValues = { ...entries, [key]: value };
     setEntries(newValues);
     onChange(newValues);
   };
@@ -55,7 +55,13 @@ const KeyValueWidget: FC<Props> = ({ value, onChange }) => {
                 />
               </td>
               <td>
-                <Button title="Delete" size="sm" variant="outline-secondary" className="bg-white border no-hover" onClick={() => handleDelete(key)}>
+                <Button
+                  title="Delete"
+                  size="sm"
+                  variant="outline-secondary"
+                  className="bg-white border no-hover"
+                  onClick={() => handleDelete(key)}
+                >
                   <BsTrash />
                 </Button>
               </td>
@@ -81,7 +87,14 @@ const KeyValueWidget: FC<Props> = ({ value, onChange }) => {
               />
             </td>
             <td>
-              <Button title="Add" size="sm" variant="outline-secondary" className="bg-white border no-hover" onClick={handleAdd} disabled={!newKey || newKey in entries}>
+              <Button
+                title="Add"
+                size="sm"
+                variant="outline-secondary"
+                className="bg-white border no-hover"
+                onClick={handleAdd}
+                disabled={!newKey || newKey in entries}
+              >
                 <BsPlus />
               </Button>
             </td>

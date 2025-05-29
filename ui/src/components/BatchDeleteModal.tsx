@@ -1,9 +1,9 @@
-import { FC } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { Button } from 'react-bootstrap';
-import { deleteBatch } from 'api/batches';
-import ModalWindow from 'components/ModalWindow';
-import { useNotification } from 'context/notification';
+import { FC } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "react-bootstrap";
+import { deleteBatch } from "api/batches";
+import ModalWindow from "components/ModalWindow";
+import { useNotification } from "context/notification";
 
 interface Props {
   batchName: string;
@@ -12,7 +12,12 @@ interface Props {
   onSuccess?: () => void;
 }
 
-const BatchDeleteModal: FC<Props> = ({ batchName, show, handleClose, onSuccess }) => {
+const BatchDeleteModal: FC<Props> = ({
+  batchName,
+  show,
+  handleClose,
+  onSuccess,
+}) => {
   const queryClient = useQueryClient();
   const { notify } = useNotification();
 
@@ -21,7 +26,7 @@ const BatchDeleteModal: FC<Props> = ({ batchName, show, handleClose, onSuccess }
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Batch ${batchName} deleted`);
-          queryClient.invalidateQueries({queryKey: ['batches']});
+          queryClient.invalidateQueries({ queryKey: ["batches"] });
           onSuccess?.();
           return;
         }
@@ -29,7 +34,7 @@ const BatchDeleteModal: FC<Props> = ({ batchName, show, handleClose, onSuccess }
       })
       .catch((e) => {
         notify.error(`Error during batch deletion: ${e}`);
-     });
+      });
   };
 
   return (
@@ -39,10 +44,17 @@ const BatchDeleteModal: FC<Props> = ({ batchName, show, handleClose, onSuccess }
       title="Delete Batch?"
       footer={
         <>
-          <Button variant="danger" onClick={onDelete}>Delete</Button>
+          <Button variant="danger" onClick={onDelete}>
+            Delete
+          </Button>
         </>
-      }>
-        <p>Are you sure you want to delete the batch "{batchName}"?<br />This action cannot be undone.</p>
+      }
+    >
+      <p>
+        Are you sure you want to delete the batch "{batchName}"?
+        <br />
+        This action cannot be undone.
+      </p>
     </ModalWindow>
   );
 };
