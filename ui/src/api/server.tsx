@@ -1,4 +1,4 @@
-import { Settings } from 'types/server';
+import { Settings } from "types/server";
 
 export const fetchSettings = (): Promise<Settings> => {
   return new Promise((resolve, reject) => {

@@ -5,13 +5,24 @@ interface LoadingButtonProps extends ButtonProps {
   isLoading?: boolean;
 }
 
-const LoadingButton: FC<LoadingButtonProps> = ({ isLoading, children, disabled, ...props }) => {
+const LoadingButton: FC<LoadingButtonProps> = ({
+  isLoading,
+  children,
+  disabled,
+  ...props
+}) => {
   return (
     <Button {...props} disabled={isLoading || disabled}>
       {isLoading ? (
         <>
-          <Spinner as="span" animation="border" size="sm" role="status" aria-hidden="true" />
-          {" "}Loading...
+          <Spinner
+            as="span"
+            animation="border"
+            size="sm"
+            role="status"
+            aria-hidden="true"
+          />{" "}
+          Loading...
         </>
       ) : (
         children

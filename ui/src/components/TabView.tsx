@@ -1,6 +1,6 @@
-import { FC, ReactNode } from 'react';
-import Tab from 'react-bootstrap/Tab';
-import Tabs from 'react-bootstrap/Tabs';
+import { FC, ReactNode } from "react";
+import Tab from "react-bootstrap/Tab";
+import Tabs from "react-bootstrap/Tabs";
 
 interface Tab {
   key: string;
@@ -19,17 +19,15 @@ const TabView: FC<TabViewProps> = ({
   tabs,
   defaultTab,
   activeTab,
-  onSelect
+  onSelect,
 }) => {
-  const activeKey = (activeTab && activeTab != '') ? activeTab : defaultTab;
+  const activeKey = activeTab && activeTab != "" ? activeTab : defaultTab;
 
   const getTabs = () => {
     return tabs.map((item) => {
       return (
         <Tab eventKey={item.key} title={item.title}>
-          {(!activeTab || activeTab == item.key) && (
-          item.content
-          )}
+          {(!activeTab || activeTab == item.key) && item.content}
         </Tab>
       );
     });
@@ -37,7 +35,7 @@ const TabView: FC<TabViewProps> = ({
 
   return (
     <Tabs
-      defaultActiveKey={ activeKey }
+      defaultActiveKey={activeKey}
       id="uncontrolled-tab-example"
       className="mb-3"
       onSelect={(key) => onSelect(key)}

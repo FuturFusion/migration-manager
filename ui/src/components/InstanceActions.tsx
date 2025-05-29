@@ -1,7 +1,7 @@
-import { FC, useState } from 'react';
-import ReactDOM from 'react-dom';
-import { MdOutlineComment } from 'react-icons/md';
-import { Instance } from 'types/instance';
+import { FC, useState } from "react";
+import ReactDOM from "react-dom";
+import { MdOutlineComment } from "react-icons/md";
+import { Instance } from "types/instance";
 
 interface Props {
   instance: Instance;
@@ -12,8 +12,11 @@ interface MousePosition {
   left: number;
 }
 
-const InstanceActions: FC<Props> = ({instance}) => {
-  const [tooltipPosition, setTooltipPosition] = useState<MousePosition>({top: 0, left: 0});
+const InstanceActions: FC<Props> = ({ instance }) => {
+  const [tooltipPosition, setTooltipPosition] = useState<MousePosition>({
+    top: 0,
+    left: 0,
+  });
 
   const handleMouseEnter = (e: any) => {
     const rect = e.target.getBoundingClientRect();
@@ -24,18 +27,18 @@ const InstanceActions: FC<Props> = ({instance}) => {
   };
 
   const handleMouseLeave = () => {
-    setTooltipPosition({top: 0, left: 0}); // Hide the tooltip
+    setTooltipPosition({ top: 0, left: 0 }); // Hide the tooltip
   };
 
   return (
     <div className="relative inline-block">
       <div>
-        { instance.overrides && instance.overrides.comment && (
+        {instance.overrides && instance.overrides.comment && (
           <MdOutlineComment
             size={15}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            />
+          />
         )}
       </div>
       {tooltipPosition.top != 0 &&
@@ -56,7 +59,7 @@ const InstanceActions: FC<Props> = ({instance}) => {
           >
             {instance.overrides.comment}
           </div>,
-          document.body
+          document.body,
         )}
     </div>
   );

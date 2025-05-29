@@ -1,5 +1,5 @@
-import { APIResponse } from 'types/response';
-import { Target } from 'types/target';
+import { APIResponse } from "types/response";
+import { Target } from "types/target";
 
 export const fetchTargets = (): Promise<Target[]> => {
   return new Promise((resolve, reject) => {
@@ -19,7 +19,6 @@ export const fetchTarget = (name: string | undefined): Promise<Target> => {
   });
 };
 
-
 export const createTarget = (body: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/targets`, {
@@ -32,7 +31,10 @@ export const createTarget = (body: string): Promise<APIResponse<null>> => {
   });
 };
 
-export const updateTarget = (name: string, body: string): Promise<APIResponse<null>> => {
+export const updateTarget = (
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/targets/${name}`, {
       method: "PUT",
@@ -46,7 +48,7 @@ export const updateTarget = (name: string, body: string): Promise<APIResponse<nu
 
 export const deleteTarget = (name: string): Promise<APIResponse<object>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/targets/${name}`, {method: "DELETE"})
+    fetch(`/1.0/targets/${name}`, { method: "DELETE" })
       .then((response) => response.json())
       .then((data) => resolve(data))
       .catch(reject);

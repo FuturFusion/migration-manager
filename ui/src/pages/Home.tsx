@@ -1,5 +1,5 @@
-import { Navigate } from 'react-router';
-import { useAuth } from 'context/auth';
+import { Navigate } from "react-router";
+import { useAuth } from "context/auth";
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
@@ -8,12 +8,14 @@ const Home = () => {
     return (
       <>
         <h1>Welcome to Migration Manager</h1>
-        <div>Please log in using the navigation links on the left to continue.</div>
+        <div>
+          Please log in using the navigation links on the left to continue.
+        </div>
       </>
-    )
+    );
   }
 
-  return <Navigate to={`/ui/sources`} replace={true}/>;
+  return <Navigate to={`/ui/sources`} replace={true} />;
 };
 
 export default Home;

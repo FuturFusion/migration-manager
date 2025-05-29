@@ -1,4 +1,4 @@
-import { QueueEntry } from 'types/queue';
+import { QueueEntry } from "types/queue";
 
 export const fetchQueue = (): Promise<QueueEntry[]> => {
   return new Promise((resolve, reject) => {

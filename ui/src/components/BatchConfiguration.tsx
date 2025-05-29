@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
-import { useNavigate, useParams } from 'react-router';
-import { fetchBatch, updateBatch } from 'api/batches';
-import BatchForm from 'components/BatchForm';
-import { useNotification } from 'context/notification';
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate, useParams } from "react-router";
+import { fetchBatch, updateBatch } from "api/batches";
+import BatchForm from "components/BatchForm";
+import { useNotification } from "context/notification";
 
 const BatchConfiguration = () => {
   const { name } = useParams() as { name: string };
@@ -21,7 +21,7 @@ const BatchConfiguration = () => {
       })
       .catch((e) => {
         notify.error(`Error during batch update: ${e}`);
-    });
+      });
   };
 
   const {
@@ -29,22 +29,19 @@ const BatchConfiguration = () => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ['batches', name],
-    queryFn: () =>
-      fetchBatch(name)
-    });
+    queryKey: ["batches", name],
+    queryFn: () => fetchBatch(name),
+  });
 
-  if(isLoading) {
+  if (isLoading) {
     return <div>Loading...</div>;
   }
 
   if (error) {
-    return (
-      <div>Error while loading instances</div>
-    );
+    return <div>Error while loading instances</div>;
   }
 
-  return (<BatchForm batch={batch} onSubmit={onSubmit}/>);
+  return <BatchForm batch={batch} onSubmit={onSubmit} />;
 };
 
 export default BatchConfiguration;

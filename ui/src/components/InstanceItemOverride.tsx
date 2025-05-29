@@ -1,4 +1,4 @@
-import { FC } from 'react';
+import { FC } from "react";
 
 interface Props {
   original: string | number;
@@ -6,13 +6,16 @@ interface Props {
   showOverride: boolean;
 }
 
-const InstanceItemOverride: FC<Props> = ({original, override, showOverride}) => {
-
-  const originalClass = showOverride ? 'item-deleted' : '';
+const InstanceItemOverride: FC<Props> = ({
+  original,
+  override,
+  showOverride,
+}) => {
+  const originalClass = showOverride ? "item-deleted" : "";
   return (
     <>
       <span className={originalClass}>{original}</span>
-      { showOverride && (<span style={{marginLeft: '5px'}}>{override}</span>)}
+      {showOverride && <span style={{ marginLeft: "5px" }}>{override}</span>}
     </>
   );
 };

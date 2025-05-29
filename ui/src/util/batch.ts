@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { startBatch, stopBatch } from 'api/batches';
-import { Batch } from 'types/batch';
+import { useEffect, useState } from "react";
+import { startBatch, stopBatch } from "api/batches";
+import { Batch } from "types/batch";
 
 export enum BatchStatus {
   Defined = "Defined",
@@ -13,7 +13,11 @@ export enum BatchStatus {
 
 export const canStartBatch = (batch: Batch) => {
   const status = batch.status;
-  if (status != BatchStatus.Defined && status != BatchStatus.Stopped && status != BatchStatus.Error) {
+  if (
+    status != BatchStatus.Defined &&
+    status != BatchStatus.Stopped &&
+    status != BatchStatus.Error
+  ) {
     return false;
   }
 
@@ -29,7 +33,11 @@ export const canStopBatch = (batch: Batch) => {
   return true;
 };
 
-export const handleStartBatch = (batchName: string, onSuccess: (message: string) => void, onError: (message: string) => void) => {
+export const handleStartBatch = (
+  batchName: string,
+  onSuccess: (message: string) => void,
+  onError: (message: string) => void,
+) => {
   void startBatch(batchName)
     .then((response) => {
       if (response.error_code === 0) {
@@ -40,10 +48,14 @@ export const handleStartBatch = (batchName: string, onSuccess: (message: string)
     })
     .catch((e) => {
       onError(`Error when starting batch ${batchName}. ${e}`);
-  });
+    });
 };
 
-export const handleStopBatch = (batchName: string, onSuccess: (message: string) => void, onError: (message: string) => void) => {
+export const handleStopBatch = (
+  batchName: string,
+  onSuccess: (message: string) => void,
+  onError: (message: string) => void,
+) => {
   void stopBatch(batchName)
     .then((response) => {
       if (response.error_code === 0) {
@@ -54,7 +66,7 @@ export const handleStopBatch = (batchName: string, onSuccess: (message: string) 
     })
     .catch((e) => {
       onError(`Error when stopping batch ${batchName}. ${e}`);
-  });
+    });
 };
 
 export const useDebounce = (value: string, delay: number = 500) => {
@@ -66,5 +78,4 @@ export const useDebounce = (value: string, delay: number = 500) => {
   }, [value, delay]);
 
   return debounced;
-}
-
+};

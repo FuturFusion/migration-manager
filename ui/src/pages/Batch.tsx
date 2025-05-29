@@ -1,9 +1,9 @@
-import Button from 'react-bootstrap/Button';
-import { useQuery } from '@tanstack/react-query'
-import { Link, useNavigate } from 'react-router';
-import { fetchBatches } from 'api/batches';
-import BatchActions from 'components/BatchActions';
-import DataTable from 'components/DataTable.tsx';
+import Button from "react-bootstrap/Button";
+import { useQuery } from "@tanstack/react-query";
+import { Link, useNavigate } from "react-router";
+import { fetchBatches } from "api/batches";
+import BatchActions from "components/BatchActions";
+import DataTable from "components/DataTable.tsx";
 
 const Batch = () => {
   const navigate = useNavigate();
@@ -13,16 +13,28 @@ const Batch = () => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ['batches'],
+    queryKey: ["batches"],
     queryFn: fetchBatches,
     refetchInterval: refetchInterval,
-  })
+  });
 
-  const headers = ["Name", "Status", "Target", "Project", "Storage pool", "Include expression", "Actions"];
+  const headers = [
+    "Name",
+    "Status",
+    "Target",
+    "Project",
+    "Storage pool",
+    "Include expression",
+    "Actions",
+  ];
   const rows = batches.map((item) => {
     return [
       {
-        content: <Link to={`/ui/batches/${item.name}`} className="data-table-link">{item.name}</Link>,
+        content: (
+          <Link to={`/ui/batches/${item.name}`} className="data-table-link">
+            {item.name}
+          </Link>
+        ),
         sortKey: item.name,
       },
       {
@@ -43,23 +55,20 @@ const Batch = () => {
       },
       {
         content: item.include_expression,
-        sortKey: item.include_expression
+        sortKey: item.include_expression,
       },
       {
-        content: <BatchActions batch={item} />
-      }];
+        content: <BatchActions batch={item} />,
+      },
+    ];
   });
 
   if (isLoading) {
-    return (
-      <div>Loading batches...</div>
-    );
+    return <div>Loading batches...</div>;
   }
 
   if (error) {
-    return (
-      <div>Error while loading batches</div>
-    );
+    return <div>Error while loading batches</div>;
   }
 
   return (
@@ -68,7 +77,13 @@ const Batch = () => {
         <div className="mx-2 mx-md-4">
           <div className="row">
             <div className="col-12">
-            <Button variant="success" className="float-end" onClick={() => navigate('/ui/batches/create')}>Create batch</Button>
+              <Button
+                variant="success"
+                className="float-end"
+                onClick={() => navigate("/ui/batches/create")}
+              >
+                Create batch
+              </Button>
             </div>
           </div>
         </div>

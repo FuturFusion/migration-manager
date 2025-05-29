@@ -1,5 +1,5 @@
-import { APIResponse } from 'types/response';
-import { Source } from 'types/source';
+import { APIResponse } from "types/response";
+import { Source } from "types/source";
 
 export const fetchSources = (): Promise<Source[]> => {
   return new Promise((resolve, reject) => {
@@ -31,7 +31,10 @@ export const createSource = (body: string): Promise<APIResponse<null>> => {
   });
 };
 
-export const updateSource = (name: string, body: string): Promise<APIResponse<null>> => {
+export const updateSource = (
+  name: string,
+  body: string,
+): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/sources/${name}`, {
       method: "PUT",
@@ -45,7 +48,7 @@ export const updateSource = (name: string, body: string): Promise<APIResponse<nu
 
 export const deleteSource = (name: string): Promise<APIResponse<object>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/sources/${name}`, {method: "DELETE"})
+    fetch(`/1.0/sources/${name}`, { method: "DELETE" })
       .then((response) => response.json())
       .then((data) => resolve(data))
       .catch(reject);
