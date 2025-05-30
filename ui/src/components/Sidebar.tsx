@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { FaArrowRight, FaArrowLeft } from "react-icons/fa";
 import { BsBox, BsStack, BsFillDatabaseFill } from "react-icons/bs";
 import { MdLogin, MdLogout } from "react-icons/md";
-import { useAuth } from "context/auth";
+import { useAuth } from "context/authContext";
 
 const Sidebar = () => {
   const { isAuthenticated } = useAuth();

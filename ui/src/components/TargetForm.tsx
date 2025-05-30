@@ -4,12 +4,12 @@ import { useSearchParams } from "react-router";
 import { useFormik } from "formik";
 import LoadingButton from "components/LoadingButton";
 import TLSFingerprintConfirmModal from "components/TLSFingerprintConfirmModal";
-import { Target } from "types/target";
+import { Target, TargetFormValues } from "types/target";
 import { TargetType } from "util/target";
 
 interface Props {
   target?: Target;
-  onSubmit: (values: any) => void;
+  onSubmit: (values: Target) => void;
 }
 
 const TargetForm: FC<Props> = ({ target, onSubmit }) => {
@@ -28,8 +28,8 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
     formik.handleSubmit();
   };
 
-  const validateForm = (values: any) => {
-    const errors: any = {};
+  const validateForm = (values: TargetFormValues) => {
+    const errors: Partial<Record<keyof TargetFormValues, string>> = {};
 
     if (!values.name) {
       errors.name = "Name is required";
@@ -68,7 +68,7 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
   const formik = useFormik({
     initialValues: formikInitialValues,
     validate: validateForm,
-    onSubmit: (values) => {
+    onSubmit: (values: TargetFormValues) => {
       const modifiedValues = {
         name: values.name,
         target_type: TargetType.Incus,

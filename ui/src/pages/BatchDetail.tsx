@@ -8,7 +8,7 @@ import BatchDeleteModal from "components/BatchDeleteModal";
 import BatchInstances from "components/BatchInstances";
 import BatchOverview from "components/BatchOverview";
 import TabView from "components/TabView";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
 import {
   canStartBatch,
   canStopBatch,

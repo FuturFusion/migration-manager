@@ -5,12 +5,21 @@ export interface IncusProperties {
   tls_client_key: string;
   tls_client_cert: string;
   trusted_server_certificate_fingerprint: string;
-  connectivity_status: ExternalConnectivityStatus;
+  connectivity_status?: ExternalConnectivityStatus;
 }
 
 export interface Target {
   name: string;
-  target_type: number;
-  database_id: number;
+  target_type: string;
   properties: IncusProperties;
+}
+
+export interface TargetFormValues {
+  name: string;
+  targetType: string;
+  authType: string;
+  endpoint: string;
+  tlsClientKey: string;
+  tlsClientCert: string;
+  trustedServerCertificateFingerprint: string;
 }

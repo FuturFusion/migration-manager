@@ -2,7 +2,7 @@ import { Routes, Route } from "react-router";
 import { Container } from "react-bootstrap";
 import Notification from "components/Notification";
 import Sidebar from "components/Sidebar";
-import { useAuth } from "context/auth";
+import { useAuth } from "context/authContext";
 import Batch from "pages/Batch";
 import BatchCreate from "pages/BatchCreate";
 import BatchDetail from "pages/BatchDetail";

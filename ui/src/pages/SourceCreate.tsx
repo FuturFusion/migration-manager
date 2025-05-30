@@ -1,14 +1,15 @@
 import { useNavigate } from "react-router";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
 import { createSource } from "api/sources";
 import SourceForm from "components/SourceForm";
+import { Source } from "types/source";
 import { ExternalConnectivityStatus } from "util/response";
 
 const SourceCreate = () => {
   const { notify } = useNotification();
   const navigate = useNavigate();
 
-  const onSubmit = (values: any) => {
+  const onSubmit = (values: Source) => {
     return createSource(JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {

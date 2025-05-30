@@ -6,7 +6,7 @@ import { deleteSource } from "api/sources";
 import SourceConfiguration from "pages/SourceConfiguration";
 import SourceOverview from "pages/SourceOverview";
 import TabView from "components/TabView";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
 
 const SourceDetail = () => {
   const { notify } = useNotification();

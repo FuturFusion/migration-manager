@@ -6,7 +6,7 @@ import {
   MdOutlineStopCircle,
 } from "react-icons/md";
 import BatchDeleteModal from "components/BatchDeleteModal";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
 import { Batch } from "types/batch";
 import {
   canStartBatch,

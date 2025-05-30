@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "react-bootstrap";
 import { deleteBatch } from "api/batches";
 import ModalWindow from "components/ModalWindow";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
 
 interface Props {
   batchName: string;

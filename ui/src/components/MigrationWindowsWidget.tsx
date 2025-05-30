@@ -64,13 +64,13 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
                   <Form.Control
                     type="text"
                     size="sm"
-                    value={item.start}
+                    value={item.start ?? ""}
                     onChange={(e) => handleEdit(index, "start", e.target.value)}
                   />
                   <Form.Control
                     type="text"
                     size="sm"
-                    value={item.end}
+                    value={item.end ?? ""}
                     onChange={(e) => handleEdit(index, "end", e.target.value)}
                   />
                 </td>
@@ -91,7 +91,7 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
                   <Form.Control
                     type="text"
                     size="sm"
-                    value={item.lockout}
+                    value={item.lockout ?? ""}
                     onChange={(e) =>
                       handleEdit(index, "lockout", e.target.value)
                     }
@@ -106,7 +106,7 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
                 type="text"
                 size="sm"
                 placeholder="Start"
-                value={migrationWindow.start}
+                value={migrationWindow.start ?? ""}
                 onChange={(e) =>
                   setMigrationWindow({
                     ...migrationWindow,
@@ -118,7 +118,7 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
                 type="text"
                 size="sm"
                 placeholder="End"
-                value={migrationWindow.end}
+                value={migrationWindow.end ?? ""}
                 onChange={(e) =>
                   setMigrationWindow({
                     ...migrationWindow,
@@ -145,7 +145,7 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
                 type="text"
                 size="sm"
                 placeholder="Lockout"
-                value={migrationWindow.lockout}
+                value={migrationWindow.lockout ?? ""}
                 onChange={(e) =>
                   setMigrationWindow({
                     ...migrationWindow,
