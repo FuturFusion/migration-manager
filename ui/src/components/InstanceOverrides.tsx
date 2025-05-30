@@ -10,8 +10,9 @@ import {
   updateInstanceOverride,
   fetchInstance,
 } from "api/instances";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
 import KeyValueWidget from "components/KeyValueWidget";
+import { InstanceOverrideFormValues } from "types/instance";
 import { APIResponse } from "types/response";
 import {
   bytesToHumanReadable,
@@ -70,14 +71,16 @@ const InstanceOverrides: FC = () => {
     notify.error(`Failed to save override for ${uuid}. ${e}`);
   };
 
-  const validateForm = (values: any) => {
-    const errors: any = {};
+  const validateForm = (values: InstanceOverrideFormValues) => {
+    const errors: Partial<Record<keyof InstanceOverrideFormValues, string>> =
+      {};
 
     if (values.memory) {
       try {
         humanReadableToBytes(values.memory);
-      } catch (e: any) {
-        errors.memory = e.toString();
+      } catch (e: unknown) {
+        const lastError = e as Error;
+        errors.memory = lastError.toString();
       }
     }
 

@@ -66,9 +66,9 @@ const BatchOverview = () => {
             <tbody>
               {batch?.migration_windows.map((item, index) => (
                 <tr key={index}>
-                  <td>{formatDate(item.start.toString())}</td>
-                  <td>{formatDate(item.end.toString())}</td>
-                  <td>{formatDate(item.lockout.toString())}</td>
+                  <td>{formatDate(item.start?.toString())}</td>
+                  <td>{formatDate(item.end?.toString())}</td>
+                  <td>{formatDate(item.lockout?.toString())}</td>
                 </tr>
               ))}
             </tbody>

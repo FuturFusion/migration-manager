@@ -29,6 +29,7 @@ const KeyValueWidget: FC<Props> = ({ value, onChange }) => {
 
   const handleDelete = (key: string) => {
     const { [key]: _, ...rest } = entries;
+
     setEntries(rest);
     onChange(rest);
   };

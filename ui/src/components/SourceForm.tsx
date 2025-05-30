@@ -5,12 +5,12 @@ import { useFormik } from "formik";
 import LoadingButton from "components/LoadingButton";
 import PasswordField from "components/PasswordField";
 import TLSFingerprintConfirmModal from "components/TLSFingerprintConfirmModal";
-import { Source } from "types/source";
+import { Source, SourceFormValues } from "types/source";
 import { SourceType } from "util/source";
 
 interface Props {
   source?: Source;
-  onSubmit: (values: any) => void;
+  onSubmit: (values: Source) => void;
 }
 
 const SourceForm: FC<Props> = ({ source, onSubmit }) => {
@@ -29,8 +29,8 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
     formik.handleSubmit();
   };
 
-  const validateForm = (values: any) => {
-    const errors: any = {};
+  const validateForm = (values: SourceFormValues) => {
+    const errors: Partial<Record<keyof SourceFormValues, string>> = {};
 
     if (!values.name) {
       errors.name = "Name is required";
@@ -71,7 +71,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
   const formik = useFormik({
     initialValues: formikInitialValues,
     validate: validateForm,
-    onSubmit: (values) => {
+    onSubmit: (values: SourceFormValues) => {
       const modifiedValues = {
         name: values.name,
         source_type: SourceType.VMware,

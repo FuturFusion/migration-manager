@@ -2,7 +2,7 @@ import Toast from "react-bootstrap/Toast";
 import ToastContainer from "react-bootstrap/ToastContainer";
 import { MdOutlineClose } from "react-icons/md";
 import parse from "html-react-parser";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
 
 const Notification = () => {
   const { notify, notification } = useNotification();

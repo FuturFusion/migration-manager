@@ -7,26 +7,14 @@ import { fetchInstances } from "api/instances";
 import { fetchTargets } from "api/targets";
 import BatchConstraintsWidget from "components/BatchConstraintsWidget";
 import MigrationWindowsWidget from "components/MigrationWindowsWidget";
-import { Batch, BatchConstraint, MigrationWindow } from "types/batch";
+import { Batch, BatchFormValues, MigrationWindow } from "types/batch";
 import { useDebounce } from "util/batch";
 import { formatDate, isMigrationWindowDateValid } from "util/date";
 
 interface Props {
   batch?: Batch;
-  onSubmit: (values: any) => void;
+  onSubmit: (values: BatchFormValues) => void;
 }
-
-type BatchFormValues = {
-  name: string;
-  target: string;
-  target_project: string;
-  status: string;
-  status_message: string;
-  storage_pool: string;
-  include_expression: string;
-  migration_windows: MigrationWindow[];
-  constraints: BatchConstraint[];
-};
 
 const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
   const {
@@ -108,9 +96,9 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
 
   if (batch) {
     const migrationWindows = batch.migration_windows.map((item) => ({
-      start: formatDate(item.start.toString()),
-      end: formatDate(item.end.toString()),
-      lockout: formatDate(item.lockout.toString()),
+      start: formatDate(item.start?.toString()),
+      end: formatDate(item.end?.toString()),
+      lockout: formatDate(item.lockout?.toString()),
     }));
 
     formikInitialValues = {
@@ -130,7 +118,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     initialValues: formikInitialValues,
     validate: validateForm,
     enableReinitialize: true,
-    onSubmit: (values) => {
+    onSubmit: (values: BatchFormValues) => {
       const formattedMigrationWindows = values.migration_windows.map((item) => {
         let start = null;
         let end = null;
@@ -167,30 +155,31 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     },
   });
 
-  const fetchResults = async (searchTerm: string) => {
-    if (!searchTerm) {
-      setInstancesCount(0);
-      return;
-    }
-
-    setIsInstancesLoading(true);
-    try {
-      const instances = await fetchInstances(searchTerm);
-      setInstancesCount(instances.length);
-    } catch (err) {
-      setInstancesCount(-1);
-      const errorMessage = (err as Error).message;
-      formik.setFieldError("include_expression", errorMessage);
-    } finally {
-      setIsInstancesLoading(false);
-    }
-  };
-
+  const { setFieldError } = formik;
   const debouncedSearch = useDebounce(formik.values.include_expression, 500);
 
   useEffect(() => {
+    const fetchResults = async (searchTerm: string) => {
+      if (!searchTerm) {
+        setInstancesCount(0);
+        return;
+      }
+
+      setIsInstancesLoading(true);
+      try {
+        const instances = await fetchInstances(searchTerm);
+        setInstancesCount(instances.length);
+      } catch (err) {
+        setInstancesCount(-1);
+        const errorMessage = (err as Error).message;
+        setFieldError("include_expression", errorMessage);
+      } finally {
+        setIsInstancesLoading(false);
+      }
+    };
+
     fetchResults(debouncedSearch);
-  }, [debouncedSearch]);
+  }, [debouncedSearch, setFieldError]);
 
   return (
     <div className="form-container">

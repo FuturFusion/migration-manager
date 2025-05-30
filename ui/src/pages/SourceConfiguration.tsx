@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { fetchSource, updateSource } from "api/sources";
 import SourceForm from "components/SourceForm";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
+import { Source } from "types/source";
 import { ExternalConnectivityStatus } from "util/response";
 
 const SourceConfiguration = () => {
@@ -10,7 +11,7 @@ const SourceConfiguration = () => {
   const { notify } = useNotification();
   const navigate = useNavigate();
 
-  const onSubmit = (values: any) => {
+  const onSubmit = (values: Source) => {
     return updateSource(name, JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {

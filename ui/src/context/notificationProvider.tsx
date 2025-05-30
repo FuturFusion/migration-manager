@@ -1,25 +1,5 @@
-import {
-  FC,
-  createContext,
-  ReactNode,
-  useRef,
-  useState,
-  useContext,
-} from "react";
-
-interface ContextProps {
-  notify: any;
-  notification: any;
-}
-
-const NotificationContext = createContext<ContextProps>({
-  notify: {
-    info: () => undefined,
-    success: () => undefined,
-    error: () => undefined,
-  },
-  notification: {},
-});
+import { FC, ReactNode, useRef, useState } from "react";
+import { NotificationContext } from "context/notificationContext";
 
 export const NotificationProvider: FC<{ children: ReactNode }> = ({
   children,
@@ -58,8 +38,4 @@ export const NotificationProvider: FC<{ children: ReactNode }> = ({
       {children}
     </NotificationContext.Provider>
   );
-};
-
-export const useNotification = () => {
-  return useContext(NotificationContext);
 };

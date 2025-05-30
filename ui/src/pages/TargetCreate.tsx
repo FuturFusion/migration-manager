@@ -1,14 +1,15 @@
 import { useNavigate } from "react-router";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
 import { createTarget } from "api/targets";
 import TargetForm from "components/TargetForm";
+import { Target } from "types/target";
 import { ExternalConnectivityStatus } from "util/response";
 
 const TargetCreate = () => {
   const { notify } = useNotification();
   const navigate = useNavigate();
 
-  const onSubmit = (values: any) => {
+  const onSubmit = (values: Target) => {
     return createTarget(JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {

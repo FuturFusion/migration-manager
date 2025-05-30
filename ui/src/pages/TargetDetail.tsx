@@ -6,7 +6,7 @@ import { deleteTarget } from "api/targets";
 import TargetConfiguration from "pages/TargetConfiguration";
 import TargetOverview from "pages/TargetOverview";
 import TabView from "components/TabView";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
 
 const TargetDetail = () => {
   const { notify } = useNotification();

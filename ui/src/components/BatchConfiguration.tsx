@@ -2,14 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router";
 import { fetchBatch, updateBatch } from "api/batches";
 import BatchForm from "components/BatchForm";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
+import { BatchFormValues } from "types/batch";
 
 const BatchConfiguration = () => {
   const { name } = useParams() as { name: string };
   const { notify } = useNotification();
   const navigate = useNavigate();
 
-  const onSubmit = (values: any) => {
+  const onSubmit = (values: BatchFormValues) => {
     updateBatch(name, JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {

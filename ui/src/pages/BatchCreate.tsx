@@ -1,13 +1,14 @@
 import { useNavigate } from "react-router";
-import { useNotification } from "context/notification";
+import { useNotification } from "context/notificationContext";
 import { createBatch } from "api/batches";
 import BatchForm from "components/BatchForm";
+import { BatchFormValues } from "types/batch";
 
 const BatchCreate = () => {
   const { notify } = useNotification();
   const navigate = useNavigate();
 
-  const onSubmit = (values: any) => {
+  const onSubmit = (values: BatchFormValues) => {
     createBatch(JSON.stringify(values, null, 2))
       .then((response) => {
         if (response.error_code == 0) {

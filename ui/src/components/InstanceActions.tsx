@@ -1,4 +1,4 @@
-import { FC, useState } from "react";
+import React, { FC, useState } from "react";
 import ReactDOM from "react-dom";
 import { MdOutlineComment } from "react-icons/md";
 import { Instance } from "types/instance";
@@ -18,8 +18,8 @@ const InstanceActions: FC<Props> = ({ instance }) => {
     left: 0,
   });
 
-  const handleMouseEnter = (e: any) => {
-    const rect = e.target.getBoundingClientRect();
+  const handleMouseEnter = (e: React.MouseEvent<SVGElement>) => {
+    const rect = (e.target as SVGElement).getBoundingClientRect();
     setTooltipPosition({
       top: rect.top,
       left: rect.left - 100,

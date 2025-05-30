@@ -60,3 +60,11 @@ export interface Instance {
   properties: InstanceProperties;
   overrides: InstanceOverride;
 }
+
+export interface InstanceOverrideFormValues {
+  comment: string;
+  disable_migration: string;
+  cpus: number;
+  memory: string;
+  config: Record<string, string>;
+}

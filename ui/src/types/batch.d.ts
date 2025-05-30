@@ -7,9 +7,9 @@ export interface BatchConstraint {
 }
 
 export interface MigrationWindow {
-  start: string;
-  end: string;
-  lockout: string;
+  start: string | null;
+  end: string | null;
+  lockout: string | null;
 }
 
 export interface Batch {
@@ -20,6 +20,18 @@ export interface Batch {
   storage_pool: string;
   target: string;
   target_project: string;
+  migration_windows: MigrationWindow[];
+  constraints: BatchConstraint[];
+}
+
+export interface BatchFormValues {
+  name: string;
+  target: string;
+  target_project: string;
+  status: string;
+  status_message: string;
+  storage_pool: string;
+  include_expression: string;
   migration_windows: MigrationWindow[];
   constraints: BatchConstraint[];
 }
