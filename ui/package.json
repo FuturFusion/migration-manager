@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "serve": "vite --host",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint-eslint": "yarn eslint 'src/**/*.{json,tsx,ts}'",
     "lint-prettier": "yarn prettier --check 'src/**/*.{json,tsx,ts}'",
+    "lint": "yarn lint-eslint && yarn lint-prettier",
+    "build": "yarn lint && tsc -b && vite build",
+    "build-nolint": "vite build",
     "preview": "vite preview",
     "test": "vitest run"
   },
