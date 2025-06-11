@@ -9,7 +9,18 @@ type SourceType string
 const (
 	SOURCETYPE_COMMON SourceType = "common"
 	SOURCETYPE_VMWARE SourceType = "vmware"
+	SOURCETYPE_NSX    SourceType = "nsx"
 )
+
+// VMSourceTypes are the list of source types that manage VMs.
+func VMSourceTypes() []SourceType {
+	return []SourceType{SOURCETYPE_VMWARE}
+}
+
+// NetworkSourceTypes are the list of source types that manage networks.
+func NetworkSourceTypes() []SourceType {
+	return []SourceType{SOURCETYPE_NSX}
+}
 
 // Source defines properties common to all sources.
 //
