@@ -22,10 +22,12 @@ import (
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vapi/rest"
 	"github.com/vmware/govmomi/vapi/tags"
+	"github.com/vmware/govmomi/view"
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
 
+	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/properties"
@@ -165,6 +167,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		slog.Warn("Registered source has no networks", slog.String("source", s.Name))
 	}
 
+	networkLocationsByID := map[string]string{}
+	for _, n := range networks {
+		networkLocationsByID[parseNetworkID(ctx, n)] = n.GetInventoryPath()
+	}
+
 	c := rest.NewClient(s.govmomiClient.Client)
 	err = c.Login(ctx, url.UserPassword(s.Username, s.Password))
 	if err != nil {
@@ -200,7 +207,12 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			continue
 		}
 
-		vmProps, err := s.getVMProperties(vm, vmProperties, networks)
+		// Skip VM templates.
+		if vmProperties.Config.Template {
+			continue
+		}
+
+		vmProps, err := s.getVMProperties(vm, vmProperties, networkLocationsByID)
 		if err != nil {
 			b, marshalErr := json.Marshal(vmProperties)
 			if marshalErr == nil {
@@ -248,26 +260,97 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	return ret, nil
 }
 
-func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
-	ret := []api.Network{}
-
+func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) (migration.Networks, error) {
 	finder := find.NewFinder(s.govmomiClient.Client)
 	networks, err := finder.NetworkList(ctx, "/...")
 	if err != nil {
 		var notFoundErr *find.NotFoundError
 		if errors.As(err, &notFoundErr) {
 			slog.Warn("Registered source has no networks", slog.String("source", s.Name))
-			return ret, nil
+			return migration.Networks{}, nil
 		}
 
 		return nil, err
 	}
 
-	for _, n := range networks {
-		ret = append(ret, api.Network{Name: parseNetworkID(n), Location: n.GetInventoryPath()})
+	v := view.NewManager(s.govmomiClient.Client)
+	objType := []string{"Network"}
+	c, err := v.CreateContainerView(ctx, s.govmomiClient.ServiceContent.RootFolder, objType, true)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to create container view for %s: %w", s.Name, err)
 	}
 
-	return ret, nil
+	var results []any
+	err = c.Retrieve(ctx, objType, nil, &results)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to retrieve networks from %q: %w", s.Name, err)
+	}
+
+	networkLocationsByID := map[string]string{}
+	for _, n := range networks {
+		networkLocationsByID[parseNetworkID(ctx, n)] = n.GetInventoryPath()
+	}
+
+	networksInUse := migration.Networks{}
+	for _, obj := range results {
+		var id string
+		var netType api.NetworkType
+		var props internalAPI.VCenterNetworkProperties
+
+		switch t := obj.(type) {
+		case mo.Network:
+			id = t.Summary.GetNetworkSummary().Network.Value
+			netType = api.NETWORKTYPE_VMWARE_STANDARD
+		case mo.DistributedVirtualPortgroup:
+			id = t.Key
+			netType = api.NETWORKTYPE_VMWARE_DISTRIBUTED
+			if t.Config.BackingType == "nsx" {
+				netType = api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX
+				props.SegmentPath = t.Config.SegmentId
+				if err != nil {
+					return nil, err
+				}
+
+				props.TransportZoneUUID, err = uuid.Parse(t.Config.TransportZoneUuid)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+		case mo.OpaqueNetwork:
+			id = t.Summary.(*types.OpaqueNetworkSummary).OpaqueNetworkId
+			for _, v := range t.ExtraConfig {
+				if v.GetOptionValue().Key == "com.vmware.opaquenetwork.segment.path" {
+					str, ok := v.GetOptionValue().Value.(string)
+					if !ok {
+						return nil, fmt.Errorf("Unknown network %q value for segment path: %T", id, v.GetOptionValue().Value)
+					}
+
+					props.SegmentPath = str
+					break
+				}
+			}
+
+			netType = api.NETWORKTYPE_VMWARE_NSX
+		}
+
+		if networkLocationsByID[id] != "" {
+			b, err := json.Marshal(props)
+			if err != nil {
+				return nil, err
+			}
+
+			networksInUse = append(networksInUse, migration.Network{
+				Name:       id,
+				Type:       netType,
+				Location:   networkLocationsByID[id],
+				Source:     s.Name,
+				Properties: b,
+			})
+		}
+	}
+
+	return networksInUse, nil
 }
 
 func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {
@@ -334,7 +417,7 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*objec
 	return finder.VirtualMachine(ctx, vmName)
 }
 
-func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProperties mo.VirtualMachine, networks []object.NetworkReference) (*api.InstanceProperties, error) {
+func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProperties mo.VirtualMachine, networkLocationsByID map[string]string) (*api.InstanceProperties, error) {
 	log := slog.With(slog.String("source", s.Name), slog.String("location", vm.InventoryPath))
 	b, err := json.Marshal(vmProperties)
 	if err != nil {
@@ -435,14 +518,14 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					return nil, err
 				}
 
-				for _, network := range networks {
-					str, ok := val.(string)
-					if !ok {
-						return nil, fmt.Errorf("Unexpected network ID value: %v", val)
-					}
+				str, ok := val.(string)
+				if !ok {
+					return nil, fmt.Errorf("Unexpected network ID value: %v", val)
+				}
 
-					if parseNetworkID(network) == str {
-						err := subProps.Add(properties.InstanceNICNetwork, network.GetInventoryPath())
+				for id, location := range networkLocationsByID {
+					if id == str {
+						err := subProps.Add(properties.InstanceNICNetwork, location)
 						if err != nil {
 							return nil, err
 						}
@@ -626,12 +709,16 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 }
 
 // parseNetworkID returns an API-compatible representation of the network ID from VMware.
-func parseNetworkID(network object.NetworkReference) string {
-	networkID := network.Reference().Value
-	_, ok := network.(*object.DistributedVirtualPortgroup)
-	if ok {
-		parts := strings.Split(networkID, " ")
-		networkID = parts[len(parts)-1]
+func parseNetworkID(ctx context.Context, n object.NetworkReference) string {
+	networkID := n.Reference().Value
+	b, err := n.EthernetCardBackingInfo(ctx)
+	if err == nil {
+		switch t := b.(type) {
+		case *types.VirtualEthernetCardDistributedVirtualPortBackingInfo:
+			networkID = t.Port.PortgroupKey
+		case *types.VirtualEthernetCardOpaqueNetworkBackingInfo:
+			networkID = t.OpaqueNetworkId
+		}
 	}
 
 	return strings.ReplaceAll(networkID, " ", "_")
