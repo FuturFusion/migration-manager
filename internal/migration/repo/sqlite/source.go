@@ -7,6 +7,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration/repo"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type source struct {
@@ -25,12 +26,22 @@ func (s source) Create(ctx context.Context, in migration.Source) (int64, error) 
 	return entities.CreateSource(ctx, transaction.GetDBTX(ctx, s.db), in)
 }
 
-func (s source) GetAll(ctx context.Context) (migration.Sources, error) {
-	return entities.GetSources(ctx, transaction.GetDBTX(ctx, s.db))
+func (s source) GetAll(ctx context.Context, sourceTypes ...api.SourceType) (migration.Sources, error) {
+	filters := []entities.SourceFilter{}
+	for _, s := range sourceTypes {
+		filters = append(filters, entities.SourceFilter{SourceType: &s})
+	}
+
+	return entities.GetSources(ctx, transaction.GetDBTX(ctx, s.db), filters...)
 }
 
-func (s source) GetAllNames(ctx context.Context) ([]string, error) {
-	return entities.GetSourceNames(ctx, transaction.GetDBTX(ctx, s.db))
+func (s source) GetAllNames(ctx context.Context, sourceTypes ...api.SourceType) ([]string, error) {
+	filters := []entities.SourceFilter{}
+	for _, s := range sourceTypes {
+		filters = append(filters, entities.SourceFilter{SourceType: &s})
+	}
+
+	return entities.GetSourceNames(ctx, transaction.GetDBTX(ctx, s.db), filters...)
 }
 
 func (s source) GetByName(ctx context.Context, name string) (*migration.Source, error) {

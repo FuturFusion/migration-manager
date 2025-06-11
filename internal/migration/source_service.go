@@ -41,12 +41,12 @@ func (s sourceService) Create(ctx context.Context, newSource Source) (Source, er
 	return newSource, nil
 }
 
-func (s sourceService) GetAll(ctx context.Context) (Sources, error) {
-	return s.repo.GetAll(ctx)
+func (s sourceService) GetAll(ctx context.Context, sourceTypes ...api.SourceType) (Sources, error) {
+	return s.repo.GetAll(ctx, sourceTypes...)
 }
 
-func (s sourceService) GetAllNames(ctx context.Context) ([]string, error) {
-	return s.repo.GetAllNames(ctx)
+func (s sourceService) GetAllNames(ctx context.Context, sourceTypes ...api.SourceType) ([]string, error) {
+	return s.repo.GetAllNames(ctx, sourceTypes...)
 }
 
 func (s sourceService) GetByName(ctx context.Context, name string) (*Source, error) {

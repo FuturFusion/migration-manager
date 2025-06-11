@@ -27,7 +27,7 @@ func (s Source) Validate() error {
 		return NewValidationErrf("Invalid source, name can not be empty")
 	}
 
-	if s.SourceType != api.SOURCETYPE_COMMON && s.SourceType != api.SOURCETYPE_VMWARE {
+	if s.SourceType != api.SOURCETYPE_COMMON && s.SourceType != api.SOURCETYPE_VMWARE && s.SourceType != api.SOURCETYPE_NSX {
 		return NewValidationErrf("Invalid source, %s is not a valid source type", s.SourceType)
 	}
 
@@ -86,6 +86,8 @@ func (s Source) validateSourceTypeVMware() error {
 
 func (s Source) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
 	switch s.SourceType {
+	case api.SOURCETYPE_NSX:
+		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
 		err := json.Unmarshal(s.Properties, &properties)
@@ -101,6 +103,8 @@ func (s Source) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
 
 func (s Source) GetServerCertificate() *x509.Certificate {
 	switch s.SourceType {
+	case api.SOURCETYPE_NSX:
+		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
 		err := json.Unmarshal(s.Properties, &properties)
@@ -121,6 +125,8 @@ func (s Source) GetServerCertificate() *x509.Certificate {
 
 func (s Source) GetTrustedServerCertificateFingerprint() string {
 	switch s.SourceType {
+	case api.SOURCETYPE_NSX:
+		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
 		err := json.Unmarshal(s.Properties, &properties)
@@ -136,6 +142,8 @@ func (s Source) GetTrustedServerCertificateFingerprint() string {
 
 func (s *Source) SetExternalConnectivityStatus(status api.ExternalConnectivityStatus) {
 	switch s.SourceType {
+	case api.SOURCETYPE_NSX:
+		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
 		err := json.Unmarshal(s.Properties, &properties)
@@ -150,6 +158,8 @@ func (s *Source) SetExternalConnectivityStatus(status api.ExternalConnectivitySt
 
 func (s *Source) SetServerCertificate(cert *x509.Certificate) {
 	switch s.SourceType {
+	case api.SOURCETYPE_NSX:
+		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
 		err := json.Unmarshal(s.Properties, &properties)

@@ -19,10 +19,24 @@ SELECT sources.id, sources.name, sources.source_type, sources.properties
   ORDER BY sources.name
 `)
 
+var sourceObjectsBySourceType = RegisterStmt(`
+SELECT sources.id, sources.name, sources.source_type, sources.properties
+  FROM sources
+  WHERE ( sources.source_type = ? )
+  ORDER BY sources.name
+`)
+
 var sourceObjectsByName = RegisterStmt(`
 SELECT sources.id, sources.name, sources.source_type, sources.properties
   FROM sources
   WHERE ( sources.name = ? )
+  ORDER BY sources.name
+`)
+
+var sourceObjectsByNameAndSourceType = RegisterStmt(`
+SELECT sources.id, sources.name, sources.source_type, sources.properties
+  FROM sources
+  WHERE ( sources.name = ? AND sources.source_type = ? )
   ORDER BY sources.name
 `)
 
@@ -212,7 +226,55 @@ func GetSources(ctx context.Context, db dbtx, filters ...SourceFilter) (_ []migr
 	}
 
 	for i, filter := range filters {
-		if filter.Name != nil {
+		if filter.Name != nil && filter.SourceType != nil {
+			args = append(args, []any{filter.Name, filter.SourceType}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, sourceObjectsByNameAndSourceType)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"sourceObjectsByNameAndSourceType\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(sourceObjectsByNameAndSourceType)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"sourceObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.SourceType != nil && filter.Name == nil {
+			args = append(args, []any{filter.SourceType}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, sourceObjectsBySourceType)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"sourceObjectsBySourceType\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(sourceObjectsBySourceType)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"sourceObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.Name != nil && filter.SourceType == nil {
 			args = append(args, []any{filter.Name}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, sourceObjectsByName)
@@ -236,7 +298,7 @@ func GetSources(ctx context.Context, db dbtx, filters ...SourceFilter) (_ []migr
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Name == nil {
+		} else if filter.SourceType == nil && filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty SourceFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")
@@ -283,7 +345,7 @@ func GetSourceNames(ctx context.Context, db dbtx, filters ...SourceFilter) (_ []
 	}
 
 	for _, filter := range filters {
-		if filter.Name == nil {
+		if filter.SourceType == nil && filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty SourceFilter")
 		} else {
 			return nil, fmt.Errorf("No statement exists for the given Filter")

@@ -11,8 +11,8 @@ import (
 
 type SourceService interface {
 	Create(ctx context.Context, source Source) (Source, error)
-	GetAll(ctx context.Context) (Sources, error)
-	GetAllNames(ctx context.Context) ([]string, error)
+	GetAll(ctx context.Context, sourceTypes ...api.SourceType) (Sources, error)
+	GetAllNames(ctx context.Context, sourceTypes ...api.SourceType) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Source, error)
 	Update(ctx context.Context, name string, source *Source, instanceService InstanceService) error
 	DeleteByName(ctx context.Context, name string, instanceService InstanceService) error
@@ -24,8 +24,8 @@ type SourceService interface {
 
 type SourceRepo interface {
 	Create(ctx context.Context, source Source) (int64, error)
-	GetAll(ctx context.Context) (Sources, error)
-	GetAllNames(ctx context.Context) ([]string, error)
+	GetAll(ctx context.Context, sourceTypes ...api.SourceType) (Sources, error)
+	GetAllNames(ctx context.Context, sourceTypes ...api.SourceType) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Source, error)
 	Update(ctx context.Context, name string, source Source) error
 	Rename(ctx context.Context, oldName string, newName string) error
