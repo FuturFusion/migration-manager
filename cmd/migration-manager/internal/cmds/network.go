@@ -154,7 +154,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Location", "Config"}
+	header := []string{"Name", "Location", "Source", "Type", "Config"}
 	data := [][]string{}
 
 	for _, n := range networks {
@@ -163,7 +163,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 			configString, _ = json.Marshal(n.Config)
 		}
 
-		data = append(data, []string{n.Name, n.Location, string(configString)})
+		data = append(data, []string{n.Name, n.Location, n.Source, string(n.Type), string(configString)})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
