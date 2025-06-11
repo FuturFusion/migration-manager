@@ -7,10 +7,10 @@ import "context"
 type NetworkService interface {
 	Create(ctx context.Context, network Network) (Network, error)
 	GetAll(ctx context.Context) (Networks, error)
-	GetAllNames(ctx context.Context) ([]string, error)
-	GetByName(ctx context.Context, name string) (*Network, error)
+	GetAllBySource(ctx context.Context, src string) (Networks, error)
+	GetByNameAndSource(ctx context.Context, name string, src string) (*Network, error)
 	Update(ctx context.Context, network *Network) error
-	DeleteByName(ctx context.Context, name string) error
+	DeleteByNameAndSource(ctx context.Context, name string, src string) error
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/network_repo_mock_gen.go -rm . NetworkRepo
@@ -20,9 +20,9 @@ type NetworkService interface {
 type NetworkRepo interface {
 	Create(ctx context.Context, network Network) (int64, error)
 	GetAll(ctx context.Context) (Networks, error)
-	GetAllNames(ctx context.Context) ([]string, error)
-	GetByName(ctx context.Context, name string) (*Network, error)
+	GetAllBySource(ctx context.Context, src string) (Networks, error)
+	GetByNameAndSource(ctx context.Context, name string, src string) (*Network, error)
 	Update(ctx context.Context, network Network) error
-	Rename(ctx context.Context, oldName string, newName string) error
-	DeleteByName(ctx context.Context, name string) error
+	RenameBySource(ctx context.Context, oldName string, newName string, src string) error
+	DeleteByNameAndSource(ctx context.Context, name string, src string) error
 }
