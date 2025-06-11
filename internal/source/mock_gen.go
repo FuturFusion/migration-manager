@@ -34,7 +34,7 @@ var _ Source = &SourceMock{}
 //			DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
 //				panic("mock out the DoBasicConnectivityCheck method")
 //			},
-//			GetAllNetworksFunc: func(ctx context.Context) ([]api.Network, error) {
+//			GetAllNetworksFunc: func(ctx context.Context) (migration.Networks, error) {
 //				panic("mock out the GetAllNetworks method")
 //			},
 //			GetAllVMsFunc: func(ctx context.Context) (migration.Instances, error) {
@@ -75,7 +75,7 @@ type SourceMock struct {
 	DoBasicConnectivityCheckFunc func() (api.ExternalConnectivityStatus, *x509.Certificate)
 
 	// GetAllNetworksFunc mocks the GetAllNetworks method.
-	GetAllNetworksFunc func(ctx context.Context) ([]api.Network, error)
+	GetAllNetworksFunc func(ctx context.Context) (migration.Networks, error)
 
 	// GetAllVMsFunc mocks the GetAllVMs method.
 	GetAllVMsFunc func(ctx context.Context) (migration.Instances, error)
@@ -302,7 +302,7 @@ func (mock *SourceMock) DoBasicConnectivityCheckCalls() []struct {
 }
 
 // GetAllNetworks calls GetAllNetworksFunc.
-func (mock *SourceMock) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
+func (mock *SourceMock) GetAllNetworks(ctx context.Context) (migration.Networks, error) {
 	if mock.GetAllNetworksFunc == nil {
 		panic("SourceMock.GetAllNetworksFunc: method is nil but Source.GetAllNetworks was just called")
 	}

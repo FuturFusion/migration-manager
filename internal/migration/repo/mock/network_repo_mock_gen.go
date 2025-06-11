@@ -23,20 +23,20 @@ var _ migration.NetworkRepo = &NetworkRepoMock{}
 //			CreateFunc: func(ctx context.Context, network migration.Network) (int64, error) {
 //				panic("mock out the Create method")
 //			},
-//			DeleteByNameFunc: func(ctx context.Context, name string) error {
-//				panic("mock out the DeleteByName method")
+//			DeleteByNameAndSourceFunc: func(ctx context.Context, name string, src string) error {
+//				panic("mock out the DeleteByNameAndSource method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (migration.Networks, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
-//				panic("mock out the GetAllNames method")
+//			GetAllBySourceFunc: func(ctx context.Context, src string) (migration.Networks, error) {
+//				panic("mock out the GetAllBySource method")
 //			},
-//			GetByNameFunc: func(ctx context.Context, name string) (*migration.Network, error) {
-//				panic("mock out the GetByName method")
+//			GetByNameAndSourceFunc: func(ctx context.Context, name string, src string) (*migration.Network, error) {
+//				panic("mock out the GetByNameAndSource method")
 //			},
-//			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
-//				panic("mock out the Rename method")
+//			RenameBySourceFunc: func(ctx context.Context, oldName string, newName string, src string) error {
+//				panic("mock out the RenameBySource method")
 //			},
 //			UpdateFunc: func(ctx context.Context, network migration.Network) error {
 //				panic("mock out the Update method")
@@ -51,20 +51,20 @@ type NetworkRepoMock struct {
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, network migration.Network) (int64, error)
 
-	// DeleteByNameFunc mocks the DeleteByName method.
-	DeleteByNameFunc func(ctx context.Context, name string) error
+	// DeleteByNameAndSourceFunc mocks the DeleteByNameAndSource method.
+	DeleteByNameAndSourceFunc func(ctx context.Context, name string, src string) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Networks, error)
 
-	// GetAllNamesFunc mocks the GetAllNames method.
-	GetAllNamesFunc func(ctx context.Context) ([]string, error)
+	// GetAllBySourceFunc mocks the GetAllBySource method.
+	GetAllBySourceFunc func(ctx context.Context, src string) (migration.Networks, error)
 
-	// GetByNameFunc mocks the GetByName method.
-	GetByNameFunc func(ctx context.Context, name string) (*migration.Network, error)
+	// GetByNameAndSourceFunc mocks the GetByNameAndSource method.
+	GetByNameAndSourceFunc func(ctx context.Context, name string, src string) (*migration.Network, error)
 
-	// RenameFunc mocks the Rename method.
-	RenameFunc func(ctx context.Context, oldName string, newName string) error
+	// RenameBySourceFunc mocks the RenameBySource method.
+	RenameBySourceFunc func(ctx context.Context, oldName string, newName string, src string) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, network migration.Network) error
@@ -78,38 +78,46 @@ type NetworkRepoMock struct {
 			// Network is the network argument value.
 			Network migration.Network
 		}
-		// DeleteByName holds details about calls to the DeleteByName method.
-		DeleteByName []struct {
+		// DeleteByNameAndSource holds details about calls to the DeleteByNameAndSource method.
+		DeleteByNameAndSource []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// Src is the src argument value.
+			Src string
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetAllNames holds details about calls to the GetAllNames method.
-		GetAllNames []struct {
+		// GetAllBySource holds details about calls to the GetAllBySource method.
+		GetAllBySource []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// Src is the src argument value.
+			Src string
 		}
-		// GetByName holds details about calls to the GetByName method.
-		GetByName []struct {
+		// GetByNameAndSource holds details about calls to the GetByNameAndSource method.
+		GetByNameAndSource []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// Src is the src argument value.
+			Src string
 		}
-		// Rename holds details about calls to the Rename method.
-		Rename []struct {
+		// RenameBySource holds details about calls to the RenameBySource method.
+		RenameBySource []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// OldName is the oldName argument value.
 			OldName string
 			// NewName is the newName argument value.
 			NewName string
+			// Src is the src argument value.
+			Src string
 		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
@@ -119,13 +127,13 @@ type NetworkRepoMock struct {
 			Network migration.Network
 		}
 	}
-	lockCreate       sync.RWMutex
-	lockDeleteByName sync.RWMutex
-	lockGetAll       sync.RWMutex
-	lockGetAllNames  sync.RWMutex
-	lockGetByName    sync.RWMutex
-	lockRename       sync.RWMutex
-	lockUpdate       sync.RWMutex
+	lockCreate                sync.RWMutex
+	lockDeleteByNameAndSource sync.RWMutex
+	lockGetAll                sync.RWMutex
+	lockGetAllBySource        sync.RWMutex
+	lockGetByNameAndSource    sync.RWMutex
+	lockRenameBySource        sync.RWMutex
+	lockUpdate                sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -164,39 +172,43 @@ func (mock *NetworkRepoMock) CreateCalls() []struct {
 	return calls
 }
 
-// DeleteByName calls DeleteByNameFunc.
-func (mock *NetworkRepoMock) DeleteByName(ctx context.Context, name string) error {
-	if mock.DeleteByNameFunc == nil {
-		panic("NetworkRepoMock.DeleteByNameFunc: method is nil but NetworkRepo.DeleteByName was just called")
+// DeleteByNameAndSource calls DeleteByNameAndSourceFunc.
+func (mock *NetworkRepoMock) DeleteByNameAndSource(ctx context.Context, name string, src string) error {
+	if mock.DeleteByNameAndSourceFunc == nil {
+		panic("NetworkRepoMock.DeleteByNameAndSourceFunc: method is nil but NetworkRepo.DeleteByNameAndSource was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
 		Name string
+		Src  string
 	}{
 		Ctx:  ctx,
 		Name: name,
+		Src:  src,
 	}
-	mock.lockDeleteByName.Lock()
-	mock.calls.DeleteByName = append(mock.calls.DeleteByName, callInfo)
-	mock.lockDeleteByName.Unlock()
-	return mock.DeleteByNameFunc(ctx, name)
+	mock.lockDeleteByNameAndSource.Lock()
+	mock.calls.DeleteByNameAndSource = append(mock.calls.DeleteByNameAndSource, callInfo)
+	mock.lockDeleteByNameAndSource.Unlock()
+	return mock.DeleteByNameAndSourceFunc(ctx, name, src)
 }
 
-// DeleteByNameCalls gets all the calls that were made to DeleteByName.
+// DeleteByNameAndSourceCalls gets all the calls that were made to DeleteByNameAndSource.
 // Check the length with:
 //
-//	len(mockedNetworkRepo.DeleteByNameCalls())
-func (mock *NetworkRepoMock) DeleteByNameCalls() []struct {
+//	len(mockedNetworkRepo.DeleteByNameAndSourceCalls())
+func (mock *NetworkRepoMock) DeleteByNameAndSourceCalls() []struct {
 	Ctx  context.Context
 	Name string
+	Src  string
 } {
 	var calls []struct {
 		Ctx  context.Context
 		Name string
+		Src  string
 	}
-	mock.lockDeleteByName.RLock()
-	calls = mock.calls.DeleteByName
-	mock.lockDeleteByName.RUnlock()
+	mock.lockDeleteByNameAndSource.RLock()
+	calls = mock.calls.DeleteByNameAndSource
+	mock.lockDeleteByNameAndSource.RUnlock()
 	return calls
 }
 
@@ -232,111 +244,123 @@ func (mock *NetworkRepoMock) GetAllCalls() []struct {
 	return calls
 }
 
-// GetAllNames calls GetAllNamesFunc.
-func (mock *NetworkRepoMock) GetAllNames(ctx context.Context) ([]string, error) {
-	if mock.GetAllNamesFunc == nil {
-		panic("NetworkRepoMock.GetAllNamesFunc: method is nil but NetworkRepo.GetAllNames was just called")
+// GetAllBySource calls GetAllBySourceFunc.
+func (mock *NetworkRepoMock) GetAllBySource(ctx context.Context, src string) (migration.Networks, error) {
+	if mock.GetAllBySourceFunc == nil {
+		panic("NetworkRepoMock.GetAllBySourceFunc: method is nil but NetworkRepo.GetAllBySource was just called")
 	}
 	callInfo := struct {
 		Ctx context.Context
+		Src string
 	}{
 		Ctx: ctx,
+		Src: src,
 	}
-	mock.lockGetAllNames.Lock()
-	mock.calls.GetAllNames = append(mock.calls.GetAllNames, callInfo)
-	mock.lockGetAllNames.Unlock()
-	return mock.GetAllNamesFunc(ctx)
+	mock.lockGetAllBySource.Lock()
+	mock.calls.GetAllBySource = append(mock.calls.GetAllBySource, callInfo)
+	mock.lockGetAllBySource.Unlock()
+	return mock.GetAllBySourceFunc(ctx, src)
 }
 
-// GetAllNamesCalls gets all the calls that were made to GetAllNames.
+// GetAllBySourceCalls gets all the calls that were made to GetAllBySource.
 // Check the length with:
 //
-//	len(mockedNetworkRepo.GetAllNamesCalls())
-func (mock *NetworkRepoMock) GetAllNamesCalls() []struct {
+//	len(mockedNetworkRepo.GetAllBySourceCalls())
+func (mock *NetworkRepoMock) GetAllBySourceCalls() []struct {
 	Ctx context.Context
+	Src string
 } {
 	var calls []struct {
 		Ctx context.Context
+		Src string
 	}
-	mock.lockGetAllNames.RLock()
-	calls = mock.calls.GetAllNames
-	mock.lockGetAllNames.RUnlock()
+	mock.lockGetAllBySource.RLock()
+	calls = mock.calls.GetAllBySource
+	mock.lockGetAllBySource.RUnlock()
 	return calls
 }
 
-// GetByName calls GetByNameFunc.
-func (mock *NetworkRepoMock) GetByName(ctx context.Context, name string) (*migration.Network, error) {
-	if mock.GetByNameFunc == nil {
-		panic("NetworkRepoMock.GetByNameFunc: method is nil but NetworkRepo.GetByName was just called")
+// GetByNameAndSource calls GetByNameAndSourceFunc.
+func (mock *NetworkRepoMock) GetByNameAndSource(ctx context.Context, name string, src string) (*migration.Network, error) {
+	if mock.GetByNameAndSourceFunc == nil {
+		panic("NetworkRepoMock.GetByNameAndSourceFunc: method is nil but NetworkRepo.GetByNameAndSource was just called")
 	}
 	callInfo := struct {
 		Ctx  context.Context
 		Name string
+		Src  string
 	}{
 		Ctx:  ctx,
 		Name: name,
+		Src:  src,
 	}
-	mock.lockGetByName.Lock()
-	mock.calls.GetByName = append(mock.calls.GetByName, callInfo)
-	mock.lockGetByName.Unlock()
-	return mock.GetByNameFunc(ctx, name)
+	mock.lockGetByNameAndSource.Lock()
+	mock.calls.GetByNameAndSource = append(mock.calls.GetByNameAndSource, callInfo)
+	mock.lockGetByNameAndSource.Unlock()
+	return mock.GetByNameAndSourceFunc(ctx, name, src)
 }
 
-// GetByNameCalls gets all the calls that were made to GetByName.
+// GetByNameAndSourceCalls gets all the calls that were made to GetByNameAndSource.
 // Check the length with:
 //
-//	len(mockedNetworkRepo.GetByNameCalls())
-func (mock *NetworkRepoMock) GetByNameCalls() []struct {
+//	len(mockedNetworkRepo.GetByNameAndSourceCalls())
+func (mock *NetworkRepoMock) GetByNameAndSourceCalls() []struct {
 	Ctx  context.Context
 	Name string
+	Src  string
 } {
 	var calls []struct {
 		Ctx  context.Context
 		Name string
+		Src  string
 	}
-	mock.lockGetByName.RLock()
-	calls = mock.calls.GetByName
-	mock.lockGetByName.RUnlock()
+	mock.lockGetByNameAndSource.RLock()
+	calls = mock.calls.GetByNameAndSource
+	mock.lockGetByNameAndSource.RUnlock()
 	return calls
 }
 
-// Rename calls RenameFunc.
-func (mock *NetworkRepoMock) Rename(ctx context.Context, oldName string, newName string) error {
-	if mock.RenameFunc == nil {
-		panic("NetworkRepoMock.RenameFunc: method is nil but NetworkRepo.Rename was just called")
+// RenameBySource calls RenameBySourceFunc.
+func (mock *NetworkRepoMock) RenameBySource(ctx context.Context, oldName string, newName string, src string) error {
+	if mock.RenameBySourceFunc == nil {
+		panic("NetworkRepoMock.RenameBySourceFunc: method is nil but NetworkRepo.RenameBySource was just called")
 	}
 	callInfo := struct {
 		Ctx     context.Context
 		OldName string
 		NewName string
+		Src     string
 	}{
 		Ctx:     ctx,
 		OldName: oldName,
 		NewName: newName,
+		Src:     src,
 	}
-	mock.lockRename.Lock()
-	mock.calls.Rename = append(mock.calls.Rename, callInfo)
-	mock.lockRename.Unlock()
-	return mock.RenameFunc(ctx, oldName, newName)
+	mock.lockRenameBySource.Lock()
+	mock.calls.RenameBySource = append(mock.calls.RenameBySource, callInfo)
+	mock.lockRenameBySource.Unlock()
+	return mock.RenameBySourceFunc(ctx, oldName, newName, src)
 }
 
-// RenameCalls gets all the calls that were made to Rename.
+// RenameBySourceCalls gets all the calls that were made to RenameBySource.
 // Check the length with:
 //
-//	len(mockedNetworkRepo.RenameCalls())
-func (mock *NetworkRepoMock) RenameCalls() []struct {
+//	len(mockedNetworkRepo.RenameBySourceCalls())
+func (mock *NetworkRepoMock) RenameBySourceCalls() []struct {
 	Ctx     context.Context
 	OldName string
 	NewName string
+	Src     string
 } {
 	var calls []struct {
 		Ctx     context.Context
 		OldName string
 		NewName string
+		Src     string
 	}
-	mock.lockRename.RLock()
-	calls = mock.calls.Rename
-	mock.lockRename.RUnlock()
+	mock.lockRenameBySource.RLock()
+	calls = mock.calls.RenameBySource
+	mock.lockRenameBySource.RUnlock()
 	return calls
 }
 

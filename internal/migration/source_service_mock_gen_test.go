@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Ensure, that SourceServiceMock does implement migration.SourceService.
@@ -26,10 +27,10 @@ var _ migration.SourceService = &SourceServiceMock{}
 //			DeleteByNameFunc: func(ctx context.Context, name string, instanceService migration.InstanceService) error {
 //				panic("mock out the DeleteByName method")
 //			},
-//			GetAllFunc: func(ctx context.Context) (migration.Sources, error) {
+//			GetAllFunc: func(ctx context.Context, sourceTypes ...api.SourceType) (migration.Sources, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
+//			GetAllNamesFunc: func(ctx context.Context, sourceTypes ...api.SourceType) ([]string, error) {
 //				panic("mock out the GetAllNames method")
 //			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Source, error) {
@@ -52,10 +53,10 @@ type SourceServiceMock struct {
 	DeleteByNameFunc func(ctx context.Context, name string, instanceService migration.InstanceService) error
 
 	// GetAllFunc mocks the GetAll method.
-	GetAllFunc func(ctx context.Context) (migration.Sources, error)
+	GetAllFunc func(ctx context.Context, sourceTypes ...api.SourceType) (migration.Sources, error)
 
 	// GetAllNamesFunc mocks the GetAllNames method.
-	GetAllNamesFunc func(ctx context.Context) ([]string, error)
+	GetAllNamesFunc func(ctx context.Context, sourceTypes ...api.SourceType) ([]string, error)
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Source, error)
@@ -85,11 +86,15 @@ type SourceServiceMock struct {
 		GetAll []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// SourceTypes is the sourceTypes argument value.
+			SourceTypes []api.SourceType
 		}
 		// GetAllNames holds details about calls to the GetAllNames method.
 		GetAllNames []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// SourceTypes is the sourceTypes argument value.
+			SourceTypes []api.SourceType
 		}
 		// GetByName holds details about calls to the GetByName method.
 		GetByName []struct {
@@ -195,19 +200,21 @@ func (mock *SourceServiceMock) DeleteByNameCalls() []struct {
 }
 
 // GetAll calls GetAllFunc.
-func (mock *SourceServiceMock) GetAll(ctx context.Context) (migration.Sources, error) {
+func (mock *SourceServiceMock) GetAll(ctx context.Context, sourceTypes ...api.SourceType) (migration.Sources, error) {
 	if mock.GetAllFunc == nil {
 		panic("SourceServiceMock.GetAllFunc: method is nil but SourceService.GetAll was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx         context.Context
+		SourceTypes []api.SourceType
 	}{
-		Ctx: ctx,
+		Ctx:         ctx,
+		SourceTypes: sourceTypes,
 	}
 	mock.lockGetAll.Lock()
 	mock.calls.GetAll = append(mock.calls.GetAll, callInfo)
 	mock.lockGetAll.Unlock()
-	return mock.GetAllFunc(ctx)
+	return mock.GetAllFunc(ctx, sourceTypes...)
 }
 
 // GetAllCalls gets all the calls that were made to GetAll.
@@ -215,10 +222,12 @@ func (mock *SourceServiceMock) GetAll(ctx context.Context) (migration.Sources, e
 //
 //	len(mockedSourceService.GetAllCalls())
 func (mock *SourceServiceMock) GetAllCalls() []struct {
-	Ctx context.Context
+	Ctx         context.Context
+	SourceTypes []api.SourceType
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx         context.Context
+		SourceTypes []api.SourceType
 	}
 	mock.lockGetAll.RLock()
 	calls = mock.calls.GetAll
@@ -227,19 +236,21 @@ func (mock *SourceServiceMock) GetAllCalls() []struct {
 }
 
 // GetAllNames calls GetAllNamesFunc.
-func (mock *SourceServiceMock) GetAllNames(ctx context.Context) ([]string, error) {
+func (mock *SourceServiceMock) GetAllNames(ctx context.Context, sourceTypes ...api.SourceType) ([]string, error) {
 	if mock.GetAllNamesFunc == nil {
 		panic("SourceServiceMock.GetAllNamesFunc: method is nil but SourceService.GetAllNames was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx         context.Context
+		SourceTypes []api.SourceType
 	}{
-		Ctx: ctx,
+		Ctx:         ctx,
+		SourceTypes: sourceTypes,
 	}
 	mock.lockGetAllNames.Lock()
 	mock.calls.GetAllNames = append(mock.calls.GetAllNames, callInfo)
 	mock.lockGetAllNames.Unlock()
-	return mock.GetAllNamesFunc(ctx)
+	return mock.GetAllNamesFunc(ctx, sourceTypes...)
 }
 
 // GetAllNamesCalls gets all the calls that were made to GetAllNames.
@@ -247,10 +258,12 @@ func (mock *SourceServiceMock) GetAllNames(ctx context.Context) ([]string, error
 //
 //	len(mockedSourceService.GetAllNamesCalls())
 func (mock *SourceServiceMock) GetAllNamesCalls() []struct {
-	Ctx context.Context
+	Ctx         context.Context
+	SourceTypes []api.SourceType
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx         context.Context
+		SourceTypes []api.SourceType
 	}
 	mock.lockGetAllNames.RLock()
 	calls = mock.calls.GetAllNames

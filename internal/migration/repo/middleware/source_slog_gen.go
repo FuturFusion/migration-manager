@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceMigration "github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // SourceRepoWithSlog implements _sourceMigration.SourceRepo that is instrumented with slog logger
@@ -65,9 +66,10 @@ func (_d SourceRepoWithSlog) DeleteByName(ctx context.Context, name string) (err
 }
 
 // GetAll implements _sourceMigration.SourceRepo
-func (_d SourceRepoWithSlog) GetAll(ctx context.Context) (s1 _sourceMigration.Sources, err error) {
+func (_d SourceRepoWithSlog) GetAll(ctx context.Context, sourceTypes ...api.SourceType) (s1 _sourceMigration.Sources, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
+		slog.Any("sourceTypes", sourceTypes),
 	).Debug("SourceRepoWithSlog: calling GetAll")
 	defer func() {
 		log := _d._log.With(
@@ -80,13 +82,14 @@ func (_d SourceRepoWithSlog) GetAll(ctx context.Context) (s1 _sourceMigration.So
 			log.Debug("SourceRepoWithSlog: method GetAll finished")
 		}
 	}()
-	return _d._base.GetAll(ctx)
+	return _d._base.GetAll(ctx, sourceTypes...)
 }
 
 // GetAllNames implements _sourceMigration.SourceRepo
-func (_d SourceRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, err error) {
+func (_d SourceRepoWithSlog) GetAllNames(ctx context.Context, sourceTypes ...api.SourceType) (sa1 []string, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
+		slog.Any("sourceTypes", sourceTypes),
 	).Debug("SourceRepoWithSlog: calling GetAllNames")
 	defer func() {
 		log := _d._log.With(
@@ -99,7 +102,7 @@ func (_d SourceRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, err
 			log.Debug("SourceRepoWithSlog: method GetAllNames finished")
 		}
 	}()
-	return _d._base.GetAllNames(ctx)
+	return _d._base.GetAllNames(ctx, sourceTypes...)
 }
 
 // GetByName implements _sourceMigration.SourceRepo
