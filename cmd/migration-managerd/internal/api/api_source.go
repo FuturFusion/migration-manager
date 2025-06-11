@@ -12,7 +12,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
-	apiSource "github.com/FuturFusion/migration-manager/internal/source"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -119,15 +119,39 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 		recursion = 0
 	}
 
-	if recursion == 1 {
+	if recursion > 0 {
 		sources, err := d.source.GetAll(r.Context())
 		if err != nil {
 			return response.SmartError(err)
 		}
 
 		result := make([]api.Source, 0, len(sources))
-		for _, source := range sources {
-			result = append(result, source.ToAPI())
+		for _, src := range sources {
+			if src.SourceType == api.SOURCETYPE_NSX && recursion > 1 {
+				nsxSource, err := source.NewInternalNSXSourceFrom(src.ToAPI())
+				if err != nil {
+					return response.SmartError(err)
+				}
+
+				err = nsxSource.Connect(r.Context())
+				if err != nil {
+					return response.SmartError(fmt.Errorf("Failed to connect to source %q: %w", src.Name, err))
+				}
+
+				err = nsxSource.FetchSourceData(r.Context())
+				if err != nil {
+					return response.SmartError(err)
+				}
+
+				b, err := json.Marshal(nsxSource.NSXSourceProperties)
+				if err != nil {
+					return response.SmartError(err)
+				}
+
+				src.Properties = b
+			}
+
+			result = append(result, src.ToAPI())
 		}
 
 		return response.SyncResponse(true, result)
@@ -174,27 +198,34 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func sourcesPost(d *Daemon, r *http.Request) response.Response {
-	var source api.Source
+	var apiSrc api.Source
 
-	err := json.NewDecoder(r.Body).Decode(&source)
+	err := json.NewDecoder(r.Body).Decode(&apiSrc)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
 	src, err := d.source.Create(r.Context(), migration.Source{
-		Name:       source.Name,
-		SourceType: source.SourceType,
-		Properties: source.Properties,
+		Name:       apiSrc.Name,
+		SourceType: apiSrc.SourceType,
+		Properties: apiSrc.Properties,
 		EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
-			return apiSource.NewInternalVMwareSourceFrom(s)
+			switch s.SourceType {
+			case api.SOURCETYPE_VMWARE:
+				return source.NewInternalVMwareSourceFrom(s)
+			case api.SOURCETYPE_NSX:
+				return source.NewInternalNSXSourceFrom(s)
+			}
+
+			return nil, fmt.Errorf("Unknown source type: %q", s.SourceType)
 		},
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", source.Name, err))
+		return response.SmartError(fmt.Errorf("Failed creating source %q: %w", apiSrc.Name, err))
 	}
 
 	// Trigger a scan of this new source for instances.
-	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
+	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK && src.SourceType == api.SOURCETYPE_VMWARE {
 		err = d.syncOneSource(r.Context(), src)
 		if err != nil {
 			return response.SmartError(fmt.Errorf("Failed to initiate sync from source %q: %w", src.Name, err))
@@ -209,7 +240,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		metadata["certFingerprint"] = incusTLS.CertFingerprint(src.GetServerCertificate())
 	}
 
-	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+source.Name)
+	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+apiSrc.Name)
 }
 
 // swagger:operation DELETE /1.0/sources/{name} sources source_delete
@@ -277,16 +308,44 @@ func sourceDelete(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func sourceGet(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
+	recursion, err := strconv.Atoi(r.FormValue("recursion"))
+	if err != nil {
+		recursion = 0
+	}
 
-	source, err := d.source.GetByName(r.Context(), name)
+	src, err := d.source.GetByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
+	if src.SourceType == api.SOURCETYPE_NSX && recursion > 0 {
+		nsxSource, err := source.NewInternalNSXSourceFrom(src.ToAPI())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		err = nsxSource.Connect(r.Context())
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Failed to connect to source %q: %w", src.Name, err))
+		}
+
+		err = nsxSource.FetchSourceData(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		b, err := json.Marshal(nsxSource.NSXSourceProperties)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		src.Properties = b
+	}
+
 	return response.SyncResponseETag(
 		true,
-		source.ToAPI(),
-		source,
+		src.ToAPI(),
+		src,
 	)
 }
 
@@ -322,9 +381,9 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 func sourcePut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var source api.SourcePut
+	var apiSrc api.SourcePut
 
-	err := json.NewDecoder(r.Body).Decode(&source)
+	err := json.NewDecoder(r.Body).Decode(&apiSrc)
 	if err != nil {
 		return response.BadRequest(err)
 	}
@@ -350,17 +409,24 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 
 	src := &migration.Source{
 		ID:         currentSource.ID,
-		Name:       source.Name,
+		Name:       apiSrc.Name,
 		SourceType: currentSource.SourceType,
-		Properties: source.Properties,
+		Properties: apiSrc.Properties,
 		EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
-			return apiSource.NewInternalVMwareSourceFrom(s)
+			switch s.SourceType {
+			case api.SOURCETYPE_VMWARE:
+				return source.NewInternalVMwareSourceFrom(s)
+			case api.SOURCETYPE_NSX:
+				return source.NewInternalNSXSourceFrom(s)
+			}
+
+			return nil, fmt.Errorf("Unknown source type: %q", s.SourceType)
 		},
 	}
 
 	err = d.source.Update(ctx, name, src, d.instance)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", source.Name, err))
+		return response.SmartError(fmt.Errorf("Failed updating source %q: %w", apiSrc.Name, err))
 	}
 
 	err = trans.Commit()
@@ -369,7 +435,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	// Trigger a scan of this new source for instances.
-	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK {
+	if src.GetExternalConnectivityStatus() == api.EXTERNALCONNECTIVITYSTATUS_OK && src.SourceType == api.SOURCETYPE_VMWARE {
 		err = d.syncOneSource(r.Context(), *src)
 		if err != nil {
 			return response.SmartError(fmt.Errorf("Failed to initiate sync from source %q: %w", src.Name, err))
@@ -384,5 +450,5 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		metadata["certFingerprint"] = incusTLS.CertFingerprint(src.GetServerCertificate())
 	}
 
-	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+source.Name)
+	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+apiSrc.Name)
 }
