@@ -188,7 +188,7 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 }
 
 // SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
-func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, allNetworks map[string]migration.Network) error {
+func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, allNetworks migration.Networks) error {
 	props := i.Properties
 	props.Apply(i.Overrides.Properties)
 
@@ -215,8 +215,15 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 
 	for idx, nic := range props.NICs {
 		nicDeviceName := fmt.Sprintf("eth%d", idx)
-		baseNetwork, ok := allNetworks[nic.ID]
-		if !ok {
+		var baseNetwork migration.Network
+		for _, net := range allNetworks {
+			if nic.ID == net.Name && i.Source == net.Source {
+				baseNetwork = net
+				break
+			}
+		}
+
+		if baseNetwork.Name == "" {
 			err = fmt.Errorf("No network %q associated with instance %q on target %q", nic.ID, props.Name, t.GetName())
 			return err
 		}
