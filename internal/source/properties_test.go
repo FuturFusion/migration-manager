@@ -1,6 +1,7 @@
 package source
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -529,7 +530,12 @@ func TestGetProperties(t *testing.T) {
 			},
 		}
 
-		props, err := s.getVMProperties(vmInfo, vmProps, networks)
+		networkLocationsByID := map[string]string{}
+		for _, n := range networks {
+			networkLocationsByID[parseNetworkID(context.Background(), n)] = n.GetInventoryPath()
+		}
+
+		props, err := s.getVMProperties(vmInfo, vmProps, networkLocationsByID)
 		if c.expectErr {
 			require.Error(t, err)
 		} else {
