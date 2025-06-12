@@ -24,9 +24,9 @@ const (
 type Network struct {
 	NetworkPut
 
-	// The name of the network
+	// The identifier of the network
 	// Example: network-23
-	Name string `json:"name" yaml:"name"`
+	Identifier string `json:"identifier" yaml:"identifier"`
 
 	// vCenter source for the network
 	// Example: vcenter01

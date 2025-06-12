@@ -80,7 +80,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 
 	// Add the network.
 	n := api.Network{
-		Name: args[0],
+		Identifier: args[0],
 	}
 
 	_, err = c.global.Asker.AskString("Enter a JSON string with any network-specific configuration (empty to skip): ", "", func(s string) error {
@@ -105,7 +105,7 @@ func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully added new network %q.\n", n.Name)
+	cmd.Printf("Successfully added new network %q.\n", n.Identifier)
 	return nil
 }
 
@@ -163,7 +163,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 			configString, _ = json.Marshal(n.Config)
 		}
 
-		data = append(data, []string{n.Name, n.Location, n.Source, string(n.Type), string(configString)})
+		data = append(data, []string{n.Identifier, n.Location, n.Source, string(n.Type), string(configString)})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
@@ -249,7 +249,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Prompt for updates.
-	origNetworkName := network.Name
+	origNetworkName := network.Identifier
 	configString := []byte{}
 	if network.Config != nil {
 		configString, err = json.Marshal(network.Config)
@@ -274,7 +274,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	newNetworkName := network.Name
+	newNetworkName := network.Identifier
 
 	// Update the network.
 	content, err := json.Marshal(network.NetworkPut)

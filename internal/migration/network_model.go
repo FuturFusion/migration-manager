@@ -77,7 +77,7 @@ type Networks []Network
 // ToAPI returns the API representation of a network.
 func (n Network) ToAPI() api.Network {
 	return api.Network{
-		Name:       n.Name,
+		Identifier: n.Name,
 		Location:   n.Location,
 		Source:     n.Source,
 		Type:       n.Type,
