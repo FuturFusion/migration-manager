@@ -75,7 +75,8 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 	for _, src := range networkSourcesByName {
 		err := fetchNSXSourceData(ctx, src, vmSourcesByName, networksBySrc)
 		if err != nil {
-			return fmt.Errorf("Failed to fetch network properties from NSX: %w", err)
+			log.Error("Failed to fetch records from source", logger.Err(err))
+			continue
 		}
 	}
 
