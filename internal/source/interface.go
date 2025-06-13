@@ -50,7 +50,7 @@ type Source interface {
 	// Returns an array of all networks available from the source, encoded as Networks.
 	//
 	// Returns an error if there is a problem fetching networks or their properties.
-	GetAllNetworks(ctx context.Context) ([]api.Network, error)
+	GetAllNetworks(ctx context.Context) (migration.Networks, error)
 
 	// Deletes a given snapshot, if it exists, from the specified VM.
 	//

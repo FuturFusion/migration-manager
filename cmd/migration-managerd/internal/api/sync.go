@@ -1,15 +1,18 @@
 package api
 
 import (
+	"bytes"
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/url"
 	"slices"
 	"sync"
 
 	"github.com/google/uuid"
 
+	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/source"
@@ -24,7 +27,8 @@ var syncLock sync.Mutex
 // skipNonResponsiveSources - If true, if a connection to a source returns an error, syncing from that source will be skipped.
 func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 	log := slog.With(slog.String("method", "syncAllSources"))
-	sourcesByName := map[string]migration.Source{}
+	vmSourcesByName := map[string]migration.Source{}
+	networkSourcesByName := map[string]migration.Source{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the list of configured sources.
 		sources, err := d.source.GetAll(ctx)
@@ -33,7 +37,13 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 		}
 
 		for _, src := range sources {
-			sourcesByName[src.Name] = src
+			if slices.Contains(api.VMSourceTypes(), src.SourceType) {
+				vmSourcesByName[src.Name] = src
+			}
+
+			if slices.Contains(api.NetworkSourceTypes(), src.SourceType) {
+				networkSourcesByName[src.Name] = src
+			}
 		}
 
 		return nil
@@ -42,9 +52,9 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 		return err
 	}
 
-	networksBySrc := map[string]map[string]api.Network{}
+	networksBySrc := map[string]map[string]migration.Network{}
 	instancesBySrc := map[string]map[uuid.UUID]migration.Instance{}
-	for _, src := range sourcesByName {
+	for _, src := range vmSourcesByName {
 		log := log.With(slog.String("source", src.Name))
 
 		if src.GetExternalConnectivityStatus() != api.EXTERNALCONNECTIVITYSTATUS_OK {
@@ -60,6 +70,13 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 
 		networksBySrc[src.Name] = srcNetworks
 		instancesBySrc[src.Name] = srcInstances
+	}
+
+	for _, src := range networkSourcesByName {
+		err := fetchNSXSourceData(ctx, src, vmSourcesByName, networksBySrc)
+		if err != nil {
+			return fmt.Errorf("Failed to fetch network properties from NSX: %w", err)
+		}
 	}
 
 	// Filter out instances with duplicate UUIDs.
@@ -93,7 +110,7 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 		instancesBySrc[srcName] = instancesByUUID
 	}
 
-	return d.syncSourceData(ctx, sourcesByName, instancesBySrc, networksBySrc)
+	return d.syncSourceData(ctx, vmSourcesByName, instancesBySrc, networksBySrc)
 }
 
 // syncSourceData fetches instance and network data from the source and updates our database records.
@@ -105,22 +122,33 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 
 	sourcesByName := map[string]migration.Source{src.Name: src}
 	instancesBySrc := map[string]map[uuid.UUID]migration.Instance{src.Name: srcInstances}
-	networksBySrc := map[string]map[string]api.Network{src.Name: srcNetworks}
+	networksBySrc := map[string]map[string]migration.Network{src.Name: srcNetworks}
+
+	syncNSX := false
+	for _, net := range srcNetworks {
+		if net.Type == api.NETWORKTYPE_VMWARE_NSX || net.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX {
+			syncNSX = true
+			break
+		}
+	}
+
+	if syncNSX {
+		err = fetchNSXSourceData(ctx, src, sourcesByName, networksBySrc)
+		if err != nil {
+			return fmt.Errorf("Failed to fetch network properties from NSX: %w", err)
+		}
+	}
+
 	return d.syncSourceData(ctx, sourcesByName, instancesBySrc, networksBySrc)
 }
 
 // syncSourceData is a helper that opens a transaction and updates the internal record of all sources with the supplied data.
-func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]migration.Source, instancesBySrc map[string]map[uuid.UUID]migration.Instance, networksBySrc map[string]map[string]api.Network) error {
+func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]migration.Source, instancesBySrc map[string]map[uuid.UUID]migration.Instance, networksBySrc map[string]map[string]migration.Network) error {
 	syncLock.Lock()
 	defer syncLock.Unlock()
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the list of configured sources.
-		dbNetworks, err := d.network.GetAll(ctx)
-		if err != nil {
-			return fmt.Errorf("Failed to get internal network records: %w", err)
-		}
-
 		allInstances, err := d.instance.GetAllUUIDs(ctx)
 		if err != nil {
 			return fmt.Errorf("Failed to get internal instance records: %w", err)
@@ -136,10 +164,39 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			unassignedInstancesByUUID[inst.UUID] = inst
 		}
 
-		// Build maps to make comparison easier.
-		existingNetworks := make(map[string]migration.Network, len(dbNetworks))
-		for _, net := range dbNetworks {
-			existingNetworks[net.Name] = net
+		for srcName, srcNetworks := range networksBySrc {
+			// Ensure we only compare networks in the same source.
+			existingNetworks := map[string]migration.Network{}
+			allNetworks, err := d.network.GetAllBySource(ctx, srcName)
+			if err != nil {
+				return fmt.Errorf("Failed to get internal network records for source %q: %w", srcName, err)
+			}
+
+			// Build maps to make comparison easier.
+			unassignedNetworksByName := map[string]migration.Network{}
+			for _, net := range migration.FilterUsedNetworks(allNetworks, unassignedInstances) {
+				unassignedNetworksByName[net.Name] = net
+			}
+
+			for _, dbNetwork := range allNetworks {
+				// If the network is already assigned, then omit it from consideration.
+				network, ok := unassignedNetworksByName[dbNetwork.Name]
+				if !ok {
+					_, ok := srcNetworks[dbNetwork.Name]
+					if ok {
+						delete(srcNetworks, dbNetwork.Name)
+					}
+
+					continue
+				}
+
+				existingNetworks[network.Name] = network
+			}
+
+			err = d.syncNetworksFromSource(ctx, srcName, d.network, existingNetworks, srcNetworks)
+			if err != nil {
+				return fmt.Errorf("Failed to sync networks from %q: %w", srcName, err)
+			}
 		}
 
 		for srcName, srcInstances := range instancesBySrc {
@@ -170,19 +227,12 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			}
 		}
 
-		for srcName, srcNetworks := range networksBySrc {
-			err = d.syncNetworksFromSource(ctx, srcName, d.network, existingNetworks, srcNetworks)
-			if err != nil {
-				return fmt.Errorf("Failed to sync networks from %q: %w", srcName, err)
-			}
-		}
-
 		return nil
 	})
 }
 
 // syncNetworksFromSource updates migration manager's internal record of networks from the source.
-func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, n migration.NetworkService, existingNetworks map[string]migration.Network, srcNetworks map[string]api.Network) error {
+func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, n migration.NetworkService, existingNetworks map[string]migration.Network, srcNetworks map[string]migration.Network) error {
 	log := slog.With(
 		slog.String("method", "syncNetworksFromSource"),
 		slog.String("source", sourceName),
@@ -191,14 +241,29 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 	for name, network := range existingNetworks {
 		srcNet, ok := srcNetworks[name]
 		if !ok {
-			// TODO: Do more than pick up new networks, also delete removed networks and update existing networks with any changes.
-			// Currently, the entire network list is given in existingNetworks for each source, so we will need to be smarter about filtering that as well.
+			// Delete the instances that don't exist on the source.
+			log.Info("Deleting instance with no source record")
+			err := n.DeleteByNameAndSource(ctx, name, network.Source)
+			if err != nil {
+				return err
+			}
+
 			continue
 		}
 
 		networkUpdated := false
 		if network.Location != srcNet.Location {
 			network.Location = srcNet.Location
+			networkUpdated = true
+		}
+
+		if network.Type != srcNet.Type {
+			network.Type = srcNet.Type
+			networkUpdated = true
+		}
+
+		if !bytes.Equal(network.Properties, srcNet.Properties) {
+			network.Properties = srcNet.Properties
 			networkUpdated = true
 		}
 
@@ -211,41 +276,15 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 		}
 	}
 
-	srcInstances, err := d.instance.GetAllBySource(ctx, sourceName)
-	if err != nil {
-		return err
-	}
-
 	// Create any missing networks.
 	for name, network := range srcNetworks {
 		_, ok := existingNetworks[name]
 		if !ok {
 			log := log.With(slog.String("network_id", network.Name), slog.String("network", network.Location))
 			log.Info("Recording new network detected on source")
-			_, err := n.Create(ctx, migration.Network{Name: network.Name, Config: network.Config, Location: network.Location})
+			_, err := n.Create(ctx, network)
 			if err != nil {
-				// FIXME: Have better handling of duplicate networks by associating them with a source in the database.
-				// For now we just skip the network and any instances that are using it.
-				if !errors.Is(err, migration.ErrConstraintViolation) {
-					return fmt.Errorf("Failed to create network %q (%q): %w", network.Name, network.Location, err)
-				}
-
-				log.Error("Skipping network record with duplicate ID")
-				for _, inst := range srcInstances {
-					for _, nic := range inst.Properties.NICs {
-						if nic.ID != network.Name {
-							continue
-						}
-
-						log.Error("Skipping instance associated with duplicate network record", slog.String("location", inst.Properties.Location))
-						err = d.instance.DeleteByUUID(ctx, inst.UUID)
-						if err != nil {
-							return err
-						}
-
-						break
-					}
-				}
+				return fmt.Errorf("Failed to create network %q (%q): %w", network.Name, network.Location, err)
 			}
 		}
 	}
@@ -369,8 +408,144 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 	return nil
 }
 
+func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSources map[string]migration.Source, networksBySrc map[string]map[string]migration.Network) error {
+	log := slog.With(
+		slog.String("method", "fetchNSXSourceData"),
+		slog.String("source", src.Name),
+	)
+
+	s, err := source.NewInternalNSXSourceFrom(src.ToAPI())
+	if err != nil {
+		return fmt.Errorf("Failed to create NSX source from source %q: %w", src.Name, err)
+	}
+
+	err = s.Connect(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to source %q: %w", src.Name, err)
+	}
+
+	vcenters, err := s.GetComputeManagers(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to fetch compute managers from source %q: %w", src.Name, err)
+	}
+
+	// Collect all vcenter compute managers.
+	vcentersByURL := map[string]internalAPI.NSXComputeManager{}
+	for _, vcenter := range vcenters {
+		if vcenter.Type == "vCenter" {
+			vcentersByURL[vcenter.Server] = vcenter
+		}
+	}
+
+	// If we have fetched networks that belong to a vcenter that has an associated NSX manager, then fetch all the NSX segments.
+	var fetchSegments bool
+	for _, vcenter := range vcenterSources {
+		var props api.VMwareProperties
+		err := json.Unmarshal(vcenter.Properties, &props)
+		if err != nil {
+			return err
+		}
+
+		vcURL, err := url.Parse(props.Endpoint)
+		if err != nil {
+			return fmt.Errorf("Failed to parse vCenter URL: %q", props.Endpoint)
+		}
+
+		_, ok := vcentersByURL[vcURL.Host]
+		if !ok {
+			continue
+		}
+
+		log.Info("Detected a vCenter in use by the NSX source", slog.String("vcenter", vcenter.Name))
+		if networksBySrc[vcenter.Name] != nil {
+			for _, network := range networksBySrc[vcenter.Name] {
+				if network.Type == api.NETWORKTYPE_VMWARE_NSX || network.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX {
+					fetchSegments = true
+					log.Info("Detected networks in use by the NSX source", slog.String("vcenter", vcenter.Name), slog.String("network", network.Location))
+					break
+				}
+			}
+		}
+
+		if fetchSegments {
+			break
+		}
+	}
+
+	if !fetchSegments {
+		return nil
+	}
+
+	segments, err := s.GetSegments(ctx, false)
+	if err != nil {
+		return err
+	}
+
+	vms, err := s.GetVMs(ctx)
+	if err != nil {
+		return err
+	}
+
+	segmentData := map[string]*internalAPI.NSXSegment{}
+	for _, baseSegment := range segments {
+		for src, networks := range networksBySrc {
+			for name, network := range networks {
+				var vcProps internalAPI.VCenterNetworkProperties
+				err := json.Unmarshal(network.Properties, &vcProps)
+				if err != nil {
+					return err
+				}
+
+				if vcProps.SegmentPath == "" {
+					continue
+				}
+
+				if vcProps.SegmentPath == baseSegment.Path {
+					segment, ok := segmentData[baseSegment.Path]
+					if !ok {
+						segment, err = s.AddSegmentData(ctx, &baseSegment, vms)
+						if err != nil {
+							return err
+						}
+
+						segmentData[segment.Path] = segment
+					}
+
+					log.Info("Recording NSX segment data", slog.String("segment", segment.Path), slog.String("network", network.Location))
+					nsxProps := internalAPI.NSXNetworkProperties{
+						Source:  s.Name,
+						Segment: *segment,
+					}
+
+					if vcProps.TransportZoneUUID != uuid.Nil {
+						log.Info("Recording NSX transport zone data", slog.String("zone", vcProps.TransportZoneUUID.String()), slog.String("network", network.Location))
+						zone, err := s.GetTransportZone(ctx, vcProps.TransportZoneUUID)
+						if err != nil {
+							return err
+						}
+
+						nsxProps.TransportZone = *zone
+					}
+
+					b, err := json.Marshal(nsxProps)
+					if err != nil {
+						return err
+					}
+
+					network.Properties = b
+					networks[name] = network
+				}
+			}
+
+			networksBySrc[src] = networks
+		}
+	}
+
+	return nil
+}
+
 // fetchVMWareSourceData connects to a VMWare source and returns the resources we care about, keyed by their unique identifiers.
-func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[string]api.Network, map[uuid.UUID]migration.Instance, error) {
+func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[string]migration.Network, map[uuid.UUID]migration.Instance, error) {
 	s, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to create VMwareSource from source: %w", err)
@@ -381,17 +556,20 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 		return nil, nil, fmt.Errorf("Failed to connect to source: %w", err)
 	}
 
-	networks, err := s.GetAllNetworks(ctx)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get networks: %w", err)
-	}
-
 	instances, err := s.GetAllVMs(ctx)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Failed to get VMs: %w", err)
 	}
 
-	networkMap := make(map[string]api.Network, len(networks))
+	allNetworks, err := s.GetAllNetworks(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to get networks: %w", err)
+	}
+
+	// Only record networks that are actually in use by detected VMs.
+	networks := migration.FilterUsedNetworks(allNetworks, instances)
+
+	networkMap := make(map[string]migration.Network, len(networks))
 	instanceMap := make(map[uuid.UUID]migration.Instance, len(instances))
 
 	for _, network := range networks {

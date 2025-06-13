@@ -12,12 +12,13 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func TestNetworkDatabaseActions(t *testing.T) {
-	networkA := migration.Network{Name: "networkA"}
-	networkB := migration.Network{Name: "networkB", Config: map[string]string{"network": "foo"}}
-	networkC := migration.Network{Name: "networkC", Config: map[string]string{"network": "bar", "biz": "baz"}}
+	networkA := migration.Network{Name: "networkA", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Properties: []byte("{}")}
+	networkB := migration.Network{Name: "networkB", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Config: map[string]string{"network": "foo"}, Properties: []byte("{}")}
+	networkC := migration.Network{Name: "networkC", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkC", Source: testSource.Name, Config: map[string]string{"network": "bar", "biz": "baz"}, Properties: []byte("{}")}
 
 	ctx := context.Background()
 
@@ -36,6 +37,10 @@ func TestNetworkDatabaseActions(t *testing.T) {
 
 	tx := transaction.Enable(db)
 	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
+	require.NoError(t, err)
+
+	sourceSvc := migration.NewSourceService(sqlite.NewSource(tx))
+	_, err = sourceSvc.Create(ctx, testSource)
 	require.NoError(t, err)
 
 	network := sqlite.NewNetwork(tx)
@@ -57,17 +62,12 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, networks, 3)
 
-	networkNames, err := network.GetAllNames(ctx)
-	require.NoError(t, err)
-	require.Len(t, networkNames, 3)
-	require.ElementsMatch(t, []string{"networkA", "networkB", "networkC"}, networkNames)
-
 	// Should get back networkA unchanged.
-	dbNetworkA, err := network.GetByName(ctx, networkA.Name)
+	dbNetworkA, err := network.GetByNameAndSource(ctx, networkA.Name, networkA.Source)
 	require.NoError(t, err)
 	require.Equal(t, networkA, *dbNetworkA)
 
-	dbNetworkA, err = network.GetByName(ctx, networkA.Name)
+	dbNetworkA, err = network.GetByNameAndSource(ctx, networkA.Name, networkA.Source)
 	require.NoError(t, err)
 	require.Equal(t, networkA, *dbNetworkA)
 
@@ -75,14 +75,14 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	networkB.Config = map[string]string{"key": "value"}
 	err = network.Update(ctx, networkB)
 	require.NoError(t, err)
-	dbNetworkB, err := network.GetByName(ctx, networkB.Name)
+	dbNetworkB, err := network.GetByNameAndSource(ctx, networkB.Name, networkB.Source)
 	require.NoError(t, err)
 	require.Equal(t, networkB, *dbNetworkB)
 
 	// Delete a network.
-	err = network.DeleteByName(ctx, networkA.Name)
+	err = network.DeleteByNameAndSource(ctx, networkA.Name, networkA.Source)
 	require.NoError(t, err)
-	_, err = network.GetByName(ctx, networkA.Name)
+	_, err = network.GetByNameAndSource(ctx, networkA.Name, networkA.Source)
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Should have two networks remaining.
@@ -91,7 +91,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.Len(t, networks, 2)
 
 	// Can't delete a network that doesn't exist.
-	err = network.DeleteByName(ctx, "BazBiz")
+	err = network.DeleteByNameAndSource(ctx, "BazBiz", "something")
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Can't update a network that doesn't exist.

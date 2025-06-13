@@ -29,24 +29,24 @@ func (n network) GetAll(ctx context.Context) (migration.Networks, error) {
 	return entities.GetNetworks(ctx, transaction.GetDBTX(ctx, n.db))
 }
 
-func (n network) GetAllNames(ctx context.Context) ([]string, error) {
-	return entities.GetNetworkNames(ctx, transaction.GetDBTX(ctx, n.db))
+func (n network) GetAllBySource(ctx context.Context, srcName string) (migration.Networks, error) {
+	return entities.GetNetworks(ctx, transaction.GetDBTX(ctx, n.db), entities.NetworkFilter{Source: &srcName})
 }
 
-func (n network) GetByName(ctx context.Context, name string) (*migration.Network, error) {
-	return entities.GetNetwork(ctx, transaction.GetDBTX(ctx, n.db), name)
+func (n network) GetByNameAndSource(ctx context.Context, name string, srcName string) (*migration.Network, error) {
+	return entities.GetNetwork(ctx, transaction.GetDBTX(ctx, n.db), name, srcName)
 }
 
 func (n network) Update(ctx context.Context, in migration.Network) error {
 	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, n.db), func(ctx context.Context, tx transaction.TX) error {
-		return entities.UpdateNetwork(ctx, tx, in.Name, in)
+		return entities.UpdateNetwork(ctx, tx, in.Name, in.Source, in)
 	})
 }
 
-func (n network) Rename(ctx context.Context, oldName string, newName string) error {
-	return entities.RenameNetwork(ctx, transaction.GetDBTX(ctx, n.db), oldName, newName)
+func (n network) RenameBySource(ctx context.Context, oldName string, newName string, srcName string) error {
+	return entities.RenameNetwork(ctx, transaction.GetDBTX(ctx, n.db), oldName, srcName, newName)
 }
 
-func (n network) DeleteByName(ctx context.Context, name string) error {
-	return entities.DeleteNetwork(ctx, transaction.GetDBTX(ctx, n.db), name)
+func (n network) DeleteByNameAndSource(ctx context.Context, name string, srcName string) error {
+	return entities.DeleteNetwork(ctx, transaction.GetDBTX(ctx, n.db), name, srcName)
 }

@@ -305,7 +305,7 @@ func TestSourceService_GetAll(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.SourceRepoMock{
-				GetAllFunc: func(ctx context.Context) (migration.Sources, error) {
+				GetAllFunc: func(ctx context.Context, srcTypes ...api.SourceType) (migration.Sources, error) {
 					return tc.repoGetAllSources, tc.repoGetAllErr
 				},
 			}
@@ -353,7 +353,7 @@ func TestSourceService_GetAllNames(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.SourceRepoMock{
-				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
+				GetAllNamesFunc: func(ctx context.Context, srcTypes ...api.SourceType) ([]string, error) {
 					return tc.repoGetAllNames, tc.repoGetAllErr
 				},
 			}

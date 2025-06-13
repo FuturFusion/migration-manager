@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
@@ -17,8 +16,7 @@ import (
 var networksCmd = APIEndpoint{
 	Path: "networks",
 
-	Get:  APIEndpointAction{Handler: networksGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
-	Post: APIEndpointAction{Handler: networksPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanCreate)},
+	Get: APIEndpointAction{Handler: networksGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
 var networkCmd = APIEndpoint{
@@ -30,49 +28,6 @@ var networkCmd = APIEndpoint{
 }
 
 // swagger:operation GET /1.0/networks networks networks_get
-//
-//	Get the networks
-//
-//	Returns a list of networks (URLs).
-//
-//	---
-//	produces:
-//	  - application/json
-//	responses:
-//	  "200":
-//	    description: API networks
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          type: array
-//	          description: List of networks
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/networks/foo",
-//                    "/1.0/networks/bar"
-//                  ]
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-
-// swagger:operation GET /1.0/networks?recursion=1 networks networks_get_recursion
 //
 //	Get the networks
 //
@@ -111,84 +66,17 @@ var networkCmd = APIEndpoint{
 //	    $ref: "#/responses/InternalServerError"
 func networksGet(d *Daemon, r *http.Request) response.Response {
 	// Parse the recursion field.
-	recursion, err := strconv.Atoi(r.FormValue("recursion"))
-	if err != nil {
-		recursion = 0
-	}
-
-	if recursion == 1 {
-		networks, err := d.network.GetAll(r.Context())
-		if err != nil {
-			return response.SmartError(err)
-		}
-
-		result := make([]api.Network, 0, len(networks))
-		for _, network := range networks {
-			result = append(result, network.ToAPI())
-		}
-
-		return response.SyncResponse(true, result)
-	}
-
-	networkNames, err := d.network.GetAllNames(r.Context())
+	networks, err := d.network.GetAll(r.Context())
 	if err != nil {
 		return response.SmartError(err)
 	}
 
-	result := make([]string, 0, len(networkNames))
-	for _, name := range networkNames {
-		result = append(result, fmt.Sprintf("/%s/networks/%s", api.APIVersion, name))
+	result := make([]api.Network, 0, len(networks))
+	for _, network := range networks {
+		result = append(result, network.ToAPI())
 	}
 
 	return response.SyncResponse(true, result)
-}
-
-// swagger:operation POST /1.0/networks networks networks_post
-//
-//	Add a network
-//
-//	Creates a new network.
-//
-//	---
-//	consumes:
-//	  - application/json
-//	produces:
-//	  - application/json
-//	parameters:
-//	  - in: body
-//	    name: network
-//	    description: Network configuration
-//	    required: true
-//	    schema:
-//	      $ref: "#/definitions/Network"
-//	responses:
-//	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
-//	  "400":
-//	    $ref: "#/responses/BadRequest"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-func networksPost(d *Daemon, r *http.Request) response.Response {
-	var network api.Network
-
-	// Decode into the new network.
-	err := json.NewDecoder(r.Body).Decode(&network)
-	if err != nil {
-		return response.BadRequest(err)
-	}
-
-	_, err = d.network.Create(r.Context(), migration.Network{
-		Name:     network.Name,
-		Location: network.Location,
-		Config:   network.Config,
-	})
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating network %q: %w", network.Name, err))
-	}
-
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+network.Name)
 }
 
 // swagger:operation DELETE /1.0/networks/{name} networks network_delete
@@ -200,6 +88,13 @@ func networksPost(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: source
+//	    description: Source where the network is defined
+//	    required: true
+//	    type: string
+//	    example: name matches 'vcenter01'
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -211,8 +106,12 @@ func networksPost(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func networkDelete(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
+	srcName := r.FormValue("source")
+	if srcName == "" {
+		return response.BadRequest(fmt.Errorf("Missing 'source' query paramterer"))
+	}
 
-	err := d.network.DeleteByName(r.Context(), name)
+	err := d.network.DeleteByNameAndSource(r.Context(), name, srcName)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -229,6 +128,13 @@ func networkDelete(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: source
+//	    description: Source where the network is defined
+//	    required: true
+//	    type: string
+//	    example: name matches 'vcenter01'
 //	responses:
 //	  "200":
 //	    description: Network
@@ -257,7 +163,12 @@ func networkDelete(d *Daemon, r *http.Request) response.Response {
 func networkGet(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	network, err := d.network.GetByName(r.Context(), name)
+	srcName := r.FormValue("source")
+	if srcName == "" {
+		return response.BadRequest(fmt.Errorf("Missing 'source' query paramterer"))
+	}
+
+	network, err := d.network.GetByNameAndSource(r.Context(), name, srcName)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -281,6 +192,12 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: query
+//	    name: source
+//	    description: Source where the network is defined
+//	    required: true
+//	    type: string
+//	    example: name matches 'vcenter01'
 //	  - in: body
 //	    name: network
 //	    description: Network definition
@@ -300,6 +217,10 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func networkPut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
+	srcName := r.FormValue("source")
+	if srcName == "" {
+		return response.BadRequest(fmt.Errorf("Missing 'source' query paramterer"))
+	}
 
 	var network api.NetworkPut
 
@@ -316,7 +237,7 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	currentNetwork, err := d.network.GetByName(ctx, name)
+	currentNetwork, err := d.network.GetByNameAndSource(ctx, name, srcName)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -328,10 +249,13 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	err = d.network.Update(ctx, &migration.Network{
-		ID:       currentNetwork.ID,
-		Name:     currentNetwork.Name,
-		Location: currentNetwork.Location,
-		Config:   network.Config,
+		ID:         currentNetwork.ID,
+		Name:       currentNetwork.Name,
+		Location:   currentNetwork.Location,
+		Type:       currentNetwork.Type,
+		Properties: currentNetwork.Properties,
+		Source:     currentNetwork.Source,
+		Config:     network.Config,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", currentNetwork.Name, err))

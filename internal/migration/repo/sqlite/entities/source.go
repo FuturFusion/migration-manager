@@ -1,12 +1,16 @@
 package entities
 
+import "github.com/FuturFusion/migration-manager/shared/api"
+
 // Code generation directives.
 //
 //generate-database:mapper target source.mapper.go
 //generate-database:mapper reset
 //
 //generate-database:mapper stmt -e source objects
+//generate-database:mapper stmt -e source objects-by-SourceType
 //generate-database:mapper stmt -e source objects-by-Name
+//generate-database:mapper stmt -e source objects-by-Name-and-SourceType
 //generate-database:mapper stmt -e source names
 //generate-database:mapper stmt -e source id
 //generate-database:mapper stmt -e source create
@@ -25,5 +29,6 @@ package entities
 //generate-database:mapper method -e source DeleteOne-by-Name
 
 type SourceFilter struct {
-	Name *string
+	SourceType *api.SourceType
+	Name       *string
 }

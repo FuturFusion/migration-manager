@@ -9,6 +9,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/mock"
 	"github.com/FuturFusion/migration-manager/internal/testing/boom"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 func TestNetworkService_Create(t *testing.T) {
@@ -25,12 +26,16 @@ func TestNetworkService_Create(t *testing.T) {
 			network: migration.Network{
 				ID:       1,
 				Name:     "one",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
+				Source:   "src",
 				Location: "/path/to/one",
 				Config:   map[string]string{},
 			},
 			repoCreateNetwork: migration.Network{
 				ID:       1,
 				Name:     "one",
+				Source:   "src",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
 				Location: "/path/to/one",
 				Config:   map[string]string{},
 			},
@@ -42,7 +47,9 @@ func TestNetworkService_Create(t *testing.T) {
 			network: migration.Network{
 				ID:       -1, // invalid
 				Name:     "one",
+				Source:   "src",
 				Location: "/path/to/one",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
 				Config:   map[string]string{},
 			},
 
@@ -57,6 +64,8 @@ func TestNetworkService_Create(t *testing.T) {
 				ID:       1,
 				Name:     "", // empty
 				Location: "/path/to/one",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
+				Source:   "src",
 				Config:   map[string]string{},
 			},
 
@@ -71,6 +80,38 @@ func TestNetworkService_Create(t *testing.T) {
 				ID:       1,
 				Name:     "one",
 				Location: "", // empty
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
+				Source:   "src",
+				Config:   map[string]string{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - type empty",
+			network: migration.Network{
+				ID:       1,
+				Name:     "one",
+				Location: "/path/to/one",
+				Source:   "src",
+				Config:   map[string]string{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - source empty",
+			network: migration.Network{
+				ID:       1,
+				Name:     "one",
+				Location: "/path/to/one",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
 				Config:   map[string]string{},
 			},
 
@@ -85,6 +126,8 @@ func TestNetworkService_Create(t *testing.T) {
 				ID:       1,
 				Name:     "one",
 				Location: "/path/to/one",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
+				Source:   "src",
 				Config:   map[string]string{},
 			},
 			repoCreateErr: boom.Error,
@@ -169,69 +212,25 @@ func TestNetworkService_GetAll(t *testing.T) {
 	}
 }
 
-func TestNetworkService_GetAllNames(t *testing.T) {
-	tests := []struct {
-		name            string
-		repoGetAllNames []string
-		repoGetAllErr   error
-
-		assertErr require.ErrorAssertionFunc
-		count     int
-	}{
-		{
-			name: "success",
-			repoGetAllNames: []string{
-				"networkA", "networkB",
-			},
-
-			assertErr: require.NoError,
-			count:     2,
-		},
-		{
-			name:          "error - repo",
-			repoGetAllErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-			count:     0,
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Setup
-			repo := &mock.NetworkRepoMock{
-				GetAllNamesFunc: func(ctx context.Context) ([]string, error) {
-					return tc.repoGetAllNames, tc.repoGetAllErr
-				},
-			}
-
-			networkSvc := migration.NewNetworkService(repo)
-
-			// Run test
-			inventoryNames, err := networkSvc.GetAllNames(context.Background())
-
-			// Assert
-			tc.assertErr(t, err)
-			require.Len(t, inventoryNames, tc.count)
-		})
-	}
-}
-
 func TestNetworkService_GetByName(t *testing.T) {
 	tests := []struct {
 		name                 string
 		nameArg              string
+		sourceArg            string
 		repoGetByNameNetwork *migration.Network
 		repoGetByNameErr     error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:    "success",
-			nameArg: "one",
+			name:      "success",
+			nameArg:   "one",
+			sourceArg: "src",
 			repoGetByNameNetwork: &migration.Network{
-				ID:   1,
-				Name: "one",
+				ID:       1,
+				Name:     "one",
+				Location: "/path/to/one",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
 			},
 
 			assertErr: require.NoError,
@@ -245,8 +244,18 @@ func TestNetworkService_GetByName(t *testing.T) {
 			},
 		},
 		{
+			name:      "error - source argument empty string",
+			nameArg:   "one",
+			sourceArg: "",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
 			name:             "error - repo",
 			nameArg:          "one",
+			sourceArg:        "src",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -257,7 +266,7 @@ func TestNetworkService_GetByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.NetworkRepoMock{
-				GetByNameFunc: func(ctx context.Context, name string) (*migration.Network, error) {
+				GetByNameAndSourceFunc: func(ctx context.Context, name string, src string) (*migration.Network, error) {
 					return tc.repoGetByNameNetwork, tc.repoGetByNameErr
 				},
 			}
@@ -265,7 +274,7 @@ func TestNetworkService_GetByName(t *testing.T) {
 			networkSvc := migration.NewNetworkService(repo)
 
 			// Run test
-			network, err := networkSvc.GetByName(context.Background(), tc.nameArg)
+			network, err := networkSvc.GetByNameAndSource(context.Background(), tc.nameArg, tc.sourceArg)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -287,7 +296,9 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 			network: migration.Network{
 				ID:       1,
 				Name:     "one",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
 				Location: "/path/to/one",
+				Source:   "src",
 				Config:   map[string]string{},
 			},
 
@@ -298,7 +309,9 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 			network: migration.Network{
 				ID:       -1, // invalid
 				Name:     "one",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
 				Location: "/path/to/one",
+				Source:   "src",
 				Config:   map[string]string{},
 			},
 
@@ -312,7 +325,39 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 			network: migration.Network{
 				ID:       1,
 				Name:     "", // empty
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
 				Location: "/path/to/one",
+				Source:   "src",
+				Config:   map[string]string{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - type empty",
+			network: migration.Network{
+				ID:       1,
+				Name:     "one",
+				Location: "/path/to/one",
+				Source:   "src",
+				Config:   map[string]string{},
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - source empty",
+			network: migration.Network{
+				ID:       1,
+				Name:     "one",
+				Location: "/path/to/one",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
 				Config:   map[string]string{},
 			},
 
@@ -327,6 +372,8 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 				ID:       1,
 				Name:     "one",
 				Location: "/path/to/one",
+				Source:   "src",
+				Type:     api.NETWORKTYPE_VMWARE_STANDARD,
 				Config:   map[string]string{},
 			},
 			repoUpdateErr: boom.Error,
@@ -359,13 +406,15 @@ func TestNetworkService_DeleteByName(t *testing.T) {
 	tests := []struct {
 		name                string
 		nameArg             string
+		sourceArg           string
 		repoDeleteByNameErr error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:    "success",
-			nameArg: "one",
+			name:      "success",
+			nameArg:   "one",
+			sourceArg: "src",
 
 			assertErr: require.NoError,
 		},
@@ -378,8 +427,18 @@ func TestNetworkService_DeleteByName(t *testing.T) {
 			},
 		},
 		{
+			name:      "error - source argument empty string",
+			nameArg:   "one",
+			sourceArg: "",
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
 			name:                "error - repo",
 			nameArg:             "one",
+			sourceArg:           "src",
 			repoDeleteByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
@@ -390,7 +449,7 @@ func TestNetworkService_DeleteByName(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.NetworkRepoMock{
-				DeleteByNameFunc: func(ctx context.Context, name string) error {
+				DeleteByNameAndSourceFunc: func(ctx context.Context, name string, src string) error {
 					return tc.repoDeleteByNameErr
 				},
 			}
@@ -398,7 +457,7 @@ func TestNetworkService_DeleteByName(t *testing.T) {
 			networkSvc := migration.NewNetworkService(repo)
 
 			// Run test
-			err := networkSvc.DeleteByName(context.Background(), tc.nameArg)
+			err := networkSvc.DeleteByNameAndSource(context.Background(), tc.nameArg, tc.sourceArg)
 
 			// Assert
 			tc.assertErr(t, err)

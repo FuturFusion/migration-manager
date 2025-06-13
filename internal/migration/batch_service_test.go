@@ -2,7 +2,6 @@ package migration_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -759,12 +758,10 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 			repo := &mock.BatchRepoMock{
 				UnassignBatchFunc: func(ctx context.Context, batchName string, instanceUUID uuid.UUID) error {
 					_, err := queue.Pop(t, &tc.instanceSvcUnassignFromBatch)
-					fmt.Println("1", err != nil)
 					return err
 				},
 				AssignBatchFunc: func(ctx context.Context, batchName string, instanceUUID uuid.UUID) error {
 					_, err := queue.Pop(t, &tc.instanceSvcAssignBatch)
-					fmt.Println("2", err != nil)
 					return err
 				},
 			}

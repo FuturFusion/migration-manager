@@ -45,23 +45,24 @@ func (_d NetworkRepoWithSlog) Create(ctx context.Context, network _sourceMigrati
 	return _d._base.Create(ctx, network)
 }
 
-// DeleteByName implements _sourceMigration.NetworkRepo
-func (_d NetworkRepoWithSlog) DeleteByName(ctx context.Context, name string) (err error) {
+// DeleteByNameAndSource implements _sourceMigration.NetworkRepo
+func (_d NetworkRepoWithSlog) DeleteByNameAndSource(ctx context.Context, name string, src string) (err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.String("name", name),
-	).Debug("NetworkRepoWithSlog: calling DeleteByName")
+		slog.String("src", src),
+	).Debug("NetworkRepoWithSlog: calling DeleteByNameAndSource")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("NetworkRepoWithSlog: method DeleteByName returned an error")
+			log.Error("NetworkRepoWithSlog: method DeleteByNameAndSource returned an error")
 		} else {
-			log.Debug("NetworkRepoWithSlog: method DeleteByName finished")
+			log.Debug("NetworkRepoWithSlog: method DeleteByNameAndSource finished")
 		}
 	}()
-	return _d._base.DeleteByName(ctx, name)
+	return _d._base.DeleteByNameAndSource(ctx, name, src)
 }
 
 // GetAll implements _sourceMigration.NetworkRepo
@@ -83,63 +84,66 @@ func (_d NetworkRepoWithSlog) GetAll(ctx context.Context) (n1 _sourceMigration.N
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllNames implements _sourceMigration.NetworkRepo
-func (_d NetworkRepoWithSlog) GetAllNames(ctx context.Context) (sa1 []string, err error) {
+// GetAllBySource implements _sourceMigration.NetworkRepo
+func (_d NetworkRepoWithSlog) GetAllBySource(ctx context.Context, src string) (n1 _sourceMigration.Networks, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
-	).Debug("NetworkRepoWithSlog: calling GetAllNames")
+		slog.String("src", src),
+	).Debug("NetworkRepoWithSlog: calling GetAllBySource")
 	defer func() {
 		log := _d._log.With(
-			slog.Any("sa1", sa1),
+			slog.Any("n1", n1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("NetworkRepoWithSlog: method GetAllNames returned an error")
+			log.Error("NetworkRepoWithSlog: method GetAllBySource returned an error")
 		} else {
-			log.Debug("NetworkRepoWithSlog: method GetAllNames finished")
+			log.Debug("NetworkRepoWithSlog: method GetAllBySource finished")
 		}
 	}()
-	return _d._base.GetAllNames(ctx)
+	return _d._base.GetAllBySource(ctx, src)
 }
 
-// GetByName implements _sourceMigration.NetworkRepo
-func (_d NetworkRepoWithSlog) GetByName(ctx context.Context, name string) (np1 *_sourceMigration.Network, err error) {
+// GetByNameAndSource implements _sourceMigration.NetworkRepo
+func (_d NetworkRepoWithSlog) GetByNameAndSource(ctx context.Context, name string, src string) (np1 *_sourceMigration.Network, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.String("name", name),
-	).Debug("NetworkRepoWithSlog: calling GetByName")
+		slog.String("src", src),
+	).Debug("NetworkRepoWithSlog: calling GetByNameAndSource")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("np1", np1),
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("NetworkRepoWithSlog: method GetByName returned an error")
+			log.Error("NetworkRepoWithSlog: method GetByNameAndSource returned an error")
 		} else {
-			log.Debug("NetworkRepoWithSlog: method GetByName finished")
+			log.Debug("NetworkRepoWithSlog: method GetByNameAndSource finished")
 		}
 	}()
-	return _d._base.GetByName(ctx, name)
+	return _d._base.GetByNameAndSource(ctx, name, src)
 }
 
-// Rename implements _sourceMigration.NetworkRepo
-func (_d NetworkRepoWithSlog) Rename(ctx context.Context, oldName string, newName string) (err error) {
+// RenameBySource implements _sourceMigration.NetworkRepo
+func (_d NetworkRepoWithSlog) RenameBySource(ctx context.Context, oldName string, newName string, src string) (err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.String("oldName", oldName),
 		slog.String("newName", newName),
-	).Debug("NetworkRepoWithSlog: calling Rename")
+		slog.String("src", src),
+	).Debug("NetworkRepoWithSlog: calling RenameBySource")
 	defer func() {
 		log := _d._log.With(
 			slog.Any("err", err),
 		)
 		if err != nil {
-			log.Error("NetworkRepoWithSlog: method Rename returned an error")
+			log.Error("NetworkRepoWithSlog: method RenameBySource returned an error")
 		} else {
-			log.Debug("NetworkRepoWithSlog: method Rename finished")
+			log.Debug("NetworkRepoWithSlog: method RenameBySource finished")
 		}
 	}()
-	return _d._base.Rename(ctx, oldName, newName)
+	return _d._base.RenameBySource(ctx, oldName, newName, src)
 }
 
 // Update implements _sourceMigration.NetworkRepo

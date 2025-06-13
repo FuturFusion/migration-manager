@@ -35,16 +35,20 @@ func (n networkService) GetAll(ctx context.Context) (Networks, error) {
 	return n.repo.GetAll(ctx)
 }
 
-func (n networkService) GetAllNames(ctx context.Context) ([]string, error) {
-	return n.repo.GetAllNames(ctx)
+func (n networkService) GetAllBySource(ctx context.Context, srcName string) (Networks, error) {
+	return n.repo.GetAllBySource(ctx, srcName)
 }
 
-func (n networkService) GetByName(ctx context.Context, name string) (*Network, error) {
+func (n networkService) GetByNameAndSource(ctx context.Context, name string, srcName string) (*Network, error) {
 	if name == "" {
 		return nil, fmt.Errorf("Network name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
-	return n.repo.GetByName(ctx, name)
+	if srcName == "" {
+		return nil, fmt.Errorf("Network source cannot be empty: %w", ErrOperationNotPermitted)
+	}
+
+	return n.repo.GetByNameAndSource(ctx, name, srcName)
 }
 
 func (n networkService) Update(ctx context.Context, newNetwork *Network) error {
@@ -56,10 +60,14 @@ func (n networkService) Update(ctx context.Context, newNetwork *Network) error {
 	return n.repo.Update(ctx, *newNetwork)
 }
 
-func (n networkService) DeleteByName(ctx context.Context, name string) error {
+func (n networkService) DeleteByNameAndSource(ctx context.Context, name string, srcName string) error {
 	if name == "" {
 		return fmt.Errorf("Network name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
-	return n.repo.DeleteByName(ctx, name)
+	if srcName == "" {
+		return fmt.Errorf("Network source cannot be empty: %w", ErrOperationNotPermitted)
+	}
+
+	return n.repo.DeleteByNameAndSource(ctx, name, srcName)
 }
