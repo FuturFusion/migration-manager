@@ -123,7 +123,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
             <Form.Select
               name="sourceType"
               value={formik.values.sourceType}
-              disabled={formik.isSubmitting}
+              disabled={formik.isSubmitting || !!source}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               isInvalid={
