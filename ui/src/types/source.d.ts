@@ -8,10 +8,18 @@ export interface VMwareProperties {
   connectivity_status?: ExternalConnectivityStatus;
 }
 
+export interface NSXProperties {
+  endpoint: string;
+  username: string;
+  password: string;
+  trusted_server_certificate_fingerprint: string;
+  connectivity_status?: ExternalConnectivityStatus;
+}
+
 export interface Source {
   name: string;
   source_type: SourceType;
-  properties: VMwareProperties;
+  properties: VMwareProperties | NSXProperties;
 }
 
 export interface SourceFormValues {

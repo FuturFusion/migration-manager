@@ -59,7 +59,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
   if (source) {
     formikInitialValues = {
       name: source.name,
-      sourceType: SourceType.VMware,
+      sourceType: source.source_type,
       endpoint: source.properties.endpoint,
       username: source.properties.username,
       password: source.properties.password,
@@ -74,7 +74,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
     onSubmit: (values: SourceFormValues) => {
       const modifiedValues = {
         name: values.name,
-        source_type: SourceType.VMware,
+        source_type: values.sourceType,
         properties: {
           endpoint: values.endpoint,
           username: values.username,
@@ -92,6 +92,10 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
     {
       name: SourceType.VMware,
       value: SourceType.VMware,
+    },
+    {
+      name: SourceType.NSX,
+      value: SourceType.NSX,
     },
   ];
 

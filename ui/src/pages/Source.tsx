@@ -3,7 +3,7 @@ import Button from "react-bootstrap/Button";
 import { Link, useNavigate } from "react-router";
 import { fetchSources } from "api/sources";
 import DataTable from "components/DataTable";
-import { VMwareProperties } from "types/source";
+import { VMwareProperties, NSXProperties } from "types/source";
 import { SourceType } from "util/source";
 
 const Source = () => {
@@ -28,50 +28,50 @@ const Source = () => {
     "Username",
   ];
   const rows = sources.map((item) => {
+    let connStatus = undefined;
+    let endpoint = "";
+    let username = "";
+
     if (item.source_type == SourceType.VMware) {
       const props = item.properties as VMwareProperties;
-      return [
-        {
-          content: (
-            <Link to={`/ui/sources/${item.name}`} className="data-table-link">
-              {item.name}
-            </Link>
-          ),
-          sortKey: item.name,
-        },
-        {
-          content: "VMware",
-        },
-        {
-          content: (
-            <Link
-              to={props.endpoint}
-              className="data-table-link"
-              target="_blank"
-            >
-              {props.endpoint}
-            </Link>
-          ),
-          sortKey: props.endpoint,
-        },
-        {
-          content: props.connectivity_status,
-          sortKey: props.connectivity_status,
-        },
-        {
-          content: props.username,
-          sortKey: props.username,
-        },
-      ];
+      endpoint = props.endpoint;
+      connStatus = props.connectivity_status;
+      username = props.username;
+    } else if (item.source_type == SourceType.NSX) {
+      const props = item.properties as NSXProperties;
+      endpoint = props.endpoint;
+      connStatus = props.connectivity_status;
+      username = props.username;
     }
 
     return [
-      { content: "" },
-      { content: "" },
-      { content: "" },
-      { content: "" },
-      { content: "" },
-      { content: "" },
+      {
+        content: (
+          <Link to={`/ui/sources/${item.name}`} className="data-table-link">
+            {item.name}
+          </Link>
+        ),
+        sortKey: item.name,
+      },
+      {
+        content: item.source_type,
+      },
+      {
+        content: (
+          <Link to={endpoint} className="data-table-link" target="_blank">
+            {endpoint}
+          </Link>
+        ),
+        sortKey: endpoint,
+      },
+      {
+        content: connStatus,
+        sortKey: connStatus,
+      },
+      {
+        content: username,
+        sortKey: username,
+      },
     ];
   });
 
