@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# Mask the lxd-agent service.
+if systemctl list-unit-files --type=service | grep -q "lxd-agent.service" ; then
+  systemctl mask lxd-agent.service
+fi
+
 # Install incus-agent into the target system.
 mkdir -p /mnt/config/
 mount -t 9p config /mnt/config/
