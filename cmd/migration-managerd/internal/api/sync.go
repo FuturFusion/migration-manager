@@ -73,10 +73,14 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 	}
 
 	for _, src := range networkSourcesByName {
-		err := fetchNSXSourceData(ctx, src, vmSourcesByName, networksBySrc)
+		found, err := fetchNSXSourceData(ctx, src, vmSourcesByName, networksBySrc)
 		if err != nil {
 			log.Error("Failed to fetch records from source", logger.Err(err))
 			continue
+		}
+
+		if found {
+			break
 		}
 	}
 
@@ -116,6 +120,11 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 
 // syncSourceData fetches instance and network data from the source and updates our database records.
 func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error {
+	nsxSources, err := d.source.GetAll(ctx, api.SOURCETYPE_NSX)
+	if err != nil {
+		return fmt.Errorf("Failed to retrieve %q sources: %w", api.SOURCETYPE_NSX, err)
+	}
+
 	srcNetworks, srcInstances, err := fetchVMWareSourceData(ctx, src)
 	if err != nil {
 		return err
@@ -134,9 +143,15 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 	}
 
 	if syncNSX {
-		err = fetchNSXSourceData(ctx, src, sourcesByName, networksBySrc)
-		if err != nil {
-			return fmt.Errorf("Failed to fetch network properties from NSX: %w", err)
+		for _, nsxSource := range nsxSources {
+			found, err := fetchNSXSourceData(ctx, nsxSource, sourcesByName, networksBySrc)
+			if err != nil {
+				return fmt.Errorf("Failed to fetch network properties from NSX: %w", err)
+			}
+
+			if found {
+				break
+			}
 		}
 	}
 
@@ -409,7 +424,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 	return nil
 }
 
-func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSources map[string]migration.Source, networksBySrc map[string]map[string]migration.Network) error {
+func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSources map[string]migration.Source, networksBySrc map[string]map[string]migration.Network) (bool, error) {
 	log := slog.With(
 		slog.String("method", "fetchNSXSourceData"),
 		slog.String("source", src.Name),
@@ -417,17 +432,17 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 
 	s, err := source.NewInternalNSXSourceFrom(src.ToAPI())
 	if err != nil {
-		return fmt.Errorf("Failed to create NSX source from source %q: %w", src.Name, err)
+		return false, fmt.Errorf("Failed to create NSX source from source %q: %w", src.Name, err)
 	}
 
 	err = s.Connect(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to connect to source %q: %w", src.Name, err)
+		return false, fmt.Errorf("Failed to connect to source %q: %w", src.Name, err)
 	}
 
 	vcenters, err := s.GetComputeManagers(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to fetch compute managers from source %q: %w", src.Name, err)
+		return false, fmt.Errorf("Failed to fetch compute managers from source %q: %w", src.Name, err)
 	}
 
 	// Collect all vcenter compute managers.
@@ -444,12 +459,12 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 		var props api.VMwareProperties
 		err := json.Unmarshal(vcenter.Properties, &props)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		vcURL, err := url.Parse(props.Endpoint)
 		if err != nil {
-			return fmt.Errorf("Failed to parse vCenter URL: %q", props.Endpoint)
+			return false, fmt.Errorf("Failed to parse vCenter URL: %q", props.Endpoint)
 		}
 
 		_, ok := vcentersByURL[vcURL.Host]
@@ -474,17 +489,17 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 	}
 
 	if !fetchSegments {
-		return nil
+		return false, nil
 	}
 
 	segments, err := s.GetSegments(ctx, false)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	vms, err := s.GetVMs(ctx)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	segmentData := map[string]*internalAPI.NSXSegment{}
@@ -494,7 +509,7 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 				var vcProps internalAPI.VCenterNetworkProperties
 				err := json.Unmarshal(network.Properties, &vcProps)
 				if err != nil {
-					return err
+					return false, err
 				}
 
 				if vcProps.SegmentPath == "" {
@@ -506,7 +521,7 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 					if !ok {
 						segment, err = s.AddSegmentData(ctx, &baseSegment, vms)
 						if err != nil {
-							return err
+							return false, err
 						}
 
 						segmentData[segment.Path] = segment
@@ -522,7 +537,7 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 						log.Info("Recording NSX transport zone data", slog.String("zone", vcProps.TransportZoneUUID.String()), slog.String("network", network.Location))
 						zone, err := s.GetTransportZone(ctx, vcProps.TransportZoneUUID)
 						if err != nil {
-							return err
+							return false, err
 						}
 
 						nsxProps.TransportZone = *zone
@@ -530,7 +545,7 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 
 					b, err := json.Marshal(nsxProps)
 					if err != nil {
-						return err
+						return false, err
 					}
 
 					network.Properties = b
@@ -542,7 +557,7 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 		}
 	}
 
-	return nil
+	return true, nil
 }
 
 // fetchVMWareSourceData connects to a VMWare source and returns the resources we care about, keyed by their unique identifiers.
