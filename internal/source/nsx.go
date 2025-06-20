@@ -97,13 +97,11 @@ func (s *InternalNSXSource) Connect(ctx context.Context) error {
 		serverCert = nil
 	}
 
-	// Create an empty client, and populate it with a trusted server cert.
-	s.c = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{}}}
-	if serverCert != nil {
-		certpool := x509.NewCertPool()
-		certpool.AddCert(serverCert)
-		s.c.Transport.(*http.Transport).TLSClientConfig.RootCAs = certpool
-	}
+	tlsConfig := &tls.Config{}
+	incusTLS.TLSConfigWithTrustedCert(tlsConfig, serverCert)
+
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	s.c = &http.Client{Transport: transport}
 
 	// Get the version information for this NSX manager.
 	b, err := s.httpGet(ctx, "api/v1/node/version")
@@ -161,6 +159,10 @@ func (s *InternalNSXSource) FetchSourceData(ctx context.Context) error {
 
 // DoBasicConnectivityCheck performs a connectivity check and verifies the server certificate against the trusted fingerprint.
 func (s *InternalNSXSource) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
+	if s.Username == "" && s.Password == "" {
+		return api.EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR, nil
+	}
+
 	status, cert := util.DoBasicConnectivityCheck(s.Endpoint, s.TrustedServerCertificateFingerprint)
 	if cert != nil && s.ServerCertificate == nil {
 		// We got an untrusted certificate; if one hasn't already been set, add it to this source.

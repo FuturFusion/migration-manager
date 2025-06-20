@@ -20,6 +20,7 @@ import (
 	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vapi/rest"
 	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/view"
@@ -106,6 +107,7 @@ func (s *InternalVMwareSource) Connect(ctx context.Context) error {
 	s.setVDDKConfig(endpointURL, thumbprint)
 
 	s.version = s.govmomiClient.ServiceContent.About.Version
+	s.isESXI = s.govmomiClient.ServiceContent.About.ApiType == "HostAgent"
 
 	s.isConnected = true
 	return nil
@@ -141,6 +143,35 @@ func (s *InternalVMwareSource) WithAdditionalRootCertificate(rootCert *x509.Cert
 	s.ServerCertificate = rootCert.Raw
 }
 
+func (s *InternalVMwareSource) GetNSXManagerIP(ctx context.Context) (string, error) {
+	if s.isESXI {
+		return "", nil
+	}
+
+	collector := property.DefaultCollector(s.govmomiClient.Client)
+	var out mo.ExtensionManager
+	err := collector.RetrieveOne(ctx, *s.govmomiClient.ServiceContent.ExtensionManager, nil, &out)
+	if err != nil {
+		return "", fmt.Errorf("Failed to retrieve NSX manager details: %w", err)
+	}
+
+	var managerIP string
+	for _, extension := range out.ExtensionList {
+		if extension.Key == "com.vmware.nsx.management.nsxt" {
+			for _, server := range extension.Server {
+				if server.Type == "VIP" {
+					continue
+				}
+
+				managerIP = server.Url
+				break
+			}
+		}
+	}
+
+	return managerIP, nil
+}
+
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {
 	ret := migration.Instances{}
 
@@ -172,22 +203,25 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		networkLocationsByID[parseNetworkID(ctx, n)] = n.GetInventoryPath()
 	}
 
-	c := rest.NewClient(s.govmomiClient.Client)
-	err = c.Login(ctx, url.UserPassword(s.Username, s.Password))
-	if err != nil {
-		return nil, err
-	}
+	var catMap map[string]string
+	var tc *tags.Manager
+	if !s.isESXI {
+		c := rest.NewClient(s.govmomiClient.Client)
+		err = c.Login(ctx, url.UserPassword(s.Username, s.Password))
+		if err != nil {
+			return nil, fmt.Errorf("Failed to login to REST API: %w", err)
+		}
 
-	tc := tags.NewManager(c)
+		tc = tags.NewManager(c)
+		allCats, err := tc.GetCategories(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("No tag categories found: %w", err)
+		}
 
-	allCats, err := tc.GetCategories(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("No tag categories found: %w", err)
-	}
-
-	catMap := make(map[string]string, len(allCats))
-	for _, cat := range allCats {
-		catMap[cat.ID] = cat.Name
+		catMap = make(map[string]string, len(allCats))
+		for _, cat := range allCats {
+			catMap[cat.ID] = cat.Name
+		}
 	}
 
 	for _, vm := range vms {
@@ -225,17 +259,19 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			continue
 		}
 
-		vmTags, err := tc.GetAttachedTags(ctx, vm.Reference())
-		if err != nil {
-			return nil, err
-		}
+		if !s.isESXI {
+			vmTags, err := tc.GetAttachedTags(ctx, vm.Reference())
+			if err != nil {
+				return nil, err
+			}
 
-		for _, tag := range vmTags {
-			prefix := "tag." + catMap[tag.CategoryID]
-			if vmProps.Config[prefix] == "" {
-				vmProps.Config[prefix] = tag.Name
-			} else {
-				vmProps.Config[prefix] = vmProps.Config[prefix] + "," + tag.Name
+			for _, tag := range vmTags {
+				prefix := "tag." + catMap[tag.CategoryID]
+				if vmProps.Config[prefix] == "" {
+					vmProps.Config[prefix] = tag.Name
+				} else {
+					vmProps.Config[prefix] = vmProps.Config[prefix] + "," + tag.Name
+				}
 			}
 		}
 

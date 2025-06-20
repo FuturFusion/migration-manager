@@ -10,10 +10,12 @@ package source
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"net/url"
 	"time"
 
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/session"
 	"github.com/vmware/govmomi/session/keepalive"
@@ -26,12 +28,9 @@ const keepaliveInterval = 5 * time.Minute // vCenter APIs keep-alive
 
 func soapWithKeepalive(ctx context.Context, clientURL *url.URL, additionalRootCert *x509.Certificate) (*govmomi.Client, error) {
 	soapClient := soap.NewClient(clientURL, false)
-
-	if additionalRootCert != nil {
-		certpool := x509.NewCertPool()
-		certpool.AddCert(additionalRootCert)
-		soapClient.DefaultTransport().TLSClientConfig.RootCAs = certpool
-	}
+	tlsConfig := &tls.Config{}
+	incusTLS.TLSConfigWithTrustedCert(tlsConfig, additionalRootCert)
+	soapClient.DefaultTransport().TLSClientConfig = tlsConfig
 
 	vimClient, err := vim25.NewClient(ctx, soapClient)
 	if err != nil {

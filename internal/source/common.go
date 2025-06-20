@@ -13,6 +13,7 @@ type InternalSource struct {
 	api.Source `yaml:",inline"`
 
 	version     string
+	isESXI      bool
 	isConnected bool
 }
 
