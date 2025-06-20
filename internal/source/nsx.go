@@ -97,13 +97,11 @@ func (s *InternalNSXSource) Connect(ctx context.Context) error {
 		serverCert = nil
 	}
 
-	// Create an empty client, and populate it with a trusted server cert.
-	s.c = &http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{}}}
-	if serverCert != nil {
-		certpool := x509.NewCertPool()
-		certpool.AddCert(serverCert)
-		s.c.Transport.(*http.Transport).TLSClientConfig.RootCAs = certpool
-	}
+	tlsConfig := &tls.Config{}
+	incusTLS.TLSConfigWithTrustedCert(tlsConfig, serverCert)
+
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	s.c = &http.Client{Transport: transport}
 
 	// Get the version information for this NSX manager.
 	b, err := s.httpGet(ctx, "api/v1/node/version")
