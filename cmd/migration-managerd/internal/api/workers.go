@@ -234,7 +234,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 
 		for _, op := range ops {
 			err = op.Wait()
-			if err != nil {
+			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 				return err
 			}
 		}
@@ -250,14 +250,16 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 		if !volumeMap["custom/"+driversISO] {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
-			op, err := it.CreateStoragePoolVolumeFromISO(batch.StoragePool, driversISOPath)
+			ops, err := it.CreateStoragePoolVolumeFromISO(batch.StoragePool, driversISOPath)
 			if err != nil {
 				return err
 			}
 
-			err = op.Wait()
-			if err != nil {
-				return err
+			for _, op := range ops {
+				err = op.Wait()
+				if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+					return err
+				}
 			}
 		}
 	}
