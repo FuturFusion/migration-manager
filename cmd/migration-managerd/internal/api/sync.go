@@ -73,6 +73,10 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 	}
 
 	for _, src := range networkSourcesByName {
+		if src.GetExternalConnectivityStatus() != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			continue
+		}
+
 		found, err := fetchNSXSourceData(ctx, src, vmSourcesByName, networksBySrc)
 		if err != nil {
 			log.Error("Failed to fetch records from source", logger.Err(err))
@@ -142,20 +146,72 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 		}
 	}
 
+	var nsxIP string
 	if syncNSX {
+		var matchingNSXSource bool
 		for _, nsxSource := range nsxSources {
-			found, err := fetchNSXSourceData(ctx, nsxSource, sourcesByName, networksBySrc)
+			if nsxSource.GetExternalConnectivityStatus() != api.EXTERNALCONNECTIVITYSTATUS_OK {
+				continue
+			}
+
+			matchingNSXSource, err = fetchNSXSourceData(ctx, nsxSource, sourcesByName, networksBySrc)
 			if err != nil {
 				return fmt.Errorf("Failed to fetch network properties from NSX: %w", err)
 			}
 
-			if found {
+			if matchingNSXSource {
 				break
+			}
+		}
+
+		// If there are no matching NSX sources, try to see if any exist, and record them.
+		if !matchingNSXSource {
+			vmwareSrc, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+			if err != nil {
+				return fmt.Errorf("Failed to convert source %q to %q source: %w", src.Name, src.SourceType, err)
+			}
+
+			err = vmwareSrc.Connect(ctx)
+			if err != nil {
+				return fmt.Errorf("Failed to connect to source %q: %w", src.Name, err)
+			}
+
+			nsxIP, err = vmwareSrc.GetNSXManagerIP(ctx)
+			if err != nil {
+				return fmt.Errorf("Failed to look for NSX Managers for source %q: %w", src.Name, err)
 			}
 		}
 	}
 
-	return d.syncSourceData(ctx, sourcesByName, instancesBySrc, networksBySrc)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		nsxURL, err := url.Parse(nsxIP)
+		if err == nil && nsxURL.String() != "" {
+			// If we detected an unrecorded NSX Manager, try to add a basic source entry with AUTH ERROR hinting to the user to setup authentication.
+			props := api.VMwareProperties{
+				Endpoint:           nsxIP,
+				ConnectivityStatus: api.EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR,
+			}
+
+			b, err := json.Marshal(props)
+			if err != nil {
+				return fmt.Errorf("Failed to marshal source properties: %w", err)
+			}
+
+			_, err = d.source.Create(ctx, migration.Source{
+				Name:       nsxURL.Hostname(),
+				SourceType: api.SOURCETYPE_NSX,
+				Properties: b,
+				EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
+					return source.NewInternalNSXSourceFrom(s)
+				},
+			})
+			if err != nil {
+				return fmt.Errorf("Failed to record %q source for %q source %q: %w", api.SOURCETYPE_NSX, api.SOURCETYPE_VMWARE, src.Name, err)
+			}
+		}
+
+		return d.syncSourceData(ctx, sourcesByName, instancesBySrc, networksBySrc)
+	})
 }
 
 // syncSourceData is a helper that opens a transaction and updates the internal record of all sources with the supplied data.

@@ -159,6 +159,10 @@ func (s *InternalNSXSource) FetchSourceData(ctx context.Context) error {
 
 // DoBasicConnectivityCheck performs a connectivity check and verifies the server certificate against the trusted fingerprint.
 func (s *InternalNSXSource) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
+	if s.Username == "" && s.Password == "" {
+		return api.EXTERNALCONNECTIVITYSTATUS_AUTH_ERROR, nil
+	}
+
 	status, cert := util.DoBasicConnectivityCheck(s.Endpoint, s.TrustedServerCertificateFingerprint)
 	if cert != nil && s.ServerCertificate == nil {
 		// We got an untrusted certificate; if one hasn't already been set, add it to this source.
