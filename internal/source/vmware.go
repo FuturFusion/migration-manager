@@ -20,6 +20,7 @@ import (
 	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"
+	"github.com/vmware/govmomi/property"
 	"github.com/vmware/govmomi/vapi/rest"
 	"github.com/vmware/govmomi/vapi/tags"
 	"github.com/vmware/govmomi/view"
@@ -139,6 +140,31 @@ func (s *InternalVMwareSource) Disconnect(ctx context.Context) error {
 
 func (s *InternalVMwareSource) WithAdditionalRootCertificate(rootCert *x509.Certificate) {
 	s.ServerCertificate = rootCert.Raw
+}
+
+func (s *InternalVMwareSource) GetNSXManagerIP(ctx context.Context) (string, error) {
+	collector := property.DefaultCollector(s.govmomiClient.Client)
+	var out mo.ExtensionManager
+	err := collector.RetrieveOne(ctx, *s.govmomiClient.ServiceContent.ExtensionManager, nil, &out)
+	if err != nil {
+		return "", fmt.Errorf("Failed to retrieve NSX manager details: %w", err)
+	}
+
+	var managerIP string
+	for _, extension := range out.ExtensionList {
+		if extension.Key == "com.vmware.nsx.management.nsxt" {
+			for _, server := range extension.Server {
+				if server.Type == "VIP" {
+					continue
+				}
+
+				managerIP = server.Url
+				break
+			}
+		}
+	}
+
+	return managerIP, nil
 }
 
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {
