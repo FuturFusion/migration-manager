@@ -975,10 +975,6 @@ func (t *InternalIncusTarget) ReadyForMigration(ctx context.Context, targetProje
 	}
 
 	for _, inst := range instances {
-		if inst.Overrides.DisableMigration {
-			return fmt.Errorf("Migration is disabled for instance %q", inst.Properties.Location)
-		}
-
 		if targetInstanceMap[inst.GetName()] {
 			return fmt.Errorf("Another instance with name %q already exists", inst.GetName())
 		}
