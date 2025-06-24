@@ -51,7 +51,6 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
         return 0;
       }
 
-      console.log(aSortKey, bSortKey, typeof aSortKey);
       if (sortProps.order === "asc") {
         if (typeof aSortKey === "number" && typeof bSortKey == "number") {
           return aSortKey - bSortKey;
@@ -152,6 +151,7 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
     <div className="mx-2 mx-md-4 mt-4">
       <Row className="justify-content-end">
         <Col xs="auto">
+          Page{" "}
           <Form.Control
             type="number"
             name="currentPage"
@@ -162,7 +162,8 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
             max={totalPages > 0 ? totalPages : 1}
             onChange={(e) => handlePageChange(Number(e.target.value))}
           />{" "}
-          of {totalPages > 0 ? totalPages : 1}
+          of {totalPages > 0 ? totalPages : 1} - {rows.length}{" "}
+          {rows.length == 1 ? "result" : "results"}
         </Col>
         <Col xs="auto">
           <Form.Select
