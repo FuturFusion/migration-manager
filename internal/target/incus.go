@@ -525,9 +525,8 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 				continue
 			}
 
-			diskName := strings.ReplaceAll(disk.Name, "/", "_")
-			diskName, _ = strings.CutSuffix(diskName, ".vmdk")
-
+			diskKey := fmt.Sprintf("disk%d", i)
+			diskName := apiDef.Name + "-" + diskKey
 			reverter.Add(func() {
 				_ = tgtClient.DeleteStoragePoolVolume(storagePool, "custom", diskName)
 			})
@@ -545,7 +544,6 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 				return nil, err
 			}
 
-			diskKey := fmt.Sprintf("disk%d", i)
 			instInfo.Devices[diskKey] = map[string]string{}
 			for k, v := range defaultDiskDef {
 				instInfo.Devices[diskKey][k] = v
