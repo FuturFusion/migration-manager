@@ -709,11 +709,6 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 				continue
 			}
 
-			if inst.Overrides.DisableMigration {
-				slog.Warn("Migration is disabled for instance, ignoring", slog.String("instance", inst.Properties.Location))
-				continue
-			}
-
 			instances[inst.UUID] = inst
 		}
 
@@ -741,13 +736,21 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 				return err
 			}
 
+			status := api.MIGRATIONSTATUS_CREATING
+			message := "Creating target instance definition"
+			err = inst.DisabledReason()
+			if err != nil {
+				status = api.MIGRATIONSTATUS_BLOCKED
+				message = err.Error()
+			}
+
 			_, err = d.queue.CreateEntry(ctx, migration.QueueEntry{
 				InstanceUUID:           inst.UUID,
 				BatchName:              batchName,
 				NeedsDiskImport:        true,
 				SecretToken:            secret,
-				MigrationStatus:        api.MIGRATIONSTATUS_CREATING,
-				MigrationStatusMessage: "Creating target instance definition",
+				MigrationStatus:        status,
+				MigrationStatusMessage: message,
 			})
 			if err != nil {
 				return err
