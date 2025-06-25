@@ -7,19 +7,48 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type sourceService struct {
 	repo SourceRepo
+
+	importCache *util.Cache[string, int]
 }
 
 var _ SourceService = &sourceService{}
 
 func NewSourceService(repo SourceRepo) sourceService {
 	return sourceService{
-		repo: repo,
+		repo:        repo,
+		importCache: util.NewCache[string, int](),
 	}
+}
+
+func (s sourceService) InitImportCache(initial map[string]int) error {
+	return s.importCache.Replace(initial)
+}
+
+func (s sourceService) GetCachedImports(sourceName string) int {
+	val, _ := s.importCache.Read(sourceName)
+	return val
+}
+
+func (s sourceService) RecordActiveImport(sourceName string) {
+	s.importCache.Write(sourceName, 1, func(existingVal, newVal int) int {
+		return existingVal + newVal
+	})
+}
+
+func (s sourceService) RemoveActiveImport(sourceName string) {
+	s.importCache.Write(sourceName, 1, func(existingVal, newVal int) int {
+		if existingVal > 0 {
+			return newVal
+		}
+
+		return existingVal
+	})
 }
 
 func (s sourceService) Create(ctx context.Context, newSource Source) (Source, error) {
