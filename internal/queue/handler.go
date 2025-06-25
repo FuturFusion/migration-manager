@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -27,15 +26,14 @@ type Handler struct {
 	target   migration.TargetService
 	queue    migration.QueueService
 
-	workerLock    sync.RWMutex
-	workerUpdates map[uuid.UUID]time.Time
+	workerUpdateCache *util.Cache[uuid.UUID, time.Time]
 }
 
 // NewMigrationHandler creates a new handler for queued migrations.
 func NewMigrationHandler(b migration.BatchService, i migration.InstanceService, n migration.NetworkService, s migration.SourceService, t migration.TargetService, q migration.QueueService) *Handler {
 	return &Handler{
-		batchLock:     util.NewIDLock[string](),
-		workerUpdates: map[uuid.UUID]time.Time{},
+		batchLock:         util.NewIDLock[string](),
+		workerUpdateCache: util.NewCache[uuid.UUID, time.Time](),
 
 		batch:    b,
 		instance: i,
@@ -59,18 +57,14 @@ type MigrationState struct {
 
 // RecordWorkerUpdate caches the last worker update that the corresponding instance has received.
 func (s *Handler) RecordWorkerUpdate(instanceUUID uuid.UUID) {
-	s.workerLock.Lock()
-	defer s.workerLock.Unlock()
-	s.workerUpdates[instanceUUID] = time.Now().UTC()
+	s.workerUpdateCache.Write(instanceUUID, time.Now().UTC(), nil)
 }
 
 // ReceivedWorkerUpdate returns the last worker update that the corresponding instance received, if that update is within
 // the given threshold from now.
 // If no worker update is found for this instance, it returns a 404.
 func (s *Handler) ReceivedWorkerUpdate(instanceUUID uuid.UUID, threshold time.Duration) (time.Time, error) {
-	s.workerLock.RLock()
-	defer s.workerLock.RUnlock()
-	lastUpdate, ok := s.workerUpdates[instanceUUID]
+	lastUpdate, ok := s.workerUpdateCache.Read(instanceUUID)
 	if !ok {
 		return time.Time{}, incusAPI.StatusErrorf(http.StatusNotFound, "No worker found for instance with UUID %q", instanceUUID)
 	}
@@ -84,9 +78,7 @@ func (s *Handler) ReceivedWorkerUpdate(instanceUUID uuid.UUID, threshold time.Du
 
 // RemoveFromCache removes the given instanceUUID from the worker cache.
 func (s *Handler) RemoveFromCache(instanceUUID uuid.UUID) {
-	s.workerLock.Lock()
-	defer s.workerLock.Unlock()
-	delete(s.workerUpdates, instanceUUID)
+	s.workerUpdateCache.Delete(instanceUUID)
 }
 
 // GetMigrationState fetches all migration state information corresponding to the given batch status and migration status.
