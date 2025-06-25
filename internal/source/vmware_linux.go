@@ -40,7 +40,7 @@ func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, s
 
 		slog.Error("Disk import attempt failed", slog.Int("attempt", i+1), slog.Any("error", err))
 
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Second * 30)
 	}
 
 	return err
