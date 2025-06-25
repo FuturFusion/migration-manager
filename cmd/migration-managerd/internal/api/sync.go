@@ -390,6 +390,21 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 
 		instanceUpdated := false
 
+		if inst.Properties.Location != srcInst.Properties.Location {
+			inst.Properties.Location = srcInst.Properties.Location
+			instanceUpdated = true
+		}
+
+		if inst.Properties.Name != srcInst.Properties.Name {
+			inst.Properties.Name = srcInst.Properties.Name
+			instanceUpdated = true
+		}
+
+		if inst.Properties.BackgroundImport != srcInst.Properties.BackgroundImport {
+			inst.Properties.BackgroundImport = srcInst.Properties.BackgroundImport
+			instanceUpdated = true
+		}
+
 		if inst.Properties.Description != srcInst.Properties.Description {
 			inst.Properties.Description = srcInst.Properties.Description
 			instanceUpdated = true

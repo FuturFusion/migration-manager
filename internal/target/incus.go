@@ -242,7 +242,11 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 
 		// If no network is given, set "default" as the default.
 		if apiDef.Devices[nicDeviceName]["network"] == "" {
-			apiDef.Devices[nicDeviceName]["network"] = "default"
+			if baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
+				apiDef.Devices[nicDeviceName]["network"] = strings.ReplaceAll(filepath.Base(nic.Network), " ", "-")
+			} else {
+				apiDef.Devices[nicDeviceName]["network"] = "default"
+			}
 		}
 
 		// Set a few forced overrides.
@@ -525,9 +529,8 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 				continue
 			}
 
-			diskName := strings.ReplaceAll(disk.Name, "/", "_")
-			diskName, _ = strings.CutSuffix(diskName, ".vmdk")
-
+			diskKey := fmt.Sprintf("disk%d", i)
+			diskName := apiDef.Name + "-" + diskKey
 			reverter.Add(func() {
 				_ = tgtClient.DeleteStoragePoolVolume(storagePool, "custom", diskName)
 			})
@@ -545,7 +548,6 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 				return nil, err
 			}
 
-			diskKey := fmt.Sprintf("disk%d", i)
 			instInfo.Devices[diskKey] = map[string]string{}
 			for k, v := range defaultDiskDef {
 				instInfo.Devices[diskKey][k] = v
@@ -792,20 +794,69 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string,
 	return ops, nil
 }
 
-func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) (incus.Operation, error) {
-	file, err := os.Open(isoFilePath)
+func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(poolName string, isoFilePath string) ([]incus.Operation, error) {
+	pool, _, err := t.incusClient.GetStoragePool(poolName)
 	if err != nil {
 		return nil, err
 	}
 
-	defer func() { _ = file.Close() }()
-
-	createArgs := incus.StorageVolumeBackupArgs{
-		BackupFile: file,
-		Name:       filepath.Base(isoFilePath),
+	s, _, err := t.incusClient.GetServer()
+	if err != nil {
+		return nil, err
 	}
 
-	return t.incusClient.CreateStoragePoolVolumeFromISO(pool, createArgs)
+	poolIsShared := false
+	for _, driver := range s.Environment.StorageSupportedDrivers {
+		if driver.Name == pool.Driver {
+			poolIsShared = driver.Remote
+			break
+		}
+	}
+
+	if poolIsShared {
+		file, err := os.Open(isoFilePath)
+		if err != nil {
+			return nil, err
+		}
+
+		createArgs := incus.StorageVolumeBackupArgs{
+			BackupFile: file,
+			Name:       filepath.Base(isoFilePath),
+		}
+
+		op, err := t.incusClient.CreateStoragePoolVolumeFromISO(poolName, createArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		return []incus.Operation{op}, nil
+	}
+
+	// If the pool is local-only, we have to create the volume for each member.
+	members, err := t.incusClient.GetClusterMemberNames()
+	if err != nil {
+		return nil, err
+	}
+
+	ops := make([]incus.Operation, 0, len(members))
+	for _, member := range members {
+		file, err := os.Open(isoFilePath)
+		if err != nil {
+			return nil, err
+		}
+
+		createArgs := incus.StorageVolumeBackupArgs{BackupFile: file, Name: filepath.Base(isoFilePath)}
+
+		target := t.incusClient.UseTarget(member)
+		op, err := target.CreateStoragePoolVolumeFromISO(poolName, createArgs)
+		if err != nil {
+			return nil, err
+		}
+
+		ops = append(ops, op)
+	}
+
+	return ops, nil
 }
 
 type backupIndexFile struct {
@@ -924,10 +975,6 @@ func (t *InternalIncusTarget) ReadyForMigration(ctx context.Context, targetProje
 	}
 
 	for _, inst := range instances {
-		if inst.Overrides.DisableMigration {
-			return fmt.Errorf("Migration is disabled for instance %q", inst.Properties.Location)
-		}
-
 		if targetInstanceMap[inst.GetName()] {
 			return fmt.Errorf("Another instance with name %q already exists", inst.GetName())
 		}

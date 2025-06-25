@@ -2,6 +2,7 @@ package migration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -37,7 +38,7 @@ func (s batchService) Create(ctx context.Context, batch Batch) (Batch, error) {
 
 		batch.ID, err = s.repo.Create(ctx, batch)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to create batch: %w", err)
 		}
 
 		return s.UpdateInstancesAssignedToBatch(ctx, batch)
@@ -74,6 +75,12 @@ func (s batchService) GetByName(ctx context.Context, name string) (*Batch, error
 }
 
 func (s batchService) Update(ctx context.Context, name string, batch *Batch) error {
+	// Reset batch state in testing mode.
+	if util.InTestingMode() {
+		batch.Status = api.BATCHSTATUS_DEFINED
+		batch.StatusMessage = string(api.BATCHSTATUS_DEFINED)
+	}
+
 	err := batch.Validate()
 	if err != nil {
 		return err
@@ -87,12 +94,6 @@ func (s batchService) Update(ctx context.Context, name string, batch *Batch) err
 
 		if !oldBatch.CanBeModified() {
 			return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", name, ErrOperationNotPermitted)
-		}
-
-		// Reset batch state in testing mode.
-		if util.InTestingMode() {
-			batch.Status = api.BATCHSTATUS_DEFINED
-			batch.StatusMessage = string(api.BATCHSTATUS_DEFINED)
 		}
 
 		err = s.repo.Update(ctx, name, *batch)
@@ -150,7 +151,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 				// Instance does not belong to this batch
 				err := s.repo.UnassignBatch(ctx, batch.Name, instance.UUID)
 				if err != nil {
-					return err
+					return fmt.Errorf("Failed to unassign instance %q from batch: %w", instance.Properties.Location, err)
 				}
 			}
 		}
@@ -171,7 +172,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 			if isMatch && !assignedInstances[instance.UUID] {
 				err := s.repo.AssignBatch(ctx, batch.Name, instance.UUID)
 				if err != nil {
-					return err
+					return fmt.Errorf("Failed to assign instance %q to batch: %w", instance.Properties.Location, err)
 				}
 			}
 		}
@@ -180,8 +181,8 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 		if util.InTestingMode() {
 			for _, inst := range instances {
 				err := s.instance.RemoveFromQueue(ctx, inst.UUID)
-				if err != nil {
-					return err
+				if err != nil && !errors.Is(err, ErrNotFound) {
+					return fmt.Errorf("Failed to remove from queue: %w", err)
 				}
 			}
 		}

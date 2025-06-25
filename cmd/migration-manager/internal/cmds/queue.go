@@ -28,6 +28,10 @@ func (c *CmdQueue) Command() *cobra.Command {
 	queueListCmd := cmdQueueList{global: c.Global}
 	cmd.AddCommand(queueListCmd.Command())
 
+	// Delete
+	queueRemoveCmd := cmdQueueRemove{global: c.Global}
+	cmd.AddCommand(queueRemoveCmd.Command())
+
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
@@ -105,4 +109,41 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 	sort.Sort(util.SortColumnsNaturally(data))
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, queueEntries)
+}
+
+// Remove the queue entry.
+type cmdQueueRemove struct {
+	global *CmdGlobal
+}
+
+func (c *cmdQueueRemove) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "remove <instance UUID>"
+	cmd.Short = "Remove queue entry"
+	cmd.Long = `Description:
+  Remove queue entry
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdQueueRemove) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	instanceUUID := args[0]
+
+	// Remove the queue.
+	_, err = c.global.doHTTPRequestV1("/queues/"+instanceUUID, http.MethodDelete, "", nil)
+	if err != nil {
+		return err
+	}
+
+	cmd.Printf("Successfully removed queue entry %q.\n", instanceUUID)
+	return nil
 }

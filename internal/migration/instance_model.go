@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -48,6 +49,27 @@ func (i Instance) Validate() error {
 
 	if i.Source == "" {
 		return NewValidationErrf("Invalid instance, source id can not be empty")
+	}
+
+	return nil
+}
+
+// DisabledReason returns the underlying reason for why the instance is disabled.
+func (i Instance) DisabledReason() error {
+	if i.Overrides.DisableMigration {
+		reason := "Migration is disabled"
+		if !i.Properties.BackgroundImport {
+			reason += ": Background import is not supported"
+		} else {
+			for _, d := range i.Properties.Disks {
+				if !d.Supported {
+					reason += fmt.Sprintf(": Disk %q does not support snapshots", d.Name)
+					break
+				}
+			}
+		}
+
+		return errors.New(reason)
 	}
 
 	return nil

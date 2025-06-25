@@ -88,6 +88,32 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, w migr
 	return it, nil
 }
 
+func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
+	blockedEntries, err := d.queue.GetAllByState(ctx, api.MIGRATIONSTATUS_BLOCKED)
+	if err != nil {
+		return fmt.Errorf("Failed to fetch blocked queue entries: %w", err)
+	}
+
+	blockedInstances, err := d.instance.GetAllQueued(ctx, blockedEntries)
+	if err != nil {
+		return fmt.Errorf("Failed to fetch blocked instances: %w", err)
+	}
+
+	for i, inst := range blockedInstances {
+		err := inst.DisabledReason()
+		if err != nil {
+			continue
+		}
+
+		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, string(api.MIGRATIONSTATUS_CREATING), blockedEntries[i].NeedsDiskImport)
+		if err != nil {
+			return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
+		}
+	}
+
+	return nil
+}
+
 // beginImports creates the target VMs for all CREATING status instances.
 // It sets their batches to RUNNING if they have the necessary files to begin a migration.
 // Errors encountered in one batch do not affect the processing of other batches.
@@ -96,9 +122,22 @@ func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, w migr
 //     If any errors occur after the VM has started, the VM will no longer be cleaned up, and its state will be set to ERROR, preventing retries.
 func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error {
 	log := slog.With(slog.String("method", "beginImports"))
-	migrationState, err := d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_QUEUED, api.MIGRATIONSTATUS_CREATING)
+	var migrationState map[string]queue.MigrationState
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		err := d.reassessBlockedInstances(ctx)
+		if err != nil {
+			return err
+		}
+
+		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_QUEUED, api.MIGRATIONSTATUS_CREATING)
+		if err != nil {
+			return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
+		return err
 	}
 
 	ignoredBatches := []string{}
@@ -234,7 +273,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 
 		for _, op := range ops {
 			err = op.Wait()
-			if err != nil {
+			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 				return err
 			}
 		}
@@ -250,14 +289,16 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 		if !volumeMap["custom/"+driversISO] {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
-			op, err := it.CreateStoragePoolVolumeFromISO(batch.StoragePool, driversISOPath)
+			ops, err := it.CreateStoragePoolVolumeFromISO(batch.StoragePool, driversISOPath)
 			if err != nil {
 				return err
 			}
 
-			err = op.Wait()
-			if err != nil {
-				return err
+			for _, op := range ops {
+				err = op.Wait()
+				if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+					return err
+				}
 			}
 		}
 	}

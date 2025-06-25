@@ -213,6 +213,7 @@ func (b Batch) CanStart(windows []MigrationWindow) error {
 func (b Batch) CanBeModified() bool {
 	switch b.Status {
 	case api.BATCHSTATUS_DEFINED,
+		api.BATCHSTATUS_STOPPED,
 		api.BATCHSTATUS_FINISHED,
 		api.BATCHSTATUS_ERROR:
 		return true

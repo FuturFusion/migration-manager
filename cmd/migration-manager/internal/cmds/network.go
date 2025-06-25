@@ -25,10 +25,6 @@ func (c *CmdNetwork) Command() *cobra.Command {
   Configure migration networks for use by the migration manager.
 `
 
-	// Add
-	networkAddCmd := cmdNetworkAdd{global: c.Global}
-	cmd.AddCommand(networkAddCmd.Command())
-
 	// List
 	networkListCmd := cmdNetworkList{global: c.Global}
 	cmd.AddCommand(networkListCmd.Command())
@@ -46,67 +42,6 @@ func (c *CmdNetwork) Command() *cobra.Command {
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
 
 	return cmd
-}
-
-// Add the network.
-type cmdNetworkAdd struct {
-	global *CmdGlobal
-}
-
-func (c *cmdNetworkAdd) Command() *cobra.Command {
-	cmd := &cobra.Command{}
-	cmd.Use = "add <name>"
-	cmd.Short = "Add a new network"
-	cmd.Long = `Description:
-  Add a new network
-
-  Adds a new network for the migration manager to use.
-
-  By default, if the name of the network matches the name of an imported VM's network, it will automatically
-  be used when creating the target instance.
-`
-
-	cmd.RunE = c.Run
-
-	return cmd
-}
-
-func (c *cmdNetworkAdd) Run(cmd *cobra.Command, args []string) error {
-	// Quick checks.
-	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
-	if exit {
-		return err
-	}
-
-	// Add the network.
-	n := api.Network{
-		Identifier: args[0],
-	}
-
-	_, err = c.global.Asker.AskString("Enter a JSON string with any network-specific configuration (empty to skip): ", "", func(s string) error {
-		if s != "" {
-			return json.Unmarshal([]byte(s), &n.Config)
-		}
-
-		return nil
-	})
-	if err != nil {
-		return err
-	}
-
-	// Insert into database.
-	content, err := json.Marshal(n)
-	if err != nil {
-		return err
-	}
-
-	_, err = c.global.doHTTPRequestV1("/networks", http.MethodPost, "", content)
-	if err != nil {
-		return err
-	}
-
-	cmd.Printf("Successfully added new network %q.\n", n.Identifier)
-	return nil
 }
 
 // List the networks.
@@ -178,7 +113,7 @@ type cmdNetworkRemove struct {
 
 func (c *cmdNetworkRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "remove <name>"
+	cmd.Use = "remove <name> <source>"
 	cmd.Short = "Remove network"
 	cmd.Long = `Description:
   Remove network
@@ -191,20 +126,21 @@ func (c *cmdNetworkRemove) Command() *cobra.Command {
 
 func (c *cmdNetworkRemove) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	exit, err := c.global.CheckArgs(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
 
 	name := args[0]
+	source := args[1]
 
 	// Remove the network.
-	_, err = c.global.doHTTPRequestV1("/networks/"+name, http.MethodDelete, "", nil)
+	_, err = c.global.doHTTPRequestV1("/networks/"+name, http.MethodDelete, "source="+source, nil)
 	if err != nil {
 		return err
 	}
 
-	cmd.Printf("Successfully removed network %q.\n", name)
+	cmd.Printf("Successfully removed network %q from source %q.\n", name, source)
 	return nil
 }
 
@@ -228,15 +164,16 @@ func (c *cmdNetworkUpdate) Command() *cobra.Command {
 
 func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	exit, err := c.global.CheckArgs(cmd, args, 2, 2)
 	if exit {
 		return err
 	}
 
 	name := args[0]
+	source := args[1]
 
 	// Get the existing network.
-	resp, err := c.global.doHTTPRequestV1("/networks/"+name, http.MethodGet, "", nil)
+	resp, err := c.global.doHTTPRequestV1("/networks/"+name, http.MethodGet, "source="+source, nil)
 	if err != nil {
 		return err
 	}
@@ -282,11 +219,11 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/networks/"+origNetworkName, http.MethodPut, "", content)
+	_, err = c.global.doHTTPRequestV1("/networks/"+origNetworkName, http.MethodPut, "source="+source, content)
 	if err != nil {
 		return err
 	}
 
-	cmd.Printf("Successfully updated network %q.\n", newNetworkName)
+	cmd.Printf("Successfully updated network %q in source %q.\n", newNetworkName, source)
 	return nil
 }

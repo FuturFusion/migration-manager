@@ -26,7 +26,8 @@ var queueRootCmd = APIEndpoint{
 var queueCmd = APIEndpoint{
 	Path: "queue/{uuid}",
 
-	Get: APIEndpointAction{Handler: queueGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Get:    APIEndpointAction{Handler: queueGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Delete: APIEndpointAction{Handler: queueDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
 var queueWorkerCmd = APIEndpoint{
@@ -294,6 +295,39 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		MigrationStatusMessage: queueItem.MigrationStatusMessage,
 		BatchName:              queueItem.BatchName,
 	}, queueItem)
+}
+
+// swagger:operation DELETE /1.0/queues/{name} queues queue_delete
+//
+//	Delete the queue
+//
+//	Removes the queue.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func queueDelete(d *Daemon, r *http.Request) response.Response {
+	uuidStr := r.PathValue("uuid")
+	queueUUID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = d.queue.DeleteByUUID(r.Context(), queueUUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation POST /1.0/queue/{uuid}/worker/command queue queue_worker_command_post

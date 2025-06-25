@@ -243,6 +243,8 @@ func MapWindowsVersionToAbbrev(version string) (string, error) {
 		return "xp", nil
 	case strings.Contains(version, "Windows 7"):
 		return "w7", nil
+	case strings.Contains(version, "Windows 8.1"):
+		return "w8.1", nil
 	case strings.Contains(version, "Windows 8"):
 		return "w8", nil
 	case strings.Contains(version, "Windows 10"):
@@ -253,6 +255,14 @@ func MapWindowsVersionToAbbrev(version string) (string, error) {
 		return "2k3", nil
 	case strings.Contains(version, "Server 2008 R2"):
 		return "2k8r2", nil
+	case strings.Contains(version, "Server 2008"):
+		return "2k8", nil
+	case strings.Contains(version, "Server 2012 R2"):
+		return "2k12r2", nil
+	case strings.Contains(version, "Server 2012"):
+		return "2k12", nil
+	case strings.Contains(version, "Server 2016"):
+		return "2k16", nil
 	case strings.Contains(version, "Server 2019"):
 		return "2k19", nil
 	case strings.Contains(version, "Server 2022"):

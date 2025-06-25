@@ -283,10 +283,15 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			Properties:           *vmProps,
 		}
 
-		for _, d := range inst.Properties.Disks {
-			if !d.Supported {
-				inst.Overrides.DisableMigration = true
-				break
+		// Disqualify instances from migration if they don't meet optimal criteria.
+		if !inst.Properties.BackgroundImport {
+			inst.Overrides.DisableMigration = true
+		} else {
+			for _, d := range inst.Properties.Disks {
+				if !d.Supported {
+					inst.Overrides.DisableMigration = true
+					break
+				}
 			}
 		}
 
