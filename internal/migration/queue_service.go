@@ -2,6 +2,7 @@ package migration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -22,18 +23,20 @@ type queueService struct {
 	batch    BatchService
 	instance InstanceService
 	source   SourceService
+	target   TargetService
 
 	workerLock *sync.Mutex
 }
 
 var _ QueueService = &queueService{}
 
-func NewQueueService(repo QueueRepo, batch BatchService, instance InstanceService, source SourceService) queueService {
+func NewQueueService(repo QueueRepo, batch BatchService, instance InstanceService, source SourceService, target TargetService) queueService {
 	queueSvc := queueService{
 		repo:       repo,
 		batch:      batch,
 		instance:   instance,
 		source:     source,
+		target:     target,
 		workerLock: &sync.Mutex{},
 	}
 
@@ -307,7 +310,29 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		// Fetch the source for the instance.
 		source, err := s.source.GetByName(ctx, instance.Source)
 		if err != nil {
-			return fmt.Errorf("Failed to get source %q: %w", id, err)
+			return fmt.Errorf("Failed to get source %q: %w", instance.Source, err)
+		}
+
+		var sourceProperties api.VMwareProperties
+		err = json.Unmarshal(source.Properties, &sourceProperties)
+		if err != nil {
+			return fmt.Errorf("Failed to get source %q properties: %w", instance.Source, err)
+		}
+
+		batch, err := s.batch.GetByName(ctx, queueEntry.BatchName)
+		if err != nil {
+			return fmt.Errorf("Failed to get batch %q: %w", queueEntry.BatchName, err)
+		}
+
+		target, err := s.target.GetByName(ctx, batch.Target)
+		if err != nil {
+			return fmt.Errorf("Failed to get target %q: %w", batch.Target, err)
+		}
+
+		var targetProperties api.IncusProperties
+		err = json.Unmarshal(target.Properties, &targetProperties)
+		if err != nil {
+			return fmt.Errorf("Failed to get target %q properties: %w", target.Name, err)
 		}
 
 		// Setup the default "idle" command
@@ -323,7 +348,20 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		// Determine what action, if any, the worker should start.
 		newStatus := queueEntry.MigrationStatus
 		newStatusMessage := queueEntry.MigrationStatusMessage
-		if queueEntry.NeedsDiskImport && instance.Properties.BackgroundImport {
+
+		var sourceLimitReached bool
+		if sourceProperties.ImportLimit > 0 {
+			sourceLimitReached = sourceProperties.ImportLimit <= s.source.GetCachedImports(source.Name)
+		}
+
+		var targetLimitReached bool
+		if targetProperties.ImportLimit > 0 {
+			targetLimitReached = targetProperties.ImportLimit <= s.target.GetCachedImports(target.Name)
+		}
+
+		if targetLimitReached || sourceLimitReached {
+			newStatusMessage = "Waiting for other instances to finish importing"
+		} else if queueEntry.NeedsDiskImport && instance.Properties.BackgroundImport {
 			// If we can do a background disk sync, kick it off.
 			workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
 
@@ -349,6 +387,11 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 				newStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
 				newStatusMessage = string(api.MIGRATIONSTATUS_FINAL_IMPORT)
 			}
+		}
+
+		if newStatus != api.MIGRATIONSTATUS_IDLE {
+			s.source.RecordActiveImport(instance.Source)
+			s.target.RecordActiveImport(batch.Target)
 		}
 
 		// Update queueEntry in the database, and set the worker update time.
@@ -404,6 +447,21 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 		case api.WORKERRESPONSE_FAILED:
 			entry.MigrationStatus = api.MIGRATIONSTATUS_ERROR
 			entry.MigrationStatusMessage = statusMessage
+		}
+
+		if workerResponseType != api.WORKERRESPONSE_RUNNING {
+			instance, err := s.instance.GetByUUID(ctx, id)
+			if err != nil {
+				return fmt.Errorf("Failed to get instance %q: %w", id, err)
+			}
+
+			batch, err := s.batch.GetByName(ctx, entry.BatchName)
+			if err != nil {
+				return fmt.Errorf("Failed to get batch %q: %w", entry.BatchName, err)
+			}
+
+			s.source.RemoveActiveImport(instance.Source)
+			s.target.RemoveActiveImport(batch.Target)
 		}
 
 		// Update instance in the database.
