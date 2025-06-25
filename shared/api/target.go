@@ -60,4 +60,12 @@ type IncusProperties struct {
 
 	// Connectivity status of this target
 	ConnectivityStatus ExternalConnectivityStatus `json:"connectivity_status" yaml:"connectivity_status"`
+
+	// Maximum number of concurrent imports that can occur
+	// Example: 10
+	ImportLimit int `json:"import_limit,omitempty" yaml:"import_limit,omitempty"`
+
+	// Maximum number of concurrent instance creations that can occur
+	// Example: 10
+	CreateLimit int `json:"create_limit,omitempty" yaml:"create_limit,omitempty"`
 }
