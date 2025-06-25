@@ -16,6 +16,16 @@ type TargetService interface {
 	GetByName(ctx context.Context, name string) (*Target, error)
 	Update(ctx context.Context, name string, target *Target) error
 	DeleteByName(ctx context.Context, name string) error
+
+	InitImportCache(initial map[string]int) error
+	GetCachedImports(targetName string) int
+	RecordActiveImport(targetName string)
+	RemoveActiveImport(targetName string)
+
+	InitCreateCache(initial map[string]int) error
+	GetCachedCreations(targetName string) int
+	RecordCreation(targetName string)
+	RemoveCreation(targetName string)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/target_repo_mock_gen.go -rm . TargetRepo

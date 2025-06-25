@@ -4,19 +4,75 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type targetService struct {
 	repo TargetRepo
+
+	importCache *util.Cache[string, int]
+	createCache *util.Cache[string, int]
 }
 
 var _ TargetService = &targetService{}
 
 func NewTargetService(repo TargetRepo) targetService {
 	return targetService{
-		repo: repo,
+		repo:        repo,
+		importCache: util.NewCache[string, int](),
+		createCache: util.NewCache[string, int](),
 	}
+}
+
+func (s targetService) InitImportCache(initial map[string]int) error {
+	return s.importCache.Replace(initial)
+}
+
+func (s targetService) GetCachedImports(targetName string) int {
+	val, _ := s.importCache.Read(targetName)
+	return val
+}
+
+func (s targetService) RecordActiveImport(targetName string) {
+	s.importCache.Write(targetName, 1, func(existingVal, newVal int) int {
+		return existingVal + newVal
+	})
+}
+
+func (s targetService) RemoveActiveImport(targetName string) {
+	s.importCache.Write(targetName, 1, func(existingVal, newVal int) int {
+		if existingVal > 0 {
+			return newVal
+		}
+
+		return existingVal
+	})
+}
+
+func (s targetService) InitCreateCache(initial map[string]int) error {
+	return s.createCache.Replace(initial)
+}
+
+func (s targetService) GetCachedCreations(targetName string) int {
+	val, _ := s.createCache.Read(targetName)
+	return val
+}
+
+func (s targetService) RecordCreation(targetName string) {
+	s.createCache.Write(targetName, 1, func(existingVal, newVal int) int {
+		return existingVal + newVal
+	})
+}
+
+func (s targetService) RemoveCreation(targetName string) {
+	s.createCache.Write(targetName, 1, func(existingVal, newVal int) int {
+		if existingVal > 0 {
+			return newVal
+		}
+
+		return existingVal
+	})
 }
 
 func (s targetService) Create(ctx context.Context, newTarget Target) (Target, error) {
