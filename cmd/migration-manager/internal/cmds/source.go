@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/lxc/incus/v6/shared/validate"
@@ -118,11 +119,18 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 
 		sourcePassword := c.global.Asker.AskPasswordOnce("Please enter password for endpoint '" + sourceEndpoint + "': ")
 
+		var importLimit int64 = 50
+		importLimit, err = c.global.Asker.AskInt(fmt.Sprintf("How many instances can be concurrently imported? [default=%d]: ", importLimit), 0, 1024, strconv.Itoa(int(importLimit)), nil)
+		if err != nil {
+			return err
+		}
+
 		vmwareProperties := api.VMwareProperties{
 			Endpoint:                            sourceEndpoint,
 			TrustedServerCertificateFingerprint: c.flagTrustedServerCertificateFingerprint,
 			Username:                            sourceUsername,
 			Password:                            sourcePassword,
+			ImportLimit:                         int(importLimit),
 		}
 
 		s := api.Source{
@@ -348,6 +356,14 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		vmwareProperties.Password = c.global.Asker.AskPasswordOnce("Password: ")
+
+		importLimit := int64(vmwareProperties.ImportLimit)
+		importLimit, err = c.global.Asker.AskInt(fmt.Sprintf("How many instances can be concurrently imported? [default=%d]: ", importLimit), 0, 1024, strconv.Itoa(int(importLimit)), nil)
+		if err != nil {
+			return err
+		}
+
+		vmwareProperties.ImportLimit = int(importLimit)
 
 		vmwareProperties.TrustedServerCertificateFingerprint, err = c.global.Asker.AskString("Manually-set trusted TLS cert SHA256 fingerprint ["+vmwareProperties.TrustedServerCertificateFingerprint+"]: ", vmwareProperties.TrustedServerCertificateFingerprint, validateSHA256Format)
 		if err != nil {
