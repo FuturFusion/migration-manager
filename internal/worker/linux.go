@@ -298,7 +298,7 @@ func getAdditionalMounts() []map[string]string {
 
 		if len(text) > 0 && !strings.HasPrefix(text, "#") {
 			fields := regexp.MustCompile(`\s+`).Split(text, -1)
-			if strings.HasPrefix(fields[1], "/boot") || strings.HasPrefix(fields[1], "/var") {
+			if strings.HasPrefix(fields[1], "/boot") || strings.HasPrefix(fields[1], "/var") || strings.HasPrefix(fields[1], "/usr") {
 				ret = append(ret, map[string]string{"device": fields[0], "path": fields[1], "options": fields[3]})
 			}
 		}
