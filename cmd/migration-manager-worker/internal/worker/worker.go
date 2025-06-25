@@ -251,7 +251,7 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 			return false
 		}
 
-		err = worker.WindowsInjectDrivers(ctx, winVer, base, recovery)
+		err = worker.WindowsInjectDrivers(ctx, winVer, "/dev/"+base, "/dev/"+recovery)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false
