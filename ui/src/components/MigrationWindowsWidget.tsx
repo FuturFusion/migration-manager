@@ -1,5 +1,6 @@
 import { FC, useEffect, useState } from "react";
-import { Button, Form, Table } from "react-bootstrap";
+import { Button, Table } from "react-bootstrap";
+import DatePicker from "react-datepicker";
 import { BsPlus, BsTrash } from "react-icons/bs";
 import { MigrationWindow } from "types/batch";
 import { formatDate } from "util/date";
@@ -61,17 +62,53 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
             <>
               <tr key={index}>
                 <td style={{ display: "flex", gap: "8px" }}>
-                  <Form.Control
-                    type="text"
-                    size="sm"
-                    value={item.start ?? ""}
-                    onChange={(e) => handleEdit(index, "start", e.target.value)}
+                  <DatePicker
+                    className="form-control form-control-sm"
+                    selected={item.start ? new Date(item.start) : null}
+                    onChange={(date) =>
+                      handleEdit(
+                        index,
+                        "start",
+                        date ? formatDate(date.toString()) : "",
+                      )
+                    }
+                    showTimeSelect
+                    timeFormat="HH:mm"
+                    timeIntervals={15}
+                    timeCaption="time"
+                    dateFormat="yyyy-MM-dd HH:mm:ss"
                   />
-                  <Form.Control
-                    type="text"
-                    size="sm"
-                    value={item.end ?? ""}
-                    onChange={(e) => handleEdit(index, "end", e.target.value)}
+                  <DatePicker
+                    className="form-control form-control-sm"
+                    selected={item.end ? new Date(item.end) : null}
+                    onChange={(date) =>
+                      handleEdit(
+                        index,
+                        "end",
+                        date ? formatDate(date.toString()) : "",
+                      )
+                    }
+                    showTimeSelect
+                    timeFormat="HH:mm"
+                    timeIntervals={15}
+                    timeCaption="time"
+                    dateFormat="yyyy-MM-dd HH:mm:ss"
+                  />
+                  <DatePicker
+                    className="form-control form-control-sm"
+                    selected={item.lockout ? new Date(item.lockout) : null}
+                    onChange={(date) =>
+                      handleEdit(
+                        index,
+                        "lockout",
+                        date ? formatDate(date.toString()) : "",
+                      )
+                    }
+                    showTimeSelect
+                    timeFormat="HH:mm"
+                    timeIntervals={15}
+                    timeCaption="time"
+                    dateFormat="yyyy-MM-dd HH:mm:ss"
                   />
                 </td>
                 <td>
@@ -86,45 +123,65 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
                   </Button>
                 </td>
               </tr>
-              <tr>
-                <td>
-                  <Form.Control
-                    type="text"
-                    size="sm"
-                    value={item.lockout ?? ""}
-                    onChange={(e) =>
-                      handleEdit(index, "lockout", e.target.value)
-                    }
-                  />
-                </td>
-              </tr>
             </>
           ))}
           <tr>
             <td style={{ display: "flex", gap: "8px" }}>
-              <Form.Control
-                type="text"
-                size="sm"
-                placeholder="Start"
-                value={migrationWindow.start ?? ""}
-                onChange={(e) =>
+              <DatePicker
+                className="form-control form-control-sm"
+                placeholderText="Start"
+                selected={
+                  migrationWindow.start ? new Date(migrationWindow.start) : null
+                }
+                onChange={(date) =>
                   setMigrationWindow({
                     ...migrationWindow,
-                    start: e.target.value,
+                    start: date ? formatDate(date.toString()) : null,
                   })
                 }
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                timeCaption="time"
+                dateFormat="yyyy-MM-dd HH:mm:ss"
               />
-              <Form.Control
-                type="text"
-                size="sm"
-                placeholder="End"
-                value={migrationWindow.end ?? ""}
-                onChange={(e) =>
+              <DatePicker
+                className="form-control form-control-sm"
+                placeholderText="End"
+                selected={
+                  migrationWindow.end ? new Date(migrationWindow.end) : null
+                }
+                onChange={(date) =>
                   setMigrationWindow({
                     ...migrationWindow,
-                    end: e.target.value,
+                    end: date ? formatDate(date.toString()) : null,
                   })
                 }
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                timeCaption="time"
+                dateFormat="yyyy-MM-dd HH:mm:ss"
+              />
+              <DatePicker
+                className="form-control form-control-sm"
+                placeholderText="Lockout"
+                selected={
+                  migrationWindow.lockout
+                    ? new Date(migrationWindow.lockout)
+                    : null
+                }
+                onChange={(date) =>
+                  setMigrationWindow({
+                    ...migrationWindow,
+                    lockout: date ? formatDate(date.toString()) : null,
+                  })
+                }
+                showTimeSelect
+                timeFormat="HH:mm"
+                timeIntervals={15}
+                timeCaption="time"
+                dateFormat="yyyy-MM-dd HH:mm:ss"
               />
             </td>
             <td>
@@ -140,25 +197,9 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
             </td>
           </tr>
           <tr>
-            <td>
-              <Form.Control
-                type="text"
-                size="sm"
-                placeholder="Lockout"
-                value={migrationWindow.lockout ?? ""}
-                onChange={(e) =>
-                  setMigrationWindow({
-                    ...migrationWindow,
-                    lockout: e.target.value,
-                  })
-                }
-              />
-            </td>
-          </tr>
-          <tr>
             <td className="text-muted small">
-              Required format: YYYY-MM-DD HH:MM:SS / YYYY-MM-DD HH:MM:SS UTC
-              (e.g., {formatDate(new Date().toISOString())})
+              Required format: YYYY-MM-DD HH:MM:SS (e.g.,{" "}
+              {formatDate(new Date().toString())})
             </td>
           </tr>
         </tbody>

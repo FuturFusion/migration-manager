@@ -13,9 +13,9 @@ test("add new item to MigrationWindowsWidget", async () => {
   const lockoutInput = screen.getByPlaceholderText("Lockout");
   const addButton = screen.getByTitle("Add");
 
-  await userEvent.type(startInput, "2025-06-01 09:00:00 UTC");
-  await userEvent.type(endInput, "2025-06-02 09:00:00 UTC");
-  await userEvent.type(lockoutInput, "2025-06-03 09:00:00 UTC");
+  await userEvent.type(startInput, "2025-06-01 09:00:00");
+  await userEvent.type(endInput, "2025-06-02 09:00:00");
+  await userEvent.type(lockoutInput, "2025-06-03 09:00:00");
 
   await act(async () => {
     await fireEvent.click(addButton);
@@ -25,9 +25,9 @@ test("add new item to MigrationWindowsWidget", async () => {
   expect(handleChange).toHaveBeenCalledTimes(1);
   expect(handleChange).toHaveBeenCalledWith([
     {
-      start: "2025-06-01 09:00:00 UTC",
-      end: "2025-06-02 09:00:00 UTC",
-      lockout: "2025-06-03 09:00:00 UTC",
+      start: "2025-06-01 09:00:00",
+      end: "2025-06-02 09:00:00",
+      lockout: "2025-06-03 09:00:00",
     },
   ]);
 });
@@ -37,13 +37,13 @@ test("remove item from MigrationWindowsWidget", async () => {
 
   const val = [
     {
-      start: "2025-06-01 09:00:00 UTC",
-      end: "2025-06-02 09:00:00 UTC",
-      lockout: "2025-06-03 09:00:00 UTC",
+      start: "2025-06-01 09:00:00",
+      end: "2025-06-02 09:00:00",
+      lockout: "2025-06-03 09:00:00",
     },
     {
-      start: "2025-06-04 09:00:00 UTC",
-      end: "2025-06-05 09:00:00 UTC",
+      start: "2025-06-04 09:00:00",
+      end: "2025-06-05 09:00:00",
       lockout: "",
     },
   ];
@@ -60,8 +60,8 @@ test("remove item from MigrationWindowsWidget", async () => {
   expect(handleChange).toHaveBeenCalledTimes(1);
   expect(handleChange).toHaveBeenCalledWith([
     {
-      start: "2025-06-04 09:00:00 UTC",
-      end: "2025-06-05 09:00:00 UTC",
+      start: "2025-06-04 09:00:00",
+      end: "2025-06-05 09:00:00",
       lockout: "",
     },
   ]);

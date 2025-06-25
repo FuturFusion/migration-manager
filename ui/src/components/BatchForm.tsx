@@ -9,7 +9,7 @@ import BatchConstraintsWidget from "components/BatchConstraintsWidget";
 import MigrationWindowsWidget from "components/MigrationWindowsWidget";
 import { Batch, BatchFormValues, MigrationWindow } from "types/batch";
 import { useDebounce } from "util/batch";
-import { formatDate, isMigrationWindowDateValid } from "util/date";
+import { formatDate } from "util/date";
 
 interface Props {
   batch?: Batch;
@@ -37,18 +37,6 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
 
       if (!item.end) {
         errors += `Window ${index + 1} is missing an 'end' date.\n`;
-      }
-
-      if (item.start && !isMigrationWindowDateValid(item.start)) {
-        errors += `Window ${index + 1} has an invalid date format in the 'start' field.\n`;
-      }
-
-      if (item.end && !isMigrationWindowDateValid(item.end)) {
-        errors += `Window ${index + 1} has an invalid date format in the 'end' field.\n`;
-      }
-
-      if (item.lockout && !isMigrationWindowDateValid(item.lockout)) {
-        errors += `Window ${index + 1} has an invalid date format in the 'lockout' field.\n`;
       }
     });
 

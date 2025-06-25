@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./css/index.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import "react-datepicker/dist/react-datepicker.css";
 import App from "./App.tsx";
 import { AuthProvider } from "context/authProvider";
 import { NotificationProvider } from "context/notificationProvider";
