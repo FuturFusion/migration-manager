@@ -94,6 +94,10 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 		return fmt.Errorf("Failed to fetch blocked queue entries: %w", err)
 	}
 
+	if len(blockedEntries) == 0 {
+		return nil
+	}
+
 	blockedInstances, err := d.instance.GetAllQueued(ctx, blockedEntries)
 	if err != nil {
 		return fmt.Errorf("Failed to fetch blocked instances: %w", err)
