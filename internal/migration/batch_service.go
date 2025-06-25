@@ -92,7 +92,7 @@ func (s batchService) Update(ctx context.Context, name string, batch *Batch) err
 			return err
 		}
 
-		if !oldBatch.CanBeModified() {
+		if !oldBatch.CanBeModified() && !util.InTestingMode() {
 			return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", name, ErrOperationNotPermitted)
 		}
 

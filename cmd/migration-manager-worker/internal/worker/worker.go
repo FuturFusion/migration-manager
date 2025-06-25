@@ -245,7 +245,13 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 			return false
 		}
 
-		err = worker.WindowsInjectDrivers(ctx, winVer, "/dev/sda3", "/dev/sda4") // FIXME -- values are hardcoded
+		base, recovery, err := worker.DetermineWindowsPartitions()
+		if err != nil {
+			w.sendErrorResponse(err)
+			return false
+		}
+
+		err = worker.WindowsInjectDrivers(ctx, winVer, base, recovery)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false

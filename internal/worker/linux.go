@@ -30,8 +30,10 @@ type LSBLKOutput struct {
 	BlockDevices []struct {
 		Name     string `json:"name"`
 		Children []struct {
-			Name   string `json:"name"`
-			FSType string `json:"fstype"`
+			Name         string `json:"name"`
+			FSType       string `json:"fstype"`
+			PartLabel    string `json:"partlabel"`
+			PartTypeName string `json:"parttypename"`
 		} `json:"children"`
 	} `json:"blockdevices"`
 }
@@ -171,6 +173,34 @@ func DeactivateVG() error {
 	return err
 }
 
+func DetermineWindowsPartitions() (base string, recovery string, err error) {
+	partitions, err := scanPartitions("/dev/sda")
+	if err != nil {
+		return "", "", err
+	}
+
+	for _, part := range partitions.BlockDevices {
+		for _, child := range part.Children {
+			if child.PartLabel == "Basic data partition" && child.PartTypeName == "Microsoft basic data" {
+				base = child.Name
+			} else if child.PartTypeName == "Windows recovery environment" {
+				recovery = child.Name
+			}
+		}
+	}
+
+	if base == "" || recovery == "" {
+		b, err := json.Marshal(partitions)
+		if err != nil {
+			return "", "", err
+		}
+
+		return "", "", fmt.Errorf("Could not determine partitions: %v", string(b))
+	}
+
+	return base, recovery, nil
+}
+
 func determineRootPartition() (string, int, []string, error) {
 	lvs, err := scanVGs()
 	if err != nil {
@@ -256,7 +286,7 @@ func scanVGs() (LVSOutput, error) {
 
 func scanPartitions(device string) (LSBLKOutput, error) {
 	ret := LSBLKOutput{}
-	output, err := subprocess.RunCommand("lsblk", "-J", "-o", "NAME,FSTYPE", device)
+	output, err := subprocess.RunCommand("lsblk", "-J", "-o", "NAME,FSTYPE,PARTLABEL,PARTTYPENAME", device)
 	if err != nil {
 		return ret, err
 	}
@@ -298,7 +328,7 @@ func getAdditionalMounts() []map[string]string {
 
 		if len(text) > 0 && !strings.HasPrefix(text, "#") {
 			fields := regexp.MustCompile(`\s+`).Split(text, -1)
-			if strings.HasPrefix(fields[1], "/boot") || strings.HasPrefix(fields[1], "/var") {
+			if strings.HasPrefix(fields[1], "/boot") || strings.HasPrefix(fields[1], "/var") || strings.HasPrefix(fields[1], "/usr") {
 				ret = append(ret, map[string]string{"device": fields[0], "path": fields[1], "options": fields[3]})
 			}
 		}
