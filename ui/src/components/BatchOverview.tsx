@@ -57,7 +57,7 @@ const BatchOverview = () => {
         <div className="col-10 detail-table-cell">
           <Table borderless size="sm">
             <thead>
-              <tr>
+              <tr className="overview-table-header">
                 <th>Start</th>
                 <th>End</th>
                 <th>Lockout</th>
@@ -80,7 +80,7 @@ const BatchOverview = () => {
         <div className="col-10 detail-table-cell">
           <Table borderless size="sm">
             <thead>
-              <tr>
+              <tr className="overview-table-header">
                 <th>Name</th>
                 <th>Description</th>
                 <th>Include expression</th>
