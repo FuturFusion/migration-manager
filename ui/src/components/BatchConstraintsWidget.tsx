@@ -18,15 +18,10 @@ const INITIAL_CONSTRAINT = {
 
 const BatchConstraintsWidget: FC<Props> = ({ value, onChange }) => {
   const [entries, setEntries] = useState<BatchConstraint[]>(value || []);
-  const [constraint, setConstraint] = useState<BatchConstraint>({
-    ...INITIAL_CONSTRAINT,
-  });
 
   const handleAdd = () => {
-    const newValues = [...entries, constraint];
+    const newValues = [...entries, INITIAL_CONSTRAINT];
     setEntries(newValues);
-    onChange(newValues);
-    setConstraint({ ...INITIAL_CONSTRAINT });
   };
 
   useEffect(() => {
@@ -69,12 +64,14 @@ const BatchConstraintsWidget: FC<Props> = ({ value, onChange }) => {
                   <Form.Control
                     type="text"
                     size="sm"
+                    placeholder="Name"
                     value={item.name}
                     onChange={(e) => handleEdit(index, "name", e.target.value)}
                   />
                   <Form.Control
                     type="text"
                     size="sm"
+                    placeholder="Description"
                     value={item.description}
                     onChange={(e) =>
                       handleEdit(index, "description", e.target.value)
@@ -83,6 +80,7 @@ const BatchConstraintsWidget: FC<Props> = ({ value, onChange }) => {
                   <Form.Control
                     type="text"
                     size="sm"
+                    placeholder="Include expression"
                     value={item.include_expression}
                     onChange={(e) =>
                       handleEdit(index, "include_expression", e.target.value)
@@ -91,18 +89,20 @@ const BatchConstraintsWidget: FC<Props> = ({ value, onChange }) => {
                   <Form.Control
                     type="number"
                     size="sm"
+                    placeholder="Max concurrent instances"
                     value={item.max_concurrent_instances}
                     onChange={(e) =>
                       handleEdit(
                         index,
                         "max_concurrent_instances",
-                        e.target.value,
+                        parseInt(e.target.value),
                       )
                     }
                   />
                   <Form.Control
                     type="text"
                     size="sm"
+                    placeholder="Min instance boot time"
                     value={item.min_instance_boot_time}
                     onChange={(e) =>
                       handleEdit(
@@ -128,62 +128,6 @@ const BatchConstraintsWidget: FC<Props> = ({ value, onChange }) => {
             </>
           ))}
           <tr>
-            <td style={{ display: "flex", gap: "8px" }}>
-              <Form.Control
-                type="text"
-                size="sm"
-                placeholder="Name"
-                value={constraint.name}
-                onChange={(e) =>
-                  setConstraint({ ...constraint, name: e.target.value })
-                }
-              />
-              <Form.Control
-                type="text"
-                size="sm"
-                placeholder="Description"
-                value={constraint.description}
-                onChange={(e) =>
-                  setConstraint({ ...constraint, description: e.target.value })
-                }
-              />
-              <Form.Control
-                type="text"
-                size="sm"
-                placeholder="Include expression"
-                value={constraint.include_expression}
-                onChange={(e) =>
-                  setConstraint({
-                    ...constraint,
-                    include_expression: e.target.value,
-                  })
-                }
-              />
-              <Form.Control
-                type="number"
-                size="sm"
-                placeholder="Max concurrent instances"
-                value={constraint.max_concurrent_instances}
-                onChange={(e) =>
-                  setConstraint({
-                    ...constraint,
-                    max_concurrent_instances: Number(e.target.value),
-                  })
-                }
-              />
-              <Form.Control
-                type="text"
-                size="sm"
-                placeholder="Min instance boot time"
-                value={constraint.min_instance_boot_time}
-                onChange={(e) =>
-                  setConstraint({
-                    ...constraint,
-                    min_instance_boot_time: e.target.value,
-                  })
-                }
-              />
-            </td>
             <td>
               <Button
                 title="Add"
