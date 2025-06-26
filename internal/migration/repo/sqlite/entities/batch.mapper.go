@@ -324,7 +324,7 @@ func GetBatches(ctx context.Context, db dbtx, filters ...BatchFilter) (_ []migra
 		} else if filter.ID == nil && filter.Name == nil && filter.Status == nil {
 			return nil, fmt.Errorf("Cannot filter on empty BatchFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 
@@ -395,7 +395,7 @@ func GetBatchNames(ctx context.Context, db dbtx, filters ...BatchFilter) (_ []st
 		} else if filter.ID == nil && filter.Name == nil && filter.Status == nil {
 			return nil, fmt.Errorf("Cannot filter on empty BatchFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 

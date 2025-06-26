@@ -301,7 +301,7 @@ func GetSources(ctx context.Context, db dbtx, filters ...SourceFilter) (_ []migr
 		} else if filter.SourceType == nil && filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty SourceFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 
@@ -348,7 +348,7 @@ func GetSourceNames(ctx context.Context, db dbtx, filters ...SourceFilter) (_ []
 		if filter.SourceType == nil && filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty SourceFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 

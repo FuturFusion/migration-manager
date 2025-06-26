@@ -36,6 +36,18 @@ var _ migration.SourceService = &SourceServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Source, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			GetCachedImportsFunc: func(sourceName string) int {
+//				panic("mock out the GetCachedImports method")
+//			},
+//			InitImportCacheFunc: func(initial map[string]int) error {
+//				panic("mock out the InitImportCache method")
+//			},
+//			RecordActiveImportFunc: func(sourceName string)  {
+//				panic("mock out the RecordActiveImport method")
+//			},
+//			RemoveActiveImportFunc: func(sourceName string)  {
+//				panic("mock out the RemoveActiveImport method")
+//			},
 //			UpdateFunc: func(ctx context.Context, name string, source *migration.Source, instanceService migration.InstanceService) error {
 //				panic("mock out the Update method")
 //			},
@@ -60,6 +72,18 @@ type SourceServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Source, error)
+
+	// GetCachedImportsFunc mocks the GetCachedImports method.
+	GetCachedImportsFunc func(sourceName string) int
+
+	// InitImportCacheFunc mocks the InitImportCache method.
+	InitImportCacheFunc func(initial map[string]int) error
+
+	// RecordActiveImportFunc mocks the RecordActiveImport method.
+	RecordActiveImportFunc func(sourceName string)
+
+	// RemoveActiveImportFunc mocks the RemoveActiveImport method.
+	RemoveActiveImportFunc func(sourceName string)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, name string, source *migration.Source, instanceService migration.InstanceService) error
@@ -103,6 +127,26 @@ type SourceServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetCachedImports holds details about calls to the GetCachedImports method.
+		GetCachedImports []struct {
+			// SourceName is the sourceName argument value.
+			SourceName string
+		}
+		// InitImportCache holds details about calls to the InitImportCache method.
+		InitImportCache []struct {
+			// Initial is the initial argument value.
+			Initial map[string]int
+		}
+		// RecordActiveImport holds details about calls to the RecordActiveImport method.
+		RecordActiveImport []struct {
+			// SourceName is the sourceName argument value.
+			SourceName string
+		}
+		// RemoveActiveImport holds details about calls to the RemoveActiveImport method.
+		RemoveActiveImport []struct {
+			// SourceName is the sourceName argument value.
+			SourceName string
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -115,12 +159,16 @@ type SourceServiceMock struct {
 			InstanceService migration.InstanceService
 		}
 	}
-	lockCreate       sync.RWMutex
-	lockDeleteByName sync.RWMutex
-	lockGetAll       sync.RWMutex
-	lockGetAllNames  sync.RWMutex
-	lockGetByName    sync.RWMutex
-	lockUpdate       sync.RWMutex
+	lockCreate             sync.RWMutex
+	lockDeleteByName       sync.RWMutex
+	lockGetAll             sync.RWMutex
+	lockGetAllNames        sync.RWMutex
+	lockGetByName          sync.RWMutex
+	lockGetCachedImports   sync.RWMutex
+	lockInitImportCache    sync.RWMutex
+	lockRecordActiveImport sync.RWMutex
+	lockRemoveActiveImport sync.RWMutex
+	lockUpdate             sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -304,6 +352,134 @@ func (mock *SourceServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetCachedImports calls GetCachedImportsFunc.
+func (mock *SourceServiceMock) GetCachedImports(sourceName string) int {
+	if mock.GetCachedImportsFunc == nil {
+		panic("SourceServiceMock.GetCachedImportsFunc: method is nil but SourceService.GetCachedImports was just called")
+	}
+	callInfo := struct {
+		SourceName string
+	}{
+		SourceName: sourceName,
+	}
+	mock.lockGetCachedImports.Lock()
+	mock.calls.GetCachedImports = append(mock.calls.GetCachedImports, callInfo)
+	mock.lockGetCachedImports.Unlock()
+	return mock.GetCachedImportsFunc(sourceName)
+}
+
+// GetCachedImportsCalls gets all the calls that were made to GetCachedImports.
+// Check the length with:
+//
+//	len(mockedSourceService.GetCachedImportsCalls())
+func (mock *SourceServiceMock) GetCachedImportsCalls() []struct {
+	SourceName string
+} {
+	var calls []struct {
+		SourceName string
+	}
+	mock.lockGetCachedImports.RLock()
+	calls = mock.calls.GetCachedImports
+	mock.lockGetCachedImports.RUnlock()
+	return calls
+}
+
+// InitImportCache calls InitImportCacheFunc.
+func (mock *SourceServiceMock) InitImportCache(initial map[string]int) error {
+	if mock.InitImportCacheFunc == nil {
+		panic("SourceServiceMock.InitImportCacheFunc: method is nil but SourceService.InitImportCache was just called")
+	}
+	callInfo := struct {
+		Initial map[string]int
+	}{
+		Initial: initial,
+	}
+	mock.lockInitImportCache.Lock()
+	mock.calls.InitImportCache = append(mock.calls.InitImportCache, callInfo)
+	mock.lockInitImportCache.Unlock()
+	return mock.InitImportCacheFunc(initial)
+}
+
+// InitImportCacheCalls gets all the calls that were made to InitImportCache.
+// Check the length with:
+//
+//	len(mockedSourceService.InitImportCacheCalls())
+func (mock *SourceServiceMock) InitImportCacheCalls() []struct {
+	Initial map[string]int
+} {
+	var calls []struct {
+		Initial map[string]int
+	}
+	mock.lockInitImportCache.RLock()
+	calls = mock.calls.InitImportCache
+	mock.lockInitImportCache.RUnlock()
+	return calls
+}
+
+// RecordActiveImport calls RecordActiveImportFunc.
+func (mock *SourceServiceMock) RecordActiveImport(sourceName string) {
+	if mock.RecordActiveImportFunc == nil {
+		panic("SourceServiceMock.RecordActiveImportFunc: method is nil but SourceService.RecordActiveImport was just called")
+	}
+	callInfo := struct {
+		SourceName string
+	}{
+		SourceName: sourceName,
+	}
+	mock.lockRecordActiveImport.Lock()
+	mock.calls.RecordActiveImport = append(mock.calls.RecordActiveImport, callInfo)
+	mock.lockRecordActiveImport.Unlock()
+	mock.RecordActiveImportFunc(sourceName)
+}
+
+// RecordActiveImportCalls gets all the calls that were made to RecordActiveImport.
+// Check the length with:
+//
+//	len(mockedSourceService.RecordActiveImportCalls())
+func (mock *SourceServiceMock) RecordActiveImportCalls() []struct {
+	SourceName string
+} {
+	var calls []struct {
+		SourceName string
+	}
+	mock.lockRecordActiveImport.RLock()
+	calls = mock.calls.RecordActiveImport
+	mock.lockRecordActiveImport.RUnlock()
+	return calls
+}
+
+// RemoveActiveImport calls RemoveActiveImportFunc.
+func (mock *SourceServiceMock) RemoveActiveImport(sourceName string) {
+	if mock.RemoveActiveImportFunc == nil {
+		panic("SourceServiceMock.RemoveActiveImportFunc: method is nil but SourceService.RemoveActiveImport was just called")
+	}
+	callInfo := struct {
+		SourceName string
+	}{
+		SourceName: sourceName,
+	}
+	mock.lockRemoveActiveImport.Lock()
+	mock.calls.RemoveActiveImport = append(mock.calls.RemoveActiveImport, callInfo)
+	mock.lockRemoveActiveImport.Unlock()
+	mock.RemoveActiveImportFunc(sourceName)
+}
+
+// RemoveActiveImportCalls gets all the calls that were made to RemoveActiveImport.
+// Check the length with:
+//
+//	len(mockedSourceService.RemoveActiveImportCalls())
+func (mock *SourceServiceMock) RemoveActiveImportCalls() []struct {
+	SourceName string
+} {
+	var calls []struct {
+		SourceName string
+	}
+	mock.lockRemoveActiveImport.RLock()
+	calls = mock.calls.RemoveActiveImport
+	mock.lockRemoveActiveImport.RUnlock()
 	return calls
 }
 

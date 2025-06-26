@@ -411,7 +411,7 @@ func GetQueueEntries(ctx context.Context, db dbtx, filters ...QueueEntryFilter) 
 		} else if filter.InstanceUUID == nil && filter.BatchName == nil && filter.MigrationStatus == nil && filter.NeedsDiskImport == nil {
 			return nil, fmt.Errorf("Cannot filter on empty QueueEntryFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 

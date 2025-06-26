@@ -239,7 +239,7 @@ func GetTargets(ctx context.Context, db dbtx, filters ...TargetFilter) (_ []migr
 		} else if filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty TargetFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 
@@ -286,7 +286,7 @@ func GetTargetNames(ctx context.Context, db dbtx, filters ...TargetFilter) (_ []
 		if filter.Name == nil {
 			return nil, fmt.Errorf("Cannot filter on empty TargetFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 
