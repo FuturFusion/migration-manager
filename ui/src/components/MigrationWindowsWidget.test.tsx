@@ -8,21 +8,22 @@ test("add new item to MigrationWindowsWidget", async () => {
 
   render(<MigrationWindowsWidget value={[]} onChange={handleChange} />);
 
-  const startInput = screen.getByPlaceholderText("Start");
-  const endInput = screen.getByPlaceholderText("End");
-  const lockoutInput = screen.getByPlaceholderText("Lockout");
   const addButton = screen.getByTitle("Add");
-
-  await userEvent.type(startInput, "2025-06-01 09:00:00");
-  await userEvent.type(endInput, "2025-06-02 09:00:00");
-  await userEvent.type(lockoutInput, "2025-06-03 09:00:00");
 
   await act(async () => {
     await fireEvent.click(addButton);
   });
 
+  const startInput = screen.getByPlaceholderText("Start");
+  const endInput = screen.getByPlaceholderText("End");
+  const lockoutInput = screen.getByPlaceholderText("Lockout");
+
+  await userEvent.type(startInput, "2025-06-01 09:00:00");
+  await userEvent.type(endInput, "2025-06-02 09:00:00");
+  await userEvent.type(lockoutInput, "2025-06-03 09:00:00");
+
   // Check if onChange was called with correct data
-  expect(handleChange).toHaveBeenCalledTimes(1);
+  expect(handleChange).toHaveBeenCalledTimes(3);
   expect(handleChange).toHaveBeenCalledWith([
     {
       start: "2025-06-01 09:00:00",

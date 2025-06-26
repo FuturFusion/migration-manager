@@ -8,6 +8,12 @@ test("add new item to BatchConstraintsWidget", async () => {
 
   render(<BatchConstraintsWidget value={[]} onChange={handleChange} />);
 
+  const addButton = screen.getByTitle("Add");
+
+  await act(async () => {
+    await fireEvent.click(addButton);
+  });
+
   const nameInput = screen.getByPlaceholderText("Name");
   const descriptionInput = screen.getByPlaceholderText("Description");
   const expressionInput = screen.getByPlaceholderText("Include expression");
@@ -17,7 +23,6 @@ test("add new item to BatchConstraintsWidget", async () => {
   const minBootTimeInput = screen.getByPlaceholderText(
     "Min instance boot time",
   );
-  const addButton = screen.getByTitle("Add");
 
   await userEvent.type(nameInput, "c1");
   await userEvent.type(descriptionInput, "desc");
@@ -25,12 +30,8 @@ test("add new item to BatchConstraintsWidget", async () => {
   await userEvent.type(maxInstancesInput, "3");
   await userEvent.type(minBootTimeInput, "10s");
 
-  await act(async () => {
-    await fireEvent.click(addButton);
-  });
-
   // Check if onChange was called with correct data
-  expect(handleChange).toHaveBeenCalledTimes(1);
+  expect(handleChange).toHaveBeenCalledTimes(15);
   expect(handleChange).toHaveBeenCalledWith([
     {
       name: "c1",
