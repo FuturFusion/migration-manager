@@ -736,8 +736,8 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 				return err
 			}
 
-			status := api.MIGRATIONSTATUS_CREATING
-			message := "Creating target instance definition"
+			status := api.MIGRATIONSTATUS_WAITING
+			message := "Preparing for migration"
 			err = inst.DisabledReason()
 			if err != nil {
 				status = api.MIGRATIONSTATUS_BLOCKED

@@ -109,7 +109,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			continue
 		}
 
-		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, string(api.MIGRATIONSTATUS_CREATING), blockedEntries[i].NeedsDiskImport)
+		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, string(api.MIGRATIONSTATUS_WAITING), blockedEntries[i].NeedsDiskImport)
 		if err != nil {
 			return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
 		}
@@ -133,7 +133,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			return err
 		}
 
-		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_QUEUED, api.MIGRATIONSTATUS_CREATING)
+		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_QUEUED, api.MIGRATIONSTATUS_WAITING)
 		if err != nil {
 			return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
 		}
