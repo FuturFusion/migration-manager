@@ -8,10 +8,11 @@ export interface InstancePropertiesDisk {
   name: string;
   capacity: number;
   shared: boolean;
+  supported: boolean;
 }
 
 export interface InstancePropertiesNIC {
-  network_id: string;
+  id: string;
   hardware_address: string;
   network: string;
 }
@@ -30,7 +31,7 @@ export interface InstanceProperties {
   os: string;
   os_version: string;
   secure_boot: boolean;
-  legacy_boiot: boolean;
+  legacy_boot: boolean;
   tpm: boolean;
   background_import: boolean;
   architecture: string;

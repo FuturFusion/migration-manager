@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Table } from "react-bootstrap";
 import { useParams } from "react-router";
 import { fetchInstance } from "api/instances";
 import InstanceItemOverride from "components/InstanceItemOverride";
@@ -27,64 +28,147 @@ const InstanceOverview = () => {
   }
 
   return (
-    <div className="container">
-      <div className="row">
-        <div className="col-2 detail-table-header">UUID</div>
-        <div className="col-10 detail-table-cell">
-          {instance.properties.uuid}
+    <>
+      <h6 className="mb-3">General</h6>
+      <div className="container">
+        <div className="row">
+          <div className="col-2 detail-table-header">UUID</div>
+          <div className="col-10 detail-table-cell">
+            {instance.properties.uuid}
+          </div>
         </div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Source</div>
-        <div className="col-10 detail-table-cell"> {instance.source}</div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Source type</div>
-        <div className="col-10 detail-table-cell"> {instance.source_type}</div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Location</div>
-        <div className="col-10 detail-table-cell">
-          {instance.properties.location}
+        <div className="row">
+          <div className="col-2 detail-table-header">Source</div>
+          <div className="col-10 detail-table-cell"> {instance.source}</div>
         </div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">OS</div>
-        <div className="col-10 detail-table-cell">{instance.properties.os}</div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">OS version</div>
-        <div className="col-10 detail-table-cell">
-          {instance.properties.os_version}
+        <div className="row">
+          <div className="col-2 detail-table-header">Source type</div>
+          <div className="col-10 detail-table-cell">
+            {" "}
+            {instance.source_type}
+          </div>
         </div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">CPU</div>
-        <div className="col-10 detail-table-cell">
-          <InstanceItemOverride
-            original={instance.properties.cpus}
-            override={instance.overrides && instance.overrides.properties.cpus}
-            showOverride={
-              hasOverride(instance) && instance.overrides.properties.cpus > 0
-            }
-          />
+        <div className="row">
+          <div className="col-2 detail-table-header">Location</div>
+          <div className="col-10 detail-table-cell">
+            {instance.properties.location}
+          </div>
         </div>
-      </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Memory</div>
-        <div className="col-10 detail-table-cell">
-          <InstanceItemOverride
-            original={bytesToHumanReadable(instance.properties.memory)}
-            override={bytesToHumanReadable(
-              instance.overrides?.properties.memory,
-            )}
-            showOverride={
-              hasOverride(instance) && instance.overrides.properties.memory > 0
-            }
-          />
+        <div className="row">
+          <div className="col-2 detail-table-header">OS</div>
+          <div className="col-10 detail-table-cell">
+            {instance.properties.os}
+          </div>
         </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">OS version</div>
+          <div className="col-10 detail-table-cell">
+            {instance.properties.os_version}
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">CPU</div>
+          <div className="col-10 detail-table-cell">
+            <InstanceItemOverride
+              original={instance.properties.cpus}
+              override={
+                instance.overrides && instance.overrides.properties.cpus
+              }
+              showOverride={
+                hasOverride(instance) && instance.overrides.properties.cpus > 0
+              }
+            />
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">Memory</div>
+          <div className="col-10 detail-table-cell">
+            <InstanceItemOverride
+              original={bytesToHumanReadable(instance.properties.memory)}
+              override={bytesToHumanReadable(
+                instance.overrides?.properties.memory,
+              )}
+              showOverride={
+                hasOverride(instance) &&
+                instance.overrides.properties.memory > 0
+              }
+            />
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">Firmware</div>
+          <div className="col-10 detail-table-cell">
+            {instance.properties.legacy_boot ? "BIOS" : "UEFI"}
+          </div>
+        </div>
+        {!instance.properties.legacy_boot && (
+          <div className="row">
+            <div className="col-2 detail-table-header">Secure boot</div>
+            <div className="col-10 detail-table-cell">
+              {instance.properties.secure_boot ? "Yes" : "No"}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+      {instance.properties.nics?.length > 0 && (
+        <>
+          <hr className="my-4" />
+          <h6 className="mb-3">NICs</h6>
+          <div className="container">
+            <div className="row">
+              <Table borderless size="sm">
+                <thead>
+                  <tr className="overview-table-header">
+                    <th>Id</th>
+                    <th>Hardware Address</th>
+                    <th>Network</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {instance.properties.nics.map((item, index) => (
+                    <tr key={index}>
+                      <td>{item.id}</td>
+                      <td>{item.hardware_address}</td>
+                      <td>{item.network}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          </div>
+        </>
+      )}
+      {instance.properties.disks?.length > 0 && (
+        <>
+          <hr className="my-4" />
+          <h6 className="mb-3">Disks</h6>
+          <div className="container">
+            <div className="row">
+              <Table borderless size="sm">
+                <thead>
+                  <tr className="overview-table-header">
+                    <th>Name</th>
+                    <th>Capacity</th>
+                    <th>Shared</th>
+                    <th>Supported</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {instance.properties.disks.map((item, index) => (
+                    <tr key={index}>
+                      <td>{item.name}</td>
+                      <td>{bytesToHumanReadable(item.capacity)}</td>
+                      <td>{item.shared ? "Yes" : "No"}</td>
+                      <td>{item.supported ? "Yes" : "No"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 };
 
