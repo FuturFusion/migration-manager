@@ -15,15 +15,13 @@ const BatchInstances = () => {
     queryFn: () => fetchBatchInstances(name),
   });
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div>Error while loading instances</div>;
-  }
-
-  return <InstanceDataTable instances={instances} />;
+  return (
+    <InstanceDataTable
+      instances={instances}
+      isLoading={isLoading}
+      error={error}
+    />
+  );
 };
 
 export default BatchInstances;
