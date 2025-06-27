@@ -15,6 +15,7 @@ import (
 	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/queue"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -22,6 +23,55 @@ import (
 
 // syncLock ensures source syncing is sequential.
 var syncLock sync.Mutex
+
+func (d *Daemon) syncActiveBatches(ctx context.Context) error {
+	var states map[string]queue.MigrationState
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		states, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_BACKGROUND_IMPORT, api.MIGRATIONSTATUS_FINAL_IMPORT, api.MIGRATIONSTATUS_CREATING)
+		if err != nil {
+			return fmt.Errorf("Failed to get running migration states: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	importingFromSource := map[string]int{}
+	importingToTarget := map[string]int{}
+	creatingOnTarget := map[string]int{}
+	for _, state := range states {
+		for instUUID, entry := range state.QueueEntries {
+			if entry.MigrationStatus == api.MIGRATIONSTATUS_CREATING {
+				creatingOnTarget[state.Target.Name] = creatingOnTarget[state.Target.Name] + 1
+			}
+
+			if entry.MigrationStatus == api.MIGRATIONSTATUS_FINAL_IMPORT || entry.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT {
+				importingFromSource[state.Sources[instUUID].Name] = importingFromSource[state.Sources[instUUID].Name] + 1
+				importingToTarget[state.Target.Name] = importingToTarget[state.Target.Name] + 1
+			}
+		}
+	}
+
+	err = d.source.InitImportCache(importingFromSource)
+	if err != nil {
+		return fmt.Errorf("Failed to initialize source import cache: %w", err)
+	}
+
+	err = d.target.InitImportCache(importingToTarget)
+	if err != nil {
+		return fmt.Errorf("Failed to initialize target import cache: %w", err)
+	}
+
+	err = d.target.InitCreateCache(creatingOnTarget)
+	if err != nil {
+		return fmt.Errorf("Failed to initialize target create cache: %w", err)
+	}
+
+	return nil
+}
 
 // trySyncAllSources connects to each source in the database and updates the in-memory record of all networks and instances.
 // skipNonResponsiveSources - If true, if a connection to a source returns an error, syncing from that source will be skipped.

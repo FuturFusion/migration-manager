@@ -8,6 +8,59 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/logger"
 )
 
+type Cache[K comparable, V any] struct {
+	lock sync.RWMutex
+
+	cache map[K]V
+}
+
+func NewCache[K comparable, V any]() *Cache[K, V] {
+	return &Cache[K, V]{
+		lock:  sync.RWMutex{},
+		cache: map[K]V{},
+	}
+}
+
+func (c *Cache[K, V]) Replace(cache map[K]V) error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if cache == nil {
+		return fmt.Errorf("Cache is nil")
+	}
+
+	c.cache = cache
+
+	return nil
+}
+
+func (c *Cache[K, V]) Read(key K) (V, bool) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+
+	val, ok := c.cache[key]
+
+	return val, ok
+}
+
+func (c *Cache[K, V]) Write(key K, val V, f func(existingVal V, newVal V) V) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	if f != nil {
+		c.cache[key] = f(c.cache[key], val)
+	} else {
+		c.cache[key] = val
+	}
+}
+
+func (c *Cache[K, V]) Delete(key K) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+
+	delete(c.cache, key)
+}
+
 // RunConcurrentList runs the given function concurrently for each entity in the given list.
 // Any encountered errors will be logged, and when the run finishes, the last encountered error is returned.
 func RunConcurrentList[T any](entities []T, f func(T) error) error {

@@ -29,6 +29,7 @@ const (
 type LSBLKOutput struct {
 	BlockDevices []struct {
 		Name     string `json:"name"`
+		Serial   string `json:"serial"`
 		Children []struct {
 			Name         string `json:"name"`
 			FSType       string `json:"fstype"`
@@ -174,13 +175,17 @@ func DeactivateVG() error {
 }
 
 func DetermineWindowsPartitions() (base string, recovery string, err error) {
-	partitions, err := scanPartitions("/dev/sda")
+	partitions, err := scanPartitions("")
 	if err != nil {
 		return "", "", err
 	}
 
-	for _, part := range partitions.BlockDevices {
-		for _, child := range part.Children {
+	for _, dev := range partitions.BlockDevices {
+		if dev.Serial != "incus_root" {
+			continue
+		}
+
+		for _, child := range dev.Children {
 			if child.PartLabel == "Basic data partition" && child.PartTypeName == "Microsoft basic data" {
 				base = child.Name
 			} else if child.PartTypeName == "Windows recovery environment" {
@@ -223,26 +228,32 @@ func determineRootPartition() (string, int, []string, error) {
 		}
 	}
 
-	partitions, err := scanPartitions("/dev/sda")
+	partitions, err := scanPartitions("")
 	if err != nil {
 		return "", PARTITION_TYPE_UNKNOWN, nil, err
 	}
 
-	// Loop through any partitions on /dev/sda and check if they look like the root partition.
-	for _, p := range partitions.BlockDevices[0].Children {
-		partition := fmt.Sprintf("/dev/%s", p.Name)
-		if p.FSType == "btrfs" {
-			btrfsSubvol, err := getBTRFSTopSubvol(partition)
-			if err != nil {
-				return "", PARTITION_TYPE_UNKNOWN, nil, err
-			}
+	for _, dev := range partitions.BlockDevices {
+		if dev.Serial != "incus_root" {
+			continue
+		}
 
-			opts := []string{"-o", fmt.Sprintf("subvol=%s", btrfsSubvol)}
-			if looksLikeRootPartition(partition, opts) {
-				return partition, PARTITION_TYPE_PLAIN, opts, nil
+		// Loop through any partitions on /dev/sda and check if they look like the root partition.
+		for _, p := range dev.Children {
+			partition := fmt.Sprintf("/dev/%s", p.Name)
+			if p.FSType == "btrfs" {
+				btrfsSubvol, err := getBTRFSTopSubvol(partition)
+				if err != nil {
+					return "", PARTITION_TYPE_UNKNOWN, nil, err
+				}
+
+				opts := []string{"-o", fmt.Sprintf("subvol=%s", btrfsSubvol)}
+				if looksLikeRootPartition(partition, opts) {
+					return partition, PARTITION_TYPE_PLAIN, opts, nil
+				}
+			} else if looksLikeRootPartition(partition, nil) {
+				return partition, PARTITION_TYPE_PLAIN, nil, nil
 			}
-		} else if looksLikeRootPartition(partition, nil) {
-			return partition, PARTITION_TYPE_PLAIN, nil, nil
 		}
 	}
 
@@ -286,7 +297,12 @@ func scanVGs() (LVSOutput, error) {
 
 func scanPartitions(device string) (LSBLKOutput, error) {
 	ret := LSBLKOutput{}
-	output, err := subprocess.RunCommand("lsblk", "-J", "-o", "NAME,FSTYPE,PARTLABEL,PARTTYPENAME", device)
+	args := []string{"-J", "-o", "NAME,FSTYPE,PARTLABEL,PARTTYPENAME,SERIAL"}
+	if device != "" {
+		args = append(args, device)
+	}
+
+	output, err := subprocess.RunCommand("lsblk", args...)
 	if err != nil {
 		return ret, err
 	}

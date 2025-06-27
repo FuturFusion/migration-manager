@@ -212,9 +212,14 @@ func (d *Daemon) Start() error {
 	d.source = migration.NewSourceService(sqlite.NewSource(dbWithTransaction))
 	d.instance = migration.NewInstanceService(sqlite.NewInstance(dbWithTransaction))
 	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance)
-	d.queue = migration.NewQueueService(sqlite.NewQueue(dbWithTransaction), d.batch, d.instance, d.source)
+	d.queue = migration.NewQueueService(sqlite.NewQueue(dbWithTransaction), d.batch, d.instance, d.source, d.target)
 
 	d.queueHandler = queue.NewMigrationHandler(d.batch, d.instance, d.network, d.source, d.target, d.queue)
+
+	err = d.syncActiveBatches(d.ShutdownCtx)
+	if err != nil {
+		return fmt.Errorf("Failed to sync active batches: %w", err)
+	}
 
 	// Set default authorizer.
 	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)

@@ -206,7 +206,7 @@ func GetMigrationWindows(ctx context.Context, db dbtx, filters ...MigrationWindo
 		} else if filter.ID == nil && filter.Start == nil && filter.End == nil && filter.Lockout == nil {
 			return nil, fmt.Errorf("Cannot filter on empty MigrationWindowFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 

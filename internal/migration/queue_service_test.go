@@ -63,7 +63,7 @@ func TestQueueService_GetAll(t *testing.T) {
 				},
 			}
 
-			queueSvc := migration.NewQueueService(repo, nil, nil, nil)
+			queueSvc := migration.NewQueueService(repo, nil, nil, nil, nil)
 
 			// Run test
 			queueItems, err := queueSvc.GetAll(context.Background())
@@ -111,7 +111,7 @@ func TestQueueService_GetByInstanceID(t *testing.T) {
 			}
 			// Setup
 
-			queueSvc := migration.NewQueueService(repo, nil, nil, nil)
+			queueSvc := migration.NewQueueService(repo, nil, nil, nil, nil)
 
 			// Run test
 			queueEntry, err := queueSvc.GetByInstanceUUID(context.Background(), tc.uuidArg)
@@ -148,8 +148,14 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		sourceSvcGetByIDSource migration.Source
 		sourceSvcGetByIDErr    error
 
+		targetSvcGetByIDTarget migration.Target
+		targetSvcGetByIDErr    error
+
 		batchSvcGetWindows    migration.MigrationWindows
 		batchSvcGetWindowsErr error
+
+		sourceImportLimit int
+		targetImportLimit int
 
 		assertErr                  require.ErrorAssertionFunc
 		wantMigrationStatus        api.MigrationStatusType
@@ -157,14 +163,15 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		wantWorkerCommand          migration.WorkerCommand
 	}{
 		{
-			name:    "success - without migration window start time",
+			name:    "success - no update due to concurrency limit on source",
 			uuidArg: uuidA,
 
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 
-			batchSvcGetByName: migration.Batch{Name: "one"},
+			batchSvcGetByName: migration.Batch{Target: "one", Name: "one"},
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				UUID:   uuidA,
+				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:  "/some/instance/A",
 					OS:        "ubuntu",
@@ -175,6 +182,147 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte(`{"import_limit": 1}`),
+			},
+
+			sourceImportLimit: 1,
+
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
+			},
+
+			assertErr: require.NoError,
+			wantWorkerCommand: migration.WorkerCommand{
+				Command:    api.WORKERCOMMAND_IDLE,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte(`{"import_limit": 1}`)},
+				OS:         "ubuntu",
+				OSVersion:  "24.04",
+			},
+			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
+			wantMigrationStatusMessage: "Waiting for other instances to finish importing",
+		},
+		{
+			name:    "success - no update due to concurrency limit on source and target",
+			uuidArg: uuidA,
+
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
+
+			batchSvcGetByName: migration.Batch{Target: "one", Name: "one"},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:   uuidA,
+				Source: "one",
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte(`{"import_limit": 1}`),
+			},
+
+			sourceImportLimit: 1,
+			targetImportLimit: 1,
+
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte(`{"import_limit": 1}`),
+			},
+
+			assertErr: require.NoError,
+			wantWorkerCommand: migration.WorkerCommand{
+				Command:    api.WORKERCOMMAND_IDLE,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte(`{"import_limit": 1}`)},
+				OS:         "ubuntu",
+				OSVersion:  "24.04",
+			},
+			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
+			wantMigrationStatusMessage: "Waiting for other instances to finish importing",
+		},
+		{
+			name:    "success - no update due to concurrency limit on target, but unmet on source",
+			uuidArg: uuidA,
+
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
+
+			batchSvcGetByName: migration.Batch{Target: "one", Name: "one"},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:   uuidA,
+				Source: "one",
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte(`{"import_limit": 1}`),
+			},
+
+			targetImportLimit: 1,
+
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte(`{"import_limit": 1}`),
+			},
+
+			assertErr: require.NoError,
+			wantWorkerCommand: migration.WorkerCommand{
+				Command:    api.WORKERCOMMAND_IDLE,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte(`{"import_limit": 1}`)},
+				OS:         "ubuntu",
+				OSVersion:  "24.04",
+			},
+			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
+			wantMigrationStatusMessage: "Waiting for other instances to finish importing",
+		},
+		{
+			name:    "success - update due to unmet concurrency limits",
+			uuidArg: uuidA,
+
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
+
+			batchSvcGetByName: migration.Batch{Target: "one", Name: "one"},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:   uuidA,
+				Source: "one",
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte(`{"import_limit": 1}`),
+			},
+
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte(`{"import_limit": 1}`),
 			},
 
 			assertErr: require.NoError,
@@ -182,7 +330,49 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
-				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE},
+				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte(`{"import_limit": 1}`)},
+				OS:         "ubuntu",
+				OSVersion:  "24.04",
+			},
+			wantMigrationStatus:        api.MIGRATIONSTATUS_FINAL_IMPORT,
+			wantMigrationStatusMessage: string(api.MIGRATIONSTATUS_FINAL_IMPORT),
+		},
+		{
+			name:    "success - without migration window start time",
+			uuidArg: uuidA,
+
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
+
+			batchSvcGetByName: migration.Batch{Target: "one", Name: "one"},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:   uuidA,
+				Source: "one",
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
+			},
+
+			assertErr: require.NoError,
+			wantWorkerCommand: migration.WorkerCommand{
+				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte("{}")},
 				OS:         "ubuntu",
 				OSVersion:  "24.04",
 			},
@@ -196,10 +386,11 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 
-			batchSvcGetByName:    migration.Batch{Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1}}},
+			batchSvcGetByName:    migration.Batch{Target: "one", Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}},
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				UUID:   uuidA,
+				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:  "/some/instance/A",
 					OS:        "ubuntu",
@@ -210,6 +401,13 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
 			},
 
 			assertErr: require.NoError,
@@ -217,7 +415,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
-				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE},
+				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte("{}")},
 				OS:         "ubuntu",
 				OSVersion:  "24.04",
 			},
@@ -227,10 +425,11 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		{
 			name:                  "success - background disk sync",
 			uuidArg:               uuidA,
-			batchSvcGetByName:     migration.Batch{Name: "one"},
+			batchSvcGetByName:     migration.Batch{Target: "one", Name: "one"},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", NeedsDiskImport: true, MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				UUID:   uuidA,
+				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
@@ -242,6 +441,13 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
 			},
 
 			assertErr: require.NoError,
@@ -253,6 +459,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 					ID:         1,
 					Name:       "one",
 					SourceType: api.SOURCETYPE_VMWARE,
+					Properties: []byte("{}"),
 				},
 				OS:        "ubuntu",
 				OSVersion: "24.04",
@@ -263,10 +470,11 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		{
 			name:                  "success - migration window started",
 			uuidArg:               uuidA,
-			batchSvcGetByName:     migration.Batch{Name: "one"},
+			batchSvcGetByName:     migration.Batch{Target: "one", Name: "one"},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				UUID:   uuidA,
+				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
@@ -278,6 +486,13 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
 			},
 			batchSvcGetWindows: migration.MigrationWindows{{Start: time.Now().Add(-time.Minute)}},
 
@@ -290,6 +505,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 					ID:         1,
 					Name:       "one",
 					SourceType: api.SOURCETYPE_VMWARE,
+					Properties: []byte("{}"),
 				},
 				OS:        "ubuntu",
 				OSVersion: "24.04",
@@ -304,10 +520,11 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 
-			batchSvcGetByName:    migration.Batch{Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1}}},
+			batchSvcGetByName:    migration.Batch{Target: "one", Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}},
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				UUID:   uuidA,
+				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
@@ -319,6 +536,13 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
 			},
 			batchSvcGetWindows: migration.MigrationWindows{{Start: time.Now().Add(-time.Minute)}},
 
@@ -327,7 +551,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
-				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE},
+				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte("{}")},
 				OS:         "ubuntu",
 				OSVersion:  "24.04",
 			},
@@ -341,10 +565,11 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 
-			batchSvcGetByName:    migration.Batch{Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
+			batchSvcGetByName:    migration.Batch{Target: "one", Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}},
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				UUID:   uuidA,
+				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
@@ -356,6 +581,13 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
 			},
 			batchSvcGetWindows: migration.MigrationWindows{{Start: time.Now().Add(-time.Minute), End: time.Now().Add(time.Hour * 2)}},
 
@@ -364,7 +596,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
-				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE},
+				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte("{}")},
 				OS:         "ubuntu",
 				OSVersion:  "24.04",
 			},
@@ -378,10 +610,11 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 
-			batchSvcGetByName:    migration.Batch{Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
+			batchSvcGetByName:    migration.Batch{Target: "one", Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}},
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				UUID:   uuidA,
+				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
@@ -393,6 +626,13 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
 			},
 			batchSvcGetWindows: migration.MigrationWindows{{Start: time.Now().Add(-time.Minute), End: time.Now().Add(time.Hour)}},
 
@@ -401,7 +641,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Command:    api.WORKERCOMMAND_IDLE,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
-				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE},
+				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte("{}")},
 				OS:         "ubuntu",
 				OSVersion:  "24.04",
 			},
@@ -418,7 +658,8 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			batchSvcGetByName:    migration.Batch{Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}, {UUID: uuidB}},
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				UUID:   uuidA,
+				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
@@ -430,6 +671,13 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte(`{}`),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
 			},
 			batchSvcGetWindows: migration.MigrationWindows{{Start: time.Now().Add(-time.Minute), End: time.Now().Add(time.Hour * 2)}},
 
@@ -438,7 +686,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Command:    api.WORKERCOMMAND_IDLE,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
-				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE},
+				Source:     migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte("{}")},
 				OS:         "ubuntu",
 				OSVersion:  "24.04",
 			},
@@ -466,7 +714,8 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			uuidArg:               uuidA,
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				UUID:   uuidA,
+				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:  "/some/instance/A",
 					Name:      "A",
@@ -479,11 +728,13 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:                  "error - batch.GetEarliestWindow",
+			name:                  "error - batch.GetByName",
 			uuidArg:               uuidA,
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
+			batchSvcGetByNameErr:  boom.Error,
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				UUID:   uuidA,
+				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:  "/some/instance/A",
 					Name:      "A",
@@ -495,6 +746,62 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                  "error - target.GetByName",
+			uuidArg:               uuidA,
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
+			batchSvcGetByName:     migration.Batch{Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:   uuidA,
+				Source: "one",
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					Name:      "A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                  "error - batch.GetEarliestWindow",
+			uuidArg:               uuidA,
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
+			batchSvcGetByName:     migration.Batch{Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:   uuidA,
+				Source: "one",
+				Properties: api.InstanceProperties{
+					Location:  "/some/instance/A",
+					Name:      "A",
+					OS:        "ubuntu",
+					OSVersion: "24.04",
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
 			},
 			batchSvcGetWindowsErr: boom.Error,
 
@@ -510,9 +817,11 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		{
 			name:                  "error - repo.Update",
 			uuidArg:               uuidA,
+			batchSvcGetByName:     migration.Batch{Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", NeedsDiskImport: true, MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 			instanceSvcGetByIDInstance: migration.Instance{
-				UUID: uuidA,
+				Source: "one",
+				UUID:   uuidA,
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
@@ -524,6 +833,13 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
 			},
 			repoUpdateErr: boom.Error,
 
@@ -560,6 +876,8 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				GetByNameFunc: func(ctx context.Context, name string) (*migration.Source, error) {
 					return &tc.sourceSvcGetByIDSource, tc.sourceSvcGetByIDErr
 				},
+				RecordActiveImportFunc: func(targetName string) {},
+				GetCachedImportsFunc:   func(sourceName string) int { return tc.sourceImportLimit },
 			}
 
 			batchSvc := &BatchServiceMock{
@@ -571,7 +889,15 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				},
 			}
 
-			queueSvc := migration.NewQueueService(repo, batchSvc, instanceSvc, sourceSvc)
+			targetSvc := &TargetServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Target, error) {
+					return &tc.targetSvcGetByIDTarget, tc.targetSvcGetByIDErr
+				},
+				RecordActiveImportFunc: func(targetName string) {},
+				GetCachedImportsFunc:   func(targetName string) int { return tc.targetImportLimit },
+			}
+
+			queueSvc := migration.NewQueueService(repo, batchSvc, instanceSvc, sourceSvc, targetSvc)
 
 			// Run test
 			workerCommand, err := queueSvc.NewWorkerCommandByInstanceUUID(context.Background(), tc.uuidArg)
@@ -594,6 +920,12 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 		repoGetByUUIDErr                 error
 		repoUpdateStatusByUUIDQueueEntry *migration.QueueEntry
 		repoUpdateStatusByUUIDErr        error
+
+		instanceSvcGetByUUIDInstance migration.Instance
+		instanceSvcGetByUUIDErr      error
+
+		batchSvcGetByNameBatch migration.Batch
+		batchSvcGetByNameErr   error
 
 		assertErr                  require.ErrorAssertionFunc
 		wantMigrationStatus        api.MigrationStatusType
@@ -625,6 +957,8 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 				MigrationStatus: api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
 				BatchName:       "one",
 			},
+			instanceSvcGetByUUIDInstance: migration.Instance{UUID: uuidA, Source: "one"},
+			batchSvcGetByNameBatch:       migration.Batch{Name: "one", Target: "one"},
 
 			assertErr:                  require.NoError,
 			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
@@ -720,10 +1054,30 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 				},
 			}
 
-			instanceSvc := migration.NewQueueService(repo, nil, nil, nil)
+			instanceSvc := &InstanceServiceMock{
+				GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.Instance, error) {
+					return &tc.instanceSvcGetByUUIDInstance, tc.instanceSvcGetByUUIDErr
+				},
+			}
+
+			batchSvc := &BatchServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
+					return &tc.batchSvcGetByNameBatch, tc.batchSvcGetByNameErr
+				},
+			}
+
+			sourceSvc := &SourceServiceMock{
+				RemoveActiveImportFunc: func(sourceName string) {},
+			}
+
+			targetSvc := &TargetServiceMock{
+				RemoveActiveImportFunc: func(targetName string) {},
+			}
+
+			queueSvc := migration.NewQueueService(repo, batchSvc, instanceSvc, sourceSvc, targetSvc)
 
 			// Run test
-			_, err := instanceSvc.ProcessWorkerUpdate(context.Background(), tc.uuidArg, tc.workerResponseTypeArg, tc.statusStringArg)
+			_, err := queueSvc.ProcessWorkerUpdate(context.Background(), tc.uuidArg, tc.workerResponseTypeArg, tc.statusStringArg)
 
 			// Assert
 			tc.assertErr(t, err)

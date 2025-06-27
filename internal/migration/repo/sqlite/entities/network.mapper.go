@@ -325,7 +325,7 @@ func GetNetworks(ctx context.Context, db dbtx, filters ...NetworkFilter) (_ []mi
 		} else if filter.Name == nil && filter.Source == nil {
 			return nil, fmt.Errorf("Cannot filter on empty NetworkFilter")
 		} else {
-			return nil, fmt.Errorf("No statement exists for the given Filter")
+			return nil, errors.New("No statement exists for the given Filter")
 		}
 	}
 

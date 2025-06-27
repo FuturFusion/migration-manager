@@ -35,6 +35,30 @@ var _ migration.TargetService = &TargetServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Target, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			GetCachedCreationsFunc: func(targetName string) int {
+//				panic("mock out the GetCachedCreations method")
+//			},
+//			GetCachedImportsFunc: func(targetName string) int {
+//				panic("mock out the GetCachedImports method")
+//			},
+//			InitCreateCacheFunc: func(initial map[string]int) error {
+//				panic("mock out the InitCreateCache method")
+//			},
+//			InitImportCacheFunc: func(initial map[string]int) error {
+//				panic("mock out the InitImportCache method")
+//			},
+//			RecordActiveImportFunc: func(targetName string)  {
+//				panic("mock out the RecordActiveImport method")
+//			},
+//			RecordCreationFunc: func(targetName string)  {
+//				panic("mock out the RecordCreation method")
+//			},
+//			RemoveActiveImportFunc: func(targetName string)  {
+//				panic("mock out the RemoveActiveImport method")
+//			},
+//			RemoveCreationFunc: func(targetName string)  {
+//				panic("mock out the RemoveCreation method")
+//			},
 //			UpdateFunc: func(ctx context.Context, name string, target *migration.Target) error {
 //				panic("mock out the Update method")
 //			},
@@ -59,6 +83,30 @@ type TargetServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Target, error)
+
+	// GetCachedCreationsFunc mocks the GetCachedCreations method.
+	GetCachedCreationsFunc func(targetName string) int
+
+	// GetCachedImportsFunc mocks the GetCachedImports method.
+	GetCachedImportsFunc func(targetName string) int
+
+	// InitCreateCacheFunc mocks the InitCreateCache method.
+	InitCreateCacheFunc func(initial map[string]int) error
+
+	// InitImportCacheFunc mocks the InitImportCache method.
+	InitImportCacheFunc func(initial map[string]int) error
+
+	// RecordActiveImportFunc mocks the RecordActiveImport method.
+	RecordActiveImportFunc func(targetName string)
+
+	// RecordCreationFunc mocks the RecordCreation method.
+	RecordCreationFunc func(targetName string)
+
+	// RemoveActiveImportFunc mocks the RemoveActiveImport method.
+	RemoveActiveImportFunc func(targetName string)
+
+	// RemoveCreationFunc mocks the RemoveCreation method.
+	RemoveCreationFunc func(targetName string)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, name string, target *migration.Target) error
@@ -96,6 +144,46 @@ type TargetServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetCachedCreations holds details about calls to the GetCachedCreations method.
+		GetCachedCreations []struct {
+			// TargetName is the targetName argument value.
+			TargetName string
+		}
+		// GetCachedImports holds details about calls to the GetCachedImports method.
+		GetCachedImports []struct {
+			// TargetName is the targetName argument value.
+			TargetName string
+		}
+		// InitCreateCache holds details about calls to the InitCreateCache method.
+		InitCreateCache []struct {
+			// Initial is the initial argument value.
+			Initial map[string]int
+		}
+		// InitImportCache holds details about calls to the InitImportCache method.
+		InitImportCache []struct {
+			// Initial is the initial argument value.
+			Initial map[string]int
+		}
+		// RecordActiveImport holds details about calls to the RecordActiveImport method.
+		RecordActiveImport []struct {
+			// TargetName is the targetName argument value.
+			TargetName string
+		}
+		// RecordCreation holds details about calls to the RecordCreation method.
+		RecordCreation []struct {
+			// TargetName is the targetName argument value.
+			TargetName string
+		}
+		// RemoveActiveImport holds details about calls to the RemoveActiveImport method.
+		RemoveActiveImport []struct {
+			// TargetName is the targetName argument value.
+			TargetName string
+		}
+		// RemoveCreation holds details about calls to the RemoveCreation method.
+		RemoveCreation []struct {
+			// TargetName is the targetName argument value.
+			TargetName string
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -106,12 +194,20 @@ type TargetServiceMock struct {
 			Target *migration.Target
 		}
 	}
-	lockCreate       sync.RWMutex
-	lockDeleteByName sync.RWMutex
-	lockGetAll       sync.RWMutex
-	lockGetAllNames  sync.RWMutex
-	lockGetByName    sync.RWMutex
-	lockUpdate       sync.RWMutex
+	lockCreate             sync.RWMutex
+	lockDeleteByName       sync.RWMutex
+	lockGetAll             sync.RWMutex
+	lockGetAllNames        sync.RWMutex
+	lockGetByName          sync.RWMutex
+	lockGetCachedCreations sync.RWMutex
+	lockGetCachedImports   sync.RWMutex
+	lockInitCreateCache    sync.RWMutex
+	lockInitImportCache    sync.RWMutex
+	lockRecordActiveImport sync.RWMutex
+	lockRecordCreation     sync.RWMutex
+	lockRemoveActiveImport sync.RWMutex
+	lockRemoveCreation     sync.RWMutex
+	lockUpdate             sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -283,6 +379,262 @@ func (mock *TargetServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetCachedCreations calls GetCachedCreationsFunc.
+func (mock *TargetServiceMock) GetCachedCreations(targetName string) int {
+	if mock.GetCachedCreationsFunc == nil {
+		panic("TargetServiceMock.GetCachedCreationsFunc: method is nil but TargetService.GetCachedCreations was just called")
+	}
+	callInfo := struct {
+		TargetName string
+	}{
+		TargetName: targetName,
+	}
+	mock.lockGetCachedCreations.Lock()
+	mock.calls.GetCachedCreations = append(mock.calls.GetCachedCreations, callInfo)
+	mock.lockGetCachedCreations.Unlock()
+	return mock.GetCachedCreationsFunc(targetName)
+}
+
+// GetCachedCreationsCalls gets all the calls that were made to GetCachedCreations.
+// Check the length with:
+//
+//	len(mockedTargetService.GetCachedCreationsCalls())
+func (mock *TargetServiceMock) GetCachedCreationsCalls() []struct {
+	TargetName string
+} {
+	var calls []struct {
+		TargetName string
+	}
+	mock.lockGetCachedCreations.RLock()
+	calls = mock.calls.GetCachedCreations
+	mock.lockGetCachedCreations.RUnlock()
+	return calls
+}
+
+// GetCachedImports calls GetCachedImportsFunc.
+func (mock *TargetServiceMock) GetCachedImports(targetName string) int {
+	if mock.GetCachedImportsFunc == nil {
+		panic("TargetServiceMock.GetCachedImportsFunc: method is nil but TargetService.GetCachedImports was just called")
+	}
+	callInfo := struct {
+		TargetName string
+	}{
+		TargetName: targetName,
+	}
+	mock.lockGetCachedImports.Lock()
+	mock.calls.GetCachedImports = append(mock.calls.GetCachedImports, callInfo)
+	mock.lockGetCachedImports.Unlock()
+	return mock.GetCachedImportsFunc(targetName)
+}
+
+// GetCachedImportsCalls gets all the calls that were made to GetCachedImports.
+// Check the length with:
+//
+//	len(mockedTargetService.GetCachedImportsCalls())
+func (mock *TargetServiceMock) GetCachedImportsCalls() []struct {
+	TargetName string
+} {
+	var calls []struct {
+		TargetName string
+	}
+	mock.lockGetCachedImports.RLock()
+	calls = mock.calls.GetCachedImports
+	mock.lockGetCachedImports.RUnlock()
+	return calls
+}
+
+// InitCreateCache calls InitCreateCacheFunc.
+func (mock *TargetServiceMock) InitCreateCache(initial map[string]int) error {
+	if mock.InitCreateCacheFunc == nil {
+		panic("TargetServiceMock.InitCreateCacheFunc: method is nil but TargetService.InitCreateCache was just called")
+	}
+	callInfo := struct {
+		Initial map[string]int
+	}{
+		Initial: initial,
+	}
+	mock.lockInitCreateCache.Lock()
+	mock.calls.InitCreateCache = append(mock.calls.InitCreateCache, callInfo)
+	mock.lockInitCreateCache.Unlock()
+	return mock.InitCreateCacheFunc(initial)
+}
+
+// InitCreateCacheCalls gets all the calls that were made to InitCreateCache.
+// Check the length with:
+//
+//	len(mockedTargetService.InitCreateCacheCalls())
+func (mock *TargetServiceMock) InitCreateCacheCalls() []struct {
+	Initial map[string]int
+} {
+	var calls []struct {
+		Initial map[string]int
+	}
+	mock.lockInitCreateCache.RLock()
+	calls = mock.calls.InitCreateCache
+	mock.lockInitCreateCache.RUnlock()
+	return calls
+}
+
+// InitImportCache calls InitImportCacheFunc.
+func (mock *TargetServiceMock) InitImportCache(initial map[string]int) error {
+	if mock.InitImportCacheFunc == nil {
+		panic("TargetServiceMock.InitImportCacheFunc: method is nil but TargetService.InitImportCache was just called")
+	}
+	callInfo := struct {
+		Initial map[string]int
+	}{
+		Initial: initial,
+	}
+	mock.lockInitImportCache.Lock()
+	mock.calls.InitImportCache = append(mock.calls.InitImportCache, callInfo)
+	mock.lockInitImportCache.Unlock()
+	return mock.InitImportCacheFunc(initial)
+}
+
+// InitImportCacheCalls gets all the calls that were made to InitImportCache.
+// Check the length with:
+//
+//	len(mockedTargetService.InitImportCacheCalls())
+func (mock *TargetServiceMock) InitImportCacheCalls() []struct {
+	Initial map[string]int
+} {
+	var calls []struct {
+		Initial map[string]int
+	}
+	mock.lockInitImportCache.RLock()
+	calls = mock.calls.InitImportCache
+	mock.lockInitImportCache.RUnlock()
+	return calls
+}
+
+// RecordActiveImport calls RecordActiveImportFunc.
+func (mock *TargetServiceMock) RecordActiveImport(targetName string) {
+	if mock.RecordActiveImportFunc == nil {
+		panic("TargetServiceMock.RecordActiveImportFunc: method is nil but TargetService.RecordActiveImport was just called")
+	}
+	callInfo := struct {
+		TargetName string
+	}{
+		TargetName: targetName,
+	}
+	mock.lockRecordActiveImport.Lock()
+	mock.calls.RecordActiveImport = append(mock.calls.RecordActiveImport, callInfo)
+	mock.lockRecordActiveImport.Unlock()
+	mock.RecordActiveImportFunc(targetName)
+}
+
+// RecordActiveImportCalls gets all the calls that were made to RecordActiveImport.
+// Check the length with:
+//
+//	len(mockedTargetService.RecordActiveImportCalls())
+func (mock *TargetServiceMock) RecordActiveImportCalls() []struct {
+	TargetName string
+} {
+	var calls []struct {
+		TargetName string
+	}
+	mock.lockRecordActiveImport.RLock()
+	calls = mock.calls.RecordActiveImport
+	mock.lockRecordActiveImport.RUnlock()
+	return calls
+}
+
+// RecordCreation calls RecordCreationFunc.
+func (mock *TargetServiceMock) RecordCreation(targetName string) {
+	if mock.RecordCreationFunc == nil {
+		panic("TargetServiceMock.RecordCreationFunc: method is nil but TargetService.RecordCreation was just called")
+	}
+	callInfo := struct {
+		TargetName string
+	}{
+		TargetName: targetName,
+	}
+	mock.lockRecordCreation.Lock()
+	mock.calls.RecordCreation = append(mock.calls.RecordCreation, callInfo)
+	mock.lockRecordCreation.Unlock()
+	mock.RecordCreationFunc(targetName)
+}
+
+// RecordCreationCalls gets all the calls that were made to RecordCreation.
+// Check the length with:
+//
+//	len(mockedTargetService.RecordCreationCalls())
+func (mock *TargetServiceMock) RecordCreationCalls() []struct {
+	TargetName string
+} {
+	var calls []struct {
+		TargetName string
+	}
+	mock.lockRecordCreation.RLock()
+	calls = mock.calls.RecordCreation
+	mock.lockRecordCreation.RUnlock()
+	return calls
+}
+
+// RemoveActiveImport calls RemoveActiveImportFunc.
+func (mock *TargetServiceMock) RemoveActiveImport(targetName string) {
+	if mock.RemoveActiveImportFunc == nil {
+		panic("TargetServiceMock.RemoveActiveImportFunc: method is nil but TargetService.RemoveActiveImport was just called")
+	}
+	callInfo := struct {
+		TargetName string
+	}{
+		TargetName: targetName,
+	}
+	mock.lockRemoveActiveImport.Lock()
+	mock.calls.RemoveActiveImport = append(mock.calls.RemoveActiveImport, callInfo)
+	mock.lockRemoveActiveImport.Unlock()
+	mock.RemoveActiveImportFunc(targetName)
+}
+
+// RemoveActiveImportCalls gets all the calls that were made to RemoveActiveImport.
+// Check the length with:
+//
+//	len(mockedTargetService.RemoveActiveImportCalls())
+func (mock *TargetServiceMock) RemoveActiveImportCalls() []struct {
+	TargetName string
+} {
+	var calls []struct {
+		TargetName string
+	}
+	mock.lockRemoveActiveImport.RLock()
+	calls = mock.calls.RemoveActiveImport
+	mock.lockRemoveActiveImport.RUnlock()
+	return calls
+}
+
+// RemoveCreation calls RemoveCreationFunc.
+func (mock *TargetServiceMock) RemoveCreation(targetName string) {
+	if mock.RemoveCreationFunc == nil {
+		panic("TargetServiceMock.RemoveCreationFunc: method is nil but TargetService.RemoveCreation was just called")
+	}
+	callInfo := struct {
+		TargetName string
+	}{
+		TargetName: targetName,
+	}
+	mock.lockRemoveCreation.Lock()
+	mock.calls.RemoveCreation = append(mock.calls.RemoveCreation, callInfo)
+	mock.lockRemoveCreation.Unlock()
+	mock.RemoveCreationFunc(targetName)
+}
+
+// RemoveCreationCalls gets all the calls that were made to RemoveCreation.
+// Check the length with:
+//
+//	len(mockedTargetService.RemoveCreationCalls())
+func (mock *TargetServiceMock) RemoveCreationCalls() []struct {
+	TargetName string
+} {
+	var calls []struct {
+		TargetName string
+	}
+	mock.lockRemoveCreation.RLock()
+	calls = mock.calls.RemoveCreation
+	mock.lockRemoveCreation.RUnlock()
 	return calls
 }
 

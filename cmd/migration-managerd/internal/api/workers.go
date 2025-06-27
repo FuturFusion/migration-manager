@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -109,7 +110,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			continue
 		}
 
-		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, string(api.MIGRATIONSTATUS_CREATING), blockedEntries[i].NeedsDiskImport)
+		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, string(api.MIGRATIONSTATUS_WAITING), blockedEntries[i].NeedsDiskImport)
 		if err != nil {
 			return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
 		}
@@ -133,7 +134,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			return err
 		}
 
-		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_QUEUED, api.MIGRATIONSTATUS_CREATING)
+		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_QUEUED, api.MIGRATIONSTATUS_WAITING)
 		if err != nil {
 			return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
 		}
@@ -186,6 +187,32 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			_, err := d.batch.UpdateStatusByName(ctx, state.Batch.Name, api.BATCHSTATUS_RUNNING, string(api.BATCHSTATUS_RUNNING))
 			if err != nil {
 				return fmt.Errorf("Failed to update batch status: %w", err)
+			}
+		}
+
+		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WAITING)
+		if err != nil {
+			return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
+		}
+
+		for _, state := range migrationState {
+			var properties api.IncusProperties
+			err = json.Unmarshal(state.Target.Properties, &properties)
+			if err != nil {
+				return err
+			}
+
+			for _, inst := range state.Instances {
+				if properties.CreateLimit > 0 && d.target.GetCachedCreations(state.Target.Name) >= properties.CreateLimit {
+					log.Warn("Create limit reached for target, waiting for existing instances to finish creating", slog.String("target", state.Target.Name))
+					continue
+				}
+
+				d.target.RecordCreation(state.Target.Name)
+				_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, "Creating target instance definition", false)
+				if err != nil {
+					return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
+				}
 			}
 		}
 
@@ -328,6 +355,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	reverter := revert.New()
 	defer reverter.Fail()
 	reverter.Add(func() {
+		d.target.RemoveCreation(t.Name)
 		log := log.With(slog.String("revert", "set instance failed"))
 		var errString string
 		if _err != nil {
@@ -417,6 +445,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 
 	// Now that the VM agent is up, expect a worker update to come soon..
 	d.queueHandler.RecordWorkerUpdate(inst.UUID)
+	d.target.RemoveCreation(t.Name)
 
 	reverter.Success()
 

@@ -9,6 +9,7 @@ import (
 type MigrationStatusType string
 
 const (
+	MIGRATIONSTATUS_WAITING           MigrationStatusType = "Waiting"
 	MIGRATIONSTATUS_CREATING          MigrationStatusType = "Creating new VM"
 	MIGRATIONSTATUS_BLOCKED           MigrationStatusType = "Blocked"
 	MIGRATIONSTATUS_BACKGROUND_IMPORT MigrationStatusType = "Performing background import tasks"
@@ -24,6 +25,7 @@ func (m MigrationStatusType) Validate() error {
 	switch m {
 	case MIGRATIONSTATUS_BACKGROUND_IMPORT:
 	case MIGRATIONSTATUS_BLOCKED:
+	case MIGRATIONSTATUS_WAITING:
 	case MIGRATIONSTATUS_CREATING:
 	case MIGRATIONSTATUS_ERROR:
 	case MIGRATIONSTATUS_FINAL_IMPORT:

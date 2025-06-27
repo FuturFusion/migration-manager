@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -120,6 +121,22 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 			},
 			TargetType: api.TARGETTYPE_INCUS,
 		}
+
+		var importLimit int64 = 50
+		importLimit, err = c.global.Asker.AskInt(fmt.Sprintf("How many instances can be concurrently imported? [default=%d]: ", importLimit), 0, 1024, strconv.Itoa(int(importLimit)), nil)
+		if err != nil {
+			return err
+		}
+
+		incusProperties.ImportLimit = int(importLimit)
+
+		var createLimit int64 = 10
+		createLimit, err = c.global.Asker.AskInt(fmt.Sprintf("How many instances can be concurrently created? [default=%d]: ", createLimit), 0, 1024, strconv.Itoa(int(createLimit)), nil)
+		if err != nil {
+			return err
+		}
+
+		incusProperties.CreateLimit = int(createLimit)
 
 		authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [default=oidc]: ", []string{"oidc", "tls"}, "oidc")
 		if err != nil {
@@ -363,6 +380,22 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+
+		importLimit := int64(incusProperties.ImportLimit)
+		importLimit, err = c.global.Asker.AskInt(fmt.Sprintf("How many instances can be concurrently imported? [default=%d]: ", importLimit), 0, 1024, strconv.Itoa(int(importLimit)), nil)
+		if err != nil {
+			return err
+		}
+
+		incusProperties.ImportLimit = int(importLimit)
+
+		createLimit := int64(incusProperties.CreateLimit)
+		createLimit, err = c.global.Asker.AskInt(fmt.Sprintf("How many instances can be concurrently created? [default=%d]: ", createLimit), 0, 1024, strconv.Itoa(int(createLimit)), nil)
+		if err != nil {
+			return err
+		}
+
+		incusProperties.CreateLimit = int(createLimit)
 
 		updateAuth, err := c.global.Asker.AskBool("Update configured authentication? (yes/no) [default=no]: ", "no")
 		if err != nil {

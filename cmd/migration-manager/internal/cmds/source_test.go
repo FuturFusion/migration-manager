@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/spf13/cobra"
@@ -84,6 +85,7 @@ func TestSourceAdd(t *testing.T) {
 		trustedServerCertificateFingerprint string
 		username                            string
 		password                            string
+		importLimit                         int
 		migrationManagerdHTTPStatus         int
 		migrationManagerdResponse           string
 
@@ -112,6 +114,7 @@ func TestSourceAdd(t *testing.T) {
 			trustedServerCertificateFingerprint: testcert.LocalhostCertFingerprint,
 			username:                            vcUser,
 			password:                            vcPassword,
+			importLimit:                         10,
 			migrationManagerdHTTPStatus:         http.StatusOK,
 			migrationManagerdResponse:           `{"Metadata": {"ConnectivityStatus": "OK"}}`,
 
@@ -153,6 +156,9 @@ func TestSourceAdd(t *testing.T) {
 				},
 				AskPasswordOnceFunc: func(question string) string {
 					return tc.password
+				},
+				AskIntFunc: func(question string, minValue, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error) {
+					return int64(tc.importLimit), nil
 				},
 			}
 
@@ -462,6 +468,7 @@ func TestSourceUpdate(t *testing.T) {
 				{Value: vCenterSimulator.URL.String()},
 				{Value: vcUser},
 				{Value: vcPassword},
+				{Value: strconv.Itoa(10)},
 				{Value: testcert.LocalhostCertFingerprint},
 			},
 			migrationManagerdResponses: []queue.Item[httpResponse]{
@@ -527,6 +534,10 @@ func TestSourceUpdate(t *testing.T) {
 				AskPasswordOnceFunc: func(question string) string {
 					ret, _ := queue.Pop(t, &tc.askStringReturns)
 					return ret
+				},
+				AskIntFunc: func(question string, minValue, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error) {
+					ret, _ := queue.Pop(t, &tc.askStringReturns)
+					return strconv.ParseInt(ret, 0, 64)
 				},
 			}
 

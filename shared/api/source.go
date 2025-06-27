@@ -68,4 +68,8 @@ type VMwareProperties struct {
 
 	// Connectivity status of this source
 	ConnectivityStatus ExternalConnectivityStatus `json:"connectivity_status" yaml:"connectivity_status"`
+
+	// Maximum number of concurrent imports that can occur
+	// Example: 10
+	ImportLimit int `json:"import_limit,omitempty" yaml:"import_limit,omitempty"`
 }
