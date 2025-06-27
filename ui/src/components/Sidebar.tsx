@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { FaArrowRight, FaArrowLeft } from "react-icons/fa";
 import { BsBox, BsStack, BsFillDatabaseFill } from "react-icons/bs";
 import { MdLogin, MdLogout } from "react-icons/md";
+import { PiNetwork } from "react-icons/pi";
 import { useAuth } from "context/authContext";
 
 const Sidebar = () => {
@@ -40,6 +41,11 @@ const Sidebar = () => {
                 <li>
                   <Nav.Link as={Link} to="/ui/instances">
                     <BsBox /> Instances
+                  </Nav.Link>
+                </li>
+                <li>
+                  <Nav.Link as={Link} to="/ui/networks">
+                    <PiNetwork /> Networks
                   </Nav.Link>
                 </li>
                 <li>
