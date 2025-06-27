@@ -8,9 +8,23 @@ import { bytesToHumanReadable, hasOverride } from "util/instance";
 
 interface Props {
   instances: Instance[];
+  isLoading: boolean;
+  error: Error | null;
 }
 
-const InstanceDataTable: FC<Props> = ({ instances }) => {
+const InstanceDataTable: FC<Props> = ({ instances, isLoading, error }) => {
+  if (isLoading) {
+    return <div>Loading instances...</div>;
+  }
+
+  if (error) {
+    return (
+      <div>
+        Error while loading instances:<pre>{error.message}</pre>
+      </div>
+    );
+  }
+
   const headers = ["Source", "Location", "OS version", "CPU", "Memory", ""];
   const rows = instances.map((item) => {
     const className =
