@@ -16,9 +16,9 @@ import (
 )
 
 func TestNetworkDatabaseActions(t *testing.T) {
-	networkA := migration.Network{Name: "networkA", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Properties: []byte("{}")}
-	networkB := migration.Network{Name: "networkB", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Config: map[string]string{"network": "foo"}, Properties: []byte("{}")}
-	networkC := migration.Network{Name: "networkC", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkC", Source: testSource.Name, Config: map[string]string{"network": "bar", "biz": "baz"}, Properties: []byte("{}")}
+	networkA := migration.Network{Identifier: "networkA", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Properties: []byte("{}")}
+	networkB := migration.Network{Identifier: "networkB", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Overrides: api.NetworkOverride{Name: "foo"}, Properties: []byte("{}")}
+	networkC := migration.Network{Identifier: "networkC", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkC", Source: testSource.Name, Overrides: api.NetworkOverride{Name: "bar"}, Properties: []byte("{}")}
 
 	ctx := context.Background()
 
@@ -63,26 +63,26 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.Len(t, networks, 3)
 
 	// Should get back networkA unchanged.
-	dbNetworkA, err := network.GetByNameAndSource(ctx, networkA.Name, networkA.Source)
+	dbNetworkA, err := network.GetByNameAndSource(ctx, networkA.Identifier, networkA.Source)
 	require.NoError(t, err)
 	require.Equal(t, networkA, *dbNetworkA)
 
-	dbNetworkA, err = network.GetByNameAndSource(ctx, networkA.Name, networkA.Source)
+	dbNetworkA, err = network.GetByNameAndSource(ctx, networkA.Identifier, networkA.Source)
 	require.NoError(t, err)
 	require.Equal(t, networkA, *dbNetworkA)
 
 	// Test updating a network.
-	networkB.Config = map[string]string{"key": "value"}
+	networkB.Overrides.Name = "baz"
 	err = network.Update(ctx, networkB)
 	require.NoError(t, err)
-	dbNetworkB, err := network.GetByNameAndSource(ctx, networkB.Name, networkB.Source)
+	dbNetworkB, err := network.GetByNameAndSource(ctx, networkB.Identifier, networkB.Source)
 	require.NoError(t, err)
 	require.Equal(t, networkB, *dbNetworkB)
 
 	// Delete a network.
-	err = network.DeleteByNameAndSource(ctx, networkA.Name, networkA.Source)
+	err = network.DeleteByNameAndSource(ctx, networkA.Identifier, networkA.Source)
 	require.NoError(t, err)
-	_, err = network.GetByNameAndSource(ctx, networkA.Name, networkA.Source)
+	_, err = network.GetByNameAndSource(ctx, networkA.Identifier, networkA.Source)
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Should have two networks remaining.

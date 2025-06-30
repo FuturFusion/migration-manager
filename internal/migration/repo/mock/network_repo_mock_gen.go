@@ -35,9 +35,6 @@ var _ migration.NetworkRepo = &NetworkRepoMock{}
 //			GetByNameAndSourceFunc: func(ctx context.Context, name string, src string) (*migration.Network, error) {
 //				panic("mock out the GetByNameAndSource method")
 //			},
-//			RenameBySourceFunc: func(ctx context.Context, oldName string, newName string, src string) error {
-//				panic("mock out the RenameBySource method")
-//			},
 //			UpdateFunc: func(ctx context.Context, network migration.Network) error {
 //				panic("mock out the Update method")
 //			},
@@ -62,9 +59,6 @@ type NetworkRepoMock struct {
 
 	// GetByNameAndSourceFunc mocks the GetByNameAndSource method.
 	GetByNameAndSourceFunc func(ctx context.Context, name string, src string) (*migration.Network, error)
-
-	// RenameBySourceFunc mocks the RenameBySource method.
-	RenameBySourceFunc func(ctx context.Context, oldName string, newName string, src string) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, network migration.Network) error
@@ -108,17 +102,6 @@ type NetworkRepoMock struct {
 			// Src is the src argument value.
 			Src string
 		}
-		// RenameBySource holds details about calls to the RenameBySource method.
-		RenameBySource []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// OldName is the oldName argument value.
-			OldName string
-			// NewName is the newName argument value.
-			NewName string
-			// Src is the src argument value.
-			Src string
-		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -132,7 +115,6 @@ type NetworkRepoMock struct {
 	lockGetAll                sync.RWMutex
 	lockGetAllBySource        sync.RWMutex
 	lockGetByNameAndSource    sync.RWMutex
-	lockRenameBySource        sync.RWMutex
 	lockUpdate                sync.RWMutex
 }
 
@@ -317,50 +299,6 @@ func (mock *NetworkRepoMock) GetByNameAndSourceCalls() []struct {
 	mock.lockGetByNameAndSource.RLock()
 	calls = mock.calls.GetByNameAndSource
 	mock.lockGetByNameAndSource.RUnlock()
-	return calls
-}
-
-// RenameBySource calls RenameBySourceFunc.
-func (mock *NetworkRepoMock) RenameBySource(ctx context.Context, oldName string, newName string, src string) error {
-	if mock.RenameBySourceFunc == nil {
-		panic("NetworkRepoMock.RenameBySourceFunc: method is nil but NetworkRepo.RenameBySource was just called")
-	}
-	callInfo := struct {
-		Ctx     context.Context
-		OldName string
-		NewName string
-		Src     string
-	}{
-		Ctx:     ctx,
-		OldName: oldName,
-		NewName: newName,
-		Src:     src,
-	}
-	mock.lockRenameBySource.Lock()
-	mock.calls.RenameBySource = append(mock.calls.RenameBySource, callInfo)
-	mock.lockRenameBySource.Unlock()
-	return mock.RenameBySourceFunc(ctx, oldName, newName, src)
-}
-
-// RenameBySourceCalls gets all the calls that were made to RenameBySource.
-// Check the length with:
-//
-//	len(mockedNetworkRepo.RenameBySourceCalls())
-func (mock *NetworkRepoMock) RenameBySourceCalls() []struct {
-	Ctx     context.Context
-	OldName string
-	NewName string
-	Src     string
-} {
-	var calls []struct {
-		Ctx     context.Context
-		OldName string
-		NewName string
-		Src     string
-	}
-	mock.lockRenameBySource.RLock()
-	calls = mock.calls.RenameBySource
-	mock.lockRenameBySource.RUnlock()
 	return calls
 }
 

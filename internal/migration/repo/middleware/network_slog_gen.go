@@ -125,27 +125,6 @@ func (_d NetworkRepoWithSlog) GetByNameAndSource(ctx context.Context, name strin
 	return _d._base.GetByNameAndSource(ctx, name, src)
 }
 
-// RenameBySource implements _sourceMigration.NetworkRepo
-func (_d NetworkRepoWithSlog) RenameBySource(ctx context.Context, oldName string, newName string, src string) (err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-		slog.String("oldName", oldName),
-		slog.String("newName", newName),
-		slog.String("src", src),
-	).Debug("NetworkRepoWithSlog: calling RenameBySource")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("err", err),
-		)
-		if err != nil {
-			log.Error("NetworkRepoWithSlog: method RenameBySource returned an error")
-		} else {
-			log.Debug("NetworkRepoWithSlog: method RenameBySource finished")
-		}
-	}()
-	return _d._base.RenameBySource(ctx, oldName, newName, src)
-}
-
 // Update implements _sourceMigration.NetworkRepo
 func (_d NetworkRepoWithSlog) Update(ctx context.Context, network _sourceMigration.Network) (err error) {
 	_d._log.With(
