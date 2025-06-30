@@ -89,16 +89,11 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Location", "Source", "Type", "Config"}
+	header := []string{"Identifier", "Name", "Location", "Source", "Type"}
 	data := [][]string{}
 
 	for _, n := range networks {
-		configString := []byte{}
-		if n.Config != nil {
-			configString, _ = json.Marshal(n.Config)
-		}
-
-		data = append(data, []string{n.Identifier, n.Location, n.Source, string(n.Type), string(configString)})
+		data = append(data, []string{n.Identifier, n.Name(), n.Location, n.Source, string(n.Type)})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
@@ -186,27 +181,10 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Prompt for updates.
-	origNetworkName := network.Identifier
-	configString := []byte{}
-	if network.Config != nil {
-		configString, err = json.Marshal(network.Config)
-		if err != nil {
-			return err
-		}
-	}
+	origNetworkName := network.Name()
+	defaultConfig := "[default=" + origNetworkName + "]: "
 
-	defaultConfig := "(empty to skip): "
-	if len(configString) > 0 {
-		defaultConfig = "[default=" + string(configString) + "]: "
-	}
-
-	_, err = c.global.Asker.AskString("JSON config "+defaultConfig, string(configString), func(s string) error {
-		if s != "" {
-			return json.Unmarshal([]byte(s), &network.Config)
-		}
-
-		return nil
-	})
+	_, err = c.global.Asker.AskString("Target network name "+defaultConfig, origNetworkName, nil)
 	if err != nil {
 		return err
 	}
@@ -214,7 +192,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	newNetworkName := network.Identifier
 
 	// Update the network.
-	content, err := json.Marshal(network.NetworkPut)
+	content, err := json.Marshal(network.NetworkOverride)
 	if err != nil {
 		return err
 	}
