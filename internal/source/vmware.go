@@ -382,7 +382,7 @@ func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) (migration.Ne
 			}
 
 			networksInUse = append(networksInUse, migration.Network{
-				Name:       id,
+				Identifier: id,
 				Type:       netType,
 				Location:   networkLocationsByID[id],
 				Source:     s.Name,

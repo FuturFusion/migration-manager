@@ -222,9 +222,9 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Missing 'source' query paramterer"))
 	}
 
-	var network api.NetworkPut
+	var overrides api.NetworkOverride
 
-	err := json.NewDecoder(r.Body).Decode(&network)
+	err := json.NewDecoder(r.Body).Decode(&overrides)
 	if err != nil {
 		return response.BadRequest(err)
 	}
@@ -250,15 +250,15 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 
 	err = d.network.Update(ctx, &migration.Network{
 		ID:         currentNetwork.ID,
-		Name:       currentNetwork.Name,
+		Identifier: currentNetwork.Identifier,
 		Location:   currentNetwork.Location,
 		Type:       currentNetwork.Type,
 		Properties: currentNetwork.Properties,
 		Source:     currentNetwork.Source,
-		Config:     network.Config,
+		Overrides:  overrides,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", currentNetwork.Name, err))
+		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", currentNetwork.Identifier, err))
 	}
 
 	err = trans.Commit()
@@ -266,5 +266,5 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+currentNetwork.Name)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+currentNetwork.Identifier)
 }

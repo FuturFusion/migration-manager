@@ -217,36 +217,21 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 		nicDeviceName := fmt.Sprintf("eth%d", idx)
 		var baseNetwork migration.Network
 		for _, net := range allNetworks {
-			if nic.ID == net.Name && i.Source == net.Source {
+			if nic.ID == net.Identifier && i.Source == net.Source {
 				baseNetwork = net
 				break
 			}
 		}
 
-		if baseNetwork.Name == "" {
+		if baseNetwork.Identifier == "" {
 			err = fmt.Errorf("No network %q associated with instance %q on target %q", nic.ID, props.Name, t.GetName())
 			return err
 		}
 
-		// Pickup device name override if set.
-		deviceName, ok := baseNetwork.Config["name"]
-		if ok {
-			nicDeviceName = deviceName
-		}
-
-		// Copy the base network definitions.
-		apiDef.Devices[nicDeviceName] = make(map[string]string, len(baseNetwork.Config))
-		for k, v := range baseNetwork.Config {
-			apiDef.Devices[nicDeviceName][k] = v
-		}
-
-		// If no network is given, set "default" as the default.
-		if apiDef.Devices[nicDeviceName]["network"] == "" {
-			if baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
-				apiDef.Devices[nicDeviceName]["network"] = strings.ReplaceAll(filepath.Base(nic.Network), " ", "-")
-			} else {
-				apiDef.Devices[nicDeviceName]["network"] = "default"
-			}
+		if baseNetwork.Overrides.Name != "" || baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
+			apiDef.Devices[nicDeviceName]["network"] = baseNetwork.ToAPI().Name()
+		} else {
+			apiDef.Devices[nicDeviceName]["network"] = "default"
 		}
 
 		// Set a few forced overrides.

@@ -297,22 +297,22 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			// Build maps to make comparison easier.
 			unassignedNetworksByName := map[string]migration.Network{}
 			for _, net := range migration.FilterUsedNetworks(allNetworks, unassignedInstances) {
-				unassignedNetworksByName[net.Name] = net
+				unassignedNetworksByName[net.Identifier] = net
 			}
 
 			for _, dbNetwork := range allNetworks {
 				// If the network is already assigned, then omit it from consideration.
-				network, ok := unassignedNetworksByName[dbNetwork.Name]
+				network, ok := unassignedNetworksByName[dbNetwork.Identifier]
 				if !ok {
-					_, ok := srcNetworks[dbNetwork.Name]
+					_, ok := srcNetworks[dbNetwork.Identifier]
 					if ok {
-						delete(srcNetworks, dbNetwork.Name)
+						delete(srcNetworks, dbNetwork.Identifier)
 					}
 
 					continue
 				}
 
-				existingNetworks[network.Name] = network
+				existingNetworks[network.Identifier] = network
 			}
 
 			err = d.syncNetworksFromSource(ctx, srcName, d.network, existingNetworks, srcNetworks)
@@ -402,11 +402,11 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 	for name, network := range srcNetworks {
 		_, ok := existingNetworks[name]
 		if !ok {
-			log := log.With(slog.String("network_id", network.Name), slog.String("network", network.Location))
+			log := log.With(slog.String("network_id", network.Identifier), slog.String("network", network.Location))
 			log.Info("Recording new network detected on source")
 			_, err := n.Create(ctx, network)
 			if err != nil {
-				return fmt.Errorf("Failed to create network %q (%q): %w", network.Name, network.Location, err)
+				return fmt.Errorf("Failed to create network %q (%q): %w", network.Identifier, network.Location, err)
 			}
 		}
 	}
@@ -710,7 +710,7 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 	instanceMap := make(map[uuid.UUID]migration.Instance, len(instances))
 
 	for _, network := range networks {
-		networkMap[network.Name] = network
+		networkMap[network.Identifier] = network
 	}
 
 	for _, inst := range instances {

@@ -148,6 +148,11 @@ linters:
         source: '^//generate-database:mapper '
         text: comment-spacing
       - linters:
+          - revive
+        # It's useful to have a util package but revive disagrees.
+        source: '^package util$'
+        text: var-naming
+      - linters:
           - sqlclosecheck
         # migration-manager uses globally persisting prepared statements accessed with the Stmt helper. We don't want to close these.
         source: ' Stmt\('
