@@ -58,6 +58,13 @@ const SourceOverview = () => {
           {source?.properties.trusted_server_certificate_fingerprint}
         </div>
       </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Import limit</div>
+        <div className="col-10 detail-table-cell">
+          {" "}
+          {source?.properties.import_limit}
+        </div>
+      </div>
     </div>
   );
 };

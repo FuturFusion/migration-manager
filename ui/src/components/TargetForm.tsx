@@ -13,6 +13,8 @@ interface Props {
 }
 
 const TargetForm: FC<Props> = ({ target, onSubmit }) => {
+  const importLimit = 50;
+  const createLimit = 10;
   const [searchParams] = useSearchParams();
   const certFingerprint = searchParams.get("fingerprint");
   const [showFingerprintModal, setShowFingerprintModal] =
@@ -50,6 +52,8 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
     tlsClientCert: "",
     tlsClientKey: "",
     trustedServerCertificateFingerprint: "",
+    importLimit: importLimit,
+    createLimit: createLimit,
   };
 
   if (target) {
@@ -62,6 +66,8 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
       tlsClientKey: target.properties.tls_client_key,
       trustedServerCertificateFingerprint:
         target.properties.trusted_server_certificate_fingerprint,
+      importLimit: target.properties.import_limit || importLimit,
+      createLimit: target.properties.create_limit || createLimit,
     };
   }
 
@@ -78,6 +84,8 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
           tls_client_key: values.tlsClientKey,
           trusted_server_certificate_fingerprint:
             values.trustedServerCertificateFingerprint,
+          import_limit: values.importLimit,
+          create_limit: values.createLimit,
         },
       };
 
@@ -231,6 +239,40 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
             />
             <Form.Control.Feedback type="invalid">
               {formik.errors.trustedServerCertificateFingerprint}
+            </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="importLimit">
+            <Form.Label>Import limit</Form.Label>
+            <Form.Control
+              type="number"
+              name="importLimit"
+              value={formik.values.importLimit}
+              disabled={formik.isSubmitting}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              isInvalid={
+                !!formik.errors.importLimit && formik.touched.importLimit
+              }
+            />
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.importLimit}
+            </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="createLimit">
+            <Form.Label>Create limit</Form.Label>
+            <Form.Control
+              type="number"
+              name="createLimit"
+              value={formik.values.createLimit}
+              disabled={formik.isSubmitting}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              isInvalid={
+                !!formik.errors.createLimit && formik.touched.createLimit
+              }
+            />
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.createLimit}
             </Form.Control.Feedback>
           </Form.Group>
         </Form>

@@ -6,6 +6,7 @@ export interface VMwareProperties {
   password: string;
   trusted_server_certificate_fingerprint: string;
   connectivity_status?: ExternalConnectivityStatus;
+  import_limit: number;
 }
 
 export interface NSXProperties {
@@ -14,6 +15,7 @@ export interface NSXProperties {
   password: string;
   trusted_server_certificate_fingerprint: string;
   connectivity_status?: ExternalConnectivityStatus;
+  import_limit: number;
 }
 
 export interface Source {
@@ -29,4 +31,5 @@ export interface SourceFormValues {
   username: string;
   password: string;
   trustedServerCertificateFingerprint: string;
+  importLimit: number;
 }
