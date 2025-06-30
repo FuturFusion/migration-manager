@@ -1,6 +1,10 @@
 package api
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"path/filepath"
+	"strings"
+)
 
 type NetworkType string
 
@@ -22,7 +26,7 @@ const (
 //
 // swagger:model
 type Network struct {
-	NetworkPut
+	NetworkOverride
 
 	// The identifier of the network
 	// Example: network-23
@@ -44,11 +48,20 @@ type Network struct {
 	Properties json.RawMessage `json:"properties" yaml:"properties"`
 }
 
-// NetworkPut defines the configurable properties of Network.
+// NetworkOverride defines the configurable properties of Network.
 //
 // swagger:model
-type NetworkPut struct {
-	// Any network-specific config options
-	// Example: {"network": "vmware", "ipv6.address": "none"}
-	Config map[string]string `json:"config" yaml:"config"`
+type NetworkOverride struct {
+	// Name of the network on the target.
+	// Example: "vmware"
+	Name string `json:"name" yaml:"name"`
+}
+
+// Name returns the overrided network name, or transforms the default name into an API compatible one.
+func (n Network) Name() string {
+	if n.NetworkOverride.Name != "" {
+		return n.NetworkOverride.Name
+	}
+
+	return strings.ReplaceAll(filepath.Base(n.Location), " ", "-")
 }
