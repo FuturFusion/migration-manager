@@ -23,6 +23,5 @@ type NetworkRepo interface {
 	GetAllBySource(ctx context.Context, src string) (Networks, error)
 	GetByNameAndSource(ctx context.Context, name string, src string) (*Network, error)
 	Update(ctx context.Context, network Network) error
-	RenameBySource(ctx context.Context, oldName string, newName string, src string) error
 	DeleteByNameAndSource(ctx context.Context, name string, src string) error
 }

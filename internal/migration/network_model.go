@@ -9,14 +9,15 @@ import (
 )
 
 type Network struct {
-	ID       int64
-	Type     api.NetworkType
-	Name     string `db:"primary=yes"`
-	Location string
-	Source   string `db:"primary=yes&join=sources.name"`
+	ID         int64
+	Type       api.NetworkType
+	Identifier string `db:"primary=yes"`
+	Location   string
+	Source     string `db:"primary=yes&join=sources.name"`
 
-	Properties json.RawMessage   `db:"marshal=json"`
-	Config     map[string]string `db:"marshal=json"`
+	Properties json.RawMessage `db:"marshal=json"`
+
+	Overrides api.NetworkOverride `db:"marshal=json"`
 }
 
 func (n Network) Validate() error {
@@ -24,7 +25,7 @@ func (n Network) Validate() error {
 		return NewValidationErrf("Invalid network, id can not be negative")
 	}
 
-	if n.Name == "" {
+	if n.Identifier == "" {
 		return NewValidationErrf("Invalid network, name can not be empty")
 	}
 
@@ -63,7 +64,7 @@ func FilterUsedNetworks(nets Networks, vms Instances) Networks {
 
 	usedNetworks := Networks{}
 	for _, n := range nets {
-		src, ok := instanceNICsToSources[n.Name]
+		src, ok := instanceNICsToSources[n.Identifier]
 		if ok && n.Source == src {
 			usedNetworks = append(usedNetworks, n)
 		}
@@ -77,13 +78,11 @@ type Networks []Network
 // ToAPI returns the API representation of a network.
 func (n Network) ToAPI() api.Network {
 	return api.Network{
-		Identifier: n.Name,
-		Location:   n.Location,
-		Source:     n.Source,
-		Type:       n.Type,
-		Properties: n.Properties,
-		NetworkPut: api.NetworkPut{
-			Config: n.Config,
-		},
+		Identifier:      n.Identifier,
+		Location:        n.Location,
+		Source:          n.Source,
+		Type:            n.Type,
+		Properties:      n.Properties,
+		NetworkOverride: n.Overrides,
 	}
 }

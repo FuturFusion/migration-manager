@@ -39,12 +39,8 @@ func (n network) GetByNameAndSource(ctx context.Context, name string, srcName st
 
 func (n network) Update(ctx context.Context, in migration.Network) error {
 	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, n.db), func(ctx context.Context, tx transaction.TX) error {
-		return entities.UpdateNetwork(ctx, tx, in.Name, in.Source, in)
+		return entities.UpdateNetwork(ctx, tx, in.Identifier, in.Source, in)
 	})
-}
-
-func (n network) RenameBySource(ctx context.Context, oldName string, newName string, srcName string) error {
-	return entities.RenameNetwork(ctx, transaction.GetDBTX(ctx, n.db), oldName, srcName, newName)
 }
 
 func (n network) DeleteByNameAndSource(ctx context.Context, name string, srcName string) error {
