@@ -14,6 +14,7 @@ interface Props {
 }
 
 const SourceForm: FC<Props> = ({ source, onSubmit }) => {
+  const importLimit = 50;
   const [searchParams] = useSearchParams();
   const certFingerprint = searchParams.get("fingerprint");
   const [showFingerprintModal, setShowFingerprintModal] =
@@ -54,6 +55,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
     username: "",
     password: "",
     trustedServerCertificateFingerprint: "",
+    importLimit: importLimit,
   };
 
   if (source) {
@@ -65,6 +67,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
       password: source.properties.password,
       trustedServerCertificateFingerprint:
         source.properties.trusted_server_certificate_fingerprint,
+      importLimit: source.properties.import_limit || importLimit,
     };
   }
 
@@ -81,6 +84,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
           password: values.password,
           trusted_server_certificate_fingerprint:
             values.trustedServerCertificateFingerprint,
+          import_limit: values.importLimit,
         },
       };
 
@@ -200,6 +204,23 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
             />
             <Form.Control.Feedback type="invalid">
               {formik.errors.trustedServerCertificateFingerprint}
+            </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="importLimit">
+            <Form.Label>Import limit</Form.Label>
+            <Form.Control
+              type="number"
+              name="importLimit"
+              value={formik.values.importLimit}
+              disabled={formik.isSubmitting}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              isInvalid={
+                !!formik.errors.importLimit && formik.touched.importLimit
+              }
+            />
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.importLimit}
             </Form.Control.Feedback>
           </Form.Group>
         </Form>

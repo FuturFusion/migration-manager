@@ -39,6 +39,7 @@ test("renders and submit SourceForm", async () => {
       username: "admin",
       password: "admin",
       trusted_server_certificate_fingerprint: "",
+      import_limit: 50,
     },
   });
 });

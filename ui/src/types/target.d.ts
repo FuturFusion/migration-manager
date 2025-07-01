@@ -6,6 +6,8 @@ export interface IncusProperties {
   tls_client_cert: string;
   trusted_server_certificate_fingerprint: string;
   connectivity_status?: ExternalConnectivityStatus;
+  import_limit: number;
+  create_limit: number;
 }
 
 export interface Target {
@@ -22,4 +24,6 @@ export interface TargetFormValues {
   tlsClientKey: string;
   tlsClientCert: string;
   trustedServerCertificateFingerprint: string;
+  importLimit: number;
+  createLimit: number;
 }
