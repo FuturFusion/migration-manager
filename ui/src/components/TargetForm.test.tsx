@@ -37,6 +37,8 @@ test("renders and submit TargetForm with OIDC auth", async () => {
       tls_client_cert: "",
       tls_client_key: "",
       trusted_server_certificate_fingerprint: "",
+      create_limit: 10,
+      import_limit: 50,
     },
   });
 });
@@ -82,6 +84,8 @@ test("renders and submit TargetForm with TLS auth", async () => {
       tls_client_cert: "foo",
       tls_client_key: "bar",
       trusted_server_certificate_fingerprint: "abc",
+      create_limit: 10,
+      import_limit: 50,
     },
   });
 });
