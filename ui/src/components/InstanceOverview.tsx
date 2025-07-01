@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Table } from "react-bootstrap";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { fetchInstance } from "api/instances";
 import InstanceItemOverride from "components/InstanceItemOverride";
 import { bytesToHumanReadable, hasOverride } from "util/instance";
@@ -129,7 +129,14 @@ const InstanceOverview = () => {
                     <tr key={index}>
                       <td>{item.id}</td>
                       <td>{item.hardware_address}</td>
-                      <td>{item.network}</td>
+                      <td>
+                        <Link
+                          to={`/ui/networks/${item.network}?source=${instance.source}`}
+                          className="data-table-link"
+                        >
+                          {item.network}
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

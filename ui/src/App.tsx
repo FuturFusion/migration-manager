@@ -9,6 +9,8 @@ import BatchDetail from "pages/BatchDetail";
 import Home from "pages/Home";
 import Instance from "pages/Instance";
 import InstanceDetail from "pages/InstanceDetail";
+import Network from "pages/Network";
+import NetworkDetail from "pages/NetworkDetail";
 import Source from "pages/Source";
 import SourceCreate from "pages/SourceCreate";
 import SourceDetail from "pages/SourceDetail";
@@ -72,6 +74,12 @@ function App() {
               element={<BatchDetail />}
             />
             <Route path="/ui/queue" element={<Queue />} />
+            <Route path="/ui/networks" element={<Network />} />
+            <Route path="/ui/networks/:name" element={<NetworkDetail />} />
+            <Route
+              path="/ui/networks/:name/:activeTab"
+              element={<NetworkDetail />}
+            />
           </Routes>
           <Notification />
         </Container>
