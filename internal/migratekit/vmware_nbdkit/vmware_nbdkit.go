@@ -2,13 +2,18 @@ package vmware_nbdkit
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
+	"path/filepath"
 	"syscall"
+	"time"
 
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/methods"
@@ -22,6 +27,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migratekit/progress"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/target"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
+	"github.com/FuturFusion/migration-manager/internal/util"
 )
 
 const MaxChunkSize = 64 * 1024 * 1024
@@ -187,6 +193,66 @@ func (s *NbdkitServers) Stop(ctx context.Context) error {
 	return nil
 }
 
+func getIncusDisk(ctx context.Context, client *http.Client, diskName string) (string, bool, error) {
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://unix.socket/1.0/devices", nil)
+	if err != nil {
+		return "", false, err
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", false, err
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", false, err
+	}
+
+	devices := map[string]map[string]string{}
+	err = json.Unmarshal(out, &devices)
+	if err != nil {
+		return "", false, err
+	}
+
+	var devName string
+	for id, cfg := range devices {
+		if cfg["user.migration_source"] == diskName {
+			devName = id
+			break
+		}
+	}
+
+	if devName == "" {
+		return "", false, fmt.Errorf("Failed to find any disk with migration source %q", diskName)
+	}
+
+	entries, err := os.ReadDir("/dev/disk/by-id")
+	if err != nil {
+		return "", false, err
+	}
+
+	diskID := "scsi-0QEMU_QEMU_HARDDISK_incus_" + devName
+	for _, e := range entries {
+		if e.Name() != diskID {
+			continue
+		}
+
+		diskPath, err := filepath.EvalSymlinks(filepath.Join("/dev/disk/by-id", e.Name()))
+		if err != nil {
+			return "", false, err
+		}
+
+		return diskPath, devName == "root", nil
+	}
+
+	return "", false, fmt.Errorf("Failed to find disk with ID %q", diskID)
+}
+
 func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 	err := s.Start(ctx)
 	if err != nil {
@@ -199,17 +265,16 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 		}
 	}()
 
-	for index, server := range s.Servers {
-		var diskID string
-		if index == 0 {
-			diskID, err = resolveRootDisk()
-		} else {
-			runV2V = false
-			diskID, err = resolveDiskBySize(server.Disk)
-		}
-
+	devIncus := util.UnixHTTPClient("/dev/incus/sock")
+	for _, server := range s.Servers {
+		diskName := server.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
+		diskID, isRoot, err := getIncusDisk(ctx, devIncus, diskName)
 		if err != nil {
 			return err
+		}
+
+		if isRoot {
+			runV2V = false
 		}
 
 		t, err := target.NewDiskTarget(s.VirtualMachine, server.Disk, diskID)
