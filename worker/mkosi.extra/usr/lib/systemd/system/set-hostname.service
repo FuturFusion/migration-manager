@@ -1,0 +1,10 @@
+[Unit]
+Description=Use machine-id as the hostname
+After=worker-unpack.service seed-unpack.service
+Before=incus-agent.service network-pre.target
+
+[Service]
+ExecStart=/usr/bin/hostname -F /etc/machine-id
+
+[Install]
+WantedBy=multi-user.target
