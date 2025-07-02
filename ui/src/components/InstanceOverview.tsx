@@ -131,7 +131,7 @@ const InstanceOverview = () => {
                       <td>{item.hardware_address}</td>
                       <td>
                         <Link
-                          to={`/ui/networks/${item.network}?source=${instance.source}`}
+                          to={`/ui/networks/${item.id}?source=${instance.source}`}
                           className="data-table-link"
                         >
                           {item.network}
