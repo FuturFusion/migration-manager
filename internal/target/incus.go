@@ -391,10 +391,11 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 
 	instance.Devices = map[string]map[string]string{
 		"root": {
-			"path":      "/",
-			"pool":      storagePool,
-			"type":      "disk",
-			sizeDef.Key: strconv.Itoa(int(p.Disks[0].Capacity)) + "B",
+			"path":                  "/",
+			"pool":                  storagePool,
+			"type":                  "disk",
+			"user.migration_source": p.Disks[0].Name,
+			sizeDef.Key:             strconv.Itoa(int(p.Disks[0].Capacity)) + "B",
 		},
 	}
 
@@ -523,7 +524,10 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 			err := tgtClient.CreateStoragePoolVolume(storagePool, incusAPI.StorageVolumesPost{
 				StorageVolumePut: incusAPI.StorageVolumePut{
 					Description: fmt.Sprintf("Migrated disk (%s)", disk.Name),
-					Config:      map[string]string{"size": fmt.Sprintf("%dB", disk.Capacity)},
+					Config: map[string]string{
+						"size":                  fmt.Sprintf("%dB", disk.Capacity),
+						"user.migration_source": disk.Name,
+					},
 				},
 				Name:        diskName,
 				Type:        "custom",
