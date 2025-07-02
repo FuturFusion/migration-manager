@@ -514,7 +514,7 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 				continue
 			}
 
-			diskKey := fmt.Sprintf("disk%d", i)
+			diskKey := fmt.Sprintf("disk%d", i+1)
 			diskName := apiDef.Name + "-" + diskKey
 			reverter.Add(func() {
 				_ = tgtClient.DeleteStoragePoolVolume(storagePool, "custom", diskName)
