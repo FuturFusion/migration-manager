@@ -8,9 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
-	"path/filepath"
-	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/vmware/govmomi/object"
@@ -188,64 +185,6 @@ func (s *NbdkitServers) Stop(ctx context.Context) error {
 	}
 
 	return nil
-}
-
-func resolveRootDisk() (string, error) {
-	entries, err := os.ReadDir("/dev/disk/by-id")
-	if err != nil {
-		return "", err
-	}
-
-	for _, e := range entries {
-		if !strings.HasSuffix(e.Name(), "_incus_root") {
-			continue
-		}
-
-		diskID, err := filepath.EvalSymlinks(filepath.Join("/dev/disk/by-id", e.Name()))
-		if err != nil {
-			return "", err
-		}
-
-		return diskID, nil
-	}
-
-	return "", fmt.Errorf("Failed to find root disk device")
-}
-
-func resolveDiskBySize(disk *types.VirtualDisk) (string, error) {
-	entries, err := os.ReadDir("/dev/disk/by-id")
-	if err != nil {
-		return "", err
-	}
-
-	for _, e := range entries {
-		// Skip the root disk.
-		if strings.HasSuffix(e.Name(), "_incus_root") {
-			continue
-		}
-
-		diskPath, err := filepath.EvalSymlinks(filepath.Join("/dev/disk/by-id", e.Name()))
-		if err != nil {
-			return "", err
-		}
-
-		sizePath := filepath.Join(filepath.Join("/sys/class/block", filepath.Base(diskPath)), "size")
-		b, err := os.ReadFile(sizePath)
-		if err != nil {
-			return "", err
-		}
-
-		value, err := strconv.ParseUint(strings.TrimSpace(string(b)), 10, 64)
-		if err != nil {
-			return "", err
-		}
-
-		if disk.CapacityInBytes == int64(value)*512 {
-			return diskPath, nil
-		}
-	}
-
-	return "", fmt.Errorf("Failed to find disk with capacity %d", disk.CapacityInBytes)
 }
 
 func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
