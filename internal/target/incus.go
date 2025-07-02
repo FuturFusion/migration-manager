@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -316,7 +317,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 	}
 
 	err = op.Wait()
-	if err != nil {
+	if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
 	}
 
