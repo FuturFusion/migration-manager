@@ -113,6 +113,7 @@ const BatchActions: FC<Props> = ({ batch }) => {
       <BatchDeleteModal
         batchName={batch.name}
         show={showDeleteModal}
+        onSuccess={() => setShowDeleteModal(false)}
         handleClose={() => setShowDeleteModal(false)}
       />
     </div>
