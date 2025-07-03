@@ -44,7 +44,7 @@ func (s sourceService) RecordActiveImport(sourceName string) {
 func (s sourceService) RemoveActiveImport(sourceName string) {
 	s.importCache.Write(sourceName, 1, func(existingVal, newVal int) int {
 		if existingVal > 0 {
-			return newVal
+			return existingVal - newVal
 		}
 
 		return existingVal

@@ -43,7 +43,7 @@ func (s targetService) RecordActiveImport(targetName string) {
 func (s targetService) RemoveActiveImport(targetName string) {
 	s.importCache.Write(targetName, 1, func(existingVal, newVal int) int {
 		if existingVal > 0 {
-			return newVal
+			return existingVal - newVal
 		}
 
 		return existingVal
@@ -68,7 +68,7 @@ func (s targetService) RecordCreation(targetName string) {
 func (s targetService) RemoveCreation(targetName string) {
 	s.createCache.Write(targetName, 1, func(existingVal, newVal int) int {
 		if existingVal > 0 {
-			return newVal
+			return existingVal - newVal
 		}
 
 		return existingVal
