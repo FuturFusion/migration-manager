@@ -10,9 +10,15 @@
 
 
 process_devs () {
-    _device_num=5
-    for dev in $1; do
-        echo "SUBSYSTEM==\"net\", ACTION==\"add\", KERNEL==\"enp${_device_num}s0\", NAME=\"${dev}\"" >> /etc/udev/rules.d/00-net-symlink.rules
+    _device_num=1
+    for dev in /sys/class/net/* ; do
+        dev="$(basename "${dev}")"
+        if echo "${dev}" | grep -q "^lo$" ; then
+          continue
+        fi
+
+        name="$(echo "${1}" | sed -n "${_device_num}p")"
+        echo "SUBSYSTEM==\"net\", ACTION==\"add\", KERNEL==\"${dev}\", NAME=\"${name}\"" >> /etc/udev/rules.d/00-net-symlink.rules
         _device_num=$((_device_num + 1))
     done
 }
