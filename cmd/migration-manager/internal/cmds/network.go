@@ -146,7 +146,7 @@ type cmdNetworkUpdate struct {
 
 func (c *cmdNetworkUpdate) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "update <name>"
+	cmd.Use = "update <name> <source>"
 	cmd.Short = "Update network"
 	cmd.Long = `Description:
   Update network
@@ -181,15 +181,15 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Prompt for updates.
-	origNetworkName := network.Name()
-	defaultConfig := "[default=" + origNetworkName + "]: "
+	origNetworkName := network.Identifier
+	defaultConfig := "[default=" + network.Name() + "]: "
 
-	_, err = c.global.Asker.AskString("Target network name "+defaultConfig, origNetworkName, nil)
+	name, err = c.global.Asker.AskString("Target network name "+defaultConfig, origNetworkName, nil)
 	if err != nil {
 		return err
 	}
 
-	newNetworkName := network.Identifier
+	network.NetworkOverride.Name = name
 
 	// Update the network.
 	content, err := json.Marshal(network.NetworkOverride)
@@ -202,6 +202,6 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	cmd.Printf("Successfully updated network %q in source %q.\n", newNetworkName, source)
+	cmd.Printf("Successfully updated network %q in source %q.\n", network.Name(), source)
 	return nil
 }
