@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -564,14 +566,52 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					return nil, fmt.Errorf("Unexpected network ID value: %v", val)
 				}
 
+				var netLocation string
 				for id, location := range networkLocationsByID {
 					if id == str {
+						netLocation = location
 						err := subProps.Add(properties.InstanceNICNetwork, location)
 						if err != nil {
 							return nil, err
 						}
 
 						break
+					}
+				}
+
+				if netLocation != "" {
+					var ipv4, ipv6 string
+					for _, netInfo := range vmProperties.Guest.Net {
+						if netInfo.Network != filepath.Base(netLocation) || netInfo.IpConfig == nil || netInfo.IpConfig.IpAddress == nil {
+							continue
+						}
+
+						for _, ip := range netInfo.IpConfig.IpAddress {
+							parsed := net.ParseIP(ip.IpAddress)
+							if parsed == nil {
+								continue
+							}
+
+							if parsed.To4() != nil && ipv4 == "" {
+								ipv4 = parsed.String()
+							} else if parsed.To4() == nil && ipv6 == "" {
+								ipv6 = parsed.String()
+							}
+						}
+					}
+
+					if ipv4 != "" {
+						err := subProps.Add(properties.InstanceNICIPv4Address, ipv4)
+						if err != nil {
+							return nil, err
+						}
+					}
+
+					if ipv6 != "" {
+						err := subProps.Add(properties.InstanceNICIPv6Address, ipv6)
+						if err != nil {
+							return nil, err
+						}
 					}
 				}
 
@@ -687,8 +727,8 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 	}
 
 	nicHasSubProperty := func(subProp properties.Name) bool {
-		// The network name will be applied later.
-		return subProp != properties.InstanceNICNetwork
+		// The network name and IPs will be applied later.
+		return !slices.Contains([]properties.Name{properties.InstanceNICNetwork, properties.InstanceNICIPv4Address, properties.InstanceNICIPv6Address}, subProp)
 	}
 
 	b, err := json.Marshal(device)

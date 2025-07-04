@@ -456,6 +456,7 @@ func TestGetProperties(t *testing.T) {
 			Capability: types.VirtualMachineCapability{
 				SecureBootSupported: ptr.To(c.expectedSecureBoot),
 			},
+			Guest: &types.GuestInfo{},
 		}
 
 		for i := 0; i < c.numDisks; i++ {
