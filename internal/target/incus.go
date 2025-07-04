@@ -229,6 +229,10 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 			return err
 		}
 
+		if apiDef.Devices[nicDeviceName] == nil {
+			apiDef.Devices[nicDeviceName] = map[string]string{}
+		}
+
 		if baseNetwork.Overrides.Name != "" || baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
 			apiDef.Devices[nicDeviceName]["network"] = baseNetwork.ToAPI().Name()
 		} else {
@@ -535,8 +539,7 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 				StorageVolumePut: incusAPI.StorageVolumePut{
 					Description: fmt.Sprintf("Migrated disk (%s)", disk.Name),
 					Config: map[string]string{
-						"size":                  fmt.Sprintf("%dB", disk.Capacity),
-						"user.migration_source": disk.Name,
+						"size": fmt.Sprintf("%dB", disk.Capacity),
 					},
 				},
 				Name:        diskName,
@@ -552,6 +555,7 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 				instInfo.Devices[diskKey][k] = v
 			}
 
+			instInfo.Devices[diskKey]["user.migration_source"] = disk.Name
 			instInfo.Devices[diskKey]["source"] = diskName
 		}
 
