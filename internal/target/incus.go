@@ -245,6 +245,15 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 		}
 
 		apiDef.Devices[nicDeviceName][hwAddrInfo.Key] = nic.HardwareAddress
+
+		if nic.IPv4Address != "" {
+			ipv4Info, err := nicDefs.Get(properties.InstanceNICIPv4Address)
+			if err != nil {
+				return err
+			}
+
+			apiDef.Devices[nicDeviceName][ipv4Info.Key] = nic.IPv4Address
+		}
 	}
 
 	// Remove the migration ISO image.
