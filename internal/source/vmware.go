@@ -478,6 +478,16 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 		return nil, err
 	}
 
+	_, linkLocal4, err := net.ParseCIDR("169.254.0.0/16")
+	if err != nil {
+		return nil, err
+	}
+
+	_, linkLocal6, err := net.ParseCIDR("fe80::/10")
+	if err != nil {
+		return nil, err
+	}
+
 	unsupportedDisks := map[string]bool{}
 	for defName, info := range props.GetAll() {
 		switch info.Type {
@@ -592,9 +602,9 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 								continue
 							}
 
-							if parsed.To4() != nil && ipv4 == "" {
+							if parsed.To4() != nil && ipv4 == "" && !linkLocal4.Contains(parsed) {
 								ipv4 = parsed.String()
-							} else if parsed.To4() == nil && ipv6 == "" {
+							} else if parsed.To4() == nil && ipv6 == "" && !linkLocal6.Contains(parsed) {
 								ipv6 = parsed.String()
 							}
 						}
