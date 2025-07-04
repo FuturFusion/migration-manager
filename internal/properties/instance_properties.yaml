@@ -230,6 +230,29 @@
                     # Each set is delimited by commas.
                     key: backing.network.value,backing.port.portgroupKey,backing.opaqueNetworkId
 
+      ipv4_address:
+          source:
+              vmware:
+                  8.0:
+                    # Despite being a sub-property, this is a top-level property on the VM, and holds an array of ipv4 and ipv6 addresses.
+                    key: guest.net.ipConfig.ipAddress.ipAddress
+          target:
+              incus:
+                  6.0:
+                    key: ipv4.address
+
+      ipv6_address:
+          source:
+              vmware:
+                  8.0:
+                    # Despite being a sub-property, this is a top-level property on the VM, and holds an array of ipv4 and ipv6 addresses.
+                    key: guest.net.ipConfig.ipAddress.ipAddress
+          target:
+              incus:
+                  6.0:
+                    key: ipv6.address
+
+
 - name: snapshots
   description: instance snapshots
   source:

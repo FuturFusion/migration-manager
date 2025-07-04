@@ -46,6 +46,10 @@ const (
 	InstanceNICNetwork
 	// InstanceNICNetworkID is the property name for the unique identifier of the network entity used by the instance.
 	InstanceNICNetworkID
+	// InstanceNICNetworkID is the property name for ipv4 address of the nic.
+	InstanceNICIPv4Address
+	// InstanceNICNetworkID is the property name for ipv6 address of the nic.
+	InstanceNICIPv6Address
 	// InstanceDiskCapacity is the property name for an instance disk's capacity in bytes.
 	InstanceDiskCapacity
 	// InstanceDiskShared is the property name for an instance disk's shared state..
@@ -95,6 +99,10 @@ func (n Name) String() string {
 		return "network"
 	case InstanceNICNetworkID:
 		return "id"
+	case InstanceNICIPv4Address:
+		return "ipv4_address"
+	case InstanceNICIPv6Address:
+		return "ipv6_address"
 	case InstanceSnapshots:
 		return "snapshots"
 	case InstanceSnapshotName:
@@ -163,6 +171,10 @@ func ParseInstanceNICProperty(s string) (Name, error) {
 		return InstanceNICNetwork, nil
 	case InstanceNICNetworkID.String():
 		return InstanceNICNetworkID, nil
+	case InstanceNICIPv4Address.String():
+		return InstanceNICIPv4Address, nil
+	case InstanceNICIPv6Address.String():
+		return InstanceNICIPv6Address, nil
 	default:
 		return -1, fmt.Errorf("Unknown NIC property %q", s)
 	}
@@ -215,7 +227,7 @@ func allInstanceProperties() []Name {
 }
 
 func allInstanceNICProperties() []Name {
-	return []Name{InstanceNICHardwareAddress, InstanceNICNetwork, InstanceNICNetworkID}
+	return []Name{InstanceNICHardwareAddress, InstanceNICNetwork, InstanceNICNetworkID, InstanceNICIPv4Address, InstanceNICIPv6Address}
 }
 
 func allInstanceDiskProperties() []Name {

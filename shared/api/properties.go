@@ -37,6 +37,8 @@ type InstancePropertiesNIC struct {
 	ID              string `json:"id"               yaml:"id"               expr:"id"`
 	HardwareAddress string `json:"hardware_address" yaml:"hardware_address" expr:"hardware_address"`
 	Network         string `json:"network"          yaml:"network"          expr:"network"`
+	IPv4Address     string `json:"ipv4_address"     yaml:"ipv4_address"     expr:"ipv4_address"`
+	IPv6Address     string `json:"ipv6_address"     yaml:"ipv6_address"     expr:"ipv6_address"`
 }
 
 // InstancePropertiesDisk are all properties supported by instance disks.
