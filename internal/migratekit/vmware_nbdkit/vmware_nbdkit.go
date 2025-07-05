@@ -65,7 +65,7 @@ func NewNbdkitServers(vddk *VddkConfig, vm *object.VirtualMachine, statusCallbac
 func (s *NbdkitServers) createSnapshot(ctx context.Context) error {
 	task, err := s.VirtualMachine.CreateSnapshot(ctx, internal.IncusSnapshotName, "Ephemeral snapshot for Incus migration", false, false)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to create snapshot: %w", err)
 	}
 
 	bar := progress.NewVMwareProgressBar("Creating snapshot")
@@ -78,7 +78,7 @@ func (s *NbdkitServers) createSnapshot(ctx context.Context) error {
 
 	info, err := task.WaitForResult(ctx, bar)
 	if err != nil {
-		return err
+		return fmt.Errorf("Snapshot create task error: %w", err)
 	}
 
 	s.StatusCallback("Done creating snapshot", true)
@@ -158,7 +158,7 @@ func (s *NbdkitServers) removeSnapshot(ctx context.Context) error {
 	consolidate := true
 	task, err := s.VirtualMachine.RemoveSnapshot(ctx, s.SnapshotRef.Value, false, &consolidate)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed to remove snapshot: %w", err)
 	}
 
 	bar := progress.NewVMwareProgressBar("Removing snapshot")
@@ -171,7 +171,7 @@ func (s *NbdkitServers) removeSnapshot(ctx context.Context) error {
 
 	_, err = task.WaitForResult(ctx, bar)
 	if err != nil {
-		return err
+		return fmt.Errorf("Snapshot remove task failed: %w", err)
 	}
 
 	s.StatusCallback("Done removing snapshot", true)
@@ -375,7 +375,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 
 		res, err := methods.QueryChangedDiskAreas(ctx, s.Servers.VirtualMachine.Client(), &req)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to query disk changes: %w", err)
 		}
 
 		diskChangeInfo := res.Returnval

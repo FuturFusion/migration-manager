@@ -3,6 +3,7 @@ package properties
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"regexp"
 	"slices"
 
@@ -235,6 +236,28 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 			_, ok := val.(map[string]string)
 			if !ok {
 				return fmt.Errorf("Cannot convert %q property %v to map", key.String(), val)
+			}
+
+		case InstanceNICIPv4Address:
+			str, ok := val.(string)
+			if !ok {
+				return fmt.Errorf("Cannot convert %q property %v to string", key.String(), val)
+			}
+
+			parsed := net.ParseIP(str)
+			if parsed == nil || parsed.To4() == nil {
+				return fmt.Errorf("Property %q value %v is not an IPv4 address", key.String(), str)
+			}
+
+		case InstanceNICIPv6Address:
+			str, ok := val.(string)
+			if !ok {
+				return fmt.Errorf("Cannot convert %q property %v to string", key.String(), val)
+			}
+
+			parsed := net.ParseIP(str)
+			if parsed == nil || parsed.To4() != nil {
+				return fmt.Errorf("Property %q value %v is not an IPv6 address", key.String(), str)
 			}
 
 		case InstanceDiskName:
