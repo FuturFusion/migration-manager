@@ -8,17 +8,21 @@
 #  3. /etc/network/interfaces (classic Debian network config)
 #  4. /etc/sysconfig/network{,-scripts}/ifcfg-* (older RHEL/SUSE network config)
 
+if [ $# -ne 1 ]; then
+  exit 0
+fi
+
+hwaddrs="${1}"
 
 process_devs () {
     _device_num=1
-    for dev in /sys/class/net/* ; do
-        dev="$(basename "${dev}")"
-        if echo "${dev}" | grep -q "^lo$" ; then
-          continue
+    for mac in ${hwaddrs} ; do
+        name="$(echo "${1}" | sed -n "${_device_num}p")"
+        if [ -z "${name}" ]; then
+          break
         fi
 
-        name="$(echo "${1}" | sed -n "${_device_num}p")"
-        echo "SUBSYSTEM==\"net\", ACTION==\"add\", KERNEL==\"${dev}\", NAME=\"${name}\"" >> /etc/udev/rules.d/00-net-symlink.rules
+        echo "SUBSYSTEM==\"net\", ACTION==\"add\", ATTR{address}==\"${mac}\", NAME=\"${name}\"" >> /etc/udev/rules.d/00-net-symlink.rules
         _device_num=$((_device_num + 1))
     done
 }
