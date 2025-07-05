@@ -504,7 +504,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 				continue
 			}
 
-			err := s.getVMExtraConfig(vm, vmProperties, &props, defName, info)
+			err := s.getVMExtraConfig(vmProperties, &props, defName, info)
 			if err != nil {
 				return nil, err
 			}
@@ -663,13 +663,43 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 	return props.ToAPI(unsupportedDisks)
 }
 
-func (s *InternalVMwareSource) getVMExtraConfig(vm *object.VirtualMachine, vmProperties mo.VirtualMachine, props *properties.RawPropertySet[api.SourceType], defName properties.Name, info properties.PropertyInfo) error {
+func (s *InternalVMwareSource) getVMExtraConfig(vmProperties mo.VirtualMachine, props *properties.RawPropertySet[api.SourceType], defName properties.Name, info properties.PropertyInfo) error {
 	switch defName {
+	case properties.InstanceOS:
+		var distroName string
+		for _, v := range vmProperties.Config.ExtraConfig {
+			if v.GetOptionValue().Key == info.Key {
+				re := regexp.MustCompile(`distroName='([^']*)'`)
+				matches := re.FindStringSubmatch(v.GetOptionValue().Value.(string))
+				if matches != nil {
+					distroName = matches[1]
+				}
+
+				break
+			}
+		}
+
+		return props.Add(defName, distroName)
+	case properties.InstanceOSVersion:
+		var prettyName string
+		for _, v := range vmProperties.Config.ExtraConfig {
+			if v.GetOptionValue().Key == info.Key {
+				re := regexp.MustCompile(`prettyName='([^']*)'`)
+				matches := re.FindStringSubmatch(v.GetOptionValue().Value.(string))
+				if matches != nil {
+					prettyName = matches[1]
+				}
+
+				break
+			}
+		}
+
+		return props.Add(defName, prettyName)
 	case properties.InstanceArchitecture:
 		var arch, bits string
 		for _, v := range vmProperties.Config.ExtraConfig {
 			if v.GetOptionValue().Key == info.Key {
-				re := regexp.MustCompile(`architecture='(.+)' bitness='(\d+)'`)
+				re := regexp.MustCompile(`architecture='([^']*)' bitness='(\d+)'`)
 				matches := re.FindStringSubmatch(v.GetOptionValue().Value.(string))
 				if matches != nil {
 					arch = matches[1]
@@ -680,7 +710,7 @@ func (s *InternalVMwareSource) getVMExtraConfig(vm *object.VirtualMachine, vmPro
 			}
 		}
 
-		arch, err := parseArchitecture(arch, bits, vm.InventoryPath)
+		arch, err := parseArchitecture(arch, bits)
 		if err != nil {
 			return err
 		}
@@ -826,15 +856,6 @@ func parseValue(propName properties.Name, value any) (any, error) {
 
 		nonalpha := regexp.MustCompile(`[^\-a-zA-Z0-9]+`)
 		return nonalpha.ReplaceAllString(strVal, ""), nil
-	case properties.InstanceOS:
-		strVal, ok := value.(string)
-		if !ok {
-			return nil, fmt.Errorf("%q value %v must be a string", propName.String(), value)
-		}
-
-		strVal, _ = strings.CutSuffix(strVal, "Guest")
-
-		return strVal, nil
 	case properties.InstanceLegacyBoot:
 		strVal, ok := value.(string)
 		if !ok {
