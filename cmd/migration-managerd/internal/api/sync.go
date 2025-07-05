@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/osarch"
 
 	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/logger"
@@ -460,17 +461,29 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			instanceUpdated = true
 		}
 
-		if inst.Properties.Architecture != srcInst.Properties.Architecture {
+		if inst.Properties.Architecture != srcInst.Properties.Architecture && srcInst.Properties.Architecture != "" {
 			inst.Properties.Architecture = srcInst.Properties.Architecture
 			instanceUpdated = true
 		}
 
-		if inst.Properties.OS != srcInst.Properties.OS {
+		// Set fallback architecture.
+		if inst.Properties.Architecture == "" {
+			arch, err := osarch.ArchitectureName(osarch.ARCH_64BIT_INTEL_X86)
+			if err != nil {
+				return err
+			}
+
+			inst.Properties.Architecture = arch
+			instanceUpdated = true
+			log.Debug("Unable to determine architecture; Using fallback", slog.String("architecture", arch))
+		}
+
+		if inst.Properties.OS != srcInst.Properties.OS && srcInst.Properties.OS != "" {
 			inst.Properties.OS = srcInst.Properties.OS
 			instanceUpdated = true
 		}
 
-		if inst.Properties.OSVersion != srcInst.Properties.OSVersion {
+		if inst.Properties.OSVersion != srcInst.Properties.OSVersion && srcInst.Properties.OSVersion != "" {
 			inst.Properties.OSVersion = srcInst.Properties.OSVersion
 			instanceUpdated = true
 		}
@@ -481,8 +494,32 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 		}
 
 		if !slices.Equal(inst.Properties.NICs, srcInst.Properties.NICs) {
-			inst.Properties.NICs = srcInst.Properties.NICs
-			instanceUpdated = true
+			oldNics := map[string]api.InstancePropertiesNIC{}
+			for _, nic := range inst.Properties.NICs {
+				oldNics[nic.ID] = nic
+			}
+
+			// Preserve IPs from the previous sync in case the VM has turned off.
+			newNics := make([]api.InstancePropertiesNIC, len(srcInst.Properties.NICs))
+			for i, nic := range srcInst.Properties.NICs {
+				oldNIC, ok := oldNics[nic.ID]
+				if ok {
+					if nic.IPv4Address == "" && oldNIC.IPv4Address != "" {
+						nic.IPv4Address = oldNIC.IPv4Address
+					}
+
+					if nic.IPv6Address == "" && oldNIC.IPv6Address != "" {
+						nic.IPv6Address = oldNIC.IPv6Address
+					}
+				}
+
+				newNics[i] = nic
+			}
+
+			if !slices.Equal(inst.Properties.NICs, newNics) {
+				instanceUpdated = true
+				inst.Properties.NICs = srcInst.Properties.NICs
+			}
 		}
 
 		if !slices.Equal(inst.Properties.Snapshots, srcInst.Properties.Snapshots) {
