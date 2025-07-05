@@ -721,9 +721,8 @@ func (s *InternalVMwareSource) getVMExtraConfig(vmProperties mo.VirtualMachine, 
 	return nil
 }
 
-func parseArchitecture(archName string, archBits string, location string) (string, error) {
-	archID := osarch.ARCH_64BIT_INTEL_X86
-	var fallback bool
+func parseArchitecture(archName string, archBits string) (string, error) {
+	archID := osarch.ARCH_UNKNOWN
 	switch archName {
 	case "X86":
 		if archBits == "32" {
@@ -736,18 +735,15 @@ func parseArchitecture(archName string, archBits string, location string) (strin
 		} else {
 			archID = osarch.ARCH_32BIT_ARMV8_LITTLE_ENDIAN
 		}
+	}
 
-	default:
-		fallback = true
+	if archID == osarch.ARCH_UNKNOWN {
+		return "", nil
 	}
 
 	arch, err := osarch.ArchitectureName(archID)
 	if err != nil {
 		return "", err
-	}
-
-	if fallback {
-		slog.Debug("Unable to determine architecture; Using fallback", slog.String("instance", location), slog.String("architecture", arch))
 	}
 
 	return arch, nil
