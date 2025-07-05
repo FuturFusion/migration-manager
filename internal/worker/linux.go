@@ -261,7 +261,7 @@ func determineRootPartition() (string, int, []string, error) {
 	return "", PARTITION_TYPE_UNKNOWN, nil, fmt.Errorf("Failed to determine the root partition")
 }
 
-func runScriptInChroot(scriptName string) error {
+func runScriptInChroot(scriptName string, args ...string) error {
 	// Get the embedded script's contents.
 	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
 	if err != nil {
@@ -277,7 +277,9 @@ func runScriptInChroot(scriptName string) error {
 	defer func() { _ = os.Remove(filepath.Join(chrootMountPath, scriptName)) }()
 
 	// Run the script within the chroot.
-	_, err = subprocess.RunCommand("chroot", chrootMountPath, filepath.Join("/", scriptName))
+	cmd := []string{chrootMountPath, filepath.Join("/", scriptName)}
+	cmd = append(cmd, args...)
+	_, err = subprocess.RunCommand("chroot", cmd...)
 	return err
 }
 
