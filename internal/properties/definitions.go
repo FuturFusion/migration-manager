@@ -217,9 +217,11 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 				return fmt.Errorf("Cannot convert %q property %v to string", key.String(), val)
 			}
 
-			_, err := osarch.ArchitectureID(str)
-			if err != nil {
-				return err
+			if str != "" {
+				_, err := osarch.ArchitectureID(str)
+				if err != nil {
+					return err
+				}
 			}
 
 		case InstanceDiskCapacity:
