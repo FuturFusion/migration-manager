@@ -2,7 +2,6 @@ package source
 
 import (
 	"context"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -45,9 +44,6 @@ func TestGetProperties(t *testing.T) {
 	expectedArch, err := osarch.ArchitectureName(osarch.ARCH_64BIT_ARMV8_LITTLE_ENDIAN)
 	require.NoError(t, err)
 
-	fallbackArch, err := osarch.ArchitectureName(osarch.ARCH_64BIT_INTEL_X86)
-	require.NoError(t, err)
-
 	cases := []struct {
 		name      string
 		expectErr bool
@@ -58,11 +54,9 @@ func TestGetProperties(t *testing.T) {
 		expectedFirmware         string
 		expectedName             string
 		expectedBackgroundImport bool
-		expectedArchitecture     string
+		expectedGuestDetails     string
 		expectedCPUs             int32
 		expectedMemory           int32
-		expectedOS               string
-		expectedOSVersion        string
 		expectedTPM              bool
 		expectedSecureBoot       bool
 
@@ -92,7 +86,7 @@ func TestGetProperties(t *testing.T) {
 			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
 			expectedName:             "vm",
 			expectedBackgroundImport: true,
-			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedGuestDetails:     "architecture='Arm' bitness='64' distroName='os' prettyName='os version'",
 			expectedCPUs:             4,
 			expectedDiskName:         "diskName.vmdk",
 			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
@@ -101,8 +95,6 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
-			expectedOS:               "osGuest",
-			expectedOSVersion:        "os version",
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -124,7 +116,7 @@ func TestGetProperties(t *testing.T) {
 			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
 			expectedName:             "vm",
 			expectedBackgroundImport: true,
-			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedGuestDetails:     "architecture='Arm' bitness='64' distroName='os' prettyName='os version'",
 			expectedCPUs:             4,
 			expectedDiskName:         "diskName.vmdk",
 			expectedDiskCapacity:     2147483648,
@@ -132,8 +124,6 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
-			expectedOS:               "osGuest",
-			expectedOSVersion:        "os version",
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -155,7 +145,7 @@ func TestGetProperties(t *testing.T) {
 			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
 			expectedName:             "vm",
 			expectedBackgroundImport: true,
-			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedGuestDetails:     "architecture='Arm' bitness='64' distroName='os' prettyName='os version'",
 			expectedCPUs:             4,
 			expectedDiskName:         "diskName.vmdk",
 			expectedDiskCapacity:     2147483648,
@@ -163,8 +153,6 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
-			expectedOS:               "osGuest",
-			expectedOSVersion:        "os version",
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -185,7 +173,7 @@ func TestGetProperties(t *testing.T) {
 			expectedDescription:      "description",
 			expectedName:             "vm",
 			expectedBackgroundImport: true,
-			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedGuestDetails:     "architecture='Arm' bitness='64' distroName='os' prettyName='os version'",
 			expectedCPUs:             4,
 			expectedDiskName:         "diskName.vmdk",
 			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
@@ -194,39 +182,6 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
-			expectedOS:               "osGuest",
-			expectedOSVersion:        "os version",
-			expectedTPM:              true,
-			expectedSecureBoot:       true,
-			expectedSnapshotName:     "snap0",
-
-			numDisks:     3,
-			numNICs:      3,
-			numSnapshots: 3,
-
-			archProperty: expectedArch,
-		},
-		{
-			name:      "success - OS has no Guest suffix",
-			expectErr: false,
-
-			expectedOS:               "os",
-			expectedUUID:             expectedUUID.String(),
-			expectedLocation:         "/path/to/vm",
-			expectedDescription:      "description",
-			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
-			expectedName:             "vm",
-			expectedBackgroundImport: true,
-			expectedArchitecture:     "architecture='Arm' bitness='64'",
-			expectedCPUs:             4,
-			expectedDiskName:         "diskName.vmdk",
-			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
-			expectedDiskCapacity:     2147483648,
-			expectedNetwork:          "network",
-			expectedNetworkID:        "network-123",
-			expectedMac:              "mac",
-			expectedMemory:           2048,
-			expectedOSVersion:        "os version",
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -246,7 +201,7 @@ func TestGetProperties(t *testing.T) {
 			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
 			expectedName:             "vm",
 			expectedBackgroundImport: true,
-			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedGuestDetails:     "architecture='Arm' bitness='64' distroName='os' prettyName='os version'",
 			expectedCPUs:             4,
 			expectedDiskName:         "diskName.vmdk",
 			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
@@ -255,8 +210,6 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
-			expectedOS:               "osGuest",
-			expectedOSVersion:        "os version",
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -277,7 +230,7 @@ func TestGetProperties(t *testing.T) {
 			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
 			expectedName:             "vm",
 			expectedBackgroundImport: true,
-			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedGuestDetails:     "architecture='Arm' bitness='64' distroName='os' prettyName='os version'",
 			expectedCPUs:             4,
 			expectedDiskName:         "diskName.vmdk",
 			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
@@ -286,8 +239,6 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
-			expectedOS:               "osGuest",
-			expectedOSVersion:        "os version",
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -302,7 +253,7 @@ func TestGetProperties(t *testing.T) {
 			name:      "success - fallback architecture",
 			expectErr: false,
 
-			expectedArchitecture:     "any other value",
+			expectedGuestDetails:     "distroName='os' prettyName='os version'",
 			expectedUUID:             expectedUUID.String(),
 			expectedLocation:         "/path/to/vm",
 			expectedDescription:      "description",
@@ -317,8 +268,6 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
-			expectedOS:               "osGuest",
-			expectedOSVersion:        "os version",
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -326,8 +275,6 @@ func TestGetProperties(t *testing.T) {
 			numDisks:     3,
 			numNICs:      3,
 			numSnapshots: 3,
-
-			archProperty: fallbackArch,
 		},
 		{
 			name:      "fail - missing defined fields",
@@ -345,7 +292,7 @@ func TestGetProperties(t *testing.T) {
 			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
 			expectedName:             "vm",
 			expectedBackgroundImport: true,
-			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedGuestDetails:     "architecture='Arm' bitness='64' distroName='os' prettyName='os version'",
 			expectedCPUs:             4,
 			expectedDiskName:         "diskName.vmdk",
 			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
@@ -353,8 +300,6 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
-			expectedOS:               "osGuest",
-			expectedOSVersion:        "os version",
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -375,7 +320,7 @@ func TestGetProperties(t *testing.T) {
 			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
 			expectedName:             "vm",
 			expectedBackgroundImport: true,
-			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedGuestDetails:     "architecture='Arm' bitness='64' distroName='os' prettyName='os version'",
 			expectedCPUs:             4,
 			expectedDiskCapacity:     2147483648,
 			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
@@ -383,8 +328,6 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
-			expectedOS:               "osGuest",
-			expectedOSVersion:        "os version",
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -404,7 +347,7 @@ func TestGetProperties(t *testing.T) {
 			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
 			expectedName:             "vm",
 			expectedBackgroundImport: true,
-			expectedArchitecture:     "architecture='Arm' bitness='64'",
+			expectedGuestDetails:     "architecture='Arm' bitness='64' distroName='os' prettyName='os version'",
 			expectedCPUs:             4,
 			expectedDiskName:         "diskName.vmdk",
 			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
@@ -413,8 +356,6 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
-			expectedOS:               "osGuest",
-			expectedOSVersion:        "os version",
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -438,7 +379,7 @@ func TestGetProperties(t *testing.T) {
 				Firmware:              c.expectedFirmware,
 				Name:                  c.expectedName,
 				ChangeTrackingEnabled: ptr.To(c.expectedBackgroundImport),
-				ExtraConfig:           object.OptionValueListFromMap(map[string]string{"guestInfo.detailed.data": c.expectedArchitecture}),
+				ExtraConfig:           object.OptionValueListFromMap(map[string]string{"guestInfo.detailed.data": c.expectedGuestDetails}),
 				Hardware: types.VirtualHardware{
 					NumCPU: c.expectedCPUs,
 					Device: []types.BaseVirtualDevice{},
@@ -446,11 +387,9 @@ func TestGetProperties(t *testing.T) {
 			},
 			Summary: types.VirtualMachineSummary{
 				Config: types.VirtualMachineConfigSummary{
-					MemorySizeMB:  c.expectedMemory,
-					GuestId:       c.expectedOS,
-					GuestFullName: c.expectedOSVersion,
-					TpmPresent:    ptr.To(c.expectedTPM),
-					InstanceUuid:  c.expectedUUID,
+					MemorySizeMB: c.expectedMemory,
+					TpmPresent:   ptr.To(c.expectedTPM),
+					InstanceUuid: c.expectedUUID,
 				},
 			},
 			Capability: types.VirtualMachineCapability{
@@ -552,9 +491,8 @@ func TestGetProperties(t *testing.T) {
 			require.Equal(t, c.archProperty, props.Architecture)
 			require.Equal(t, int64(c.expectedMemory)*1024*1024, props.Memory)
 			require.Equal(t, int64(c.expectedCPUs), props.CPUs)
-			os, _ := strings.CutSuffix(c.expectedOS, "Guest")
-			require.Equal(t, os, props.OS)
-			require.Equal(t, c.expectedOSVersion, props.OSVersion)
+			require.Equal(t, "os", props.OS)
+			require.Equal(t, "os version", props.OSVersion)
 			require.Equal(t, c.expectedDescription, props.Description)
 			require.LessOrEqual(t, c.numDisks, len(props.Disks))
 			require.LessOrEqual(t, c.numNICs, len(props.NICs))
