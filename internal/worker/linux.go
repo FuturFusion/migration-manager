@@ -6,11 +6,14 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
@@ -147,8 +150,28 @@ func LinuxDoPostMigrationConfig(ctx context.Context, distro string, majorVersion
 		}
 	}
 
+	c := internalUtil.UnixHTTPClient("/dev/incus/sock")
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://unix.socket/1.0/config/user.migration.hwaddrs", nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
 	// Setup udev rules to create network device aliases.
-	err = runScriptInChroot("add-udev-network-rules.sh")
+	err = runScriptInChroot("add-udev-network-rules.sh", string(out))
 	if err != nil {
 		return err
 	}
