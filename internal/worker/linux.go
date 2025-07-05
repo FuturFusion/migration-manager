@@ -2,6 +2,7 @@ package worker
 
 import (
 	"bufio"
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
@@ -50,7 +51,7 @@ type LVSOutput struct {
 
 const chrootMountPath string = "/run/mount/target/"
 
-func LinuxDoPostMigrationConfig(distro string, majorVersion int) error {
+func LinuxDoPostMigrationConfig(ctx context.Context, distro string, majorVersion int) error {
 	slog.Info("Preparing to perform post-migration configuration of VM")
 
 	// Determine the root partition.
