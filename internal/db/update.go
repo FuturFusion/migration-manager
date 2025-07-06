@@ -111,6 +111,31 @@ var updates = map[int]schema.Update{
 	4: updateFromV3,
 	5: updateFromV4,
 	6: updateFromV5,
+	7: updateFromV6,
+}
+
+func updateFromV6(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE queue_new (
+    id                       INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    instance_id              INTEGER NOT NULL,
+    batch_id                 INTEGER NOT NULL,
+    migration_status         TEXT NOT NULL,
+    migration_status_message TEXT NOT NULL,
+    needs_disk_import        INTEGER NOT NULL,
+    secret_token             TEXT NOT NULL,
+    last_worker_status       INTEGER NOT NULL,
+    FOREIGN KEY(instance_id) REFERENCES instances(id) ON DELETE CASCADE,
+    FOREIGN KEY(batch_id)    REFERENCES batches(id) ON DELETE CASCADE,
+    UNIQUE (instance_id)
+);
+
+INSERT INTO queue_new (id, instance_id, batch_id, migration_status, migration_status_message, needs_disk_import, secret_token, last_worker_status)
+  SELECT id, instance_id, batch_id, migration_status, migration_status_message, needs_disk_import, secret_token, 0 FROM queue;
+DROP TABLE queue;
+ALTER TABLE queue_new RENAME TO queue;
+`)
+
+	return err
 }
 
 func updateFromV5(ctx context.Context, tx *sql.Tx) error {
