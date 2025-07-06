@@ -3,11 +3,9 @@ package queue
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
@@ -60,20 +58,9 @@ func (s *Handler) RecordWorkerUpdate(instanceUUID uuid.UUID) {
 	s.workerUpdateCache.Write(instanceUUID, time.Now().UTC(), nil)
 }
 
-// ReceivedWorkerUpdate returns the last worker update that the corresponding instance received, if that update is within
-// the given threshold from now.
-// If no worker update is found for this instance, it returns a 404.
-func (s *Handler) ReceivedWorkerUpdate(instanceUUID uuid.UUID, threshold time.Duration) (time.Time, error) {
-	lastUpdate, ok := s.workerUpdateCache.Read(instanceUUID)
-	if !ok {
-		return time.Time{}, incusAPI.StatusErrorf(http.StatusNotFound, "No worker found for instance with UUID %q", instanceUUID)
-	}
-
-	if lastUpdate.Add(threshold).Before(time.Now().UTC()) {
-		return time.Time{}, fmt.Errorf("No worker update received in %q for instance with UUID %q", threshold.String(), instanceUUID)
-	}
-
-	return lastUpdate, nil
+func (s *Handler) LastWorkerUpdate(instanceUUID uuid.UUID) time.Time {
+	lastUpdate, _ := s.workerUpdateCache.Read(instanceUUID)
+	return lastUpdate
 }
 
 // RemoveFromCache removes the given instanceUUID from the worker cache.
