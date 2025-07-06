@@ -464,55 +464,16 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 			return fmt.Errorf("Failed to get all networks: %w", err)
 		}
 
-		validStates := []api.MigrationStatusType{
-			api.MIGRATIONSTATUS_IDLE,
-			api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
-			api.MIGRATIONSTATUS_FINAL_IMPORT,
-			api.MIGRATIONSTATUS_IMPORT_COMPLETE,
-		}
-
-		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, validStates...)
+		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
 		return err
 	})
 	if err != nil {
 		return err
 	}
 
-	importedBatches := map[string]map[uuid.UUID]bool{}
-	for batchName, state := range migrationState {
-		importedEntries := map[uuid.UUID]bool{}
-		for _, entry := range state.QueueEntries {
-			if entry.MigrationStatus != api.MIGRATIONSTATUS_IMPORT_COMPLETE {
-				_, err := d.queueHandler.ReceivedWorkerUpdate(entry.InstanceUUID, time.Second*30)
-				if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
-					_, err = d.queue.UpdateStatusByUUID(ctx, entry.InstanceUUID, entry.MigrationStatus, "Timed out waiting for worker", false)
-					if err != nil {
-						return fmt.Errorf("Failed to set errored state on instance %q: %w", state.Instances[entry.InstanceUUID].Properties.Location, err)
-					}
-				}
-
-				// Only consider IMPORT COMPLETE records moving forward.
-				continue
-			}
-
-			importedEntries[entry.InstanceUUID] = true
-		}
-
-		if len(importedEntries) > 0 {
-			importedBatches[batchName] = importedEntries
-		}
-	}
-
-	finishedBatches := make(map[string][]uuid.UUID, len(migrationState))
-	for batchName, batches := range importedBatches {
-		finishedInstances := []uuid.UUID{}
-		state := migrationState[batchName]
-		err := util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
-			if !batches[instance.UUID] {
-				// Skip instances that haven't finished background import.
-				return nil
-			}
-
+	finishedInstances := []uuid.UUID{}
+	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
+		return util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
 			instanceList := make(migration.Instances, 0, len(state.Instances))
 			for _, inst := range state.Instances {
 				instanceList = append(instanceList, inst)
@@ -526,24 +487,28 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 			finishedInstances = append(finishedInstances, instUUID)
 			return nil
 		})
-		if err != nil {
-			log.Error("Failed to configureMigratedInstances", slog.String("batch", state.Batch.Name))
-		}
-
-		finishedBatches[state.Batch.Name] = finishedInstances
+	})
+	if err != nil {
+		log.Error("Failed to configure migrated instances for all batches")
 	}
 
 	// Remove complete records from the queue cache.
-	for batchName := range finishedBatches {
-		for instanceUUID := range migrationState[batchName].QueueEntries {
-			d.queueHandler.RemoveFromCache(instanceUUID)
-		}
+	for _, instanceUUID := range finishedInstances {
+		d.queueHandler.RemoveFromCache(instanceUUID)
 	}
 
 	// Set fully completed batches to FINISHED state.
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		for batch, instUUIDs := range finishedBatches {
-			if len(migrationState[batch].Instances) == len(instUUIDs) {
+		for batch, state := range migrationState {
+			var finished bool
+			for _, inst := range state.Instances {
+				if !d.queueHandler.LastWorkerUpdate(inst.UUID).IsZero() {
+					finished = false
+					break
+				}
+			}
+
+			if finished {
 				_, err := d.batch.UpdateStatusByName(ctx, batch, api.BATCHSTATUS_FINISHED, string(api.BATCHSTATUS_FINISHED))
 				if err != nil {
 					return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_FINISHED, err)
