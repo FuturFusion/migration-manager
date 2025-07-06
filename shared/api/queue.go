@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -62,4 +63,7 @@ type QueueEntry struct {
 	// A human-friendly name for the batch
 	// Example: MyBatch
 	BatchName string `json:"batch_name" yaml:"batch_name"`
+
+	// Time in UTC that the queue entry received a response from the migration worker
+	LastWorkerResponse time.Time
 }

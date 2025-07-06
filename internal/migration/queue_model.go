@@ -1,6 +1,8 @@
 package migration
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -60,4 +62,15 @@ func (q QueueEntry) Validate() error {
 	}
 
 	return nil
+}
+
+func (q QueueEntry) ToAPI(instanceName string, lastWorkerUpdate time.Time) api.QueueEntry {
+	return api.QueueEntry{
+		InstanceUUID:           q.InstanceUUID,
+		MigrationStatus:        q.MigrationStatus,
+		MigrationStatusMessage: q.MigrationStatusMessage,
+		BatchName:              q.BatchName,
+		InstanceName:           instanceName,
+		LastWorkerResponse:     lastWorkerUpdate,
+	}
 }

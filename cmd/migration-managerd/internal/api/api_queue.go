@@ -195,13 +195,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 					return err
 				}
 
-				result = append(result, api.QueueEntry{
-					InstanceUUID:           queueItem.InstanceUUID,
-					InstanceName:           instance.Properties.Name,
-					MigrationStatus:        queueItem.MigrationStatus,
-					MigrationStatusMessage: queueItem.MigrationStatusMessage,
-					BatchName:              queueItem.BatchName,
-				})
+				result = append(result, queueItem.ToAPI(instance.Properties.Name, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID)))
 			}
 
 			return nil
@@ -288,13 +282,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	return response.SyncResponseETag(true, api.QueueEntry{
-		InstanceName:           instanceName,
-		InstanceUUID:           queueItem.InstanceUUID,
-		MigrationStatus:        queueItem.MigrationStatus,
-		MigrationStatusMessage: queueItem.MigrationStatusMessage,
-		BatchName:              queueItem.BatchName,
-	}, queueItem)
+	return response.SyncResponseETag(true, queueItem.ToAPI(instanceName, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID)), queueItem)
 }
 
 // swagger:operation DELETE /1.0/queues/{name} queues queue_delete
