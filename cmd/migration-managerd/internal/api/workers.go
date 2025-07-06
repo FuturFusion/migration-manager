@@ -438,7 +438,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	}
 
 	// Set the instance state to IDLE before triggering the worker.
-	_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, string(api.MIGRATIONSTATUS_IDLE), true)
+	_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, "Waiting for worker to connect", true)
 	if err != nil {
 		return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_IDLE, err)
 	}
