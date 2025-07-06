@@ -302,15 +302,43 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			return fmt.Errorf("Failed to get instance %q: %w", id, err)
 		}
 
-		// If the instance is already doing something, don't start something else.
+		var restartWorker bool
 		if queueEntry.MigrationStatus != api.MIGRATIONSTATUS_IDLE {
-			return fmt.Errorf("Instance '%s' isn't idle: %s (%s): %w", instance.Properties.Location, queueEntry.MigrationStatus, queueEntry.MigrationStatusMessage, ErrOperationNotPermitted)
+			if queueEntry.LastWorkerStatus != api.WORKERRESPONSE_RUNNING {
+				return fmt.Errorf("Instance '%s' isn't idle: %s (%s): %w", instance.Properties.Location, queueEntry.MigrationStatus, queueEntry.MigrationStatusMessage, ErrOperationNotPermitted)
+			}
+
+			restartWorker = true
 		}
 
 		// Fetch the source for the instance.
 		source, err := s.source.GetByName(ctx, instance.Source)
 		if err != nil {
 			return fmt.Errorf("Failed to get source %q: %w", instance.Source, err)
+		}
+
+		// Setup the default "idle" command
+		workerCommand = WorkerCommand{
+			Command:    api.WORKERCOMMAND_IDLE,
+			Location:   instance.Properties.Location,
+			SourceType: source.SourceType,
+			Source:     *source,
+			OS:         instance.Properties.OS,
+			OSVersion:  instance.Properties.OSVersion,
+		}
+
+		// If the last worker response was RUNNING, then skip validation and just send the response it wants.
+		if restartWorker {
+			switch queueEntry.MigrationStatus {
+			case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
+				workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
+			case api.MIGRATIONSTATUS_FINAL_IMPORT:
+				workerCommand.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
+			default:
+				return fmt.Errorf("Unable to restart worker for instance in state %q: %w", queueEntry.MigrationStatus, ErrOperationNotPermitted)
+			}
+
+			return nil
 		}
 
 		var sourceProperties api.VMwareProperties
@@ -333,16 +361,6 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		err = json.Unmarshal(target.Properties, &targetProperties)
 		if err != nil {
 			return fmt.Errorf("Failed to get target %q properties: %w", target.Name, err)
-		}
-
-		// Setup the default "idle" command
-		workerCommand = WorkerCommand{
-			Command:    api.WORKERCOMMAND_IDLE,
-			Location:   instance.Properties.Location,
-			SourceType: source.SourceType,
-			Source:     *source,
-			OS:         instance.Properties.OS,
-			OSVersion:  instance.Properties.OSVersion,
 		}
 
 		// Determine what action, if any, the worker should start.
@@ -466,7 +484,8 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 
 		// Update instance in the database.
 		uuid := entry.InstanceUUID
-		entry, err = s.UpdateStatusByUUID(ctx, uuid, entry.MigrationStatus, entry.MigrationStatusMessage, entry.NeedsDiskImport)
+		entry.LastWorkerStatus = workerResponseType
+		err = s.Update(ctx, entry)
 		if err != nil {
 			return fmt.Errorf("Failed updating instance '%s': %w", uuid, err)
 		}

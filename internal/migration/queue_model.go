@@ -16,6 +16,7 @@ type QueueEntry struct {
 	SecretToken            uuid.UUID
 	MigrationStatus        api.MigrationStatusType
 	MigrationStatusMessage string
+	LastWorkerStatus       api.WorkerResponseType
 }
 
 type QueueEntries []QueueEntry
