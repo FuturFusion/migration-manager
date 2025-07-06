@@ -85,6 +85,10 @@ func (s instanceService) GetByUUID(ctx context.Context, id uuid.UUID) (*Instance
 }
 
 func (s instanceService) GetAllQueued(ctx context.Context, queue QueueEntries) (Instances, error) {
+	if len(queue) == 0 {
+		return Instances{}, nil
+	}
+
 	uuids := make([]uuid.UUID, len(queue))
 	for i, q := range queue {
 		uuids[i] = q.InstanceUUID
