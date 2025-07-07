@@ -18,6 +18,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/queue"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -479,7 +480,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 				instanceList = append(instanceList, inst)
 			}
 
-			err := d.configureMigratedInstances(ctx, instance, state.Target, state.Batch, migration.FilterUsedNetworks(allNetworks, instanceList))
+			err := d.configureMigratedInstances(ctx, instance, state.Sources[instUUID], state.Target, state.Batch, migration.FilterUsedNetworks(allNetworks, instanceList))
 			if err != nil {
 				return err
 			}
@@ -522,12 +523,13 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 
 // configureMigratedInstances updates the configuration of instances concurrently after they have finished migrating. Errors will result in the instance state becoming ERRORED.
 // If an instance succeeds, its state will be moved to FINISHED.
-func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Instance, t migration.Target, batch migration.Batch, activeNetworks migration.Networks) (_err error) {
+func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Instance, s migration.Source, t migration.Target, batch migration.Batch, activeNetworks migration.Networks) (_err error) {
 	log := slog.With(
 		slog.String("method", "createTargetVMs"),
 		slog.String("target", t.Name),
 		slog.String("batch", batch.Name),
 		slog.String("instance", i.Properties.Location),
+		slog.String("source", s.Name),
 	)
 
 	reverter := revert.New()
@@ -543,6 +545,24 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Ins
 		_, err := d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, true)
 		if err != nil {
 			log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+		}
+
+		is, err := source.NewInternalVMwareSourceFrom(s.ToAPI())
+		if err != nil {
+			log.Error("Failed to establish source-specific type to restart VM after migration failure", logger.Err(err))
+			return
+		}
+
+		err = is.Connect(ctx)
+		if err != nil {
+			log.Error("Failed to connect to source to restart VM after migration failure", logger.Err(err))
+			return
+		}
+
+		err = is.PowerOnVM(ctx, i.Properties.Location)
+		if err != nil {
+			log.Error("Failed to restart VM after migration failure", logger.Err(err))
+			return
 		}
 	})
 

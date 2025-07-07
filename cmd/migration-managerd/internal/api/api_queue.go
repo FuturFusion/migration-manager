@@ -13,6 +13,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -425,9 +426,46 @@ func queueWorkerPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = d.queue.ProcessWorkerUpdate(r.Context(), instanceUUID, resp.Status, resp.StatusMessage)
+	updatedEntry, err := d.queue.ProcessWorkerUpdate(r.Context(), instanceUUID, resp.Status, resp.StatusMessage)
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	if updatedEntry.MigrationStatus == api.MIGRATIONSTATUS_ERROR {
+		var src *migration.Source
+		var location string
+		err := transaction.Do(r.Context(), func(ctx context.Context) error {
+			inst, err := d.instance.GetByUUID(ctx, instanceUUID)
+			if err != nil {
+				return err
+			}
+
+			location = inst.Properties.Location
+			src, err = d.source.GetByName(ctx, inst.Source)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		err = is.Connect(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		err = is.PowerOnVM(r.Context(), location)
+		if err != nil {
+			return response.SmartError(err)
+		}
 	}
 
 	d.queueHandler.RecordWorkerUpdate(instanceUUID)
