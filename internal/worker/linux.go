@@ -2,14 +2,18 @@ package worker
 
 import (
 	"bufio"
+	"context"
 	"embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
@@ -50,7 +54,7 @@ type LVSOutput struct {
 
 const chrootMountPath string = "/run/mount/target/"
 
-func LinuxDoPostMigrationConfig(distro string, majorVersion int) error {
+func LinuxDoPostMigrationConfig(ctx context.Context, distro string, majorVersion int) error {
 	slog.Info("Preparing to perform post-migration configuration of VM")
 
 	// Determine the root partition.
@@ -146,8 +150,28 @@ func LinuxDoPostMigrationConfig(distro string, majorVersion int) error {
 		}
 	}
 
+	c := internalUtil.UnixHTTPClient("/dev/incus/sock")
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://unix.socket/1.0/config/user.migration.hwaddrs", nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
 	// Setup udev rules to create network device aliases.
-	err = runScriptInChroot("add-udev-network-rules.sh")
+	err = runScriptInChroot("add-udev-network-rules.sh", string(out))
 	if err != nil {
 		return err
 	}
@@ -260,7 +284,7 @@ func determineRootPartition() (string, int, []string, error) {
 	return "", PARTITION_TYPE_UNKNOWN, nil, fmt.Errorf("Failed to determine the root partition")
 }
 
-func runScriptInChroot(scriptName string) error {
+func runScriptInChroot(scriptName string, args ...string) error {
 	// Get the embedded script's contents.
 	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
 	if err != nil {
@@ -276,7 +300,9 @@ func runScriptInChroot(scriptName string) error {
 	defer func() { _ = os.Remove(filepath.Join(chrootMountPath, scriptName)) }()
 
 	// Run the script within the chroot.
-	_, err = subprocess.RunCommand("chroot", chrootMountPath, filepath.Join("/", scriptName))
+	cmd := []string{chrootMountPath, filepath.Join("/", scriptName)}
+	cmd = append(cmd, args...)
+	_, err = subprocess.RunCommand("chroot", cmd...)
 	return err
 }
 

@@ -272,19 +272,19 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 	}
 
 	if strings.Contains(strings.ToLower(cmd.OS), "centos") {
-		err = worker.LinuxDoPostMigrationConfig("CentOS", majorVersion)
+		err = worker.LinuxDoPostMigrationConfig(ctx, "CentOS", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "debian") {
-		err = worker.LinuxDoPostMigrationConfig("Debian", majorVersion)
+		err = worker.LinuxDoPostMigrationConfig(ctx, "Debian", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "opensuse") {
-		err = worker.LinuxDoPostMigrationConfig("openSUSE", majorVersion)
+		err = worker.LinuxDoPostMigrationConfig(ctx, "openSUSE", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "oracle") {
-		err = worker.LinuxDoPostMigrationConfig("Oracle", majorVersion)
+		err = worker.LinuxDoPostMigrationConfig(ctx, "Oracle", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "rhel") {
-		err = worker.LinuxDoPostMigrationConfig("RHEL", majorVersion)
+		err = worker.LinuxDoPostMigrationConfig(ctx, "RHEL", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "sles") {
-		err = worker.LinuxDoPostMigrationConfig("SUSE", majorVersion)
+		err = worker.LinuxDoPostMigrationConfig(ctx, "SUSE", majorVersion)
 	} else if strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
-		err = worker.LinuxDoPostMigrationConfig("Ubuntu", majorVersion)
+		err = worker.LinuxDoPostMigrationConfig(ctx, "Ubuntu", majorVersion)
 	}
 
 	if err != nil {

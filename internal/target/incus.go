@@ -441,6 +441,12 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 		return incusAPI.InstancesPost{}, err
 	}
 
+	hwaddrs := []string{}
+	for _, nic := range instanceDef.Properties.NICs {
+		hwaddrs = append(hwaddrs, nic.HardwareAddress)
+	}
+
+	ret.Config["user.migration.hwaddrs"] = strings.Join(hwaddrs, " ")
 	ret.Config["user.migration.source_type"] = "VMware"
 	ret.Config["user.migration.source"] = instanceDef.Source
 	ret.Config["user.migration.token"] = secretToken.String()
