@@ -53,6 +53,10 @@ type MigrationState struct {
 	Sources      map[uuid.UUID]migration.Source
 }
 
+func (s *Handler) InitWorkerCache(initial map[uuid.UUID]time.Time) error {
+	return s.workerUpdateCache.Replace(initial)
+}
+
 // RecordWorkerUpdate caches the last worker update that the corresponding instance has received.
 func (s *Handler) RecordWorkerUpdate(instanceUUID uuid.UUID) {
 	s.workerUpdateCache.Write(instanceUUID, time.Now().UTC(), nil)

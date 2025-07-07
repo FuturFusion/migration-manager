@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -42,15 +43,32 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 	importingFromSource := map[string]int{}
 	importingToTarget := map[string]int{}
 	creatingOnTarget := map[string]int{}
+	workerUpdates := map[uuid.UUID]time.Time{}
+	now := time.Now().UTC()
 	for _, state := range states {
 		for instUUID, entry := range state.QueueEntries {
-			if entry.MigrationStatus == api.MIGRATIONSTATUS_CREATING {
-				creatingOnTarget[state.Target.Name] = creatingOnTarget[state.Target.Name] + 1
-			}
+			switch entry.MigrationStatus {
+			case api.MIGRATIONSTATUS_IDLE:
+				workerUpdates[instUUID] = now
 
-			if entry.MigrationStatus == api.MIGRATIONSTATUS_FINAL_IMPORT || entry.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT {
+			case api.MIGRATIONSTATUS_IMPORT_COMPLETE:
+				workerUpdates[instUUID] = now
+
+			case api.MIGRATIONSTATUS_ERROR:
+				workerUpdates[instUUID] = now
+
+			case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
 				importingFromSource[state.Sources[instUUID].Name] = importingFromSource[state.Sources[instUUID].Name] + 1
 				importingToTarget[state.Target.Name] = importingToTarget[state.Target.Name] + 1
+				workerUpdates[instUUID] = now
+
+			case api.MIGRATIONSTATUS_FINAL_IMPORT:
+				importingFromSource[state.Sources[instUUID].Name] = importingFromSource[state.Sources[instUUID].Name] + 1
+				importingToTarget[state.Target.Name] = importingToTarget[state.Target.Name] + 1
+				workerUpdates[instUUID] = now
+
+			case api.MIGRATIONSTATUS_CREATING:
+				creatingOnTarget[state.Target.Name] = creatingOnTarget[state.Target.Name] + 1
 			}
 		}
 	}
@@ -68,6 +86,11 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 	err = d.target.InitCreateCache(creatingOnTarget)
 	if err != nil {
 		return fmt.Errorf("Failed to initialize target create cache: %w", err)
+	}
+
+	err = d.queueHandler.InitWorkerCache(workerUpdates)
+	if err != nil {
+		return fmt.Errorf("Failed to initialize worker update cache: %w", err)
 	}
 
 	return nil
