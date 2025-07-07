@@ -272,12 +272,13 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 	}
 
 	// Handle Windows-specific completion steps.
-	if strings.Contains(apiDef.Config[osInfo.Key], "swodniw") {
+	if apiDef.Config[osInfo.Key] == "win-prepare" {
 		// Remove the drivers ISO image.
 		delete(apiDef.Devices, "drivers")
 
 		// Fixup the OS name.
-		apiDef.Config[osInfo.Key] = strings.Replace(apiDef.Config[osInfo.Key], "swodniw", "windows", 1)
+		apiDef.Config[osInfo.Key] = apiDef.Config["user.migration.os"]
+		apiDef.Config["user.migration.os"] = ""
 	}
 
 	// Handle RHEL (and derivative) specific completion steps.
@@ -366,7 +367,13 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 			instance.Config[info.Key] = p.Description
 			instance.Description = p.Description
 		case properties.InstanceOS:
-			instance.Config[info.Key] = p.OS
+			if strings.Contains(strings.ToLower(p.OS), "windows") {
+				instance.Config[info.Key] = "win-prepare"
+				instance.Config["user.migration.os"] = p.OS
+			} else {
+				instance.Config[info.Key] = p.OS
+			}
+
 		case properties.InstanceOSVersion:
 			instance.Config[info.Key] = p.OSVersion
 		}
@@ -453,14 +460,9 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 		return incusAPI.InstancesPost{}, err
 	}
 
-	if strings.Contains(ret.Config[info.Key], "windows") {
+	if ret.Config[info.Key] == "win-prepare" {
 		// Set some additional QEMU options.
 		ret.Config["raw.qemu"] = "-device intel-hda -device hda-duplex -audio spice"
-
-		// If image.os contains the string "Windows", then the incus-agent config drive won't be mapped.
-		// But we need that when running the initial migration logic from the ISO image. Reverse the string
-		// for now, and un-reverse it before finalizing the VM.
-		ret.Config[info.Key] = strings.Replace(ret.Config[info.Key], "windows", "swodniw", 1)
 	}
 
 	return ret, nil
@@ -481,7 +483,7 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 	}
 
 	// If this is a Windows VM, attach the virtio drivers ISO.
-	if strings.Contains(apiDef.Config["image.os"], "swodniw") {
+	if apiDef.Config["image.os"] == "win-prepare" {
 		if driversISOImage == "" {
 			return nil, fmt.Errorf("Missing Windows drivers ISO image")
 		}
