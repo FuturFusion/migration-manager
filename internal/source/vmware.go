@@ -377,6 +377,7 @@ func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) (migration.Ne
 			netType = api.NETWORKTYPE_VMWARE_NSX
 		}
 
+		id = strings.ReplaceAll(id, " ", "_")
 		if networkLocationsByID[id] != "" {
 			b, err := json.Marshal(props)
 			if err != nil {
@@ -912,6 +913,13 @@ func parseValue(propName properties.Name, value any) (any, error) {
 		}
 
 		return uuid.Parse(strVal)
+	case properties.InstanceNICNetworkID:
+		strVal, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%q value %v must be a string", propName.String(), value)
+		}
+
+		return strings.ReplaceAll(strVal, " ", "_"), nil
 	default:
 		return value, nil
 	}
