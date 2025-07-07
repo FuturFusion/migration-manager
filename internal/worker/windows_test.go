@@ -28,6 +28,10 @@ func TestMapWindowsVersionToAbbrevSuccess(t *testing.T) {
 			want: "2k22",
 		},
 		{
+			name: "Windows Server 2025",
+			want: "2k25",
+		},
+		{
 			name: "Windows 7 (64 bit)",
 			want: "w7",
 		},
@@ -143,9 +147,6 @@ func TestMapWindowsVersionToAbbrevNotSupported(t *testing.T) {
 		},
 		{
 			name: "Windows 12",
-		},
-		{
-			name: "Windows Server 2025",
 		},
 		{
 			name: "Windows Hyper-V",
