@@ -191,18 +191,22 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			}
 		}
 
+		// Get all waiting instances in running batches, as they may have been skipped due to concurrency limits before.
 		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WAITING)
 		if err != nil {
 			return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
 		}
 
-		for _, state := range migrationState {
+		for batchName, state := range migrationState {
 			var properties api.IncusProperties
 			err = json.Unmarshal(state.Target.Properties, &properties)
 			if err != nil {
 				return err
 			}
 
+			beginningInstances := map[uuid.UUID]migration.Instance{}
+			beginningSources := map[uuid.UUID]migration.Source{}
+			beginningQueueEntries := map[uuid.UUID]migration.QueueEntry{}
 			for _, inst := range state.Instances {
 				if properties.CreateLimit > 0 && d.target.GetCachedCreations(state.Target.Name) >= properties.CreateLimit {
 					log.Warn("Create limit reached for target, waiting for existing instances to finish creating", slog.String("target", state.Target.Name))
@@ -214,7 +218,17 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				if err != nil {
 					return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
 				}
+
+				beginningInstances[inst.UUID] = inst
+				beginningSources[inst.UUID] = state.Sources[inst.UUID]
+				beginningQueueEntries[inst.UUID] = state.QueueEntries[inst.UUID]
 			}
+
+			// Prune any deferred instances from the migration state.
+			state.QueueEntries = beginningQueueEntries
+			state.Sources = beginningSources
+			state.Instances = beginningInstances
+			migrationState[batchName] = state
 		}
 
 		return nil
