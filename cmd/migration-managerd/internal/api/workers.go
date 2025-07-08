@@ -18,6 +18,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/queue"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -190,18 +191,22 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			}
 		}
 
+		// Get all waiting instances in running batches, as they may have been skipped due to concurrency limits before.
 		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WAITING)
 		if err != nil {
 			return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
 		}
 
-		for _, state := range migrationState {
+		for batchName, state := range migrationState {
 			var properties api.IncusProperties
 			err = json.Unmarshal(state.Target.Properties, &properties)
 			if err != nil {
 				return err
 			}
 
+			beginningInstances := map[uuid.UUID]migration.Instance{}
+			beginningSources := map[uuid.UUID]migration.Source{}
+			beginningQueueEntries := map[uuid.UUID]migration.QueueEntry{}
 			for _, inst := range state.Instances {
 				if properties.CreateLimit > 0 && d.target.GetCachedCreations(state.Target.Name) >= properties.CreateLimit {
 					log.Warn("Create limit reached for target, waiting for existing instances to finish creating", slog.String("target", state.Target.Name))
@@ -213,7 +218,17 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				if err != nil {
 					return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
 				}
+
+				beginningInstances[inst.UUID] = inst
+				beginningSources[inst.UUID] = state.Sources[inst.UUID]
+				beginningQueueEntries[inst.UUID] = state.QueueEntries[inst.UUID]
 			}
+
+			// Prune any deferred instances from the migration state.
+			state.QueueEntries = beginningQueueEntries
+			state.Sources = beginningSources
+			state.Instances = beginningInstances
+			migrationState[batchName] = state
 		}
 
 		return nil
@@ -438,7 +453,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	}
 
 	// Set the instance state to IDLE before triggering the worker.
-	_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, string(api.MIGRATIONSTATUS_IDLE), true)
+	_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, "Waiting for worker to connect", true)
 	if err != nil {
 		return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_IDLE, err)
 	}
@@ -464,61 +479,22 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 			return fmt.Errorf("Failed to get all networks: %w", err)
 		}
 
-		validStates := []api.MigrationStatusType{
-			api.MIGRATIONSTATUS_IDLE,
-			api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
-			api.MIGRATIONSTATUS_FINAL_IMPORT,
-			api.MIGRATIONSTATUS_IMPORT_COMPLETE,
-		}
-
-		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, validStates...)
+		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
 		return err
 	})
 	if err != nil {
 		return err
 	}
 
-	importedBatches := map[string]map[uuid.UUID]bool{}
-	for batchName, state := range migrationState {
-		importedEntries := map[uuid.UUID]bool{}
-		for _, entry := range state.QueueEntries {
-			if entry.MigrationStatus != api.MIGRATIONSTATUS_IMPORT_COMPLETE {
-				_, err := d.queueHandler.ReceivedWorkerUpdate(entry.InstanceUUID, time.Second*30)
-				if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
-					_, err = d.queue.UpdateStatusByUUID(ctx, entry.InstanceUUID, entry.MigrationStatus, "Timed out waiting for worker", false)
-					if err != nil {
-						return fmt.Errorf("Failed to set errored state on instance %q: %w", state.Instances[entry.InstanceUUID].Properties.Location, err)
-					}
-				}
-
-				// Only consider IMPORT COMPLETE records moving forward.
-				continue
-			}
-
-			importedEntries[entry.InstanceUUID] = true
-		}
-
-		if len(importedEntries) > 0 {
-			importedBatches[batchName] = importedEntries
-		}
-	}
-
-	finishedBatches := make(map[string][]uuid.UUID, len(migrationState))
-	for batchName, batches := range importedBatches {
-		finishedInstances := []uuid.UUID{}
-		state := migrationState[batchName]
-		err := util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
-			if !batches[instance.UUID] {
-				// Skip instances that haven't finished background import.
-				return nil
-			}
-
+	finishedInstances := []uuid.UUID{}
+	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
+		return util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
 			instanceList := make(migration.Instances, 0, len(state.Instances))
 			for _, inst := range state.Instances {
 				instanceList = append(instanceList, inst)
 			}
 
-			err := d.configureMigratedInstances(ctx, instance, state.Target, state.Batch, migration.FilterUsedNetworks(allNetworks, instanceList))
+			err := d.configureMigratedInstances(ctx, instance, state.Sources[instUUID], state.Target, state.Batch, migration.FilterUsedNetworks(allNetworks, instanceList))
 			if err != nil {
 				return err
 			}
@@ -526,24 +502,28 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 			finishedInstances = append(finishedInstances, instUUID)
 			return nil
 		})
-		if err != nil {
-			log.Error("Failed to configureMigratedInstances", slog.String("batch", state.Batch.Name))
-		}
-
-		finishedBatches[state.Batch.Name] = finishedInstances
+	})
+	if err != nil {
+		log.Error("Failed to configure migrated instances for all batches")
 	}
 
 	// Remove complete records from the queue cache.
-	for batchName := range finishedBatches {
-		for instanceUUID := range migrationState[batchName].QueueEntries {
-			d.queueHandler.RemoveFromCache(instanceUUID)
-		}
+	for _, instanceUUID := range finishedInstances {
+		d.queueHandler.RemoveFromCache(instanceUUID)
 	}
 
 	// Set fully completed batches to FINISHED state.
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		for batch, instUUIDs := range finishedBatches {
-			if len(migrationState[batch].Instances) == len(instUUIDs) {
+		for batch, state := range migrationState {
+			var finished bool
+			for _, inst := range state.Instances {
+				if !d.queueHandler.LastWorkerUpdate(inst.UUID).IsZero() {
+					finished = false
+					break
+				}
+			}
+
+			if finished {
 				_, err := d.batch.UpdateStatusByName(ctx, batch, api.BATCHSTATUS_FINISHED, string(api.BATCHSTATUS_FINISHED))
 				if err != nil {
 					return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_FINISHED, err)
@@ -557,12 +537,13 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 
 // configureMigratedInstances updates the configuration of instances concurrently after they have finished migrating. Errors will result in the instance state becoming ERRORED.
 // If an instance succeeds, its state will be moved to FINISHED.
-func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Instance, t migration.Target, batch migration.Batch, activeNetworks migration.Networks) (_err error) {
+func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Instance, s migration.Source, t migration.Target, batch migration.Batch, activeNetworks migration.Networks) (_err error) {
 	log := slog.With(
 		slog.String("method", "createTargetVMs"),
 		slog.String("target", t.Name),
 		slog.String("batch", batch.Name),
 		slog.String("instance", i.Properties.Location),
+		slog.String("source", s.Name),
 	)
 
 	reverter := revert.New()
@@ -578,6 +559,24 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Ins
 		_, err := d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, true)
 		if err != nil {
 			log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+		}
+
+		is, err := source.NewInternalVMwareSourceFrom(s.ToAPI())
+		if err != nil {
+			log.Error("Failed to establish source-specific type to restart VM after migration failure", logger.Err(err))
+			return
+		}
+
+		err = is.Connect(ctx)
+		if err != nil {
+			log.Error("Failed to connect to source to restart VM after migration failure", logger.Err(err))
+			return
+		}
+
+		err = is.PowerOnVM(ctx, i.Properties.Location)
+		if err != nil {
+			log.Error("Failed to restart VM after migration failure", logger.Err(err))
+			return
 		}
 	})
 

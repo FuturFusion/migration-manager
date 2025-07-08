@@ -13,6 +13,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -195,13 +196,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 					return err
 				}
 
-				result = append(result, api.QueueEntry{
-					InstanceUUID:           queueItem.InstanceUUID,
-					InstanceName:           instance.Properties.Name,
-					MigrationStatus:        queueItem.MigrationStatus,
-					MigrationStatusMessage: queueItem.MigrationStatusMessage,
-					BatchName:              queueItem.BatchName,
-				})
+				result = append(result, queueItem.ToAPI(instance.Properties.Name, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID)))
 			}
 
 			return nil
@@ -288,13 +283,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	return response.SyncResponseETag(true, api.QueueEntry{
-		InstanceName:           instanceName,
-		InstanceUUID:           queueItem.InstanceUUID,
-		MigrationStatus:        queueItem.MigrationStatus,
-		MigrationStatusMessage: queueItem.MigrationStatusMessage,
-		BatchName:              queueItem.BatchName,
-	}, queueItem)
+	return response.SyncResponseETag(true, queueItem.ToAPI(instanceName, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID)), queueItem)
 }
 
 // swagger:operation DELETE /1.0/queues/{name} queues queue_delete
@@ -437,9 +426,46 @@ func queueWorkerPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	_, err = d.queue.ProcessWorkerUpdate(r.Context(), instanceUUID, resp.Status, resp.StatusMessage)
+	updatedEntry, err := d.queue.ProcessWorkerUpdate(r.Context(), instanceUUID, resp.Status, resp.StatusMessage)
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	if updatedEntry.MigrationStatus == api.MIGRATIONSTATUS_ERROR {
+		var src *migration.Source
+		var location string
+		err := transaction.Do(r.Context(), func(ctx context.Context) error {
+			inst, err := d.instance.GetByUUID(ctx, instanceUUID)
+			if err != nil {
+				return err
+			}
+
+			location = inst.Properties.Location
+			src, err = d.source.GetByName(ctx, inst.Source)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		})
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		err = is.Connect(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		err = is.PowerOnVM(r.Context(), location)
+		if err != nil {
+			return response.SmartError(err)
+		}
 	}
 
 	d.queueHandler.RecordWorkerUpdate(instanceUUID)

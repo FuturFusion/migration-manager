@@ -15,7 +15,7 @@ import (
 )
 
 var queueEntryObjects = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message, queue.last_worker_status
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
@@ -23,7 +23,7 @@ SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, qu
 `)
 
 var queueEntryObjectsByInstanceUUID = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message, queue.last_worker_status
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
@@ -32,7 +32,7 @@ SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, qu
 `)
 
 var queueEntryObjectsByBatchName = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message, queue.last_worker_status
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
@@ -41,7 +41,7 @@ SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, qu
 `)
 
 var queueEntryObjectsByMigrationStatus = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message, queue.last_worker_status
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
@@ -50,7 +50,7 @@ SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, qu
 `)
 
 var queueEntryObjectsByNeedsDiskImport = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message, queue.last_worker_status
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
@@ -59,7 +59,7 @@ SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, qu
 `)
 
 var queueEntryObjectsByBatchNameAndMigrationStatus = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message, queue.last_worker_status
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
@@ -68,7 +68,7 @@ SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, qu
 `)
 
 var queueEntryObjectsByBatchNameAndNeedsDiskImport = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message, queue.last_worker_status
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
@@ -77,7 +77,7 @@ SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, qu
 `)
 
 var queueEntryObjectsByBatchNameAndMigrationStatusAndNeedsDiskImport = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message, queue.last_worker_status
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
@@ -92,13 +92,13 @@ SELECT queue.id FROM queue
 `)
 
 var queueEntryCreate = RegisterStmt(`
-INSERT INTO queue (instance_id, batch_id, needs_disk_import, secret_token, migration_status, migration_status_message)
-  VALUES ((SELECT instances.id FROM instances WHERE instances.uuid = ?), (SELECT batches.id FROM batches WHERE batches.name = ?), ?, ?, ?, ?)
+INSERT INTO queue (instance_id, batch_id, needs_disk_import, secret_token, migration_status, migration_status_message, last_worker_status)
+  VALUES ((SELECT instances.id FROM instances WHERE instances.uuid = ?), (SELECT batches.id FROM batches WHERE batches.name = ?), ?, ?, ?, ?, ?)
 `)
 
 var queueEntryUpdate = RegisterStmt(`
 UPDATE queue
-  SET instance_id = (SELECT instances.id FROM instances WHERE instances.uuid = ?), batch_id = (SELECT batches.id FROM batches WHERE batches.name = ?), needs_disk_import = ?, secret_token = ?, migration_status = ?, migration_status_message = ?
+  SET instance_id = (SELECT instances.id FROM instances WHERE instances.uuid = ?), batch_id = (SELECT batches.id FROM batches WHERE batches.name = ?), needs_disk_import = ?, secret_token = ?, migration_status = ?, migration_status_message = ?, last_worker_status = ?
  WHERE id = ?
 `)
 
@@ -164,7 +164,7 @@ func GetQueueEntry(ctx context.Context, db dbtx, instanceUUID uuid.UUID) (_ *mig
 // queueEntryColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the QueueEntry entity.
 func queueEntryColumns() string {
-	return "queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message"
+	return "queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.needs_disk_import, queue.secret_token, queue.migration_status, queue.migration_status_message, queue.last_worker_status"
 }
 
 // getQueueEntries can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -173,7 +173,7 @@ func getQueueEntries(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migrat
 
 	dest := func(scan func(dest ...any) error) error {
 		q := migration.QueueEntry{}
-		err := scan(&q.ID, &q.InstanceUUID, &q.BatchName, &q.NeedsDiskImport, &q.SecretToken, &q.MigrationStatus, &q.MigrationStatusMessage)
+		err := scan(&q.ID, &q.InstanceUUID, &q.BatchName, &q.NeedsDiskImport, &q.SecretToken, &q.MigrationStatus, &q.MigrationStatusMessage, &q.LastWorkerStatus)
 		if err != nil {
 			return err
 		}
@@ -197,7 +197,7 @@ func getQueueEntriesRaw(ctx context.Context, db dbtx, sql string, args ...any) (
 
 	dest := func(scan func(dest ...any) error) error {
 		q := migration.QueueEntry{}
-		err := scan(&q.ID, &q.InstanceUUID, &q.BatchName, &q.NeedsDiskImport, &q.SecretToken, &q.MigrationStatus, &q.MigrationStatusMessage)
+		err := scan(&q.ID, &q.InstanceUUID, &q.BatchName, &q.NeedsDiskImport, &q.SecretToken, &q.MigrationStatus, &q.MigrationStatusMessage, &q.LastWorkerStatus)
 		if err != nil {
 			return err
 		}
@@ -437,7 +437,7 @@ func CreateQueueEntry(ctx context.Context, db dbtx, object migration.QueueEntry)
 		_err = mapErr(_err, "Queue_entry")
 	}()
 
-	args := make([]any, 6)
+	args := make([]any, 7)
 
 	// Populate the statement arguments.
 	args[0] = object.InstanceUUID
@@ -446,6 +446,7 @@ func CreateQueueEntry(ctx context.Context, db dbtx, object migration.QueueEntry)
 	args[3] = object.SecretToken
 	args[4] = object.MigrationStatus
 	args[5] = object.MigrationStatusMessage
+	args[6] = object.LastWorkerStatus
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, queueEntryCreate)
@@ -491,7 +492,7 @@ func UpdateQueueEntry(ctx context.Context, db tx, instanceUUID uuid.UUID, object
 		return fmt.Errorf("Failed to get \"queueEntryUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.InstanceUUID, object.BatchName, object.NeedsDiskImport, object.SecretToken, object.MigrationStatus, object.MigrationStatusMessage, id)
+	result, err := stmt.Exec(object.InstanceUUID, object.BatchName, object.NeedsDiskImport, object.SecretToken, object.MigrationStatus, object.MigrationStatusMessage, object.LastWorkerStatus, id)
 	if err != nil {
 		return fmt.Errorf("Update \"queue\" entry failed: %w", err)
 	}

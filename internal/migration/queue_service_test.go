@@ -962,7 +962,7 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 
 			assertErr:                  require.NoError,
 			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
-			wantMigrationStatusMessage: "Idle",
+			wantMigrationStatusMessage: "Waiting for migration window",
 		},
 		{
 			name:                  "success - migration success final import",
@@ -978,7 +978,7 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 
 			assertErr:                  require.NoError,
 			wantMigrationStatus:        api.MIGRATIONSTATUS_IMPORT_COMPLETE,
-			wantMigrationStatusMessage: "Import tasks complete",
+			wantMigrationStatusMessage: "Starting target instance",
 		},
 		{
 			name:                  "success - migration failed",

@@ -3,6 +3,7 @@ package cmds
 import (
 	"net/http"
 	"sort"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -86,9 +87,26 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Batch", "Status", "Status String"}
+	batchesByName := map[string]api.Batch{}
+	header := []string{"Name", "Batch", "Last Update", "Status", "Status Message"}
 	if c.flagVerbose {
-		header = append(header, "UUID")
+		header = append(header, "UUID", "Batch Status", "Batch Status Message")
+
+		// Get the current migration queue.
+		resp, err := c.global.doHTTPRequestV1("/batches", http.MethodGet, "recursion=1", nil)
+		if err != nil {
+			return err
+		}
+
+		batches := []api.Batch{}
+		err = responseToStruct(resp, &batches)
+		if err != nil {
+			return err
+		}
+
+		for _, b := range batches {
+			batchesByName[b.Name] = b
+		}
 	}
 
 	data := [][]string{}
@@ -98,9 +116,14 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 			q.MigrationStatusMessage = string(q.MigrationStatus)
 		}
 
-		row := []string{q.InstanceName, q.BatchName, string(q.MigrationStatus), q.MigrationStatusMessage}
+		lastUpdate := "No update"
+		if !q.LastWorkerResponse.IsZero() {
+			lastUpdate = time.Now().UTC().Sub(q.LastWorkerResponse).String() + " ago"
+		}
+
+		row := []string{q.InstanceName, q.BatchName, lastUpdate, string(q.MigrationStatus), q.MigrationStatusMessage}
 		if c.flagVerbose {
-			row = append(row, q.InstanceUUID.String())
+			row = append(row, q.InstanceUUID.String(), string(batchesByName[q.BatchName].Status), batchesByName[q.BatchName].StatusMessage)
 		}
 
 		data = append(data, row)

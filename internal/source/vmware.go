@@ -415,6 +415,31 @@ func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName stri
 	return nil
 }
 
+func (s *InternalVMwareSource) PowerOnVM(ctx context.Context, vmLocation string) error {
+	vm, err := s.getVM(ctx, vmLocation)
+	if err != nil {
+		return err
+	}
+
+	// Get the VM's current power state.
+	state, err := vm.PowerState(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Don't do anything if the VM is already powered off.
+	if state == types.VirtualMachinePowerStatePoweredOn {
+		return nil
+	}
+
+	task, err := vm.PowerOn(ctx)
+	if err != nil {
+		return err
+	}
+
+	return task.Wait(ctx)
+}
+
 func (s *InternalVMwareSource) PowerOffVM(ctx context.Context, vmName string) error {
 	vm, err := s.getVM(ctx, vmName)
 	if err != nil {
