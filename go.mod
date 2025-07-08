@@ -12,7 +12,7 @@ require (
 	github.com/gosimple/slug v1.15.0
 	github.com/hexdigest/gowrap v1.4.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
-	github.com/lxc/distrobuilder v0.0.0-20250505163748-066136f234ea
+	github.com/lxc/distrobuilder v0.0.0-20250707204949-8e76d6f42796
 	github.com/lxc/incus/v6 v6.13.1-0.20250620035744-cdc0adbbb2c9
 	github.com/matryer/moq v0.4.0
 	github.com/mattn/go-sqlite3 v1.14.28
@@ -28,7 +28,6 @@ require (
 	github.com/vmware/govmomi v0.50.0
 	github.com/zitadel/oidc/v3 v3.39.0
 	golang.org/x/mod v0.25.0
-	golang.org/x/net v0.41.0
 	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.15.0
 	golang.org/x/sys v0.33.0
@@ -156,6 +155,7 @@ require (
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.39.0 // indirect
 	golang.org/x/exp v0.0.0-20250606033433-dcc06ee1d476 // indirect
+	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/text v0.26.0 // indirect
 	gonum.org/v1/gonum v0.15.1 // indirect

@@ -83,7 +83,7 @@ func (i Instance) GetName() string {
 
 // GetOSType returns the OS type, as determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
 func (i *Instance) GetOSType() api.OSType {
-	if strings.HasPrefix(i.Properties.OS, "win") {
+	if strings.HasPrefix(strings.ToLower(i.Properties.OS), "win") {
 		return api.OSTYPE_WINDOWS
 	}
 

@@ -31,8 +31,8 @@
       vmware:
           8.0:
             # VMware appends Guest to the end of the OS name, so we remove it.
-            type: property
-            key: summary.config.guestId
+            type: guest_info
+            key: guestInfo.detailed.data
   target:
       incus:
           6.0:
@@ -44,8 +44,8 @@
   source:
       vmware:
           8.0:
-            type: property
-            key: summary.config.guestFullName
+            type: guest_info
+            key: guestInfo.detailed.data
   target:
       incus:
           6.0:
