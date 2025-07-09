@@ -22,6 +22,7 @@ import (
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"gopkg.in/yaml.v3"
 
+	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/properties"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -233,10 +234,31 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 			apiDef.Devices[nicDeviceName] = map[string]string{}
 		}
 
-		if baseNetwork.Overrides.Name != "" || baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
-			apiDef.Devices[nicDeviceName]["network"] = baseNetwork.ToAPI().Name()
+		if baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
+			var netProps internalAPI.VCenterNetworkProperties
+			err := json.Unmarshal(baseNetwork.Properties, &netProps)
+			if err != nil {
+				return fmt.Errorf("Failed to parse network properties for network %q: %w", baseNetwork.Location, err)
+			}
+
+			apiDef.Devices[nicDeviceName]["nictype"] = "bridged"
+			parentBridge := baseNetwork.Overrides.BridgeName
+			if parentBridge == "" {
+				parentBridge = "br0"
+			}
+
+			apiDef.Devices[nicDeviceName]["parent"] = parentBridge
+			if len(netProps.VlanRanges) > 0 {
+				apiDef.Devices[nicDeviceName]["vlan.tagged"] = strings.Join(netProps.VlanRanges, ",")
+			} else {
+				apiDef.Devices[nicDeviceName]["vlan"] = strconv.Itoa(netProps.VlanID)
+			}
 		} else {
-			apiDef.Devices[nicDeviceName]["network"] = "default"
+			if baseNetwork.Overrides.Name != "" || baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
+				apiDef.Devices[nicDeviceName]["network"] = baseNetwork.ToAPI().Name()
+			} else {
+				apiDef.Devices[nicDeviceName]["network"] = "default"
+			}
 		}
 
 		// Set a few forced overrides.
