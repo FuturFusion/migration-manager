@@ -1,4 +1,5 @@
 import { useNavigate, useParams, useSearchParams } from "react-router";
+import NetworkInstances from "components/NetworkInstances";
 import NetworkOverview from "components/NetworkOverview";
 import NetworkOverrides from "components/NetworkOverrides";
 import TabView from "components/TabView";
@@ -19,6 +20,11 @@ const NetworkDetail = () => {
       key: "overrides",
       title: "Overrides",
       content: <NetworkOverrides />,
+    },
+    {
+      key: "instances",
+      title: "Instances",
+      content: <NetworkInstances />,
     },
   ];
 
