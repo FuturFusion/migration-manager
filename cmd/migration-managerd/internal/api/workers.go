@@ -444,6 +444,9 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to start instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
 	}
 
+	// Unblock the concurrency limits for the target so that the Incus agent doesn't block other creations.
+	d.target.RemoveCreation(t.Name)
+
 	// Wait up to 90s for the Incus agent.
 	waitCtx, cancel := context.WithTimeout(ctx, time.Second*90)
 	defer cancel()
@@ -460,7 +463,6 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 
 	// Now that the VM agent is up, expect a worker update to come soon..
 	d.queueHandler.RecordWorkerUpdate(inst.UUID)
-	d.target.RemoveCreation(t.Name)
 
 	reverter.Success()
 
