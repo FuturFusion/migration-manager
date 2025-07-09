@@ -1,3 +1,4 @@
+import { Instance } from "types/instance";
 import { Network } from "types/network";
 import { APIResponse } from "types/response";
 
@@ -16,6 +17,18 @@ export const fetchNetwork = (
 ): Promise<Network> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/networks/${name}?source=${source}`)
+      .then((response) => response.json())
+      .then((data) => resolve(data.metadata))
+      .catch(reject);
+  });
+};
+
+export const fetchNetworkInstances = (
+  name: string | undefined,
+  source: string | null,
+): Promise<Instance[]> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/networks/${name}/instances?source=${source}`)
       .then((response) => response.json())
       .then((data) => resolve(data.metadata))
       .catch(reject);
