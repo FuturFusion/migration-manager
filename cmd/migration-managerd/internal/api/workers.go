@@ -516,10 +516,15 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 
 	// Set fully completed batches to FINISHED state.
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		for batch, state := range migrationState {
-			var finished bool
-			for _, inst := range state.Instances {
-				if !d.queueHandler.LastWorkerUpdate(inst.UUID).IsZero() {
+		for batch := range migrationState {
+			entries, err := d.queue.GetAllByBatch(ctx, batch)
+			if err != nil {
+				return err
+			}
+
+			finished := true
+			for _, entry := range entries {
+				if entry.MigrationStatus != api.MIGRATIONSTATUS_FINISHED {
 					finished = false
 					break
 				}
