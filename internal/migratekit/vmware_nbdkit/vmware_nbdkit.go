@@ -107,8 +107,10 @@ func (s *NbdkitServers) Start(ctx context.Context) error {
 				continue
 			}
 
-			backing := disk.Backing.(types.BaseVirtualDeviceFileBackingInfo)
-			info := backing.GetVirtualDeviceFileBackingInfo()
+			diskName, err := vmware.IsSupportedDisk(disk)
+			if err != nil {
+				return err
+			}
 
 			password, _ := s.VddkConfig.Endpoint.User.Password()
 			server, err := nbdkit.NewNbdkitBuilder().
@@ -118,7 +120,7 @@ func (s *NbdkitServers) Start(ctx context.Context) error {
 				Thumbprint(s.VddkConfig.Thumbprint).
 				VirtualMachine(s.VirtualMachine.Reference().Value).
 				Snapshot(s.SnapshotRef.Value).
-				Filename(info.FileName).
+				Filename(diskName).
 				Compression(s.VddkConfig.Compression).
 				Build()
 			if err != nil {
@@ -267,7 +269,11 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 
 	devIncus := util.UnixHTTPClient("/dev/incus/sock")
 	for _, server := range s.Servers {
-		diskName := server.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
+		diskName, err := vmware.IsSupportedDisk(server.Disk)
+		if err != nil {
+			return err
+		}
+
 		diskID, isRoot, err := getIncusDisk(ctx, devIncus, diskName)
 		if err != nil {
 			return err
@@ -292,18 +298,25 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 }
 
 func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsClean bool, statusCallback func(string, bool)) error {
+	diskName, err := vmware.IsSupportedDisk(s.Disk)
+	if err != nil {
+		return err
+	}
+
 	log := slog.With(
 		slog.String("vm", s.Servers.VirtualMachine.Name()),
-		slog.String("disk", s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName),
+		slog.String("disk", diskName),
 	)
 
 	log.Info("Starting full copy")
 
-	diskName := s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
-
 	index := 1
 	for i, server := range s.Servers.Servers {
-		serverDiskName := server.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
+		serverDiskName, err := vmware.IsSupportedDisk(server.Disk)
+		if err != nil {
+			return err
+		}
+
 		if serverDiskName == diskName {
 			index = i + 1
 			break
@@ -311,7 +324,7 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 	}
 
 	msg := fmt.Sprintf("(%d/%d) Importing disk", index, len(s.Servers.Servers))
-	err := nbdcopy.Run(
+	err = nbdcopy.Run(
 		msg,
 		s.Nbdkit.LibNBDExportName(),
 		path,
@@ -330,9 +343,14 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 }
 
 func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Target, path string, statusCallback func(string, bool)) error {
+	diskName, err := vmware.IsSupportedDisk(s.Disk)
+	if err != nil {
+		return err
+	}
+
 	log := slog.With(
 		slog.String("vm", s.Servers.VirtualMachine.Name()),
-		slog.String("disk", s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName),
+		slog.String("disk", diskName),
 	)
 
 	log.Info("Starting incremental copy")
@@ -362,7 +380,6 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 
 	startOffset := int64(0)
 	bar := progress.DataProgressBar("Incremental copy", s.Disk.CapacityInBytes)
-	diskName := s.Disk.Backing.(types.BaseVirtualDeviceFileBackingInfo).GetVirtualDeviceFileBackingInfo().FileName
 
 	for {
 		req := types.QueryChangedDiskAreas{
