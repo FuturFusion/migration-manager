@@ -68,22 +68,46 @@ func IsSupportedDisk(disk *types.VirtualDisk) (string, error) {
 	// Ignore raw disks or disks that are excluded from snapshots.
 	switch t := disk.GetVirtualDevice().Backing.(type) {
 	case *types.VirtualDiskRawDiskMappingVer1BackingInfo:
+		for t.Parent != nil {
+			t = t.Parent
+		}
+
 		return t.FileName, fmt.Errorf("Raw disk cannot be migrated")
 	case *types.VirtualDiskRawDiskVer2BackingInfo:
 		return t.DeviceName, fmt.Errorf("Raw disk cannot be migrated")
 	case *types.VirtualDiskPartitionedRawDiskVer2BackingInfo:
 		return t.DeviceName, fmt.Errorf("Raw disk cannot be migrated")
 	case *types.VirtualDiskFlatVer2BackingInfo:
+		for t.Parent != nil {
+			t = t.Parent
+		}
+
 		return t.FileName, isSupported(t.DiskMode, t.Sharing)
 	case *types.VirtualDiskFlatVer1BackingInfo:
+		for t.Parent != nil {
+			t = t.Parent
+		}
+
 		return t.FileName, isSupported(t.DiskMode, "")
 	case *types.VirtualDiskLocalPMemBackingInfo:
 		return t.FileName, isSupported(t.DiskMode, "")
 	case *types.VirtualDiskSeSparseBackingInfo:
+		for t.Parent != nil {
+			t = t.Parent
+		}
+
 		return t.FileName, isSupported(t.DiskMode, "")
 	case *types.VirtualDiskSparseVer1BackingInfo:
+		for t.Parent != nil {
+			t = t.Parent
+		}
+
 		return t.FileName, isSupported(t.DiskMode, "")
 	case *types.VirtualDiskSparseVer2BackingInfo:
+		for t.Parent != nil {
+			t = t.Parent
+		}
+
 		return t.FileName, isSupported(t.DiskMode, "")
 	default:
 		return "unknown", fmt.Errorf("Unknown disk type %T", t)
