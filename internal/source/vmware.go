@@ -693,6 +693,12 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
 				}
 
+				// Get the base disk name in case it has a snapshot suffix.
+				err = subProps.Add(properties.InstanceDiskName, diskName)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to set disk name property to %q: %w", diskName, err)
+				}
+
 				err = props.Add(defName, *subProps)
 				if err != nil {
 					return nil, fmt.Errorf("Failed to apply %q properties: %w", defName.String(), err)
