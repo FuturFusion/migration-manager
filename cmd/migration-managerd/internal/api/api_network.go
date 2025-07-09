@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -25,6 +26,12 @@ var networkCmd = APIEndpoint{
 	Delete: APIEndpointAction{Handler: networkDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
 	Get:    APIEndpointAction{Handler: networkGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 	Put:    APIEndpointAction{Handler: networkPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
+}
+
+var networkInstancesCmd = APIEndpoint{
+	Path: "networks/{name}/instances",
+
+	Get: APIEndpointAction{Handler: networkInstancesGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
 // swagger:operation GET /1.0/networks networks networks_get
@@ -267,4 +274,84 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+currentNetwork.Identifier)
+}
+
+// swagger:operation GET /1.0/networks/{name}/instances?source={source} networks networks_instances_get
+//
+//	Get instances for the network
+//
+//	Returns a list of instances assigned to this network (structs).
+//
+//	---
+//	parameters:
+//	  - in: query
+//	    name: source
+//	    description: Source where the network is defined
+//	    required: true
+//	    type: string
+//	    example: name matches 'vcenter01'
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API instances
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of instances
+//	          items:
+//	            $ref: "#/definitions/Instance"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func networkInstancesGet(d *Daemon, r *http.Request) response.Response {
+	name := r.PathValue("name")
+	srcName := r.FormValue("source")
+	if srcName == "" {
+		return response.BadRequest(fmt.Errorf("Missing 'source' query paramterer"))
+	}
+
+	result := []api.Instance{}
+	err := transaction.Do(r.Context(), func(ctx context.Context) error {
+		network, err := d.network.GetByNameAndSource(ctx, name, srcName)
+		if err != nil {
+			return err
+		}
+
+		instances, err := d.instance.GetAllBySource(ctx, srcName)
+		if err != nil {
+			return err
+		}
+
+		for _, inst := range instances {
+			for _, nic := range inst.Properties.NICs {
+				if nic.ID == network.Identifier {
+					result = append(result, inst.ToAPI())
+				}
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponse(true, result)
 }

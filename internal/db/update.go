@@ -112,6 +112,29 @@ var updates = map[int]schema.Update{
 	5: updateFromV4,
 	6: updateFromV5,
 	7: updateFromV6,
+	8: updateFromV7,
+}
+
+func updateFromV7(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `
+CREATE TABLE networks_new (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    type       TEXT NOT NULL,
+    identifier TEXT NOT NULL,
+    location   TEXT NOT NULL,
+    properties TEXT NOT NULL,
+    source_id  INTEGER NOT NULL,
+    overrides     TEXT NOT NULL,
+    UNIQUE (identifier, source_id),
+    FOREIGN KEY(source_id) REFERENCES sources(id) ON DELETE CASCADE
+);
+
+INSERT INTO networks_new (id, type, identifier, location, properties, source_id, overrides) SELECT id, type, identifier, location, properties, source_id, overrides FROM networks;
+DROP TABLE networks;
+ALTER TABLE networks_new RENAME TO networks;
+`)
+
+	return err
 }
 
 func updateFromV6(ctx context.Context, tx *sql.Tx) error {

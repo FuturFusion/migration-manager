@@ -347,6 +347,24 @@ func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) (migration.Ne
 		case mo.DistributedVirtualPortgroup:
 			id = t.Key
 			netType = api.NETWORKTYPE_VMWARE_DISTRIBUTED
+			vmwareDVS, ok := t.Config.DefaultPortConfig.(*types.VMwareDVSPortSetting)
+			if ok {
+				switch t := vmwareDVS.Vlan.(type) {
+				case *types.VmwareDistributedVirtualSwitchTrunkVlanSpec:
+					ranges := []string{}
+					for _, v := range t.VlanId {
+						ranges = append(ranges, fmt.Sprintf("%d-%d", v.Start, v.End))
+					}
+
+					if len(ranges) > 0 {
+						props.VlanRanges = ranges
+					}
+
+				case *types.VmwareDistributedVirtualSwitchVlanIdSpec:
+					props.VlanID = int(t.VlanId)
+				}
+			}
+
 			if t.Config.BackingType == "nsx" {
 				netType = api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX
 				props.SegmentPath = t.Config.SegmentId
@@ -377,6 +395,7 @@ func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) (migration.Ne
 			netType = api.NETWORKTYPE_VMWARE_NSX
 		}
 
+		id = strings.ReplaceAll(id, " ", "_")
 		if networkLocationsByID[id] != "" {
 			b, err := json.Marshal(props)
 			if err != nil {
@@ -912,6 +931,13 @@ func parseValue(propName properties.Name, value any) (any, error) {
 		}
 
 		return uuid.Parse(strVal)
+	case properties.InstanceNICNetworkID:
+		strVal, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%q value %v must be a string", propName.String(), value)
+		}
+
+		return strings.ReplaceAll(strVal, " ", "_"), nil
 	default:
 		return value, nil
 	}

@@ -43,11 +43,26 @@ func (n Network) Validate() error {
 	}
 
 	if n.Properties != nil {
-		var props internalAPI.NSXNetworkProperties
-		err := json.Unmarshal(n.Properties, &props)
+		var err error
+		if n.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || n.Type == api.NETWORKTYPE_VMWARE_NSX {
+			var props internalAPI.NSXNetworkProperties
+			err = json.Unmarshal(n.Properties, &props)
+		} else {
+			var props internalAPI.VCenterNetworkProperties
+			err = json.Unmarshal(n.Properties, &props)
+		}
+
 		if err != nil {
 			return NewValidationErrf("Invalid network, unexpected properties data: %v", err)
 		}
+	}
+
+	if n.Overrides.Name != "" && n.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
+		return NewValidationErrf("Networks of type %q cannot set a target network name", n.Type)
+	}
+
+	if n.Overrides.BridgeName != "" && slices.Contains([]api.NetworkType{api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX, api.NETWORKTYPE_VMWARE_NSX, api.NETWORKTYPE_VMWARE_STANDARD}, n.Type) {
+		return NewValidationErrf("Networks of type %q cannot set a parent bridge name", n.Type)
 	}
 
 	return nil

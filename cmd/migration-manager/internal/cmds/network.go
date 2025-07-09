@@ -181,15 +181,26 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Prompt for updates.
-	origNetworkName := network.Identifier
-	defaultConfig := "[default=" + network.Name() + "]: "
 
-	name, err = c.global.Asker.AskString("Target network name "+defaultConfig, origNetworkName, nil)
-	if err != nil {
-		return err
+	if network.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
+		defaultConfig := "[default=" + network.BridgeName + "]: "
+
+		name, err = c.global.Asker.AskString("Parent bridge name "+defaultConfig, network.BridgeName, nil)
+		if err != nil {
+			return err
+		}
+
+		network.BridgeName = name
+	} else {
+		defaultConfig := "[default=" + network.Name() + "]: "
+
+		name, err = c.global.Asker.AskString("Target network name "+defaultConfig, network.Name(), nil)
+		if err != nil {
+			return err
+		}
+
+		network.NetworkOverride.Name = name
 	}
-
-	network.NetworkOverride.Name = name
 
 	// Update the network.
 	content, err := json.Marshal(network.NetworkOverride)
@@ -197,7 +208,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/networks/"+origNetworkName, http.MethodPut, "source="+source, content)
+	_, err = c.global.doHTTPRequestV1("/networks/"+network.Identifier, http.MethodPut, "source="+source, content)
 	if err != nil {
 		return err
 	}

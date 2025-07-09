@@ -20,6 +20,8 @@ type NSXSourceProperties struct {
 type VCenterNetworkProperties struct {
 	SegmentPath       string    `json:"segment_id,omitempty"          yaml:"segment_id,omitempty"`
 	TransportZoneUUID uuid.UUID `json:"transport_zone_uuid,omitempty" yaml:"transport_zone_uuid,omitempty"`
+	VlanID            int       `json:"vlan_id,omitempty"             yaml:"vlan_id,omitempty"`
+	VlanRanges        []string  `json:"vlan_ranges,omitempty"         yaml:"vlan_ranges,omitempty"`
 }
 
 // NSXNetworkProperties is the set of network properties we can obtain from an NSX Manager.
