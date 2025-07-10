@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
+	"github.com/FuturFusion/migration-manager/internal/util"
 )
 
 type instanceService struct {
@@ -15,6 +16,7 @@ type instanceService struct {
 
 	now        func() time.Time
 	randomUUID func() (uuid.UUID, error)
+	retryCache *util.Cache[uuid.UUID, int]
 }
 
 var _ InstanceService = &instanceService{}
@@ -31,6 +33,7 @@ func NewInstanceService(repo InstanceRepo, opts ...InstanceServiceOption) instan
 		randomUUID: func() (uuid.UUID, error) {
 			return uuid.NewRandom()
 		},
+		retryCache: util.NewCache[uuid.UUID, int](),
 	}
 
 	for _, opt := range opts {
@@ -38,6 +41,17 @@ func NewInstanceService(repo InstanceRepo, opts ...InstanceServiceOption) instan
 	}
 
 	return instanceSvc
+}
+
+func (s instanceService) GetPostMigrationRetries(id uuid.UUID) int {
+	val, _ := s.retryCache.Read(id)
+	return val
+}
+
+func (s instanceService) RecordPostMigrationRetry(id uuid.UUID) {
+	s.retryCache.Write(id, 1, func(existingVal, newVal int) int {
+		return existingVal + newVal
+	})
 }
 
 func (s instanceService) Create(ctx context.Context, instance Instance) (Instance, error) {

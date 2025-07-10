@@ -25,6 +25,9 @@ type InstanceService interface {
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 
 	RemoveFromQueue(ctx context.Context, id uuid.UUID) error
+
+	GetPostMigrationRetries(id uuid.UUID) int
+	RecordPostMigrationRetry(id uuid.UUID)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/instance_repo_mock_gen.go -rm . InstanceRepo
