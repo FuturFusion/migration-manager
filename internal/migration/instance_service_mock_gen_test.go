@@ -54,6 +54,12 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.Instance, error) {
 //				panic("mock out the GetByUUID method")
 //			},
+//			GetPostMigrationRetriesFunc: func(id uuid.UUID) int {
+//				panic("mock out the GetPostMigrationRetries method")
+//			},
+//			RecordPostMigrationRetryFunc: func(id uuid.UUID)  {
+//				panic("mock out the RecordPostMigrationRetry method")
+//			},
 //			RemoveFromQueueFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the RemoveFromQueue method")
 //			},
@@ -99,6 +105,12 @@ type InstanceServiceMock struct {
 
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.Instance, error)
+
+	// GetPostMigrationRetriesFunc mocks the GetPostMigrationRetries method.
+	GetPostMigrationRetriesFunc func(id uuid.UUID) int
+
+	// RecordPostMigrationRetryFunc mocks the RecordPostMigrationRetry method.
+	RecordPostMigrationRetryFunc func(id uuid.UUID)
 
 	// RemoveFromQueueFunc mocks the RemoveFromQueue method.
 	RemoveFromQueueFunc func(ctx context.Context, id uuid.UUID) error
@@ -179,6 +191,16 @@ type InstanceServiceMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// GetPostMigrationRetries holds details about calls to the GetPostMigrationRetries method.
+		GetPostMigrationRetries []struct {
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
+		// RecordPostMigrationRetry holds details about calls to the RecordPostMigrationRetry method.
+		RecordPostMigrationRetry []struct {
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// RemoveFromQueue holds details about calls to the RemoveFromQueue method.
 		RemoveFromQueue []struct {
 			// Ctx is the ctx argument value.
@@ -194,19 +216,21 @@ type InstanceServiceMock struct {
 			Instance *migration.Instance
 		}
 	}
-	lockCreate              sync.RWMutex
-	lockDeleteByUUID        sync.RWMutex
-	lockGetAll              sync.RWMutex
-	lockGetAllByBatch       sync.RWMutex
-	lockGetAllBySource      sync.RWMutex
-	lockGetAllQueued        sync.RWMutex
-	lockGetAllUUIDs         sync.RWMutex
-	lockGetAllUUIDsBySource sync.RWMutex
-	lockGetAllUnassigned    sync.RWMutex
-	lockGetBatchesByUUID    sync.RWMutex
-	lockGetByUUID           sync.RWMutex
-	lockRemoveFromQueue     sync.RWMutex
-	lockUpdate              sync.RWMutex
+	lockCreate                   sync.RWMutex
+	lockDeleteByUUID             sync.RWMutex
+	lockGetAll                   sync.RWMutex
+	lockGetAllByBatch            sync.RWMutex
+	lockGetAllBySource           sync.RWMutex
+	lockGetAllQueued             sync.RWMutex
+	lockGetAllUUIDs              sync.RWMutex
+	lockGetAllUUIDsBySource      sync.RWMutex
+	lockGetAllUnassigned         sync.RWMutex
+	lockGetBatchesByUUID         sync.RWMutex
+	lockGetByUUID                sync.RWMutex
+	lockGetPostMigrationRetries  sync.RWMutex
+	lockRecordPostMigrationRetry sync.RWMutex
+	lockRemoveFromQueue          sync.RWMutex
+	lockUpdate                   sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -590,6 +614,70 @@ func (mock *InstanceServiceMock) GetByUUIDCalls() []struct {
 	mock.lockGetByUUID.RLock()
 	calls = mock.calls.GetByUUID
 	mock.lockGetByUUID.RUnlock()
+	return calls
+}
+
+// GetPostMigrationRetries calls GetPostMigrationRetriesFunc.
+func (mock *InstanceServiceMock) GetPostMigrationRetries(id uuid.UUID) int {
+	if mock.GetPostMigrationRetriesFunc == nil {
+		panic("InstanceServiceMock.GetPostMigrationRetriesFunc: method is nil but InstanceService.GetPostMigrationRetries was just called")
+	}
+	callInfo := struct {
+		ID uuid.UUID
+	}{
+		ID: id,
+	}
+	mock.lockGetPostMigrationRetries.Lock()
+	mock.calls.GetPostMigrationRetries = append(mock.calls.GetPostMigrationRetries, callInfo)
+	mock.lockGetPostMigrationRetries.Unlock()
+	return mock.GetPostMigrationRetriesFunc(id)
+}
+
+// GetPostMigrationRetriesCalls gets all the calls that were made to GetPostMigrationRetries.
+// Check the length with:
+//
+//	len(mockedInstanceService.GetPostMigrationRetriesCalls())
+func (mock *InstanceServiceMock) GetPostMigrationRetriesCalls() []struct {
+	ID uuid.UUID
+} {
+	var calls []struct {
+		ID uuid.UUID
+	}
+	mock.lockGetPostMigrationRetries.RLock()
+	calls = mock.calls.GetPostMigrationRetries
+	mock.lockGetPostMigrationRetries.RUnlock()
+	return calls
+}
+
+// RecordPostMigrationRetry calls RecordPostMigrationRetryFunc.
+func (mock *InstanceServiceMock) RecordPostMigrationRetry(id uuid.UUID) {
+	if mock.RecordPostMigrationRetryFunc == nil {
+		panic("InstanceServiceMock.RecordPostMigrationRetryFunc: method is nil but InstanceService.RecordPostMigrationRetry was just called")
+	}
+	callInfo := struct {
+		ID uuid.UUID
+	}{
+		ID: id,
+	}
+	mock.lockRecordPostMigrationRetry.Lock()
+	mock.calls.RecordPostMigrationRetry = append(mock.calls.RecordPostMigrationRetry, callInfo)
+	mock.lockRecordPostMigrationRetry.Unlock()
+	mock.RecordPostMigrationRetryFunc(id)
+}
+
+// RecordPostMigrationRetryCalls gets all the calls that were made to RecordPostMigrationRetry.
+// Check the length with:
+//
+//	len(mockedInstanceService.RecordPostMigrationRetryCalls())
+func (mock *InstanceServiceMock) RecordPostMigrationRetryCalls() []struct {
+	ID uuid.UUID
+} {
+	var calls []struct {
+		ID uuid.UUID
+	}
+	mock.lockRecordPostMigrationRetry.RLock()
+	calls = mock.calls.RecordPostMigrationRetry
+	mock.lockRecordPostMigrationRetry.RUnlock()
 	return calls
 }
 
