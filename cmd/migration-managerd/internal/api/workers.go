@@ -395,8 +395,11 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 	}
 
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
+	defer cancel()
+
 	// Connect to the target.
-	err = it.Connect(ctx)
+	err = it.Connect(timeoutCtx)
 	if err != nil {
 		return fmt.Errorf("Failed to connect to target %q: %w", it.GetName(), err)
 	}
@@ -447,10 +450,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	// Unblock the concurrency limits for the target so that the Incus agent doesn't block other creations.
 	d.target.RemoveCreation(t.Name)
 
-	// Wait up to 90s for the Incus agent.
-	waitCtx, cancel := context.WithTimeout(ctx, time.Second*90)
-	defer cancel()
-	err = it.CheckIncusAgent(waitCtx, instanceDef.Name)
+	err = it.CheckIncusAgent(timeoutCtx, instanceDef.Name)
 	if err != nil {
 		return err
 	}
@@ -600,8 +600,11 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Ins
 		return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 	}
 
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
+	defer cancel()
+
 	// Connect to the target.
-	err = it.Connect(ctx)
+	err = it.Connect(timeoutCtx)
 	if err != nil {
 		return fmt.Errorf("Failed to connect to target %q: %w", it.GetName(), err)
 	}
