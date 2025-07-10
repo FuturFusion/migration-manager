@@ -336,6 +336,27 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 					continue
 				}
 
+				// If the network data came from the instance, but we already have a network record from an NSX source, then don't overwrite it.
+				// We may get here if the network source is used by multiple sources, only some of which are in use by a batch.
+				srcNet, ok := srcNetworks[dbNetwork.Identifier]
+				if ok && slices.Contains([]api.NetworkType{api.NETWORKTYPE_VMWARE_NSX, api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX}, dbNetwork.Type) {
+					var existingProps internalAPI.NSXNetworkProperties
+					err := json.Unmarshal(network.Properties, &existingProps)
+					if err != nil {
+						return err
+					}
+
+					var newProps internalAPI.VCenterNetworkProperties
+					err = json.Unmarshal(srcNet.Properties, &newProps)
+					if err != nil {
+						return err
+					}
+
+					if existingProps.Segment.Name != "" && newProps.SegmentPath != "" {
+						continue
+					}
+				}
+
 				existingNetworks[network.Identifier] = network
 			}
 

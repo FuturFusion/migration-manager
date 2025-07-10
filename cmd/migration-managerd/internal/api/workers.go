@@ -444,6 +444,9 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to start instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
 	}
 
+	// Unblock the concurrency limits for the target so that the Incus agent doesn't block other creations.
+	d.target.RemoveCreation(t.Name)
+
 	// Wait up to 90s for the Incus agent.
 	waitCtx, cancel := context.WithTimeout(ctx, time.Second*90)
 	defer cancel()
@@ -460,7 +463,6 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 
 	// Now that the VM agent is up, expect a worker update to come soon..
 	d.queueHandler.RecordWorkerUpdate(inst.UUID)
-	d.target.RemoveCreation(t.Name)
 
 	reverter.Success()
 
@@ -514,10 +516,15 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 
 	// Set fully completed batches to FINISHED state.
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		for batch, state := range migrationState {
-			var finished bool
-			for _, inst := range state.Instances {
-				if !d.queueHandler.LastWorkerUpdate(inst.UUID).IsZero() {
+		for batch := range migrationState {
+			entries, err := d.queue.GetAllByBatch(ctx, batch)
+			if err != nil {
+				return err
+			}
+
+			finished := true
+			for _, entry := range entries {
+				if entry.MigrationStatus != api.MIGRATIONSTATUS_FINISHED {
 					finished = false
 					break
 				}

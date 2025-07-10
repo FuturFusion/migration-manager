@@ -411,7 +411,9 @@ func TestGetProperties(t *testing.T) {
 					Sharing:                      c.expectedDiskShared,
 				}
 			} else {
-				backing = &types.VirtualDeviceFileBackingInfo{FileName: c.expectedDiskName}
+				backing = &types.VirtualDiskFlatVer1BackingInfo{
+					VirtualDeviceFileBackingInfo: types.VirtualDeviceFileBackingInfo{FileName: c.expectedDiskName},
+				}
 			}
 
 			vmProps.Config.Hardware.Device = append(vmProps.Config.Hardware.Device,
