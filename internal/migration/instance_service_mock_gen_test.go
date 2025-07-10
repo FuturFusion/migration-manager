@@ -30,6 +30,9 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			GetAllFunc: func(ctx context.Context) (migration.Instances, error) {
 //				panic("mock out the GetAll method")
 //			},
+//			GetAllAssignedFunc: func(ctx context.Context) (migration.Instances, error) {
+//				panic("mock out the GetAllAssigned method")
+//			},
 //			GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
 //				panic("mock out the GetAllByBatch method")
 //			},
@@ -81,6 +84,9 @@ type InstanceServiceMock struct {
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Instances, error)
+
+	// GetAllAssignedFunc mocks the GetAllAssigned method.
+	GetAllAssignedFunc func(ctx context.Context) (migration.Instances, error)
 
 	// GetAllByBatchFunc mocks the GetAllByBatch method.
 	GetAllByBatchFunc func(ctx context.Context, batch string) (migration.Instances, error)
@@ -136,6 +142,11 @@ type InstanceServiceMock struct {
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+		}
+		// GetAllAssigned holds details about calls to the GetAllAssigned method.
+		GetAllAssigned []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
@@ -219,6 +230,7 @@ type InstanceServiceMock struct {
 	lockCreate                   sync.RWMutex
 	lockDeleteByUUID             sync.RWMutex
 	lockGetAll                   sync.RWMutex
+	lockGetAllAssigned           sync.RWMutex
 	lockGetAllByBatch            sync.RWMutex
 	lockGetAllBySource           sync.RWMutex
 	lockGetAllQueued             sync.RWMutex
@@ -334,6 +346,38 @@ func (mock *InstanceServiceMock) GetAllCalls() []struct {
 	mock.lockGetAll.RLock()
 	calls = mock.calls.GetAll
 	mock.lockGetAll.RUnlock()
+	return calls
+}
+
+// GetAllAssigned calls GetAllAssignedFunc.
+func (mock *InstanceServiceMock) GetAllAssigned(ctx context.Context) (migration.Instances, error) {
+	if mock.GetAllAssignedFunc == nil {
+		panic("InstanceServiceMock.GetAllAssignedFunc: method is nil but InstanceService.GetAllAssigned was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetAllAssigned.Lock()
+	mock.calls.GetAllAssigned = append(mock.calls.GetAllAssigned, callInfo)
+	mock.lockGetAllAssigned.Unlock()
+	return mock.GetAllAssignedFunc(ctx)
+}
+
+// GetAllAssignedCalls gets all the calls that were made to GetAllAssigned.
+// Check the length with:
+//
+//	len(mockedInstanceService.GetAllAssignedCalls())
+func (mock *InstanceServiceMock) GetAllAssignedCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetAllAssigned.RLock()
+	calls = mock.calls.GetAllAssigned
+	mock.lockGetAllAssigned.RUnlock()
 	return calls
 }
 

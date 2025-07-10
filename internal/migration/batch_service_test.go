@@ -688,17 +688,6 @@ func TestBatchService_UpdateInstancesAssignedToBatch(t *testing.T) {
 		},
 		// Unassigned instances error cases.
 		{
-			name: "error - instanceSvc.GetAllUnassigned",
-			batch: migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Status: api.BATCHSTATUS_DEFINED,
-			},
-			instanceSvcGetAllErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
 			name: "error - svcSource.GetByName for unassigned",
 			batch: migration.Batch{
 				ID:                1,

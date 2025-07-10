@@ -60,6 +60,10 @@ func (i instance) GetAllUUIDsBySource(ctx context.Context, source string) ([]uui
 	return entities.GetInstanceNames(ctx, transaction.GetDBTX(ctx, i.db), entities.InstanceFilter{Source: &source})
 }
 
+func (i instance) GetAllAssigned(ctx context.Context) (migration.Instances, error) {
+	return entities.GetAssignedInstances(ctx, transaction.GetDBTX(ctx, i.db))
+}
+
 func (i instance) GetAllUnassigned(ctx context.Context) (migration.Instances, error) {
 	return entities.GetInstancesByBatch(ctx, transaction.GetDBTX(ctx, i.db), nil)
 }
