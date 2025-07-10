@@ -1,7 +1,6 @@
 package migration
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -57,19 +56,37 @@ func (i Instance) Validate() error {
 // DisabledReason returns the underlying reason for why the instance is disabled.
 func (i Instance) DisabledReason() error {
 	if i.Overrides.DisableMigration {
-		reason := "Migration is disabled"
-		if !i.Properties.BackgroundImport {
-			reason += ": Background import is not supported"
-		} else {
-			for _, d := range i.Properties.Disks {
-				if !d.Supported {
-					reason += fmt.Sprintf(": Disk %q does not support snapshots", d.Name)
-					break
-				}
-			}
-		}
+		return fmt.Errorf("Migration is manually disabled")
+	}
 
-		return errors.New(reason)
+	if i.Overrides.IgnoreRestrictions {
+		return nil
+	}
+
+	if i.Properties.OS == "" || i.Properties.OSVersion == "" {
+		return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
+	}
+
+	ipRestrict := len(i.Properties.NICs) > 0
+	for _, nic := range i.Properties.NICs {
+		if nic.IPv4Address != "" {
+			ipRestrict = false
+			break
+		}
+	}
+
+	if ipRestrict {
+		return fmt.Errorf("Could not determine instance IP, check if guest agent is running")
+	}
+
+	if !i.Properties.BackgroundImport {
+		return fmt.Errorf("Background import is not supported")
+	}
+
+	for _, d := range i.Properties.Disks {
+		if !d.Supported {
+			return fmt.Errorf("Disk %q does not support snapshots", d.Name)
+		}
 	}
 
 	return nil
