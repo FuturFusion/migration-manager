@@ -247,14 +247,15 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	batch := migration.Batch{
-		Name:              apiBatch.Name,
-		Target:            apiBatch.Target,
-		TargetProject:     apiBatch.TargetProject,
-		Status:            api.BATCHSTATUS_DEFINED,
-		StatusMessage:     string(api.BATCHSTATUS_DEFINED),
-		StoragePool:       apiBatch.StoragePool,
-		IncludeExpression: apiBatch.IncludeExpression,
-		Constraints:       constraints,
+		Name:                 apiBatch.Name,
+		Target:               apiBatch.Target,
+		TargetProject:        apiBatch.TargetProject,
+		Status:               api.BATCHSTATUS_DEFINED,
+		StatusMessage:        string(api.BATCHSTATUS_DEFINED),
+		StoragePool:          apiBatch.StoragePool,
+		IncludeExpression:    apiBatch.IncludeExpression,
+		PostMigrationRetries: apiBatch.PostMigrationRetries,
+		Constraints:          constraints,
 	}
 
 	_, err = d.batch.Create(ctx, batch)
@@ -488,15 +489,17 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	err = d.batch.Update(ctx, name, &migration.Batch{
-		ID:                currentBatch.ID,
-		Name:              batch.Name,
-		Target:            batch.Target,
-		TargetProject:     batch.TargetProject,
-		Status:            currentBatch.Status,
-		StatusMessage:     currentBatch.StatusMessage,
-		StoragePool:       batch.StoragePool,
-		IncludeExpression: batch.IncludeExpression,
-		Constraints:       constraints,
+		ID:                   currentBatch.ID,
+		Name:                 batch.Name,
+		Target:               batch.Target,
+		TargetProject:        batch.TargetProject,
+		Status:               currentBatch.Status,
+		StatusMessage:        currentBatch.StatusMessage,
+		StoragePool:          batch.StoragePool,
+		IncludeExpression:    batch.IncludeExpression,
+		Constraints:          constraints,
+		StartDate:            batch.StartDate,
+		PostMigrationRetries: batch.PostMigrationRetries,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))

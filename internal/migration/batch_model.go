@@ -10,14 +10,16 @@ import (
 )
 
 type Batch struct {
-	ID                int64
-	Name              string `db:"primary=yes"`
-	Target            string `db:"join=targets.name"`
-	TargetProject     string
-	Status            api.BatchStatusType
-	StatusMessage     string
-	StoragePool       string
-	IncludeExpression string
+	ID                   int64
+	Name                 string `db:"primary=yes"`
+	Target               string `db:"join=targets.name"`
+	TargetProject        string
+	Status               api.BatchStatusType
+	StatusMessage        string
+	StoragePool          string
+	IncludeExpression    string
+	StartDate            time.Time
+	PostMigrationRetries int
 
 	Constraints []BatchConstraint `db:"marshal=json"`
 }
@@ -72,11 +74,19 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch %q is not a valid include expression: %v", b.IncludeExpression, err)
 	}
 
+	if b.PostMigrationRetries < 0 {
+		return NewValidationErrf("Invalid batch, post-migration retry count (%d) must be larger than 0", b.PostMigrationRetries)
+	}
+
 	for _, c := range b.Constraints {
 		err := c.Validate()
 		if err != nil {
 			return err
 		}
+	}
+
+	if b.Status == api.BATCHSTATUS_DEFINED && !b.StartDate.IsZero() {
+		return NewValidationErrf("Cannot set start time before batch %q has started", b.Name)
 	}
 
 	return nil
@@ -245,13 +255,15 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 
 	return api.Batch{
 		BatchPut: api.BatchPut{
-			Name:              b.Name,
-			Target:            b.Target,
-			TargetProject:     b.TargetProject,
-			StoragePool:       b.StoragePool,
-			IncludeExpression: b.IncludeExpression,
-			MigrationWindows:  apiWindows,
-			Constraints:       constraints,
+			Name:                 b.Name,
+			Target:               b.Target,
+			TargetProject:        b.TargetProject,
+			StoragePool:          b.StoragePool,
+			IncludeExpression:    b.IncludeExpression,
+			MigrationWindows:     apiWindows,
+			Constraints:          constraints,
+			StartDate:            b.StartDate,
+			PostMigrationRetries: b.PostMigrationRetries,
 		},
 		Status:        b.Status,
 		StatusMessage: b.StatusMessage,

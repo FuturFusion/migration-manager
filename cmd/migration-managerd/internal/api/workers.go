@@ -506,7 +506,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 		})
 	})
 	if err != nil {
-		log.Error("Failed to configure migrated instances for all batches")
+		log.Error("Failed to configure migrated instances for all batches", slog.Any("error", err))
 	}
 
 	// Remove complete records from the queue cache.
@@ -556,12 +556,19 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Ins
 	reverter := revert.New()
 	defer reverter.Fail()
 	reverter.Add(func() {
-		log := log.With(slog.String("revert", "set instance failed"))
 		var errString string
 		if _err != nil {
 			errString = _err.Error()
 		}
 
+		numRetries := d.instance.GetPostMigrationRetries(i.UUID)
+		if numRetries < batch.PostMigrationRetries {
+			d.instance.RecordPostMigrationRetry(i.UUID)
+			log.Error("Instance failed post-migration steps, retrying", slog.String("error", errString), slog.Int("retry_count", numRetries), slog.Int("max_retries", batch.PostMigrationRetries))
+			return
+		}
+
+		log := log.With(slog.String("revert", "set instance failed"))
 		// Try to set the instance state to ERRORED if it failed.
 		_, err := d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, true)
 		if err != nil {
