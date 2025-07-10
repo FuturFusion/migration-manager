@@ -255,6 +255,7 @@ func (s batchService) StartBatchByName(ctx context.Context, name string) (err er
 			return fmt.Errorf("Cannot start batch %q in its current state '%s': %w", batch.Name, batch.Status, ErrOperationNotPermitted)
 		}
 
+		batch.StartDate = time.Now().UTC()
 		batch.Status = api.BATCHSTATUS_QUEUED
 		batch.StatusMessage = string(batch.Status)
 		return s.repo.Update(ctx, batch.Name, *batch)

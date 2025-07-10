@@ -77,6 +77,9 @@ type BatchPut struct {
 
 	// Set of constraints to apply to the batch.
 	Constraints []BatchConstraint `json:"constraints" yaml:"constraints"`
+
+	// Time in UTC when the batch was started.
+	StartDate time.Time `json:"start_date" yaml:"start_date"`
 }
 
 // MigrationWindow defines the scheduling of a batch migration.

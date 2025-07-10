@@ -497,6 +497,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		StoragePool:       batch.StoragePool,
 		IncludeExpression: batch.IncludeExpression,
 		Constraints:       constraints,
+		StartDate:         batch.StartDate,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))

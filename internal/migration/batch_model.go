@@ -18,6 +18,7 @@ type Batch struct {
 	StatusMessage     string
 	StoragePool       string
 	IncludeExpression string
+	StartDate         time.Time
 
 	Constraints []BatchConstraint `db:"marshal=json"`
 }
@@ -77,6 +78,10 @@ func (b Batch) Validate() error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if b.Status == api.BATCHSTATUS_DEFINED && !b.StartDate.IsZero() {
+		return NewValidationErrf("Cannot set start time before batch %q has started", b.Name)
 	}
 
 	return nil
@@ -252,6 +257,7 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 			IncludeExpression: b.IncludeExpression,
 			MigrationWindows:  apiWindows,
 			Constraints:       constraints,
+			StartDate:         b.StartDate,
 		},
 		Status:        b.Status,
 		StatusMessage: b.StatusMessage,
