@@ -986,6 +986,9 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 
 func (t *InternalIncusTarget) ReadyForMigration(ctx context.Context, targetProject string, instances map[uuid.UUID]migration.Instance) error {
 	// Connect to the target.
+	ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+
 	err := t.Connect(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to connect to target %q: %w", t.GetName(), err)

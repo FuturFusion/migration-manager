@@ -3,6 +3,7 @@ package migration
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -171,6 +172,8 @@ func (s targetService) updateTargetConnectivity(ctx context.Context, tgt *Target
 			// Target is configured for OIDC, but has no tokens yet.
 			tgt.SetExternalConnectivityStatus(api.EXTERNALCONNECTIVITYSTATUS_WAITING_OIDC)
 		} else {
+			ctx, cancel := context.WithTimeout(ctx, time.Second*30)
+			defer cancel()
 			// Test the connectivity of this target.
 			tgt.SetExternalConnectivityStatus(api.MapExternalConnectivityStatusToStatus(endpoint.Connect(ctx)))
 		}
