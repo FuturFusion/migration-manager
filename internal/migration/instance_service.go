@@ -113,7 +113,8 @@ func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 			return err
 		}
 
-		if !oldInstance.Overrides.DisableMigration {
+		// If the old instance could be migrated, make sure its not in a locked batch before changing, unless to disable migration manually.
+		if oldInstance.DisabledReason() == nil {
 			batches, err := s.repo.GetBatchesByUUID(ctx, instance.UUID)
 			if err != nil {
 				return err
@@ -153,7 +154,7 @@ func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		if !oldInstance.Overrides.DisableMigration {
+		if oldInstance.DisabledReason() == nil {
 			batches, err := s.repo.GetBatchesByUUID(ctx, id)
 			if err != nil {
 				return err
