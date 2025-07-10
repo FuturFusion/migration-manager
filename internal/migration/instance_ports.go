@@ -15,6 +15,7 @@ type InstanceService interface {
 	GetAllBySource(ctx context.Context, source string) (Instances, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetAllUUIDsBySource(ctx context.Context, source string) ([]uuid.UUID, error)
+	GetAllAssigned(ctx context.Context) (Instances, error)
 	GetAllUnassigned(ctx context.Context) (Instances, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Instance, error)
 
@@ -42,6 +43,7 @@ type InstanceRepo interface {
 	GetAllByUUIDs(ctx context.Context, id ...uuid.UUID) (Instances, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetAllUUIDsBySource(ctx context.Context, source string) ([]uuid.UUID, error)
+	GetAllAssigned(ctx context.Context) (Instances, error)
 	GetAllUnassigned(ctx context.Context) (Instances, error)
 	GetBatchesByUUID(ctx context.Context, instanceUUID uuid.UUID) (Batches, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Instance, error)

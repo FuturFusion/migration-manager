@@ -90,6 +90,10 @@ func (s instanceService) GetAllUUIDsBySource(ctx context.Context, source string)
 	return s.repo.GetAllUUIDsBySource(ctx, source)
 }
 
+func (s instanceService) GetAllAssigned(ctx context.Context) (Instances, error) {
+	return s.repo.GetAllAssigned(ctx)
+}
+
 func (s instanceService) GetAllUnassigned(ctx context.Context) (Instances, error) {
 	return s.repo.GetAllUnassigned(ctx)
 }
