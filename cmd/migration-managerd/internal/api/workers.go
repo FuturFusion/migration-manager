@@ -546,13 +546,14 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 // If an instance succeeds, its state will be moved to FINISHED.
 func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Instance, s migration.Source, t migration.Target, batch migration.Batch, activeNetworks migration.Networks) (_err error) {
 	log := slog.With(
-		slog.String("method", "createTargetVMs"),
+		slog.String("method", "configureMigratedInstances"),
 		slog.String("target", t.Name),
 		slog.String("batch", batch.Name),
 		slog.String("instance", i.Properties.Location),
 		slog.String("source", s.Name),
 	)
 
+	log.Info("Finalizing target instance")
 	reverter := revert.New()
 	defer reverter.Fail()
 	reverter.Add(func() {
