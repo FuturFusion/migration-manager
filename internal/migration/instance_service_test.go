@@ -272,6 +272,61 @@ func TestInstanceService_GetAllLocations(t *testing.T) {
 	}
 }
 
+func TestInstanceService_GetAllAssigned(t *testing.T) {
+	tests := []struct {
+		name                        string
+		repoGetAllAssignedInstances migration.Instances
+		repoGetAllAssignedErr       error
+
+		assertErr require.ErrorAssertionFunc
+		count     int
+	}{
+		{
+			name: "success",
+			repoGetAllAssignedInstances: migration.Instances{
+				migration.Instance{
+					UUID:       uuidA,
+					Properties: api.InstanceProperties{Location: "/inventory/path/A"},
+				},
+				migration.Instance{
+					UUID:       uuidB,
+					Properties: api.InstanceProperties{Location: "/inventory/path/B"},
+				},
+			},
+
+			assertErr: require.NoError,
+			count:     2,
+		},
+		{
+			name:                  "error - repo",
+			repoGetAllAssignedErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+			count:     0,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup
+			repo := &mock.InstanceRepoMock{
+				GetAllAssignedFunc: func(ctx context.Context) (migration.Instances, error) {
+					return tc.repoGetAllAssignedInstances, tc.repoGetAllAssignedErr
+				},
+			}
+
+			instanceSvc := migration.NewInstanceService(repo)
+
+			// Run test
+			instances, err := instanceSvc.GetAllAssigned(context.Background())
+
+			// Assert
+			tc.assertErr(t, err)
+			require.Len(t, instances, tc.count)
+		})
+	}
+}
+
 func TestInstanceService_GetAllUnassigned(t *testing.T) {
 	tests := []struct {
 		name                          string
