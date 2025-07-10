@@ -300,14 +300,14 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			return fmt.Errorf("Failed to get internal instance records: %w", err)
 		}
 
-		unassignedInstances, err := d.instance.GetAllUnassigned(ctx)
+		assignedInstances, err := d.instance.GetAllAssigned(ctx)
 		if err != nil {
 			return fmt.Errorf("Failed to get unassigned internal instance records: %w", err)
 		}
 
-		unassignedInstancesByUUID := make(map[uuid.UUID]migration.Instance, len(unassignedInstances))
-		for _, inst := range unassignedInstances {
-			unassignedInstancesByUUID[inst.UUID] = inst
+		assignedInstancesByUUID := make(map[uuid.UUID]migration.Instance, len(assignedInstances))
+		for _, inst := range assignedInstances {
+			assignedInstancesByUUID[inst.UUID] = inst
 		}
 
 		for srcName, srcNetworks := range networksBySrc {
@@ -319,15 +319,15 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			}
 
 			// Build maps to make comparison easier.
-			unassignedNetworksByName := map[string]migration.Network{}
-			for _, net := range migration.FilterUsedNetworks(allNetworks, unassignedInstances) {
-				unassignedNetworksByName[net.Identifier] = net
+			assignedNetworksByName := map[string]migration.Network{}
+			for _, net := range migration.FilterUsedNetworks(allNetworks, assignedInstances) {
+				assignedNetworksByName[net.Identifier] = net
 			}
 
 			for _, dbNetwork := range allNetworks {
 				// If the network is already assigned, then omit it from consideration.
-				network, ok := unassignedNetworksByName[dbNetwork.Identifier]
-				if !ok {
+				network, ok := assignedNetworksByName[dbNetwork.Identifier]
+				if ok {
 					_, ok := srcNetworks[dbNetwork.Identifier]
 					if ok {
 						delete(srcNetworks, dbNetwork.Identifier)
@@ -337,7 +337,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 				}
 
 				// If the network data came from the instance, but we already have a network record from an NSX source, then don't overwrite it.
-				// We may get here if the network source is used by multiple sources, only some of which are in use by a batch.
+				// We may get here if NSX somehow returns an error in this sync, but not in an earlier one.
 				srcNet, ok := srcNetworks[dbNetwork.Identifier]
 				if ok && slices.Contains([]api.NetworkType{api.NETWORKTYPE_VMWARE_NSX, api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX}, dbNetwork.Type) {
 					var existingProps internalAPI.NSXNetworkProperties
@@ -370,9 +370,9 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			// Ensure we only compare instances in the same source.
 			existingInstances := map[uuid.UUID]migration.Instance{}
 			for _, instUUID := range allInstances {
-				// If the instance is already assigned, then omit it from consideration.
-				inst, ok := unassignedInstancesByUUID[instUUID]
-				if !ok {
+				// If the instance is already assigned, then omit it from consideration, unless it is disabled.
+				inst, ok := assignedInstancesByUUID[instUUID]
+				if ok && inst.DisabledReason() != nil {
 					_, ok := srcInstances[instUUID]
 					if ok {
 						delete(srcInstances, instUUID)
