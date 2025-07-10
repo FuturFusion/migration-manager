@@ -138,6 +138,13 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	retries, err := c.global.Asker.AskInt("Maximum retries if post-migration steps are not successful: ", 0, 1024, "5", nil)
+	if err != nil {
+		return err
+	}
+
+	b.PostMigrationRetries = int(retries)
+
 	addWindows := true
 	for addWindows {
 		windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
@@ -621,6 +628,13 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+
+	retries, err := c.global.Asker.AskInt("Maximum retries if post-migration steps are not successful: ", 0, 1024, strconv.Itoa(b.PostMigrationRetries), nil)
+	if err != nil {
+		return err
+	}
+
+	b.PostMigrationRetries = int(retries)
 
 	addWindows, err := c.global.Asker.AskBool("Replace migration windows? (yes/no) [default=no]: ", "no")
 	if err != nil {
