@@ -20,5 +20,9 @@ type InstanceOverride struct {
 	// Example: true
 	DisableMigration bool `json:"disable_migration" yaml:"disable_migration"`
 
+	// If true, restrictions that put the VM in a blocked state, preventing migration, will be ignored.
+	// Example: true
+	IgnoreRestrictions bool `json:"ignore_restrictions" yaml:"ignore_restrictions"`
+
 	Properties InstancePropertiesConfigurable `json:"properties" yaml:"properties"`
 }
