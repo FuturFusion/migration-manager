@@ -72,6 +72,10 @@ type BatchPut struct {
 	// Example: GetInventoryPath() matches "^foobar/.*"
 	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
 
+	// PostMigrationRetries is the maximum number of times post-migration steps will be retried upon errors.
+	// Example: 5
+	PostMigrationRetries int `json:"post_migration_retries" yaml:"post_migration_retries"`
+
 	// Set of migration window timings.
 	MigrationWindows []MigrationWindow `json:"migration_windows" yaml:"migration_windows"`
 
