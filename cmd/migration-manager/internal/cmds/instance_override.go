@@ -137,8 +137,8 @@ func (c *cmdInstanceOverrideShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Last Update", "Comment", "Migration Disabled", "Num vCPUs", "Memory"}
-	data := [][]string{{override.LastUpdate.String(), override.Comment, strconv.FormatBool(override.DisableMigration), numCPUSDisplay, memoryDisplay}}
+	header := []string{"Last Update", "Comment", "Migration Disabled", "Ignore Restrictions", "Num vCPUs", "Memory"}
+	data := [][]string{{override.LastUpdate.String(), override.Comment, strconv.FormatBool(override.DisableMigration), strconv.FormatBool(override.IgnoreRestrictions), numCPUSDisplay, memoryDisplay}}
 
 	sort.Sort(util.SortColumnsNaturally(data))
 
@@ -205,6 +205,16 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 	}
 
 	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? (yes/no) [default="+disableMigration+"]: ", disableMigration)
+	if err != nil {
+		return err
+	}
+
+	ignoreRestrictions := "no"
+	if override.IgnoreRestrictions {
+		ignoreRestrictions = "yes"
+	}
+
+	override.IgnoreRestrictions, err = c.global.Asker.AskBool("Ignore restrictions for this instance (yes/no) [default="+ignoreRestrictions+"]: ", ignoreRestrictions)
 	if err != nil {
 		return err
 	}
