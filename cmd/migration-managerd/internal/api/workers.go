@@ -429,7 +429,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to create instance definition: %w", err)
 	}
 
-	cleanup, err := it.CreateNewVM(inst, instanceDef, b.StoragePool, util.WorkerVolume(), driverISOName)
+	cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, b.StoragePool, util.WorkerVolume(), driverISOName)
 	if err != nil {
 		return fmt.Errorf("Failed to create new instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
 	}
@@ -442,7 +442,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	}
 
 	// Start the instance.
-	err = it.StartVM(inst.GetName())
+	err = it.StartVM(timeoutCtx, inst.GetName())
 	if err != nil {
 		return fmt.Errorf("Failed to start instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
 	}
@@ -615,7 +615,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Ins
 		return fmt.Errorf("Failed to set target %q project %q: %w", it.GetName(), batch.TargetProject, err)
 	}
 
-	err = it.SetPostMigrationVMConfig(i, activeNetworks)
+	err = it.SetPostMigrationVMConfig(timeoutCtx, i, activeNetworks)
 	if err != nil {
 		return fmt.Errorf("Failed to update post-migration config for instance %q in %q: %w", i.GetName(), it.GetName(), err)
 	}

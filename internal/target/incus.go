@@ -190,7 +190,7 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 }
 
 // SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
-func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, allNetworks migration.Networks) error {
+func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, allNetworks migration.Networks) error {
 	props := i.Properties
 	props.Apply(i.Overrides.Properties)
 
@@ -205,7 +205,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 	}
 
 	// Stop the instance.
-	err = t.StopVM(props.Name, true)
+	err = t.StopVM(ctx, props.Name, true)
 	if err != nil {
 		return fmt.Errorf("Failed to stop instance %q on target %q: %w", props.Name, t.GetName(), err)
 	}
@@ -352,12 +352,12 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(i migration.Instance, all
 		return fmt.Errorf("Failed to update instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
 	}
 
-	err = op.Wait()
+	err = op.WaitContext(ctx)
 	if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
 	}
 
-	err = t.StartVM(i.Properties.Name)
+	err = t.StartVM(ctx, i.Properties.Name)
 	if err != nil {
 		return fmt.Errorf("Failed to start instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
 	}
@@ -496,7 +496,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	return ret, nil
 }
 
-func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef incusAPI.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) (func(), error) {
+func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) (func(), error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -533,7 +533,7 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 		_, _ = t.incusClient.DeleteInstance(apiDef.Name)
 	})
 
-	err = op.Wait()
+	err = op.WaitContext(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -594,7 +594,7 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 			return nil, err
 		}
 
-		err = op.Wait()
+		err = op.WaitContext(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -607,16 +607,16 @@ func (t *InternalIncusTarget) CreateNewVM(instDef migration.Instance, apiDef inc
 	return cleanup, nil
 }
 
-func (t *InternalIncusTarget) DeleteVM(name string) error {
+func (t *InternalIncusTarget) DeleteVM(ctx context.Context, name string) error {
 	op, err := t.incusClient.DeleteInstance(name)
 	if err != nil {
 		return err
 	}
 
-	return op.Wait()
+	return op.WaitContext(ctx)
 }
 
-func (t *InternalIncusTarget) StartVM(name string) error {
+func (t *InternalIncusTarget) StartVM(ctx context.Context, name string) error {
 	req := incusAPI.InstanceStatePut{
 		Action:   "start",
 		Timeout:  -1,
@@ -629,10 +629,10 @@ func (t *InternalIncusTarget) StartVM(name string) error {
 		return err
 	}
 
-	return op.Wait()
+	return op.WaitContext(ctx)
 }
 
-func (t *InternalIncusTarget) StopVM(name string, force bool) error {
+func (t *InternalIncusTarget) StopVM(ctx context.Context, name string, force bool) error {
 	req := incusAPI.InstanceStatePut{
 		Action:   "stop",
 		Timeout:  -1,
@@ -645,7 +645,7 @@ func (t *InternalIncusTarget) StopVM(name string, force bool) error {
 		return err
 	}
 
-	return op.Wait()
+	return op.WaitContext(ctx)
 }
 
 func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir string) error {
