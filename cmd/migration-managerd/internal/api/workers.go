@@ -149,8 +149,12 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 	ignoredBatches := []string{}
 	// Concurrently validate batches, and create the necessary volumes to begin migration.
 	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
+		// Set a 120s timeout for creating the volumes on the target before instance creation.
+		timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
+		defer cancel()
+
 		log := log.With(slog.String("batch", state.Batch.Name))
-		it, err := d.validateForQueue(ctx, state.Batch, state.MigrationWindows, state.Target, state.Instances)
+		it, err := d.validateForQueue(timeoutCtx, state.Batch, state.MigrationWindows, state.Target, state.Instances)
 		if err != nil {
 			log.Warn("Batch does not meet requirements to start, ignoring", slog.String("batch", batchName), slog.Any("error", err))
 			ignoredBatches = append(ignoredBatches, state.Batch.Name)
@@ -158,7 +162,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 		}
 
 		// If we fail to set up the initial volumes, set the batch status to errored and skip.
-		err = d.ensureISOImagesExistInStoragePool(ctx, it, state.Instances, state.Batch)
+		err = d.ensureISOImagesExistInStoragePool(timeoutCtx, it, state.Instances, state.Batch)
 		if err != nil {
 			log.Error("Failed to validate batch", logger.Err(err))
 			_, err := d.batch.UpdateStatusByName(ctx, state.Batch.Name, api.BATCHSTATUS_ERROR, err.Error())
@@ -318,7 +322,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 		}
 
 		for _, op := range ops {
-			err = op.Wait()
+			err = op.WaitContext(ctx)
 			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 				return err
 			}
@@ -341,7 +345,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 			}
 
 			for _, op := range ops {
-				err = op.Wait()
+				err = op.WaitContext(ctx)
 				if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 					return err
 				}
