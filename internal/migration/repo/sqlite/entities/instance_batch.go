@@ -39,7 +39,7 @@ type InstanceBatchFilter struct {
 func GetAssignedInstances(ctx context.Context, tx dbtx) (migration.Instances, error) {
 	stmt := fmt.Sprintf(`SELECT %s
 FROM instances
-JOIN instances_batches.instance_id = instances.id
+JOIN instances_batches ON instances_batches.instance_id = instances.id
 JOIN sources ON instances.source_id = sources.id
 ORDER BY instances.uuid
 `, instanceColumns())
