@@ -53,6 +53,12 @@ const BatchOverview = () => {
         </div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">Start date</div>
+        <div className="col-10 detail-table-cell">
+          {formatDate(batch?.start_date)}
+        </div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Migration windows</div>
         <div className="col-10 detail-table-cell">
           <Table borderless size="sm">
