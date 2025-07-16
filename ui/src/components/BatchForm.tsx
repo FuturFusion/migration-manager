@@ -80,6 +80,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     include_expression: "",
     migration_windows: [],
     constraints: [],
+    post_migration_retries: 5,
   };
 
   if (batch) {
@@ -99,6 +100,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
       include_expression: batch.include_expression,
       migration_windows: migrationWindows,
       constraints: batch.constraints,
+      post_migration_retries: batch.post_migration_retries,
     };
   }
 
@@ -228,6 +230,23 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
             />
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="post_migration_retries">
+            <Form.Label>Post migration retries</Form.Label>
+            <Form.Control
+              type="number"
+              name="post_migration_retries"
+              value={formik.values.post_migration_retries}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              isInvalid={
+                !!formik.errors.post_migration_retries &&
+                formik.touched.post_migration_retries
+              }
+            />
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.post_migration_retries}
+            </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3" controlId="include_expression">
             <Form.Label>Expression</Form.Label>

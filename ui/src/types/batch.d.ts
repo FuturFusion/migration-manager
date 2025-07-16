@@ -15,6 +15,7 @@ export interface MigrationWindow {
 export interface Batch {
   include_expression: string;
   name: string;
+  start_date: string;
   status: string;
   status_message: string;
   storage_pool: string;
@@ -22,6 +23,7 @@ export interface Batch {
   target_project: string;
   migration_windows: MigrationWindow[];
   constraints: BatchConstraint[];
+  post_migration_retries: number;
 }
 
 export interface BatchFormValues {
@@ -34,4 +36,5 @@ export interface BatchFormValues {
   include_expression: string;
   migration_windows: MigrationWindow[];
   constraints: BatchConstraint[];
+  post_migration_retries: number;
 }

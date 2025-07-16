@@ -50,5 +50,6 @@ test("renders and submit BatchForm", async () => {
     status_message: "",
     migration_windows: [],
     constraints: [],
+    post_migration_retries: 5,
   });
 });
