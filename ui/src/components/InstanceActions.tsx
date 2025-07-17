@@ -1,5 +1,7 @@
 import React, { FC, useState } from "react";
+import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import ReactDOM from "react-dom";
+import { BsUnlockFill } from "react-icons/bs";
 import { MdOutlineComment } from "react-icons/md";
 import { Instance } from "types/instance";
 
@@ -33,6 +35,20 @@ const InstanceActions: FC<Props> = ({ instance }) => {
   return (
     <div className="relative inline-block">
       <div>
+        {instance.overrides && instance.overrides.ignore_restrictions && (
+          <OverlayTrigger
+            placement="top"
+            overlay={
+              <Tooltip id="tooltip-ignore-restrictions">
+                Ignore restrictions
+              </Tooltip>
+            }
+          >
+            <span>
+              <BsUnlockFill size={15} />
+            </span>
+          </OverlayTrigger>
+        )}
         {instance.overrides && instance.overrides.comment && (
           <MdOutlineComment
             size={15}

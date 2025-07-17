@@ -42,6 +42,7 @@ const InstanceOverrides: FC = () => {
   let formikInitialValues = {
     comment: "",
     disable_migration: "false",
+    ignore_restrictions: "false",
     cpus: 0,
     memory: "",
     config: {},
@@ -52,6 +53,7 @@ const InstanceOverrides: FC = () => {
     formikInitialValues = {
       comment: overrides.comment,
       disable_migration: overrides.disable_migration.toString(),
+      ignore_restrictions: overrides.ignore_restrictions.toString(),
       cpus: overrides.properties.cpus,
       memory: bytesToHumanReadable(overrides.properties.memory),
       config: overrides.properties.config,
@@ -106,6 +108,7 @@ const InstanceOverrides: FC = () => {
       const modifiedValues = {
         uuid: uuid,
         disable_migration: values.disable_migration == "true",
+        ignore_restrictions: values.ignore_restrictions == "true",
         comment: values.comment,
         properties: {
           memory: memoryInBytes,
@@ -189,6 +192,25 @@ const InstanceOverrides: FC = () => {
           </Form.Select>
           <Form.Control.Feedback type="invalid">
             {formik.errors.disable_migration}
+          </Form.Control.Feedback>
+        </Form.Group>
+        <Form.Group className="mb-3" controlId="ignore_restrictions">
+          <Form.Label>Ignore restrictions</Form.Label>
+          <Form.Select
+            name="ignore_restrictions"
+            value={formik.values.ignore_restrictions}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            isInvalid={
+              !!formik.errors.ignore_restrictions &&
+              formik.touched.ignore_restrictions
+            }
+          >
+            <option value="false">no</option>
+            <option value="true">yes</option>
+          </Form.Select>
+          <Form.Control.Feedback type="invalid">
+            {formik.errors.ignore_restrictions}
           </Form.Control.Feedback>
         </Form.Group>
         <Form.Group className="mb-3" controlId="cpus">
