@@ -51,6 +51,7 @@ export interface InstanceOverride {
   last_update: string;
   comment: string;
   disable_migration: boolean;
+  ignore_restrictions: boolean;
   properties: InstancePropertiesConfigurable;
 }
 
