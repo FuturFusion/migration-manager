@@ -108,6 +108,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 	for i, inst := range blockedInstances {
 		err := inst.DisabledReason()
 		if err != nil {
+			slog.Warn("Instance is blocked from migration", slog.String("location", inst.Properties.Location), slog.String("reason", err.Error()))
 			continue
 		}
 
@@ -469,6 +470,89 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	d.queueHandler.RecordWorkerUpdate(inst.UUID)
 
 	reverter.Success()
+
+	return nil
+}
+
+// resetQueueEntry starts up the source VM, and sets the queue entry to an earlier step, in the event of a migration window deadline.
+// - If the deadline was reached during final import, then it is reset to IDLE and the worker is restarted.
+// - If the deadline was reached during post-import, then the target VM is deleted and the queue entry is reset to WAITING for a new instance creation.
+func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state queue.MigrationState) error {
+	log := slog.With(
+		slog.String("method", "resetQueueEntry"),
+		slog.String("target", state.Target.Name),
+		slog.String("batch", state.Batch.Name),
+		slog.String("instance", state.Instances[instUUID].Properties.Location),
+		slog.String("source", state.Sources[instUUID].Name),
+	)
+
+	src := state.Sources[instUUID]
+	is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+	if err != nil {
+		return fmt.Errorf("Failed to configure %q source-specific configuration for restarting source VM on source %q: %w", src.SourceType, src.Name, err)
+	}
+
+	err = is.Connect(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to %q source to restart VM on source %q for next migration window: %w", src.SourceType, src.Name, err)
+	}
+
+	// First power on the source VM.
+	err = is.PowerOnVM(ctx, state.Instances[instUUID].Properties.Location)
+	if err != nil {
+		return fmt.Errorf("Failed to restart VM on source %q for next migration window: %w", src.Name, err)
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
+	defer cancel()
+
+	it, err := target.NewInternalIncusTargetFrom(state.Target.ToAPI())
+	if err != nil {
+		return fmt.Errorf("Failed to set up %q target-specific configuration: %w", state.Target.TargetType, err)
+	}
+
+	err = it.Connect(timeoutCtx)
+	if err != nil {
+		return fmt.Errorf("Failed to connect to target %q: %w", it.GetName(), err)
+	}
+
+	err = it.SetProject(state.Batch.TargetProject)
+	if err != nil {
+		return fmt.Errorf("Failed to set target %q project %q: %w", it.GetName(), state.Batch.TargetProject, err)
+	}
+
+	// If the VM failed in post-import steps, then it needs to be fully cleaned up.
+	resetState := api.MIGRATIONSTATUS_IDLE
+	if state.QueueEntries[instUUID].MigrationStatus != api.MIGRATIONSTATUS_FINAL_IMPORT {
+		resetState = api.MIGRATIONSTATUS_WAITING
+		log.Warn("Cleaning up target instance due to migration window deadline")
+		err := it.CleanupVM(timeoutCtx, state.Instances[instUUID].Properties.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to clean up instance %q due to migration window deadline: %w", state.Instances[instUUID].Properties.Location, err)
+		}
+	} else {
+		// Stop the migration worker so it doesn't interfere with our state cleanup.
+		err = it.Exec(timeoutCtx, state.Instances[instUUID].Properties.Name, []string{"systemctl", "stop", "migration-manager-worker.service"})
+		if err != nil {
+			return fmt.Errorf("Failed to stop migration worker on for instance %q: %w", state.Instances[instUUID].Properties.Location, err)
+		}
+	}
+
+	// Set the migration state to an earlier step.
+	reason := "Migration window ended, waiting for next migration window"
+	_, err = d.queue.UpdateStatusByUUID(ctx, instUUID, resetState, reason, true, nil)
+	if err != nil {
+		return fmt.Errorf("Failed to reset queue entry %q status: %w", instUUID, err)
+	}
+
+	// Restart the migration worker if the instance is still running.
+	if state.QueueEntries[instUUID].MigrationStatus == api.MIGRATIONSTATUS_FINAL_IMPORT {
+		log.Warn("Restarting migration worker due to migration window deadline")
+		err := it.Exec(timeoutCtx, state.Instances[instUUID].Properties.Name, []string{"systemctl", "restart", "migration-manager-worker.service"})
+		if err != nil {
+			return fmt.Errorf("Failed to restart migration worker on restarting instance %q: %w", state.Instances[instUUID].Properties.Location, err)
+		}
+	}
 
 	return nil
 }
