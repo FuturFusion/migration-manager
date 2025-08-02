@@ -26,7 +26,7 @@ type QueueService interface {
 
 	NewWorkerCommandByInstanceUUID(ctx context.Context, id uuid.UUID) (WorkerCommand, error)
 	ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (QueueEntry, error)
-	GetNextWindow(ctx context.Context, batchName string, instanceUUID uuid.UUID) (*MigrationWindow, error)
+	GetNextWindow(ctx context.Context, q QueueEntry) (*MigrationWindow, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/queue_repo_mock_gen.go -rm . QueueRepo

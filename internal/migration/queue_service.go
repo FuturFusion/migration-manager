@@ -156,37 +156,51 @@ func (s queueService) DeleteAllByBatch(ctx context.Context, batch string) error 
 // - If the instance does not match any constraint, the earliest valid migration window is used.
 // - The earliest migration window valid for the the first matching constraint will be used otherwise.
 // - Returns a 404 if no migration window can be found, but the instance matched a constraint.
-func (s queueService) GetNextWindow(ctx context.Context, batchName string, instanceUUID uuid.UUID) (*MigrationWindow, error) {
+func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*MigrationWindow, error) {
 	var entries QueueEntries
 	var instances Instances
 	var windows MigrationWindows
 	var batch *Batch
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
-		entries, err = s.GetAllByBatchAndState(ctx, batchName, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_FINAL_IMPORT, api.MIGRATIONSTATUS_POST_IMPORT, api.MIGRATIONSTATUS_WORKER_DONE)
+		entries, err = s.GetAllByBatchAndState(ctx, q.BatchName, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_FINAL_IMPORT, api.MIGRATIONSTATUS_POST_IMPORT, api.MIGRATIONSTATUS_WORKER_DONE)
 		if err != nil {
-			return fmt.Errorf("Failed to get idle queue entries for batch %q: %w", batchName, err)
+			return fmt.Errorf("Failed to get idle queue entries for batch %q: %w", q.BatchName, err)
 		}
 
-		windows, err = s.batch.GetMigrationWindows(ctx, batchName)
+		windows, err = s.batch.GetMigrationWindows(ctx, q.BatchName)
 		if err != nil {
-			return fmt.Errorf("Failed to get migration windows for batch %q: %w", batchName, err)
+			return fmt.Errorf("Failed to get migration windows for batch %q: %w", q.BatchName, err)
 		}
 
 		instances, err = s.instance.GetAllQueued(ctx, entries)
 		if err != nil {
-			return fmt.Errorf("Failed to get idle instances for batch %q: %w", batchName, err)
+			return fmt.Errorf("Failed to get idle instances for batch %q: %w", q.BatchName, err)
 		}
 
-		batch, err = s.batch.GetByName(ctx, batchName)
+		batch, err = s.batch.GetByName(ctx, q.BatchName)
 		if err != nil {
-			return fmt.Errorf("Failed to get batch %q: %w", batchName, err)
+			return fmt.Errorf("Failed to get batch %q: %w", q.BatchName, err)
 		}
 
 		return nil
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	// If a window is already assigned, and hasn't ended, then re-use it.
+	existingID := q.GetWindowID()
+	if existingID != nil {
+		for _, w := range windows {
+			if w.ID != *existingID {
+				continue
+			}
+
+			if !w.Ended() {
+				return &w, nil
+			}
+		}
 	}
 
 	matchedAny := false
@@ -202,7 +216,7 @@ func (s queueService) GetNextWindow(ctx context.Context, batchName string, insta
 			}
 
 			// Record if this instance in particular matched any constraint.
-			if inst.UUID == instanceUUID && match {
+			if inst.UUID == q.InstanceUUID && match {
 				matchedAny = true
 				break
 			}
@@ -261,7 +275,7 @@ func (s queueService) GetNextWindow(ctx context.Context, batchName string, insta
 		}
 
 		// Consider the next constraint if this instance does not match, or does not fit within the max concurrent count.
-		if !matches[instanceUUID] {
+		if !matches[q.InstanceUUID] {
 			continue
 		}
 
@@ -282,7 +296,7 @@ func (s queueService) GetNextWindow(ctx context.Context, batchName string, insta
 	}
 
 	// Return a 404 if this instance matched a constraint, but no valid migration window could be found.
-	return nil, incusAPI.StatusErrorf(http.StatusNotFound, "No valid migration window found for instance %q", instanceUUID)
+	return nil, incusAPI.StatusErrorf(http.StatusNotFound, "No valid migration window found for instance %q", q.InstanceUUID)
 }
 
 // NewWorkerCommandByInstanceID gets the next worker command for the instance with the given UUID, and updates the instance state accordingly.
@@ -391,7 +405,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			newStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
 			newStatusMessage = string(api.MIGRATIONSTATUS_BACKGROUND_IMPORT)
 		} else {
-			window, err := s.GetNextWindow(ctx, queueEntry.BatchName, queueEntry.InstanceUUID)
+			window, err := s.GetNextWindow(ctx, *queueEntry)
 			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 				return err
 			}

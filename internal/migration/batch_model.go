@@ -127,6 +127,10 @@ func (ws MigrationWindows) GetEarliest() (*MigrationWindow, error) {
 			continue
 		}
 
+		if w.Locked() {
+			continue
+		}
+
 		if earliestWindow == nil || w.Start.Before(earliestWindow.Start) {
 			earliestWindow = &w
 		}
