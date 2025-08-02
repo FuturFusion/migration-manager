@@ -79,6 +79,7 @@ func (s batchService) Update(ctx context.Context, name string, batch *Batch) err
 	if util.InTestingMode() {
 		batch.Status = api.BATCHSTATUS_DEFINED
 		batch.StatusMessage = string(api.BATCHSTATUS_DEFINED)
+		batch.StartDate = time.Time{}
 	}
 
 	err := batch.Validate()
