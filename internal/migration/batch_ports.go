@@ -28,6 +28,7 @@ type BatchService interface {
 	ChangeMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
 
 	GetMigrationWindows(ctx context.Context, batch string) (MigrationWindows, error)
+	GetMigrationWindow(ctx context.Context, windowID int64) (*MigrationWindow, error)
 	GetEarliestWindow(ctx context.Context, batch string) (*MigrationWindow, error)
 }
 
@@ -49,6 +50,7 @@ type BatchRepo interface {
 	UnassignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error
 
 	GetMigrationWindowsByBatch(ctx context.Context, batch string) (MigrationWindows, error)
+	GetMigrationWindow(ctx context.Context, windowID int64) (*MigrationWindow, error)
 	AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
 	UnassignMigrationWindows(ctx context.Context, batch string) error
 }

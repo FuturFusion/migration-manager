@@ -317,6 +317,10 @@ func (s batchService) GetMigrationWindows(ctx context.Context, batch string) (Mi
 	return s.repo.GetMigrationWindowsByBatch(ctx, batch)
 }
 
+func (s batchService) GetMigrationWindow(ctx context.Context, windowID int64) (*MigrationWindow, error) {
+	return s.repo.GetMigrationWindow(ctx, windowID)
+}
+
 func (s batchService) GetEarliestWindow(ctx context.Context, batch string) (*MigrationWindow, error) {
 	windows, err := s.repo.GetMigrationWindowsByBatch(ctx, batch)
 	if err != nil {
