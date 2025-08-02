@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
@@ -196,7 +197,26 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 					return err
 				}
 
-				result = append(result, queueItem.ToAPI(instance.Properties.Name, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID)))
+				var migrationWindow *migration.MigrationWindow
+				windowID := queueItem.GetWindowID()
+				if windowID != nil {
+					migrationWindow, err = d.batch.GetMigrationWindow(ctx, *windowID)
+					if err != nil {
+						return err
+					}
+				} else if queueItem.StatusBeforeMigrationWindow() {
+					// If the queue entry hasn't reached the point of being assigned a migration window, assume it will use the next available window according to its batch constraints.
+					migrationWindow, err = d.queue.GetNextWindow(ctx, queueItem)
+					if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+						return err
+					}
+				}
+
+				if migrationWindow == nil {
+					migrationWindow = &migration.MigrationWindow{}
+				}
+
+				result = append(result, queueItem.ToAPI(instance.Properties.Name, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID), *migrationWindow))
 			}
 
 			return nil
@@ -264,6 +284,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 
 	var queueItem *migration.QueueEntry
 	var instanceName string
+	var migrationWindow *migration.MigrationWindow
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
 		instance, err := d.instance.GetByUUID(ctx, UUID)
 		if err != nil {
@@ -275,6 +296,20 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 			return err
 		}
 
+		windowID := queueItem.GetWindowID()
+		if windowID != nil {
+			migrationWindow, err = d.batch.GetMigrationWindow(ctx, *windowID)
+			if err != nil {
+				return err
+			}
+		} else if queueItem.StatusBeforeMigrationWindow() {
+			// If the queue entry hasn't reached the point of being assigned a migration window, assume it will use the next available window according to its batch constraints.
+			migrationWindow, err = d.queue.GetNextWindow(ctx, *queueItem)
+			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+				return err
+			}
+		}
+
 		instanceName = instance.Properties.Name
 
 		return nil
@@ -283,7 +318,11 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	return response.SyncResponseETag(true, queueItem.ToAPI(instanceName, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID)), queueItem)
+	if migrationWindow == nil {
+		migrationWindow = &migration.MigrationWindow{}
+	}
+
+	return response.SyncResponseETag(true, queueItem.ToAPI(instanceName, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID), *migrationWindow), queueItem)
 }
 
 // swagger:operation DELETE /1.0/queues/{name} queues queue_delete

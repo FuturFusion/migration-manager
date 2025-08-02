@@ -20,6 +20,13 @@ SELECT migration_windows.id, migration_windows.start, migration_windows.end, mig
   ORDER BY migration_windows.start, migration_windows.end, migration_windows.lockout
 `)
 
+var migrationWindowObjectsByID = RegisterStmt(`
+SELECT migration_windows.id, migration_windows.start, migration_windows.end, migration_windows.lockout
+  FROM migration_windows
+  WHERE ( migration_windows.id = ? )
+  ORDER BY migration_windows.start, migration_windows.end, migration_windows.lockout
+`)
+
 var migrationWindowObjectsByStartAndEndAndLockout = RegisterStmt(`
 SELECT migration_windows.id, migration_windows.start, migration_windows.end, migration_windows.lockout
   FROM migration_windows
@@ -191,6 +198,30 @@ func GetMigrationWindows(ctx context.Context, db dbtx, filters ...MigrationWindo
 			}
 
 			query, err := StmtString(migrationWindowObjectsByStartAndEndAndLockout)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"migrationWindowObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.ID != nil && filter.Start == nil && filter.End == nil && filter.Lockout == nil {
+			args = append(args, []any{filter.ID}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, migrationWindowObjectsByID)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"migrationWindowObjectsByID\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(migrationWindowObjectsByID)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to get \"migrationWindowObjects\" prepared statement: %w", err)
 			}

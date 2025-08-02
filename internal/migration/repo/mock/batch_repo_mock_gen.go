@@ -49,6 +49,9 @@ var _ migration.BatchRepo = &BatchRepoMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			GetMigrationWindowFunc: func(ctx context.Context, windowID int64) (*migration.MigrationWindow, error) {
+//				panic("mock out the GetMigrationWindow method")
+//			},
 //			GetMigrationWindowsByBatchFunc: func(ctx context.Context, batch string) (migration.MigrationWindows, error) {
 //				panic("mock out the GetMigrationWindowsByBatch method")
 //			},
@@ -97,6 +100,9 @@ type BatchRepoMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Batch, error)
+
+	// GetMigrationWindowFunc mocks the GetMigrationWindow method.
+	GetMigrationWindowFunc func(ctx context.Context, windowID int64) (*migration.MigrationWindow, error)
 
 	// GetMigrationWindowsByBatchFunc mocks the GetMigrationWindowsByBatch method.
 	GetMigrationWindowsByBatchFunc func(ctx context.Context, batch string) (migration.MigrationWindows, error)
@@ -178,6 +184,13 @@ type BatchRepoMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetMigrationWindow holds details about calls to the GetMigrationWindow method.
+		GetMigrationWindow []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// WindowID is the windowID argument value.
+			WindowID int64
+		}
 		// GetMigrationWindowsByBatch holds details about calls to the GetMigrationWindowsByBatch method.
 		GetMigrationWindowsByBatch []struct {
 			// Ctx is the ctx argument value.
@@ -229,6 +242,7 @@ type BatchRepoMock struct {
 	lockGetAllNames                sync.RWMutex
 	lockGetAllNamesByState         sync.RWMutex
 	lockGetByName                  sync.RWMutex
+	lockGetMigrationWindow         sync.RWMutex
 	lockGetMigrationWindowsByBatch sync.RWMutex
 	lockRename                     sync.RWMutex
 	lockUnassignBatch              sync.RWMutex
@@ -557,6 +571,42 @@ func (mock *BatchRepoMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetMigrationWindow calls GetMigrationWindowFunc.
+func (mock *BatchRepoMock) GetMigrationWindow(ctx context.Context, windowID int64) (*migration.MigrationWindow, error) {
+	if mock.GetMigrationWindowFunc == nil {
+		panic("BatchRepoMock.GetMigrationWindowFunc: method is nil but BatchRepo.GetMigrationWindow was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		WindowID int64
+	}{
+		Ctx:      ctx,
+		WindowID: windowID,
+	}
+	mock.lockGetMigrationWindow.Lock()
+	mock.calls.GetMigrationWindow = append(mock.calls.GetMigrationWindow, callInfo)
+	mock.lockGetMigrationWindow.Unlock()
+	return mock.GetMigrationWindowFunc(ctx, windowID)
+}
+
+// GetMigrationWindowCalls gets all the calls that were made to GetMigrationWindow.
+// Check the length with:
+//
+//	len(mockedBatchRepo.GetMigrationWindowCalls())
+func (mock *BatchRepoMock) GetMigrationWindowCalls() []struct {
+	Ctx      context.Context
+	WindowID int64
+} {
+	var calls []struct {
+		Ctx      context.Context
+		WindowID int64
+	}
+	mock.lockGetMigrationWindow.RLock()
+	calls = mock.calls.GetMigrationWindow
+	mock.lockGetMigrationWindow.RUnlock()
 	return calls
 }
 

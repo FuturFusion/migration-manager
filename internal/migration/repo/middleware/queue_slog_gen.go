@@ -166,11 +166,11 @@ func (_d QueueRepoWithSlog) GetAllByState(ctx context.Context, status ...api.Mig
 }
 
 // GetAllNeedingImport implements _sourceMigration.QueueRepo
-func (_d QueueRepoWithSlog) GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (q1 _sourceMigration.QueueEntries, err error) {
+func (_d QueueRepoWithSlog) GetAllNeedingImport(ctx context.Context, batch string, importStage _sourceMigration.ImportStage) (q1 _sourceMigration.QueueEntries, err error) {
 	_d._log.With(
 		slog.Any("ctx", ctx),
 		slog.String("batch", batch),
-		slog.Bool("needsDiskImport", needsDiskImport),
+		slog.Any("importStage", importStage),
 	).Debug("QueueRepoWithSlog: calling GetAllNeedingImport")
 	defer func() {
 		log := _d._log.With(
@@ -183,7 +183,7 @@ func (_d QueueRepoWithSlog) GetAllNeedingImport(ctx context.Context, batch strin
 			log.Debug("QueueRepoWithSlog: method GetAllNeedingImport finished")
 		}
 	}()
-	return _d._base.GetAllNeedingImport(ctx, batch, needsDiskImport)
+	return _d._base.GetAllNeedingImport(ctx, batch, importStage)
 }
 
 // GetByInstanceUUID implements _sourceMigration.QueueRepo

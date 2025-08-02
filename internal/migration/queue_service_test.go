@@ -426,7 +426,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:                  "success - background disk sync",
 			uuidArg:               uuidA,
 			batchSvcGetByName:     migration.Batch{Target: "one", Name: "one"},
-			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", NeedsDiskImport: true, MigrationStatus: api.MIGRATIONSTATUS_IDLE},
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", ImportStage: migration.IMPORTSTAGE_BACKGROUND, MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
 				Source: "one",
@@ -468,10 +468,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			wantMigrationStatusMessage: string(api.MIGRATIONSTATUS_BACKGROUND_IMPORT),
 		},
 		{
-			name:                  "success - migration window started",
+			name:                  "success - migration window started (perform final import)",
 			uuidArg:               uuidA,
 			batchSvcGetByName:     migration.Batch{Target: "one", Name: "one"},
-			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE},
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, ImportStage: migration.IMPORTSTAGE_FINAL},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
 				Source: "one",
@@ -512,6 +512,144 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			},
 			wantMigrationStatus:        api.MIGRATIONSTATUS_FINAL_IMPORT,
 			wantMigrationStatusMessage: string(api.MIGRATIONSTATUS_FINAL_IMPORT),
+		},
+		{
+			name:                  "success - migration window started (perform full initial import)",
+			uuidArg:               uuidA,
+			batchSvcGetByName:     migration.Batch{Target: "one", Name: "one"},
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, ImportStage: migration.IMPORTSTAGE_BACKGROUND},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:   uuidA,
+				Source: "one",
+				Properties: api.InstanceProperties{
+					Location:         "/some/instance/A",
+					OS:               "ubuntu",
+					OSVersion:        "24.04",
+					BackgroundImport: false,
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
+			},
+			batchSvcGetWindows: migration.MigrationWindows{{Start: time.Now().Add(-time.Minute)}},
+
+			assertErr: require.NoError,
+			wantWorkerCommand: migration.WorkerCommand{
+				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Source: migration.Source{
+					ID:         1,
+					Name:       "one",
+					SourceType: api.SOURCETYPE_VMWARE,
+					Properties: []byte("{}"),
+				},
+				OS:        "ubuntu",
+				OSVersion: "24.04",
+			},
+			wantMigrationStatus:        api.MIGRATIONSTATUS_FINAL_IMPORT,
+			wantMigrationStatusMessage: string(api.MIGRATIONSTATUS_FINAL_IMPORT),
+		},
+		{
+			name:                  "success - migration window started (perform post import)",
+			uuidArg:               uuidA,
+			batchSvcGetByName:     migration.Batch{Target: "one", Name: "one"},
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, ImportStage: migration.IMPORTSTAGE_COMPLETE},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:   uuidA,
+				Source: "one",
+				Properties: api.InstanceProperties{
+					Location:         "/some/instance/A",
+					OS:               "ubuntu",
+					OSVersion:        "24.04",
+					BackgroundImport: true,
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
+			},
+			batchSvcGetWindows: migration.MigrationWindows{{Start: time.Now().Add(-time.Minute)}},
+
+			assertErr: require.NoError,
+			wantWorkerCommand: migration.WorkerCommand{
+				Command:    api.WORKERCOMMAND_POST_IMPORT,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Source: migration.Source{
+					ID:         1,
+					Name:       "one",
+					SourceType: api.SOURCETYPE_VMWARE,
+					Properties: []byte("{}"),
+				},
+				OS:        "ubuntu",
+				OSVersion: "24.04",
+			},
+			wantMigrationStatus:        api.MIGRATIONSTATUS_POST_IMPORT,
+			wantMigrationStatusMessage: string(api.MIGRATIONSTATUS_POST_IMPORT),
+		},
+		{
+			name:                  "success - migration window started (perform post import with full import)",
+			uuidArg:               uuidA,
+			batchSvcGetByName:     migration.Batch{Target: "one", Name: "one"},
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, ImportStage: migration.IMPORTSTAGE_COMPLETE},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:   uuidA,
+				Source: "one",
+				Properties: api.InstanceProperties{
+					Location:         "/some/instance/A",
+					OS:               "ubuntu",
+					OSVersion:        "24.04",
+					BackgroundImport: false,
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
+			},
+			batchSvcGetWindows: migration.MigrationWindows{{Start: time.Now().Add(-time.Minute)}},
+
+			assertErr: require.NoError,
+			wantWorkerCommand: migration.WorkerCommand{
+				Command:    api.WORKERCOMMAND_POST_IMPORT,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Source: migration.Source{
+					ID:         1,
+					Name:       "one",
+					SourceType: api.SOURCETYPE_VMWARE,
+					Properties: []byte("{}"),
+				},
+				OS:        "ubuntu",
+				OSVersion: "24.04",
+			},
+			wantMigrationStatus:        api.MIGRATIONSTATUS_POST_IMPORT,
+			wantMigrationStatusMessage: string(api.MIGRATIONSTATUS_POST_IMPORT),
 		},
 		{
 			name:    "success - migration window started, with matching constraint",
@@ -818,7 +956,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:                  "error - repo.Update",
 			uuidArg:               uuidA,
 			batchSvcGetByName:     migration.Batch{Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
-			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", NeedsDiskImport: true, MigrationStatus: api.MIGRATIONSTATUS_IDLE},
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", ImportStage: migration.IMPORTSTAGE_BACKGROUND, MigrationStatus: api.MIGRATIONSTATUS_IDLE},
 			instanceSvcGetByIDInstance: migration.Instance{
 				Source: "one",
 				UUID:   uuidA,
@@ -930,6 +1068,7 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 		assertErr                  require.ErrorAssertionFunc
 		wantMigrationStatus        api.MigrationStatusType
 		wantMigrationStatusMessage string
+		wantImportStage            migration.ImportStage
 	}{
 		{
 			name:                  "success - migration running",
@@ -940,11 +1079,13 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 				InstanceUUID:    uuidA,
 				MigrationStatus: api.MIGRATIONSTATUS_CREATING,
 				BatchName:       "one",
+				ImportStage:     migration.IMPORTSTAGE_BACKGROUND,
 			},
 
 			assertErr:                  require.NoError,
 			wantMigrationStatus:        api.MIGRATIONSTATUS_CREATING,
 			wantMigrationStatusMessage: "creating",
+			wantImportStage:            migration.IMPORTSTAGE_BACKGROUND,
 		},
 		{
 			name:                  "success - migration success background import",
@@ -955,6 +1096,7 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 				InstanceUUID: uuidA,
 
 				MigrationStatus: api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
+				ImportStage:     migration.IMPORTSTAGE_BACKGROUND,
 				BatchName:       "one",
 			},
 			instanceSvcGetByUUIDInstance: migration.Instance{UUID: uuidA, Source: "one"},
@@ -963,9 +1105,10 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 			assertErr:                  require.NoError,
 			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
 			wantMigrationStatusMessage: "Waiting for migration window",
+			wantImportStage:            migration.IMPORTSTAGE_FINAL,
 		},
 		{
-			name:                  "success - migration success final import",
+			name:                  "success - migration success final import (full initial import)",
 			uuidArg:               uuidA,
 			workerResponseTypeArg: api.WORKERRESPONSE_SUCCESS,
 			statusStringArg:       "done",
@@ -974,11 +1117,49 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 
 				MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT,
 				BatchName:       "one",
+				ImportStage:     migration.IMPORTSTAGE_BACKGROUND,
 			},
 
 			assertErr:                  require.NoError,
-			wantMigrationStatus:        api.MIGRATIONSTATUS_IMPORT_COMPLETE,
+			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
+			wantMigrationStatusMessage: "Waiting for worker to begin post-import tasks",
+			wantImportStage:            migration.IMPORTSTAGE_COMPLETE,
+		},
+		{
+			name:                  "success - migration success final import (incremental import)",
+			uuidArg:               uuidA,
+			workerResponseTypeArg: api.WORKERRESPONSE_SUCCESS,
+			statusStringArg:       "done",
+			repoGetByUUIDQueueEntry: &migration.QueueEntry{
+				InstanceUUID: uuidA,
+
+				MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT,
+				BatchName:       "one",
+				ImportStage:     migration.IMPORTSTAGE_FINAL,
+			},
+
+			assertErr:                  require.NoError,
+			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
+			wantMigrationStatusMessage: "Waiting for worker to begin post-import tasks",
+			wantImportStage:            migration.IMPORTSTAGE_COMPLETE,
+		},
+		{
+			name:                  "success - migration success post import",
+			uuidArg:               uuidA,
+			workerResponseTypeArg: api.WORKERRESPONSE_SUCCESS,
+			statusStringArg:       "done",
+			repoGetByUUIDQueueEntry: &migration.QueueEntry{
+				InstanceUUID: uuidA,
+
+				MigrationStatus: api.MIGRATIONSTATUS_POST_IMPORT,
+				BatchName:       "one",
+				ImportStage:     migration.IMPORTSTAGE_COMPLETE,
+			},
+
+			assertErr:                  require.NoError,
+			wantMigrationStatus:        api.MIGRATIONSTATUS_WORKER_DONE,
 			wantMigrationStatusMessage: "Starting target instance",
+			wantImportStage:            migration.IMPORTSTAGE_COMPLETE,
 		},
 		{
 			name:                  "success - migration failed",
@@ -1050,6 +1231,7 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 				UpdateFunc: func(ctx context.Context, i migration.QueueEntry) error {
 					require.Equal(t, tc.wantMigrationStatus, i.MigrationStatus)
 					require.Equal(t, tc.wantMigrationStatusMessage, i.MigrationStatusMessage)
+					require.Equal(t, tc.wantImportStage, i.ImportStage)
 					return tc.repoUpdateStatusByUUIDErr
 				},
 			}

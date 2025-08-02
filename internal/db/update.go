@@ -105,15 +105,41 @@ func Schema() *schema.Schema {
 */
 
 var updates = map[int]schema.Update{
-	1: updateFromV0,
-	2: updateFromV1,
-	3: updateFromV2,
-	4: updateFromV3,
-	5: updateFromV4,
-	6: updateFromV5,
-	7: updateFromV6,
-	8: updateFromV7,
-	9: updateFromV8,
+	1:  updateFromV0,
+	2:  updateFromV1,
+	3:  updateFromV2,
+	4:  updateFromV3,
+	5:  updateFromV4,
+	6:  updateFromV5,
+	7:  updateFromV6,
+	8:  updateFromV7,
+	9:  updateFromV8,
+	10: updateFromV9,
+}
+
+func updateFromV9(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE queue_new (
+    id                               INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    instance_id                      INTEGER NOT NULL,
+    batch_id                         INTEGER NOT NULL,
+    migration_status                 TEXT NOT NULL,
+    migration_status_message         TEXT NOT NULL,
+    import_stage                     TEXT NOT NULL,
+    secret_token                     TEXT NOT NULL,
+    last_worker_status               INTEGER NOT NULL,
+    migration_window_id              INTEGER,
+    FOREIGN KEY(migration_window_id) REFERENCES migration_windows(id),
+    FOREIGN KEY(instance_id)         REFERENCES instances(id) ON DELETE CASCADE,
+    FOREIGN KEY(batch_id)            REFERENCES batches(id) ON DELETE CASCADE,
+    UNIQUE (instance_id)
+);
+
+INSERT INTO queue_new (id, instance_id, batch_id, migration_status, migration_status_message, import_stage, secret_token, last_worker_status, migration_window_id)
+  SELECT id, instance_id, batch_id, migration_status, migration_status_message, CASE WHEN queue.needs_disk_import THEN 'background' ELSE 'final' END , secret_token, last_worker_status, NULL FROM queue;
+DROP TABLE queue;
+ALTER TABLE queue_new RENAME TO queue;
+`)
+	return err
 }
 
 func updateFromV8(ctx context.Context, tx *sql.Tx) error {

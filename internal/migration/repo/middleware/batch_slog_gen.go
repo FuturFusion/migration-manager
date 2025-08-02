@@ -204,6 +204,26 @@ func (_d BatchRepoWithSlog) GetByName(ctx context.Context, name string) (bp1 *_s
 	return _d._base.GetByName(ctx, name)
 }
 
+// GetMigrationWindow implements _sourceMigration.BatchRepo
+func (_d BatchRepoWithSlog) GetMigrationWindow(ctx context.Context, windowID int64) (mp1 *_sourceMigration.MigrationWindow, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Int64("windowID", windowID),
+	).Debug("BatchRepoWithSlog: calling GetMigrationWindow")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("mp1", mp1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("BatchRepoWithSlog: method GetMigrationWindow returned an error")
+		} else {
+			log.Debug("BatchRepoWithSlog: method GetMigrationWindow finished")
+		}
+	}()
+	return _d._base.GetMigrationWindow(ctx, windowID)
+}
+
 // GetMigrationWindowsByBatch implements _sourceMigration.BatchRepo
 func (_d BatchRepoWithSlog) GetMigrationWindowsByBatch(ctx context.Context, batch string) (m1 _sourceMigration.MigrationWindows, err error) {
 	_d._log.With(

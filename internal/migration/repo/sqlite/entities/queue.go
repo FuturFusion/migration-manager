@@ -3,6 +3,7 @@ package entities
 import (
 	"github.com/google/uuid"
 
+	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -15,10 +16,10 @@ import (
 //generate-database:mapper stmt -e queue_entry objects-by-InstanceUUID table=queue
 //generate-database:mapper stmt -e queue_entry objects-by-BatchName table=queue
 //generate-database:mapper stmt -e queue_entry objects-by-MigrationStatus table=queue
-//generate-database:mapper stmt -e queue_entry objects-by-NeedsDiskImport table=queue
+//generate-database:mapper stmt -e queue_entry objects-by-ImportStage table=queue
 //generate-database:mapper stmt -e queue_entry objects-by-BatchName-and-MigrationStatus table=queue
-//generate-database:mapper stmt -e queue_entry objects-by-BatchName-and-NeedsDiskImport table=queue
-//generate-database:mapper stmt -e queue_entry objects-by-BatchName-and-MigrationStatus-and-NeedsDiskImport table=queue
+//generate-database:mapper stmt -e queue_entry objects-by-BatchName-and-ImportStage table=queue
+//generate-database:mapper stmt -e queue_entry objects-by-BatchName-and-MigrationStatus-and-ImportStage table=queue
 //generate-database:mapper stmt -e queue_entry id table=queue
 //generate-database:mapper stmt -e queue_entry create table=queue
 //generate-database:mapper stmt -e queue_entry update table=queue
@@ -37,5 +38,5 @@ type QueueEntryFilter struct {
 	InstanceUUID    *uuid.UUID
 	BatchName       *string
 	MigrationStatus *api.MigrationStatusType
-	NeedsDiskImport *bool
+	ImportStage     *migration.ImportStage
 }

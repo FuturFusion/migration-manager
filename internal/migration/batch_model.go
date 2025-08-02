@@ -2,6 +2,7 @@ package migration
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/validate"
@@ -126,6 +127,10 @@ func (ws MigrationWindows) GetEarliest() (*MigrationWindow, error) {
 			continue
 		}
 
+		if w.Locked() {
+			continue
+		}
+
 		if earliestWindow == nil || w.Start.Before(earliestWindow.Start) {
 			earliestWindow = &w
 		}
@@ -138,12 +143,26 @@ func (ws MigrationWindows) GetEarliest() (*MigrationWindow, error) {
 	return earliestWindow, nil
 }
 
-// Begun returns whether the migration window has begun (whether its start time and lockout time are both in the past).
+func (w MigrationWindow) IsEmpty() bool {
+	return w.Start.IsZero() && w.End.IsZero() && w.Lockout.IsZero()
+}
+
+// Begun returns whether the migration window has begun (whether its start time is in the past).
 func (w MigrationWindow) Begun() bool {
 	started := w.Start.IsZero() || w.Start.Before(time.Now().UTC())
-	pastLockout := w.Lockout.IsZero() || w.Lockout.Before(time.Now().UTC())
 
-	return started && pastLockout
+	return started
+}
+
+func (w MigrationWindow) Locked() bool {
+	locked := !w.Lockout.IsZero() && w.Lockout.Before(time.Now().UTC())
+
+	return w.Ended() || locked
+}
+
+func (w MigrationWindow) Ended() bool {
+	ended := !w.End.IsZero() && w.End.Before(time.Now().UTC())
+	return ended
 }
 
 func (w MigrationWindow) FitsDuration(duration time.Duration) bool {
@@ -176,6 +195,30 @@ func (w MigrationWindow) Key() string {
 	return w.Start.String() + "_" + w.End.String() + "_" + w.Lockout.String()
 }
 
+func (ws MigrationWindows) Validate() error {
+	// Sort the windows by their start times.
+	sort.Slice(ws, func(i, j int) bool {
+		return ws[i].Start.Before(ws[j].Start)
+	})
+
+	for i, w := range ws {
+		// Perform individual window validation.
+		err := w.Validate()
+		if err != nil {
+			return err
+		}
+
+		// If the current window starts before the earlier window's end time, then they overlap.
+		if i > 0 {
+			if ws[i].Start.Before(ws[i-1].End) {
+				return fmt.Errorf("Window %d with start time %q overlaps with window %d with end time %q", i, ws[i].Start.String(), i-1, ws[i-1].End.String())
+			}
+		}
+	}
+
+	return nil
+}
+
 func (w MigrationWindow) Validate() error {
 	// If a migration window is defined, ensure sure it makes sense.
 	if !w.Start.IsZero() && !w.End.IsZero() && w.End.Before(w.Start) {
@@ -186,8 +229,8 @@ func (w MigrationWindow) Validate() error {
 		return fmt.Errorf("Batch migration window has already passed")
 	}
 
-	if !w.Lockout.IsZero() && w.Start.Before(w.Lockout) {
-		return fmt.Errorf("Batch migration window lockout time is after the start time")
+	if !w.Lockout.IsZero() && w.Start.After(w.Lockout) {
+		return fmt.Errorf("Batch migration window lockout time is before the start time")
 	}
 
 	if !w.Lockout.IsZero() && w.End.Before(w.Lockout) {

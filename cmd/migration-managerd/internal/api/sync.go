@@ -52,7 +52,10 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 			case api.MIGRATIONSTATUS_IDLE:
 				workerUpdates[instUUID] = now
 
-			case api.MIGRATIONSTATUS_IMPORT_COMPLETE:
+			case api.MIGRATIONSTATUS_WORKER_DONE:
+				workerUpdates[instUUID] = now
+
+			case api.MIGRATIONSTATUS_POST_IMPORT:
 				workerUpdates[instUUID] = now
 
 			case api.MIGRATIONSTATUS_ERROR:
@@ -326,7 +329,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 
 			for _, dbNetwork := range allNetworks {
 				// If the network is already assigned, then omit it from consideration.
-				network, ok := assignedNetworksByName[dbNetwork.Identifier]
+				_, ok := assignedNetworksByName[dbNetwork.Identifier]
 				if ok {
 					_, ok := srcNetworks[dbNetwork.Identifier]
 					if ok {
@@ -341,7 +344,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 				srcNet, ok := srcNetworks[dbNetwork.Identifier]
 				if ok && slices.Contains([]api.NetworkType{api.NETWORKTYPE_VMWARE_NSX, api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX}, dbNetwork.Type) {
 					var existingProps internalAPI.NSXNetworkProperties
-					err := json.Unmarshal(network.Properties, &existingProps)
+					err := json.Unmarshal(dbNetwork.Properties, &existingProps)
 					if err != nil {
 						return err
 					}
@@ -357,7 +360,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 					}
 				}
 
-				existingNetworks[network.Identifier] = network
+				existingNetworks[dbNetwork.Identifier] = dbNetwork
 			}
 
 			err = d.syncNetworksFromSource(ctx, srcName, d.network, existingNetworks, srcNetworks)
@@ -372,7 +375,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 			for _, instUUID := range allInstances {
 				// If the instance is already assigned, then omit it from consideration, unless it is disabled.
 				inst, ok := assignedInstancesByUUID[instUUID]
-				if ok && inst.DisabledReason() != nil {
+				if ok && inst.DisabledReason() == nil {
 					_, ok := srcInstances[instUUID]
 					if ok {
 						delete(srcInstances, instUUID)
@@ -381,6 +384,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 					continue
 				}
 
+				inst = srcInstances[instUUID]
 				src := sourcesByName[srcName]
 
 				if src.Name == inst.Source {

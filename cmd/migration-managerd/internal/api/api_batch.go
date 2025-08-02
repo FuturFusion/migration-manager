@@ -750,7 +750,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 			_, err = d.queue.CreateEntry(ctx, migration.QueueEntry{
 				InstanceUUID:           inst.UUID,
 				BatchName:              batchName,
-				NeedsDiskImport:        true,
+				ImportStage:            migration.IMPORTSTAGE_BACKGROUND,
 				SecretToken:            secret,
 				MigrationStatus:        status,
 				MigrationStatusMessage: message,

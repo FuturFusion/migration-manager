@@ -10,6 +10,7 @@ import (
 //generate-database:mapper reset
 //
 //generate-database:mapper stmt -e migration_window objects table=migration_windows
+//generate-database:mapper stmt -e migration_window objects-by-ID table=migration_windows
 //generate-database:mapper stmt -e migration_window objects-by-Start-and-End-and-Lockout table=migration_windows
 //generate-database:mapper stmt -e migration_window id table=migration_windows
 //generate-database:mapper stmt -e migration_window create table=migration_windows
