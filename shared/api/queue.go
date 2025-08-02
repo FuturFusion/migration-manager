@@ -16,7 +16,8 @@ const (
 	MIGRATIONSTATUS_BACKGROUND_IMPORT MigrationStatusType = "Performing background import tasks"
 	MIGRATIONSTATUS_IDLE              MigrationStatusType = "Idle"
 	MIGRATIONSTATUS_FINAL_IMPORT      MigrationStatusType = "Performing final import tasks"
-	MIGRATIONSTATUS_IMPORT_COMPLETE   MigrationStatusType = "Import tasks complete"
+	MIGRATIONSTATUS_POST_IMPORT       MigrationStatusType = "Performing post-import tasks"
+	MIGRATIONSTATUS_WORKER_DONE       MigrationStatusType = "Worker tasks complete"
 	MIGRATIONSTATUS_FINISHED          MigrationStatusType = "Finished"
 	MIGRATIONSTATUS_ERROR             MigrationStatusType = "Error"
 )
@@ -30,9 +31,10 @@ func (m MigrationStatusType) Validate() error {
 	case MIGRATIONSTATUS_CREATING:
 	case MIGRATIONSTATUS_ERROR:
 	case MIGRATIONSTATUS_FINAL_IMPORT:
+	case MIGRATIONSTATUS_POST_IMPORT:
 	case MIGRATIONSTATUS_FINISHED:
 	case MIGRATIONSTATUS_IDLE:
-	case MIGRATIONSTATUS_IMPORT_COMPLETE:
+	case MIGRATIONSTATUS_WORKER_DONE:
 	default:
 		return fmt.Errorf("%s is not a valid migration status", m)
 	}

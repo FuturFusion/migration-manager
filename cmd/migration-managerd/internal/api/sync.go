@@ -52,7 +52,10 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 			case api.MIGRATIONSTATUS_IDLE:
 				workerUpdates[instUUID] = now
 
-			case api.MIGRATIONSTATUS_IMPORT_COMPLETE:
+			case api.MIGRATIONSTATUS_WORKER_DONE:
+				workerUpdates[instUUID] = now
+
+			case api.MIGRATIONSTATUS_POST_IMPORT:
 				workerUpdates[instUUID] = now
 
 			case api.MIGRATIONSTATUS_ERROR:
