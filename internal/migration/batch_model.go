@@ -138,12 +138,26 @@ func (ws MigrationWindows) GetEarliest() (*MigrationWindow, error) {
 	return earliestWindow, nil
 }
 
-// Begun returns whether the migration window has begun (whether its start time and lockout time are both in the past).
+func (w MigrationWindow) IsEmpty() bool {
+	return w.Start.IsZero() && w.End.IsZero() && w.Lockout.IsZero()
+}
+
+// Begun returns whether the migration window has begun (whether its start time is in the past).
 func (w MigrationWindow) Begun() bool {
 	started := w.Start.IsZero() || w.Start.Before(time.Now().UTC())
-	pastLockout := w.Lockout.IsZero() || w.Lockout.Before(time.Now().UTC())
 
-	return started && pastLockout
+	return started
+}
+
+func (w MigrationWindow) Locked() bool {
+	locked := !w.Lockout.IsZero() && w.Lockout.Before(time.Now().UTC())
+
+	return w.Ended() || locked
+}
+
+func (w MigrationWindow) Ended() bool {
+	ended := !w.End.IsZero() && w.End.Before(time.Now().UTC())
+	return ended
 }
 
 func (w MigrationWindow) FitsDuration(duration time.Duration) bool {
