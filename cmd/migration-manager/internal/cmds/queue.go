@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"time"
@@ -88,7 +89,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 
 	// Render the table.
 	batchesByName := map[string]api.Batch{}
-	header := []string{"Name", "Batch", "Last Update", "Status", "Status Message"}
+	header := []string{"Name", "Batch", "Last Update", "Status", "Status Message", "Migration Window"}
 	if c.flagVerbose {
 		header = append(header, "UUID", "Batch Status", "Batch Status Message")
 
@@ -121,7 +122,16 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 			lastUpdate = time.Now().UTC().Sub(q.LastWorkerResponse).String() + " ago"
 		}
 
-		row := []string{q.InstanceName, q.BatchName, lastUpdate, string(q.MigrationStatus), q.MigrationStatusMessage}
+		window := "none"
+
+		if !q.MigrationWindow.End.IsZero() || !q.MigrationWindow.Start.IsZero() {
+			window = fmt.Sprintf("%s - %s", q.MigrationWindow.Start.String(), q.MigrationWindow.End.String())
+			if !q.MigrationWindow.Lockout.IsZero() {
+				window = fmt.Sprintf("%s (lockout %s)", window, q.MigrationWindow.Lockout.String())
+			}
+		}
+
+		row := []string{q.InstanceName, q.BatchName, lastUpdate, string(q.MigrationStatus), q.MigrationStatusMessage, window}
 		if c.flagVerbose {
 			row = append(row, q.InstanceUUID.String(), string(batchesByName[q.BatchName].Status), batchesByName[q.BatchName].StatusMessage)
 		}
