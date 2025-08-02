@@ -468,12 +468,16 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 		case api.WORKERRESPONSE_SUCCESS:
 			switch entry.MigrationStatus {
 			case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
-				entry.NeedsDiskImport = false
 				entry.MigrationStatus = api.MIGRATIONSTATUS_IDLE
 				entry.MigrationStatusMessage = "Waiting for migration window"
 
 			case api.MIGRATIONSTATUS_FINAL_IMPORT:
-				entry.MigrationStatus = api.MIGRATIONSTATUS_IMPORT_COMPLETE
+				entry.NeedsDiskImport = false
+				entry.MigrationStatus = api.MIGRATIONSTATUS_IDLE
+				entry.MigrationStatusMessage = "Waiting for worker to begin post-import tasks"
+
+			case api.MIGRATIONSTATUS_POST_IMPORT:
+				entry.MigrationStatus = api.MIGRATIONSTATUS_WORKER_DONE
 				entry.MigrationStatusMessage = "Starting target instance"
 			}
 
