@@ -1,6 +1,7 @@
 package migration
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +18,8 @@ type QueueEntry struct {
 	MigrationStatus        api.MigrationStatusType
 	MigrationStatusMessage string
 	LastWorkerStatus       api.WorkerResponseType
+
+	MigrationWindowID sql.NullInt64
 }
 
 type QueueEntries []QueueEntry
@@ -65,7 +68,7 @@ func (q QueueEntry) Validate() error {
 	return nil
 }
 
-func (q QueueEntry) ToAPI(instanceName string, lastWorkerUpdate time.Time) api.QueueEntry {
+func (q QueueEntry) ToAPI(instanceName string, lastWorkerUpdate time.Time, migrationWindow MigrationWindow) api.QueueEntry {
 	return api.QueueEntry{
 		InstanceUUID:           q.InstanceUUID,
 		MigrationStatus:        q.MigrationStatus,
@@ -73,5 +76,10 @@ func (q QueueEntry) ToAPI(instanceName string, lastWorkerUpdate time.Time) api.Q
 		BatchName:              q.BatchName,
 		InstanceName:           instanceName,
 		LastWorkerResponse:     lastWorkerUpdate,
+		MigrationWindow: api.MigrationWindow{
+			Start:   migrationWindow.Start,
+			End:     migrationWindow.End,
+			Lockout: migrationWindow.Lockout,
+		},
 	}
 }

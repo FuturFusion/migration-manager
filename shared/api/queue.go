@@ -66,4 +66,7 @@ type QueueEntry struct {
 
 	// Time in UTC that the queue entry received a response from the migration worker
 	LastWorkerResponse time.Time
+
+	// The window that this queue entry will perform the final import steps
+	MigrationWindow MigrationWindow `json:"migration_window" yaml:"migration_window"`
 }
