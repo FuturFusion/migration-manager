@@ -163,7 +163,7 @@ func (s queueService) GetNextWindow(ctx context.Context, batchName string, insta
 	var batch *Batch
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
-		entries, err = s.GetAllByBatchAndState(ctx, batchName, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_FINAL_IMPORT, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
+		entries, err = s.GetAllByBatchAndState(ctx, batchName, api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_FINAL_IMPORT, api.MIGRATIONSTATUS_POST_IMPORT, api.MIGRATIONSTATUS_WORKER_DONE)
 		if err != nil {
 			return fmt.Errorf("Failed to get idle queue entries for batch %q: %w", batchName, err)
 		}
@@ -221,18 +221,13 @@ func (s queueService) GetNextWindow(ctx context.Context, batchName string, insta
 
 	// Sort instances according to their status in the queue.
 	sort.Slice(instances, func(i, j int) bool {
-		aFinal := statusMap[instances[i].UUID] == api.MIGRATIONSTATUS_FINAL_IMPORT
-		bFinal := statusMap[instances[j].UUID] == api.MIGRATIONSTATUS_FINAL_IMPORT
+		for _, s := range []api.MigrationStatusType{api.MIGRATIONSTATUS_FINAL_IMPORT, api.MIGRATIONSTATUS_POST_IMPORT, api.MIGRATIONSTATUS_WORKER_DONE} {
+			aFinal := statusMap[instances[i].UUID] == s
+			bFinal := statusMap[instances[j].UUID] == s
 
-		if aFinal != bFinal {
-			return aFinal
-		}
-
-		aFinal = statusMap[instances[i].UUID] == api.MIGRATIONSTATUS_IMPORT_COMPLETE
-		bFinal = statusMap[instances[j].UUID] == api.MIGRATIONSTATUS_IMPORT_COMPLETE
-
-		if aFinal != bFinal {
-			return aFinal
+			if aFinal != bFinal {
+				return aFinal
+			}
 		}
 
 		return instances[i].UUID.String() < instances[j].UUID.String()
