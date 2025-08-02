@@ -557,11 +557,14 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 	return nil
 }
 
-// finalizeCompleteInstances fetches all instances in RUNNING batches whose status is IMPORT COMPLETE, and for each batch, runs configureMigratedInstances.
+// finalizeCompleteInstances fetches all instances in RUNNING batches whose status is WORKER DONE, and for each batch, runs configureMigratedInstances.
 func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 	log := slog.With(slog.String("method", "finalizeCompleteInstances"))
 	var migrationState map[string]queue.MigrationState
 	var allNetworks migration.Networks
+
+	queueEntriesToReset := map[uuid.UUID]bool{}
+	windowsByQueueUUID := map[uuid.UUID]migration.MigrationWindow{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 		allNetworks, err = d.network.GetAll(ctx)
@@ -569,8 +572,31 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 			return fmt.Errorf("Failed to get all networks: %w", err)
 		}
 
-		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_IMPORT_COMPLETE)
-		return err
+		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WORKER_DONE, api.MIGRATIONSTATUS_FINAL_IMPORT, api.MIGRATIONSTATUS_POST_IMPORT)
+		if err != nil {
+			return fmt.Errorf("Failed to compile migration state for final import steps: %w", err)
+		}
+
+		for _, s := range migrationState {
+			for _, q := range s.QueueEntries {
+				windowID := q.GetWindowID()
+				if windowID == nil {
+					continue
+				}
+
+				window, err := d.batch.GetMigrationWindow(ctx, *windowID)
+				if err != nil {
+					return fmt.Errorf("Failed to get migration window for queue entry %q: %w", q.InstanceUUID, err)
+				}
+
+				windowsByQueueUUID[q.InstanceUUID] = *window
+				if window.Ended() {
+					queueEntriesToReset[q.InstanceUUID] = true
+				}
+			}
+		}
+
+		return nil
 	})
 	if err != nil {
 		return err
@@ -579,12 +605,22 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 	finishedInstances := []uuid.UUID{}
 	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
 		return util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
+			if queueEntriesToReset[instUUID] {
+				return d.resetQueueEntry(ctx, instUUID, state)
+			}
+
+			// Skip queue entries that are still performing sync.
+			if state.QueueEntries[instUUID].MigrationStatus != api.MIGRATIONSTATUS_WORKER_DONE {
+				return nil
+			}
+
 			instanceList := make(migration.Instances, 0, len(state.Instances))
 			for _, inst := range state.Instances {
 				instanceList = append(instanceList, inst)
 			}
 
-			err := d.configureMigratedInstances(ctx, instance, state.Sources[instUUID], state.Target, state.Batch, migration.FilterUsedNetworks(allNetworks, instanceList))
+			window := windowsByQueueUUID[instUUID]
+			err := d.configureMigratedInstances(ctx, state.QueueEntries[instUUID], window, instance, state.Sources[instUUID], state.Target, state.Batch, migration.FilterUsedNetworks(allNetworks, instanceList))
 			if err != nil {
 				return err
 			}
@@ -632,7 +668,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 
 // configureMigratedInstances updates the configuration of instances concurrently after they have finished migrating. Errors will result in the instance state becoming ERRORED.
 // If an instance succeeds, its state will be moved to FINISHED.
-func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Instance, s migration.Source, t migration.Target, batch migration.Batch, activeNetworks migration.Networks) (_err error) {
+func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.QueueEntry, w migration.MigrationWindow, i migration.Instance, s migration.Source, t migration.Target, batch migration.Batch, activeNetworks migration.Networks) (_err error) {
 	log := slog.With(
 		slog.String("method", "configureMigratedInstances"),
 		slog.String("target", t.Name),
@@ -645,23 +681,26 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, i migration.Ins
 	reverter := revert.New()
 	defer reverter.Fail()
 	reverter.Add(func() {
+		log := log.With(slog.String("revert", "set instance failed"))
 		var errString string
 		if _err != nil {
 			errString = _err.Error()
 		}
 
-		numRetries := d.instance.GetPostMigrationRetries(i.UUID)
-		if numRetries < batch.PostMigrationRetries {
-			d.instance.RecordPostMigrationRetry(i.UUID)
-			log.Error("Instance failed post-migration steps, retrying", slog.String("error", errString), slog.Int("retry_count", numRetries), slog.Int("max_retries", batch.PostMigrationRetries))
-			return
-		}
+		// If the migration window has already ended, we have no capacity to retry.
+		if !w.Ended() {
+			numRetries := d.instance.GetPostMigrationRetries(i.UUID)
+			if numRetries < batch.PostMigrationRetries {
+				d.instance.RecordPostMigrationRetry(i.UUID)
+				log.Error("Instance failed post-migration steps, retrying", slog.String("error", errString), slog.Int("retry_count", numRetries), slog.Int("max_retries", batch.PostMigrationRetries))
+				return
+			}
 
-		log := log.With(slog.String("revert", "set instance failed"))
-		// Try to set the instance state to ERRORED if it failed.
-		_, err := d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, true)
-		if err != nil {
-			log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+			// Only persist the state as errored if the window is still active, because this reverter might have been triggered by the window deadline cleanup.
+			_, err := d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, true, q.GetWindowID())
+			if err != nil {
+				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
+			}
 		}
 
 		is, err := source.NewInternalVMwareSourceFrom(s.ToAPI())
