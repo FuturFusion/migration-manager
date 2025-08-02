@@ -229,8 +229,8 @@ func (w MigrationWindow) Validate() error {
 		return fmt.Errorf("Batch migration window has already passed")
 	}
 
-	if !w.Lockout.IsZero() && w.Start.Before(w.Lockout) {
-		return fmt.Errorf("Batch migration window lockout time is after the start time")
+	if !w.Lockout.IsZero() && w.Start.After(w.Lockout) {
+		return fmt.Errorf("Batch migration window lockout time is before the start time")
 	}
 
 	if !w.Lockout.IsZero() && w.End.Before(w.Lockout) {
