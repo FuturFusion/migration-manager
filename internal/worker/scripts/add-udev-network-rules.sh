@@ -22,7 +22,14 @@ process_devs () {
           break
         fi
 
-        echo "SUBSYSTEM==\"net\", ACTION==\"add\", ATTR{address}==\"${mac}\", NAME=\"${name}\"" >> /etc/udev/rules.d/00-net-symlink.rules
+        line="SUBSYSTEM==\"net\", ACTION==\"add\", ATTR{address}==\"${mac}\", NAME=\"${name}\""
+        conf_file="/etc/udev/rules.d/00-net-symlink.rules"
+
+        if test -e "${conf_file}" && grep -q "${line}" "${conf_file}" ; then
+          continue
+        fi
+
+        echo "${line}" >> "${conf_file}"
         _device_num=$((_device_num + 1))
     done
 }
