@@ -292,17 +292,20 @@ func (s batchService) StopBatchByName(ctx context.Context, name string) (err err
 }
 
 func (s batchService) AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error {
-	for _, w := range windows {
-		err := w.Validate()
-		if err != nil {
-			return fmt.Errorf("Failed to assign migration window to batch %q: %w", batch, err)
-		}
+	err := windows.Validate()
+	if err != nil {
+		return fmt.Errorf("Failed to assign migration window to batch %q: %w", batch, err)
 	}
 
 	return s.repo.AssignMigrationWindows(ctx, batch, windows)
 }
 
 func (s batchService) ChangeMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error {
+	err := windows.Validate()
+	if err != nil {
+		return fmt.Errorf("Failed to assign migration window to batch %q: %w", batch, err)
+	}
+
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		err := s.repo.UnassignMigrationWindows(ctx, batch)
 		if err != nil {

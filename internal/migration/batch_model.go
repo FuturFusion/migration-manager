@@ -2,6 +2,7 @@ package migration
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/validate"
@@ -188,6 +189,30 @@ func (w MigrationWindow) FitsDuration(duration time.Duration) bool {
 // Key returns an identifying key for the MigrationWindow, based on its timings.
 func (w MigrationWindow) Key() string {
 	return w.Start.String() + "_" + w.End.String() + "_" + w.Lockout.String()
+}
+
+func (ws MigrationWindows) Validate() error {
+	// Sort the windows by their start times.
+	sort.Slice(ws, func(i, j int) bool {
+		return ws[i].Start.Before(ws[j].Start)
+	})
+
+	for i, w := range ws {
+		// Perform individual window validation.
+		err := w.Validate()
+		if err != nil {
+			return err
+		}
+
+		// If the current window starts before the earlier window's end time, then they overlap.
+		if i > 0 {
+			if ws[i].Start.Before(ws[i-1].End) {
+				return fmt.Errorf("Window %d with start time %q overlaps with window %d with end time %q", i, ws[i].Start.String(), i-1, ws[i-1].End.String())
+			}
+		}
+	}
+
+	return nil
 }
 
 func (w MigrationWindow) Validate() error {
