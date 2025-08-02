@@ -336,6 +336,8 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 				workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
 			case api.MIGRATIONSTATUS_FINAL_IMPORT:
 				workerCommand.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
+			case api.MIGRATIONSTATUS_POST_IMPORT:
+				workerCommand.Command = api.WORKERCOMMAND_POST_IMPORT
 			default:
 				return fmt.Errorf("Unable to restart worker for instance in state %q: %w", queueEntry.MigrationStatus, ErrOperationNotPermitted)
 			}
@@ -379,6 +381,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			targetLimitReached = targetProperties.ImportLimit <= s.target.GetCachedImports(target.Name)
 		}
 
+		windowID := queueEntry.GetWindowID()
 		if targetLimitReached || sourceLimitReached {
 			newStatusMessage = "Waiting for other instances to finish importing"
 		} else if queueEntry.NeedsDiskImport && instance.Properties.BackgroundImport {
@@ -401,22 +404,32 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			begun := window.Begun()
 			slog.Info("Selected migration window", slog.String("start", window.Start.String()), slog.String("end", window.End.String()), slog.Bool("begun", begun), slog.String("location", instance.Properties.Location))
 			if begun {
-				// If a migration window has not been defined, or it has and we have passed the start time, begin the final migration.
-				workerCommand.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
+				if !window.IsEmpty() {
+					// Assign the migration window to the queue entry.
+					windowID = &window.ID
+				}
 
-				newStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
-				newStatusMessage = string(api.MIGRATIONSTATUS_FINAL_IMPORT)
+				// If a migration window has not been defined, or it has and we have passed the start time, begin the final migration.
+				if queueEntry.NeedsDiskImport {
+					workerCommand.Command = api.WORKERCOMMAND_FINALIZE_IMPORT
+					newStatus = api.MIGRATIONSTATUS_FINAL_IMPORT
+					newStatusMessage = string(api.MIGRATIONSTATUS_FINAL_IMPORT)
+				} else {
+					workerCommand.Command = api.WORKERCOMMAND_POST_IMPORT
+					newStatus = api.MIGRATIONSTATUS_POST_IMPORT
+					newStatusMessage = string(api.MIGRATIONSTATUS_POST_IMPORT)
+				}
 			}
 		}
 
-		if newStatus != api.MIGRATIONSTATUS_IDLE {
+		if newStatus != api.MIGRATIONSTATUS_IDLE && newStatus != api.MIGRATIONSTATUS_POST_IMPORT {
 			s.source.RecordActiveImport(instance.Source)
 			s.target.RecordActiveImport(batch.Target)
 		}
 
 		// Update queueEntry in the database, and set the worker update time.
 		if newStatus != queueEntry.MigrationStatus || newStatusMessage != queueEntry.MigrationStatusMessage {
-			_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, queueEntry.NeedsDiskImport)
+			_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, queueEntry.NeedsDiskImport, windowID)
 			if err != nil {
 				return fmt.Errorf("Failed updating instance %q: %w", instance.UUID.String(), err)
 			}
