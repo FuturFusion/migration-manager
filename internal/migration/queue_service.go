@@ -2,6 +2,7 @@ package migration
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -81,7 +82,7 @@ func (s queueService) GetByInstanceUUID(ctx context.Context, id uuid.UUID) (*Que
 	return s.repo.GetByInstanceUUID(ctx, id)
 }
 
-func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*QueueEntry, error) {
+func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool, windowID *int64) (*QueueEntry, error) {
 	err := status.Validate()
 	if err != nil {
 		return nil, NewValidationErrf("Invalid migration status: %v", err)
@@ -99,6 +100,12 @@ func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, stat
 		q.MigrationStatus = status
 		q.MigrationStatusMessage = statusMessage
 		q.NeedsDiskImport = needsDiskImport
+
+		if windowID == nil {
+			q.MigrationWindowID = sql.NullInt64{}
+		} else {
+			q.MigrationWindowID = sql.NullInt64{Valid: true, Int64: *windowID}
+		}
 
 		return s.repo.Update(ctx, *q)
 	})

@@ -22,10 +22,11 @@ type QueueService interface {
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteAllByBatch(ctx context.Context, batch string) error
 
-	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*QueueEntry, error)
+	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool, windowID *int64) (*QueueEntry, error)
 
 	NewWorkerCommandByInstanceUUID(ctx context.Context, id uuid.UUID) (WorkerCommand, error)
 	ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (QueueEntry, error)
+	GetNextWindow(ctx context.Context, batchName string, instanceUUID uuid.UUID) (*MigrationWindow, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/queue_repo_mock_gen.go -rm . QueueRepo

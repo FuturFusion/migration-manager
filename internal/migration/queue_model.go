@@ -47,6 +47,20 @@ func (q QueueEntry) IsMigrating() bool {
 	}
 }
 
+// StatusBeforeMigrationWindow returns whether the migration status of the queue entry places it before a migration window can be assigned.
+func (q QueueEntry) StatusBeforeMigrationWindow() bool {
+	switch q.MigrationStatus {
+	case api.MIGRATIONSTATUS_BACKGROUND_IMPORT,
+		api.MIGRATIONSTATUS_BLOCKED,
+		api.MIGRATIONSTATUS_CREATING,
+		api.MIGRATIONSTATUS_IDLE,
+		api.MIGRATIONSTATUS_WAITING:
+		return true
+	default:
+		return false
+	}
+}
+
 func (q QueueEntry) Validate() error {
 	if q.InstanceUUID == uuid.Nil {
 		return NewValidationErrf("Invalid instance, UUID can not be empty")
@@ -63,6 +77,15 @@ func (q QueueEntry) Validate() error {
 	err := q.MigrationStatus.Validate()
 	if err != nil {
 		return NewValidationErrf("Invalid migration status: %v", err)
+	}
+
+	return nil
+}
+
+func (q QueueEntry) GetWindowID() *int64 {
+	if q.MigrationWindowID.Valid {
+		id := q.MigrationWindowID.Int64
+		return &id
 	}
 
 	return nil
