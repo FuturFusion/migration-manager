@@ -43,7 +43,7 @@ var _ migration.QueueRepo = &QueueRepoMock{}
 //			GetAllByStateFunc: func(ctx context.Context, status ...api.MigrationStatusType) (migration.QueueEntries, error) {
 //				panic("mock out the GetAllByState method")
 //			},
-//			GetAllNeedingImportFunc: func(ctx context.Context, batch string, needsDiskImport bool) (migration.QueueEntries, error) {
+//			GetAllNeedingImportFunc: func(ctx context.Context, batch string, importStage migration.ImportStage) (migration.QueueEntries, error) {
 //				panic("mock out the GetAllNeedingImport method")
 //			},
 //			GetByInstanceUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, error) {
@@ -81,7 +81,7 @@ type QueueRepoMock struct {
 	GetAllByStateFunc func(ctx context.Context, status ...api.MigrationStatusType) (migration.QueueEntries, error)
 
 	// GetAllNeedingImportFunc mocks the GetAllNeedingImport method.
-	GetAllNeedingImportFunc func(ctx context.Context, batch string, needsDiskImport bool) (migration.QueueEntries, error)
+	GetAllNeedingImportFunc func(ctx context.Context, batch string, importStage migration.ImportStage) (migration.QueueEntries, error)
 
 	// GetByInstanceUUIDFunc mocks the GetByInstanceUUID method.
 	GetByInstanceUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, error)
@@ -146,8 +146,8 @@ type QueueRepoMock struct {
 			Ctx context.Context
 			// Batch is the batch argument value.
 			Batch string
-			// NeedsDiskImport is the needsDiskImport argument value.
-			NeedsDiskImport bool
+			// ImportStage is the importStage argument value.
+			ImportStage migration.ImportStage
 		}
 		// GetByInstanceUUID holds details about calls to the GetByInstanceUUID method.
 		GetByInstanceUUID []struct {
@@ -429,23 +429,23 @@ func (mock *QueueRepoMock) GetAllByStateCalls() []struct {
 }
 
 // GetAllNeedingImport calls GetAllNeedingImportFunc.
-func (mock *QueueRepoMock) GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (migration.QueueEntries, error) {
+func (mock *QueueRepoMock) GetAllNeedingImport(ctx context.Context, batch string, importStage migration.ImportStage) (migration.QueueEntries, error) {
 	if mock.GetAllNeedingImportFunc == nil {
 		panic("QueueRepoMock.GetAllNeedingImportFunc: method is nil but QueueRepo.GetAllNeedingImport was just called")
 	}
 	callInfo := struct {
-		Ctx             context.Context
-		Batch           string
-		NeedsDiskImport bool
+		Ctx         context.Context
+		Batch       string
+		ImportStage migration.ImportStage
 	}{
-		Ctx:             ctx,
-		Batch:           batch,
-		NeedsDiskImport: needsDiskImport,
+		Ctx:         ctx,
+		Batch:       batch,
+		ImportStage: importStage,
 	}
 	mock.lockGetAllNeedingImport.Lock()
 	mock.calls.GetAllNeedingImport = append(mock.calls.GetAllNeedingImport, callInfo)
 	mock.lockGetAllNeedingImport.Unlock()
-	return mock.GetAllNeedingImportFunc(ctx, batch, needsDiskImport)
+	return mock.GetAllNeedingImportFunc(ctx, batch, importStage)
 }
 
 // GetAllNeedingImportCalls gets all the calls that were made to GetAllNeedingImport.
@@ -453,14 +453,14 @@ func (mock *QueueRepoMock) GetAllNeedingImport(ctx context.Context, batch string
 //
 //	len(mockedQueueRepo.GetAllNeedingImportCalls())
 func (mock *QueueRepoMock) GetAllNeedingImportCalls() []struct {
-	Ctx             context.Context
-	Batch           string
-	NeedsDiskImport bool
+	Ctx         context.Context
+	Batch       string
+	ImportStage migration.ImportStage
 } {
 	var calls []struct {
-		Ctx             context.Context
-		Batch           string
-		NeedsDiskImport bool
+		Ctx         context.Context
+		Batch       string
+		ImportStage migration.ImportStage
 	}
 	mock.lockGetAllNeedingImport.RLock()
 	calls = mock.calls.GetAllNeedingImport
