@@ -112,7 +112,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			continue
 		}
 
-		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, string(api.MIGRATIONSTATUS_WAITING), blockedEntries[i].NeedsDiskImport, blockedEntries[i].GetWindowID())
+		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, string(api.MIGRATIONSTATUS_WAITING), blockedEntries[i].ImportStage, blockedEntries[i].GetWindowID())
 		if err != nil {
 			return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
 		}
@@ -219,7 +219,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				}
 
 				d.target.RecordCreation(state.Target.Name)
-				_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, "Creating target instance definition", false, state.QueueEntries[inst.UUID].GetWindowID())
+				_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, "Creating target instance definition", state.QueueEntries[inst.UUID].ImportStage, state.QueueEntries[inst.UUID].GetWindowID())
 				if err != nil {
 					return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
 				}
@@ -389,7 +389,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		}
 
 		// Try to set the instance state to ERRORED if it failed.
-		_, err := d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, errString, true, q.GetWindowID())
+		_, err := d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, errString, migration.IMPORTSTAGE_BACKGROUND, q.GetWindowID())
 		if err != nil {
 			log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
@@ -461,7 +461,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	}
 
 	// Set the instance state to IDLE before triggering the worker.
-	_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, "Waiting for worker to connect", true, q.GetWindowID())
+	_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, "Waiting for worker to connect", migration.IMPORTSTAGE_BACKGROUND, q.GetWindowID())
 	if err != nil {
 		return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_IDLE, err)
 	}
@@ -523,8 +523,10 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 
 	// If the VM failed in post-import steps, then it needs to be fully cleaned up.
 	resetState := api.MIGRATIONSTATUS_IDLE
+	resetImportStage := migration.IMPORTSTAGE_FINAL
 	if state.QueueEntries[instUUID].MigrationStatus != api.MIGRATIONSTATUS_FINAL_IMPORT {
 		resetState = api.MIGRATIONSTATUS_WAITING
+		resetImportStage = migration.IMPORTSTAGE_BACKGROUND
 		log.Warn("Cleaning up target instance due to migration window deadline")
 		err := it.CleanupVM(timeoutCtx, state.Instances[instUUID].Properties.Name)
 		if err != nil {
@@ -540,7 +542,7 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 
 	// Set the migration state to an earlier step.
 	reason := "Migration window ended, waiting for next migration window"
-	_, err = d.queue.UpdateStatusByUUID(ctx, instUUID, resetState, reason, true, nil)
+	_, err = d.queue.UpdateStatusByUUID(ctx, instUUID, resetState, reason, resetImportStage, nil)
 	if err != nil {
 		return fmt.Errorf("Failed to reset queue entry %q status: %w", instUUID, err)
 	}
@@ -697,7 +699,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 			}
 
 			// Only persist the state as errored if the window is still active, because this reverter might have been triggered by the window deadline cleanup.
-			_, err := d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, true, q.GetWindowID())
+			_, err := d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, migration.IMPORTSTAGE_BACKGROUND, q.GetWindowID())
 			if err != nil {
 				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 			}
@@ -748,7 +750,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 	}
 
 	// Update the instance status to finished, and remove its migration window.
-	_, err = d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_FINISHED, string(api.MIGRATIONSTATUS_FINISHED), true, nil)
+	_, err = d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_FINISHED, string(api.MIGRATIONSTATUS_FINISHED), q.ImportStage, nil)
 	if err != nil {
 		return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_FINISHED, err)
 	}

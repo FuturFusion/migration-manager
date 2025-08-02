@@ -2,6 +2,7 @@ package migration
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -13,8 +14,8 @@ type QueueEntry struct {
 	ID                     int64
 	InstanceUUID           uuid.UUID `db:"primary=yes&join=instances.uuid"`
 	BatchName              string    `db:"join=batches.name"`
-	NeedsDiskImport        bool
 	SecretToken            uuid.UUID
+	ImportStage            ImportStage
 	MigrationStatus        api.MigrationStatusType
 	MigrationStatusMessage string
 	LastWorkerStatus       api.WorkerResponseType
@@ -60,6 +61,26 @@ func (q QueueEntry) StatusBeforeMigrationWindow() bool {
 	default:
 		return false
 	}
+}
+
+type ImportStage string
+
+const (
+	IMPORTSTAGE_BACKGROUND ImportStage = "background"
+	IMPORTSTAGE_FINAL      ImportStage = "final"
+	IMPORTSTAGE_COMPLETE   ImportStage = "complete"
+)
+
+func (m ImportStage) Validate() error {
+	switch m {
+	case IMPORTSTAGE_BACKGROUND:
+	case IMPORTSTAGE_FINAL:
+	case IMPORTSTAGE_COMPLETE:
+	default:
+		return fmt.Errorf("%s is not a valid migration import stage", m)
+	}
+
+	return nil
 }
 
 func (q QueueEntry) Validate() error {
