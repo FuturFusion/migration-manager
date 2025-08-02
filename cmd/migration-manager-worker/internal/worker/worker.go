@@ -139,7 +139,11 @@ func (w *Worker) Run(ctx context.Context) {
 				return false
 
 			case api.WORKERCOMMAND_FINALIZE_IMPORT:
-				return w.finalizeImport(ctx, cmd)
+				w.importDisks(ctx, cmd)
+				return false
+
+			case api.WORKERCOMMAND_POST_IMPORT:
+				return w.postImportTasks(ctx, cmd)
 
 			default:
 				slog.Error("Received unknown command", slog.Any("command", cmd.Command))
@@ -169,6 +173,18 @@ func (w *Worker) importDisks(ctx context.Context, cmd api.WorkerCommand) {
 			w.sendErrorResponse(err)
 			return
 		}
+	}
+
+	if cmd.Command == api.WORKERCOMMAND_FINALIZE_IMPORT {
+		slog.Info("Shutting down source VM")
+
+		err := w.source.PowerOffVM(ctx, cmd.Location)
+		if err != nil {
+			w.sendErrorResponse(err)
+			return
+		}
+
+		slog.Info("Source VM shutdown complete")
 	}
 
 	slog.Info("Performing disk import")
@@ -202,36 +218,18 @@ func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) e
 	})
 }
 
-// finalizeImport performs some finalizing tasks. If everything is executed
+// postImportTasks performs some finalizing tasks. If everything is executed
 // successfully, this function returns true, signaling the everything is done
 // and migration-manager-worker can shut down.
 // If there is an error or not all the finalizing work has been performed
 // yet, false is returned.
-func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (done bool) {
+func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand) (done bool) {
 	if w.source == nil {
 		err := w.connectSource(ctx, cmd.SourceType, cmd.Source)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false
 		}
-	}
-
-	slog.Info("Shutting down source VM")
-
-	err := w.source.PowerOffVM(ctx, cmd.Location)
-	if err != nil {
-		w.sendErrorResponse(err)
-		return false
-	}
-
-	slog.Info("Source VM shutdown complete")
-
-	slog.Info("Performing final disk sync")
-
-	err = w.importDisksHelper(ctx, cmd)
-	if err != nil {
-		w.sendErrorResponse(err)
-		return false
 	}
 
 	slog.Info("Performing final migration tasks")
@@ -271,25 +269,29 @@ func (w *Worker) finalizeImport(ctx context.Context, cmd api.WorkerCommand) (don
 		}
 	}
 
+	distro := ""
 	if strings.Contains(strings.ToLower(cmd.OS), "centos") {
-		err = worker.LinuxDoPostMigrationConfig(ctx, "CentOS", majorVersion)
+		distro = "CentOS"
 	} else if strings.Contains(strings.ToLower(cmd.OS), "debian") {
-		err = worker.LinuxDoPostMigrationConfig(ctx, "Debian", majorVersion)
+		distro = "Debian"
 	} else if strings.Contains(strings.ToLower(cmd.OS), "opensuse") {
-		err = worker.LinuxDoPostMigrationConfig(ctx, "openSUSE", majorVersion)
+		distro = "openSUSE"
 	} else if strings.Contains(strings.ToLower(cmd.OS), "oracle") {
-		err = worker.LinuxDoPostMigrationConfig(ctx, "Oracle", majorVersion)
+		distro = "Oracle"
 	} else if strings.Contains(strings.ToLower(cmd.OS), "rhel") {
-		err = worker.LinuxDoPostMigrationConfig(ctx, "RHEL", majorVersion)
+		distro = "RHEL"
 	} else if strings.Contains(strings.ToLower(cmd.OS), "sles") {
-		err = worker.LinuxDoPostMigrationConfig(ctx, "SUSE", majorVersion)
+		distro = "SUSE"
 	} else if strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
-		err = worker.LinuxDoPostMigrationConfig(ctx, "Ubuntu", majorVersion)
+		distro = "Ubuntu"
 	}
 
-	if err != nil {
-		w.sendErrorResponse(err)
-		return false
+	if distro != "" {
+		err := worker.LinuxDoPostMigrationConfig(ctx, distro, majorVersion)
+		if err != nil {
+			w.sendErrorResponse(err)
+			return false
+		}
 	}
 
 	// When the worker is done, the VM will be forced off, so call sync() to ensure all data is saved to disk.
