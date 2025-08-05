@@ -51,6 +51,9 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			GetEarliestWindowFunc: func(ctx context.Context, batch string) (*migration.MigrationWindow, error) {
 //				panic("mock out the GetEarliestWindow method")
 //			},
+//			GetMigrationWindowFunc: func(ctx context.Context, windowID int64) (*migration.MigrationWindow, error) {
+//				panic("mock out the GetMigrationWindow method")
+//			},
 //			GetMigrationWindowsFunc: func(ctx context.Context, batch string) (migration.MigrationWindows, error) {
 //				panic("mock out the GetMigrationWindows method")
 //			},
@@ -105,6 +108,9 @@ type BatchServiceMock struct {
 
 	// GetEarliestWindowFunc mocks the GetEarliestWindow method.
 	GetEarliestWindowFunc func(ctx context.Context, batch string) (*migration.MigrationWindow, error)
+
+	// GetMigrationWindowFunc mocks the GetMigrationWindow method.
+	GetMigrationWindowFunc func(ctx context.Context, windowID int64) (*migration.MigrationWindow, error)
 
 	// GetMigrationWindowsFunc mocks the GetMigrationWindows method.
 	GetMigrationWindowsFunc func(ctx context.Context, batch string) (migration.MigrationWindows, error)
@@ -196,6 +202,13 @@ type BatchServiceMock struct {
 			// Batch is the batch argument value.
 			Batch string
 		}
+		// GetMigrationWindow holds details about calls to the GetMigrationWindow method.
+		GetMigrationWindow []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// WindowID is the windowID argument value.
+			WindowID int64
+		}
 		// GetMigrationWindows holds details about calls to the GetMigrationWindows method.
 		GetMigrationWindows []struct {
 			// Ctx is the ctx argument value.
@@ -257,6 +270,7 @@ type BatchServiceMock struct {
 	lockGetAllNamesByState     sync.RWMutex
 	lockGetByName              sync.RWMutex
 	lockGetEarliestWindow      sync.RWMutex
+	lockGetMigrationWindow     sync.RWMutex
 	lockGetMigrationWindows    sync.RWMutex
 	lockRename                 sync.RWMutex
 	lockStartBatchByName       sync.RWMutex
@@ -622,6 +636,42 @@ func (mock *BatchServiceMock) GetEarliestWindowCalls() []struct {
 	mock.lockGetEarliestWindow.RLock()
 	calls = mock.calls.GetEarliestWindow
 	mock.lockGetEarliestWindow.RUnlock()
+	return calls
+}
+
+// GetMigrationWindow calls GetMigrationWindowFunc.
+func (mock *BatchServiceMock) GetMigrationWindow(ctx context.Context, windowID int64) (*migration.MigrationWindow, error) {
+	if mock.GetMigrationWindowFunc == nil {
+		panic("BatchServiceMock.GetMigrationWindowFunc: method is nil but BatchService.GetMigrationWindow was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		WindowID int64
+	}{
+		Ctx:      ctx,
+		WindowID: windowID,
+	}
+	mock.lockGetMigrationWindow.Lock()
+	mock.calls.GetMigrationWindow = append(mock.calls.GetMigrationWindow, callInfo)
+	mock.lockGetMigrationWindow.Unlock()
+	return mock.GetMigrationWindowFunc(ctx, windowID)
+}
+
+// GetMigrationWindowCalls gets all the calls that were made to GetMigrationWindow.
+// Check the length with:
+//
+//	len(mockedBatchService.GetMigrationWindowCalls())
+func (mock *BatchServiceMock) GetMigrationWindowCalls() []struct {
+	Ctx      context.Context
+	WindowID int64
+} {
+	var calls []struct {
+		Ctx      context.Context
+		WindowID int64
+	}
+	mock.lockGetMigrationWindow.RLock()
+	calls = mock.calls.GetMigrationWindow
+	mock.lockGetMigrationWindow.RUnlock()
 	return calls
 }
 

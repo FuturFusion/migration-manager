@@ -607,6 +607,41 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 	return cleanup, nil
 }
 
+// CleanupVM fully deletes the VM and all of its volumes.
+func (t *InternalIncusTarget) CleanupVM(ctx context.Context, name string) error {
+	err := t.StopVM(ctx, name, true)
+	if err != nil {
+		return fmt.Errorf("Failed to stop target instance %q: %w", name, err)
+	}
+
+	instInfo, _, err := t.GetInstance(name)
+	if err != nil {
+		return fmt.Errorf("Failed to get target instance %q config: %w", name, err)
+	}
+
+	op, err := t.incusClient.DeleteInstance(name)
+	if err != nil {
+		return fmt.Errorf("Failed to send delete request for instance %q: %w", name, err)
+	}
+
+	err = op.WaitContext(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to wait for delete operation for instance %q: %w", name, err)
+	}
+
+	tgtClient := t.incusClient.UseTarget(instInfo.Location)
+	for _, dev := range instInfo.Devices {
+		if dev["type"] == "disk" && dev["user.migration_source"] != "" && dev["source"] != "" {
+			err := tgtClient.DeleteStoragePoolVolume(dev["pool"], "custom", dev["source"])
+			if err != nil {
+				return fmt.Errorf("Failed to delete instance %q storage volume %q on pool %q: %w", name, dev["source"], dev["pool"], err)
+			}
+		}
+	}
+
+	return nil
+}
+
 func (t *InternalIncusTarget) DeleteVM(ctx context.Context, name string) error {
 	op, err := t.incusClient.DeleteInstance(name)
 	if err != nil {

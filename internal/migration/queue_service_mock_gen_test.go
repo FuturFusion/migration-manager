@@ -43,11 +43,14 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			GetAllByStateFunc: func(ctx context.Context, status ...api.MigrationStatusType) (migration.QueueEntries, error) {
 //				panic("mock out the GetAllByState method")
 //			},
-//			GetAllNeedingImportFunc: func(ctx context.Context, batch string, needsDiskImport bool) (migration.QueueEntries, error) {
+//			GetAllNeedingImportFunc: func(ctx context.Context, batch string, importStage migration.ImportStage) (migration.QueueEntries, error) {
 //				panic("mock out the GetAllNeedingImport method")
 //			},
 //			GetByInstanceUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, error) {
 //				panic("mock out the GetByInstanceUUID method")
+//			},
+//			GetNextWindowFunc: func(ctx context.Context, q migration.QueueEntry) (*migration.MigrationWindow, error) {
+//				panic("mock out the GetNextWindow method")
 //			},
 //			NewWorkerCommandByInstanceUUIDFunc: func(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error) {
 //				panic("mock out the NewWorkerCommandByInstanceUUID method")
@@ -58,7 +61,7 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			UpdateFunc: func(ctx context.Context, entry *migration.QueueEntry) error {
 //				panic("mock out the Update method")
 //			},
-//			UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*migration.QueueEntry, error) {
+//			UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *int64) (*migration.QueueEntry, error) {
 //				panic("mock out the UpdateStatusByUUID method")
 //			},
 //		}
@@ -90,10 +93,13 @@ type QueueServiceMock struct {
 	GetAllByStateFunc func(ctx context.Context, status ...api.MigrationStatusType) (migration.QueueEntries, error)
 
 	// GetAllNeedingImportFunc mocks the GetAllNeedingImport method.
-	GetAllNeedingImportFunc func(ctx context.Context, batch string, needsDiskImport bool) (migration.QueueEntries, error)
+	GetAllNeedingImportFunc func(ctx context.Context, batch string, importStage migration.ImportStage) (migration.QueueEntries, error)
 
 	// GetByInstanceUUIDFunc mocks the GetByInstanceUUID method.
 	GetByInstanceUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, error)
+
+	// GetNextWindowFunc mocks the GetNextWindow method.
+	GetNextWindowFunc func(ctx context.Context, q migration.QueueEntry) (*migration.MigrationWindow, error)
 
 	// NewWorkerCommandByInstanceUUIDFunc mocks the NewWorkerCommandByInstanceUUID method.
 	NewWorkerCommandByInstanceUUIDFunc func(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error)
@@ -105,7 +111,7 @@ type QueueServiceMock struct {
 	UpdateFunc func(ctx context.Context, entry *migration.QueueEntry) error
 
 	// UpdateStatusByUUIDFunc mocks the UpdateStatusByUUID method.
-	UpdateStatusByUUIDFunc func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*migration.QueueEntry, error)
+	UpdateStatusByUUIDFunc func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *int64) (*migration.QueueEntry, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -164,8 +170,8 @@ type QueueServiceMock struct {
 			Ctx context.Context
 			// Batch is the batch argument value.
 			Batch string
-			// NeedsDiskImport is the needsDiskImport argument value.
-			NeedsDiskImport bool
+			// ImportStage is the importStage argument value.
+			ImportStage migration.ImportStage
 		}
 		// GetByInstanceUUID holds details about calls to the GetByInstanceUUID method.
 		GetByInstanceUUID []struct {
@@ -173,6 +179,13 @@ type QueueServiceMock struct {
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
+		}
+		// GetNextWindow holds details about calls to the GetNextWindow method.
+		GetNextWindow []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Q is the q argument value.
+			Q migration.QueueEntry
 		}
 		// NewWorkerCommandByInstanceUUID holds details about calls to the NewWorkerCommandByInstanceUUID method.
 		NewWorkerCommandByInstanceUUID []struct {
@@ -209,8 +222,10 @@ type QueueServiceMock struct {
 			Status api.MigrationStatusType
 			// StatusMessage is the statusMessage argument value.
 			StatusMessage string
-			// NeedsDiskImport is the needsDiskImport argument value.
-			NeedsDiskImport bool
+			// ImportStage is the importStage argument value.
+			ImportStage migration.ImportStage
+			// WindowID is the windowID argument value.
+			WindowID *int64
 		}
 	}
 	lockCreateEntry                    sync.RWMutex
@@ -222,6 +237,7 @@ type QueueServiceMock struct {
 	lockGetAllByState                  sync.RWMutex
 	lockGetAllNeedingImport            sync.RWMutex
 	lockGetByInstanceUUID              sync.RWMutex
+	lockGetNextWindow                  sync.RWMutex
 	lockNewWorkerCommandByInstanceUUID sync.RWMutex
 	lockProcessWorkerUpdate            sync.RWMutex
 	lockUpdate                         sync.RWMutex
@@ -481,23 +497,23 @@ func (mock *QueueServiceMock) GetAllByStateCalls() []struct {
 }
 
 // GetAllNeedingImport calls GetAllNeedingImportFunc.
-func (mock *QueueServiceMock) GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (migration.QueueEntries, error) {
+func (mock *QueueServiceMock) GetAllNeedingImport(ctx context.Context, batch string, importStage migration.ImportStage) (migration.QueueEntries, error) {
 	if mock.GetAllNeedingImportFunc == nil {
 		panic("QueueServiceMock.GetAllNeedingImportFunc: method is nil but QueueService.GetAllNeedingImport was just called")
 	}
 	callInfo := struct {
-		Ctx             context.Context
-		Batch           string
-		NeedsDiskImport bool
+		Ctx         context.Context
+		Batch       string
+		ImportStage migration.ImportStage
 	}{
-		Ctx:             ctx,
-		Batch:           batch,
-		NeedsDiskImport: needsDiskImport,
+		Ctx:         ctx,
+		Batch:       batch,
+		ImportStage: importStage,
 	}
 	mock.lockGetAllNeedingImport.Lock()
 	mock.calls.GetAllNeedingImport = append(mock.calls.GetAllNeedingImport, callInfo)
 	mock.lockGetAllNeedingImport.Unlock()
-	return mock.GetAllNeedingImportFunc(ctx, batch, needsDiskImport)
+	return mock.GetAllNeedingImportFunc(ctx, batch, importStage)
 }
 
 // GetAllNeedingImportCalls gets all the calls that were made to GetAllNeedingImport.
@@ -505,14 +521,14 @@ func (mock *QueueServiceMock) GetAllNeedingImport(ctx context.Context, batch str
 //
 //	len(mockedQueueService.GetAllNeedingImportCalls())
 func (mock *QueueServiceMock) GetAllNeedingImportCalls() []struct {
-	Ctx             context.Context
-	Batch           string
-	NeedsDiskImport bool
+	Ctx         context.Context
+	Batch       string
+	ImportStage migration.ImportStage
 } {
 	var calls []struct {
-		Ctx             context.Context
-		Batch           string
-		NeedsDiskImport bool
+		Ctx         context.Context
+		Batch       string
+		ImportStage migration.ImportStage
 	}
 	mock.lockGetAllNeedingImport.RLock()
 	calls = mock.calls.GetAllNeedingImport
@@ -553,6 +569,42 @@ func (mock *QueueServiceMock) GetByInstanceUUIDCalls() []struct {
 	mock.lockGetByInstanceUUID.RLock()
 	calls = mock.calls.GetByInstanceUUID
 	mock.lockGetByInstanceUUID.RUnlock()
+	return calls
+}
+
+// GetNextWindow calls GetNextWindowFunc.
+func (mock *QueueServiceMock) GetNextWindow(ctx context.Context, q migration.QueueEntry) (*migration.MigrationWindow, error) {
+	if mock.GetNextWindowFunc == nil {
+		panic("QueueServiceMock.GetNextWindowFunc: method is nil but QueueService.GetNextWindow was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		Q   migration.QueueEntry
+	}{
+		Ctx: ctx,
+		Q:   q,
+	}
+	mock.lockGetNextWindow.Lock()
+	mock.calls.GetNextWindow = append(mock.calls.GetNextWindow, callInfo)
+	mock.lockGetNextWindow.Unlock()
+	return mock.GetNextWindowFunc(ctx, q)
+}
+
+// GetNextWindowCalls gets all the calls that were made to GetNextWindow.
+// Check the length with:
+//
+//	len(mockedQueueService.GetNextWindowCalls())
+func (mock *QueueServiceMock) GetNextWindowCalls() []struct {
+	Ctx context.Context
+	Q   migration.QueueEntry
+} {
+	var calls []struct {
+		Ctx context.Context
+		Q   migration.QueueEntry
+	}
+	mock.lockGetNextWindow.RLock()
+	calls = mock.calls.GetNextWindow
+	mock.lockGetNextWindow.RUnlock()
 	return calls
 }
 
@@ -673,27 +725,29 @@ func (mock *QueueServiceMock) UpdateCalls() []struct {
 }
 
 // UpdateStatusByUUID calls UpdateStatusByUUIDFunc.
-func (mock *QueueServiceMock) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*migration.QueueEntry, error) {
+func (mock *QueueServiceMock) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *int64) (*migration.QueueEntry, error) {
 	if mock.UpdateStatusByUUIDFunc == nil {
 		panic("QueueServiceMock.UpdateStatusByUUIDFunc: method is nil but QueueService.UpdateStatusByUUID was just called")
 	}
 	callInfo := struct {
-		Ctx             context.Context
-		ID              uuid.UUID
-		Status          api.MigrationStatusType
-		StatusMessage   string
-		NeedsDiskImport bool
+		Ctx           context.Context
+		ID            uuid.UUID
+		Status        api.MigrationStatusType
+		StatusMessage string
+		ImportStage   migration.ImportStage
+		WindowID      *int64
 	}{
-		Ctx:             ctx,
-		ID:              id,
-		Status:          status,
-		StatusMessage:   statusMessage,
-		NeedsDiskImport: needsDiskImport,
+		Ctx:           ctx,
+		ID:            id,
+		Status:        status,
+		StatusMessage: statusMessage,
+		ImportStage:   importStage,
+		WindowID:      windowID,
 	}
 	mock.lockUpdateStatusByUUID.Lock()
 	mock.calls.UpdateStatusByUUID = append(mock.calls.UpdateStatusByUUID, callInfo)
 	mock.lockUpdateStatusByUUID.Unlock()
-	return mock.UpdateStatusByUUIDFunc(ctx, id, status, statusMessage, needsDiskImport)
+	return mock.UpdateStatusByUUIDFunc(ctx, id, status, statusMessage, importStage, windowID)
 }
 
 // UpdateStatusByUUIDCalls gets all the calls that were made to UpdateStatusByUUID.
@@ -701,18 +755,20 @@ func (mock *QueueServiceMock) UpdateStatusByUUID(ctx context.Context, id uuid.UU
 //
 //	len(mockedQueueService.UpdateStatusByUUIDCalls())
 func (mock *QueueServiceMock) UpdateStatusByUUIDCalls() []struct {
-	Ctx             context.Context
-	ID              uuid.UUID
-	Status          api.MigrationStatusType
-	StatusMessage   string
-	NeedsDiskImport bool
+	Ctx           context.Context
+	ID            uuid.UUID
+	Status        api.MigrationStatusType
+	StatusMessage string
+	ImportStage   migration.ImportStage
+	WindowID      *int64
 } {
 	var calls []struct {
-		Ctx             context.Context
-		ID              uuid.UUID
-		Status          api.MigrationStatusType
-		StatusMessage   string
-		NeedsDiskImport bool
+		Ctx           context.Context
+		ID            uuid.UUID
+		Status        api.MigrationStatusType
+		StatusMessage string
+		ImportStage   migration.ImportStage
+		WindowID      *int64
 	}
 	mock.lockUpdateStatusByUUID.RLock()
 	calls = mock.calls.UpdateStatusByUUID

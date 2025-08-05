@@ -5,6 +5,11 @@ if systemctl list-unit-files --type=service | grep -q "lxd-agent.service" ; then
   systemctl mask lxd-agent.service
 fi
 
+# If the incus agent already exists then there's nothing we need to do.
+if systemctl list-unit-files --type=service | grep -q "incus-agent.service" ; then
+  exit 0
+fi
+
 # Install incus-agent into the target system.
 mkdir -p /mnt/config/
 mount -t 9p config /mnt/config/

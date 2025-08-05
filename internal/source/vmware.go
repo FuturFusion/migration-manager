@@ -439,12 +439,38 @@ func (s *InternalVMwareSource) PowerOnVM(ctx context.Context, vmLocation string)
 		return nil
 	}
 
-	task, err := vm.PowerOn(ctx)
+	// Another power-on operation may have succeeded after we started, but before we ended.
+	// In such cases, if we return an error, we should re-check the VM state before erroring out.
+	tryPowerOn := func() error {
+		task, err := vm.PowerOn(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to power on VM: %w", err)
+		}
+
+		err = task.Wait(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to wait for power-n task: %w", err)
+		}
+
+		return nil
+	}
+
+	err = tryPowerOn()
 	if err != nil {
+		state, err2 := vm.PowerState(ctx)
+		if err2 != nil {
+			slog.Error("Failed to check power state", slog.Any("error", err2))
+			return err
+		}
+
+		if state == types.VirtualMachinePowerStatePoweredOn {
+			return nil
+		}
+
 		return err
 	}
 
-	return task.Wait(ctx)
+	return nil
 }
 
 func (s *InternalVMwareSource) PowerOffVM(ctx context.Context, vmName string) error {
@@ -464,27 +490,60 @@ func (s *InternalVMwareSource) PowerOffVM(ctx context.Context, vmName string) er
 		return nil
 	}
 
-	// Attempt a clean shutdown if guest tools are installed in the VM.
-	err = vm.ShutdownGuest(ctx)
-	if err != nil {
-		if !fault.Is(err, &types.ToolsUnavailable{}) {
-			return err
+	// Another shutdown operation may have succeeded after we started, but before we ended.
+	// In such cases, if we return an error, we should re-check the VM state before erroring out.
+	tryShutdown := func() error {
+		// Attempt a clean shutdown if guest tools are installed in the VM.
+		err = vm.ShutdownGuest(ctx)
+		if err != nil {
+			if !fault.Is(err, &types.ToolsUnavailable{}) {
+				return fmt.Errorf("Failed to shutdown guest: %w", err)
+			}
+
+			// If guest tools aren't available, fall back to hard power off.
+			task, err := vm.PowerOff(ctx)
+			if err != nil {
+				return fmt.Errorf("Failed to power off VM: %w", err)
+			}
+
+			err = task.Wait(ctx)
+			if err != nil {
+				return fmt.Errorf("Failed to wait for power-off task: %w", err)
+			}
 		}
 
-		// If guest tools aren't available, fall back to hard power off.
-		task, err := vm.PowerOff(ctx)
+		// Wait until the VM has powered off.
+		err = vm.WaitForPowerState(ctx, types.VirtualMachinePowerStatePoweredOff)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to wait for VM to confirm off state: %w", err)
 		}
 
-		err = task.Wait(ctx)
-		if err != nil {
-			return err
-		}
+		return nil
 	}
 
-	// Wait until the VM has powered off.
-	return vm.WaitForPowerState(ctx, types.VirtualMachinePowerStatePoweredOff)
+	err = tryShutdown()
+	if err != nil {
+		// There appears to be a race on the VMware side where a VM will be internally considered "off" but the VM power state checked below will not reflect this.
+		// It is not sufficient to just check against all running tasks, as the corresponding task has already completed too.
+		if strings.HasSuffix(err.Error(), "The attempted operation cannot be performed in the current state (Powered off)") {
+			return nil
+		}
+
+		// Check the power state again in case we got turned off by another task already.
+		state, err2 := vm.PowerState(ctx)
+		if err2 != nil {
+			slog.Error("Failed to check power state", slog.Any("error", err2))
+			return err
+		}
+
+		if state == types.VirtualMachinePowerStatePoweredOff {
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
 }
 
 func (s *InternalVMwareSource) getVM(ctx context.Context, vmName string) (*object.VirtualMachine, error) {

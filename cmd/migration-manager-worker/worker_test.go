@@ -133,13 +133,27 @@ func TestRun(t *testing.T) {
 			migrationManagerdResponses: []func(instanceSpec instanceDetails, cancel context.CancelCauseFunc, w http.ResponseWriter, r *http.Request){
 				workerCommandResponse(api.WORKERCOMMAND_IDLE, false), // newWorker connectivity test
 				workerCommandResponse(api.WORKERCOMMAND_FINALIZE_IMPORT, false),
+				workerCommandResponse(api.WORKERCOMMAND_IDLE, true),
+			},
+
+			wantWorkerResponses: []api.WorkerResponseType{
+				api.WORKERRESPONSE_SUCCESS,
+			},
+			wantEndOfTestCause: errGracefulEndOfTest, // if finalize import is successful, the worker ends it self gracefully, so no cause is given.
+		},
+		{
+			name: "success - post- import",
+			migrationManagerdResponses: []func(instanceSpec instanceDetails, cancel context.CancelCauseFunc, w http.ResponseWriter, r *http.Request){
+				workerCommandResponse(api.WORKERCOMMAND_IDLE, false), // newWorker connectivity test
+				workerCommandResponse(api.WORKERCOMMAND_POST_IMPORT, true),
+				workerCommandResponse(api.WORKERCOMMAND_IDLE, true),
 			},
 
 			wantWorkerResponses: []api.WorkerResponseType{
 				api.WORKERRESPONSE_RUNNING,
 				api.WORKERRESPONSE_SUCCESS,
 			},
-			wantEndOfTestCause: nil, // if finalize import is successful, the worker ends it self gracefully, so no cause is given.
+			wantEndOfTestCause: errGracefulEndOfTest, // if finalize import is successful, the worker ends it self gracefully, so no cause is given.
 		},
 		// FIXME: currently hard to test due to the hard coded file system access for the injecting of drivers.
 		// {
@@ -263,10 +277,10 @@ func TestRun(t *testing.T) {
 			wantEndOfTestCause: errGracefulEndOfTest,
 		},
 		{
-			name: "error - finalize import unknown version of windows",
+			name: "error - post import unknown version of windows",
 			migrationManagerdResponses: []func(instanceSpec instanceDetails, cancel context.CancelCauseFunc, w http.ResponseWriter, r *http.Request){
 				workerCommandResponse(api.WORKERCOMMAND_IDLE, false), // newWorker connectivity test
-				workerCommandResponse(api.WORKERCOMMAND_FINALIZE_IMPORT, false),
+				workerCommandResponse(api.WORKERCOMMAND_POST_IMPORT, false),
 				workerCommandResponse(api.WORKERCOMMAND_IDLE, true),
 			},
 			instanceSpec: instanceDetails{

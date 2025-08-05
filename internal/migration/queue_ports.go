@@ -16,16 +16,17 @@ type QueueService interface {
 	GetAllByState(ctx context.Context, status ...api.MigrationStatusType) (QueueEntries, error)
 	GetAllByBatch(ctx context.Context, batch string) (QueueEntries, error)
 	GetAllByBatchAndState(ctx context.Context, batch string, status ...api.MigrationStatusType) (QueueEntries, error)
-	GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (QueueEntries, error)
+	GetAllNeedingImport(ctx context.Context, batch string, importStage ImportStage) (QueueEntries, error)
 	GetByInstanceUUID(ctx context.Context, id uuid.UUID) (*QueueEntry, error)
 	Update(ctx context.Context, entry *QueueEntry) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	DeleteAllByBatch(ctx context.Context, batch string) error
 
-	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, needsDiskImport bool) (*QueueEntry, error)
+	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage ImportStage, windowID *int64) (*QueueEntry, error)
 
 	NewWorkerCommandByInstanceUUID(ctx context.Context, id uuid.UUID) (WorkerCommand, error)
 	ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (QueueEntry, error)
+	GetNextWindow(ctx context.Context, q QueueEntry) (*MigrationWindow, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/queue_repo_mock_gen.go -rm . QueueRepo
@@ -38,7 +39,7 @@ type QueueRepo interface {
 	GetAllByState(ctx context.Context, status ...api.MigrationStatusType) (QueueEntries, error)
 	GetAllByBatch(ctx context.Context, batch string) (QueueEntries, error)
 	GetAllByBatchAndState(ctx context.Context, batch string, statuses ...api.MigrationStatusType) (QueueEntries, error)
-	GetAllNeedingImport(ctx context.Context, batch string, needsDiskImport bool) (QueueEntries, error)
+	GetAllNeedingImport(ctx context.Context, batch string, importStage ImportStage) (QueueEntries, error)
 	GetByInstanceUUID(ctx context.Context, id uuid.UUID) (*QueueEntry, error)
 	Update(ctx context.Context, entry QueueEntry) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error

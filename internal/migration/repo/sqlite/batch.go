@@ -99,6 +99,19 @@ func (b batch) GetMigrationWindowsByBatch(ctx context.Context, batch string) (mi
 	return entities.GetMigrationWindowsByBatch(ctx, transaction.GetDBTX(ctx, b.db), &batch)
 }
 
+func (b batch) GetMigrationWindow(ctx context.Context, windowID int64) (*migration.MigrationWindow, error) {
+	windows, err := entities.GetMigrationWindows(ctx, transaction.GetDBTX(ctx, b.db), entities.MigrationWindowFilter{ID: &windowID})
+	if err != nil {
+		return nil, err
+	}
+
+	if len(windows) != 1 {
+		return nil, entities.ErrNotFound
+	}
+
+	return &windows[0], nil
+}
+
 func (b batch) AssignMigrationWindows(ctx context.Context, batch string, windows migration.MigrationWindows) error {
 	if len(windows) == 0 {
 		return nil
