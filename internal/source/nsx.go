@@ -617,7 +617,9 @@ func (s *InternalNSXSource) paginatedGet(ctx context.Context, path string) ([]an
 	for {
 		// Add cursor to query parameters if present
 		if cursor != "" {
-			nextPath = nextPath.WithQuery("cursor", cursor)
+			q := nextPath.Query()
+			q.Set("cursor", cursor)
+			nextPath.RawQuery = q.Encode()
 		}
 
 		resp, err := s.makeRequest(ctx, http.MethodGet, nextPath.String(), nil, nil)
