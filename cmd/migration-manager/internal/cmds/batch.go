@@ -113,22 +113,22 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(targets) == 1 {
-		b.Target = targets[0]
-		fmt.Printf("Using target %q\n", b.Target)
+		b.DefaultTarget = targets[0]
+		fmt.Printf("Using target %q\n", b.DefaultTarget)
 	} else {
 		defaultTargetHint := "(" + strings.Join(targets, ", ") + "): "
-		b.Target, err = c.global.Asker.AskChoice("What target should this batch use? "+defaultTargetHint, targets, "")
+		b.DefaultTarget, err = c.global.Asker.AskChoice("What target should this batch use? "+defaultTargetHint, targets, "")
 		if err != nil {
 			return err
 		}
 	}
 
-	b.TargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? ", "", validate.IsNotEmpty)
+	b.DefaultTargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? ", "", validate.IsNotEmpty)
 	if err != nil {
 		return err
 	}
 
-	b.StoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? ", "", validate.IsNotEmpty)
+	b.DefaultStoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? ", "", validate.IsNotEmpty)
 	if err != nil {
 		return err
 	}
@@ -301,7 +301,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, b := range batches {
-		data = append(data, []string{b.Name, string(b.Status), b.StatusMessage, b.Target, b.TargetProject, b.StoragePool, b.IncludeExpression, strconv.Itoa(len(b.MigrationWindows))})
+		data = append(data, []string{b.Name, string(b.Status), b.StatusMessage, b.DefaultTarget, b.DefaultTargetProject, b.DefaultStoragePool, b.IncludeExpression, strconv.Itoa(len(b.MigrationWindows))})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
@@ -418,13 +418,13 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	// Show the details
 	cmd.Printf("Batch: %s\n", b.Name)
 	cmd.Printf("  - Status:             %s\n", b.StatusMessage)
-	cmd.Printf("  - Target:             %s\n", b.Target)
-	if b.TargetProject != "" {
-		cmd.Printf("  - Project:            %s\n", b.TargetProject)
+	cmd.Printf("  - Target:             %s\n", b.DefaultTarget)
+	if b.DefaultTargetProject != "" {
+		cmd.Printf("  - Project:            %s\n", b.DefaultTargetProject)
 	}
 
-	if b.StoragePool != "" {
-		cmd.Printf("  - Storage pool:       %s\n", b.StoragePool)
+	if b.DefaultStoragePool != "" {
+		cmd.Printf("  - Storage pool:       %s\n", b.DefaultStoragePool)
 	}
 
 	if b.IncludeExpression != "" {
@@ -609,17 +609,17 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		targetChoices = " (" + strings.Join(targets, ", ") + ")"
 	}
 
-	b.Target, err = c.global.Asker.AskChoice("Target"+targetChoices+" [default="+b.Target+"]: ", targets, b.Target)
+	b.DefaultTarget, err = c.global.Asker.AskChoice("Target"+targetChoices+" [default="+b.DefaultTarget+"]: ", targets, b.DefaultTarget)
 	if err != nil {
 		return err
 	}
 
-	b.TargetProject, err = c.global.Asker.AskString("Project [default="+b.TargetProject+"]: ", b.TargetProject, nil)
+	b.DefaultTargetProject, err = c.global.Asker.AskString("Project [default="+b.DefaultTargetProject+"]: ", b.DefaultTargetProject, nil)
 	if err != nil {
 		return err
 	}
 
-	b.StoragePool, err = c.global.Asker.AskString("Storage pool [default="+b.StoragePool+"]: ", b.StoragePool, nil)
+	b.DefaultStoragePool, err = c.global.Asker.AskString("Storage pool [default="+b.DefaultStoragePool+"]: ", b.DefaultStoragePool, nil)
 	if err != nil {
 		return err
 	}
