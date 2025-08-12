@@ -61,6 +61,9 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			UpdateFunc: func(ctx context.Context, entry *migration.QueueEntry) error {
 //				panic("mock out the Update method")
 //			},
+//			UpdatePlacementByUUIDFunc: func(ctx context.Context, id uuid.UUID, placement api.Placement) (*migration.QueueEntry, error) {
+//				panic("mock out the UpdatePlacementByUUID method")
+//			},
 //			UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *int64) (*migration.QueueEntry, error) {
 //				panic("mock out the UpdateStatusByUUID method")
 //			},
@@ -109,6 +112,9 @@ type QueueServiceMock struct {
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, entry *migration.QueueEntry) error
+
+	// UpdatePlacementByUUIDFunc mocks the UpdatePlacementByUUID method.
+	UpdatePlacementByUUIDFunc func(ctx context.Context, id uuid.UUID, placement api.Placement) (*migration.QueueEntry, error)
 
 	// UpdateStatusByUUIDFunc mocks the UpdateStatusByUUID method.
 	UpdateStatusByUUIDFunc func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *int64) (*migration.QueueEntry, error)
@@ -212,6 +218,15 @@ type QueueServiceMock struct {
 			// Entry is the entry argument value.
 			Entry *migration.QueueEntry
 		}
+		// UpdatePlacementByUUID holds details about calls to the UpdatePlacementByUUID method.
+		UpdatePlacementByUUID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// Placement is the placement argument value.
+			Placement api.Placement
+		}
 		// UpdateStatusByUUID holds details about calls to the UpdateStatusByUUID method.
 		UpdateStatusByUUID []struct {
 			// Ctx is the ctx argument value.
@@ -241,6 +256,7 @@ type QueueServiceMock struct {
 	lockNewWorkerCommandByInstanceUUID sync.RWMutex
 	lockProcessWorkerUpdate            sync.RWMutex
 	lockUpdate                         sync.RWMutex
+	lockUpdatePlacementByUUID          sync.RWMutex
 	lockUpdateStatusByUUID             sync.RWMutex
 }
 
@@ -721,6 +737,46 @@ func (mock *QueueServiceMock) UpdateCalls() []struct {
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// UpdatePlacementByUUID calls UpdatePlacementByUUIDFunc.
+func (mock *QueueServiceMock) UpdatePlacementByUUID(ctx context.Context, id uuid.UUID, placement api.Placement) (*migration.QueueEntry, error) {
+	if mock.UpdatePlacementByUUIDFunc == nil {
+		panic("QueueServiceMock.UpdatePlacementByUUIDFunc: method is nil but QueueService.UpdatePlacementByUUID was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		ID        uuid.UUID
+		Placement api.Placement
+	}{
+		Ctx:       ctx,
+		ID:        id,
+		Placement: placement,
+	}
+	mock.lockUpdatePlacementByUUID.Lock()
+	mock.calls.UpdatePlacementByUUID = append(mock.calls.UpdatePlacementByUUID, callInfo)
+	mock.lockUpdatePlacementByUUID.Unlock()
+	return mock.UpdatePlacementByUUIDFunc(ctx, id, placement)
+}
+
+// UpdatePlacementByUUIDCalls gets all the calls that were made to UpdatePlacementByUUID.
+// Check the length with:
+//
+//	len(mockedQueueService.UpdatePlacementByUUIDCalls())
+func (mock *QueueServiceMock) UpdatePlacementByUUIDCalls() []struct {
+	Ctx       context.Context
+	ID        uuid.UUID
+	Placement api.Placement
+} {
+	var calls []struct {
+		Ctx       context.Context
+		ID        uuid.UUID
+		Placement api.Placement
+	}
+	mock.lockUpdatePlacementByUUID.RLock()
+	calls = mock.calls.UpdatePlacementByUUID
+	mock.lockUpdatePlacementByUUID.RUnlock()
 	return calls
 }
 
