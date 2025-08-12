@@ -1026,32 +1026,87 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 	return util.CreateTarball(backupPath, filepath.Join(tmpDir, "backup"))
 }
 
-func (t *InternalIncusTarget) ReadyForMigration(ctx context.Context, targetProject string, instances map[uuid.UUID]migration.Instance) error {
-	// Connect to the target.
-	err := t.Connect(ctx)
+type IncusDetails struct {
+	Name               string
+	Projects           []string
+	StoragePools       []string
+	NetworksByProject  map[string][]string
+	InstancesByProject map[string][]string
+}
+
+// GetDetails fetches top-level details about the entities that exist on the target.
+func (t *InternalIncusTarget) GetDetails(ctx context.Context) (*IncusDetails, error) {
+	if t.isConnected {
+		return nil, fmt.Errorf("Not connected to endpoint %q", t.Endpoint)
+	}
+
+	projects, err := t.incusClient.GetProjectNames()
 	if err != nil {
-		return fmt.Errorf("Failed to connect to target %q: %w", t.GetName(), err)
+		return nil, err
 	}
 
-	// Set the project.
-	err = t.SetProject(targetProject)
+	pools, err := t.incusClient.GetStoragePoolNames()
 	if err != nil {
-		return fmt.Errorf("Failed to set project %q for target %q: %w", targetProject, t.GetName(), err)
+		return nil, err
 	}
 
-	targetInstances, err := t.GetInstanceNames()
-	if err != nil {
-		return fmt.Errorf("Failed to get instancs in project %q of target %q: %w", targetProject, t.GetName(), err)
+	networksByProject := map[string][]string{}
+	for _, p := range projects {
+		client := t.incusClient.UseProject(p)
+		networks, err := client.GetNetworkNames()
+		if err != nil {
+			return nil, err
+		}
+
+		networksByProject[p] = networks
 	}
 
-	targetInstanceMap := make(map[string]bool, len(targetInstances))
-	for _, inst := range targetInstances {
-		targetInstanceMap[inst] = true
+	instancesByProject := map[string][]string{}
+	for _, p := range projects {
+		client := t.incusClient.UseProject(p)
+		instances, err := client.GetInstanceNames(incusAPI.InstanceTypeAny)
+		if err != nil {
+			return nil, err
+		}
+
+		instancesByProject[p] = instances
 	}
 
-	for _, inst := range instances {
-		if targetInstanceMap[inst.GetName()] {
-			return fmt.Errorf("Another instance with name %q already exists", inst.GetName())
+	return &IncusDetails{
+		Name:               t.GetName(),
+		Projects:           projects,
+		StoragePools:       pools,
+		NetworksByProject:  networksByProject,
+		InstancesByProject: instancesByProject,
+	}, nil
+}
+
+func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Placement, inst api.Instance) error {
+	if info == nil {
+		return fmt.Errorf("Target %q does not exist", placement.TargetName)
+	}
+
+	if info.Name != placement.TargetName {
+		return fmt.Errorf("Expected target %q but got %q", placement.TargetName, info.Name)
+	}
+
+	if !slices.Contains(info.Projects, placement.TargetProject) {
+		return fmt.Errorf("Project %q does not exist on target %q", placement.TargetProject, info.Name)
+	}
+
+	if slices.Contains(info.InstancesByProject[placement.TargetProject], inst.GetName()) {
+		return fmt.Errorf("Instance already exists with name %q on target %q in project %q", inst.GetName(), info.Name, placement.TargetProject)
+	}
+
+	for _, net := range placement.Networks {
+		if !slices.Contains(info.NetworksByProject[placement.TargetProject], net) {
+			return fmt.Errorf("No network found with name %q on target %q in project %q", net, info.Name, placement.TargetProject)
+		}
+	}
+
+	for _, pool := range placement.StoragePools {
+		if !slices.Contains(info.StoragePools, pool) {
+			return fmt.Errorf("No Storage pool found with name %q on target %q in project %q", pool, info.Name, placement.TargetProject)
 		}
 	}
 
