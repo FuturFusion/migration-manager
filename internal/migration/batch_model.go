@@ -323,11 +323,7 @@ func (w MigrationWindow) Validate() error {
 	return nil
 }
 
-func (b Batch) CanStart(windows []MigrationWindow) error {
-	if b.Status != api.BATCHSTATUS_DEFINED && b.Status != api.BATCHSTATUS_QUEUED {
-		return fmt.Errorf("Batch %q in state %q cannot be started", b.Name, string(b.Status))
-	}
-
+func (b Batch) HasValidWindow(windows []MigrationWindow) error {
 	hasValidWindow := len(windows) == 0
 	for _, w := range windows {
 		// Skip any migration windows that have since passed.

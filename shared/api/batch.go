@@ -16,6 +16,12 @@ const (
 	BATCHSTATUS_ERROR    BatchStatusType = "Error"
 )
 
+const (
+	DefaultTarget        = "default"
+	DefaultTargetProject = "default"
+	DefaultStoragePool   = "default"
+)
+
 // Validate ensures the BatchStatusType is valid.
 func (b BatchStatusType) Validate() error {
 	switch b {

@@ -246,14 +246,28 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		}
 	}
 
+	if apiBatch.DefaultTarget == "" {
+		apiBatch.DefaultTarget = api.DefaultTarget
+	}
+
+	if apiBatch.DefaultTargetProject == "" {
+		apiBatch.DefaultTargetProject = api.DefaultTargetProject
+	}
+
+	if apiBatch.DefaultStoragePool == "" {
+		apiBatch.DefaultStoragePool = api.DefaultStoragePool
+	}
+
 	batch := migration.Batch{
 		Name:                 apiBatch.Name,
-		Target:               apiBatch.Target,
-		TargetProject:        apiBatch.TargetProject,
 		Status:               api.BATCHSTATUS_DEFINED,
 		StatusMessage:        string(api.BATCHSTATUS_DEFINED),
-		StoragePool:          apiBatch.StoragePool,
 		IncludeExpression:    apiBatch.IncludeExpression,
+		RerunScriptlets:      apiBatch.RerunScriptlets,
+		PlacementScriptlet:   apiBatch.PlacementScriptlet,
+		DefaultTarget:        apiBatch.DefaultTarget,
+		DefaultStoragePool:   apiBatch.DefaultStoragePool,
+		DefaultTargetProject: apiBatch.DefaultTargetProject,
 		PostMigrationRetries: apiBatch.PostMigrationRetries,
 		Constraints:          constraints,
 	}
@@ -488,17 +502,31 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		}
 	}
 
+	if batch.DefaultTarget == "" {
+		batch.DefaultTarget = api.DefaultTarget
+	}
+
+	if batch.DefaultTargetProject == "" {
+		batch.DefaultTargetProject = api.DefaultTargetProject
+	}
+
+	if batch.DefaultStoragePool == "" {
+		batch.DefaultStoragePool = api.DefaultStoragePool
+	}
+
 	err = d.batch.Update(ctx, name, &migration.Batch{
 		ID:                   currentBatch.ID,
 		Name:                 batch.Name,
-		Target:               batch.Target,
-		TargetProject:        batch.TargetProject,
 		Status:               currentBatch.Status,
 		StatusMessage:        currentBatch.StatusMessage,
-		StoragePool:          batch.StoragePool,
 		IncludeExpression:    batch.IncludeExpression,
-		Constraints:          constraints,
 		StartDate:            batch.StartDate,
+		RerunScriptlets:      batch.RerunScriptlets,
+		PlacementScriptlet:   batch.PlacementScriptlet,
+		DefaultTarget:        batch.DefaultTarget,
+		DefaultTargetProject: batch.DefaultTargetProject,
+		DefaultStoragePool:   batch.DefaultStoragePool,
+		Constraints:          constraints,
 		PostMigrationRetries: batch.PostMigrationRetries,
 	})
 	if err != nil {
@@ -672,8 +700,8 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 
 	instances := map[uuid.UUID]migration.Instance{}
 	var batch *migration.Batch
-	var target *migration.Target
 	var windows migration.MigrationWindows
+	var networks migration.Networks
 	err := transaction.Do(r.Context(), func(ctx context.Context) error {
 		var err error
 		batch, err = d.batch.GetByName(ctx, batchName)
@@ -686,9 +714,9 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 			return fmt.Errorf("Failed to get migration windows for batch %q: %w", batchName, err)
 		}
 
-		target, err = d.target.GetByName(ctx, batch.Target)
+		networks, err = d.network.GetAll(ctx)
 		if err != nil {
-			return fmt.Errorf("Failed to get target for batch %q: %w", batch.Name, err)
+			return fmt.Errorf("Failed to get networks for batch %q: %w", batch.Name, err)
 		}
 
 		queueEntries, err := d.queue.GetAll(ctx)
@@ -721,10 +749,29 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	// Validate that the batch can be queued.
-	_, err = d.validateForQueue(r.Context(), *batch, windows, *target, instances)
+	// Validate that the batch can even start before doing more work.
+	if batch.Status != api.BATCHSTATUS_DEFINED {
+		return response.SmartError(fmt.Errorf("Batch %q in state %q cannot be started", batch.Name, string(batch.Status)))
+	}
+
+	if len(instances) == 0 {
+		return response.SmartError(fmt.Errorf("Cannot start batch %q with no instances", batch.Name))
+	}
+
+	err = batch.HasValidWindow(windows)
 	if err != nil {
-		return response.SmartError(err)
+		return response.SmartError(fmt.Errorf("Cannot start batch with invalid migration windows: %w", err))
+	}
+
+	placementsByUUID := map[uuid.UUID]api.Placement{}
+	for _, inst := range instances {
+		usedNetworks := migration.FilterUsedNetworks(networks, migration.Instances{inst})
+		placement, err := d.batch.DeterminePlacement(r.Context(), inst, usedNetworks, *batch, windows)
+		if err != nil {
+			return response.SmartError(fmt.Errorf("Failed to run scriptlet for instance %q: %w", inst.Properties.Location, err))
+		}
+
+		placementsByUUID[inst.UUID] = *placement
 	}
 
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
@@ -754,6 +801,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 				SecretToken:            secret,
 				MigrationStatus:        status,
 				MigrationStatusMessage: message,
+				Placement:              placementsByUUID[inst.UUID],
 			})
 			if err != nil {
 				return err
