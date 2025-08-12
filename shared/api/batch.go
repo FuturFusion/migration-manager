@@ -9,7 +9,6 @@ type BatchStatusType string
 
 const (
 	BATCHSTATUS_DEFINED  BatchStatusType = "Defined"
-	BATCHSTATUS_QUEUED   BatchStatusType = "Queued"
 	BATCHSTATUS_RUNNING  BatchStatusType = "Running"
 	BATCHSTATUS_STOPPED  BatchStatusType = "Stopped"
 	BATCHSTATUS_FINISHED BatchStatusType = "Finished"
@@ -28,7 +27,6 @@ func (b BatchStatusType) Validate() error {
 	case BATCHSTATUS_DEFINED:
 	case BATCHSTATUS_ERROR:
 	case BATCHSTATUS_FINISHED:
-	case BATCHSTATUS_QUEUED:
 	case BATCHSTATUS_RUNNING:
 	case BATCHSTATUS_STOPPED:
 	default:

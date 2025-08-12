@@ -287,7 +287,7 @@ func (s batchService) StartBatchByName(ctx context.Context, name string) (err er
 		}
 
 		batch.StartDate = time.Now().UTC()
-		batch.Status = api.BATCHSTATUS_QUEUED
+		batch.Status = api.BATCHSTATUS_RUNNING
 		batch.StatusMessage = string(batch.Status)
 		return s.repo.Update(ctx, batch.Name, *batch)
 	})
@@ -305,13 +305,7 @@ func (s batchService) StopBatchByName(ctx context.Context, name string) (err err
 			return err
 		}
 
-		// Ensure batch is in a state that is ready to stop.
-		switch batch.Status {
-		case
-			api.BATCHSTATUS_QUEUED,
-			api.BATCHSTATUS_RUNNING:
-			// States, where starting a batch is allowed.
-		default:
+		if batch.Status != api.BATCHSTATUS_RUNNING {
 			return fmt.Errorf("Cannot stop batch %q in its current state '%s': %w", batch.Name, batch.Status, ErrOperationNotPermitted)
 		}
 
