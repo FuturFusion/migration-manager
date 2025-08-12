@@ -23,6 +23,7 @@ type QueueService interface {
 	DeleteAllByBatch(ctx context.Context, batch string) error
 
 	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage ImportStage, windowID *int64) (*QueueEntry, error)
+	UpdatePlacementByUUID(ctx context.Context, id uuid.UUID, placement api.Placement) (*QueueEntry, error)
 
 	NewWorkerCommandByInstanceUUID(ctx context.Context, id uuid.UUID) (WorkerCommand, error)
 	ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (QueueEntry, error)

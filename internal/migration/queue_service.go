@@ -116,6 +116,31 @@ func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, stat
 	return q, nil
 }
 
+func (s queueService) UpdatePlacementByUUID(ctx context.Context, id uuid.UUID, placement api.Placement) (*QueueEntry, error) {
+	var q *QueueEntry
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		q, err = s.repo.GetByInstanceUUID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("Failed to get instance '%s': %w", id, err)
+		}
+
+		q.Placement = placement
+
+		err = q.Validate()
+		if err != nil {
+			return err
+		}
+
+		return s.repo.Update(ctx, *q)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return q, nil
+}
+
 func (s queueService) Update(ctx context.Context, entry *QueueEntry) error {
 	return s.repo.Update(ctx, *entry)
 }
@@ -365,14 +390,9 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			return fmt.Errorf("Failed to get source %q properties: %w", instance.Source, err)
 		}
 
-		batch, err := s.batch.GetByName(ctx, queueEntry.BatchName)
+		target, err := s.target.GetByName(ctx, queueEntry.Placement.TargetName)
 		if err != nil {
-			return fmt.Errorf("Failed to get batch %q: %w", queueEntry.BatchName, err)
-		}
-
-		target, err := s.target.GetByName(ctx, batch.Target)
-		if err != nil {
-			return fmt.Errorf("Failed to get target %q: %w", batch.Target, err)
+			return fmt.Errorf("Failed to get target %q: %w", queueEntry.Placement.TargetName, err)
 		}
 
 		var targetProperties api.IncusProperties
@@ -438,7 +458,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 
 		if newStatus != api.MIGRATIONSTATUS_IDLE && newStatus != api.MIGRATIONSTATUS_POST_IMPORT {
 			s.source.RecordActiveImport(instance.Source)
-			s.target.RecordActiveImport(batch.Target)
+			s.target.RecordActiveImport(queueEntry.Placement.TargetName)
 		}
 
 		// Update queueEntry in the database, and set the worker update time.
@@ -507,13 +527,8 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 				return fmt.Errorf("Failed to get instance %q: %w", id, err)
 			}
 
-			batch, err := s.batch.GetByName(ctx, entry.BatchName)
-			if err != nil {
-				return fmt.Errorf("Failed to get batch %q: %w", entry.BatchName, err)
-			}
-
 			s.source.RemoveActiveImport(instance.Source)
-			s.target.RemoveActiveImport(batch.Target)
+			s.target.RemoveActiveImport(entry.Placement.TargetName)
 		}
 
 		// Update instance in the database.

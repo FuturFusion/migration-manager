@@ -21,6 +21,8 @@ type QueueEntry struct {
 	LastWorkerStatus       api.WorkerResponseType
 
 	MigrationWindowID sql.NullInt64
+
+	Placement api.Placement `db:"marshal=json"`
 }
 
 type QueueEntries []QueueEntry
@@ -101,6 +103,23 @@ func (q QueueEntry) Validate() error {
 		return NewValidationErrf("Invalid migration status: %v", err)
 	}
 
+	p := q.Placement
+	if p.TargetName == "" {
+		return NewValidationErrf("Target name cannot be empty")
+	}
+
+	if p.TargetProject == "" {
+		return NewValidationErrf("Target project cannot be empty")
+	}
+
+	if len(p.StoragePools) < 1 {
+		return NewValidationErrf("No storage pool defined")
+	}
+
+	if p.Networks == nil {
+		return NewValidationErrf("No network defined")
+	}
+
 	return nil
 }
 
@@ -126,5 +145,7 @@ func (q QueueEntry) ToAPI(instanceName string, lastWorkerUpdate time.Time, migra
 			End:     migrationWindow.End,
 			Lockout: migrationWindow.Lockout,
 		},
+
+		Placement: q.Placement,
 	}
 }

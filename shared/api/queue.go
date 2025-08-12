@@ -71,4 +71,24 @@ type QueueEntry struct {
 
 	// The window that this queue entry will perform the final import steps
 	MigrationWindow MigrationWindow `json:"migration_window" yaml:"migration_window"`
+
+	// Configuration for which target the instance will be placed on.
+	Placement Placement `json:"placement" yaml:"placement"`
+}
+
+// Placement indicates the destination for a queue entry's instance.
+//
+// swagger:model
+type Placement struct {
+	// Name of the target this queue entry is migrating to
+	TargetName string `json:"target_name,omitempty" yaml:"target_name,omitempty"`
+
+	// Name of the target project this queue entry is migrating to
+	TargetProject string `json:"target_project,omitempty" yaml:"target_project,omitempty"`
+
+	// Storage pools keyed by attached disk name.
+	StoragePools map[string]string `json:"storage_pools" yaml:"storage_pools"`
+
+	// Networks keyed by attached NIC identifier.
+	Networks map[string]string `json:"networks" yaml:"networks"`
 }
