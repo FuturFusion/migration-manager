@@ -373,3 +373,16 @@ func (s batchService) GetEarliestWindow(ctx context.Context, batch string) (*Mig
 
 	return earliest, nil
 }
+
+func (s batchService) DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, migrationWindows MigrationWindows) (*api.Placement, error) {
+	if batch.PlacementScriptlet == "" {
+		return batch.GetIncusPlacement(instance, usedNetworks, api.Placement{})
+	}
+
+	rawPlacement, err := scriptlet.BatchPlacementRun(ctx, s.scriptletLoader, instance.ToAPI(), batch.ToAPI(migrationWindows))
+	if err != nil {
+		return nil, err
+	}
+
+	return batch.GetIncusPlacement(instance, usedNetworks, *rawPlacement)
+}

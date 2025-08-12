@@ -47,6 +47,77 @@ type BatchConstraint struct {
 	MinInstanceBootTime time.Duration `json:"min_instance_boot_time" yaml:"min_instance_boot_time"`
 }
 
+// GetIncusPlacement returns a TargetPlacement for the given instance and its networks.
+// It defaults to the batch-level definitions unless the given TargetPlacement has overridden them.
+func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, placement api.Placement) (*api.Placement, error) {
+	resp := &api.Placement{
+		TargetName:    b.DefaultTarget,
+		TargetProject: b.DefaultTargetProject,
+		StoragePools:  map[string]string{},
+		Networks:      map[string]string{},
+	}
+
+	// Use the same pool for all supported disks by default.
+	for _, d := range instance.Properties.Disks {
+		if !d.Supported {
+			continue
+		}
+
+		resp.StoragePools[d.Name] = b.DefaultStoragePool
+	}
+
+	// Handle per-network overrides.
+	for _, n := range instance.Properties.NICs {
+		var baseNetwork Network
+		for _, net := range usedNetworks {
+			if n.ID == net.Identifier && instance.Source == net.Source {
+				baseNetwork = net
+				break
+			}
+		}
+
+		if baseNetwork.Identifier == "" {
+			err := fmt.Errorf("No network %q associated with instance %q on source %q", n.ID, instance.Properties.Name, instance.Source)
+			return nil, err
+		}
+
+		var networkName string
+		if baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
+			networkName = baseNetwork.Overrides.BridgeName
+			if networkName == "" {
+				networkName = "br0"
+			}
+		} else {
+			if baseNetwork.Overrides.Name != "" || baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
+				networkName = baseNetwork.ToAPI().Name()
+			} else {
+				networkName = "default"
+			}
+		}
+
+		resp.Networks[n.ID] = networkName
+	}
+
+	// Override with placement values if set.
+	if placement.TargetName != "" {
+		resp.TargetName = placement.TargetName
+	}
+
+	if placement.TargetProject != "" {
+		resp.TargetProject = placement.TargetProject
+	}
+
+	for id, netName := range placement.Networks {
+		resp.Networks[id] = netName
+	}
+
+	for disk, pool := range placement.StoragePools {
+		resp.StoragePools[disk] = pool
+	}
+
+	return resp, nil
+}
+
 type MigrationWindows []MigrationWindow
 
 type MigrationWindow struct {
