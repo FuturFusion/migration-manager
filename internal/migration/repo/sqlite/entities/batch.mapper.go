@@ -10,36 +10,31 @@ import (
 	"strings"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
-	"github.com/mattn/go-sqlite3"
 )
 
 var batchObjects = RegisterStmt(`
-SELECT batches.id, batches.name, targets.name AS target, batches.target_project, batches.status, batches.status_message, batches.storage_pool, batches.include_expression, batches.start_date, batches.post_migration_retries, batches.constraints
+SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.default_target, batches.default_target_project, batches.default_storage_pool, batches.rerun_scriptlets, batches.placement_scriptlet, batches.post_migration_retries, batches.constraints
   FROM batches
-  JOIN targets ON batches.target_id = targets.id
   ORDER BY batches.name
 `)
 
 var batchObjectsByID = RegisterStmt(`
-SELECT batches.id, batches.name, targets.name AS target, batches.target_project, batches.status, batches.status_message, batches.storage_pool, batches.include_expression, batches.start_date, batches.post_migration_retries, batches.constraints
+SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.default_target, batches.default_target_project, batches.default_storage_pool, batches.rerun_scriptlets, batches.placement_scriptlet, batches.post_migration_retries, batches.constraints
   FROM batches
-  JOIN targets ON batches.target_id = targets.id
   WHERE ( batches.id = ? )
   ORDER BY batches.name
 `)
 
 var batchObjectsByName = RegisterStmt(`
-SELECT batches.id, batches.name, targets.name AS target, batches.target_project, batches.status, batches.status_message, batches.storage_pool, batches.include_expression, batches.start_date, batches.post_migration_retries, batches.constraints
+SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.default_target, batches.default_target_project, batches.default_storage_pool, batches.rerun_scriptlets, batches.placement_scriptlet, batches.post_migration_retries, batches.constraints
   FROM batches
-  JOIN targets ON batches.target_id = targets.id
   WHERE ( batches.name = ? )
   ORDER BY batches.name
 `)
 
 var batchObjectsByStatus = RegisterStmt(`
-SELECT batches.id, batches.name, targets.name AS target, batches.target_project, batches.status, batches.status_message, batches.storage_pool, batches.include_expression, batches.start_date, batches.post_migration_retries, batches.constraints
+SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.default_target, batches.default_target_project, batches.default_storage_pool, batches.rerun_scriptlets, batches.placement_scriptlet, batches.post_migration_retries, batches.constraints
   FROM batches
-  JOIN targets ON batches.target_id = targets.id
   WHERE ( batches.status = ? )
   ORDER BY batches.name
 `)
@@ -63,13 +58,13 @@ SELECT batches.id FROM batches
 `)
 
 var batchCreate = RegisterStmt(`
-INSERT INTO batches (name, target_id, target_project, status, status_message, storage_pool, include_expression, start_date, post_migration_retries, constraints)
-  VALUES (?, (SELECT targets.id FROM targets WHERE targets.name = ?), ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO batches (name, status, status_message, include_expression, start_date, default_target, default_target_project, default_storage_pool, rerun_scriptlets, placement_scriptlet, post_migration_retries, constraints)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 var batchUpdate = RegisterStmt(`
 UPDATE batches
-  SET name = ?, target_id = (SELECT targets.id FROM targets WHERE targets.name = ?), target_project = ?, status = ?, status_message = ?, storage_pool = ?, include_expression = ?, start_date = ?, post_migration_retries = ?, constraints = ?
+  SET name = ?, status = ?, status_message = ?, include_expression = ?, start_date = ?, default_target = ?, default_target_project = ?, default_storage_pool = ?, rerun_scriptlets = ?, placement_scriptlet = ?, post_migration_retries = ?, constraints = ?
  WHERE id = ?
 `)
 
@@ -161,7 +156,7 @@ func GetBatch(ctx context.Context, db dbtx, name string) (_ *migration.Batch, _e
 // batchColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Batch entity.
 func batchColumns() string {
-	return "batches.id, batches.name, targets.name AS target, batches.target_project, batches.status, batches.status_message, batches.storage_pool, batches.include_expression, batches.start_date, batches.post_migration_retries, batches.constraints"
+	return "batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.default_target, batches.default_target_project, batches.default_storage_pool, batches.rerun_scriptlets, batches.placement_scriptlet, batches.post_migration_retries, batches.constraints"
 }
 
 // getBatches can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -171,7 +166,7 @@ func getBatches(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migration.B
 	dest := func(scan func(dest ...any) error) error {
 		b := migration.Batch{}
 		var constraintsStr string
-		err := scan(&b.ID, &b.Name, &b.Target, &b.TargetProject, &b.Status, &b.StatusMessage, &b.StoragePool, &b.IncludeExpression, &b.StartDate, &b.PostMigrationRetries, &constraintsStr)
+		err := scan(&b.ID, &b.Name, &b.Status, &b.StatusMessage, &b.IncludeExpression, &b.StartDate, &b.DefaultTarget, &b.DefaultTargetProject, &b.DefaultStoragePool, &b.RerunScriptlets, &b.PlacementScriptlet, &b.PostMigrationRetries, &constraintsStr)
 		if err != nil {
 			return err
 		}
@@ -201,7 +196,7 @@ func getBatchesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]mig
 	dest := func(scan func(dest ...any) error) error {
 		b := migration.Batch{}
 		var constraintsStr string
-		err := scan(&b.ID, &b.Name, &b.Target, &b.TargetProject, &b.Status, &b.StatusMessage, &b.StoragePool, &b.IncludeExpression, &b.StartDate, &b.PostMigrationRetries, &constraintsStr)
+		err := scan(&b.ID, &b.Name, &b.Status, &b.StatusMessage, &b.IncludeExpression, &b.StartDate, &b.DefaultTarget, &b.DefaultTargetProject, &b.DefaultStoragePool, &b.RerunScriptlets, &b.PlacementScriptlet, &b.PostMigrationRetries, &constraintsStr)
 		if err != nil {
 			return err
 		}
@@ -438,24 +433,26 @@ func CreateBatch(ctx context.Context, db dbtx, object migration.Batch) (_ int64,
 		_err = mapErr(_err, "Batch")
 	}()
 
-	args := make([]any, 10)
+	args := make([]any, 12)
 
 	// Populate the statement arguments.
 	args[0] = object.Name
-	args[1] = object.Target
-	args[2] = object.TargetProject
-	args[3] = object.Status
-	args[4] = object.StatusMessage
-	args[5] = object.StoragePool
-	args[6] = object.IncludeExpression
-	args[7] = object.StartDate
-	args[8] = object.PostMigrationRetries
+	args[1] = object.Status
+	args[2] = object.StatusMessage
+	args[3] = object.IncludeExpression
+	args[4] = object.StartDate
+	args[5] = object.DefaultTarget
+	args[6] = object.DefaultTargetProject
+	args[7] = object.DefaultStoragePool
+	args[8] = object.RerunScriptlets
+	args[9] = object.PlacementScriptlet
+	args[10] = object.PostMigrationRetries
 	marshaledConstraints, err := marshalJSON(object.Constraints)
 	if err != nil {
 		return -1, err
 	}
 
-	args[9] = marshaledConstraints
+	args[11] = marshaledConstraints
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, batchCreate)
@@ -465,11 +462,8 @@ func CreateBatch(ctx context.Context, db dbtx, object migration.Batch) (_ int64,
 
 	// Execute the statement.
 	result, err := stmt.Exec(args...)
-	var sqliteErr sqlite3.Error
-	if errors.As(err, &sqliteErr) {
-		if sqliteErr.Code == sqlite3.ErrConstraint {
-			return -1, ErrConflict
-		}
+	if err != nil && strings.HasPrefix(err.Error(), "UNIQUE constraint failed:") {
+		return -1, ErrConflict
 	}
 
 	if err != nil {
@@ -506,7 +500,7 @@ func UpdateBatch(ctx context.Context, db tx, name string, object migration.Batch
 		return err
 	}
 
-	result, err := stmt.Exec(object.Name, object.Target, object.TargetProject, object.Status, object.StatusMessage, object.StoragePool, object.IncludeExpression, object.StartDate, object.PostMigrationRetries, marshaledConstraints, id)
+	result, err := stmt.Exec(object.Name, object.Status, object.StatusMessage, object.IncludeExpression, object.StartDate, object.DefaultTarget, object.DefaultTargetProject, object.DefaultStoragePool, object.RerunScriptlets, object.PlacementScriptlet, object.PostMigrationRetries, marshaledConstraints, id)
 	if err != nil {
 		return fmt.Errorf("Update \"batches\" entry failed: %w", err)
 	}

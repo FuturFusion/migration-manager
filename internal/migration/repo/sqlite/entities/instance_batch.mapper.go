@@ -5,11 +5,10 @@ package entities
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
-	"github.com/mattn/go-sqlite3"
 )
 
 var instanceBatchObjects = RegisterStmt(`
@@ -197,11 +196,8 @@ func CreateInstanceBatches(ctx context.Context, db tx, objects []InstanceBatch) 
 
 		// Execute the statement.
 		_, err = stmt.Exec(args...)
-		var sqliteErr sqlite3.Error
-		if errors.As(err, &sqliteErr) {
-			if sqliteErr.Code == sqlite3.ErrConstraint {
-				return ErrConflict
-			}
+		if err != nil && strings.HasPrefix(err.Error(), "UNIQUE constraint failed:") {
+			return ErrConflict
 		}
 
 		if err != nil {
