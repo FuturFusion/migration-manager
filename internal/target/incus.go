@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	incus "github.com/lxc/incus/v6/client"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
@@ -39,7 +38,18 @@ type InternalIncusTarget struct {
 	incusClient         incus.InstanceServer
 }
 
-func NewInternalIncusTargetFrom(apiTarget api.Target) (*InternalIncusTarget, error) {
+var _ Target = &InternalIncusTarget{}
+
+var NewTarget = func(t api.Target) (Target, error) {
+	switch t.TargetType {
+	case api.TARGETTYPE_INCUS:
+		return newInternalIncusTargetFrom(t)
+	default:
+		return nil, fmt.Errorf("Unknown target type %q", t.TargetType)
+	}
+}
+
+func newInternalIncusTargetFrom(apiTarget api.Target) (*InternalIncusTarget, error) {
 	if apiTarget.TargetType != api.TARGETTYPE_INCUS {
 		return nil, errors.New("Target is not of type Incus")
 	}
