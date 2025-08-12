@@ -115,6 +115,58 @@ var updates = map[int]schema.Update{
 	8:  updateFromV7,
 	9:  updateFromV8,
 	10: updateFromV9,
+	11: updateFromV11,
+}
+
+func updateFromV11(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE queue_new (
+    id                               INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    instance_id                      INTEGER NOT NULL,
+    batch_id                         INTEGER NOT NULL,
+    migration_status                 TEXT NOT NULL,
+    migration_status_message         TEXT NOT NULL,
+    import_stage                     TEXT NOT NULL,
+    secret_token                     TEXT NOT NULL,
+    last_worker_status               INTEGER NOT NULL,
+    migration_window_id              INTEGER,
+    placement                        TEXT NOT NULL,
+    FOREIGN KEY(migration_window_id) REFERENCES migration_windows(id),
+    FOREIGN KEY(instance_id)         REFERENCES instances(id) ON DELETE CASCADE,
+    FOREIGN KEY(batch_id)            REFERENCES batches(id) ON DELETE CASCADE,
+    UNIQUE (instance_id)
+);
+
+INSERT INTO queue_new (id, instance_id, batch_id, migration_status, migration_status_message, import_stage, secret_token, last_worker_status, migration_window_id, placement)
+  SELECT id, instance_id, batch_id, migration_status, migration_status_message, import_stage, secret_token, last_worker_status, migration_window_id, '{}' FROM queue;
+DROP TABLE queue;
+ALTER TABLE queue_new RENAME TO queue;
+
+
+CREATE TABLE batches_new (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name                   TEXT NOT NULL,
+    default_target         TEXT NOT NULL,
+    default_target_project TEXT NOT NULL,
+    status                 TEXT NOT NULL,
+    status_message         TEXT NOT NULL,
+    default_storage_pool   TEXT NOT NULL,
+    include_expression     TEXT NOT NULL,
+    constraints            TEXT NOT NULL,
+    start_date             DATETIME NOT NULL,
+    post_migration_retries INTEGER NOT NULL,
+		rerun_scriptlets       INTEGER NOT NULL,
+    placement_scriptlet    TEXT NOT NULL,
+    UNIQUE (name)
+);
+
+INSERT INTO batches_new (id, name, default_target, default_target_project, status, status_message, default_storage_pool, include_expression, constraints, start_date, post_migration_retries, rerun_scriptlets, placement_scriptlet)
+		SELECT batches.id, batches.name, targets.name, batches.target_project, batches.status, batches.status_message, batches.storage_pool, batches.include_expression, batches.constraints, batches.start_date, batches.post_migration_retries, ?, '' FROM batches
+    JOIN targets on batches.target_id = targets.id;
+DROP TABLE batches;
+ALTER TABLE batches_new RENAME TO batches;
+`, false)
+
+	return err
 }
 
 func updateFromV9(ctx context.Context, tx *sql.Tx) error {
