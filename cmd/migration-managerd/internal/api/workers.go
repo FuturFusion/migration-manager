@@ -144,7 +144,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 
 		targetInfo := make([]target.IncusDetails, 0, len(allTargets))
 		for _, t := range allTargets {
-			it, err := target.NewInternalIncusTargetFrom(t.ToAPI())
+			it, err := target.NewTarget(t.ToAPI())
 			if err != nil {
 				return err
 			}
@@ -386,7 +386,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, tgt migr
 	d.batchLock.Lock(batchKey)
 	reverter.Add(func() { d.batchLock.Unlock(batchKey) })
 
-	it, err := target.NewInternalIncusTargetFrom(tgt.ToAPI())
+	it, err := target.NewTarget(tgt.ToAPI())
 	if err != nil {
 		return err
 	}
@@ -512,7 +512,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		}
 	})
 
-	it, err := target.NewInternalIncusTargetFrom(t.ToAPI())
+	it, err := target.NewTarget(t.ToAPI())
 	if err != nil {
 		return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 	}
@@ -624,7 +624,7 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
 	defer cancel()
 
-	it, err := target.NewInternalIncusTargetFrom(state.Targets[instUUID].ToAPI())
+	it, err := target.NewTarget(state.Targets[instUUID].ToAPI())
 	if err != nil {
 		return fmt.Errorf("Failed to set up %q target-specific configuration: %w", state.Targets[instUUID].TargetType, err)
 	}
@@ -842,7 +842,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 		}
 	})
 
-	it, err := target.NewInternalIncusTargetFrom(t.ToAPI())
+	it, err := target.NewTarget(t.ToAPI())
 	if err != nil {
 		return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 	}

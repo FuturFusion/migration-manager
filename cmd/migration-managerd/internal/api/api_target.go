@@ -192,7 +192,7 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 		TargetType: target.TargetType,
 		Properties: target.Properties,
 		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
-			return apiTarget.NewInternalIncusTargetFrom(t)
+			return apiTarget.NewTarget(t)
 		},
 	})
 	if err != nil {
@@ -252,7 +252,7 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 		tgt.SetExternalConnectivityStatus(connectivityStatus)
 		tgt.SetOIDCTokens(oidcClient.GetOIDCTokens())
 		tgt.EndpointFunc = func(t api.Target) (migration.TargetEndpoint, error) {
-			return apiTarget.NewInternalIncusTargetFrom(t)
+			return apiTarget.NewTarget(t)
 		}
 
 		_ = d.target.Update(context.TODO(), targetName, tgt)
@@ -403,7 +403,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		TargetType: currentTarget.TargetType,
 		Properties: target.Properties,
 		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
-			return apiTarget.NewInternalIncusTargetFrom(t)
+			return apiTarget.NewTarget(t)
 		},
 	}
 
