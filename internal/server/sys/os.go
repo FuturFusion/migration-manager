@@ -48,6 +48,22 @@ func (s *OS) LocalDatabaseDir() string {
 	return filepath.Join(s.VarDir, "database")
 }
 
+// ValidateFileSystem returns whether the required and optional files have been supplied to Migration Manager.
+func (s *OS) ValidateFileSystem() error {
+	_, err := s.GetVMwareVixName()
+	if err != nil {
+		return fmt.Errorf("Failed to find VMWare vix tarball: %w", err)
+	}
+
+	// Ensure exactly zero or one VirtIO drivers ISOs exist.
+	_, err = s.GetVirtioDriversISOName()
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("Failed to find Virtio drivers ISO: %w", err)
+	}
+
+	return nil
+}
+
 // GetVirtioDriversISOName returns the name of the virtio drivers ISO image.
 func (s *OS) GetVirtioDriversISOName() (string, error) {
 	files, err := filepath.Glob(fmt.Sprintf("%s/virtio-win-*.iso", s.CacheDir))
