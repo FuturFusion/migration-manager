@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -190,7 +191,7 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 }
 
 // SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
-func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, allNetworks migration.Networks) error {
+func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry, allNetworks migration.Networks) error {
 	props := i.Properties
 	props.Apply(i.Overrides.Properties)
 
@@ -242,23 +243,14 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 			}
 
 			apiDef.Devices[nicDeviceName]["nictype"] = "bridged"
-			parentBridge := baseNetwork.Overrides.BridgeName
-			if parentBridge == "" {
-				parentBridge = "br0"
-			}
-
-			apiDef.Devices[nicDeviceName]["parent"] = parentBridge
+			apiDef.Devices[nicDeviceName]["parent"] = q.Placement.Networks[nic.ID]
 			if len(netProps.VlanRanges) > 0 {
 				apiDef.Devices[nicDeviceName]["vlan.tagged"] = strings.Join(netProps.VlanRanges, ",")
 			} else {
 				apiDef.Devices[nicDeviceName]["vlan"] = strconv.Itoa(netProps.VlanID)
 			}
 		} else {
-			if baseNetwork.Overrides.Name != "" || baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
-				apiDef.Devices[nicDeviceName]["network"] = baseNetwork.ToAPI().Name()
-			} else {
-				apiDef.Devices[nicDeviceName]["network"] = "default"
-			}
+			apiDef.Devices[nicDeviceName]["network"] = q.Placement.Networks[nic.ID]
 		}
 
 		// Set a few forced overrides.
@@ -445,7 +437,7 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 	return instance, nil
 }
 
-func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, secretToken uuid.UUID, storagePool string, fingerprint string, endpoint string) (incusAPI.InstancesPost, error) {
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string) (incusAPI.InstancesPost, error) {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
@@ -465,7 +457,12 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 		return incusAPI.InstancesPost{}, err
 	}
 
-	ret, err = t.fillInitialProperties(ret, props, storagePool, defs)
+	if len(instanceDef.Properties.Disks) < 1 {
+		return incusAPI.InstancesPost{}, fmt.Errorf("Instance %q has no disks", props.Location)
+	}
+
+	rootDisk := instanceDef.Properties.Disks[0]
+	ret, err = t.fillInitialProperties(ret, props, q.Placement.StoragePools[rootDisk.Name], defs)
 	if err != nil {
 		return incusAPI.InstancesPost{}, err
 	}
@@ -478,7 +475,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	ret.Config["user.migration.hwaddrs"] = strings.Join(hwaddrs, " ")
 	ret.Config["user.migration.source_type"] = "VMware"
 	ret.Config["user.migration.source"] = instanceDef.Source
-	ret.Config["user.migration.token"] = secretToken.String()
+	ret.Config["user.migration.token"] = q.SecretToken.String()
 	ret.Config["user.migration.fingerprint"] = fingerprint
 	ret.Config["user.migration.endpoint"] = endpoint
 	ret.Config["user.migration.uuid"] = instanceDef.UUID.String()
@@ -496,14 +493,19 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	return ret, nil
 }
 
-func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) (func(), error) {
+func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string, driversISOImage string) (func(), error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	if len(instDef.Properties.Disks) < 1 {
+		return nil, fmt.Errorf("Instance %q has no disks", instDef.Properties.Location)
+	}
+
+	rootPool := placement.StoragePools[instDef.Properties.Disks[0].Name]
 	// Attach bootable ISO to run migration of this VM.
 	apiDef.Devices[util.WorkerVolume()] = map[string]string{
 		"type":          "disk",
-		"pool":          storagePool,
+		"pool":          rootPool,
 		"source":        bootISOImage,
 		"boot.priority": "10",
 		"readonly":      "true",
@@ -518,7 +520,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 
 		apiDef.Devices["drivers"] = map[string]string{
 			"type":   "disk",
-			"pool":   storagePool,
+			"pool":   rootPool,
 			"source": driversISOImage,
 		}
 	}
@@ -549,7 +551,6 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 
 		tgtClient := t.incusClient.UseTarget(instInfo.Location)
 		defaultDiskDef := map[string]string{
-			"pool": storagePool,
 			"type": "disk",
 		}
 
@@ -559,6 +560,8 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 				continue
 			}
 
+			storagePool := placement.StoragePools[disk.Name]
+			defaultDiskDef["pool"] = storagePool
 			diskKey := fmt.Sprintf("disk%d", i+1)
 			diskName := apiDef.Name + "-" + diskKey
 			reverter.Add(func() {
@@ -777,6 +780,10 @@ func (t *InternalIncusTarget) GetInstanceNames() ([]string, error) {
 
 func (t *InternalIncusTarget) GetInstance(name string) (*incusAPI.Instance, string, error) {
 	return t.incusClient.GetInstance(name)
+}
+
+func (t *InternalIncusTarget) GetNetworkNames() ([]string, error) {
+	return t.incusClient.GetNetworkNames()
 }
 
 func (t *InternalIncusTarget) UpdateInstance(name string, instanceDef incusAPI.InstancePut, ETag string) (incus.Operation, error) {
