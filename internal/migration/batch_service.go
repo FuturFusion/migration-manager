@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusScriptlet "github.com/lxc/incus/v6/shared/scriptlet"
 
+	"github.com/FuturFusion/migration-manager/internal/scriptlet"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -16,6 +18,8 @@ import (
 type batchService struct {
 	repo     BatchRepo
 	instance InstanceService
+
+	scriptletLoader *incusScriptlet.Loader
 }
 
 var _ BatchService = &batchService{}
@@ -24,6 +28,8 @@ func NewBatchService(repo BatchRepo, instance InstanceService) batchService {
 	return batchService{
 		repo:     repo,
 		instance: instance,
+
+		scriptletLoader: incusScriptlet.NewLoader(),
 	}
 }
 
@@ -45,6 +51,13 @@ func (s batchService) Create(ctx context.Context, batch Batch) (Batch, error) {
 	})
 	if err != nil {
 		return Batch{}, err
+	}
+
+	if batch.PlacementScriptlet != "" {
+		err := scriptlet.BatchPlacementSet(s.scriptletLoader, batch.PlacementScriptlet, batch.Name)
+		if err != nil {
+			return Batch{}, err
+		}
 	}
 
 	return batch, nil
@@ -87,7 +100,8 @@ func (s batchService) Update(ctx context.Context, name string, batch *Batch) err
 		return err
 	}
 
-	return transaction.Do(ctx, func(ctx context.Context) error {
+	var updateScriptlet bool
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		oldBatch, err := s.repo.GetByName(ctx, name)
 		if err != nil {
 			return err
@@ -102,8 +116,24 @@ func (s batchService) Update(ctx context.Context, name string, batch *Batch) err
 			return err
 		}
 
+		if oldBatch.PlacementScriptlet != batch.PlacementScriptlet && batch.PlacementScriptlet != "" {
+			updateScriptlet = true
+		}
+
 		return s.UpdateInstancesAssignedToBatch(ctx, *batch)
 	})
+	if err != nil {
+		return err
+	}
+
+	if updateScriptlet {
+		err := scriptlet.BatchPlacementSet(s.scriptletLoader, batch.PlacementScriptlet, batch.Name)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s batchService) UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusMessage string) (*Batch, error) {

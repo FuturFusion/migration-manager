@@ -7,22 +7,27 @@ import (
 
 	"github.com/lxc/incus/v6/shared/validate"
 
+	"github.com/FuturFusion/migration-manager/internal/scriptlet"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type Batch struct {
-	ID                   int64
-	Name                 string `db:"primary=yes"`
-	Target               string `db:"join=targets.name"`
-	TargetProject        string
-	Status               api.BatchStatusType
-	StatusMessage        string
-	StoragePool          string
-	IncludeExpression    string
-	StartDate            time.Time
-	PostMigrationRetries int
+	ID                int64
+	Name              string `db:"primary=yes"`
+	Status            api.BatchStatusType
+	StatusMessage     string
+	IncludeExpression string
+	StartDate         time.Time
 
-	Constraints []BatchConstraint `db:"marshal=json"`
+	DefaultTarget        string
+	DefaultTargetProject string
+	DefaultStoragePool   string
+
+	RerunScriptlets    bool
+	PlacementScriptlet string
+
+	PostMigrationRetries int
+	Constraints          []BatchConstraint `db:"marshal=json"`
 }
 
 type BatchConstraint struct {
@@ -61,7 +66,7 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, %q is not a valid name: %v", b.Name, err)
 	}
 
-	if b.Target == "" {
+	if b.DefaultTarget == "" {
 		return NewValidationErrf("Invalid batch, target can not be empty")
 	}
 
@@ -88,6 +93,13 @@ func (b Batch) Validate() error {
 
 	if b.Status == api.BATCHSTATUS_DEFINED && !b.StartDate.IsZero() {
 		return NewValidationErrf("Cannot set start time before batch %q has started", b.Name)
+	}
+
+	if b.PlacementScriptlet != "" {
+		err := scriptlet.BatchPlacementValidate(b.PlacementScriptlet, b.Name)
+		if err != nil {
+			return NewValidationErrf("Invalid placement scriptlet: %v", err)
+		}
 	}
 
 	return nil
@@ -299,14 +311,16 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 	return api.Batch{
 		BatchPut: api.BatchPut{
 			Name:                 b.Name,
-			Target:               b.Target,
-			TargetProject:        b.TargetProject,
-			StoragePool:          b.StoragePool,
+			DefaultTarget:        b.DefaultTarget,
+			DefaultTargetProject: b.DefaultTargetProject,
+			DefaultStoragePool:   b.DefaultStoragePool,
 			IncludeExpression:    b.IncludeExpression,
 			MigrationWindows:     apiWindows,
 			Constraints:          constraints,
 			StartDate:            b.StartDate,
 			PostMigrationRetries: b.PostMigrationRetries,
+			RerunScriptlets:      b.RerunScriptlets,
+			PlacementScriptlet:   b.PlacementScriptlet,
 		},
 		Status:        b.Status,
 		StatusMessage: b.StatusMessage,
