@@ -68,6 +68,7 @@ type Daemon struct {
 	source       migration.SourceService
 	target       migration.TargetService
 	queue        migration.QueueService
+	warning      migration.WarningService
 
 	server     *http.Server
 	serverCert *incusTLS.CertInfo
@@ -207,6 +208,7 @@ func (d *Daemon) Start() error {
 		return err
 	}
 
+	d.warning = migration.NewWarningService(sqlite.NewWarning(dbWithTransaction))
 	d.network = migration.NewNetworkService(sqlite.NewNetwork(dbWithTransaction))
 	d.target = migration.NewTargetService(sqlite.NewTarget(dbWithTransaction))
 	d.source = migration.NewSourceService(sqlite.NewSource(dbWithTransaction))
