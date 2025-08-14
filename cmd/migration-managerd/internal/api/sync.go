@@ -102,7 +102,7 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 
 // trySyncAllSources connects to each source in the database and updates the in-memory record of all networks and instances.
 // skipNonResponsiveSources - If true, if a connection to a source returns an error, syncing from that source will be skipped.
-func (d *Daemon) trySyncAllSources(ctx context.Context) error {
+func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 	log := slog.With(slog.String("method", "syncAllSources"))
 	vmSourcesByName := map[string]migration.Source{}
 	networkSourcesByName := map[string]migration.Source{}
@@ -130,6 +130,35 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 	}
 
 	warnings := migration.Warnings{}
+	defer func() {
+		err := transaction.Do(ctx, func(ctx context.Context) error {
+			// If this sync succeeded, then prune warning messages and remove resolved ones.
+			if _err == nil {
+				log.Info("Cleaning up stale warnings")
+				err := d.warning.RemoveStale(ctx, api.WarningScopeSync(), warnings)
+				if err != nil {
+					return fmt.Errorf("Failed to clean up warnings: %w", err)
+				}
+			}
+
+			if len(warnings) > 0 {
+				log.Info("Emitting warnings", slog.Int("warnings", len(warnings)))
+			}
+
+			for _, w := range warnings {
+				_, err := d.warning.Emit(ctx, w)
+				if err != nil {
+					return fmt.Errorf("Failed to trigger warning: %w", err)
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			log.Error("Failed to update sync warnings", slog.Any("error", err))
+		}
+	}()
+
 	networksBySrc := map[string]map[string]migration.Network{}
 	instancesBySrc := map[string]map[uuid.UUID]migration.Instance{}
 	for _, src := range vmSourcesByName {
@@ -244,6 +273,29 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 	}
 
 	warnings := migration.Warnings{}
+	defer func() {
+		err := transaction.Do(ctx, func(ctx context.Context) error {
+			sourceScope := api.WarningScopeSync()
+			sourceScope.Entity = src.Name
+			err := d.warning.RemoveStale(ctx, sourceScope, warnings)
+			if err != nil {
+				return fmt.Errorf("Failed to clean up warnings: %w", err)
+			}
+
+			for _, w := range warnings {
+				_, err := d.warning.Emit(ctx, w)
+				if err != nil {
+					return fmt.Errorf("Failed to trigger warning: %w", err)
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			slog.Error("Failed to update sync warnings", slog.Any("error", err))
+		}
+	}()
+
 	srcNetworks, srcInstances, importWarnings, err := fetchVMWareSourceData(ctx, src)
 	if err != nil {
 		warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, src.Name, err.Error()))
