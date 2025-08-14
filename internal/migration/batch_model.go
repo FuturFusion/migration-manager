@@ -1,12 +1,16 @@
 package migration
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/lxc/incus/v6/shared/validate"
 
+	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/scriptlet"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -55,6 +59,7 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 		TargetProject: b.DefaultTargetProject,
 		StoragePools:  map[string]string{},
 		Networks:      map[string]string{},
+		VlanIDs:       map[string]string{},
 	}
 
 	// Use the same pool for all supported disks by default.
@@ -87,6 +92,23 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 			if networkName == "" {
 				networkName = "br0"
 			}
+
+			vlanID := baseNetwork.Overrides.VlanID
+			if vlanID != "" {
+				resp.VlanIDs[n.ID] = vlanID
+			} else {
+				var netProps internalAPI.VCenterNetworkProperties
+				err := json.Unmarshal(baseNetwork.Properties, &netProps)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to parse network properties for network %q: %w", baseNetwork.Location, err)
+				}
+
+				if len(netProps.VlanRanges) > 0 {
+					resp.VlanIDs[n.ID] = strings.Join(netProps.VlanRanges, ",")
+				} else if netProps.VlanID != 0 {
+					resp.VlanIDs[n.ID] = strconv.Itoa(netProps.VlanID)
+				}
+			}
 		} else {
 			if baseNetwork.Overrides.Name != "" || baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
 				networkName = baseNetwork.ToAPI().Name()
@@ -109,6 +131,10 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 
 	for id, netName := range placement.Networks {
 		resp.Networks[id] = netName
+	}
+
+	for id, vlanID := range placement.VlanIDs {
+		resp.VlanIDs[id] = vlanID
 	}
 
 	for disk, pool := range placement.StoragePools {

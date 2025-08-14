@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
+	"strings"
 
 	"github.com/lxc/incus/v6/shared/scriptlet"
 	"go.starlark.net/starlark"
@@ -12,7 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance api.Instance, batch api.Batch) (*api.Placement, error) {
+func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance api.Instance, batch api.Batch, usedNetworks []api.Network) (*api.Placement, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -125,6 +127,60 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		return starlark.None, nil
 	}
 
+	setVlanFunc := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var nicID string
+		var vlanID string
+		err := starlark.UnpackArgs(b.Name(), args, kwargs, "nic_id", &nicID, "vlan_id", &vlanID)
+		if err != nil {
+			return nil, err
+		}
+
+		if vlanID == "" {
+			slog.Error("Batch placement failed. Target network name is empty")
+			return nil, errors.New("Target network name is empty")
+		}
+
+		for _, id := range strings.Split(vlanID, ",") {
+			intID, err := strconv.Atoi(id)
+			if err != nil || intID == 0 {
+				slog.Error("Batch placement failed. VLAN ID is invalid")
+				return nil, fmt.Errorf("Invalid vlan ID %q: %w", vlanID, err)
+			}
+		}
+
+		var nicExists bool
+		for _, d := range instance.Properties.NICs {
+			if d.ID == nicID {
+				nicExists = true
+				break
+			}
+		}
+
+		if !nicExists {
+			return nil, fmt.Errorf("No NIC found with ID %q on instance %q", nicID, instance.Properties.Location)
+		}
+
+		var supportsVLAN bool
+		for _, n := range usedNetworks {
+			if n.Identifier == nicID && n.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
+				supportsVLAN = true
+				break
+			}
+		}
+
+		if !supportsVLAN {
+			return nil, fmt.Errorf("NIC %q does not support VLAN tagging", nicID)
+		}
+
+		if resp.VlanIDs == nil {
+			resp.VlanIDs = map[string]string{}
+		}
+
+		resp.VlanIDs[nicID] = vlanID
+		slog.Info("Batch placement assigned VLAN ID for instance", slog.String("location", instance.Properties.Location), slog.String("nic", nicID), slog.String("vlan_id", vlanID))
+		return starlark.None, nil
+	}
+
 	env := starlark.StringDict{
 		"log_info":  starlark.NewBuiltin("log_info", logFunc),
 		"log_warn":  starlark.NewBuiltin("log_warn", logFunc),
@@ -134,6 +190,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		"set_project": starlark.NewBuiltin("set_project", setProjectFunc),
 		"set_pool":    starlark.NewBuiltin("set_pool", setPoolFunc),
 		"set_network": starlark.NewBuiltin("set_network", setNetworkFunc),
+		"set_vlan":    starlark.NewBuiltin("set_vlan", setVlanFunc),
 	}
 
 	prog, thread, err := BatchPlacementProgram(loader, batch.Name)

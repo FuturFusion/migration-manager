@@ -59,6 +59,10 @@ type NetworkOverride struct {
 	// Name of the parent bridge to use with a VLAN.
 	// Example: br0
 	BridgeName string `json:"bridge_name" yaml:"bridge_name"`
+
+	// Name of the VLAN ID to use with a VLAN network.
+	// Example: 1
+	VlanID string `json:"vlan_id" yaml:"vlan_id"`
 }
 
 // Name returns the overrided network name, or transforms the default name into an API compatible one.

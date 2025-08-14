@@ -89,6 +89,9 @@ type Placement struct {
 	// Storage pools keyed by attached disk name.
 	StoragePools map[string]string `json:"storage_pools" yaml:"storage_pools"`
 
-	// Networks keyed by attached NIC identifier.
+	// Networks keyed by attached network identifier.
 	Networks map[string]string `json:"networks" yaml:"networks"`
+
+	// VlanIDs keyed by attached network identifier.
+	VlanIDs map[string]string `json:"vlan_ids" yaml:"vlan_ids"`
 }

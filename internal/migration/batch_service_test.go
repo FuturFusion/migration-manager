@@ -1339,6 +1339,7 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 
 func TestBatchService_DeterminePlacement(t *testing.T) {
 	type strMap map[string]string
+	netProps := []byte(`{"vlan_id": 1}`)
 	cases := []struct {
 		name      string
 		scriptlet string
@@ -1352,7 +1353,7 @@ func TestBatchService_DeterminePlacement(t *testing.T) {
 		{
 			name: "success - no scriptlet, no pools or networks",
 
-			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{}, Networks: strMap{}},
+			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{}, Networks: strMap{}, VlanIDs: strMap{}},
 			batchCreateAssertErr: require.NoError,
 			placementAssertErr:   require.NoError,
 		},
@@ -1361,7 +1362,7 @@ func TestBatchService_DeterminePlacement(t *testing.T) {
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}},
 			networks: migration.Networks{},
 
-			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: strMap{}},
+			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: strMap{}, VlanIDs: strMap{}},
 			batchCreateAssertErr: require.NoError,
 			placementAssertErr:   require.NoError,
 		},
@@ -1370,7 +1371,7 @@ func TestBatchService_DeterminePlacement(t *testing.T) {
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}}, // disk2 is unsupported.
 			networks: migration.Networks{},
 
-			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: strMap{}},
+			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: strMap{}, VlanIDs: strMap{}},
 			batchCreateAssertErr: require.NoError,
 			placementAssertErr:   require.NoError,
 		},
@@ -1379,7 +1380,7 @@ func TestBatchService_DeterminePlacement(t *testing.T) {
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
 			networks: migration.Networks{{Identifier: "srcnet1"}},
 
-			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: strMap{"srcnet1": "default"}},
+			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: strMap{"srcnet1": "default"}, VlanIDs: strMap{}},
 			batchCreateAssertErr: require.NoError,
 			placementAssertErr:   require.NoError,
 		},
@@ -1396,7 +1397,7 @@ def placement(instance, batch):
 			set_network("srcnet1", "net1")
 			`,
 
-			placement:            api.Placement{TargetName: "tgt1", TargetProject: "project1", StoragePools: strMap{"disk1": "pool1"}, Networks: strMap{"srcnet1": "net1"}},
+			placement:            api.Placement{TargetName: "tgt1", TargetProject: "project1", StoragePools: strMap{"disk1": "pool1"}, Networks: strMap{"srcnet1": "net1"}, VlanIDs: strMap{}},
 			batchCreateAssertErr: require.NoError,
 			placementAssertErr:   require.NoError,
 		},
@@ -1410,9 +1411,16 @@ def placement(instance, batch):
 				NICs: []api.InstancePropertiesNIC{
 					{ID: "srcnet1"},
 					{ID: "srcnet2"},
+					{ID: "srcnet3"},
+					{ID: "srcnet4"},
 				},
 			},
-			networks: migration.Networks{{Identifier: "srcnet1"}, {Identifier: "srcnet2"}},
+			networks: migration.Networks{
+				{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED, Properties: netProps},
+				{Identifier: "srcnet2", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED, Properties: netProps},
+				{Identifier: "srcnet3"},
+				{Identifier: "srcnet4", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED, Properties: netProps},
+			},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1420,13 +1428,16 @@ def placement(instance, batch):
 			set_project("project1")
 			set_pool("disk1", "pool1")
 			set_network("srcnet1", "net1")
+			set_vlan("srcnet1", "3")
+			set_vlan("srcnet2", "3,2,1")
 			`,
 
 			placement: api.Placement{
 				TargetName:    "tgt1",
 				TargetProject: "project1",
 				StoragePools:  strMap{"disk1": "pool1", "disk2": "default"},
-				Networks:      strMap{"srcnet1": "net1", "srcnet2": "default"},
+				Networks:      strMap{"srcnet1": "net1", "srcnet2": "br0", "srcnet3": "default", "srcnet4": "br0"},
+				VlanIDs:       strMap{"srcnet1": "3", "srcnet2": "3,2,1", "srcnet4": "1"},
 			},
 			batchCreateAssertErr: require.NoError,
 			placementAssertErr:   require.NoError,
@@ -1460,6 +1471,7 @@ def placement(instance, batch):
 				TargetProject: "project1",
 				StoragePools:  strMap{"disk1": "pool1", "disk2": "pool1"},
 				Networks:      strMap{"srcnet1": "net1", "srcnet2": "default"},
+				VlanIDs:       strMap{},
 			},
 			batchCreateAssertErr: require.NoError,
 			placementAssertErr:   require.NoError,
@@ -1524,6 +1536,84 @@ def placement(instance, batch):
 			scriptlet: `
 def placement(instance, batch):
 			set_network("srcnet1", "net1")
+			`,
+
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.Error,
+		},
+		{
+			name:     "error - set target vlan ID for unknown network",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_vlan("srcnet2", "3")
+			`,
+
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.Error,
+		},
+		{
+			name:     "error - set target vlan ID for source network not assigned to instance",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{}},
+			networks: migration.Networks{{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_vlan("srcnet1", "3")
+			`,
+
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.Error,
+		},
+		{
+			name:     "error - set target vlan ID for unsupported source network",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{{Identifier: "srcnet1"}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_vlan("srcnet1", "3")
+			`,
+
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.Error,
+		},
+		{
+			name:     "error - set target vlan ID 0",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_vlan("srcnet1", "0")
+			`,
+
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.Error,
+		},
+		{
+			name:     "error - set target vlan ID list with 0s",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_vlan("srcnet1", "3,0,1")
+			`,
+
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.Error,
+		},
+		{
+			name:     "error - set target vlan ID invalid syntax",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_vlan("srcnet1", "3 0 1")
 			`,
 
 			batchCreateAssertErr: require.NoError,

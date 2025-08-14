@@ -22,7 +22,6 @@ import (
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"gopkg.in/yaml.v3"
 
-	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/properties"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -246,21 +245,27 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		}
 
 		if baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
-			var netProps internalAPI.VCenterNetworkProperties
-			err := json.Unmarshal(baseNetwork.Properties, &netProps)
-			if err != nil {
-				return fmt.Errorf("Failed to parse network properties for network %q: %w", baseNetwork.Location, err)
-			}
-
 			apiDef.Devices[nicDeviceName]["nictype"] = "bridged"
 			apiDef.Devices[nicDeviceName]["parent"] = q.Placement.Networks[nic.ID]
-			if len(netProps.VlanRanges) > 0 {
-				apiDef.Devices[nicDeviceName]["vlan.tagged"] = strings.Join(netProps.VlanRanges, ",")
-			} else {
-				apiDef.Devices[nicDeviceName]["vlan"] = strconv.Itoa(netProps.VlanID)
+
+			vlanID, ok := q.Placement.Networks[nic.ID]
+			if ok {
+				if strings.Contains(vlanID, ",") {
+					apiDef.Devices[nicDeviceName]["vlan.tagged"] = vlanID
+				} else {
+					apiDef.Devices[nicDeviceName]["vlan"] = vlanID
+				}
 			}
 		} else {
 			apiDef.Devices[nicDeviceName]["network"] = q.Placement.Networks[nic.ID]
+			if nic.IPv4Address != "" {
+				ipv4Info, err := nicDefs.Get(properties.InstanceNICIPv4Address)
+				if err != nil {
+					return err
+				}
+
+				apiDef.Devices[nicDeviceName][ipv4Info.Key] = nic.IPv4Address
+			}
 		}
 
 		// Set a few forced overrides.
@@ -273,15 +278,6 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		}
 
 		apiDef.Devices[nicDeviceName][hwAddrInfo.Key] = nic.HardwareAddress
-
-		if nic.IPv4Address != "" {
-			ipv4Info, err := nicDefs.Get(properties.InstanceNICIPv4Address)
-			if err != nil {
-				return err
-			}
-
-			apiDef.Devices[nicDeviceName][ipv4Info.Key] = nic.IPv4Address
-		}
 	}
 
 	// Remove the migration ISO image.

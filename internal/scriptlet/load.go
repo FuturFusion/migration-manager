@@ -30,6 +30,7 @@ func BatchPlacementCompile(name string, src string) (*starlark.Program, error) {
 		"set_project",
 		"set_pool",
 		"set_network",
+		"set_vlan",
 	})
 }
 
