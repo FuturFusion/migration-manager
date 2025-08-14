@@ -27,15 +27,16 @@ func TestBatchService_Create(t *testing.T) {
 		{
 			name: "success",
 			batch: migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Target: "one", IncludeExpression: "true",
-				Status: api.BATCHSTATUS_DEFINED,
+				ID:                1,
+				Name:              "one",
+				DefaultTarget:     "one",
+				IncludeExpression: "true",
+				Status:            api.BATCHSTATUS_DEFINED,
 			},
 			repoCreateBatch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				Target:            "one",
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
 			},
@@ -75,7 +76,7 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				Target:            "", // invalid
+				DefaultTarget:     "", // invalid
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
 			},
@@ -117,7 +118,7 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				Target:            "one",
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
 			},
@@ -130,7 +131,7 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				Target:            "one",
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
 			},
@@ -240,12 +241,12 @@ func TestBatchService_GetAllByState(t *testing.T) {
 				migration.Batch{
 					ID:     1,
 					Name:   "one",
-					Status: api.BATCHSTATUS_QUEUED,
+					Status: api.BATCHSTATUS_RUNNING,
 				},
 				migration.Batch{
 					ID:     2,
 					Name:   "two",
-					Status: api.BATCHSTATUS_QUEUED,
+					Status: api.BATCHSTATUS_RUNNING,
 				},
 			},
 
@@ -273,7 +274,7 @@ func TestBatchService_GetAllByState(t *testing.T) {
 			batchSvc := migration.NewBatchService(repo, nil)
 
 			// Run test
-			batches, err := batchSvc.GetAllByState(context.Background(), api.BATCHSTATUS_QUEUED)
+			batches, err := batchSvc.GetAllByState(context.Background(), api.BATCHSTATUS_RUNNING)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -403,14 +404,14 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "new-one",
-				Target:            "one",
+				DefaultTarget:     "one",
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
-				Target:            "one",
+				DefaultTarget:     "one",
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
 			},
@@ -420,10 +421,10 @@ func TestBatchService_UpdateByID(t *testing.T) {
 		{
 			name: "error - invalid id",
 			batch: migration.Batch{
-				ID:     -1, // invalid
-				Name:   "new-one",
-				Target: "one",
-				Status: api.BATCHSTATUS_DEFINED,
+				ID:            -1, // invalid
+				Name:          "new-one",
+				DefaultTarget: "one",
+				Status:        api.BATCHSTATUS_DEFINED,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -434,10 +435,10 @@ func TestBatchService_UpdateByID(t *testing.T) {
 		{
 			name: "error - name empty",
 			batch: migration.Batch{
-				ID:     1,
-				Name:   "", // empty
-				Target: "one",
-				Status: api.BATCHSTATUS_DEFINED,
+				ID:            1,
+				Name:          "", // empty
+				DefaultTarget: "one",
+				Status:        api.BATCHSTATUS_DEFINED,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -451,7 +452,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "new-one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				Target:            "one",
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 			},
 			repoGetByNameErr: boom.Error,
@@ -464,14 +465,14 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "new-one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				Target:            "one",
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				Target:            "one",
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 			},
 
@@ -485,14 +486,14 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				Target:            "one",
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 			},
 			repoGetByNameBatch: &migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Target: "one",
-				Status: api.BATCHSTATUS_DEFINED,
+				ID:            1,
+				Name:          "one",
+				DefaultTarget: "one",
+				Status:        api.BATCHSTATUS_DEFINED,
 			},
 			repoUpdateErr: boom.Error,
 
@@ -504,14 +505,14 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				Target:            "one",
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 			},
 			repoGetByNameBatch: &migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Target: "one",
-				Status: api.BATCHSTATUS_DEFINED,
+				ID:            1,
+				Name:          "one",
+				DefaultTarget: "one",
+				Status:        api.BATCHSTATUS_DEFINED,
 			},
 			instanceSvcGetAllByBatchIDErr: boom.Error,
 
@@ -794,8 +795,8 @@ func TestBatchService_UpdateStatusByName(t *testing.T) {
 			repoUpdateStatusByNameBatch: &migration.Batch{
 				ID:            1,
 				Name:          "one",
-				Status:        api.BATCHSTATUS_QUEUED,
-				StatusMessage: string(api.BATCHSTATUS_QUEUED),
+				Status:        api.BATCHSTATUS_RUNNING,
+				StatusMessage: string(api.BATCHSTATUS_RUNNING),
 			},
 
 			assertErr: require.NoError,
@@ -824,7 +825,7 @@ func TestBatchService_UpdateStatusByName(t *testing.T) {
 			batchSvc := migration.NewBatchService(repo, nil)
 
 			// Run test
-			batch, err := batchSvc.UpdateStatusByName(context.Background(), tc.nameArg, api.BATCHSTATUS_QUEUED, string(api.BATCHSTATUS_QUEUED))
+			batch, err := batchSvc.UpdateStatusByName(context.Background(), tc.nameArg, api.BATCHSTATUS_RUNNING, string(api.BATCHSTATUS_RUNNING))
 
 			// Assert
 			tc.assertErr(t, err)
@@ -899,7 +900,7 @@ func TestBatchService_DeleteByName(t *testing.T) {
 			repoGetByNameBatch: &migration.Batch{
 				ID:     1,
 				Name:   "one",
-				Status: api.BATCHSTATUS_QUEUED,
+				Status: api.BATCHSTATUS_RUNNING,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -1013,7 +1014,7 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 			repoGetByNameBatch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				Target:            "one",
+				DefaultTarget:     "one",
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
 			},
@@ -1041,8 +1042,8 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 			repoGetByNameBatch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				Target:            "one",
-				Status:            api.BATCHSTATUS_QUEUED,
+				DefaultTarget:     "one",
+				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
 			},
 
@@ -1057,7 +1058,7 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				Target:            "one",
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 			},
 			repoUpdateStatusByIDErr: boom.Error,
@@ -1105,8 +1106,8 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
-				Status:            api.BATCHSTATUS_QUEUED,
-				Target:            "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 			},
 
@@ -1134,7 +1135,7 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				Target:            "one",
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 			},
 
@@ -1148,8 +1149,8 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
-				Status:            api.BATCHSTATUS_QUEUED,
-				Target:            "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				DefaultTarget:     "one",
 				IncludeExpression: "true",
 			},
 			repoUpdateStatusByIDErr: boom.Error,
@@ -1333,5 +1334,236 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 
 			require.Equal(t, tc.wantResult, res)
 		})
+	}
+}
+
+func TestBatchService_DeterminePlacement(t *testing.T) {
+	type strMap map[string]string
+	cases := []struct {
+		name      string
+		scriptlet string
+		instance  api.InstanceProperties
+		networks  migration.Networks
+
+		batchCreateAssertErr require.ErrorAssertionFunc
+		placementAssertErr   require.ErrorAssertionFunc
+		placement            api.Placement
+	}{
+		{
+			name: "success - no scriptlet, no pools or networks",
+
+			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{}, Networks: strMap{}},
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.NoError,
+		},
+		{
+			name:     "success - no scriptlet, with supported disk",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}},
+			networks: migration.Networks{},
+
+			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: strMap{}},
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.NoError,
+		},
+		{
+			name:     "success - no scriptlet, with supported disk and unsupported disk",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}}, // disk2 is unsupported.
+			networks: migration.Networks{},
+
+			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: strMap{}},
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.NoError,
+		},
+		{
+			name:     "success - no scriptlet, with supported disk and network",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{{Identifier: "srcnet1"}},
+
+			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: strMap{"srcnet1": "default"}},
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.NoError,
+		},
+		{
+			name:     "success - with scriptlet",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{{Identifier: "srcnet1"}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_target("tgt1")
+			set_project("project1")
+			set_pool("disk1", "pool1")
+			set_network("srcnet1", "net1")
+			`,
+
+			placement:            api.Placement{TargetName: "tgt1", TargetProject: "project1", StoragePools: strMap{"disk1": "pool1"}, Networks: strMap{"srcnet1": "net1"}},
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.NoError,
+		},
+		{
+			name: "success - with scriptlet modifying only some networks/pools",
+			instance: api.InstanceProperties{
+				Disks: []api.InstancePropertiesDisk{
+					{Name: "disk1", Supported: true},
+					{Name: "disk2", Supported: true},
+				},
+				NICs: []api.InstancePropertiesNIC{
+					{ID: "srcnet1"},
+					{ID: "srcnet2"},
+				},
+			},
+			networks: migration.Networks{{Identifier: "srcnet1"}, {Identifier: "srcnet2"}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_target("tgt1")
+			set_project("project1")
+			set_pool("disk1", "pool1")
+			set_network("srcnet1", "net1")
+			`,
+
+			placement: api.Placement{
+				TargetName:    "tgt1",
+				TargetProject: "project1",
+				StoragePools:  strMap{"disk1": "pool1", "disk2": "default"},
+				Networks:      strMap{"srcnet1": "net1", "srcnet2": "default"},
+			},
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.NoError,
+		},
+		{
+			name: "success - with dynamic pool assignment",
+			instance: api.InstanceProperties{
+				Disks: []api.InstancePropertiesDisk{
+					{Name: "disk1", Supported: true},
+					{Name: "disk2", Supported: true},
+				},
+				NICs: []api.InstancePropertiesNIC{
+					{ID: "srcnet1"},
+					{ID: "srcnet2"},
+				},
+			},
+			networks: migration.Networks{{Identifier: "srcnet1"}, {Identifier: "srcnet2"}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_target("tgt1")
+			set_project("project1")
+			for disk in instance.properties.disks:
+			  if disk.supported:
+			    set_pool(disk.name, "pool1")
+			set_network("srcnet1", "net1")
+			`,
+
+			placement: api.Placement{
+				TargetName:    "tgt1",
+				TargetProject: "project1",
+				StoragePools:  strMap{"disk1": "pool1", "disk2": "pool1"},
+				Networks:      strMap{"srcnet1": "net1", "srcnet2": "default"},
+			},
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.NoError,
+		},
+		{
+			name:     "error - scriptlet syntax",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{{Identifier: "srcnet1"}},
+
+			scriptlet: `
+def some_other_func(some_other_field):
+			set_target("test")
+			`,
+
+			batchCreateAssertErr: require.Error,
+			placementAssertErr:   require.NoError,
+		},
+		{
+			name:     "error - set target pool for unknown disk",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{{Identifier: "srcnet1"}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_pool("some_disk", "pool1")
+			`,
+
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.Error,
+		},
+		{
+			name:     "error - set target pool for unsupported disk",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{{Identifier: "srcnet1"}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_pool("disk2", "pool1")
+			`,
+
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.Error,
+		},
+		{
+			name:     "error - set target network for source instance network with no source",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
+			networks: migration.Networks{}, // No associated network object for the instance's network.
+
+			scriptlet: `
+def placement(instance, batch):
+			set_network("srcnet1", "net1")
+			`,
+
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.Error,
+		},
+		{
+			name:     "error - set target network for source network not assigned to instance",
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{}},
+			networks: migration.Networks{{Identifier: "srcnet1"}},
+
+			scriptlet: `
+def placement(instance, batch):
+			set_network("srcnet1", "net1")
+			`,
+
+			batchCreateAssertErr: require.NoError,
+			placementAssertErr:   require.Error,
+		},
+	}
+
+	for i, tc := range cases {
+		t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
+		ctx := context.Background()
+		repo := &mock.BatchRepoMock{
+			CreateFunc: func(ctx context.Context, batch migration.Batch) (int64, error) {
+				return 1, nil
+			},
+		}
+
+		instanceSvc := &InstanceServiceMock{
+			GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) { return nil, nil },
+			GetAllFunc:        func(ctx context.Context) (migration.Instances, error) { return nil, nil },
+		}
+
+		batchSvc := migration.NewBatchService(repo, instanceSvc)
+		batch, err := batchSvc.Create(ctx, migration.Batch{
+			Name:                 "testbatch",
+			Status:               api.BATCHSTATUS_DEFINED,
+			IncludeExpression:    "true",
+			DefaultTarget:        "default",
+			DefaultTargetProject: "default",
+			DefaultStoragePool:   "default",
+			PlacementScriptlet:   tc.scriptlet,
+		})
+		tc.batchCreateAssertErr(t, err)
+
+		if err == nil {
+			placement, err := batchSvc.DeterminePlacement(ctx, migration.Instance{Properties: tc.instance}, tc.networks, batch, migration.MigrationWindows{})
+			tc.placementAssertErr(t, err)
+
+			if err == nil {
+				require.Equal(t, tc.placement, *placement)
+			}
+		}
 	}
 }

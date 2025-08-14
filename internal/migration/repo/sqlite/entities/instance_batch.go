@@ -79,7 +79,6 @@ FROM batches
 JOIN instances_batches ON instances_batches.batch_id = batches.id
 JOIN instances ON instances_batches.instance_id = instances.id
 JOIN sources ON instances.source_id = sources.id
-JOIN targets ON batches.target_id = targets.id
 WHERE instances.uuid = ?
 ORDER BY batches.name
 `, batchColumns())
@@ -91,7 +90,6 @@ ORDER BY batches.name
 FROM batches
 LEFT_JOIN instances_batches ON instances_batches.batch_id = batches.id
 JOIN sources ON instances.source_id = sources.id
-JOIN targets ON batches.target_id = targets.id
 WHERE instances_batches.batch_id IS NULL
 ORDER BY batches.name
 `, batchColumns())

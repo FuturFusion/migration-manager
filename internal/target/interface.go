@@ -12,6 +12,8 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
+//go:generate go run github.com/matryer/moq -fmt goimports -out mock_gen.go -rm . Target
+
 // Target interface definition for all migration manager targets.
 type Target interface {
 	// Connects to the target.
@@ -70,22 +72,22 @@ type Target interface {
 	SetProject(project string) error
 
 	// SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
-	SetPostMigrationVMConfig(i migration.Instance, allNetworks map[string]migration.Network) error
+	SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry, allNetworks migration.Networks) error
 
 	// Creates a VM definition for use with the Incus REST API.
-	CreateVMDefinition(instanceDef migration.Instance, sourceName string, storagePool string) incusAPI.InstancesPost
+	CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string) (incusAPI.InstancesPost, error)
 
 	// Creates a new VM from the pre-populated API definition.
-	CreateNewVM(apiDef incusAPI.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) error
+	CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string, driversISOImage string) (func(), error)
 
 	// Deletes a VM.
-	DeleteVM(name string) error
+	DeleteVM(ctx context.Context, name string) error
 
 	// Starts a VM.
-	StartVM(name string) error
+	StartVM(ctx context.Context, name string) error
 
 	// Stops a VM.
-	StopVM(name string, force bool) error
+	StopVM(ctx context.Context, name string, force bool) error
 
 	// Push a file into a running instance.
 	PushFile(instanceName string, file string, destDir string) error
@@ -109,5 +111,14 @@ type Target interface {
 	CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string) ([]incus.Operation, error)
 
 	// Wrapper around Incus' CreateStoragePoolVolumeFromISO.
-	CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) (incus.Operation, error)
+	CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) ([]incus.Operation, error)
+
+	// CheckIncusAgent repeatedly calls Exec on the instance until the context errors out, or the exec succeeds.
+	CheckIncusAgent(ctx context.Context, instanceName string) error
+
+	// CleanupVM fully deletes the VM and all of its volumes.
+	CleanupVM(ctx context.Context, name string) error
+
+	// GetDetails fetches top-level details about the entities that exist on the target.
+	GetDetails(ctx context.Context) (*IncusDetails, error)
 }

@@ -30,6 +30,8 @@ type BatchService interface {
 	GetMigrationWindows(ctx context.Context, batch string) (MigrationWindows, error)
 	GetMigrationWindow(ctx context.Context, windowID int64) (*MigrationWindow, error)
 	GetEarliestWindow(ctx context.Context, batch string) (*MigrationWindow, error)
+
+	DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, migrationWindows MigrationWindows) (*api.Placement, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/batch_repo_mock_gen.go -rm . BatchRepo

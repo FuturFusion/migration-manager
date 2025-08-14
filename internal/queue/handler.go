@@ -45,9 +45,9 @@ func NewMigrationHandler(b migration.BatchService, i migration.InstanceService, 
 // MigrationState is a cache of all migration data for a batch, queued by instance.
 type MigrationState struct {
 	Batch            migration.Batch
-	Target           migration.Target
 	MigrationWindows migration.MigrationWindows
 
+	Targets      map[uuid.UUID]migration.Target
 	QueueEntries map[uuid.UUID]migration.QueueEntry
 	Instances    map[uuid.UUID]migration.Instance
 	Sources      map[uuid.UUID]migration.Source
@@ -154,16 +154,21 @@ func (s *Handler) GetMigrationState(ctx context.Context, batchStatus api.BatchSt
 			Batch:            b,
 			MigrationWindows: windowsByBatch[b.Name],
 			QueueEntries:     queueMap[b.Name],
-			Target:           tgtMap[b.Target],
 			Instances:        map[uuid.UUID]migration.Instance{},
 			Sources:          map[uuid.UUID]migration.Source{},
+			Targets:          map[uuid.UUID]migration.Target{},
 		}
 
 		for _, inst := range instances {
-			_, ok := state.QueueEntries[inst.UUID]
+			q, ok := state.QueueEntries[inst.UUID]
 			if ok {
 				state.Instances[inst.UUID] = inst
 				state.Sources[inst.UUID] = srcMap[inst.Source]
+
+				tgt, ok := tgtMap[q.Placement.TargetName]
+				if ok {
+					state.Targets[inst.UUID] = tgt
+				}
 			}
 		}
 

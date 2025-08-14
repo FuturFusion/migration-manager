@@ -91,7 +91,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 	batchesByName := map[string]api.Batch{}
 	header := []string{"Name", "Batch", "Last Update", "Status", "Status Message", "Migration Window"}
 	if c.flagVerbose {
-		header = append(header, "UUID", "Batch Status", "Batch Status Message")
+		header = append(header, "UUID", "Batch Status", "Batch Status Message", "Target", "Target Project`")
 
 		// Get the current migration queue.
 		resp, err := c.global.doHTTPRequestV1("/batches", http.MethodGet, "recursion=1", nil)
@@ -133,7 +133,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 
 		row := []string{q.InstanceName, q.BatchName, lastUpdate, string(q.MigrationStatus), q.MigrationStatusMessage, window}
 		if c.flagVerbose {
-			row = append(row, q.InstanceUUID.String(), string(batchesByName[q.BatchName].Status), batchesByName[q.BatchName].StatusMessage)
+			row = append(row, q.InstanceUUID.String(), string(batchesByName[q.BatchName].Status), batchesByName[q.BatchName].StatusMessage, q.Placement.TargetName, q.Placement.TargetProject)
 		}
 
 		data = append(data, row)

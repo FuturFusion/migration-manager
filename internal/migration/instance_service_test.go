@@ -648,7 +648,7 @@ func TestInstanceService_Update(t *testing.T) {
 				Source: "one",
 			},
 			instanceSvcGetBatchesByUUID: migration.Batches{
-				{Status: api.BATCHSTATUS_QUEUED},
+				{Status: api.BATCHSTATUS_RUNNING},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {

@@ -18,27 +18,27 @@ import (
 
 var (
 	batchA = migration.Batch{
-		Name:              "BatchA",
-		Target:            "TestTarget",
-		TargetProject:     "default",
-		StoragePool:       "pool1",
-		IncludeExpression: "include",
+		Name:                 "BatchA",
+		DefaultTarget:        "TestTarget",
+		DefaultTargetProject: "default",
+		DefaultStoragePool:   "pool1",
+		IncludeExpression:    "include",
 	}
 
 	batchB = migration.Batch{
-		Name:              "BatchB",
-		Target:            "TestTarget",
-		TargetProject:     "m-project",
-		StoragePool:       "pool2",
-		IncludeExpression: "",
+		Name:                 "BatchB",
+		DefaultTarget:        "TestTarget",
+		DefaultTargetProject: "m-project",
+		DefaultStoragePool:   "pool2",
+		IncludeExpression:    "",
 	}
 
 	batchC = migration.Batch{
-		Name:              "BatchC",
-		Target:            "TestTarget",
-		TargetProject:     "default",
-		StoragePool:       "pool3",
-		IncludeExpression: "include",
+		Name:                 "BatchC",
+		DefaultTarget:        "TestTarget",
+		DefaultTargetProject: "default",
+		DefaultStoragePool:   "pool3",
+		IncludeExpression:    "include",
 	}
 
 	windows = migration.MigrationWindows{
@@ -80,9 +80,6 @@ func TestBatchDatabaseActions(t *testing.T) {
 	targetSvc := migration.NewTargetService(sqlite.NewTarget(tx))
 	batch := sqlite.NewBatch(tx)
 
-	// Cannot add a batch with an invalid target.
-	_, err = batch.Create(ctx, batchA)
-	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 	_, err = targetSvc.Create(ctx, testTarget)
 	require.NoError(t, err)
 
@@ -135,10 +132,6 @@ func TestBatchDatabaseActions(t *testing.T) {
 	wB, err = batch.GetMigrationWindowsByBatch(ctx, batchB.Name)
 	require.NoError(t, err)
 	require.Len(t, wB, 3)
-
-	// Cannot delete a target if referenced by a batch.
-	err = targetSvc.DeleteByName(ctx, testTarget.Name)
-	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
 	// Should get back batchA unchanged.
 	dbBatchA, err := batch.GetByName(ctx, batchA.Name)

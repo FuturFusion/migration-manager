@@ -11,19 +11,23 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incusUtil "github.com/lxc/incus/v6/shared/util"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/migration"
-	"github.com/FuturFusion/migration-manager/internal/migration/endpoint/mock"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
+	"github.com/FuturFusion/migration-manager/internal/queue"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/testcert"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -47,8 +51,9 @@ func TestTargetsGet(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{targetsCmd})
-			seedDBWithSingleTarget(t, daemon)
+			daemon := daemonSetup(t)
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd})
+			seedDBWithConnectivityTarget(t, daemon)
 
 			// Execute test
 			statusCode, body := probeAPI(t, client, http.MethodGet, srvURL+"/1.0/targets", http.NoBody, nil)
@@ -94,8 +99,9 @@ func TestTargetsPost(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{targetsCmd})
-			seedDBWithSingleTarget(t, daemon)
+			daemon := daemonSetup(t)
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd})
+			seedDBWithConnectivityTarget(t, daemon)
 
 			// Execute test
 			statusCode, _ := probeAPI(t, client, http.MethodPost, srvURL+"/1.0/targets", bytes.NewBufferString(tc.targetJSON), nil)
@@ -153,8 +159,9 @@ func TestTargetDelete(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
-			seedDBWithSingleTarget(t, daemon)
+			daemon := daemonSetup(t)
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd, targetCmd})
+			seedDBWithConnectivityTarget(t, daemon)
 
 			// Execute test
 			statusCode, _ := probeAPI(t, client, http.MethodDelete, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), http.NoBody, nil)
@@ -214,8 +221,9 @@ func TestTargetGet(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
-			seedDBWithSingleTarget(t, daemon)
+			daemon := daemonSetup(t)
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd, targetCmd})
+			seedDBWithConnectivityTarget(t, daemon)
 
 			// Execute test
 			statusCode, body := probeAPI(t, client, http.MethodGet, srvURL+fmt.Sprintf("/1.0/targets/%s", tc.targetName), http.NoBody, nil)
@@ -312,8 +320,9 @@ func TestTargetPut(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
-			daemon, client, srvURL := daemonSetup(t, []APIEndpoint{targetCmd})
-			seedDBWithSingleTarget(t, daemon)
+			daemon := daemonSetup(t)
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd, targetCmd})
+			seedDBWithConnectivityTarget(t, daemon)
 
 			headers := map[string]string{
 				"If-Match": tc.targetEtag,
@@ -349,7 +358,7 @@ func probeAPI(t *testing.T, client *http.Client, method string, url string, requ
 	return resp.StatusCode, string(body)
 }
 
-func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, string) {
+func daemonSetup(t *testing.T) *Daemon {
 	t.Helper()
 
 	var err error
@@ -357,6 +366,8 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
 
 	tmpDir := t.TempDir()
+	require.NoError(t, os.Setenv("MIGRATION_MANAGER_DIR", tmpDir))
+	require.NoError(t, os.Unsetenv("MIGRATION_MANAGER_TESTING"))
 
 	daemon := NewDaemon(&config.DaemonConfig{
 		TrustedTLSClientCertFingerprints: []string{testcert.LocalhostCertFingerprint},
@@ -370,9 +381,32 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 
 	daemon.source = migration.NewSourceService(sqlite.NewSource(tx))
 	daemon.target = migration.NewTargetService(sqlite.NewTarget(tx))
+	daemon.instance = migration.NewInstanceService(sqlite.NewInstance(tx))
+	daemon.batch = migration.NewBatchService(sqlite.NewBatch(tx), daemon.instance)
+	daemon.queue = migration.NewQueueService(sqlite.NewQueue(tx), daemon.batch, daemon.instance, daemon.source, daemon.target)
+	daemon.network = migration.NewNetworkService(sqlite.NewNetwork(tx))
+	daemon.queueHandler = queue.NewMigrationHandler(daemon.batch, daemon.instance, daemon.network, daemon.source, daemon.target, daemon.queue)
+
+	daemon.serverCert, err = incusTLS.KeyPairAndCA(daemon.os.VarDir, "server", incusTLS.CertServer, true)
+	require.NoError(t, err)
+	fp, err := incusTLS.CertFingerprintStr(string(daemon.serverCert.PublicKey()))
+	require.NoError(t, err)
+	daemon.config.TrustedTLSClientCertFingerprints = append(daemon.config.TrustedTLSClientCertFingerprints, fp)
 
 	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, logger, daemon.config.TrustedTLSClientCertFingerprints)
 	require.NoError(t, err)
+
+	return daemon
+}
+
+func startTestDaemon(t *testing.T, daemon *Daemon, endpoints []APIEndpoint) (*http.Client, string) {
+	t.Helper()
+
+	for _, dir := range []string{daemon.os.CacheDir, daemon.os.LogDir, daemon.os.RunDir, daemon.os.VarDir, daemon.os.LocalDatabaseDir()} {
+		if !incusUtil.PathExists(dir) {
+			require.NoError(t, os.MkdirAll(dir, 0o755))
+		}
+	}
 
 	router := http.NewServeMux()
 	for _, cmd := range endpoints {
@@ -384,40 +418,52 @@ func daemonSetup(t *testing.T, endpoints []APIEndpoint) (*Daemon, *http.Client, 
 	srv.TLS.ClientAuth = tls.RequestClientCert
 
 	// Get a HTTPS client for the test server and configure to use a test client certificate.
-	cert, err := tls.X509KeyPair(testcert.LocalhostCert, testcert.LocalhostKey)
-	require.NoError(t, err)
 	client := srv.Client()
 	transport, ok := client.Transport.(*http.Transport)
 	require.True(t, ok)
-	transport.TLSClientConfig.Certificates = []tls.Certificate{cert}
+	transport.TLSClientConfig.Certificates = []tls.Certificate{daemon.ServerCert().KeyPair()}
+	client.Transport = transport
 
 	t.Cleanup(srv.Close)
 
-	return daemon, client, srv.URL
+	return client, srv.URL
 }
 
-func seedDBWithSingleTarget(t *testing.T, daemon *Daemon) {
+func seedDBWithConnectivityTarget(t *testing.T, daemon *Daemon) {
+	t.Helper()
+
+	tgt := &target.TargetMock{
+		ConnectFunc: func(ctx context.Context) error {
+			return nil
+		},
+		DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
+			return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
+		},
+		IsWaitingForOIDCTokensFunc: func() bool {
+			return false
+		},
+		GetNameFunc: func() string {
+			return "foo"
+		},
+	}
+
+	seedDBWithTargets(t, daemon, []target.Target{tgt})
+}
+
+func seedDBWithTargets(t *testing.T, daemon *Daemon, targets []target.Target) {
 	t.Helper()
 	ctx := context.TODO()
 
-	_, err := daemon.target.Create(ctx, migration.Target{
-		Name:       "foo",
-		TargetType: api.TARGETTYPE_INCUS,
-		Properties: json.RawMessage(`{"endpoint": "bar"}`),
-		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
-			return &mock.TargetEndpointMock{
-				ConnectFunc: func(ctx context.Context) error {
-					return nil
-				},
-				DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
-					return api.EXTERNALCONNECTIVITYSTATUS_OK, nil
-				},
-				IsWaitingForOIDCTokensFunc: func() bool {
-					return false
-				},
-			}, nil
-		},
-	},
-	)
-	require.NoError(t, err)
+	for _, tgt := range targets {
+		_, err := daemon.target.Create(ctx, migration.Target{
+			Name:       tgt.GetName(),
+			TargetType: api.TARGETTYPE_INCUS,
+			Properties: json.RawMessage(`{"endpoint": "bar"}`),
+			EndpointFunc: func(s api.Target) (migration.TargetEndpoint, error) {
+				return tgt, nil
+			},
+		})
+
+		require.NoError(t, err)
+	}
 }

@@ -11,11 +11,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	incus "github.com/lxc/incus/v6/client"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
@@ -38,7 +38,18 @@ type InternalIncusTarget struct {
 	incusClient         incus.InstanceServer
 }
 
-func NewInternalIncusTargetFrom(apiTarget api.Target) (*InternalIncusTarget, error) {
+var _ Target = &InternalIncusTarget{}
+
+var NewTarget = func(t api.Target) (Target, error) {
+	switch t.TargetType {
+	case api.TARGETTYPE_INCUS:
+		return newInternalIncusTargetFrom(t)
+	default:
+		return nil, fmt.Errorf("Unknown target type %q", t.TargetType)
+	}
+}
+
+func newInternalIncusTargetFrom(apiTarget api.Target) (*InternalIncusTarget, error) {
 	if apiTarget.TargetType != api.TARGETTYPE_INCUS {
 		return nil, errors.New("Target is not of type Incus")
 	}
@@ -190,7 +201,7 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 }
 
 // SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
-func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, allNetworks migration.Networks) error {
+func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry, allNetworks migration.Networks) error {
 	props := i.Properties
 	props.Apply(i.Overrides.Properties)
 
@@ -242,23 +253,14 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 			}
 
 			apiDef.Devices[nicDeviceName]["nictype"] = "bridged"
-			parentBridge := baseNetwork.Overrides.BridgeName
-			if parentBridge == "" {
-				parentBridge = "br0"
-			}
-
-			apiDef.Devices[nicDeviceName]["parent"] = parentBridge
+			apiDef.Devices[nicDeviceName]["parent"] = q.Placement.Networks[nic.ID]
 			if len(netProps.VlanRanges) > 0 {
 				apiDef.Devices[nicDeviceName]["vlan.tagged"] = strings.Join(netProps.VlanRanges, ",")
 			} else {
 				apiDef.Devices[nicDeviceName]["vlan"] = strconv.Itoa(netProps.VlanID)
 			}
 		} else {
-			if baseNetwork.Overrides.Name != "" || baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
-				apiDef.Devices[nicDeviceName]["network"] = baseNetwork.ToAPI().Name()
-			} else {
-				apiDef.Devices[nicDeviceName]["network"] = "default"
-			}
+			apiDef.Devices[nicDeviceName]["network"] = q.Placement.Networks[nic.ID]
 		}
 
 		// Set a few forced overrides.
@@ -445,7 +447,7 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 	return instance, nil
 }
 
-func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, secretToken uuid.UUID, storagePool string, fingerprint string, endpoint string) (incusAPI.InstancesPost, error) {
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string) (incusAPI.InstancesPost, error) {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
@@ -465,7 +467,12 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 		return incusAPI.InstancesPost{}, err
 	}
 
-	ret, err = t.fillInitialProperties(ret, props, storagePool, defs)
+	if len(instanceDef.Properties.Disks) < 1 {
+		return incusAPI.InstancesPost{}, fmt.Errorf("Instance %q has no disks", props.Location)
+	}
+
+	rootDisk := instanceDef.Properties.Disks[0]
+	ret, err = t.fillInitialProperties(ret, props, q.Placement.StoragePools[rootDisk.Name], defs)
 	if err != nil {
 		return incusAPI.InstancesPost{}, err
 	}
@@ -478,7 +485,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	ret.Config["user.migration.hwaddrs"] = strings.Join(hwaddrs, " ")
 	ret.Config["user.migration.source_type"] = "VMware"
 	ret.Config["user.migration.source"] = instanceDef.Source
-	ret.Config["user.migration.token"] = secretToken.String()
+	ret.Config["user.migration.token"] = q.SecretToken.String()
 	ret.Config["user.migration.fingerprint"] = fingerprint
 	ret.Config["user.migration.endpoint"] = endpoint
 	ret.Config["user.migration.uuid"] = instanceDef.UUID.String()
@@ -496,14 +503,19 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	return ret, nil
 }
 
-func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, storagePool string, bootISOImage string, driversISOImage string) (func(), error) {
+func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string, driversISOImage string) (func(), error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
+	if len(instDef.Properties.Disks) < 1 {
+		return nil, fmt.Errorf("Instance %q has no disks", instDef.Properties.Location)
+	}
+
+	rootPool := placement.StoragePools[instDef.Properties.Disks[0].Name]
 	// Attach bootable ISO to run migration of this VM.
 	apiDef.Devices[util.WorkerVolume()] = map[string]string{
 		"type":          "disk",
-		"pool":          storagePool,
+		"pool":          rootPool,
 		"source":        bootISOImage,
 		"boot.priority": "10",
 		"readonly":      "true",
@@ -518,7 +530,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 
 		apiDef.Devices["drivers"] = map[string]string{
 			"type":   "disk",
-			"pool":   storagePool,
+			"pool":   rootPool,
 			"source": driversISOImage,
 		}
 	}
@@ -549,7 +561,6 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 
 		tgtClient := t.incusClient.UseTarget(instInfo.Location)
 		defaultDiskDef := map[string]string{
-			"pool": storagePool,
 			"type": "disk",
 		}
 
@@ -559,6 +570,8 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 				continue
 			}
 
+			storagePool := placement.StoragePools[disk.Name]
+			defaultDiskDef["pool"] = storagePool
 			diskKey := fmt.Sprintf("disk%d", i+1)
 			diskName := apiDef.Name + "-" + diskKey
 			reverter.Add(func() {
@@ -777,6 +790,10 @@ func (t *InternalIncusTarget) GetInstanceNames() ([]string, error) {
 
 func (t *InternalIncusTarget) GetInstance(name string) (*incusAPI.Instance, string, error) {
 	return t.incusClient.GetInstance(name)
+}
+
+func (t *InternalIncusTarget) GetNetworkNames() ([]string, error) {
+	return t.incusClient.GetNetworkNames()
 }
 
 func (t *InternalIncusTarget) UpdateInstance(name string, instanceDef incusAPI.InstancePut, ETag string) (incus.Operation, error) {
@@ -1019,32 +1036,87 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 	return util.CreateTarball(backupPath, filepath.Join(tmpDir, "backup"))
 }
 
-func (t *InternalIncusTarget) ReadyForMigration(ctx context.Context, targetProject string, instances map[uuid.UUID]migration.Instance) error {
-	// Connect to the target.
-	err := t.Connect(ctx)
+type IncusDetails struct {
+	Name               string
+	Projects           []string
+	StoragePools       []string
+	NetworksByProject  map[string][]string
+	InstancesByProject map[string][]string
+}
+
+// GetDetails fetches top-level details about the entities that exist on the target.
+func (t *InternalIncusTarget) GetDetails(ctx context.Context) (*IncusDetails, error) {
+	if t.isConnected {
+		return nil, fmt.Errorf("Not connected to endpoint %q", t.Endpoint)
+	}
+
+	projects, err := t.incusClient.GetProjectNames()
 	if err != nil {
-		return fmt.Errorf("Failed to connect to target %q: %w", t.GetName(), err)
+		return nil, err
 	}
 
-	// Set the project.
-	err = t.SetProject(targetProject)
+	pools, err := t.incusClient.GetStoragePoolNames()
 	if err != nil {
-		return fmt.Errorf("Failed to set project %q for target %q: %w", targetProject, t.GetName(), err)
+		return nil, err
 	}
 
-	targetInstances, err := t.GetInstanceNames()
-	if err != nil {
-		return fmt.Errorf("Failed to get instancs in project %q of target %q: %w", targetProject, t.GetName(), err)
+	networksByProject := map[string][]string{}
+	for _, p := range projects {
+		client := t.incusClient.UseProject(p)
+		networks, err := client.GetNetworkNames()
+		if err != nil {
+			return nil, err
+		}
+
+		networksByProject[p] = networks
 	}
 
-	targetInstanceMap := make(map[string]bool, len(targetInstances))
-	for _, inst := range targetInstances {
-		targetInstanceMap[inst] = true
+	instancesByProject := map[string][]string{}
+	for _, p := range projects {
+		client := t.incusClient.UseProject(p)
+		instances, err := client.GetInstanceNames(incusAPI.InstanceTypeAny)
+		if err != nil {
+			return nil, err
+		}
+
+		instancesByProject[p] = instances
 	}
 
-	for _, inst := range instances {
-		if targetInstanceMap[inst.GetName()] {
-			return fmt.Errorf("Another instance with name %q already exists", inst.GetName())
+	return &IncusDetails{
+		Name:               t.GetName(),
+		Projects:           projects,
+		StoragePools:       pools,
+		NetworksByProject:  networksByProject,
+		InstancesByProject: instancesByProject,
+	}, nil
+}
+
+func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Placement, inst api.Instance) error {
+	if info == nil {
+		return fmt.Errorf("Target %q does not exist", placement.TargetName)
+	}
+
+	if info.Name != placement.TargetName {
+		return fmt.Errorf("Expected target %q but got %q", placement.TargetName, info.Name)
+	}
+
+	if !slices.Contains(info.Projects, placement.TargetProject) {
+		return fmt.Errorf("Project %q does not exist on target %q", placement.TargetProject, info.Name)
+	}
+
+	if slices.Contains(info.InstancesByProject[placement.TargetProject], inst.GetName()) {
+		return fmt.Errorf("Instance already exists with name %q on target %q in project %q", inst.GetName(), info.Name, placement.TargetProject)
+	}
+
+	for _, net := range placement.Networks {
+		if !slices.Contains(info.NetworksByProject[placement.TargetProject], net) {
+			return fmt.Errorf("No network found with name %q on target %q in project %q", net, info.Name, placement.TargetProject)
+		}
+	}
+
+	for _, pool := range placement.StoragePools {
+		if !slices.Contains(info.StoragePools, pool) {
+			return fmt.Errorf("No Storage pool found with name %q on target %q in project %q", pool, info.Name, placement.TargetProject)
 		}
 	}
 

@@ -7,22 +7,27 @@ import (
 
 	"github.com/lxc/incus/v6/shared/validate"
 
+	"github.com/FuturFusion/migration-manager/internal/scriptlet"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type Batch struct {
-	ID                   int64
-	Name                 string `db:"primary=yes"`
-	Target               string `db:"join=targets.name"`
-	TargetProject        string
-	Status               api.BatchStatusType
-	StatusMessage        string
-	StoragePool          string
-	IncludeExpression    string
-	StartDate            time.Time
-	PostMigrationRetries int
+	ID                int64
+	Name              string `db:"primary=yes"`
+	Status            api.BatchStatusType
+	StatusMessage     string
+	IncludeExpression string
+	StartDate         time.Time
 
-	Constraints []BatchConstraint `db:"marshal=json"`
+	DefaultTarget        string
+	DefaultTargetProject string
+	DefaultStoragePool   string
+
+	RerunScriptlets    bool
+	PlacementScriptlet string
+
+	PostMigrationRetries int
+	Constraints          []BatchConstraint `db:"marshal=json"`
 }
 
 type BatchConstraint struct {
@@ -40,6 +45,77 @@ type BatchConstraint struct {
 
 	// Minimum amount of time required for an instance to boot after initial disk import. Migration window duration must be at least this much.
 	MinInstanceBootTime time.Duration `json:"min_instance_boot_time" yaml:"min_instance_boot_time"`
+}
+
+// GetIncusPlacement returns a TargetPlacement for the given instance and its networks.
+// It defaults to the batch-level definitions unless the given TargetPlacement has overridden them.
+func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, placement api.Placement) (*api.Placement, error) {
+	resp := &api.Placement{
+		TargetName:    b.DefaultTarget,
+		TargetProject: b.DefaultTargetProject,
+		StoragePools:  map[string]string{},
+		Networks:      map[string]string{},
+	}
+
+	// Use the same pool for all supported disks by default.
+	for _, d := range instance.Properties.Disks {
+		if !d.Supported {
+			continue
+		}
+
+		resp.StoragePools[d.Name] = b.DefaultStoragePool
+	}
+
+	// Handle per-network overrides.
+	for _, n := range instance.Properties.NICs {
+		var baseNetwork Network
+		for _, net := range usedNetworks {
+			if n.ID == net.Identifier && instance.Source == net.Source {
+				baseNetwork = net
+				break
+			}
+		}
+
+		if baseNetwork.Identifier == "" {
+			err := fmt.Errorf("No network %q associated with instance %q on source %q", n.ID, instance.Properties.Name, instance.Source)
+			return nil, err
+		}
+
+		var networkName string
+		if baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
+			networkName = baseNetwork.Overrides.BridgeName
+			if networkName == "" {
+				networkName = "br0"
+			}
+		} else {
+			if baseNetwork.Overrides.Name != "" || baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
+				networkName = baseNetwork.ToAPI().Name()
+			} else {
+				networkName = "default"
+			}
+		}
+
+		resp.Networks[n.ID] = networkName
+	}
+
+	// Override with placement values if set.
+	if placement.TargetName != "" {
+		resp.TargetName = placement.TargetName
+	}
+
+	if placement.TargetProject != "" {
+		resp.TargetProject = placement.TargetProject
+	}
+
+	for id, netName := range placement.Networks {
+		resp.Networks[id] = netName
+	}
+
+	for disk, pool := range placement.StoragePools {
+		resp.StoragePools[disk] = pool
+	}
+
+	return resp, nil
 }
 
 type MigrationWindows []MigrationWindow
@@ -61,7 +137,7 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, %q is not a valid name: %v", b.Name, err)
 	}
 
-	if b.Target == "" {
+	if b.DefaultTarget == "" {
 		return NewValidationErrf("Invalid batch, target can not be empty")
 	}
 
@@ -88,6 +164,13 @@ func (b Batch) Validate() error {
 
 	if b.Status == api.BATCHSTATUS_DEFINED && !b.StartDate.IsZero() {
 		return NewValidationErrf("Cannot set start time before batch %q has started", b.Name)
+	}
+
+	if b.PlacementScriptlet != "" {
+		err := scriptlet.BatchPlacementValidate(b.PlacementScriptlet, b.Name)
+		if err != nil {
+			return NewValidationErrf("Invalid placement scriptlet: %v", err)
+		}
 	}
 
 	return nil
@@ -240,11 +323,7 @@ func (w MigrationWindow) Validate() error {
 	return nil
 }
 
-func (b Batch) CanStart(windows []MigrationWindow) error {
-	if b.Status != api.BATCHSTATUS_DEFINED && b.Status != api.BATCHSTATUS_QUEUED {
-		return fmt.Errorf("Batch %q in state %q cannot be started", b.Name, string(b.Status))
-	}
-
+func (b Batch) HasValidWindow(windows []MigrationWindow) error {
 	hasValidWindow := len(windows) == 0
 	for _, w := range windows {
 		// Skip any migration windows that have since passed.
@@ -299,14 +378,16 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 	return api.Batch{
 		BatchPut: api.BatchPut{
 			Name:                 b.Name,
-			Target:               b.Target,
-			TargetProject:        b.TargetProject,
-			StoragePool:          b.StoragePool,
+			DefaultTarget:        b.DefaultTarget,
+			DefaultTargetProject: b.DefaultTargetProject,
+			DefaultStoragePool:   b.DefaultStoragePool,
 			IncludeExpression:    b.IncludeExpression,
 			MigrationWindows:     apiWindows,
 			Constraints:          constraints,
 			StartDate:            b.StartDate,
 			PostMigrationRetries: b.PostMigrationRetries,
+			RerunScriptlets:      b.RerunScriptlets,
+			PlacementScriptlet:   b.PlacementScriptlet,
 		},
 		Status:        b.Status,
 		StatusMessage: b.StatusMessage,

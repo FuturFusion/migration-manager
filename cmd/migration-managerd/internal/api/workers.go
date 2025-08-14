@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -46,73 +47,60 @@ func (d *Daemon) runPeriodicTask(ctx context.Context, task string, f func(contex
 	}()
 }
 
-// validateForQueue validates that a set of instances in a batch are capable of being queued for the given target.
-// - The batch must be DEFINED or QUEUED.
-// - All instances must be ASSIGNED to the batch.
-// - All instances must be defined on the source.
-// - The batch must be within a valid migration window.
-// - Ensures the target and project are reachable.
-// - Ensures there are no conflicting instances on the target.
-// - Ensures the correct ISO images exist in the target storage pool.
-func (d *Daemon) validateForQueue(ctx context.Context, b migration.Batch, w migration.MigrationWindows, t migration.Target, instances map[uuid.UUID]migration.Instance) (*target.InternalIncusTarget, error) {
-	err := b.CanStart(w)
-	if err != nil {
-		return nil, err
-	}
-
-	// If no instances apply to this batch, return nil, an error.
-	if len(instances) == 0 {
-		return nil, fmt.Errorf("Batch %q has no instances assigned", b.Name)
-	}
-
-	it, err := target.NewInternalIncusTargetFrom(t.ToAPI())
-	if err != nil {
-		return nil, fmt.Errorf("Failed to connect to target for batch %q: %w", b.Name, err)
-	}
-
-	err = it.ReadyForMigration(ctx, b.TargetProject, instances)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to validate target for batch %q: %w", b.Name, err)
-	}
-
-	// Ensure VMware VIX tarball exists.
-	_, err = d.os.GetVMwareVixName()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to find VMWare vix tarball: %w", err)
-	}
-
-	// Ensure exactly zero or one VirtIO drivers ISOs exist.
-	_, err = d.os.GetVirtioDriversISOName()
-	if err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("Failed to find Virtio drivers ISO: %w", err)
-	}
-
-	return it, nil
-}
-
 func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
-	blockedEntries, err := d.queue.GetAllByState(ctx, api.MIGRATIONSTATUS_BLOCKED)
+	entries, err := d.queue.GetAllByState(ctx, api.MIGRATIONSTATUS_BLOCKED, api.MIGRATIONSTATUS_WAITING)
 	if err != nil {
 		return fmt.Errorf("Failed to fetch blocked queue entries: %w", err)
 	}
 
-	if len(blockedEntries) == 0 {
+	if len(entries) == 0 {
 		return nil
 	}
 
-	blockedInstances, err := d.instance.GetAllQueued(ctx, blockedEntries)
+	queueInstances, err := d.instance.GetAllQueued(ctx, entries)
 	if err != nil {
 		return fmt.Errorf("Failed to fetch blocked instances: %w", err)
 	}
 
-	for i, inst := range blockedInstances {
+	instancesByUUID := make(map[uuid.UUID]migration.Instance, len(queueInstances))
+	for _, inst := range queueInstances {
+		instancesByUUID[inst.UUID] = inst
+	}
+
+	// Check the filesystem for the required user-supplied files.
+	var blockMsg string
+	err = d.os.ValidateFileSystem()
+	if err != nil {
+		slog.Error("Blocking queue entries due to filesystem error", slog.Any("error", err))
+		blockMsg = fmt.Sprintf("Filesystem error: %v", err.Error())
+	}
+
+	for _, q := range entries {
+		// Block all entries if we failed to validate the filesystem.
+		if blockMsg != "" {
+			if q.MigrationStatusMessage != blockMsg {
+				_, err := d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_BLOCKED, blockMsg, q.ImportStage, q.GetWindowID())
+				if err != nil {
+					return fmt.Errorf("Failed to unblock queue entry %q: %w", q.InstanceUUID, err)
+				}
+			}
+
+			continue
+		}
+
+		inst, ok := instancesByUUID[q.InstanceUUID]
+		if !ok || q.MigrationStatus != api.MIGRATIONSTATUS_BLOCKED {
+			continue
+		}
+
+		// Otherwise check why the VM is blocked, and unblock it if needed.
 		err := inst.DisabledReason()
 		if err != nil {
 			slog.Warn("Instance is blocked from migration", slog.String("location", inst.Properties.Location), slog.String("reason", err.Error()))
 			continue
 		}
 
-		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, string(api.MIGRATIONSTATUS_WAITING), blockedEntries[i].ImportStage, blockedEntries[i].GetWindowID())
+		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, string(api.MIGRATIONSTATUS_WAITING), q.ImportStage, q.GetWindowID())
 		if err != nil {
 			return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
 		}
@@ -121,8 +109,8 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 	return nil
 }
 
-// beginImports creates the target VMs for all CREATING status instances.
-// It sets their batches to RUNNING if they have the necessary files to begin a migration.
+// beginImports creates the target VMs for started batches.
+// It fetches all RUNNING batches with WAITING or BLOCKED instances, and moves the instances to CREATING state.
 // Errors encountered in one batch do not affect the processing of other batches.
 //   - cleanupInstances determines whether to delete failed target VMs on errors.
 //     If true, errors will not result in the instance state being set to ERROR, to enable retrying this task.
@@ -130,15 +118,125 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error {
 	log := slog.With(slog.String("method", "beginImports"))
 	var migrationState map[string]queue.MigrationState
+	var allNetworks migration.Networks
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		err := d.reassessBlockedInstances(ctx)
 		if err != nil {
 			return err
 		}
 
-		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_QUEUED, api.MIGRATIONSTATUS_WAITING)
+		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WAITING)
 		if err != nil {
 			return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
+		}
+
+		// Get all networks so we can determine the target network if not overridden via scriptlet.
+		allNetworks, err = d.network.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get all networks: %w", err)
+		}
+
+		// Get data from every registered target to verify placement is valid.
+		allTargets, err := d.target.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get all targets: %w", err)
+		}
+
+		targetInfo := make([]target.IncusDetails, 0, len(allTargets))
+		for _, t := range allTargets {
+			it, err := target.NewTarget(t.ToAPI())
+			if err != nil {
+				return err
+			}
+
+			err = it.Connect(ctx)
+			if err != nil {
+				return err
+			}
+
+			info, err := it.GetDetails(ctx)
+			if err != nil {
+				return err
+			}
+
+			targetInfo = append(targetInfo, *info)
+		}
+
+		placementLock := sync.Mutex{}
+		placementErrs := map[uuid.UUID]error{}
+		err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
+			return util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
+				if state.Batch.RerunScriptlets {
+					usedNetworks := migration.FilterUsedNetworks(allNetworks, migration.Instances{instance})
+					placement, err := d.batch.DeterminePlacement(ctx, instance, usedNetworks, state.Batch, state.MigrationWindows)
+					if err != nil {
+						return err
+					}
+
+					// Update the migration state with the queue entry's new placement.
+					placementLock.Lock()
+					entry := state.QueueEntries[instUUID]
+					entry.Placement = *placement
+					state.QueueEntries[instUUID] = entry
+					migrationState[batchName] = state
+					placementLock.Unlock()
+				}
+
+				var info *target.IncusDetails
+				for _, t := range targetInfo {
+					if t.Name == state.QueueEntries[instUUID].Placement.TargetName {
+						info = &t
+						break
+					}
+				}
+
+				// Verify that the target placement actually exists and the instance can be placed there.
+				err := target.CanPlaceInstance(ctx, info, state.QueueEntries[instUUID].Placement, instance.ToAPI())
+				if err != nil {
+					placementLock.Lock()
+					placementErrs[instUUID] = err
+					placementLock.Unlock()
+				}
+
+				return nil
+			})
+		})
+		if err != nil {
+			return err
+		}
+
+		// Write-lock the DB here after running the scriptlets and fetching target info.
+		var stateChanged bool
+		for _, state := range migrationState {
+			for instUUID, q := range state.QueueEntries {
+				// Update the db record for any changed placements.
+				if state.Batch.RerunScriptlets {
+					stateChanged = true
+					_, err := d.queue.UpdatePlacementByUUID(ctx, instUUID, state.QueueEntries[instUUID].Placement)
+					if err != nil {
+						return fmt.Errorf("Failed to update queue %q placement record: %w", instUUID, err)
+					}
+				}
+
+				// Block any queue entries that we failed to determine placement for. These will be picked up again and retried later.
+				err, ok := placementErrs[instUUID]
+				if ok {
+					stateChanged = true
+					blockedMsg := fmt.Sprintf("Cannot place instance: %v", err.Error())
+					_, err := d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_BLOCKED, blockedMsg, q.ImportStage, q.GetWindowID())
+					if err != nil {
+						return fmt.Errorf("Failed to unblock queue entry %q: %w", q.InstanceUUID, err)
+					}
+				}
+			}
+		}
+
+		if stateChanged {
+			// Since we just changed the state, we need to re-fetch it.
+			migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WAITING)
+			if err != nil {
+				return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
+			}
 		}
 
 		return nil
@@ -147,31 +245,54 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 		return err
 	}
 
+	// visitedLocations is a map of VM OS type to target name to project name to pool name.
+	// This is used so that we ensure each pool in each target is checked only once for volumes in a particular project, for a particular VM OS.
+	visitedLocations := map[bool]map[string]map[string]map[string]bool{}
 	ignoredBatches := []string{}
-	// Concurrently validate batches, and create the necessary volumes to begin migration.
 	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
 		// Set a 120s timeout for creating the volumes on the target before instance creation.
 		timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
 		defer cancel()
 
 		log := log.With(slog.String("batch", state.Batch.Name))
-		it, err := d.validateForQueue(timeoutCtx, state.Batch, state.MigrationWindows, state.Target, state.Instances)
-		if err != nil {
-			log.Warn("Batch does not meet requirements to start, ignoring", slog.String("batch", batchName), slog.Any("error", err))
-			ignoredBatches = append(ignoredBatches, state.Batch.Name)
-			return nil
-		}
+		for instUUID, q := range state.QueueEntries {
+			for _, pool := range q.Placement.StoragePools {
+				// for every instance in this batch, check volumes at the corresponding target, unless we did already.
+				var containsWindowsVM bool
+				for _, inst := range state.Instances {
+					if inst.GetOSType() == api.OSTYPE_WINDOWS {
+						containsWindowsVM = true
+						break
+					}
+				}
 
-		// If we fail to set up the initial volumes, set the batch status to errored and skip.
-		err = d.ensureISOImagesExistInStoragePool(timeoutCtx, it, state.Instances, state.Batch)
-		if err != nil {
-			log.Error("Failed to validate batch", logger.Err(err))
-			_, err := d.batch.UpdateStatusByName(ctx, state.Batch.Name, api.BATCHSTATUS_ERROR, err.Error())
-			if err != nil {
-				return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_ERROR, err)
+				if visitedLocations[containsWindowsVM] == nil {
+					visitedLocations[containsWindowsVM] = map[string]map[string]map[string]bool{}
+				}
+
+				if visitedLocations[containsWindowsVM][q.Placement.TargetName] == nil {
+					visitedLocations[containsWindowsVM][q.Placement.TargetName] = map[string]map[string]bool{}
+				}
+
+				if visitedLocations[containsWindowsVM][q.Placement.TargetName][q.Placement.TargetProject] == nil {
+					visitedLocations[containsWindowsVM][q.Placement.TargetName][q.Placement.TargetProject] = map[string]bool{}
+				}
+
+				if !visitedLocations[containsWindowsVM][q.Placement.TargetName][q.Placement.TargetProject][pool] {
+					err := d.ensureISOImagesExistInStoragePool(timeoutCtx, state.Targets[instUUID], containsWindowsVM, state.Batch, pool, q.Placement.TargetProject)
+					if err != nil {
+						log.Error("Failed to validate batch", logger.Err(err))
+						_, err := d.batch.UpdateStatusByName(ctx, state.Batch.Name, api.BATCHSTATUS_ERROR, err.Error())
+						if err != nil {
+							return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_ERROR, err)
+						}
+
+						ignoredBatches = append(ignoredBatches, state.Batch.Name)
+					} else {
+						visitedLocations[containsWindowsVM][q.Placement.TargetName][q.Placement.TargetProject][pool] = true
+					}
+				}
 			}
-
-			ignoredBatches = append(ignoredBatches, state.Batch.Name)
 		}
 
 		return nil
@@ -188,37 +309,24 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 	// Set the statuses for any batches that made it this far to RUNNING in preparation for instance creation on the target.
 	// `finalizeCompleteInstances` will pick up these batches, but won't find any instances in them until their associated VMs are created.
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		for _, state := range migrationState {
-			log.Info("Updating batch status to 'Running'")
-			_, err := d.batch.UpdateStatusByName(ctx, state.Batch.Name, api.BATCHSTATUS_RUNNING, string(api.BATCHSTATUS_RUNNING))
-			if err != nil {
-				return fmt.Errorf("Failed to update batch status: %w", err)
-			}
-		}
-
-		// Get all waiting instances in running batches, as they may have been skipped due to concurrency limits before.
-		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WAITING)
-		if err != nil {
-			return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
-		}
-
 		for batchName, state := range migrationState {
-			var properties api.IncusProperties
-			err = json.Unmarshal(state.Target.Properties, &properties)
-			if err != nil {
-				return err
-			}
-
+			beginningTargets := map[uuid.UUID]migration.Target{}
 			beginningInstances := map[uuid.UUID]migration.Instance{}
 			beginningSources := map[uuid.UUID]migration.Source{}
 			beginningQueueEntries := map[uuid.UUID]migration.QueueEntry{}
 			for _, inst := range state.Instances {
-				if properties.CreateLimit > 0 && d.target.GetCachedCreations(state.Target.Name) >= properties.CreateLimit {
-					log.Warn("Create limit reached for target, waiting for existing instances to finish creating", slog.String("target", state.Target.Name))
+				var properties api.IncusProperties
+				err = json.Unmarshal(state.Targets[inst.UUID].Properties, &properties)
+				if err != nil {
+					return err
+				}
+
+				if properties.CreateLimit > 0 && d.target.GetCachedCreations(state.Targets[inst.UUID].Name) >= properties.CreateLimit {
+					log.Warn("Create limit reached for target, waiting for existing instances to finish creating", slog.String("target", state.Targets[inst.UUID].Name))
 					continue
 				}
 
-				d.target.RecordCreation(state.Target.Name)
+				d.target.RecordCreation(state.Targets[inst.UUID].Name)
 				_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, "Creating target instance definition", state.QueueEntries[inst.UUID].ImportStage, state.QueueEntries[inst.UUID].GetWindowID())
 				if err != nil {
 					return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
@@ -226,6 +334,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 
 				beginningInstances[inst.UUID] = inst
 				beginningSources[inst.UUID] = state.Sources[inst.UUID]
+				beginningTargets[inst.UUID] = state.Targets[inst.UUID]
 				beginningQueueEntries[inst.UUID] = state.QueueEntries[inst.UUID]
 			}
 
@@ -233,6 +342,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			state.QueueEntries = beginningQueueEntries
 			state.Sources = beginningSources
 			state.Instances = beginningInstances
+			state.Targets = beginningTargets
 			migrationState[batchName] = state
 		}
 
@@ -244,8 +354,14 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 
 	// Create target VMs for all the instances in the remaining batches.
 	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
+		instanceList := make(migration.Instances, 0, len(state.Instances))
+		for _, inst := range state.Instances {
+			instanceList = append(instanceList, inst)
+		}
+
+		instanceNetworks := migration.FilterUsedNetworks(allNetworks, instanceList)
 		return util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, inst migration.Instance) error {
-			return d.createTargetVM(ctx, state.Batch, inst, state.Target, state.Sources[instUUID], state.QueueEntries[instUUID], cleanupInstances)
+			return d.createTargetVM(ctx, state.Batch, inst, state.Targets[inst.UUID], state.Sources[instUUID], state.QueueEntries[instUUID], instanceNetworks, cleanupInstances)
 		})
 	})
 	if err != nil {
@@ -256,26 +372,36 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 }
 
 // ensureISOImagesExistInStoragePool ensures the necessary image files exist on the daemon to be imported to the storage volume.
-func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *target.InternalIncusTarget, instances map[uuid.UUID]migration.Instance, batch migration.Batch) error {
-	if len(instances) == 0 {
-		return fmt.Errorf("No instances in batch")
-	}
-
+func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, tgt migration.Target, needsDriverISO bool, batch migration.Batch, pool string, project string) error {
 	log := slog.With(
 		slog.String("method", "ensureISOImagesExistInStoragePool"),
-		slog.String("storage_pool", batch.StoragePool),
-	)
-
+		slog.String("storage_pool", pool),
+		slog.String("target", tgt.Name),
+		slog.String("project", project))
 	reverter := revert.New()
 	defer reverter.Fail()
 
 	// Key the batch by its constituent parts, as batches with different IDs may share the same target, pool, and project.
-	batchKey := it.GetName() + "_" + batch.StoragePool + "_" + batch.TargetProject
+	batchKey := tgt.Name + "_" + pool + "_" + project
 	d.batchLock.Lock(batchKey)
 	reverter.Add(func() { d.batchLock.Unlock(batchKey) })
 
-	// Connect to the target.
-	volumes, err := it.GetStoragePoolVolumeNames(batch.StoragePool)
+	it, err := target.NewTarget(tgt.ToAPI())
+	if err != nil {
+		return err
+	}
+
+	err = it.Connect(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = it.SetProject(project)
+	if err != nil {
+		return err
+	}
+
+	volumes, err := it.GetStoragePoolVolumeNames(pool)
 	if err != nil {
 		return err
 	}
@@ -283,15 +409,6 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 	volumeMap := make(map[string]bool, len(volumes))
 	for _, vol := range volumes {
 		volumeMap[vol] = true
-	}
-
-	// Verify needed ISO image is in the storage pool.
-	var needsDriverISO bool
-	for _, inst := range instances {
-		if inst.GetOSType() == api.OSTYPE_WINDOWS {
-			needsDriverISO = true
-			break
-		}
 	}
 
 	existingDriverName, err := d.os.GetVirtioDriversISOName()
@@ -317,7 +434,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 			return err
 		}
 
-		ops, err := it.CreateStoragePoolVolumeFromBackup(batch.StoragePool, filepath.Join(d.os.CacheDir, util.RawWorkerImage()))
+		ops, err := it.CreateStoragePoolVolumeFromBackup(pool, filepath.Join(d.os.CacheDir, util.RawWorkerImage()))
 		if err != nil {
 			return err
 		}
@@ -340,7 +457,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 		if !volumeMap["custom/"+driversISO] {
 			log.Info("ISO image doesn't exist in storage pool, importing...")
 
-			ops, err := it.CreateStoragePoolVolumeFromISO(batch.StoragePool, driversISOPath)
+			ops, err := it.CreateStoragePoolVolumeFromISO(pool, driversISOPath)
 			if err != nil {
 				return err
 			}
@@ -363,7 +480,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, it *targ
 // Concurrently create target VMs for each instance record.
 // Any instance that fails the migration has its state set to ERROR.
 // - cleanupInstances determines whether a target VM should be deleted if it encounters an error.
-func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst migration.Instance, t migration.Target, s migration.Source, q migration.QueueEntry, cleanupInstances bool) (_err error) {
+func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst migration.Instance, t migration.Target, s migration.Source, q migration.QueueEntry, networks migration.Networks, cleanupInstances bool) (_err error) {
 	log := slog.With(
 		slog.String("method", "createTargetVM"),
 		slog.String("instance", inst.Properties.Location),
@@ -395,7 +512,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		}
 	})
 
-	it, err := target.NewInternalIncusTargetFrom(t.ToAPI())
+	it, err := target.NewTarget(t.ToAPI())
 	if err != nil {
 		return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 	}
@@ -410,9 +527,9 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	}
 
 	// Set the project.
-	err = it.SetProject(b.TargetProject)
+	err = it.SetProject(q.Placement.TargetProject)
 	if err != nil {
-		return fmt.Errorf("Failed to set project %q for target %q: %w", b.TargetProject, it.GetName(), err)
+		return fmt.Errorf("Failed to set project %q for target %q: %w", q.Placement.TargetProject, it.GetName(), err)
 	}
 
 	var driverISOName string
@@ -429,12 +546,13 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	}
 
 	// Optionally clean up the VMs if we fail to create them.
-	instanceDef, err := it.CreateVMDefinition(inst, q.SecretToken, b.StoragePool, incusTLS.CertFingerprint(cert), d.getWorkerEndpoint())
+	usedNetworks := migration.FilterUsedNetworks(networks, migration.Instances{inst})
+	instanceDef, err := it.CreateVMDefinition(inst, usedNetworks, q, incusTLS.CertFingerprint(cert), d.getWorkerEndpoint())
 	if err != nil {
 		return fmt.Errorf("Failed to create instance definition: %w", err)
 	}
 
-	cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, b.StoragePool, util.WorkerVolume(), driverISOName)
+	cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, q.Placement, util.WorkerVolume(), driverISOName)
 	if err != nil {
 		return fmt.Errorf("Failed to create new instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
 	}
@@ -480,7 +598,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state queue.MigrationState) error {
 	log := slog.With(
 		slog.String("method", "resetQueueEntry"),
-		slog.String("target", state.Target.Name),
+		slog.String("target", state.Targets[instUUID].Name),
 		slog.String("batch", state.Batch.Name),
 		slog.String("instance", state.Instances[instUUID].Properties.Location),
 		slog.String("source", state.Sources[instUUID].Name),
@@ -506,9 +624,9 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
 	defer cancel()
 
-	it, err := target.NewInternalIncusTargetFrom(state.Target.ToAPI())
+	it, err := target.NewTarget(state.Targets[instUUID].ToAPI())
 	if err != nil {
-		return fmt.Errorf("Failed to set up %q target-specific configuration: %w", state.Target.TargetType, err)
+		return fmt.Errorf("Failed to set up %q target-specific configuration: %w", state.Targets[instUUID].TargetType, err)
 	}
 
 	err = it.Connect(timeoutCtx)
@@ -516,9 +634,9 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 		return fmt.Errorf("Failed to connect to target %q: %w", it.GetName(), err)
 	}
 
-	err = it.SetProject(state.Batch.TargetProject)
+	err = it.SetProject(state.QueueEntries[instUUID].Placement.TargetProject)
 	if err != nil {
-		return fmt.Errorf("Failed to set target %q project %q: %w", it.GetName(), state.Batch.TargetProject, err)
+		return fmt.Errorf("Failed to set target %q project %q: %w", it.GetName(), state.QueueEntries[instUUID].Placement.TargetProject, err)
 	}
 
 	// If the VM failed in post-import steps, then it needs to be fully cleaned up.
@@ -622,7 +740,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 			}
 
 			window := windowsByQueueUUID[instUUID]
-			err := d.configureMigratedInstances(ctx, state.QueueEntries[instUUID], window, instance, state.Sources[instUUID], state.Target, state.Batch, migration.FilterUsedNetworks(allNetworks, instanceList))
+			err := d.configureMigratedInstances(ctx, state.QueueEntries[instUUID], window, instance, state.Sources[instUUID], state.Targets[instUUID], state.Batch, migration.FilterUsedNetworks(allNetworks, instanceList))
 			if err != nil {
 				return err
 			}
@@ -724,7 +842,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 		}
 	})
 
-	it, err := target.NewInternalIncusTargetFrom(t.ToAPI())
+	it, err := target.NewTarget(t.ToAPI())
 	if err != nil {
 		return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 	}
@@ -739,12 +857,12 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 	}
 
 	// Set the project.
-	err = it.SetProject(batch.TargetProject)
+	err = it.SetProject(q.Placement.TargetProject)
 	if err != nil {
-		return fmt.Errorf("Failed to set target %q project %q: %w", it.GetName(), batch.TargetProject, err)
+		return fmt.Errorf("Failed to set target %q project %q: %w", it.GetName(), q.Placement.TargetProject, err)
 	}
 
-	err = it.SetPostMigrationVMConfig(timeoutCtx, i, activeNetworks)
+	err = it.SetPostMigrationVMConfig(timeoutCtx, i, q, activeNetworks)
 	if err != nil {
 		return fmt.Errorf("Failed to update post-migration config for instance %q in %q: %w", i.GetName(), it.GetName(), err)
 	}

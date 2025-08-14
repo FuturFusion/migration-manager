@@ -90,7 +90,7 @@ func TestRenderTable(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantOutputContains: []string{
-				`|   NAME   |  TYPE  |        ENDPOINT         | USERNAME | INSECURE |`,
+				`|   Name   |  Type  |        Endpoint         | Username | Insecure |`,
 				`| source 1 | VMware | https://127.0.0.1:8989/ | user     | false    |`,
 				`| source 2 | Incus  | https://127.0.0.2:8989/ | user2    | true     |`,
 				`| source 3 | Other  | https://127.0.0.3:8989/ | user3    | false    |`,
@@ -150,7 +150,7 @@ func TestRenderTable(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantOutputContains: []string{
-				`NAME     TYPE          ENDPOINT          USERNAME  INSECURE`,
+				`Name     Type          Endpoint          Username  Insecure`,
 				`source 1  VMware  https://127.0.0.1:8989/  user      false`,
 				`source 2  Incus   https://127.0.0.2:8989/  user2     true`,
 				`source 3  Other   https://127.0.0.3:8989/  user3     false`,

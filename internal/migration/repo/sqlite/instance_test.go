@@ -56,7 +56,7 @@ var (
 		},
 	}
 
-	testBatch     = migration.Batch{ID: 1, Name: "TestBatch", Target: "TestTarget", Status: api.BATCHSTATUS_DEFINED, StoragePool: "", IncludeExpression: "true"}
+	testBatch     = migration.Batch{ID: 1, Name: "TestBatch", DefaultTarget: "TestTarget", Status: api.BATCHSTATUS_DEFINED, IncludeExpression: "true"}
 	instanceAUUID = uuid.Must(uuid.NewRandom())
 
 	instanceA = migration.Instance{
@@ -245,9 +245,6 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	err = batch.UnassignBatch(ctx, testBatch.Name, instanceA.UUID)
 	require.NoError(t, err)
 
-	err = targetSvc.DeleteByName(ctx, testTarget.Name)
-	require.ErrorIs(t, err, migration.ErrConstraintViolation)
-
 	// Ensure we have three instances.
 	instances, err := instance.GetAll(ctx)
 	require.NoError(t, err)
@@ -289,10 +286,6 @@ func TestInstanceDatabaseActions(t *testing.T) {
 
 	// Can't add a duplicate instance.
 	_, err = instance.Create(ctx, instanceB)
-	require.ErrorIs(t, err, migration.ErrConstraintViolation)
-
-	// Can't delete a target that has at least one associated batch.
-	err = targetSvc.DeleteByName(ctx, testTarget.Name)
 	require.ErrorIs(t, err, migration.ErrConstraintViolation)
 
 	// Can delete a source with all unassigned or overridden instances.

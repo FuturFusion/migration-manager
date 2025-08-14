@@ -9,11 +9,16 @@ type BatchStatusType string
 
 const (
 	BATCHSTATUS_DEFINED  BatchStatusType = "Defined"
-	BATCHSTATUS_QUEUED   BatchStatusType = "Queued"
 	BATCHSTATUS_RUNNING  BatchStatusType = "Running"
 	BATCHSTATUS_STOPPED  BatchStatusType = "Stopped"
 	BATCHSTATUS_FINISHED BatchStatusType = "Finished"
 	BATCHSTATUS_ERROR    BatchStatusType = "Error"
+)
+
+const (
+	DefaultTarget        = "default"
+	DefaultTargetProject = "default"
+	DefaultStoragePool   = "default"
 )
 
 // Validate ensures the BatchStatusType is valid.
@@ -22,7 +27,6 @@ func (b BatchStatusType) Validate() error {
 	case BATCHSTATUS_DEFINED:
 	case BATCHSTATUS_ERROR:
 	case BATCHSTATUS_FINISHED:
-	case BATCHSTATUS_QUEUED:
 	case BATCHSTATUS_RUNNING:
 	case BATCHSTATUS_STOPPED:
 	default:
@@ -57,15 +61,22 @@ type BatchPut struct {
 
 	// The destination target name to be used by all instances in this batch
 	// Example: Mytarget
-	Target string `json:"target" yaml:"target"`
+	DefaultTarget string `json:"default_target" yaml:"default_target"`
 
 	// The target project to use
 	// Example: default
-	TargetProject string `json:"target_project" yaml:"target_project"`
+	DefaultTargetProject string `json:"default_target_project" yaml:"default_target_project"`
 
 	// The Incus storage pool that this batch should use for creating VMs and mounting ISO images
 	// Example: local
-	StoragePool string `json:"storage_pool" yaml:"storage_pool"`
+	DefaultStoragePool string `json:"default_storage_pool" yaml:"default_storage_pool"`
+
+	// Whether to re-run scriptlets if a migration restarts
+	RerunScriptlets bool `json:"rerun_scriptlets" yaml:"rerun_scriptlets"`
+
+	// The placement scriptlet used to determine the target for queued instances.
+	// Example: starlark scriptlet
+	PlacementScriptlet string `json:"placement_scriptlet" yaml:"placement_scriptlet"`
 
 	// A Expression used to select instances to add to this batch
 	// Language reference: https://expr-lang.org/docs/language-definition

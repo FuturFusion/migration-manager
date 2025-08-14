@@ -33,6 +33,9 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
+//			DeterminePlacementFunc: func(ctx context.Context, instance migration.Instance, usedNetworks migration.Networks, batch migration.Batch, migrationWindows migration.MigrationWindows) (*api.Placement, error) {
+//				panic("mock out the DeterminePlacement method")
+//			},
 //			GetAllFunc: func(ctx context.Context) (migration.Batches, error) {
 //				panic("mock out the GetAll method")
 //			},
@@ -90,6 +93,9 @@ type BatchServiceMock struct {
 
 	// DeleteByNameFunc mocks the DeleteByName method.
 	DeleteByNameFunc func(ctx context.Context, name string) error
+
+	// DeterminePlacementFunc mocks the DeterminePlacement method.
+	DeterminePlacementFunc func(ctx context.Context, instance migration.Instance, usedNetworks migration.Networks, batch migration.Batch, migrationWindows migration.MigrationWindows) (*api.Placement, error)
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Batches, error)
@@ -163,6 +169,19 @@ type BatchServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+		}
+		// DeterminePlacement holds details about calls to the DeterminePlacement method.
+		DeterminePlacement []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Instance is the instance argument value.
+			Instance migration.Instance
+			// UsedNetworks is the usedNetworks argument value.
+			UsedNetworks migration.Networks
+			// Batch is the batch argument value.
+			Batch migration.Batch
+			// MigrationWindows is the migrationWindows argument value.
+			MigrationWindows migration.MigrationWindows
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -264,6 +283,7 @@ type BatchServiceMock struct {
 	lockChangeMigrationWindows sync.RWMutex
 	lockCreate                 sync.RWMutex
 	lockDeleteByName           sync.RWMutex
+	lockDeterminePlacement     sync.RWMutex
 	lockGetAll                 sync.RWMutex
 	lockGetAllByState          sync.RWMutex
 	lockGetAllNames            sync.RWMutex
@@ -428,6 +448,54 @@ func (mock *BatchServiceMock) DeleteByNameCalls() []struct {
 	mock.lockDeleteByName.RLock()
 	calls = mock.calls.DeleteByName
 	mock.lockDeleteByName.RUnlock()
+	return calls
+}
+
+// DeterminePlacement calls DeterminePlacementFunc.
+func (mock *BatchServiceMock) DeterminePlacement(ctx context.Context, instance migration.Instance, usedNetworks migration.Networks, batch migration.Batch, migrationWindows migration.MigrationWindows) (*api.Placement, error) {
+	if mock.DeterminePlacementFunc == nil {
+		panic("BatchServiceMock.DeterminePlacementFunc: method is nil but BatchService.DeterminePlacement was just called")
+	}
+	callInfo := struct {
+		Ctx              context.Context
+		Instance         migration.Instance
+		UsedNetworks     migration.Networks
+		Batch            migration.Batch
+		MigrationWindows migration.MigrationWindows
+	}{
+		Ctx:              ctx,
+		Instance:         instance,
+		UsedNetworks:     usedNetworks,
+		Batch:            batch,
+		MigrationWindows: migrationWindows,
+	}
+	mock.lockDeterminePlacement.Lock()
+	mock.calls.DeterminePlacement = append(mock.calls.DeterminePlacement, callInfo)
+	mock.lockDeterminePlacement.Unlock()
+	return mock.DeterminePlacementFunc(ctx, instance, usedNetworks, batch, migrationWindows)
+}
+
+// DeterminePlacementCalls gets all the calls that were made to DeterminePlacement.
+// Check the length with:
+//
+//	len(mockedBatchService.DeterminePlacementCalls())
+func (mock *BatchServiceMock) DeterminePlacementCalls() []struct {
+	Ctx              context.Context
+	Instance         migration.Instance
+	UsedNetworks     migration.Networks
+	Batch            migration.Batch
+	MigrationWindows migration.MigrationWindows
+} {
+	var calls []struct {
+		Ctx              context.Context
+		Instance         migration.Instance
+		UsedNetworks     migration.Networks
+		Batch            migration.Batch
+		MigrationWindows migration.MigrationWindows
+	}
+	mock.lockDeterminePlacement.RLock()
+	calls = mock.calls.DeterminePlacement
+	mock.lockDeterminePlacement.RUnlock()
 	return calls
 }
 

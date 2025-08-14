@@ -63,16 +63,16 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 
 			case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
 				importingFromSource[state.Sources[instUUID].Name] = importingFromSource[state.Sources[instUUID].Name] + 1
-				importingToTarget[state.Target.Name] = importingToTarget[state.Target.Name] + 1
+				importingToTarget[state.Targets[instUUID].Name] = importingToTarget[state.Targets[instUUID].Name] + 1
 				workerUpdates[instUUID] = now
 
 			case api.MIGRATIONSTATUS_FINAL_IMPORT:
 				importingFromSource[state.Sources[instUUID].Name] = importingFromSource[state.Sources[instUUID].Name] + 1
-				importingToTarget[state.Target.Name] = importingToTarget[state.Target.Name] + 1
+				importingToTarget[state.Targets[instUUID].Name] = importingToTarget[state.Targets[instUUID].Name] + 1
 				workerUpdates[instUUID] = now
 
 			case api.MIGRATIONSTATUS_CREATING:
-				creatingOnTarget[state.Target.Name] = creatingOnTarget[state.Target.Name] + 1
+				creatingOnTarget[state.Targets[instUUID].Name] = creatingOnTarget[state.Targets[instUUID].Name] + 1
 			}
 		}
 	}
