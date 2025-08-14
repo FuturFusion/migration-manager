@@ -115,10 +115,33 @@ var updates = map[int]schema.Update{
 	8:  updateFromV7,
 	9:  updateFromV8,
 	10: updateFromV9,
-	11: updateFromV11,
+	11: updateFromV10,
+	12: updateFromV11,
 }
 
 func updateFromV11(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE warnings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    uuid TEXT NOT NULL,
+    type TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity TEXT NOT NULL,
+    status TEXT NOT NULL,
+    messages TEXT NOT NULL,
+    count INTEGER NOT NULL,
+    first_seen_date DATETIME NOT NULL,
+    last_seen_date DATETIME NOT NULL,
+    updated_date DATETIME NOT NULL,
+    UNIQUE (uuid),
+    UNIQUE (type, scope, entity_type, entity)
+	);
+`)
+
+	return err
+}
+
+func updateFromV10(ctx context.Context, tx *sql.Tx) error {
 	_, err := tx.ExecContext(ctx, `CREATE TABLE queue_new (
     id                               INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     instance_id                      INTEGER NOT NULL,
