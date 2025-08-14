@@ -174,9 +174,10 @@ func (s *InternalVMwareSource) GetNSXManagerIP(ctx context.Context) (string, err
 	return managerIP, nil
 }
 
-func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {
+func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, migration.Warnings, error) {
 	ret := migration.Instances{}
 
+	warnings := migration.Warnings{}
 	finder := find.NewFinder(s.govmomiClient.Client)
 	vms, err := finder.VirtualMachineList(ctx, "/...")
 	var notFoundErr *find.NotFoundError
@@ -184,17 +185,17 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		if errors.As(err, &notFoundErr) {
 			slog.Warn("Registered source has no VMs", slog.String("source", s.Name))
 
-			return ret, nil
+			return ret, nil, nil
 		}
 
-		return nil, err
+		return nil, nil, err
 	}
 
 	var networks []object.NetworkReference
 	networks, err = finder.NetworkList(ctx, "/...")
 	if err != nil {
 		if !errors.As(err, &notFoundErr) {
-			return nil, err
+			return nil, nil, err
 		}
 
 		slog.Warn("Registered source has no networks", slog.String("source", s.Name))
@@ -211,13 +212,13 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		c := rest.NewClient(s.govmomiClient.Client)
 		err = c.Login(ctx, url.UserPassword(s.Username, s.Password))
 		if err != nil {
-			return nil, fmt.Errorf("Failed to login to REST API: %w", err)
+			return nil, nil, fmt.Errorf("Failed to login to REST API: %w", err)
 		}
 
 		tc = tags.NewManager(c)
 		allCats, err := tc.GetCategories(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("No tag categories found: %w", err)
+			return nil, nil, fmt.Errorf("No tag categories found: %w", err)
 		}
 
 		catMap = make(map[string]string, len(allCats))
@@ -235,7 +236,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		var vmProperties mo.VirtualMachine
 		err := vm.Properties(ctx, vm.Reference(), []string{}, &vmProperties)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		// If a VM has no configuration, then it's just a stub, so skip it.
@@ -257,6 +258,8 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 				_ = os.WriteFile(fileName, b, 0o644)
 			}
 
+			msg := fmt.Sprintf("Failed to import %q: %v", vm.InventoryPath, err)
+			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, msg))
 			slog.Error("Failed to record vm properties", slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.Any("error", err))
 			continue
 		}
@@ -264,7 +267,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		if !s.isESXI {
 			vmTags, err := tc.GetAttachedTags(ctx, vm.Reference())
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			for _, tag := range vmTags {
@@ -285,10 +288,15 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			Properties:           *vmProps,
 		}
 
+		err = inst.DisabledReason()
+		if err != nil {
+			warnings = append(warnings, migration.NewSyncWarning(api.InstanceCannotMigrate, s.Name, err.Error()))
+		}
+
 		ret = append(ret, inst)
 	}
 
-	return ret, nil
+	return ret, warnings, nil
 }
 
 func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) (migration.Networks, error) {
