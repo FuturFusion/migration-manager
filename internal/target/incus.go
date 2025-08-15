@@ -248,7 +248,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 			apiDef.Devices[nicDeviceName]["nictype"] = "bridged"
 			apiDef.Devices[nicDeviceName]["parent"] = q.Placement.Networks[nic.ID]
 
-			vlanID, ok := q.Placement.Networks[nic.ID]
+			vlanID, ok := q.Placement.VlanIDs[nic.ID]
 			if ok {
 				if strings.Contains(vlanID, ",") {
 					apiDef.Devices[nicDeviceName]["vlan.tagged"] = vlanID
