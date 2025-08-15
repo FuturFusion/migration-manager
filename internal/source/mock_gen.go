@@ -37,7 +37,7 @@ var _ Source = &SourceMock{}
 //			GetAllNetworksFunc: func(ctx context.Context) (migration.Networks, error) {
 //				panic("mock out the GetAllNetworks method")
 //			},
-//			GetAllVMsFunc: func(ctx context.Context) (migration.Instances, error) {
+//			GetAllVMsFunc: func(ctx context.Context) (migration.Instances, migration.Warnings, error) {
 //				panic("mock out the GetAllVMs method")
 //			},
 //			GetNameFunc: func() string {
@@ -78,7 +78,7 @@ type SourceMock struct {
 	GetAllNetworksFunc func(ctx context.Context) (migration.Networks, error)
 
 	// GetAllVMsFunc mocks the GetAllVMs method.
-	GetAllVMsFunc func(ctx context.Context) (migration.Instances, error)
+	GetAllVMsFunc func(ctx context.Context) (migration.Instances, migration.Warnings, error)
 
 	// GetNameFunc mocks the GetName method.
 	GetNameFunc func() string
@@ -334,7 +334,7 @@ func (mock *SourceMock) GetAllNetworksCalls() []struct {
 }
 
 // GetAllVMs calls GetAllVMsFunc.
-func (mock *SourceMock) GetAllVMs(ctx context.Context) (migration.Instances, error) {
+func (mock *SourceMock) GetAllVMs(ctx context.Context) (migration.Instances, migration.Warnings, error) {
 	if mock.GetAllVMsFunc == nil {
 		panic("SourceMock.GetAllVMsFunc: method is nil but Source.GetAllVMs was just called")
 	}

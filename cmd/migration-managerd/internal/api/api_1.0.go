@@ -33,6 +33,8 @@ var api10 = []APIEndpoint{
 	sourcesCmd,
 	targetCmd,
 	targetsCmd,
+	warningCmd,
+	warningsCmd,
 }
 
 // swagger:operation GET /1.0 server server_get_untrusted

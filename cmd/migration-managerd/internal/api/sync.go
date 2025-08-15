@@ -102,7 +102,7 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 
 // trySyncAllSources connects to each source in the database and updates the in-memory record of all networks and instances.
 // skipNonResponsiveSources - If true, if a connection to a source returns an error, syncing from that source will be skipped.
-func (d *Daemon) trySyncAllSources(ctx context.Context) error {
+func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 	log := slog.With(slog.String("method", "syncAllSources"))
 	vmSourcesByName := map[string]migration.Source{}
 	networkSourcesByName := map[string]migration.Source{}
@@ -129,21 +129,55 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 		return err
 	}
 
+	warnings := migration.Warnings{}
+	defer func() {
+		err := transaction.Do(ctx, func(ctx context.Context) error {
+			// If this sync succeeded, then prune warning messages and remove resolved ones.
+			if _err == nil {
+				log.Info("Cleaning up stale warnings")
+				err := d.warning.RemoveStale(ctx, api.WarningScopeSync(), warnings)
+				if err != nil {
+					return fmt.Errorf("Failed to clean up warnings: %w", err)
+				}
+			}
+
+			if len(warnings) > 0 {
+				log.Info("Emitting warnings", slog.Int("warnings", len(warnings)))
+			}
+
+			for _, w := range warnings {
+				_, err := d.warning.Emit(ctx, w)
+				if err != nil {
+					return fmt.Errorf("Failed to trigger warning: %w", err)
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			log.Error("Failed to update sync warnings", slog.Any("error", err))
+		}
+	}()
+
 	networksBySrc := map[string]map[string]migration.Network{}
 	instancesBySrc := map[string]map[uuid.UUID]migration.Instance{}
 	for _, src := range vmSourcesByName {
 		log := log.With(slog.String("source", src.Name))
 
 		if src.GetExternalConnectivityStatus() != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			warnings = append(warnings, migration.NewSyncWarning(api.SourceUnavailable, src.Name, fmt.Sprintf("status: %q", src.GetExternalConnectivityStatus())))
 			log.Warn("Skipping source that hasn't passed connectivity check")
 			continue
 		}
 
-		srcNetworks, srcInstances, err := fetchVMWareSourceData(ctx, src)
+		srcNetworks, srcInstances, importWarnings, err := fetchVMWareSourceData(ctx, src)
 		if err != nil {
+			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, src.Name, err.Error()))
 			log.Error("Failed to fetch records from source", logger.Err(err))
 			continue
 		}
+
+		warnings = append(warnings, importWarnings...)
 
 		networksBySrc[src.Name] = srcNetworks
 		instancesBySrc[src.Name] = srcInstances
@@ -151,17 +185,35 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 
 	for _, src := range networkSourcesByName {
 		if src.GetExternalConnectivityStatus() != api.EXTERNALCONNECTIVITYSTATUS_OK {
+			warnings = append(warnings, migration.NewSyncWarning(api.SourceUnavailable, src.Name, fmt.Sprintf("status: %q", src.GetExternalConnectivityStatus())))
 			continue
 		}
 
 		found, err := fetchNSXSourceData(ctx, src, vmSourcesByName, networksBySrc)
 		if err != nil {
+			warnings = append(warnings, migration.NewSyncWarning(api.NetworkImportFailed, src.Name, err.Error()))
 			log.Error("Failed to fetch records from source", logger.Err(err))
 			continue
 		}
 
 		if found {
 			break
+		}
+	}
+
+	for srcName, networks := range networksBySrc {
+		for _, net := range networks {
+			if net.Type == api.NETWORKTYPE_VMWARE_NSX || net.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX {
+				var props internalAPI.NSXNetworkProperties
+				err := json.Unmarshal(net.Properties, &props)
+				if err != nil {
+					return err
+				}
+
+				if props.Segment.Name == "" {
+					warnings = append(warnings, migration.NewSyncWarning(api.InstanceMissingNetworkSource, srcName, fmt.Sprintf("No NSX source for network %q", net.Location)))
+				}
+			}
 		}
 	}
 
@@ -175,6 +227,9 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 				allInstancesByUUID[inst.UUID] = inst
 				continue
 			}
+
+			msg := fmt.Sprintf("Duplicate UUIDs: %q. Skipped instance %q on source %q, keeping instance %q on source %q", inst.UUID.String(), inst.Properties.Location, srcName, existing.Properties.Location, existing.Source)
+			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, srcName, msg))
 
 			// Record the instance to ignore.
 			duplicateUUIDs = append(duplicateUUIDs, inst.UUID)
@@ -196,7 +251,18 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) error {
 		instancesBySrc[srcName] = instancesByUUID
 	}
 
-	return d.syncSourceData(ctx, vmSourcesByName, instancesBySrc, networksBySrc)
+	srcWarnings, err := d.syncSourceData(ctx, vmSourcesByName, instancesBySrc, networksBySrc)
+	if err != nil {
+		for srcName := range instancesBySrc {
+			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, srcName, fmt.Sprintf("Failed to update records: %v", err)))
+		}
+
+		return err
+	}
+
+	warnings = append(warnings, srcWarnings...)
+
+	return nil
 }
 
 // syncSourceData fetches instance and network data from the source and updates our database records.
@@ -206,10 +272,37 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 		return fmt.Errorf("Failed to retrieve %q sources: %w", api.SOURCETYPE_NSX, err)
 	}
 
-	srcNetworks, srcInstances, err := fetchVMWareSourceData(ctx, src)
+	warnings := migration.Warnings{}
+	defer func() {
+		err := transaction.Do(ctx, func(ctx context.Context) error {
+			sourceScope := api.WarningScopeSync()
+			sourceScope.Entity = src.Name
+			err := d.warning.RemoveStale(ctx, sourceScope, warnings)
+			if err != nil {
+				return fmt.Errorf("Failed to clean up warnings: %w", err)
+			}
+
+			for _, w := range warnings {
+				_, err := d.warning.Emit(ctx, w)
+				if err != nil {
+					return fmt.Errorf("Failed to trigger warning: %w", err)
+				}
+			}
+
+			return nil
+		})
+		if err != nil {
+			slog.Error("Failed to update sync warnings", slog.Any("error", err))
+		}
+	}()
+
+	srcNetworks, srcInstances, importWarnings, err := fetchVMWareSourceData(ctx, src)
 	if err != nil {
+		warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, src.Name, err.Error()))
 		return err
 	}
+
+	warnings = append(warnings, importWarnings...)
 
 	sourcesByName := map[string]migration.Source{src.Name: src}
 	instancesBySrc := map[string]map[uuid.UUID]migration.Instance{src.Name: srcInstances}
@@ -228,11 +321,13 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 		var matchingNSXSource bool
 		for _, nsxSource := range nsxSources {
 			if nsxSource.GetExternalConnectivityStatus() != api.EXTERNALCONNECTIVITYSTATUS_OK {
+				warnings = append(warnings, migration.NewSyncWarning(api.SourceUnavailable, src.Name, fmt.Sprintf("status: %q", src.GetExternalConnectivityStatus())))
 				continue
 			}
 
 			matchingNSXSource, err = fetchNSXSourceData(ctx, nsxSource, sourcesByName, networksBySrc)
 			if err != nil {
+				warnings = append(warnings, migration.NewSyncWarning(api.NetworkImportFailed, src.Name, err.Error()))
 				return fmt.Errorf("Failed to fetch network properties from NSX: %w", err)
 			}
 
@@ -243,6 +338,20 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 
 		// If there are no matching NSX sources, try to see if any exist, and record them.
 		if !matchingNSXSource {
+			for _, net := range srcNetworks {
+				if net.Type == api.NETWORKTYPE_VMWARE_NSX || net.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX {
+					var props internalAPI.NSXNetworkProperties
+					err := json.Unmarshal(net.Properties, &props)
+					if err != nil {
+						return err
+					}
+
+					if props.Segment.Name == "" {
+						warnings = append(warnings, migration.NewSyncWarning(api.InstanceMissingNetworkSource, src.Name, fmt.Sprintf("No NSX source for network %q", net.Location)))
+					}
+				}
+			}
+
 			vmwareSrc, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
 			if err != nil {
 				return fmt.Errorf("Failed to convert source %q to %q source: %w", src.Name, src.SourceType, err)
@@ -287,16 +396,24 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 			}
 		}
 
-		return d.syncSourceData(ctx, sourcesByName, instancesBySrc, networksBySrc)
+		srcWarnings, err := d.syncSourceData(ctx, sourcesByName, instancesBySrc, networksBySrc)
+		if err != nil {
+			return err
+		}
+
+		warnings = append(warnings, srcWarnings...)
+
+		return nil
 	})
 }
 
 // syncSourceData is a helper that opens a transaction and updates the internal record of all sources with the supplied data.
-func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]migration.Source, instancesBySrc map[string]map[uuid.UUID]migration.Instance, networksBySrc map[string]map[string]migration.Network) error {
+func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]migration.Source, instancesBySrc map[string]map[uuid.UUID]migration.Instance, networksBySrc map[string]map[string]migration.Network) (migration.Warnings, error) {
 	syncLock.Lock()
 	defer syncLock.Unlock()
 
-	return transaction.Do(ctx, func(ctx context.Context) error {
+	warnings := migration.Warnings{}
+	err := transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the list of configured sources.
 		allInstances, err := d.instance.GetAllUUIDs(ctx)
 		if err != nil {
@@ -392,14 +509,21 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 				}
 			}
 
-			err = syncInstancesFromSource(ctx, srcName, d.instance, existingInstances, srcInstances)
+			srcWarnings, err := syncInstancesFromSource(ctx, srcName, d.instance, existingInstances, srcInstances)
 			if err != nil {
 				return fmt.Errorf("Failed to sync instances from %q: %w", srcName, err)
 			}
+
+			warnings = append(warnings, srcWarnings...)
 		}
 
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return warnings, nil
 }
 
 // syncNetworksFromSource updates migration manager's internal record of networks from the source.
@@ -464,11 +588,13 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 }
 
 // syncInstancesFromSource updates migration manager's internal record of instances from the source.
-func syncInstancesFromSource(ctx context.Context, sourceName string, i migration.InstanceService, existingInstances map[uuid.UUID]migration.Instance, srcInstances map[uuid.UUID]migration.Instance) error {
+func syncInstancesFromSource(ctx context.Context, sourceName string, i migration.InstanceService, existingInstances map[uuid.UUID]migration.Instance, srcInstances map[uuid.UUID]migration.Instance) (migration.Warnings, error) {
 	log := slog.With(
 		slog.String("method", "syncInstancesFromSource"),
 		slog.String("source", sourceName),
 	)
+
+	warnings := migration.Warnings{}
 	for instUUID, inst := range existingInstances {
 		log := log.With(
 			slog.String("instance", inst.Properties.Location),
@@ -481,7 +607,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			log.Info("Deleting instance with no source record")
 			err := i.DeleteByUUID(ctx, instUUID)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			continue
@@ -514,11 +640,27 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			instanceUpdated = true
 		}
 
+		instanceIncomplete := false
+		if srcInst.Properties.Architecture == "" || srcInst.Properties.OS == "" || srcInst.Properties.OSVersion == "" {
+			instanceIncomplete = true
+		}
+
+		for _, nic := range srcInst.Properties.NICs {
+			if nic.IPv4Address == "" {
+				instanceIncomplete = true
+				break
+			}
+		}
+
+		if instanceIncomplete {
+			warnings = append(warnings, migration.NewSyncWarning(api.InstanceIncomplete, inst.Source, fmt.Sprintf("%q has incomplete properties. Ensure VM is powered on and guest agent is running", inst.Properties.Location)))
+		}
+
 		// Set fallback architecture.
 		if inst.Properties.Architecture == "" {
 			arch, err := osarch.ArchitectureName(osarch.ARCH_64BIT_INTEL_X86)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			inst.Properties.Architecture = arch
@@ -605,7 +747,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			inst.LastUpdateFromSource = srcInst.LastUpdateFromSource
 			err := i.Update(ctx, &inst)
 			if err != nil {
-				return fmt.Errorf("Failed to update instance: %w", err)
+				return nil, fmt.Errorf("Failed to update instance: %w", err)
 			}
 		}
 	}
@@ -622,12 +764,12 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			log.Info("Recording new instance detected on source")
 			_, err := i.Create(ctx, inst)
 			if err != nil {
-				return fmt.Errorf("Failed to create instance %q (%q): %w", inst.UUID.String(), inst.Properties.Location, err)
+				return nil, fmt.Errorf("Failed to create instance %q (%q): %w", inst.UUID.String(), inst.Properties.Location, err)
 			}
 		}
 	}
 
-	return nil
+	return warnings, nil
 }
 
 func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSources map[string]migration.Source, networksBySrc map[string]map[string]migration.Network) (bool, error) {
@@ -767,25 +909,25 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 }
 
 // fetchVMWareSourceData connects to a VMWare source and returns the resources we care about, keyed by their unique identifiers.
-func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[string]migration.Network, map[uuid.UUID]migration.Instance, error) {
+func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[string]migration.Network, map[uuid.UUID]migration.Instance, migration.Warnings, error) {
 	s, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to create VMwareSource from source: %w", err)
+		return nil, nil, nil, fmt.Errorf("Failed to create VMwareSource from source: %w", err)
 	}
 
 	err = s.Connect(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to connect to source: %w", err)
+		return nil, nil, nil, fmt.Errorf("Failed to connect to source: %w", err)
 	}
 
-	instances, err := s.GetAllVMs(ctx)
+	instances, warnings, err := s.GetAllVMs(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get VMs: %w", err)
+		return nil, nil, nil, fmt.Errorf("Failed to get VMs: %w", err)
 	}
 
 	allNetworks, err := s.GetAllNetworks(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to get networks: %w", err)
+		return nil, nil, nil, fmt.Errorf("Failed to get networks: %w", err)
 	}
 
 	// Only record networks that are actually in use by detected VMs.
@@ -806,6 +948,8 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 				slog.String("location_recorded", existing.Properties.Location),
 				slog.String("location_ignored", inst.Properties.Location))
 
+			msg := fmt.Sprintf("Duplicate UUIDs: %q. Skipped instance %q, keeping instance %q", inst.UUID.String(), inst.Properties.Location, existing.Properties.Location)
+			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, src.Name, msg))
 			log.Warn("Detected instance with duplicate UUID. Update instance configuration on source to register this instance")
 			continue
 		}
@@ -813,5 +957,5 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 		instanceMap[inst.UUID] = inst
 	}
 
-	return networkMap, instanceMap, nil
+	return networkMap, instanceMap, warnings, nil
 }
