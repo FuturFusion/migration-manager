@@ -1042,7 +1042,7 @@ type IncusDetails struct {
 
 // GetDetails fetches top-level details about the entities that exist on the target.
 func (t *InternalIncusTarget) GetDetails(ctx context.Context) (*IncusDetails, error) {
-	if t.isConnected {
+	if !t.isConnected {
 		return nil, fmt.Errorf("Not connected to endpoint %q", t.Endpoint)
 	}
 
