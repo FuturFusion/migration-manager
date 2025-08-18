@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
 import { fetchNetwork } from "api/networks";
+import { Network } from "types/network";
 
 const NetworkOverview = () => {
   const { name } = useParams();
@@ -24,6 +25,18 @@ const NetworkOverview = () => {
     return <div>Error while loading network</div>;
   }
 
+  const hasOverrides = (network: Network | null): boolean => {
+    if (!network) {
+      return false;
+    }
+
+    if (network.name || network.bridge_name || network.vlan_id) {
+      return true;
+    }
+
+    return false;
+  };
+
   return (
     <>
       <h6 className="mb-3">General</h6>
@@ -45,15 +58,33 @@ const NetworkOverview = () => {
           <div className="col-10 detail-table-cell">{network?.type}</div>
         </div>
       </div>
-      {network?.name && (
+      {hasOverrides(network) && (
         <>
           <hr className="my-4" />
           <h6 className="mb-3">Overrides</h6>
           <div className="container">
-            <div className="row">
-              <div className="col-2 detail-table-header">Name</div>
-              <div className="col-10 detail-table-cell">{network?.name}</div>
-            </div>
+            {network?.name && (
+              <div className="row">
+                <div className="col-2 detail-table-header">Name</div>
+                <div className="col-10 detail-table-cell">{network?.name}</div>
+              </div>
+            )}
+            {network?.bridge_name && (
+              <div className="row">
+                <div className="col-2 detail-table-header">Bridge name</div>
+                <div className="col-10 detail-table-cell">
+                  {network?.bridge_name}
+                </div>
+              </div>
+            )}
+            {network?.vlan_id && (
+              <div className="row">
+                <div className="col-2 detail-table-header">VLAN ID</div>
+                <div className="col-10 detail-table-cell">
+                  {network?.vlan_id}
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

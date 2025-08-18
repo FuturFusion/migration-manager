@@ -7,4 +7,6 @@ export interface Network {
   location: string;
   properties: string;
   name: string;
+  bridge_name: string;
+  vlan_id: string;
 }

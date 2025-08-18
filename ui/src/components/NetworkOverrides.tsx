@@ -1,6 +1,5 @@
 import { FC } from "react";
-import Button from "react-bootstrap/Button";
-import Form from "react-bootstrap/Form";
+import { Button, Form, Row, Col } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
 import { useFormik } from "formik";
@@ -26,11 +25,15 @@ const NetworkOverrides: FC = () => {
 
   let formikInitialValues = {
     name: "",
+    bridge_name: "",
+    vlan_id: "",
   };
 
   if (network) {
     formikInitialValues = {
       name: network.name,
+      bridge_name: network.bridge_name,
+      vlan_id: network.vlan_id,
     };
   }
 
@@ -76,21 +79,67 @@ const NetworkOverrides: FC = () => {
   }
 
   return (
-    <div className="form-container">
-      <Form noValidate>
-        <Form.Group className="mb-3" controlId="name">
-          <Form.Label>Name</Form.Label>
-          <Form.Control
-            type="text"
-            name="name"
-            value={formik.values.name}
-            onChange={formik.handleChange}
-            onBlur={formik.handleBlur}
-            isInvalid={!!formik.errors.name && formik.touched.name}
-          />
-          <Form.Control.Feedback type="invalid">
-            {formik.errors.name}
-          </Form.Control.Feedback>
+    <Form noValidate>
+      <h6 className="mb-3">Virtual network mapping</h6>
+      <div className="form-container">
+        <Form.Group as={Row} className="mb-3" controlId="name">
+          <Form.Label column sm={3}>
+            Name
+          </Form.Label>
+          <Col sm={9}>
+            <Form.Control
+              type="text"
+              name="name"
+              value={formik.values.name}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              isInvalid={!!formik.errors.name && formik.touched.name}
+            />
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.name}
+            </Form.Control.Feedback>
+          </Col>
+        </Form.Group>
+      </div>
+      <h6 className="mb-3">Physical network mapping</h6>
+      <div className="form-container">
+        <Form.Group as={Row} className="mb-3" controlId="bridge_name">
+          <Form.Label column sm={3}>
+            Bridge name
+          </Form.Label>
+          <Col sm={9}>
+            <Form.Control
+              type="text"
+              name="bridge_name"
+              value={formik.values.bridge_name}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              isInvalid={
+                !!formik.errors.bridge_name && formik.touched.bridge_name
+              }
+            />
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.bridge_name}
+            </Form.Control.Feedback>
+          </Col>
+        </Form.Group>
+        <Form.Group as={Row} className="mb-3" controlId="vlan_id">
+          <Form.Label column sm={3}>
+            VLAN ID
+          </Form.Label>
+          <Col sm={9}>
+            <Form.Control
+              type="text"
+              name="vlan_id"
+              value={formik.values.vlan_id}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              isInvalid={!!formik.errors.vlan_id && formik.touched.vlan_id}
+            />
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.vlan_id}
+            </Form.Control.Feedback>
+          </Col>
         </Form.Group>
         <Button
           className="float-end"
@@ -99,8 +148,8 @@ const NetworkOverrides: FC = () => {
         >
           Save
         </Button>
-      </Form>
-    </div>
+      </div>
+    </Form>
   );
 };
 
