@@ -18,23 +18,27 @@ export interface Batch {
   start_date: string;
   status: string;
   status_message: string;
-  storage_pool: string;
-  target: string;
-  target_project: string;
+  default_storage_pool: string;
+  default_target: string;
+  default_target_project: string;
   migration_windows: MigrationWindow[];
   constraints: BatchConstraint[];
   post_migration_retries: number;
+  placement_scriptlet: string;
+  rerun_scriptlets: boolean;
 }
 
 export interface BatchFormValues {
   name: string;
-  target: string;
-  target_project: string;
+  default_storage_pool: string;
+  default_target: string;
+  default_target_project: string;
   status: string;
   status_message: string;
-  storage_pool: string;
   include_expression: string;
   migration_windows: MigrationWindow[];
   constraints: BatchConstraint[];
   post_migration_retries: number;
+  placement_scriptlet: string;
+  rerun_scriptlets: boolean;
 }

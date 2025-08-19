@@ -52,8 +52,8 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
       errors.name = "Name is required";
     }
 
-    if (!values.target || Number(values.target) < 1) {
-      errors.target = "Target is required";
+    if (!values.default_target || Number(values.default_target) < 1) {
+      errors.default_target = "Target is required";
     }
 
     if (!values.include_expression) {
@@ -72,15 +72,17 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
 
   let formikInitialValues: BatchFormValues = {
     name: "",
-    target: "",
-    target_project: "default",
+    default_storage_pool: "default",
+    default_target: "",
+    default_target_project: "default",
     status: "",
     status_message: "",
-    storage_pool: "local",
     include_expression: "",
     migration_windows: [],
     constraints: [],
     post_migration_retries: 5,
+    placement_scriptlet: "",
+    rerun_scriptlets: false,
   };
 
   if (batch) {
@@ -92,15 +94,17 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
 
     formikInitialValues = {
       name: batch.name,
-      target: batch.target,
-      target_project: batch.target_project,
+      default_storage_pool: batch.default_storage_pool,
+      default_target: batch.default_target,
+      default_target_project: batch.default_target_project,
       status: batch.status,
       status_message: batch.status_message,
-      storage_pool: batch.storage_pool,
       include_expression: batch.include_expression,
       migration_windows: migrationWindows,
       constraints: batch.constraints,
       post_migration_retries: batch.post_migration_retries,
+      placement_scriptlet: batch.placement_scriptlet,
+      rerun_scriptlets: batch.rerun_scriptlets,
     };
   }
 
@@ -135,9 +139,14 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
 
       const modifiedValues = {
         ...values,
-        target_project:
-          values.target_project != "" ? values.target_project : "default",
-        storage_pool: values.storage_pool != "" ? values.storage_pool : "local",
+        default_target_project:
+          values.default_target_project != ""
+            ? values.default_target_project
+            : "default",
+        default_storage_pool:
+          values.default_storage_pool != ""
+            ? values.default_storage_pool
+            : "default",
         migration_windows: formattedMigrationWindows,
       };
 
@@ -189,15 +198,18 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               {formik.errors.name}
             </Form.Control.Feedback>
           </Form.Group>
-          <Form.Group controlId="target">
-            <Form.Label>Target</Form.Label>
+          <Form.Group controlId="default_target">
+            <Form.Label>Default target</Form.Label>
             {!isLoadingTargets && !targetsError && (
               <Form.Select
-                name="target"
-                value={formik.values.target}
+                name="default_target"
+                value={formik.values.default_target}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                isInvalid={!!formik.errors.target && formik.touched.target}
+                isInvalid={
+                  !!formik.errors.default_target &&
+                  formik.touched.default_target
+                }
               >
                 <option value="">-- Select an option --</option>
                 {targets.map((option) => (
@@ -208,25 +220,25 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               </Form.Select>
             )}
             <Form.Control.Feedback type="invalid">
-              {formik.errors.target}
+              {formik.errors.default_target}
             </Form.Control.Feedback>
           </Form.Group>
-          <Form.Group className="mb-3" controlId="project">
-            <Form.Label>Incus project</Form.Label>
+          <Form.Group className="mb-3" controlId="default_project">
+            <Form.Label>Default project</Form.Label>
             <Form.Control
               type="text"
-              name="target_project"
-              value={formik.values.target_project}
+              name="default_target_project"
+              value={formik.values.default_target_project}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
             />
           </Form.Group>
-          <Form.Group className="mb-3" controlId="storage">
-            <Form.Label>Storage pool</Form.Label>
+          <Form.Group className="mb-3" controlId="default_storage">
+            <Form.Label>Default storage pool</Form.Label>
             <Form.Control
               type="text"
-              name="storage_pool"
-              value={formik.values.storage_pool}
+              name="default_storage_pool"
+              value={formik.values.default_storage_pool}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
             />
@@ -282,6 +294,39 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
                 <pre>{formik.errors.include_expression}</pre>
               </Form.Control.Feedback>
             </InputGroup>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="placement scriptlet">
+            <Form.Label>Placement scriptlet</Form.Label>
+            <Form.Control
+              type="text"
+              as="textarea"
+              rows={10}
+              name="placement_scriptlet"
+              value={formik.values.placement_scriptlet}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="rerun_scriptlets">
+            <Form.Label>Re-run scriptlets</Form.Label>
+            <Form.Select
+              name="rerun_scriptlets"
+              value={formik.values.rerun_scriptlets ? "true" : "false"}
+              onChange={(e) =>
+                formik.setFieldValue(
+                  "rerun_scriptlets",
+                  e.target.value === "true",
+                )
+              }
+              onBlur={formik.handleBlur}
+              isInvalid={
+                !!formik.errors.rerun_scriptlets &&
+                formik.touched.rerun_scriptlets
+              }
+            >
+              <option value="false">no</option>
+              <option value="true">yes</option>
+            </Form.Select>
           </Form.Group>
           <Form.Group className="mb-3" controlId="migration_windows">
             <Form.Label>Migration windows</Form.Label>
