@@ -501,7 +501,7 @@ def placement(instance, batch):
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
 
-			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_CREATING, uuids["vm2"]: api.MIGRATIONSTATUS_IDLE}, // failed VM keeps its old status since it would have been removed.
+			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_WAITING, uuids["vm2"]: api.MIGRATIONSTATUS_IDLE}, // failed VM moves to WAITING to be re-run.
 			resultBatchState:     api.BATCHSTATUS_RUNNING,
 			assertErr:            boom.ErrorIs,
 			vmStartErr:           map[string]error{"vm1": boom.Error},

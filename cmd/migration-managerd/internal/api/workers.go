@@ -494,7 +494,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	reverter.Add(func() {
 		d.target.RemoveCreation(t.Name)
 		log := log.With(slog.String("revert", "set instance failed"))
-		var errString string
+		errString := "Instance creation attempt failed"
 		if _err != nil {
 			errString = _err.Error()
 		}
@@ -502,6 +502,12 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		// If cleanupInstances is true, then we can try to create the VMs again so don't set the instance state to errored.
 		if cleanupInstances {
 			log.Error("Failed attempt to create target instance. Trying again soon")
+			// Set the state to WAITING so it will be picked up again by beginImports.
+			_, err := d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, errString, migration.IMPORTSTAGE_BACKGROUND, q.GetWindowID())
+			if err != nil {
+				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_WAITING), logger.Err(err))
+			}
+
 			return
 		}
 

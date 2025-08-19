@@ -323,7 +323,7 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 		}
 	}
 
-	msg := fmt.Sprintf("(%d/%d) Importing disk", index, len(s.Servers.Servers))
+	msg := fmt.Sprintf("Importing disk (%d/%d) ", index, len(s.Servers.Servers))
 	err = nbdcopy.Run(
 		msg,
 		s.Nbdkit.LibNBDExportName(),
@@ -346,6 +346,19 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 	diskName, err := vmware.IsSupportedDisk(s.Disk)
 	if err != nil {
 		return err
+	}
+
+	index := 1
+	for i, server := range s.Servers.Servers {
+		serverDiskName, err := vmware.IsSupportedDisk(server.Disk)
+		if err != nil {
+			return err
+		}
+
+		if serverDiskName == diskName {
+			index = i + 1
+			break
+		}
 	}
 
 	log := slog.With(
@@ -416,7 +429,7 @@ func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Tar
 				}
 
 				bar.Set64(offset + chunkSize)
-				statusCallback(fmt.Sprintf("Importing disk %q: %02.2f%% complete", diskName, float64(offset+chunkSize)/float64(s.Disk.CapacityInBytes)*100.0), false)
+				statusCallback(fmt.Sprintf("Importing disk (%d/%d) %q: %02.2f%% complete", index, len(s.Servers.Servers), diskName, float64(offset+chunkSize)/float64(s.Disk.CapacityInBytes)*100.0), false)
 				offset += chunkSize
 			}
 		}
