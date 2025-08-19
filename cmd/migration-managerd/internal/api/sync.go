@@ -251,7 +251,7 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 		instancesBySrc[srcName] = instancesByUUID
 	}
 
-	srcWarnings, err := d.syncSourceData(ctx, vmSourcesByName, instancesBySrc, networksBySrc)
+	srcWarnings, err := d.syncSourceData(ctx, instancesBySrc, networksBySrc)
 	if err != nil {
 		for srcName := range instancesBySrc {
 			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, srcName, fmt.Sprintf("Failed to update records: %v", err)))
@@ -396,7 +396,7 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 			}
 		}
 
-		srcWarnings, err := d.syncSourceData(ctx, sourcesByName, instancesBySrc, networksBySrc)
+		srcWarnings, err := d.syncSourceData(ctx, instancesBySrc, networksBySrc)
 		if err != nil {
 			return err
 		}
@@ -408,18 +408,12 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 }
 
 // syncSourceData is a helper that opens a transaction and updates the internal record of all sources with the supplied data.
-func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]migration.Source, instancesBySrc map[string]map[uuid.UUID]migration.Instance, networksBySrc map[string]map[string]migration.Network) (migration.Warnings, error) {
+func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]map[uuid.UUID]migration.Instance, networksBySrc map[string]map[string]migration.Network) (migration.Warnings, error) {
 	syncLock.Lock()
 	defer syncLock.Unlock()
 
 	warnings := migration.Warnings{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		// Get the list of configured sources.
-		allInstances, err := d.instance.GetAllUUIDs(ctx)
-		if err != nil {
-			return fmt.Errorf("Failed to get internal instance records: %w", err)
-		}
-
 		assignedInstances, err := d.instance.GetAllAssigned(ctx)
 		if err != nil {
 			return fmt.Errorf("Failed to get unassigned internal instance records: %w", err)
@@ -489,6 +483,11 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 		for srcName, srcInstances := range instancesBySrc {
 			// Ensure we only compare instances in the same source.
 			existingInstances := map[uuid.UUID]migration.Instance{}
+			allInstances, err := d.instance.GetAllUUIDsBySource(ctx, srcName)
+			if err != nil {
+				return fmt.Errorf("Failed to get internal instance records for source %q: %w", srcName, err)
+			}
+
 			for _, instUUID := range allInstances {
 				// If the instance is already assigned, then omit it from consideration, unless it is disabled.
 				inst, ok := assignedInstancesByUUID[instUUID]
@@ -501,12 +500,9 @@ func (d *Daemon) syncSourceData(ctx context.Context, sourcesByName map[string]mi
 					continue
 				}
 
+				// If there is no source record, this will be a blank instance struct.
 				inst = srcInstances[instUUID]
-				src := sourcesByName[srcName]
-
-				if src.Name == inst.Source {
-					existingInstances[inst.UUID] = inst
-				}
+				existingInstances[instUUID] = inst
 			}
 
 			srcWarnings, err := syncInstancesFromSource(ctx, srcName, d.instance, existingInstances, srcInstances)
@@ -596,10 +592,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 
 	warnings := migration.Warnings{}
 	for instUUID, inst := range existingInstances {
-		log := log.With(
-			slog.String("instance", inst.Properties.Location),
-			slog.Any("instance_uuid", inst.UUID),
-		)
+		log := log.With(slog.Any("instance_uuid", instUUID))
 
 		srcInst, ok := srcInstances[instUUID]
 		if !ok {
@@ -613,6 +606,7 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			continue
 		}
 
+		log = log.With(slog.String("instance_location", inst.Properties.Location))
 		instanceUpdated := false
 
 		if inst.Properties.Location != srcInst.Properties.Location {
