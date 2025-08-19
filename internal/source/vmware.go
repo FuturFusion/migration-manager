@@ -290,7 +290,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 		err = inst.DisabledReason()
 		if err != nil {
-			warnings = append(warnings, migration.NewSyncWarning(api.InstanceCannotMigrate, s.Name, err.Error()))
+			warnings = append(warnings, migration.NewSyncWarning(api.InstanceCannotMigrate, s.Name, fmt.Sprintf("%q: %v", inst.Properties.Location, err.Error())))
 		}
 
 		ret = append(ret, inst)
