@@ -48,7 +48,7 @@ const Network = () => {
   });
 
   if (isLoading) {
-    return <div>Loading netowrks...</div>;
+    return <div>Loading networks...</div>;
   }
 
   if (error) {
