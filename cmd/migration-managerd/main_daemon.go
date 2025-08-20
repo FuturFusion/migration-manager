@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/api"
+	daemon "github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/api"
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
 	"github.com/FuturFusion/migration-manager/internal/ports"
 )
@@ -49,19 +49,17 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(`unknown command %q for %q`, args[0], cmd.CommandPath())
 	}
 
-	cfg := &config.DaemonConfig{}
-
-	err := cfg.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		return err
 	}
 
 	cfg.Group = c.flagGroup
-	cfg.RestServerIPAddr = c.flagServerAddr
-	cfg.RestServerPort = c.flagServerPort
-	cfg.RestWorkerEndpoint = c.flagWorkerEndpoint
+	cfg.Network.Address = c.flagServerAddr
+	cfg.Network.Port = c.flagServerPort
+	cfg.Network.WorkerEndpoint = c.flagWorkerEndpoint
 
-	d := api.NewDaemon(cfg)
+	d := daemon.NewDaemon(*cfg)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, unix.SIGPWR)

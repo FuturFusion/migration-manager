@@ -2,22 +2,26 @@ package api
 
 import (
 	"context"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
+	"slices"
+	"strconv"
+	"sync"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/api"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/listener"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
@@ -34,6 +38,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // APIEndpoint represents a URL in our API.
@@ -58,9 +63,6 @@ type Daemon struct {
 	db *db.Node
 	os *sys.OS
 
-	authorizer   auth.Authorizer
-	oidcVerifier *oidc.Verifier
-
 	queueHandler *queue.Handler
 	batch        migration.BatchService
 	instance     migration.InstanceService
@@ -70,10 +72,15 @@ type Daemon struct {
 	queue        migration.QueueService
 	warning      migration.WarningService
 
-	server     *http.Server
-	serverCert *incusTLS.CertInfo
-	errgroup   *errgroup.Group
-	config     *config.DaemonConfig
+	errgroup *errgroup.Group
+
+	configLock   sync.Mutex
+	config       api.SystemConfig
+	authorizer   auth.Authorizer
+	oidcVerifier *oidc.Verifier
+	serverCert   *incusTLS.CertInfo
+	listener     net.Listener
+	server       *http.Server
 
 	batchLock util.IDLock[string]
 
@@ -82,7 +89,7 @@ type Daemon struct {
 	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
 }
 
-func NewDaemon(cfg *config.DaemonConfig) *Daemon {
+func NewDaemon(cfg api.SystemConfig) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	d := &Daemon{
@@ -165,19 +172,19 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 			return false, "", "", err
 		}
 
-		return true, userName, api.AuthenticationMethodOIDC, nil
+		return true, userName, incusAPI.AuthenticationMethodOIDC, nil
 	}
 
 	for _, cert := range r.TLS.PeerCertificates {
 		trusted, username := tlsutil.CheckTrustState(*cert, d.config.TrustedTLSClientCertFingerprints)
 		if trusted {
-			return true, username, api.AuthenticationMethodTLS, nil
+			return true, username, incusAPI.AuthenticationMethodTLS, nil
 		}
 	}
 
 	// migration-manager-worker with an access token.
 	if d.workerAccessTokenValid(r) {
-		return true, "migration-manager-worker", api.AuthenticationMethodTLS, nil
+		return true, "migration-manager-worker", incusAPI.AuthenticationMethodTLS, nil
 	}
 
 	// Reject unauthorized.
@@ -223,31 +230,26 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("Failed to sync active batches: %w", err)
 	}
 
-	// Set default authorizer.
-	d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)
+	// Setup OIDC authentication.
+	d.oidcVerifier, err = oidc.NewVerifier(d.config.Security.OIDC.Issuer, d.config.Security.OIDC.ClientID, d.config.Security.OIDC.Scope, d.config.Security.OIDC.Audience, d.config.Security.OIDC.Claim)
 	if err != nil {
 		return err
 	}
 
-	// Setup OIDC authentication.
-	if d.config.OidcIssuer != "" && d.config.OidcClientID != "" {
-		d.oidcVerifier, err = oidc.NewVerifier(d.config.OidcIssuer, d.config.OidcClientID, d.config.OidcScope, d.config.OidcAudience, d.config.OidcClaim)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Setup OpenFGA authorization.
-	if d.config.OpenfgaAPIURL != "" && d.config.OpenfgaAPIToken != "" && d.config.OpenfgaStoreID != "" {
-		err = d.setupOpenFGA(d.config.OpenfgaAPIURL, d.config.OpenfgaAPIToken, d.config.OpenfgaStoreID)
-		if err != nil {
-			return fmt.Errorf("Failed to configure OpenFGA: %w", err)
-		}
+	err = d.setupOpenFGA(d.config.Security)
+	if err != nil {
+		return fmt.Errorf("Failed to configure OpenFGA: %w", err)
 	}
 
 	// Setup web server
 	d.server = restServer(d)
-	d.server.Addr = fmt.Sprintf("%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort)
+	serverAddr := net.JoinHostPort(d.config.Network.Address, strconv.Itoa(d.config.Network.Port))
+
+	d.serverCert, err = incusTLS.KeyPairAndCA(d.os.VarDir, "server", incusTLS.CertServer, true)
+	if err != nil {
+		return err
+	}
 
 	group, errgroupCtx := errgroup.WithContext(context.Background())
 	d.errgroup = group
@@ -281,27 +283,11 @@ func (d *Daemon) Start() error {
 		return err
 	})
 
-	group.Go(func() error {
-		slog.Info("Start https listener", slog.Any("addr", d.server.Addr))
-
-		certFile := filepath.Join(d.os.VarDir, "server.crt")
-		keyFile := filepath.Join(d.os.VarDir, "server.key")
-
-		var err error
-		// Ensure that the certificate exists, or create a new one if it does not.
-		d.serverCert, err = incusTLS.KeyPairAndCA(d.os.VarDir, "server", incusTLS.CertServer, true)
-		if err != nil {
-			return err
-		}
-
-		err = d.server.ListenAndServeTLS(certFile, keyFile)
-		if errors.Is(err, http.ErrServerClosed) {
-			// Ignore error from graceful shutdown.
-			return nil
-		}
-
+	errChan := d.updateHTTPListener(serverAddr)
+	err = <-errChan
+	if err != nil {
 		return err
-	})
+	}
 
 	// Start background workers
 	d.runPeriodicTask(d.ShutdownCtx, "trySyncAllSources", d.trySyncAllSources, 10*time.Minute)
@@ -327,9 +313,161 @@ func (d *Daemon) Start() error {
 	return nil
 }
 
+func (d *Daemon) Authorizer() auth.Authorizer {
+	d.configLock.Lock()
+	defer d.configLock.Unlock()
+
+	return d.authorizer
+}
+
+func (d *Daemon) OIDCVerifier() *oidc.Verifier {
+	d.configLock.Lock()
+	defer d.configLock.Unlock()
+
+	return d.oidcVerifier
+}
+
 func (d *Daemon) ServerCert() *incusTLS.CertInfo {
+	d.configLock.Lock()
+	defer d.configLock.Unlock()
+
 	cert := *d.serverCert
 	return &cert
+}
+
+func (d *Daemon) TrustedFingerprints() []string {
+	d.configLock.Lock()
+	defer d.configLock.Unlock()
+
+	return d.config.Security.TrustedTLSClientCertFingerprints
+}
+
+func (d *Daemon) updateHTTPListener(address string) <-chan error {
+	ch := make(chan error)
+	d.errgroup.Go(func() error {
+		if d.listener != nil {
+			slog.Info("Stopping existing https listener", slog.Any("addr", d.listener.Addr().String()))
+			err := d.listener.Close()
+			if err != nil {
+				ch <- err
+				return err
+			}
+		}
+
+		slog.Info("Start https listener", slog.Any("addr", address))
+		tcpListener, err := net.Listen("tcp", address)
+		if err != nil {
+			ch <- err
+			return err
+		}
+
+		d.listener = listener.NewFancyTLSListener(tcpListener, d.serverCert)
+
+		// Unblock the channel here before we block for the server.
+		ch <- nil
+
+		if d.server != nil {
+			err = d.server.Serve(d.listener)
+			if errors.Is(err, http.ErrServerClosed) {
+				slog.Info("Shutting down server", slog.Any("addr", address))
+				// Ignore error from graceful shutdown.
+				return nil
+			}
+
+			return err
+		}
+
+		return nil
+	})
+
+	return ch
+}
+
+func (d *Daemon) updateServerCert(cfg api.CertificatePost) (_err error) {
+	d.configLock.Lock()
+	defer d.configLock.Unlock()
+
+	certBlock, _ := pem.Decode([]byte(cfg.Cert))
+	if certBlock == nil {
+		return fmt.Errorf("Certificate must be base64 encoded PEM certificate")
+	}
+
+	keyBlock, _ := pem.Decode([]byte(cfg.Key))
+	if keyBlock == nil {
+		return fmt.Errorf("Key must be base64 encoded PEM key")
+	}
+
+	if cfg.CA != "" {
+		caBlock, _ := pem.Decode([]byte(cfg.CA))
+		if caBlock == nil {
+			return fmt.Errorf("CA must be base64 encoded PEM key")
+		}
+	}
+
+	oldCert := *d.serverCert
+
+	reverter := revert.New()
+	defer reverter.Fail()
+	updateCert := func(certBytes []byte, keyBytes []byte, caBytes []byte) error {
+		err := os.WriteFile(util.VarPath("server.crt"), certBytes, 0o664)
+		if err != nil {
+			return err
+		}
+
+		if caBytes != nil {
+			err = os.WriteFile(util.VarPath("server.ca"), caBytes, 0o664)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = os.WriteFile(util.VarPath("server.key"), keyBytes, 0o600)
+		if err != nil {
+			return err
+		}
+
+		cert, err := incusTLS.KeyPairAndCA(d.os.VarDir, "server", incusTLS.CertServer, true)
+		if err != nil {
+			return err
+		}
+
+		d.serverCert = cert
+		l, ok := d.listener.(*listener.FancyTLSListener)
+		if ok {
+			l.Config(d.serverCert)
+			d.listener = l
+		}
+
+		return nil
+	}
+
+	reverter.Add(func() {
+		slog.Error("Reverting daemon certificate change due to error", slog.Any("error", _err))
+
+		var ca []byte
+		if oldCert.CA() != nil {
+			ca = oldCert.CA().Raw
+		}
+
+		err := updateCert(oldCert.PublicKey(), oldCert.PrivateKey(), ca)
+		if err != nil {
+			slog.Error("Failed to revert daemon certificate changes", slog.Any("error", err))
+		}
+	})
+
+	var ca []byte
+	if cfg.CA != "" {
+		ca = []byte(cfg.CA)
+	}
+
+	err := updateCert([]byte(cfg.Cert), []byte(cfg.Key), ca)
+	if err != nil {
+		return err
+	}
+
+	reverter.Success()
+
+	return nil
 }
 
 func (d *Daemon) Stop(ctx context.Context) error {
@@ -346,8 +484,76 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	return err
 }
 
+func (d *Daemon) ReloadConfig(newCfg api.SystemConfig) (_err error) {
+	d.configLock.Lock()
+	defer d.configLock.Unlock()
+
+	oldCfg := d.config
+	changedNetwork := newCfg.Network != oldCfg.Network
+	changedOIDC := newCfg.Security.OIDC != oldCfg.Security.OIDC
+	changedOpenFGA := newCfg.Security.OpenFGA != oldCfg.Security.OpenFGA || !slices.Equal(newCfg.Security.TrustedTLSClientCertFingerprints, oldCfg.Security.TrustedTLSClientCertFingerprints)
+
+	updateHandlers := func(applyCfg api.SystemConfig) error {
+		err := config.Validate(applyCfg)
+		if err != nil {
+			return err
+		}
+
+		if changedNetwork {
+			errCh := d.updateHTTPListener(net.JoinHostPort(applyCfg.Network.Address, strconv.Itoa(applyCfg.Network.Port)))
+			err := <-errCh
+			if err != nil {
+				return err
+			}
+		}
+
+		if changedOIDC {
+			oidcCfg := applyCfg.Security.OIDC
+			d.oidcVerifier, err = oidc.NewVerifier(oidcCfg.Issuer, oidcCfg.ClientID, oidcCfg.Scope, oidcCfg.Audience, oidcCfg.Claim)
+			if err != nil {
+				return err
+			}
+		}
+
+		if changedOpenFGA {
+			err := d.setupOpenFGA(applyCfg.Security)
+			if err != nil {
+				return err
+			}
+		}
+
+		err = config.SaveConfig(applyCfg)
+		if err != nil {
+			return err
+		}
+
+		d.config = applyCfg
+
+		return nil
+	}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+	reverter.Add(func() {
+		slog.Error("Reverting daemon config change due to error", slog.Any("error", _err))
+		err := updateHandlers(oldCfg)
+		if err != nil {
+			slog.Error("Failed to revert daemon config changes", slog.Any("error", err))
+		}
+	})
+
+	err := updateHandlers(newCfg)
+	if err != nil {
+		return err
+	}
+
+	reverter.Success()
+
+	return nil
+}
+
 // Setup OpenFGA.
-func (d *Daemon) setupOpenFGA(apiURL string, apiToken string, storeID string) error {
+func (d *Daemon) setupOpenFGA(cfg api.ConfigSecurity) error {
 	var err error
 
 	if d.authorizer != nil {
@@ -357,9 +563,9 @@ func (d *Daemon) setupOpenFGA(apiURL string, apiToken string, storeID string) er
 		}
 	}
 
-	if apiURL == "" || apiToken == "" || storeID == "" {
+	if cfg.OpenFGA.APIURL == "" || cfg.OpenFGA.APIToken == "" || cfg.OpenFGA.StoreID == "" {
 		// Reset to default authorizer.
-		d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)
+		d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), cfg.TrustedTLSClientCertFingerprints)
 		if err != nil {
 			return err
 		}
@@ -367,10 +573,10 @@ func (d *Daemon) setupOpenFGA(apiURL string, apiToken string, storeID string) er
 		return nil
 	}
 
-	cfg := map[string]any{
-		"openfga.api.url":   apiURL,
-		"openfga.api.token": apiToken,
-		"openfga.store.id":  storeID,
+	cfgMap := map[string]any{
+		"openfga.api.url":   cfg.OpenFGA.APIURL,
+		"openfga.api.token": cfg.OpenFGA.APIToken,
+		"openfga.store.id":  cfg.OpenFGA.StoreID,
 	}
 
 	rvt := revert.New()
@@ -378,10 +584,10 @@ func (d *Daemon) setupOpenFGA(apiURL string, apiToken string, storeID string) er
 
 	rvt.Add(func() {
 		// Reset to default authorizer.
-		d.authorizer, _ = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), d.config.TrustedTLSClientCertFingerprints)
+		d.authorizer, _ = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), cfg.TrustedTLSClientCertFingerprints)
 	})
 
-	openfgaAuthorizer, err := auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverOpenFGA, slog.Default(), d.config.TrustedTLSClientCertFingerprints, auth.WithConfig(cfg))
+	openfgaAuthorizer, err := auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverOpenFGA, slog.Default(), cfg.TrustedTLSClientCertFingerprints, auth.WithConfig(cfgMap))
 	if err != nil {
 		return err
 	}
@@ -529,9 +735,9 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 }
 
 func (d *Daemon) getWorkerEndpoint() string {
-	if d.config.RestWorkerEndpoint != "" {
-		return d.config.RestWorkerEndpoint
+	if d.config.Network.WorkerEndpoint != "" {
+		return d.config.Network.WorkerEndpoint
 	}
 
-	return fmt.Sprintf("https://%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort)
+	return fmt.Sprintf("https://%s:%d", d.config.Network.Address, d.config.Network.Port)
 }
