@@ -323,7 +323,7 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 		}
 	}
 
-	msg := fmt.Sprintf("Importing disk (%d/%d) ", index, len(s.Servers.Servers))
+	msg := fmt.Sprintf("Importing disk (%d/%d)", index, len(s.Servers.Servers))
 	err = nbdcopy.Run(
 		msg,
 		s.Nbdkit.LibNBDExportName(),
