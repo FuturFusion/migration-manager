@@ -26,7 +26,7 @@ test("renders and submit BatchForm", async () => {
   );
 
   const nameInput = screen.getByLabelText("Name");
-  const targetSelect = screen.getByLabelText("Target");
+  const targetSelect = screen.getByLabelText("Default target");
   const expressionInput = screen.getByLabelText("Expression");
   const submitButton = screen.getByText("Submit");
 
@@ -42,14 +42,16 @@ test("renders and submit BatchForm", async () => {
   expect(handleSubmit).toHaveBeenCalledTimes(1);
   expect(handleSubmit).toHaveBeenCalledWith({
     name: "Batch1",
-    target: "t1",
+    default_storage_pool: "default",
+    default_target: "t1",
+    default_target_project: "default",
     include_expression: "false",
-    storage_pool: "local",
-    target_project: "default",
     status: "",
     status_message: "",
     migration_windows: [],
     constraints: [],
     post_migration_retries: 5,
+    rerun_scriptlets: false,
+    placement_scriptlet: "",
   });
 });

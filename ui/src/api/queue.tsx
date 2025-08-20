@@ -8,3 +8,14 @@ export const fetchQueue = (): Promise<QueueEntry[]> => {
       .catch(reject);
   });
 };
+
+export const fetchQueueItem = (
+  uuid: string | undefined,
+): Promise<QueueEntry> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/queue/${uuid}`)
+      .then((response) => response.json())
+      .then((data) => resolve(data.metadata))
+      .catch(reject);
+  });
+};

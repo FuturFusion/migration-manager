@@ -35,16 +35,20 @@ const BatchOverview = () => {
         <div className="col-10 detail-table-cell"> {batch?.status_message}</div>
       </div>
       <div className="row">
-        <div className="col-2 detail-table-header">Target</div>
-        <div className="col-10 detail-table-cell">{batch?.target}</div>
+        <div className="col-2 detail-table-header">Default target</div>
+        <div className="col-10 detail-table-cell">{batch?.default_target}</div>
       </div>
       <div className="row">
-        <div className="col-2 detail-table-header">Project</div>
-        <div className="col-10 detail-table-cell">{batch?.target_project}</div>
+        <div className="col-2 detail-table-header">Default project</div>
+        <div className="col-10 detail-table-cell">
+          {batch?.default_target_project}
+        </div>
       </div>
       <div className="row">
-        <div className="col-2 detail-table-header">Storage pool</div>
-        <div className="col-10 detail-table-cell">{batch?.storage_pool}</div>
+        <div className="col-2 detail-table-header">Default storage pool</div>
+        <div className="col-10 detail-table-cell">
+          {batch?.default_storage_pool}
+        </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Include expression</div>
@@ -56,6 +60,23 @@ const BatchOverview = () => {
         <div className="col-2 detail-table-header">Start date</div>
         <div className="col-10 detail-table-cell">
           {formatDate(batch?.start_date)}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Placement scriptlet</div>
+        <div className="col-10 detail-table-cell">
+          <pre
+            className="bg-light p-3 rounded"
+            style={{ whiteSpace: "pre-wrap" }}
+          >
+            <code>{batch?.placement_scriptlet}</code>
+          </pre>
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Re-run scriptlets</div>
+        <div className="col-10 detail-table-cell">
+          {batch?.rerun_scriptlets ? "Yes" : "No"}
         </div>
       </div>
       <div className="row">

@@ -21,9 +21,9 @@ const Batch = () => {
   const headers = [
     "Name",
     "Status",
-    "Target",
-    "Project",
-    "Storage pool",
+    "Default target",
+    "Default project",
+    "Default storage pool",
     "Include expression",
     "Actions",
   ];
@@ -42,16 +42,16 @@ const Batch = () => {
         sortKey: item.status_message,
       },
       {
-        content: item.target,
-        sortKey: item.target,
+        content: item.default_target,
+        sortKey: item.default_target,
       },
       {
-        content: item.target_project,
-        sortKey: item.target_project,
+        content: item.default_target_project,
+        sortKey: item.default_target_project,
       },
       {
-        content: item.storage_pool,
-        sortKey: item.storage_pool,
+        content: item.default_storage_pool,
+        sortKey: item.default_storage_pool,
       },
       {
         content: item.include_expression,

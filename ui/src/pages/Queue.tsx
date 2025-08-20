@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchQueue } from "api/queue";
 import DataTable from "components/DataTable";
@@ -14,11 +15,25 @@ const Queue = () => {
     refetchInterval: refetchInterval,
   });
 
-  const headers = ["Name", "Batch", "Status", "Status string"];
+  const headers = [
+    "Name",
+    "Batch",
+    "Status",
+    "Status string",
+    "Target",
+    "Target project",
+  ];
   const rows = queue.map((item) => {
     return [
       {
-        content: item.instance_name,
+        content: (
+          <Link
+            to={`/ui/queue/${item.instance_uuid}`}
+            className="data-table-link"
+          >
+            {item.instance_name}
+          </Link>
+        ),
         sortKey: item.instance_name,
       },
       {
@@ -32,6 +47,14 @@ const Queue = () => {
       {
         content: item.migration_status_message,
         sortKey: item.migration_status_message,
+      },
+      {
+        content: item.placement.target_name,
+        sortKey: item.placement.target_name,
+      },
+      {
+        content: item.placement.target_project,
+        sortKey: item.placement.target_project,
       },
     ];
   });

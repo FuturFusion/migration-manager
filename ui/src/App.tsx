@@ -18,6 +18,7 @@ import Target from "pages/Target";
 import TargetCreate from "pages/TargetCreate";
 import TargetDetail from "pages/TargetDetail";
 import Queue from "pages/Queue";
+import QueueDetail from "pages/QueueDetail";
 
 function App() {
   const { isAuthenticated, isAuthLoading } = useAuth();
@@ -74,6 +75,11 @@ function App() {
               element={<BatchDetail />}
             />
             <Route path="/ui/queue" element={<Queue />} />
+            <Route path="/ui/queue/:uuid" element={<QueueDetail />} />
+            <Route
+              path="/ui/queue/:uuid/:activeTab"
+              element={<QueueDetail />}
+            />
             <Route path="/ui/networks" element={<Network />} />
             <Route path="/ui/networks/:name" element={<NetworkDetail />} />
             <Route
