@@ -184,7 +184,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 	var result []api.QueueEntry
 	var paths []string
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
-		queueItems, err := d.queue.GetAll(r.Context())
+		queueItems, err := d.queue.GetAll(ctx)
 		if err != nil {
 			return err
 		}
@@ -291,7 +291,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 			return err
 		}
 
-		queueItem, err = d.queue.GetByInstanceUUID(r.Context(), UUID)
+		queueItem, err = d.queue.GetByInstanceUUID(ctx, UUID)
 		if err != nil {
 			return err
 		}
