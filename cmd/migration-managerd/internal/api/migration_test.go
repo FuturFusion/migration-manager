@@ -127,7 +127,7 @@ func TestMigration_beginImports(t *testing.T) {
 		scriptlet string
 
 		concurrentCreations int
-		hasVIXTarball       bool
+		hasSDK              bool
 		hasWorker           bool
 		hasWorkerVolume     bool
 		assertErr           require.ErrorAssertionFunc
@@ -156,7 +156,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -181,7 +181,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -206,7 +206,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true, // We still validate that the VIX tarball must exist.
+			hasSDK:          true, // We still validate that the VIX tarball must exist.
 			hasWorker:       false,
 			hasWorkerVolume: true,
 			rerunScriptlet:  false,
@@ -233,7 +233,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -258,7 +258,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -284,7 +284,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt2", Projects: []string{"project2"}, StoragePools: []string{"pool2"}, NetworksByProject: setMap{"project2": {"net2"}}, InstancesByProject: setMap{"project2": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -310,7 +310,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "default", Projects: []string{"default"}, StoragePools: []string{"default"}, NetworksByProject: setMap{"default": {"default"}}, InstancesByProject: setMap{"default": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  true,
@@ -342,7 +342,7 @@ def placement(instance, batch):
 	set_pool('{}_disk_1'.format(instance.properties.name), 'pool2')
 	set_network('net_id_1', 'net2')`,
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  true,
@@ -367,7 +367,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -392,7 +392,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   false,
+			hasSDK:          false,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -417,7 +417,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       false,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -442,7 +442,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -469,7 +469,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -496,7 +496,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasSDK:          true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -568,12 +568,13 @@ def placement(instance, batch):
 			require.NoError(t, os.WriteFile(filepath.Join(d.os.CacheDir, util.RawWorkerImage()), nil, 0o660))
 			require.NoError(t, os.WriteFile(filepath.Join(d.os.CacheDir, "virtio-win-x.iso"), nil, 0o660))
 
-			if tc.hasVIXTarball {
-				require.NoError(t, os.WriteFile(filepath.Join(d.os.VarDir, "VMware-vix-disklib.tar.gz"), nil, 0o660))
+			if tc.hasSDK {
+				require.NoError(t, os.MkdirAll(filepath.Join(d.os.VarDir, "vmware"), 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(d.os.VarDir, "vmware", "vmware.sdk"), nil, 0o660))
 			}
 
 			if tc.hasWorker {
-				require.NoError(t, os.WriteFile(filepath.Join(d.os.VarDir, "migration-manager-worker"), nil, 0o660))
+				require.NoError(t, os.WriteFile(filepath.Join(d.os.UsrDir, "migration-manager-worker"), nil, 0o660))
 			}
 
 			// Prepare state for test.
