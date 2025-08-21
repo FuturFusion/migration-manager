@@ -17,7 +17,7 @@ type Instance struct {
 	ID   int64
 	UUID uuid.UUID `db:"primary=yes"`
 
-	Source               string         `db:"join=sources.name"`
+	Source               string         `db:"join=sources.name&order=yes"`
 	SourceType           api.SourceType `db:"join=sources.source_type&omit=create,update"`
 	LastUpdateFromSource time.Time
 

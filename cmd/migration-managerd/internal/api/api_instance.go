@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"time"
 
@@ -167,6 +168,15 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 				result = append(result, instance.ToAPI())
 			}
 		}
+
+		// Sort the list by source, then location.
+		sort.Slice(result, func(i, j int) bool {
+			if result[i].Source == result[j].Source {
+				return result[i].Properties.Location < result[j].Properties.Location
+			}
+
+			return result[i].Source < result[j].Source
+		})
 
 		return response.SyncResponse(true, result)
 	}

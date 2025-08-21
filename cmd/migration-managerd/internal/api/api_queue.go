@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -234,6 +235,15 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if recursion == 1 {
+		// Sort the queue list by batch, then instance name.
+		sort.Slice(result, func(i, j int) bool {
+			if result[i].BatchName == result[j].BatchName {
+				return result[i].InstanceName < result[j].InstanceName
+			}
+
+			return result[i].BatchName < result[j].BatchName
+		})
+
 		return response.SyncResponse(true, result)
 	}
 
