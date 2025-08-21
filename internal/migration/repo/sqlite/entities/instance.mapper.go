@@ -17,7 +17,7 @@ var instanceObjects = RegisterStmt(`
 SELECT instances.id, instances.uuid, sources.name AS source, sources.source_type AS source_type, instances.last_update_from_source, instances.overrides, instances.properties
   FROM instances
   JOIN sources ON instances.source_id = sources.id
-  ORDER BY instances.uuid
+  ORDER BY sources.id
 `)
 
 var instanceObjectsByID = RegisterStmt(`
@@ -25,7 +25,7 @@ SELECT instances.id, instances.uuid, sources.name AS source, sources.source_type
   FROM instances
   JOIN sources ON instances.source_id = sources.id
   WHERE ( instances.id = ? )
-  ORDER BY instances.uuid
+  ORDER BY sources.id
 `)
 
 var instanceObjectsByUUID = RegisterStmt(`
@@ -33,7 +33,7 @@ SELECT instances.id, instances.uuid, sources.name AS source, sources.source_type
   FROM instances
   JOIN sources ON instances.source_id = sources.id
   WHERE ( instances.uuid = ? )
-  ORDER BY instances.uuid
+  ORDER BY sources.id
 `)
 
 var instanceObjectsBySource = RegisterStmt(`
@@ -41,7 +41,7 @@ SELECT instances.id, instances.uuid, sources.name AS source, sources.source_type
   FROM instances
   JOIN sources ON instances.source_id = sources.id
   WHERE ( source = ? )
-  ORDER BY instances.uuid
+  ORDER BY sources.id
 `)
 
 var instanceNames = RegisterStmt(`
