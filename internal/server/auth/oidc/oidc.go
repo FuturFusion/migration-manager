@@ -356,6 +356,10 @@ func getAccessTokenVerifier(issuer string) (*op.AccessTokenVerifier, error) {
 
 // NewVerifier returns a Verifier.
 func NewVerifier(issuer string, clientid string, scope string, audience string, claim string) (*Verifier, error) {
+	if issuer == "" || clientid == "" {
+		return nil, nil
+	}
+
 	cookieKey, err := uuid.New().MarshalBinary()
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create UUID: %w", err)
