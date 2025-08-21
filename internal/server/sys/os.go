@@ -19,6 +19,7 @@ type OS struct {
 	LogDir   string // Log directory (e.g. /var/log/).
 	RunDir   string // Runtime directory (e.g. /run/migration-manager/).
 	VarDir   string // Data directory (e.g. /var/lib/migration-manager/).
+	UsrDir   string // Static directory (e.g. /usr/lib/migration-manager/).
 }
 
 // DefaultOS returns a fresh uninitialized OS instance with default values.
@@ -28,6 +29,7 @@ func DefaultOS() *OS {
 		LogDir:   util.LogPath(),
 		RunDir:   util.RunPath(),
 		VarDir:   util.VarPath(),
+		UsrDir:   util.UsrPath(),
 	}
 
 	return newOS
@@ -110,7 +112,7 @@ func (s *OS) LoadWorkerImage(ctx context.Context) error {
 
 	// Create a tarball for the worker binary.
 	binaryPath := filepath.Join(s.CacheDir, "migration-manager-worker.tar.gz")
-	err = util.CreateTarball(binaryPath, filepath.Join(s.VarDir, "migration-manager-worker"))
+	err = util.CreateTarball(binaryPath, filepath.Join(s.UsrDir, "migration-manager-worker"))
 	if err != nil {
 		return err
 	}
