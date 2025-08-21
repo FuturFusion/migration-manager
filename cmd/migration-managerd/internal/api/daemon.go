@@ -194,6 +194,11 @@ func (d *Daemon) Start() error {
 
 	slog.Info("Starting up", slog.String("version", version.Version))
 
+	err = d.os.CleanPartialSDKs()
+	if err != nil {
+		return err
+	}
+
 	// Open the local sqlite database.
 	d.db, err = db.OpenDatabase(d.os.LocalDatabaseDir())
 	if err != nil {
