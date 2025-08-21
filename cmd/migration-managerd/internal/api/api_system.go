@@ -25,6 +25,13 @@ var systemSecurityCmd = APIEndpoint{
 	Patch: APIEndpointAction{Handler: systemSecurityUpdate(http.MethodPatch), AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
+var systemSdkCmd = APIEndpoint{
+	Path: "system/sdks/{sourceType}",
+
+	Get:  APIEndpointAction{Handler: systemSdkGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Post: APIEndpointAction{Handler: systemSdkPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+}
+
 func systemSecurityGet(d *Daemon, r *http.Request) response.Response {
 	apiCfg := d.config
 
@@ -197,4 +204,32 @@ func systemSecurityUpdate(method string) func(*Daemon, *http.Request) response.R
 
 		return response.EmptySyncResponse
 	}
+}
+
+func systemSdkGet(d *Daemon, r *http.Request) response.Response {
+	srcType := r.PathValue("sourceType")
+	if api.SourceType(srcType) != api.SOURCETYPE_VMWARE {
+		return response.BadRequest(fmt.Errorf("SDK upload for source type %q is not supported", srcType))
+	}
+
+	sdkName, err := d.os.GetSDKName(api.SourceType(srcType))
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponse(true, sdkName)
+}
+
+func systemSdkPost(d *Daemon, r *http.Request) response.Response {
+	srcType := r.PathValue("sourceType")
+	if api.SourceType(srcType) != api.SOURCETYPE_VMWARE {
+		return response.BadRequest(fmt.Errorf("SDK upload for source type %q is not supported", srcType))
+	}
+
+	err := d.os.WriteSDK(api.SourceType(srcType), r.Body)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to write SDK for source type %q: %w", srcType, err))
+	}
+
+	return response.EmptySyncResponse
 }
