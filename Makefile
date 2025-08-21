@@ -47,9 +47,9 @@ test: build-dependencies
 install: build build-ui
 	sudo install -D -m755 ./bin/migration-managerd /usr/bin/migration-managerd
 	sudo install -D -m755 ./bin/migration-manager.linux.amd64 /usr/bin/migration-manager
-	sudo install -D -m755 ./bin/migration-manager-worker /var/lib/migration-manager/migration-manager-worker
-	sudo install -d -m755 /var/lib/migration-manager/ui/
-	sudo cp -r ./ui/dist/* /var/lib/migration-manager/ui/
+	sudo install -D -m755 ./bin/migration-manager-worker /usr/lib/migration-manager/migration-manager-worker
+	sudo install -d -m755 /usr/share/migration-manager/ui/
+	sudo cp -r ./ui/dist/* /usr/share/migration-manager/ui/
 
 .PHONY: static-analysis
 static-analysis: build-dependencies
