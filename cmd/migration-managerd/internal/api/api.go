@@ -51,7 +51,7 @@ import (
 func restServer(d *Daemon) *http.Server {
 	router := http.NewServeMux()
 
-	uiDir := uiHTTPDir{http.Dir(filepath.Join(d.os.VarDir, "ui"))}
+	uiDir := uiHTTPDir{http.Dir(filepath.Join(d.os.ShareDir, "ui"))}
 	fileServer := http.FileServer(uiDir)
 
 	router.Handle("/ui/", http.StripPrefix("/ui/", fileServer))
