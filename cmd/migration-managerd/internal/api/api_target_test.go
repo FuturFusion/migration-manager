@@ -18,14 +18,15 @@ import (
 	incusUtil "github.com/lxc/incus/v6/shared/util"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
+	"golang.org/x/sync/errgroup"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
 	"github.com/FuturFusion/migration-manager/internal/queue"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
+	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/testcert"
@@ -369,8 +370,11 @@ func daemonSetup(t *testing.T) *Daemon {
 	require.NoError(t, os.Setenv("MIGRATION_MANAGER_DIR", tmpDir))
 	require.NoError(t, os.Unsetenv("MIGRATION_MANAGER_TESTING"))
 
-	daemon := NewDaemon(&config.DaemonConfig{
-		TrustedTLSClientCertFingerprints: []string{testcert.LocalhostCertFingerprint},
+	daemon := NewDaemon(api.SystemConfig{
+		SystemConfigPut: api.SystemConfigPut{
+			TrustedTLSClientCertFingerprints: []string{testcert.LocalhostCertFingerprint},
+			RestServerPort:                   6443,
+		},
 	})
 	daemon.db, err = db.OpenDatabase(tmpDir)
 	require.NoError(t, err)
@@ -386,6 +390,7 @@ func daemonSetup(t *testing.T) *Daemon {
 	daemon.queue = migration.NewQueueService(sqlite.NewQueue(tx), daemon.batch, daemon.instance, daemon.source, daemon.target)
 	daemon.network = migration.NewNetworkService(sqlite.NewNetwork(tx))
 	daemon.queueHandler = queue.NewMigrationHandler(daemon.batch, daemon.instance, daemon.network, daemon.source, daemon.target, daemon.queue)
+	daemon.errgroup = &errgroup.Group{}
 
 	daemon.serverCert, err = incusTLS.KeyPairAndCA(daemon.os.VarDir, "server", incusTLS.CertServer, true)
 	require.NoError(t, err)
@@ -396,13 +401,21 @@ func daemonSetup(t *testing.T) *Daemon {
 	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, logger, daemon.config.TrustedTLSClientCertFingerprints)
 	require.NoError(t, err)
 
+	daemon.oidcVerifier, err = oidc.NewVerifier(daemon.config.OIDC.Issuer, daemon.config.OIDC.ClientID, daemon.config.OIDC.Scope, daemon.config.OIDC.Audience, daemon.config.OIDC.Claim)
+	require.NoError(t, err)
+
+	daemon.config.ServerCertificate = api.Certificate{
+		Cert: string(daemon.serverCert.PublicKey()),
+		Key:  string(daemon.serverCert.PrivateKey()),
+	}
+
 	return daemon
 }
 
 func startTestDaemon(t *testing.T, daemon *Daemon, endpoints []APIEndpoint) (*http.Client, string) {
 	t.Helper()
 
-	for _, dir := range []string{daemon.os.CacheDir, daemon.os.LogDir, daemon.os.RunDir, daemon.os.VarDir, daemon.os.LocalDatabaseDir()} {
+	for _, dir := range []string{daemon.os.CacheDir, daemon.os.LogDir, daemon.os.RunDir, daemon.os.VarDir, daemon.os.UsrDir, daemon.os.LocalDatabaseDir()} {
 		if !incusUtil.PathExists(dir) {
 			require.NoError(t, os.MkdirAll(dir, 0o755))
 		}

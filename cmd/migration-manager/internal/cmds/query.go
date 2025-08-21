@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"bytes"
 	"encoding/json"
 
 	"github.com/spf13/cobra"
@@ -38,7 +39,7 @@ func (c *CmdQuery) Run(cmd *cobra.Command, args []string) error {
 	query := args[0]
 
 	// Run the query.
-	resp, err := c.Global.makeHTTPRequest(query, c.flagRequest, []byte(c.flagData))
+	resp, err := c.Global.makeHTTPRequest(query, c.flagRequest, bytes.NewBuffer([]byte(c.flagData)))
 	if err != nil {
 		return err
 	}

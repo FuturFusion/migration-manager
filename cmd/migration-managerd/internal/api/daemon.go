@@ -8,16 +8,18 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
+	"strconv"
+	"sync"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/api"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/listener"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
@@ -34,6 +36,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // APIEndpoint represents a URL in our API.
@@ -70,10 +73,12 @@ type Daemon struct {
 	queue        migration.QueueService
 	warning      migration.WarningService
 
-	server     *http.Server
-	serverCert *incusTLS.CertInfo
-	errgroup   *errgroup.Group
-	config     *config.DaemonConfig
+	listener       net.Listener
+	server         *http.Server
+	serverCertLock sync.Mutex
+	serverCert     *incusTLS.CertInfo
+	errgroup       *errgroup.Group
+	config         api.SystemConfig
 
 	batchLock util.IDLock[string]
 
@@ -82,7 +87,7 @@ type Daemon struct {
 	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
 }
 
-func NewDaemon(cfg *config.DaemonConfig) *Daemon {
+func NewDaemon(cfg api.SystemConfig) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	d := &Daemon{
@@ -165,19 +170,19 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 			return false, "", "", err
 		}
 
-		return true, userName, api.AuthenticationMethodOIDC, nil
+		return true, userName, incusAPI.AuthenticationMethodOIDC, nil
 	}
 
 	for _, cert := range r.TLS.PeerCertificates {
 		trusted, username := tlsutil.CheckTrustState(*cert, d.config.TrustedTLSClientCertFingerprints)
 		if trusted {
-			return true, username, api.AuthenticationMethodTLS, nil
+			return true, username, incusAPI.AuthenticationMethodTLS, nil
 		}
 	}
 
 	// migration-manager-worker with an access token.
 	if d.workerAccessTokenValid(r) {
-		return true, "migration-manager-worker", api.AuthenticationMethodTLS, nil
+		return true, "migration-manager-worker", incusAPI.AuthenticationMethodTLS, nil
 	}
 
 	// Reject unauthorized.
@@ -188,6 +193,11 @@ func (d *Daemon) Start() error {
 	var err error
 
 	slog.Info("Starting up", slog.String("version", version.Version))
+
+	err = d.os.CleanPartialSDKs()
+	if err != nil {
+		return err
+	}
 
 	// Open the local sqlite database.
 	d.db, err = db.OpenDatabase(d.os.LocalDatabaseDir())
@@ -230,16 +240,16 @@ func (d *Daemon) Start() error {
 	}
 
 	// Setup OIDC authentication.
-	if d.config.OidcIssuer != "" && d.config.OidcClientID != "" {
-		d.oidcVerifier, err = oidc.NewVerifier(d.config.OidcIssuer, d.config.OidcClientID, d.config.OidcScope, d.config.OidcAudience, d.config.OidcClaim)
+	if d.config.OIDC.Issuer != "" && d.config.OIDC.ClientID != "" {
+		d.oidcVerifier, err = oidc.NewVerifier(d.config.OIDC.Issuer, d.config.OIDC.ClientID, d.config.OIDC.Scope, d.config.OIDC.Audience, d.config.OIDC.Claim)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Setup OpenFGA authorization.
-	if d.config.OpenfgaAPIURL != "" && d.config.OpenfgaAPIToken != "" && d.config.OpenfgaStoreID != "" {
-		err = d.setupOpenFGA(d.config.OpenfgaAPIURL, d.config.OpenfgaAPIToken, d.config.OpenfgaStoreID)
+	if d.config.OpenFGA.APIURL != "" && d.config.OpenFGA.APIToken != "" && d.config.OpenFGA.StoreID != "" {
+		err = d.setupOpenFGA(d.config.OpenFGA.APIURL, d.config.OpenFGA.APIToken, d.config.OpenFGA.StoreID)
 		if err != nil {
 			return fmt.Errorf("Failed to configure OpenFGA: %w", err)
 		}
@@ -247,7 +257,44 @@ func (d *Daemon) Start() error {
 
 	// Setup web server
 	d.server = restServer(d)
-	d.server.Addr = fmt.Sprintf("%s:%d", d.config.RestServerIPAddr, d.config.RestServerPort)
+	d.server.Addr = net.JoinHostPort(d.config.RestServerIPAddr, strconv.Itoa(d.config.RestServerPort))
+
+	// If a certificate is present in the config, then write it first so we don't generate a different one.
+	var certExists bool
+	if d.config.ServerCertificate.Cert != "" {
+		err = config.Validate(d.config)
+		if err != nil {
+			return fmt.Errorf("Failed to validate daemon config: %w", err)
+		}
+
+		err := config.SaveConfig(d.config)
+		if err != nil {
+			return err
+		}
+
+		certExists = true
+	}
+
+	d.serverCert, err = incusTLS.KeyPairAndCA(d.os.VarDir, "server", incusTLS.CertServer, true)
+	if err != nil {
+		return err
+	}
+
+	if !certExists {
+		// Update the config with the newly generated certificates.
+		d.config.ServerCertificate.Cert = string(d.serverCert.PublicKey())
+		d.config.ServerCertificate.Key = string(d.serverCert.PrivateKey())
+
+		err = config.Validate(d.config)
+		if err != nil {
+			return fmt.Errorf("Failed to validate daemon config: %w", err)
+		}
+
+		err := config.SaveConfig(d.config)
+		if err != nil {
+			return err
+		}
+	}
 
 	group, errgroupCtx := errgroup.WithContext(context.Background())
 	d.errgroup = group
@@ -281,27 +328,7 @@ func (d *Daemon) Start() error {
 		return err
 	})
 
-	group.Go(func() error {
-		slog.Info("Start https listener", slog.Any("addr", d.server.Addr))
-
-		certFile := filepath.Join(d.os.VarDir, "server.crt")
-		keyFile := filepath.Join(d.os.VarDir, "server.key")
-
-		var err error
-		// Ensure that the certificate exists, or create a new one if it does not.
-		d.serverCert, err = incusTLS.KeyPairAndCA(d.os.VarDir, "server", incusTLS.CertServer, true)
-		if err != nil {
-			return err
-		}
-
-		err = d.server.ListenAndServeTLS(certFile, keyFile)
-		if errors.Is(err, http.ErrServerClosed) {
-			// Ignore error from graceful shutdown.
-			return nil
-		}
-
-		return err
-	})
+	d.updateHTTPListener(d.server.Addr)
 
 	// Start background workers
 	d.runPeriodicTask(d.ShutdownCtx, "trySyncAllSources", d.trySyncAllSources, 10*time.Minute)
@@ -328,8 +355,62 @@ func (d *Daemon) Start() error {
 }
 
 func (d *Daemon) ServerCert() *incusTLS.CertInfo {
+	d.serverCertLock.Lock()
+	defer d.serverCertLock.Unlock()
+
 	cert := *d.serverCert
 	return &cert
+}
+
+func (d *Daemon) updateHTTPListener(address string) {
+	d.errgroup.Go(func() error {
+		if d.listener != nil {
+			slog.Info("Stopping existing https listener", slog.Any("addr", d.listener.Addr().String()))
+			err := d.listener.Close()
+			if err != nil {
+				return err
+			}
+		}
+
+		slog.Info("Start https listener", slog.Any("addr", address))
+		tcpListener, err := net.Listen("tcp", address)
+		if err != nil {
+			return err
+		}
+
+		d.listener = listener.NewFancyTLSListener(tcpListener, d.serverCert)
+		if d.server != nil {
+			err = d.server.Serve(d.listener)
+			if errors.Is(err, http.ErrServerClosed) {
+				slog.Info("Shutting down server", slog.Any("addr", address))
+				// Ignore error from graceful shutdown.
+				return nil
+			}
+
+			return err
+		}
+
+		return nil
+	})
+}
+
+func (d *Daemon) updateServerCert() error {
+	d.serverCertLock.Lock()
+	defer d.serverCertLock.Unlock()
+
+	cert, err := incusTLS.KeyPairAndCA(d.os.VarDir, "server", incusTLS.CertServer, true)
+	if err != nil {
+		return err
+	}
+
+	d.serverCert = cert
+	l, ok := d.listener.(*listener.FancyTLSListener)
+	if ok {
+		l.Config(d.serverCert)
+		d.listener = l
+	}
+
+	return nil
 }
 
 func (d *Daemon) Stop(ctx context.Context) error {

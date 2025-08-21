@@ -72,6 +72,20 @@ func VarPath(path ...string) string {
 	return filepath.Join(items...)
 }
 
+// UsrPath returns the directory that migration manager should put static content under.
+// If MIGRATION_MANAGER_DIR is set, this path is $MIGRATION_MANAGER_DIR/static, otherwise it is /usr/lib/migration-manager.
+func UsrPath(path ...string) string {
+	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
+	usrDir := "/usr/lib/migration-manager"
+	if varDir != "" {
+		usrDir = filepath.Join(varDir, "static")
+	}
+
+	items := []string{usrDir}
+	items = append(items, path...)
+	return filepath.Join(items...)
+}
+
 // IsDir returns true if the given path is a directory.
 func IsDir(name string) bool {
 	stat, err := os.Stat(name)

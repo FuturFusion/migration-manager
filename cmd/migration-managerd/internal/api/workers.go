@@ -63,13 +63,20 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 	}
 
 	instancesByUUID := make(map[uuid.UUID]migration.Instance, len(queueInstances))
+	sources := map[api.SourceType]struct{}{}
 	for _, inst := range queueInstances {
 		instancesByUUID[inst.UUID] = inst
+		sources[inst.SourceType] = struct{}{}
+	}
+
+	sourceList := make([]api.SourceType, 0, len(sources))
+	for src := range sources {
+		sourceList = append(sourceList, src)
 	}
 
 	// Check the filesystem for the required user-supplied files.
 	var blockMsg string
-	err = d.os.ValidateFileSystem()
+	err = d.os.ValidateFileSystem(sourceList...)
 	if err != nil {
 		slog.Error("Blocking queue entries due to filesystem error", slog.Any("error", err))
 		blockMsg = fmt.Sprintf("Filesystem error: %v", err.Error())
@@ -429,7 +436,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, tgt migr
 
 	if missingBaseImg {
 		log.Info("Worker image doesn't exist in storage pool, importing...")
-		err = d.os.LoadWorkerImage(ctx)
+		err = d.os.LoadWorkerImage(ctx, api.SOURCETYPE_VMWARE)
 		if err != nil {
 			return err
 		}
