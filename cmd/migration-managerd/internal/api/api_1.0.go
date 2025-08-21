@@ -33,6 +33,7 @@ var api10 = []APIEndpoint{
 	sourcesCmd,
 	systemCertificateCmd,
 	systemNetworkCmd,
+	systemSdkCmd,
 	systemSecurityCmd,
 	targetCmd,
 	targetsCmd,
