@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -206,7 +207,7 @@ func (c *CmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 	return false, nil
 }
 
-func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, content []byte) (*api.Response, error) {
+func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, reader io.Reader) (*api.Response, error) {
 	var err error
 	var client *http.Client
 	var resp *http.Response
@@ -235,7 +236,7 @@ func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, content
 		client = internalUtil.UnixHTTPClient(c.os.GetUnixSocket())
 	}
 
-	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))
+	req, err := http.NewRequest(method, u.String(), reader)
 	if err != nil {
 		return nil, err
 	}
@@ -282,10 +283,23 @@ func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string
 	}
 
 	if query != "" {
-		return c.makeHTTPRequest(fmt.Sprintf("%s?%s", p, query), method, content)
+		return c.makeHTTPRequest(fmt.Sprintf("%s?%s", p, query), method, bytes.NewBuffer(content))
 	}
 
-	return c.makeHTTPRequest(p, method, content)
+	return c.makeHTTPRequest(p, method, bytes.NewBuffer(content))
+}
+
+func (c *CmdGlobal) doHTTPRequestV1Reader(endpoint string, method string, query string, reader io.Reader) (*api.Response, error) {
+	p, err := url.JoinPath("/1.0/", endpoint)
+	if err != nil {
+		return nil, err
+	}
+
+	if query != "" {
+		return c.makeHTTPRequest(fmt.Sprintf("%s?%s", p, query), method, reader)
+	}
+
+	return c.makeHTTPRequest(p, method, reader)
 }
 
 func responseToStruct(response *api.Response, targetStruct any) error {
