@@ -124,7 +124,8 @@ func allowPermission(objectType auth.ObjectType, entitlement auth.Entitlement) f
 		}
 
 		// Validate whether the user has the needed permission
-		err := d.authorizer.CheckPermission(r.Context(), r, auth.ObjectServer(), entitlement)
+		authorizer := d.Authorizer()
+		err := authorizer.CheckPermission(r.Context(), r, auth.ObjectServer(), entitlement)
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -165,9 +166,11 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 		return false, "", "", fmt.Errorf("Bad/missing TLS on network query")
 	}
 
+	verifier := d.OIDCVerifier()
+	trustedFingerprints := d.TrustedFingerprints()
 	// Check for JWT token signed by an OpenID Connect provider.
-	if d.oidcVerifier != nil && d.oidcVerifier.IsRequest(r) {
-		userName, err := d.oidcVerifier.Auth(d.ShutdownCtx, w, r)
+	if verifier != nil && verifier.IsRequest(r) {
+		userName, err := verifier.Auth(d.ShutdownCtx, w, r)
 		if err != nil {
 			return false, "", "", err
 		}
@@ -176,7 +179,7 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 	}
 
 	for _, cert := range r.TLS.PeerCertificates {
-		trusted, username := tlsutil.CheckTrustState(*cert, d.config.TrustedTLSClientCertFingerprints)
+		trusted, username := tlsutil.CheckTrustState(*cert, trustedFingerprints)
 		if trusted {
 			return true, username, incusAPI.AuthenticationMethodTLS, nil
 		}
@@ -612,13 +615,14 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 		w.Header().Set("Content-Type", "application/json")
 
 		// Authentication
+		verifier := d.OIDCVerifier()
 		trusted, username, protocol, err := d.Authenticate(w, r)
 		if err != nil {
 			_, ok := err.(*oidc.AuthError)
 			if ok {
 				// Ensure the OIDC headers are set if needed.
-				if d.oidcVerifier != nil {
-					_ = d.oidcVerifier.WriteHeaders(w)
+				if verifier != nil {
+					_ = verifier.WriteHeaders(w)
 				}
 
 				_ = response.Unauthorized(err).Render(w)
@@ -638,8 +642,8 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 		} else if untrustedOk && r.Header.Get("X-MigrationManager-authenticated") == "" {
 			slog.Debug("Allowing untrusted", slog.String("method", r.Method), slog.Any("url", r.URL), slog.String("ip", r.RemoteAddr))
 		} else {
-			if d.oidcVerifier != nil {
-				_ = d.oidcVerifier.WriteHeaders(w)
+			if verifier != nil {
+				_ = verifier.WriteHeaders(w)
 			}
 
 			slog.Warn("Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
@@ -719,8 +723,8 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 		}
 
 		// If sending out Forbidden, make sure we have OIDC headers.
-		if resp.Code() == http.StatusForbidden && d.oidcVerifier != nil {
-			_ = d.oidcVerifier.WriteHeaders(w)
+		if resp.Code() == http.StatusForbidden && verifier != nil {
+			_ = verifier.WriteHeaders(w)
 		}
 
 		// Handle errors
