@@ -109,6 +109,8 @@ func restServer(d *Daemon) *http.Server {
 		d.createCmd(router, "1.0", c)
 	}
 
+	d.createCmd(router, "os/", incusOSProxyCmd)
+
 	return &http.Server{
 		Handler:     router,
 		ConnContext: request.SaveConnectionInContext,

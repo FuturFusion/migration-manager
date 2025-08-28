@@ -19,7 +19,6 @@ var api10 = []APIEndpoint{
 	batchStartCmd,
 	batchStopCmd,
 	batchesCmd,
-	incusOSProxyCmd,
 	instanceCmd,
 	instanceOverrideCmd,
 	instancesCmd,
