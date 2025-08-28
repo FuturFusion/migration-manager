@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,6 +20,7 @@ import (
 	"github.com/lxc/incus/v6/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
+	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )
 
 type BitLockerState int
@@ -92,8 +95,30 @@ func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error
 func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartition string, recoveryPartition string) error {
 	slog.Info("Preparing to inject Windows drivers into VM")
 
+	c := internalUtil.UnixHTTPClient("/dev/incus/sock")
+	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://unix.socket/1.0/config/user.migration.hwaddrs", nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+	out, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	hwAddrs := strings.Split(string(out), ",")
+
 	// Mount the virtio drivers image.
-	err := DoMount(driversMountDevice, driversMountPath, nil)
+	err = DoMount(driversMountDevice, driversMountPath, nil)
 	if err != nil {
 		return err
 	}
@@ -157,6 +182,40 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	err = injectDriversHelper(ctx, windowsVersion)
 	if err != nil {
 		return err
+	}
+
+	// Re-assign network configs to the new NIC if we have MACs.
+	if len(hwAddrs) > 0 {
+		hivexScriptName := "hivex-assign-netcfg.sh"
+		ps1ScriptName := "virtio-assign-netcfg.ps1"
+		ps1Script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", ps1ScriptName))
+		if err != nil {
+			return err
+		}
+
+		// Write the ps1 script to C:\.
+		err = os.WriteFile(filepath.Join(windowsMainMountPath, ps1ScriptName), ps1Script, 0o755)
+		if err != nil {
+			return err
+		}
+
+		hivexScript, err := embeddedScripts.ReadFile(filepath.Join("scripts/", hivexScriptName))
+		if err != nil {
+			return err
+		}
+
+		// Write the hivex script to /tmp.
+		err = os.WriteFile(filepath.Join("/tmp", hivexScriptName), hivexScript, 0o755)
+		if err != nil {
+			return err
+		}
+
+		args := []string{filepath.Join("/tmp", hivexScriptName)}
+		args = append(args, hwAddrs...)
+		_, err = subprocess.RunCommand("/bin/sh", args...)
+		if err != nil {
+			return err
+		}
 	}
 
 	slog.Info("Successfully injected drivers!")
