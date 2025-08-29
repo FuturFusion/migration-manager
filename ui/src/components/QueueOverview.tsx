@@ -42,7 +42,7 @@ const QueueOverview = () => {
           </div>
         </div>
         <div className="row">
-          <div className="col-2 detail-table-header">Status string</div>
+          <div className="col-2 detail-table-header">Detailed status</div>
           <div className="col-10 detail-table-cell">
             {queue?.migration_status_message}
           </div>
