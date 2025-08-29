@@ -59,6 +59,7 @@ func TestGetProperties(t *testing.T) {
 		expectedMemory           int32
 		expectedTPM              bool
 		expectedSecureBoot       bool
+		expectedRunning          bool
 
 		expectedDiskName     string
 		expectedDiskShared   string
@@ -95,6 +96,37 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
+			expectedRunning:          true,
+			expectedTPM:              true,
+			expectedSecureBoot:       true,
+			expectedSnapshotName:     "snap0",
+
+			numDisks:     3,
+			numNICs:      3,
+			numSnapshots: 3,
+
+			archProperty: expectedArch,
+		},
+		{
+			name:      "success - powered off",
+			expectErr: false,
+
+			expectedUUID:             expectedUUID.String(),
+			expectedLocation:         "/path/to/vm",
+			expectedDescription:      "description",
+			expectedFirmware:         string(types.GuestOsDescriptorFirmwareTypeBios),
+			expectedName:             "vm",
+			expectedBackgroundImport: true,
+			expectedGuestDetails:     "architecture='Arm' bitness='64' distroName='os' prettyName='os version'",
+			expectedCPUs:             4,
+			expectedDiskName:         "diskName.vmdk",
+			expectedDiskShared:       string(types.VirtualDiskSharingSharingMultiWriter),
+			expectedDiskCapacity:     2147483648,
+			expectedNetwork:          "network",
+			expectedNetworkID:        "network-123",
+			expectedMac:              "mac",
+			expectedMemory:           2048,
+			expectedRunning:          false,
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -124,6 +156,7 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
+			expectedRunning:          true,
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -153,6 +186,7 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
+			expectedRunning:          true,
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -182,6 +216,7 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
+			expectedRunning:          true,
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -210,6 +245,7 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
+			expectedRunning:          true,
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -239,6 +275,7 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
+			expectedRunning:          true,
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -268,6 +305,7 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
+			expectedRunning:          true,
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -300,6 +338,7 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
+			expectedRunning:          true,
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -328,6 +367,7 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
+			expectedRunning:          true,
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -356,6 +396,7 @@ func TestGetProperties(t *testing.T) {
 			expectedNetworkID:        "network-123",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
+			expectedRunning:          true,
 			expectedTPM:              true,
 			expectedSecureBoot:       true,
 			expectedSnapshotName:     "snap0",
@@ -371,6 +412,11 @@ func TestGetProperties(t *testing.T) {
 
 	for i, c := range cases {
 		t.Logf("Case %d: %s", i, c.name)
+
+		state := types.VirtualMachinePowerStatePoweredOff
+		if c.expectedRunning {
+			state = types.VirtualMachinePowerStatePoweredOn
+		}
 
 		vmInfo := &object.VirtualMachine{Common: object.Common{InventoryPath: c.expectedLocation}}
 		vmProps := mo.VirtualMachine{
@@ -391,6 +437,7 @@ func TestGetProperties(t *testing.T) {
 					TpmPresent:   ptr.To(c.expectedTPM),
 					InstanceUuid: c.expectedUUID,
 				},
+				Runtime: types.VirtualMachineRuntimeInfo{PowerState: state},
 			},
 			Capability: types.VirtualMachineCapability{
 				SecureBootSupported: ptr.To(c.expectedSecureBoot),
@@ -486,6 +533,7 @@ func TestGetProperties(t *testing.T) {
 			require.Equal(t, c.expectedUUID, props.UUID.String())
 			require.Equal(t, c.expectedName, props.Name)
 			require.Equal(t, c.expectedTPM, props.TPM)
+			require.Equal(t, c.expectedRunning, props.Running)
 			require.Equal(t, c.expectedFirmware == string(types.GuestOsDescriptorFirmwareTypeBios), props.LegacyBoot)
 			require.Equal(t, c.expectedBackgroundImport, props.BackgroundImport)
 			require.Equal(t, c.expectedSecureBoot, props.SecureBoot)
