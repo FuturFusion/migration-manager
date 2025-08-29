@@ -482,14 +482,14 @@ func queueWorkerPost(d *Daemon, r *http.Request) response.Response {
 
 	if updatedEntry.MigrationStatus == api.MIGRATIONSTATUS_ERROR {
 		var src *migration.Source
-		var location string
+		var inst *migration.Instance
 		err := transaction.Do(r.Context(), func(ctx context.Context) error {
-			inst, err := d.instance.GetByUUID(ctx, instanceUUID)
+			var err error
+			inst, err = d.instance.GetByUUID(ctx, instanceUUID)
 			if err != nil {
 				return err
 			}
 
-			location = inst.Properties.Location
 			src, err = d.source.GetByName(ctx, inst.Source)
 			if err != nil {
 				return err
@@ -501,19 +501,22 @@ func queueWorkerPost(d *Daemon, r *http.Request) response.Response {
 			return response.SmartError(err)
 		}
 
-		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
-		if err != nil {
-			return response.SmartError(err)
-		}
+		// Power on the source VM if it was initially running.
+		if inst.Properties.Running {
+			is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+			if err != nil {
+				return response.SmartError(err)
+			}
 
-		err = is.Connect(r.Context())
-		if err != nil {
-			return response.SmartError(err)
-		}
+			err = is.Connect(r.Context())
+			if err != nil {
+				return response.SmartError(err)
+			}
 
-		err = is.PowerOnVM(r.Context(), location)
-		if err != nil {
-			return response.SmartError(err)
+			err = is.PowerOnVM(r.Context(), inst.Properties.Location)
+			if err != nil {
+				return response.SmartError(err)
+			}
 		}
 	}
 
