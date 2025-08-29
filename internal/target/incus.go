@@ -355,9 +355,12 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
 	}
 
-	err = t.StartVM(ctx, i.Properties.Name)
-	if err != nil {
-		return fmt.Errorf("Failed to start instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
+	// Only start the VM if it was initially running.
+	if i.Properties.Running {
+		err := t.StartVM(ctx, i.Properties.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to start instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
+		}
 	}
 
 	return nil
