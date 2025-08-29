@@ -19,7 +19,7 @@ const Queue = () => {
     "Name",
     "Batch",
     "Status",
-    "Status string",
+    "Detailed status",
     "Target",
     "Target project",
   ];
