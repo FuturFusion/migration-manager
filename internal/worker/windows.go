@@ -16,6 +16,7 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/lxc/distrobuilder/shared"
 	"github.com/lxc/distrobuilder/windows"
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
 
@@ -105,17 +106,20 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	}
 
 	resp, err := c.Do(req)
-	if err != nil {
+	if err != nil && !api.StatusErrorCheck(err, http.StatusNotFound) {
 		return err
 	}
 
-	defer func() { _ = resp.Body.Close() }()
-	out, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
+	var hwAddrs []string
+	if err == nil {
+		defer func() { _ = resp.Body.Close() }()
+		out, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
 
-	hwAddrs := strings.Split(string(out), ",")
+		hwAddrs = strings.Split(string(out), " ")
+	}
 
 	// Mount the virtio drivers image.
 	err = DoMount(driversMountDevice, driversMountPath, nil)
