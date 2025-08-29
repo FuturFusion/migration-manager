@@ -999,6 +999,13 @@ func parseValue(propName properties.Name, value any) (any, error) {
 		}
 
 		return strings.ReplaceAll(strVal, " ", "_"), nil
+	case properties.InstanceRunning:
+		strVal, ok := value.(string)
+		if !ok {
+			return nil, fmt.Errorf("%q value %v must be a string", propName.String(), value)
+		}
+
+		return strVal == string(types.VirtualMachinePowerStatePoweredOn), nil
 	default:
 		return value, nil
 	}
