@@ -753,6 +753,9 @@ func (t *InternalIncusTarget) CheckIncusAgent(ctx context.Context, instanceName 
 		if err == nil {
 			return nil
 		}
+
+		// Sleep 1s to avoid spamming the agent.
+		time.Sleep(time.Second)
 	}
 
 	// If we got here, then Exec still did not complete successfully, so return the error.
