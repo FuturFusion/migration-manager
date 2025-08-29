@@ -19,6 +19,8 @@ import TargetCreate from "pages/TargetCreate";
 import TargetDetail from "pages/TargetDetail";
 import Queue from "pages/Queue";
 import QueueDetail from "pages/QueueDetail";
+import Warning from "pages/Warning";
+import WarningDetail from "pages/WarningDetail";
 
 function App() {
   const { isAuthenticated, isAuthLoading } = useAuth();
@@ -85,6 +87,12 @@ function App() {
             <Route
               path="/ui/networks/:name/:activeTab"
               element={<NetworkDetail />}
+            />
+            <Route path="/ui/warnings" element={<Warning />} />
+            <Route path="/ui/warnings/:uuid" element={<WarningDetail />} />
+            <Route
+              path="/ui/warnings/:uuid/:activeTab"
+              element={<WarningDetail />}
             />
           </Routes>
           <Notification />

@@ -2,7 +2,7 @@ import { Nav, Navbar, Container } from "react-bootstrap";
 import { Link } from "react-router";
 import { FaArrowRight, FaArrowLeft } from "react-icons/fa";
 import { BsBox, BsStack, BsFillDatabaseFill } from "react-icons/bs";
-import { MdLogin, MdLogout } from "react-icons/md";
+import { MdLogin, MdLogout, MdWarningAmber } from "react-icons/md";
 import { PiNetwork } from "react-icons/pi";
 import { useAuth } from "context/authContext";
 
@@ -56,6 +56,11 @@ const Sidebar = () => {
                 <li>
                   <Nav.Link as={Link} to="/ui/queue">
                     <BsFillDatabaseFill /> Queue
+                  </Nav.Link>
+                </li>
+                <li>
+                  <Nav.Link as={Link} to="/ui/warnings">
+                    <MdWarningAmber /> Warnings
                   </Nav.Link>
                 </li>
               </>
