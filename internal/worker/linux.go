@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
 
@@ -160,20 +161,22 @@ func LinuxDoPostMigrationConfig(ctx context.Context, distro string, majorVersion
 	}
 
 	resp, err := c.Do(req)
-	if err != nil {
+	if err != nil && !api.StatusErrorCheck(err, http.StatusNotFound) {
 		return err
 	}
 
-	defer func() { _ = resp.Body.Close() }()
-	out, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
+	if err == nil {
+		defer func() { _ = resp.Body.Close() }()
+		out, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
 
-	// Setup udev rules to create network device aliases.
-	err = runScriptInChroot("add-udev-network-rules.sh", string(out))
-	if err != nil {
-		return err
+		// Setup udev rules to create network device aliases.
+		err = runScriptInChroot("add-udev-network-rules.sh", string(out))
+		if err != nil {
+			return err
+		}
 	}
 
 	// Setup incus-agent service override for older versions of RHEL.
