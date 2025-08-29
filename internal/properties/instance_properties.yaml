@@ -153,6 +153,14 @@
               type: config
               key: image.architecture
 
+- name: running
+  description: running state of the instance
+  source:
+      vmware:
+          8.0:
+              type: property
+              key: summary.runtime.powerState
+
 - name: disks
   description: disk device
   source:

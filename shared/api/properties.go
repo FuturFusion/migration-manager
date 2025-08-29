@@ -16,6 +16,7 @@ type InstanceProperties struct {
 	SecureBoot       bool      `json:"secure_boot"       yaml:"secure_boot"       expr:"secure_boot"`
 	LegacyBoot       bool      `json:"legacy_boot"       yaml:"legacy_boot"       expr:"legacy_boot"`
 	TPM              bool      `json:"tpm"               yaml:"tpm"               expr:"tpm"`
+	Running          bool      `json:"running"           yaml:"running"           expr:"running"`
 	BackgroundImport bool      `json:"background_import" yaml:"background_import" expr:"background_import"`
 	Architecture     string    `json:"architecture"      yaml:"architecture"      expr:"architecture"`
 

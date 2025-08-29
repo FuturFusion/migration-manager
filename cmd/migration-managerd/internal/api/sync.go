@@ -736,6 +736,11 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			instanceUpdated = true
 		}
 
+		if inst.Properties.Running != srcInst.Properties.Running {
+			inst.Properties.Running = srcInst.Properties.Running
+			instanceUpdated = true
+		}
+
 		if instanceUpdated {
 			log.Info("Syncing changes to instance from source")
 			inst.LastUpdateFromSource = srcInst.LastUpdateFromSource

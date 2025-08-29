@@ -355,9 +355,12 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
 	}
 
-	err = t.StartVM(ctx, i.Properties.Name)
-	if err != nil {
-		return fmt.Errorf("Failed to start instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
+	// Only start the VM if it was initially running.
+	if i.Properties.Running {
+		err := t.StartVM(ctx, i.Properties.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to start instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
+		}
 	}
 
 	return nil
@@ -753,6 +756,9 @@ func (t *InternalIncusTarget) CheckIncusAgent(ctx context.Context, instanceName 
 		if err == nil {
 			return nil
 		}
+
+		// Sleep 1s to avoid spamming the agent.
+		time.Sleep(time.Second)
 	}
 
 	// If we got here, then Exec still did not complete successfully, so return the error.

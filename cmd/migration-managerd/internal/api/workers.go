@@ -610,21 +610,23 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 		slog.String("source", state.Sources[instUUID].Name),
 	)
 
-	src := state.Sources[instUUID]
-	is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
-	if err != nil {
-		return fmt.Errorf("Failed to configure %q source-specific configuration for restarting source VM on source %q: %w", src.SourceType, src.Name, err)
-	}
+	// First power on the source VM if it was initially running.
+	if state.Instances[instUUID].Properties.Running {
+		src := state.Sources[instUUID]
+		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		if err != nil {
+			return fmt.Errorf("Failed to configure %q source-specific configuration for restarting source VM on source %q: %w", src.SourceType, src.Name, err)
+		}
 
-	err = is.Connect(ctx)
-	if err != nil {
-		return fmt.Errorf("Failed to connect to %q source to restart VM on source %q for next migration window: %w", src.SourceType, src.Name, err)
-	}
+		err = is.Connect(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to connect to %q source to restart VM on source %q for next migration window: %w", src.SourceType, src.Name, err)
+		}
 
-	// First power on the source VM.
-	err = is.PowerOnVM(ctx, state.Instances[instUUID].Properties.Location)
-	if err != nil {
-		return fmt.Errorf("Failed to restart VM on source %q for next migration window: %w", src.Name, err)
+		err = is.PowerOnVM(ctx, state.Instances[instUUID].Properties.Location)
+		if err != nil {
+			return fmt.Errorf("Failed to restart VM on source %q for next migration window: %w", src.Name, err)
+		}
 	}
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
@@ -827,6 +829,11 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 			if err != nil {
 				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 			}
+		}
+
+		// VM wasn't initially running, so no need to turn it back on.
+		if !i.Properties.Running {
+			return
 		}
 
 		is, err := source.NewInternalVMwareSourceFrom(s.ToAPI())

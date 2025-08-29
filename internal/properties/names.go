@@ -38,6 +38,8 @@ const (
 	InstanceBackgroundImport
 	// InstanceArchitecture is the property name for the architecture of the instance.
 	InstanceArchitecture
+	// InstanceRunning is the property name for the running state of the instance.
+	InstanceRunning
 	// InstanceConfig is the property name for generic instance config.
 	InstanceConfig
 	// InstanceNICHardwareAddress is the property name for an instance nic's hardware address.
@@ -107,6 +109,8 @@ func (n Name) String() string {
 		return "snapshots"
 	case InstanceSnapshotName:
 		return "name"
+	case InstanceRunning:
+		return "running"
 	case InstanceDisks:
 		return "disks"
 	case InstanceDiskCapacity:
@@ -153,6 +157,8 @@ func ParseInstanceProperty(s string) (Name, error) {
 		return InstanceSecureBoot, nil
 	case InstanceSnapshots.String():
 		return InstanceSnapshots, nil
+	case InstanceRunning.String():
+		return InstanceRunning, nil
 	case InstanceTPM.String():
 		return InstanceTPM, nil
 	case InstanceUUID.String():
@@ -222,6 +228,7 @@ func allInstanceProperties() []Name {
 		InstanceDescription,
 		InstanceBackgroundImport,
 		InstanceArchitecture,
+		InstanceRunning,
 		InstanceConfig,
 	}
 }
