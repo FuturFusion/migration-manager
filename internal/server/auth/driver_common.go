@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
@@ -74,4 +75,8 @@ func (c *commonAuthorizer) Driver() string {
 // StopService is a no-op.
 func (c *commonAuthorizer) StopService(ctx context.Context) error {
 	return nil
+}
+
+func (c *commonAuthorizer) SetLogger(log *slog.Logger) {
+	c.logger = log
 }
