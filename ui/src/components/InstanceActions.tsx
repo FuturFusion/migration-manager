@@ -2,7 +2,7 @@ import React, { FC, useState } from "react";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import ReactDOM from "react-dom";
 import { BsUnlockFill } from "react-icons/bs";
-import { MdOutlineComment } from "react-icons/md";
+import { MdOutlineComment, MdOutlinePlayCircle } from "react-icons/md";
 import { Instance } from "types/instance";
 
 interface Props {
@@ -35,6 +35,9 @@ const InstanceActions: FC<Props> = ({ instance }) => {
   return (
     <div className="relative inline-block">
       <div>
+        {instance.properties.running && (
+          <MdOutlinePlayCircle title="Running" size={15} />
+        )}
         {instance.overrides && instance.overrides.ignore_restrictions && (
           <OverlayTrigger
             placement="top"

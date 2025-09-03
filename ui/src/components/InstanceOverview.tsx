@@ -110,6 +110,12 @@ const InstanceOverview = () => {
           </div>
         )}
         <div className="row">
+          <div className="col-2 detail-table-header">Running</div>
+          <div className="col-10 detail-table-cell">
+            {instance.properties.running ? "Yes" : "No"}
+          </div>
+        </div>
+        <div className="row">
           <div className="col-2 detail-table-header">Background import</div>
           <div className="col-10 detail-table-cell">
             {instance.properties.background_import ? "Yes" : "No"}
