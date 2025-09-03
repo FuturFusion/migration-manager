@@ -89,13 +89,12 @@ type Daemon struct {
 	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
 }
 
-func NewDaemon(cfg api.SystemConfig) *Daemon {
+func NewDaemon() *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	d := &Daemon{
 		db:             &db.Node{},
 		os:             sys.DefaultOS(),
-		config:         cfg,
 		batchLock:      util.NewIDLock[string](),
 		ShutdownCtx:    shutdownCtx,
 		ShutdownCancel: shutdownCancel,
@@ -195,7 +194,12 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 }
 
 func (d *Daemon) Start() error {
-	var err error
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	d.config = *cfg
 
 	slog.Info("Starting up", slog.String("version", version.Version))
 
@@ -233,21 +237,8 @@ func (d *Daemon) Start() error {
 		return fmt.Errorf("Failed to sync active batches: %w", err)
 	}
 
-	// Setup OIDC authentication.
-	d.oidcVerifier, err = oidc.NewVerifier(d.config.Security.OIDC.Issuer, d.config.Security.OIDC.ClientID, d.config.Security.OIDC.Scope, d.config.Security.OIDC.Audience, d.config.Security.OIDC.Claim)
-	if err != nil {
-		return err
-	}
-
-	// Setup OpenFGA authorization.
-	err = d.setupOpenFGA(d.config.Security)
-	if err != nil {
-		return fmt.Errorf("Failed to configure OpenFGA: %w", err)
-	}
-
 	// Setup web server
 	d.server = restServer(d)
-	serverAddr := net.JoinHostPort(d.config.Network.Address, strconv.Itoa(d.config.Network.Port))
 
 	d.serverCert, err = incusTLS.KeyPairAndCA(d.os.VarDir, "server", incusTLS.CertServer, true)
 	if err != nil {
@@ -256,6 +247,11 @@ func (d *Daemon) Start() error {
 
 	group, errgroupCtx := errgroup.WithContext(context.Background())
 	d.errgroup = group
+
+	err = d.ReloadConfig(true, d.config)
+	if err != nil {
+		return err
+	}
 
 	group.Go(func() error {
 		_, err := net.Dial("unix", d.os.GetUnixSocket())
@@ -285,12 +281,6 @@ func (d *Daemon) Start() error {
 
 		return err
 	})
-
-	errChan := d.updateHTTPListener(serverAddr)
-	err = <-errChan
-	if err != nil {
-		return err
-	}
 
 	// Start background workers
 	d.runPeriodicTask(d.ShutdownCtx, "trySyncAllSources", d.trySyncAllSources, 10*time.Minute)
@@ -345,8 +335,22 @@ func (d *Daemon) TrustedFingerprints() []string {
 	return d.config.Security.TrustedTLSClientCertFingerprints
 }
 
-func (d *Daemon) updateHTTPListener(address string) <-chan error {
-	ch := make(chan error)
+func (d *Daemon) updateHTTPListener(netAddress string, netPort int) <-chan error {
+	ch := make(chan error, 1)
+	if netAddress == "" {
+		var err error
+		if d.listener != nil {
+			slog.Info("Stopping existing https listener", slog.Any("addr", d.listener.Addr().String()))
+			err = d.listener.Close()
+			d.listener = nil
+		}
+
+		slog.Info("Exiting without listener")
+		ch <- err
+		return ch
+	}
+
+	address := net.JoinHostPort(netAddress, strconv.Itoa(netPort))
 	d.errgroup.Go(func() error {
 		if d.listener != nil {
 			slog.Info("Stopping existing https listener", slog.Any("addr", d.listener.Addr().String()))
@@ -435,10 +439,12 @@ func (d *Daemon) updateServerCert(cfg api.CertificatePost) (_err error) {
 		}
 
 		d.serverCert = cert
-		l, ok := d.listener.(*listener.FancyTLSListener)
-		if ok {
-			l.Config(d.serverCert)
-			d.listener = l
+		if d.listener != nil {
+			l, ok := d.listener.(*listener.FancyTLSListener)
+			if ok {
+				l.Config(d.serverCert)
+				d.listener = l
+			}
 		}
 
 		return nil
@@ -487,14 +493,14 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	return err
 }
 
-func (d *Daemon) ReloadConfig(newCfg api.SystemConfig) (_err error) {
+func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 	d.configLock.Lock()
 	defer d.configLock.Unlock()
 
 	oldCfg := d.config
-	changedNetwork := newCfg.Network != oldCfg.Network
-	changedOIDC := newCfg.Security.OIDC != oldCfg.Security.OIDC
-	changedOpenFGA := newCfg.Security.OpenFGA != oldCfg.Security.OpenFGA || !slices.Equal(newCfg.Security.TrustedTLSClientCertFingerprints, oldCfg.Security.TrustedTLSClientCertFingerprints)
+	changedNetwork := init || newCfg.Network != oldCfg.Network
+	changedOIDC := init || newCfg.Security.OIDC != oldCfg.Security.OIDC
+	changedOpenFGA := init || newCfg.Security.OpenFGA != oldCfg.Security.OpenFGA || !slices.Equal(newCfg.Security.TrustedTLSClientCertFingerprints, oldCfg.Security.TrustedTLSClientCertFingerprints)
 
 	updateHandlers := func(applyCfg api.SystemConfig) error {
 		err := config.Validate(applyCfg)
@@ -503,7 +509,7 @@ func (d *Daemon) ReloadConfig(newCfg api.SystemConfig) (_err error) {
 		}
 
 		if changedNetwork {
-			errCh := d.updateHTTPListener(net.JoinHostPort(applyCfg.Network.Address, strconv.Itoa(applyCfg.Network.Port)))
+			errCh := d.updateHTTPListener(applyCfg.Network.Address, applyCfg.Network.Port)
 			err := <-errCh
 			if err != nil {
 				return err
@@ -538,10 +544,12 @@ func (d *Daemon) ReloadConfig(newCfg api.SystemConfig) (_err error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 	reverter.Add(func() {
-		slog.Error("Reverting daemon config change due to error", slog.Any("error", _err))
-		err := updateHandlers(oldCfg)
-		if err != nil {
-			slog.Error("Failed to revert daemon config changes", slog.Any("error", err))
+		if !init {
+			slog.Error("Reverting daemon config change due to error", slog.Any("error", _err))
+			err := updateHandlers(oldCfg)
+			if err != nil {
+				slog.Error("Failed to revert daemon config changes", slog.Any("error", err))
+			}
 		}
 	})
 

@@ -9,6 +9,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/FuturFusion/migration-manager/internal/ports"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -23,7 +24,13 @@ func LoadConfig() (*api.SystemConfig, error) {
 		return nil, err
 	}
 
-	c := &api.SystemConfig{}
+	// Set the default port for a fresh config.
+	c := &api.SystemConfig{
+		Network: api.ConfigNetwork{
+			Port: ports.HTTPSDefaultPort,
+		},
+	}
+
 	err = yaml.Unmarshal(contents, c)
 	if err != nil {
 		return nil, err

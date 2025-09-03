@@ -127,7 +127,7 @@ func systemNetworkPut(d *Daemon, r *http.Request) response.Response {
 	newConfig := d.config
 	newConfig.Network = cfg
 
-	err = d.ReloadConfig(newConfig)
+	err = d.ReloadConfig(false, newConfig)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -231,7 +231,7 @@ func systemSecurityPut(d *Daemon, r *http.Request) response.Response {
 	newConfig := d.config
 	newConfig.Security = cfg
 
-	err = d.ReloadConfig(newConfig)
+	err = d.ReloadConfig(false, newConfig)
 	if err != nil {
 		return response.SmartError(err)
 	}
