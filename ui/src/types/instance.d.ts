@@ -33,6 +33,7 @@ export interface InstanceProperties {
   secure_boot: boolean;
   legacy_boot: boolean;
   tpm: boolean;
+  running: boolean;
   background_import: boolean;
   architecture: string;
   nics: InstancePropertiesNIC[];
