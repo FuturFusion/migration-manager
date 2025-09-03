@@ -2,7 +2,11 @@ import React, { FC, useState } from "react";
 import { OverlayTrigger, Tooltip } from "react-bootstrap";
 import ReactDOM from "react-dom";
 import { BsUnlockFill } from "react-icons/bs";
-import { MdOutlineComment, MdOutlinePlayCircle } from "react-icons/md";
+import {
+  MdOutlineComment,
+  MdOutlinePlayCircle,
+  MdOutlineQueryBuilder,
+} from "react-icons/md";
 import { Instance } from "types/instance";
 
 interface Props {
@@ -35,8 +39,11 @@ const InstanceActions: FC<Props> = ({ instance }) => {
   return (
     <div className="relative inline-block">
       <div>
+        {!instance.properties.background_import && (
+          <MdOutlineQueryBuilder title="No background import" size={20} />
+        )}
         {instance.properties.running && (
-          <MdOutlinePlayCircle title="Running" size={15} />
+          <MdOutlinePlayCircle title="Running" size={20} />
         )}
         {instance.overrides && instance.overrides.ignore_restrictions && (
           <OverlayTrigger
@@ -48,13 +55,13 @@ const InstanceActions: FC<Props> = ({ instance }) => {
             }
           >
             <span>
-              <BsUnlockFill size={15} />
+              <BsUnlockFill size={20} />
             </span>
           </OverlayTrigger>
         )}
         {instance.overrides && instance.overrides.comment && (
           <MdOutlineComment
-            size={15}
+            size={20}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
           />
