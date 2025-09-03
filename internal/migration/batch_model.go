@@ -3,11 +3,13 @@ package migration
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/validate"
 
 	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
@@ -246,7 +248,7 @@ func (ws MigrationWindows) GetEarliest() (*MigrationWindow, error) {
 	}
 
 	if earliestWindow == nil {
-		return nil, fmt.Errorf("No valid migration window found")
+		return nil, incusAPI.StatusErrorf(http.StatusNotFound, "No valid migration window found")
 	}
 
 	return earliestWindow, nil
