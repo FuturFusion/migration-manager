@@ -16,35 +16,37 @@ const Network = () => {
 
   const headers = ["Identifier", "Name", "Location", "Source", "Type"];
   const rows = networks.map((item) => {
-    return [
-      {
-        content: (
-          <Link
-            to={`/ui/networks/${item.identifier}?source=${item.source}`}
-            className="data-table-link"
-          >
-            {item.identifier}
-          </Link>
-        ),
-        sortKey: item.identifier,
-      },
-      {
-        content: getName(item),
-        sortKey: getName(item),
-      },
-      {
-        content: item.location,
-        sortKey: item.location,
-      },
-      {
-        content: item.source,
-        sortKey: item.source,
-      },
-      {
-        content: item.type,
-        sortKey: item.type,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link
+              to={`/ui/networks/${item.identifier}?source=${item.source}`}
+              className="data-table-link"
+            >
+              {item.identifier}
+            </Link>
+          ),
+          sortKey: item.identifier,
+        },
+        {
+          content: getName(item),
+          sortKey: getName(item),
+        },
+        {
+          content: item.location,
+          sortKey: item.location,
+        },
+        {
+          content: item.source,
+          sortKey: item.source,
+        },
+        {
+          content: item.type,
+          sortKey: item.type,
+        },
+      ],
+    };
   });
 
   if (isLoading) {

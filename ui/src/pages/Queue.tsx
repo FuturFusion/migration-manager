@@ -24,39 +24,41 @@ const Queue = () => {
     "Target project",
   ];
   const rows = queue.map((item) => {
-    return [
-      {
-        content: (
-          <Link
-            to={`/ui/queue/${item.instance_uuid}`}
-            className="data-table-link"
-          >
-            {item.instance_name}
-          </Link>
-        ),
-        sortKey: item.instance_name,
-      },
-      {
-        content: item.batch_name,
-        sortKey: item.batch_name,
-      },
-      {
-        content: item.migration_status,
-        sortKey: item.migration_status,
-      },
-      {
-        content: item.migration_status_message,
-        sortKey: item.migration_status_message,
-      },
-      {
-        content: item.placement.target_name,
-        sortKey: item.placement.target_name,
-      },
-      {
-        content: item.placement.target_project,
-        sortKey: item.placement.target_project,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link
+              to={`/ui/queue/${item.instance_uuid}`}
+              className="data-table-link"
+            >
+              {item.instance_name}
+            </Link>
+          ),
+          sortKey: item.instance_name,
+        },
+        {
+          content: item.batch_name,
+          sortKey: item.batch_name,
+        },
+        {
+          content: item.migration_status,
+          sortKey: item.migration_status,
+        },
+        {
+          content: item.migration_status_message,
+          sortKey: item.migration_status_message,
+        },
+        {
+          content: item.placement.target_name,
+          sortKey: item.placement.target_name,
+        },
+        {
+          content: item.placement.target_project,
+          sortKey: item.placement.target_project,
+        },
+      ],
+    };
   });
 
   if (isLoading) {

@@ -33,40 +33,42 @@ const Target = () => {
       authType = "TLS";
     }
 
-    return [
-      {
-        content: (
-          <Link to={`/ui/targets/${item.name}`} className="data-table-link">
-            {item.name}
-          </Link>
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.target_type,
-        sortKey: item.target_type,
-      },
-      {
-        content: (
-          <Link
-            to={item.properties.endpoint}
-            className="data-table-link"
-            target="_blank"
-          >
-            {item.properties.endpoint}
-          </Link>
-        ),
-        sortKey: item.properties.endpoint,
-      },
-      {
-        content: props.connectivity_status,
-        sortKey: props.connectivity_status,
-      },
-      {
-        content: authType,
-        sortKey: authType,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link to={`/ui/targets/${item.name}`} className="data-table-link">
+              {item.name}
+            </Link>
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.target_type,
+          sortKey: item.target_type,
+        },
+        {
+          content: (
+            <Link
+              to={item.properties.endpoint}
+              className="data-table-link"
+              target="_blank"
+            >
+              {item.properties.endpoint}
+            </Link>
+          ),
+          sortKey: item.properties.endpoint,
+        },
+        {
+          content: props.connectivity_status,
+          sortKey: props.connectivity_status,
+        },
+        {
+          content: authType,
+          sortKey: authType,
+        },
+      ],
+    };
   });
 
   if (isLoading) {

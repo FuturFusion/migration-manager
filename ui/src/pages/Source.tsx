@@ -44,35 +44,37 @@ const Source = () => {
       username = props.username;
     }
 
-    return [
-      {
-        content: (
-          <Link to={`/ui/sources/${item.name}`} className="data-table-link">
-            {item.name}
-          </Link>
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.source_type,
-      },
-      {
-        content: (
-          <Link to={endpoint} className="data-table-link" target="_blank">
-            {endpoint}
-          </Link>
-        ),
-        sortKey: endpoint,
-      },
-      {
-        content: connStatus,
-        sortKey: connStatus,
-      },
-      {
-        content: username,
-        sortKey: username,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link to={`/ui/sources/${item.name}`} className="data-table-link">
+              {item.name}
+            </Link>
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.source_type,
+        },
+        {
+          content: (
+            <Link to={endpoint} className="data-table-link" target="_blank">
+              {endpoint}
+            </Link>
+          ),
+          sortKey: endpoint,
+        },
+        {
+          content: connStatus,
+          sortKey: connStatus,
+        },
+        {
+          content: username,
+          sortKey: username,
+        },
+      ],
+    };
   });
 
   if (isLoading) {
