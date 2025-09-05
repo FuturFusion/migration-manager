@@ -5,8 +5,8 @@ import DataTable from "components/DataTable";
 test("renders table with data", () => {
   const headers = ["Name", "Age"];
   const rows = [
-    [{ content: "Alice" }, { content: 35 }],
-    [{ content: "Bob" }, { content: 25 }],
+    { cols: [{ content: "Alice" }, { content: 35 }] },
+    { cols: [{ content: "Bob" }, { content: 25 }] },
   ];
 
   render(<DataTable headers={headers} rows={rows} />);
@@ -25,18 +25,24 @@ test("renders table with data", () => {
 test("sorts table when clicking header", () => {
   const headers = ["Name", "Age"];
   const rows = [
-    [
-      { content: "Chris", sortKey: "Chris" },
-      { content: 20, sortKey: 20 },
-    ],
-    [
-      { content: "Alice", sortKey: "Alice" },
-      { content: 35, sortKey: 35 },
-    ],
-    [
-      { content: "Bob", sortKey: "Bob" },
-      { content: 25, sortKey: 25 },
-    ],
+    {
+      cols: [
+        { content: "Chris", sortKey: "Chris" },
+        { content: 20, sortKey: 20 },
+      ],
+    },
+    {
+      cols: [
+        { content: "Alice", sortKey: "Alice" },
+        { content: 35, sortKey: 35 },
+      ],
+    },
+    {
+      cols: [
+        { content: "Bob", sortKey: "Bob" },
+        { content: 25, sortKey: 25 },
+      ],
+    },
   ];
 
   render(<DataTable headers={headers} rows={rows} />);

@@ -28,39 +28,41 @@ const Batch = () => {
     "Actions",
   ];
   const rows = batches.map((item) => {
-    return [
-      {
-        content: (
-          <Link to={`/ui/batches/${item.name}`} className="data-table-link">
-            {item.name}
-          </Link>
-        ),
-        sortKey: item.name,
-      },
-      {
-        content: item.status_message,
-        sortKey: item.status_message,
-      },
-      {
-        content: item.default_target,
-        sortKey: item.default_target,
-      },
-      {
-        content: item.default_target_project,
-        sortKey: item.default_target_project,
-      },
-      {
-        content: item.default_storage_pool,
-        sortKey: item.default_storage_pool,
-      },
-      {
-        content: item.include_expression,
-        sortKey: item.include_expression,
-      },
-      {
-        content: <BatchActions batch={item} />,
-      },
-    ];
+    return {
+      cols: [
+        {
+          content: (
+            <Link to={`/ui/batches/${item.name}`} className="data-table-link">
+              {item.name}
+            </Link>
+          ),
+          sortKey: item.name,
+        },
+        {
+          content: item.status_message,
+          sortKey: item.status_message,
+        },
+        {
+          content: item.default_target,
+          sortKey: item.default_target,
+        },
+        {
+          content: item.default_target_project,
+          sortKey: item.default_target_project,
+        },
+        {
+          content: item.default_storage_pool,
+          sortKey: item.default_storage_pool,
+        },
+        {
+          content: item.include_expression,
+          sortKey: item.include_expression,
+        },
+        {
+          content: <BatchActions batch={item} />,
+        },
+      ],
+    };
   });
 
   if (isLoading) {
