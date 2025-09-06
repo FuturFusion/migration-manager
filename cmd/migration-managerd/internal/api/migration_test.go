@@ -573,7 +573,7 @@ def placement(instance, batch):
 			}
 
 			if tc.hasWorker {
-				require.NoError(t, os.WriteFile(filepath.Join(d.os.VarDir, "migration-manager-worker"), nil, 0o660))
+				require.NoError(t, os.WriteFile(filepath.Join(d.os.UsrDir, "migration-manager-worker"), nil, 0o660))
 			}
 
 			// Prepare state for test.

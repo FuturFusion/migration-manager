@@ -11,19 +11,11 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sys/unix"
 
-	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/api"
-	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
-	"github.com/FuturFusion/migration-manager/internal/ports"
+	daemon "github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/api"
 )
 
 type cmdDaemon struct {
 	global *cmdGlobal
-
-	// Common options
-	flagGroup          string
-	flagServerAddr     string
-	flagServerPort     int
-	flagWorkerEndpoint string
 }
 
 func (c *cmdDaemon) Command() *cobra.Command {
@@ -36,10 +28,6 @@ func (c *cmdDaemon) Command() *cobra.Command {
   This is the migration manager daemon command line.
 `
 	cmd.RunE = c.Run
-	cmd.Flags().StringVar(&c.flagGroup, "group", "", "The group of users that will be allowed to talk to the migration manager")
-	cmd.Flags().StringVar(&c.flagServerAddr, "server-addr", "", "Address to bind to")
-	cmd.Flags().IntVar(&c.flagServerPort, "server-port", ports.HTTPSDefaultPort, "IP port to bind to")
-	cmd.Flags().StringVar(&c.flagWorkerEndpoint, "worker-endpoint", "", "The endpoint that workers should connect to; defaults to `https://<server-ip>:<server-port>`")
 
 	return cmd
 }
@@ -49,19 +37,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(`unknown command %q for %q`, args[0], cmd.CommandPath())
 	}
 
-	cfg := &config.DaemonConfig{}
-
-	err := cfg.LoadConfig()
-	if err != nil {
-		return err
-	}
-
-	cfg.Group = c.flagGroup
-	cfg.RestServerIPAddr = c.flagServerAddr
-	cfg.RestServerPort = c.flagServerPort
-	cfg.RestWorkerEndpoint = c.flagWorkerEndpoint
-
-	d := api.NewDaemon(cfg)
+	d := daemon.NewDaemon()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, unix.SIGPWR)
@@ -72,7 +48,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 	chIgnore := make(chan os.Signal, 1)
 	signal.Notify(chIgnore, unix.SIGHUP)
 
-	err = d.Start()
+	err := d.Start()
 	if err != nil {
 		return err
 	}

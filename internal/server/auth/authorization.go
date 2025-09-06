@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
@@ -39,6 +40,7 @@ type PermissionChecker func(object Object) bool
 type Authorizer interface {
 	Driver() string
 	StopService(ctx context.Context) error
+	SetLogger(log *slog.Logger)
 
 	CheckPermission(ctx context.Context, r *http.Request, object Object, entitlement Entitlement) error
 }

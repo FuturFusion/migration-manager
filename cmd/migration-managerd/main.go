@@ -37,7 +37,7 @@ func main() {
 	sysInfo := sys.DefaultOS()
 
 	// Make sure expected directories exist and create them if missing.
-	for _, dir := range []string{sysInfo.CacheDir, sysInfo.LogDir, sysInfo.RunDir, sysInfo.VarDir, sysInfo.LocalDatabaseDir()} {
+	for _, dir := range []string{sysInfo.CacheDir, sysInfo.LogDir, sysInfo.RunDir, sysInfo.VarDir, sysInfo.UsrDir, sysInfo.ShareDir, sysInfo.LocalDatabaseDir()} {
 		if !util.PathExists(dir) {
 			err := os.MkdirAll(dir, 0o755)
 			if err != nil {

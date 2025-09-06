@@ -1,0 +1,331 @@
+package cmds
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+
+	"github.com/lxc/incus/v6/shared/termios"
+	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
+)
+
+type CmdConfig struct {
+	Global *CmdGlobal
+}
+
+func (c *CmdConfig) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "system"
+	cmd.Short = "Manage system configuration"
+	cmd.Long = `Description:
+
+  Modify configuration for migration manager.
+`
+
+	// Network config
+	configNetworkCmd := cmdConfigNetwork{global: c.Global}
+	cmd.AddCommand(configNetworkCmd.Command())
+
+	// Security config
+	configSecurityCmd := cmdConfigSecurity{global: c.Global}
+	cmd.AddCommand(configSecurityCmd.Command())
+
+	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
+	cmd.Args = cobra.NoArgs
+	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
+
+	return cmd
+}
+
+type cmdConfigNetwork struct {
+	global *CmdGlobal
+}
+
+func (c *cmdConfigNetwork) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "network"
+	cmd.Short = "Manage system network configuration"
+	cmd.Long = `Description:
+
+  Modify network configuration for migration manager.
+`
+
+	// Edit
+	configEdit := cmdConfigNetworkEdit{global: c.global}
+	cmd.AddCommand(configEdit.Command())
+
+	// Show
+	configShowCmd := cmdConfigNetworkShow{global: c.global}
+	cmd.AddCommand(configShowCmd.Command())
+
+	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
+	cmd.Args = cobra.NoArgs
+	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
+
+	return cmd
+}
+
+type cmdConfigSecurity struct {
+	global *CmdGlobal
+}
+
+func (c *cmdConfigSecurity) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "security"
+	cmd.Short = "Manage system security configuration"
+	cmd.Long = `Description:
+
+  Modify security configuration for migration manager.
+`
+
+	// Edit
+	configEdit := cmdConfigSecurityEdit{global: c.global}
+	cmd.AddCommand(configEdit.Command())
+
+	// Show
+	configShowCmd := cmdConfigSecurityShow{global: c.global}
+	cmd.AddCommand(configShowCmd.Command())
+
+	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
+	cmd.Args = cobra.NoArgs
+	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
+
+	return cmd
+}
+
+type cmdConfigNetworkEdit struct {
+	global *CmdGlobal
+}
+
+func (c *cmdConfigNetworkEdit) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "edit"
+	cmd.Short = "Edit network config as YAML"
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdConfigNetworkEdit) helpTemplate() string {
+	return `### This is a YAML representation of the system network configuration.
+### Any line starting with a '# will be ignored.
+###`
+}
+
+func (c *cmdConfigNetworkEdit) Run(cmd *cobra.Command, args []string) error {
+	exit, err := c.global.CheckArgs(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	// If stdin isn't a terminal, read text from it
+	var contents []byte
+	if !termios.IsTerminal(getStdinFd()) {
+		contents, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+	} else {
+		resp, err := c.global.doHTTPRequestV1("/system/network", http.MethodGet, "", nil)
+		if err != nil {
+			return err
+		}
+
+		var cfg api.ConfigNetwork
+		err = responseToStruct(resp, &cfg)
+		if err != nil {
+			return err
+		}
+
+		data, err := yaml.Marshal(cfg)
+		if err != nil {
+			return err
+		}
+
+		contents, err = textEditor("", []byte(c.helpTemplate()+"\n\n"+string(data)))
+		if err != nil {
+			return err
+		}
+	}
+
+	newdata := api.ConfigNetwork{}
+	err = yaml.Unmarshal(contents, &newdata)
+	if err != nil {
+		return err
+	}
+
+	b, err := json.Marshal(newdata)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.global.doHTTPRequestV1("/system/network", http.MethodPut, "", b)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type cmdConfigNetworkShow struct {
+	global *CmdGlobal
+}
+
+func (c *cmdConfigNetworkShow) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "show"
+	cmd.Short = "Display the system network config"
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdConfigNetworkShow) Run(cmd *cobra.Command, args []string) error {
+	exit, err := c.global.CheckArgs(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	resp, err := c.global.doHTTPRequestV1("/system/network", http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+
+	var cfg api.ConfigNetwork
+	err = responseToStruct(resp, &cfg)
+	if err != nil {
+		return err
+	}
+
+	b, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(b))
+
+	return nil
+}
+
+type cmdConfigSecurityEdit struct {
+	global *CmdGlobal
+}
+
+func (c *cmdConfigSecurityEdit) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "edit"
+	cmd.Short = "Edit security config as YAML"
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdConfigSecurityEdit) helpTemplate() string {
+	return `### This is a YAML representation of the system security configuration.
+### Any line starting with a '# will be ignored.
+###`
+}
+
+func (c *cmdConfigSecurityEdit) Run(cmd *cobra.Command, args []string) error {
+	exit, err := c.global.CheckArgs(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	// If stdin isn't a terminal, read text from it
+	var contents []byte
+	if !termios.IsTerminal(getStdinFd()) {
+		contents, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+	} else {
+		resp, err := c.global.doHTTPRequestV1("/system/security", http.MethodGet, "", nil)
+		if err != nil {
+			return err
+		}
+
+		var cfg api.ConfigSecurity
+		err = responseToStruct(resp, &cfg)
+		if err != nil {
+			return err
+		}
+
+		data, err := yaml.Marshal(cfg)
+		if err != nil {
+			return err
+		}
+
+		contents, err = textEditor("", []byte(c.helpTemplate()+"\n\n"+string(data)))
+		if err != nil {
+			return err
+		}
+	}
+
+	newdata := api.ConfigSecurity{}
+	err = yaml.Unmarshal(contents, &newdata)
+	if err != nil {
+		return err
+	}
+
+	b, err := json.Marshal(newdata)
+	if err != nil {
+		return err
+	}
+
+	_, err = c.global.doHTTPRequestV1("/system/security", http.MethodPut, "", b)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type cmdConfigSecurityShow struct {
+	global *CmdGlobal
+}
+
+func (c *cmdConfigSecurityShow) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "show"
+	cmd.Short = "Display the system security config"
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdConfigSecurityShow) Run(cmd *cobra.Command, args []string) error {
+	exit, err := c.global.CheckArgs(cmd, args, 0, 0)
+	if exit {
+		return err
+	}
+
+	resp, err := c.global.doHTTPRequestV1("/system/security", http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+
+	var cfg api.ConfigSecurity
+	err = responseToStruct(resp, &cfg)
+	if err != nil {
+		return err
+	}
+
+	b, err := yaml.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(b))
+
+	return nil
+}

@@ -51,7 +51,7 @@ import (
 func restServer(d *Daemon) *http.Server {
 	router := http.NewServeMux()
 
-	uiDir := uiHTTPDir{http.Dir(filepath.Join(d.os.VarDir, "ui"))}
+	uiDir := uiHTTPDir{http.Dir(filepath.Join(d.os.ShareDir, "ui"))}
 	fileServer := http.FileServer(uiDir)
 
 	router.Handle("/ui/", http.StripPrefix("/ui/", fileServer))
@@ -61,30 +61,33 @@ func restServer(d *Daemon) *http.Server {
 
 	// OIDC browser login
 	router.HandleFunc("/oidc/login", func(w http.ResponseWriter, r *http.Request) {
-		if d.oidcVerifier == nil {
+		verifier := d.OIDCVerifier()
+		if verifier == nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		d.oidcVerifier.Login(w, r)
+		verifier.Login(w, r)
 	})
 
 	router.HandleFunc("/oidc/callback", func(w http.ResponseWriter, r *http.Request) {
-		if d.oidcVerifier == nil {
+		verifier := d.OIDCVerifier()
+		if verifier == nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		d.oidcVerifier.Callback(w, r)
+		verifier.Callback(w, r)
 	})
 
 	router.HandleFunc("/oidc/logout", func(w http.ResponseWriter, r *http.Request) {
-		if d.oidcVerifier == nil {
+		verifier := d.OIDCVerifier()
+		if verifier == nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 
-		d.oidcVerifier.Logout(w, r)
+		verifier.Logout(w, r)
 	})
 
 	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

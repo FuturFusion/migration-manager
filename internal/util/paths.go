@@ -72,6 +72,34 @@ func VarPath(path ...string) string {
 	return filepath.Join(items...)
 }
 
+// SharePath returns the directory that migration manager should put static content under.
+// If MIGRATION_MANAGER_DIR is set, this path is $MIGRATION_MANAGER_DIR/share, otherwise it is /usr/share/migration-manager.
+func SharePath(path ...string) string {
+	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
+	usrDir := "/usr/share/migration-manager"
+	if varDir != "" {
+		usrDir = filepath.Join(varDir, "share")
+	}
+
+	items := []string{usrDir}
+	items = append(items, path...)
+	return filepath.Join(items...)
+}
+
+// UsrPath returns the directory that migration manager should put static library & binary content under.
+// If MIGRATION_MANAGER_DIR is set, this path is $MIGRATION_MANAGER_DIR/lib, otherwise it is /usr/lib/migration-manager.
+func UsrPath(path ...string) string {
+	varDir := os.Getenv("MIGRATION_MANAGER_DIR")
+	usrDir := "/usr/lib/migration-manager"
+	if varDir != "" {
+		usrDir = filepath.Join(varDir, "lib")
+	}
+
+	items := []string{usrDir}
+	items = append(items, path...)
+	return filepath.Join(items...)
+}
+
 // IsDir returns true if the given path is a directory.
 func IsDir(name string) bool {
 	stat, err := os.Stat(name)
