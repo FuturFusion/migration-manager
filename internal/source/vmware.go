@@ -278,6 +278,19 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 					vmProps.Config[prefix] = vmProps.Config[prefix] + "," + tag.Name
 				}
 			}
+
+			vmResourcePool, err := vm.ResourcePool(ctx)
+			if err != nil {
+				slog.Error("Failed determine resource pool for VM", slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.Any("error", err))
+			} else {
+				poolName, err := vmResourcePool.ObjectName(ctx)
+				if err != nil {
+					slog.Error("Failed determine resource pool name for VM", slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.Any("error", err))
+				} else {
+					resourcePoolKey := fmt.Sprintf("%s.resource_pool", s.SourceType)
+					vmProps.Config[resourcePoolKey] = poolName
+				}
+			}
 		}
 
 		inst := migration.Instance{

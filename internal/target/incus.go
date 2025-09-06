@@ -298,7 +298,15 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 
 		// Fixup the OS name.
 		apiDef.Config[osInfo.Key] = apiDef.Config["user.migration.os"]
-		apiDef.Config["user.migration.os"] = ""
+	}
+
+	if !util.InTestingMode() {
+		// Unset user.migration keys.
+		for k := range apiDef.Config {
+			if strings.HasPrefix(k, "user.migration.") {
+				apiDef.Config[k] = ""
+			}
+		}
 	}
 
 	// Handle RHEL (and derivative) specific completion steps.
