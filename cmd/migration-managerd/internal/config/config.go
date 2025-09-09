@@ -17,7 +17,7 @@ import (
 func LoadConfig() (*api.SystemConfig, error) {
 	// Set the default port for a fresh config.
 	c := &api.SystemConfig{
-		Network: api.ConfigNetwork{
+		Network: api.SystemNetwork{
 			Port: ports.HTTPSDefaultPort,
 		},
 	}

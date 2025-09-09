@@ -118,7 +118,7 @@ func systemNetworkPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(fmt.Errorf("Unable to update server config, active migration in progress"))
 	}
 
-	var cfg api.ConfigNetwork
+	var cfg api.SystemNetwork
 	err = json.NewDecoder(r.Body).Decode(&cfg)
 	if err != nil {
 		return response.BadRequest(err)
@@ -222,7 +222,7 @@ func systemSecurityPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(fmt.Errorf("Unable to update server config, active migration in progress"))
 	}
 
-	var cfg api.ConfigSecurity
+	var cfg api.SystemSecurity
 	err = json.NewDecoder(r.Body).Decode(&cfg)
 	if err != nil {
 		return response.BadRequest(err)
@@ -285,7 +285,7 @@ func systemCertificateUpdate(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(fmt.Errorf("Unable to update server config, active migration in progress"))
 	}
 
-	var cfg api.CertificatePost
+	var cfg api.SystemCertificatePost
 	err = json.NewDecoder(r.Body).Decode(&cfg)
 	if err != nil {
 		return response.BadRequest(err)

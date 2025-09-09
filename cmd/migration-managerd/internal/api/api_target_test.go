@@ -372,10 +372,10 @@ func daemonSetup(t *testing.T) *Daemon {
 
 	daemon := NewDaemon()
 	daemon.config = api.SystemConfig{
-		Security: api.ConfigSecurity{
+		Security: api.SystemSecurity{
 			TrustedTLSClientCertFingerprints: []string{testcert.LocalhostCertFingerprint},
 		},
-		Network: api.ConfigNetwork{
+		Network: api.SystemNetwork{
 			Port: 6443,
 		},
 	}
