@@ -15,20 +15,20 @@ import (
 )
 
 func LoadConfig() (*api.SystemConfig, error) {
-	contents, err := os.ReadFile(util.VarPath("config.yml"))
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return &api.SystemConfig{}, nil
-		}
-
-		return nil, err
-	}
-
 	// Set the default port for a fresh config.
 	c := &api.SystemConfig{
 		Network: api.ConfigNetwork{
 			Port: ports.HTTPSDefaultPort,
 		},
+	}
+
+	contents, err := os.ReadFile(util.VarPath("config.yml"))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return c, nil
+		}
+
+		return nil, err
 	}
 
 	err = yaml.Unmarshal(contents, c)
