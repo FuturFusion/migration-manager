@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"slices"
-	"strconv"
 	"sync"
 	"time"
 
@@ -335,9 +334,9 @@ func (d *Daemon) TrustedFingerprints() []string {
 	return d.config.Security.TrustedTLSClientCertFingerprints
 }
 
-func (d *Daemon) updateHTTPListener(netAddress string, netPort int) <-chan error {
+func (d *Daemon) updateHTTPListener(address string) <-chan error {
 	ch := make(chan error, 1)
-	if netAddress == "" {
+	if address == "" {
 		var err error
 		if d.listener != nil {
 			slog.Info("Stopping existing https listener", slog.Any("addr", d.listener.Addr().String()))
@@ -350,7 +349,6 @@ func (d *Daemon) updateHTTPListener(netAddress string, netPort int) <-chan error
 		return ch
 	}
 
-	address := net.JoinHostPort(netAddress, strconv.Itoa(netPort))
 	d.errgroup.Go(func() error {
 		if d.listener != nil {
 			slog.Info("Stopping existing https listener", slog.Any("addr", d.listener.Addr().String()))
@@ -497,6 +495,12 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 	d.configLock.Lock()
 	defer d.configLock.Unlock()
 
+	fullCfg, err := config.SetDefaults(newCfg)
+	if err != nil {
+		return err
+	}
+
+	newCfg = *fullCfg
 	oldCfg := d.config
 	changedNetwork := init || newCfg.Network != oldCfg.Network
 	changedOIDC := init || newCfg.Security.OIDC != oldCfg.Security.OIDC
@@ -509,7 +513,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 		}
 
 		if changedNetwork {
-			errCh := d.updateHTTPListener(applyCfg.Network.Address, applyCfg.Network.Port)
+			errCh := d.updateHTTPListener(applyCfg.Network.Address)
 			err := <-errCh
 			if err != nil {
 				return err
@@ -553,7 +557,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 		}
 	})
 
-	err := updateHandlers(newCfg)
+	err = updateHandlers(newCfg)
 	if err != nil {
 		return err
 	}
@@ -751,5 +755,5 @@ func (d *Daemon) getWorkerEndpoint() string {
 		return d.config.Network.WorkerEndpoint
 	}
 
-	return fmt.Sprintf("https://%s:%d", d.config.Network.Address, d.config.Network.Port)
+	return fmt.Sprintf("https://%s", d.config.Network.Address)
 }
