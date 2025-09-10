@@ -375,9 +375,6 @@ func daemonSetup(t *testing.T) *Daemon {
 		Security: api.SystemSecurity{
 			TrustedTLSClientCertFingerprints: []string{testcert.LocalhostCertFingerprint},
 		},
-		Network: api.SystemNetwork{
-			Port: 6443,
-		},
 	}
 
 	daemon.db, err = db.OpenDatabase(tmpDir)
