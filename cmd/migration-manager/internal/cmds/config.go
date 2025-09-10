@@ -137,7 +137,7 @@ func (c *cmdConfigNetworkEdit) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		var cfg api.ConfigNetwork
+		var cfg api.SystemNetwork
 		err = responseToStruct(resp, &cfg)
 		if err != nil {
 			return err
@@ -154,7 +154,7 @@ func (c *cmdConfigNetworkEdit) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	newdata := api.ConfigNetwork{}
+	newdata := api.SystemNetwork{}
 	err = yaml.Unmarshal(contents, &newdata)
 	if err != nil {
 		return err
@@ -198,7 +198,7 @@ func (c *cmdConfigNetworkShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var cfg api.ConfigNetwork
+	var cfg api.SystemNetwork
 	err = responseToStruct(resp, &cfg)
 	if err != nil {
 		return err
@@ -253,7 +253,7 @@ func (c *cmdConfigSecurityEdit) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		var cfg api.ConfigSecurity
+		var cfg api.SystemSecurity
 		err = responseToStruct(resp, &cfg)
 		if err != nil {
 			return err
@@ -270,7 +270,7 @@ func (c *cmdConfigSecurityEdit) Run(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	newdata := api.ConfigSecurity{}
+	newdata := api.SystemSecurity{}
 	err = yaml.Unmarshal(contents, &newdata)
 	if err != nil {
 		return err
@@ -314,7 +314,7 @@ func (c *cmdConfigSecurityShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var cfg api.ConfigSecurity
+	var cfg api.SystemSecurity
 	err = responseToStruct(resp, &cfg)
 	if err != nil {
 		return err

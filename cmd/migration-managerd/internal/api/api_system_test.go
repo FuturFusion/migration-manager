@@ -22,26 +22,26 @@ func TestCertificateUpdate(t *testing.T) {
 
 	cases := []struct {
 		name   string
-		config api.CertificatePost
+		config api.SystemCertificatePost
 
 		changedCert    bool
 		wantHTTPStatus int
 	}{
 		{
 			name:   "success - put",
-			config: api.CertificatePost{Cert: string(certPEM), Key: string(keyPEM)},
+			config: api.SystemCertificatePost{Cert: string(certPEM), Key: string(keyPEM)},
 
 			changedCert:    true,
 			wantHTTPStatus: http.StatusOK,
 		},
 		{
 			name:           "error - fail cert validation",
-			config:         api.CertificatePost{Cert: "abcd", Key: "abcd"},
+			config:         api.SystemCertificatePost{Cert: "abcd", Key: "abcd"},
 			wantHTTPStatus: http.StatusInternalServerError,
 		},
 		{
 			name:           "error - missing required fields",
-			config:         api.CertificatePost{}, // leave cert blank
+			config:         api.SystemCertificatePost{}, // leave cert blank
 			wantHTTPStatus: http.StatusInternalServerError,
 		},
 	}
@@ -80,9 +80,9 @@ func TestCertificateUpdate(t *testing.T) {
 func TestSecurityUpdate(t *testing.T) {
 	cases := []struct {
 		name       string
-		initConfig api.ConfigSecurity
-		config     api.ConfigSecurity
-		wantConfig api.ConfigSecurity
+		initConfig api.SystemSecurity
+		config     api.SystemSecurity
+		wantConfig api.SystemSecurity
 
 		changedOIDC    bool
 		changedOpenFGA bool
@@ -90,10 +90,10 @@ func TestSecurityUpdate(t *testing.T) {
 	}{
 		{
 			name: "success - minimal put",
-			config: api.ConfigSecurity{
+			config: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b", "c"},
 			},
-			wantConfig: api.ConfigSecurity{
+			wantConfig: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b", "c"},
 			},
 
@@ -102,15 +102,15 @@ func TestSecurityUpdate(t *testing.T) {
 		},
 		{
 			name: "success - put with full change",
-			config: api.ConfigSecurity{
+			config: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b", "c"},
-				OIDC:                             api.ConfigOIDC{Issuer: "test", ClientID: "testID"},
-				OpenFGA:                          api.ConfigOpenFGA{APIURL: "https://example.com", APIToken: "token", StoreID: "7ZZZZZZZZZZZZZZZZZZZZZZZZZ"},
+				OIDC:                             api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
+				OpenFGA:                          api.SystemSecurityOpenFGA{APIURL: "https://example.com", APIToken: "token", StoreID: "7ZZZZZZZZZZZZZZZZZZZZZZZZZ"},
 			},
-			wantConfig: api.ConfigSecurity{
+			wantConfig: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b", "c"},
-				OIDC:                             api.ConfigOIDC{Issuer: "test", ClientID: "testID"},
-				OpenFGA:                          api.ConfigOpenFGA{APIURL: "https://example.com", APIToken: "token", StoreID: "7ZZZZZZZZZZZZZZZZZZZZZZZZZ"},
+				OIDC:                             api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
+				OpenFGA:                          api.SystemSecurityOpenFGA{APIURL: "https://example.com", APIToken: "token", StoreID: "7ZZZZZZZZZZZZZZZZZZZZZZZZZ"},
 			},
 			changedOIDC:    true,
 			changedOpenFGA: true,
@@ -118,15 +118,15 @@ func TestSecurityUpdate(t *testing.T) {
 		},
 		{
 			name: "error - invalid values",
-			initConfig: api.ConfigSecurity{
-				OIDC: api.ConfigOIDC{Issuer: "test", ClientID: "testID"},
+			initConfig: api.SystemSecurity{
+				OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
 			},
-			config: api.ConfigSecurity{
+			config: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b"},
-				OpenFGA:                          api.ConfigOpenFGA{APIURL: "not a url", APIToken: "token", StoreID: "not a store id"},
+				OpenFGA:                          api.SystemSecurityOpenFGA{APIURL: "not a url", APIToken: "token", StoreID: "not a store id"},
 			},
-			wantConfig: api.ConfigSecurity{
-				OIDC: api.ConfigOIDC{Issuer: "test", ClientID: "testID"},
+			wantConfig: api.SystemSecurity{
+				OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
 			},
 
 			wantHTTPStatus: http.StatusInternalServerError,
@@ -138,7 +138,7 @@ func TestSecurityUpdate(t *testing.T) {
 			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
 			daemon := daemonSetup(t)
 			daemon.config.Security.OIDC = tc.initConfig.OIDC
-			if daemon.config.Security.OIDC != (api.ConfigOIDC{}) {
+			if daemon.config.Security.OIDC != (api.SystemSecurityOIDC{}) {
 				var err error
 				daemon.oidcVerifier, err = oidc.NewVerifier(tc.initConfig.OIDC.Issuer, tc.initConfig.OIDC.ClientID, tc.initConfig.OIDC.Scope, tc.config.OIDC.Audience, tc.config.OIDC.Claim)
 				require.NoError(t, err)
@@ -190,38 +190,38 @@ func TestSecurityUpdate(t *testing.T) {
 func TestNetworkUpdate(t *testing.T) {
 	cases := []struct {
 		name       string
-		initConfig api.ConfigNetwork
-		config     api.ConfigNetwork
-		wantConfig api.ConfigNetwork
+		initConfig api.SystemNetwork
+		config     api.SystemNetwork
+		wantConfig api.SystemNetwork
 
 		wantHTTPStatus int
 	}{
 		{
 			name:           "success - start listener",
-			initConfig:     api.ConfigNetwork{Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
-			config:         api.ConfigNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
-			wantConfig:     api.ConfigNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
+			initConfig:     api.SystemNetwork{Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
 			wantHTTPStatus: http.StatusOK,
 		},
 		{
 			name:           "success - change listener",
-			initConfig:     api.ConfigNetwork{Address: "::", Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
-			config:         api.ConfigNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
-			wantConfig:     api.ConfigNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
+			initConfig:     api.SystemNetwork{Address: "::", Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
 			wantHTTPStatus: http.StatusOK,
 		},
 		{
 			name:           "success - disable listener",
-			initConfig:     api.ConfigNetwork{Address: "::", Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
-			config:         api.ConfigNetwork{Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
-			wantConfig:     api.ConfigNetwork{Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
+			initConfig:     api.SystemNetwork{Address: "::", Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
 			wantHTTPStatus: http.StatusOK,
 		},
 		{
 			name:           "error - put fail validation",
-			initConfig:     api.ConfigNetwork{Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
-			config:         api.ConfigNetwork{WorkerEndpoint: "https://11.11.11.11:7777"},
-			wantConfig:     api.ConfigNetwork{Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
+			initConfig:     api.SystemNetwork{Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
 			wantHTTPStatus: http.StatusInternalServerError,
 		},
 	}

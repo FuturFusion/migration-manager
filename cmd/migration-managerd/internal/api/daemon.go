@@ -390,7 +390,7 @@ func (d *Daemon) updateHTTPListener(netAddress string, netPort int) <-chan error
 	return ch
 }
 
-func (d *Daemon) updateServerCert(cfg api.CertificatePost) (_err error) {
+func (d *Daemon) updateServerCert(cfg api.SystemCertificatePost) (_err error) {
 	d.configLock.Lock()
 	defer d.configLock.Unlock()
 
@@ -564,7 +564,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 }
 
 // Setup OpenFGA.
-func (d *Daemon) setupOpenFGA(cfg api.ConfigSecurity) error {
+func (d *Daemon) setupOpenFGA(cfg api.SystemSecurity) error {
 	var err error
 
 	if d.authorizer != nil {

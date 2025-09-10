@@ -1,40 +1,80 @@
 package api
 
+// SystemConfig is the full set of system configuration options for Migration Manager.
 type SystemConfig struct {
-	Network  ConfigNetwork  `json:"network"  yaml:"network"`
-	Security ConfigSecurity `json:"security" yaml:"security"`
+	Network  SystemNetwork  `json:"network"  yaml:"network"`
+	Security SystemSecurity `json:"security" yaml:"security"`
 }
 
-type ConfigNetwork struct {
-	Address        string `json:"address"         yaml:"address"`
-	Port           int    `json:"port"            yaml:"port"`
-	WorkerEndpoint string `json:"worker_endpoint" yaml:"worker_endpoint"`
+// SystemNetwork represents the system's network configuration.
+//
+// swagger:model
+type SystemNetwork struct {
+	// Address to bind the REST API to.
+	Address string `json:"rest_server_address" yaml:"rest_server_address"`
+
+	// IP Port to bind the REST API to.
+	Port int `json:"rest_server_port"    yaml:"rest_server_port"`
+
+	// URL used by Migration Manager workers to connect to the Migration Manager daemon.
+	WorkerEndpoint string `json:"worker_endpoint"     yaml:"worker_endpoint"`
 }
 
-type ConfigSecurity struct {
+// SystemSecurity represents the system's security configuration.
+//
+// swagger:model
+type SystemSecurity struct {
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
-	TrustedTLSClientCertFingerprints []string `json:"trusted_client_fingerprints" yaml:"trusted_client_fingerprints"`
+	TrustedTLSClientCertFingerprints []string `json:"trusted_tls_client_cert_fingerprints" yaml:"trusted_tls_client_cert_fingerprints"`
 
-	OIDC    ConfigOIDC    `json:"oidc"    yaml:"oidc"`
-	OpenFGA ConfigOpenFGA `json:"openfga" yaml:"openfga"`
+	OIDC    SystemSecurityOIDC    `json:"oidc"    yaml:"oidc"`
+	OpenFGA SystemSecurityOpenFGA `json:"openfga" yaml:"openfga"`
 }
 
-type ConfigOIDC struct {
-	Issuer   string `json:"issuer"    yaml:"issuer"`
+// SystemSecurityOIDC is the OIDC related part of the system's security configuration.
+type SystemSecurityOIDC struct {
+	// OIDC Issuer.
+	Issuer string `json:"issuer"    yaml:"issuer"`
+
+	// Client ID used for communication with the OIDC issuer.
 	ClientID string `json:"client_id" yaml:"client_id"`
-	Scope    string `json:"scopes"    yaml:"scopes"`
+
+	// Scopes to be requested.
+	Scope string `json:"scopes"    yaml:"scopes"`
+
+	// Audience the OIDC tokens should be verified against.
 	Audience string `json:"audience"  yaml:"audience"`
-	Claim    string `json:"claim"     yaml:"claim"`
+
+	// Claim which should be used to identify the user or subject.
+	Claim string `json:"claim"     yaml:"claim"`
 }
 
-type ConfigOpenFGA struct {
+// SystemSecurityOpenFGA is the OpenFGA related part of the system's security configuration.
+type SystemSecurityOpenFGA struct {
+	// API token used for communication with the OpenFGA system.
 	APIToken string `json:"api_token" yaml:"api_token"`
-	APIURL   string `json:"api_url"   yaml:"api_url"`
-	StoreID  string `json:"store_id"  yaml:"store_id"`
+
+	// URL of the OpenFGA API.
+	APIURL string `json:"api_url"   yaml:"api_url"`
+
+	// ID of the OpenFGA store.
+	StoreID string `json:"store_id"  yaml:"store_id"`
 }
 
-type CertificatePost struct {
-	Cert string `json:"cert"          yaml:"cert"`
-	CA   string `json:"ca"            yaml:"ca"`
-	Key  string `json:"key,omitempty" yaml:"key,omitempty"`
+// SystemCertificatePost represents the fields available for an update of the
+// system certificate (server certificate), key, and CA.
+//
+// swagger:model
+type SystemCertificatePost struct {
+	// The new certificate (X509 PEM encoded) for the system (server certificate).
+	// Example: X509 PEM certificate
+	Cert string `json:"certificate"   yaml:"certificate"`
+
+	// The new certificate key (X509 PEM encoded) for the system (server key).
+	// Example: X509 PEM certificate key
+	Key string `json:"key,omitempty" yaml:"key,omitempty"`
+
+	// The new certificate CA (X509 PEM encoded) for the system (server CA).
+	// Example: X509 PEM certificate CA
+	CA string `json:"ca" yaml:"ca"`
 }
