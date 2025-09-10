@@ -10,11 +10,8 @@ type SystemConfig struct {
 //
 // swagger:model
 type SystemNetwork struct {
-	// Address to bind the REST API to.
+	// Address and port to bind the REST API to.
 	Address string `json:"rest_server_address" yaml:"rest_server_address"`
-
-	// IP Port to bind the REST API to.
-	Port int `json:"rest_server_port"    yaml:"rest_server_port"`
 
 	// URL used by Migration Manager workers to connect to the Migration Manager daemon.
 	WorkerEndpoint string `json:"worker_endpoint"     yaml:"worker_endpoint"`
