@@ -72,6 +72,10 @@ func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
 			return &newCfg, nil
 		}
 
+		if host == "" {
+			host = "::"
+		}
+
 		ip, err := parseIP(host)
 		if err != nil {
 			return nil, err
