@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -16,12 +18,7 @@ import (
 
 func LoadConfig() (*api.SystemConfig, error) {
 	// Set the default port for a fresh config.
-	c := &api.SystemConfig{
-		Network: api.SystemNetwork{
-			Port: ports.HTTPSDefaultPort,
-		},
-	}
-
+	c := &api.SystemConfig{}
 	contents, err := os.ReadFile(util.VarPath("config.yml"))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -48,15 +45,65 @@ func SaveConfig(c api.SystemConfig) error {
 	return os.WriteFile(util.VarPath("config.yml"), contents, 0o644)
 }
 
-func Validate(s api.SystemConfig) error {
-	if s.Network.Port < 1 || s.Network.Port > 0xffff {
-		return fmt.Errorf("Server port %d is invalid", s.Network.Port)
+func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
+	newCfg := s
+	parseIP := func(addr string) (net.IP, error) {
+		if strings.HasPrefix(addr, "[") && strings.HasSuffix(addr, "]") && len(addr) > 2 {
+			addr = addr[1 : len(addr)-1]
+		}
+
+		ip := net.ParseIP(addr)
+		if ip == nil {
+			return nil, fmt.Errorf("%q is not a valid IP address", addr)
+		}
+
+		return ip, nil
 	}
 
 	if s.Network.Address != "" {
-		ip := net.ParseIP(s.Network.Address)
-		if ip == nil {
+		host, port, err := net.SplitHostPort(s.Network.Address)
+		if err != nil {
+			ip, err := parseIP(s.Network.Address)
+			if err != nil {
+				return nil, err
+			}
+
+			newCfg.Network.Address = net.JoinHostPort(ip.String(), ports.HTTPSDefaultPort)
+			return &newCfg, nil
+		}
+
+		ip, err := parseIP(host)
+		if err != nil {
+			return nil, err
+		}
+
+		if port == "" {
+			newCfg.Network.Address = net.JoinHostPort(ip.String(), ports.HTTPSDefaultPort)
+		}
+	}
+
+	return &newCfg, nil
+}
+
+func Validate(s api.SystemConfig) error {
+	if s.Network.Address != "" {
+		host, port, err := net.SplitHostPort(s.Network.Address)
+		if err != nil {
 			return fmt.Errorf("Server IP address %q is invalid", s.Network.Address)
+		}
+
+		ip := net.ParseIP(host)
+		if ip == nil {
+			return fmt.Errorf("%q is not a valid IP address", host)
+		}
+
+		portInt, err := strconv.Atoi(port)
+		if err != nil {
+			return fmt.Errorf("Server port %q is invalid: %w", port, err)
+		}
+
+		if portInt < 1 || portInt > 0xffff {
+			return fmt.Errorf("Server port %d is invalid", portInt)
 		}
 	}
 

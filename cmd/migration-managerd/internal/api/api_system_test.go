@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"strconv"
+	"strings"
 	"testing"
 
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
@@ -197,31 +197,87 @@ func TestNetworkUpdate(t *testing.T) {
 		wantHTTPStatus int
 	}{
 		{
-			name:           "success - start listener",
-			initConfig:     api.SystemNetwork{Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
-			config:         api.SystemNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
-			wantConfig:     api.SystemNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
+			name:           "success - braces and trailing colon",
+			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "[::]:", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Address: "[::]:6443", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name:           "success - plain IP",
+			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "::", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Address: "[::]:6443", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name:           "success - plain IP with braces",
+			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "[::]", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Address: "[::]:6443", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name:           "success - plain ipv4",
+			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "0.0.0.0", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Address: "0.0.0.0:6443", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name:           "success - ipv4 with trailing colon",
+			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "0.0.0.0:", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Address: "0.0.0.0:6443", WorkerEndpoint: "https://11.11.11.11:7777"},
 			wantHTTPStatus: http.StatusOK,
 		},
 		{
 			name:           "success - change listener",
-			initConfig:     api.SystemNetwork{Address: "::", Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
-			config:         api.SystemNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
-			wantConfig:     api.SystemNetwork{Address: "::", Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
+			initConfig:     api.SystemNetwork{Address: "[::]:9999", WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "[::]:6444", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Address: "[::]:6444", WorkerEndpoint: "https://11.11.11.11:7777"},
 			wantHTTPStatus: http.StatusOK,
 		},
 		{
 			name:           "success - disable listener",
-			initConfig:     api.SystemNetwork{Address: "::", Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
-			config:         api.SystemNetwork{Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
-			wantConfig:     api.SystemNetwork{Port: 6443, WorkerEndpoint: "https://11.11.11.11:7777"},
+			initConfig:     api.SystemNetwork{Address: "[::]:9999", WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{WorkerEndpoint: "https://11.11.11.11:7777"},
 			wantHTTPStatus: http.StatusOK,
 		},
 		{
-			name:           "error - put fail validation",
-			initConfig:     api.SystemNetwork{Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
+			name:           "success - ignore listener",
+			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
 			config:         api.SystemNetwork{WorkerEndpoint: "https://11.11.11.11:7777"},
-			wantConfig:     api.SystemNetwork{Port: 9999, WorkerEndpoint: "https://10.10.10.10:7777"},
+			wantConfig:     api.SystemNetwork{WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name:           "error - invalid address - keeps old address",
+			initConfig:     api.SystemNetwork{Address: "[::]:6443", WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "a.b.c.d:6443", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Address: "[::]:6443", WorkerEndpoint: "https://10.10.10.10:7777"},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "error - invalid address - invalid port (negative)",
+			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "[::]:-1", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "error - invalid address - invalid port (zero)",
+			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "[::]:0", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "error - invalid address - invalid port (positive)",
+			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: "[::]:99999", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
 			wantHTTPStatus: http.StatusInternalServerError,
 		},
 	}
@@ -235,7 +291,7 @@ func TestNetworkUpdate(t *testing.T) {
 
 			daemon.config.Network = tc.initConfig
 			if daemon.config.Network.Address != "" {
-				tcpListener, err := net.Listen("tcp", net.JoinHostPort(daemon.config.Network.Address, strconv.Itoa(daemon.config.Network.Port)))
+				tcpListener, err := net.Listen("tcp", daemon.config.Network.Address)
 				require.NoError(t, err)
 				daemon.listener = tcpListener
 			}
@@ -250,9 +306,8 @@ func TestNetworkUpdate(t *testing.T) {
 
 			// Assert results
 			require.Equal(t, tc.wantHTTPStatus, statusCode)
-
+			require.Equal(t, tc.wantConfig, daemon.config.Network)
 			if tc.wantHTTPStatus == http.StatusOK {
-				require.Equal(t, tc.wantConfig, daemon.config.Network)
 				require.NoError(t, daemon.errgroup.Wait())
 			} else {
 				require.Equal(t, oldCfg.Network, daemon.config.Network)
@@ -261,7 +316,9 @@ func TestNetworkUpdate(t *testing.T) {
 			if tc.wantConfig.Address == "" {
 				require.Nil(t, daemon.listener)
 			} else {
-				require.Equal(t, net.JoinHostPort(tc.wantConfig.Address, strconv.Itoa(tc.wantConfig.Port)), daemon.listener.Addr().String())
+				// The listener sets this to [::] anyway.
+				wantAddress := strings.ReplaceAll(tc.wantConfig.Address, "0.0.0.0", "[::]")
+				require.Equal(t, wantAddress, daemon.listener.Addr().String())
 				require.NoError(t, daemon.listener.Close())
 			}
 		})

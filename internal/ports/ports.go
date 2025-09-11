@@ -1,3 +1,3 @@
 package ports
 
-const HTTPSDefaultPort = 6443
+const HTTPSDefaultPort = "6443"
