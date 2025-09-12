@@ -18,6 +18,7 @@ import (
 	"time"
 
 	incusAPI "github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v6/shared/cancel"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"golang.org/x/sys/unix"
 
@@ -363,21 +364,19 @@ func (w *Worker) sendErrorResponse(err error) {
 	}
 }
 
-func (w *Worker) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*incusAPI.Response, error) {
+func (w *Worker) makeRequest(endpoint string, method string, query string, reader io.Reader) (*http.Request, *http.Client, error) {
 	var err error
 	w.endpoint.Path, err = url.JoinPath("/1.0/", endpoint)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	w.endpoint.RawQuery = query
 
-	req, err := http.NewRequest(method, w.endpoint.String(), bytes.NewBuffer(content))
+	req, err := http.NewRequest(method, w.endpoint.String(), reader)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	req.Header.Set("Content-Type", "application/json")
 
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
@@ -407,6 +406,49 @@ func (w *Worker) doHTTPRequestV1(endpoint string, method string, query string, c
 	}
 
 	client := &http.Client{Transport: transport}
+	return req, client, nil
+}
+
+func (w *Worker) doHTTPRequestV1Writer(endpoint string, method string, query string, writer io.WriteSeeker) error {
+	req, client, err := w.makeRequest(endpoint, method, query, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, doneCh, err := cancel.CancelableDownload(nil, client.Do, req)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+	defer close(doneCh)
+
+	if resp.StatusCode != http.StatusOK {
+		decoder := json.NewDecoder(resp.Body)
+		response := incusAPI.Response{}
+		err = decoder.Decode(&response)
+		if err != nil {
+			return err
+		} else if response.Code != 0 {
+			return fmt.Errorf("Received an error from the endpoint: %s", response.Error)
+		}
+	}
+
+	_, err = io.Copy(writer, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *Worker) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*incusAPI.Response, error) {
+	req, client, err := w.makeRequest(endpoint, method, query, bytes.NewBuffer(content))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -432,8 +474,8 @@ func responseToStruct(response *incusAPI.Response, targetStruct any) error {
 }
 
 func getIncusConfig(ctx context.Context, client *http.Client, key string) (string, error) {
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
-	defer cancel()
+	ctx, ctxCancel := context.WithTimeout(ctx, time.Second*5)
+	defer ctxCancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("http://unix.socket/1.0/config/%s", key), nil)
 	if err != nil {
