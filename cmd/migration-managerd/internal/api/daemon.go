@@ -74,6 +74,7 @@ type Daemon struct {
 	target       migration.TargetService
 	queue        migration.QueueService
 	warning      migration.WarningService
+	artifact     migration.ArtifactService
 
 	errgroup *errgroup.Group
 
@@ -279,6 +280,7 @@ func (d *Daemon) Start() error {
 		return err
 	}
 
+	d.artifact = migration.NewArtifactService(sqlite.NewArtifact(dbWithTransaction), d.os)
 	d.warning = migration.NewWarningService(sqlite.NewWarning(dbWithTransaction))
 	d.network = migration.NewNetworkService(sqlite.NewNetwork(dbWithTransaction))
 	d.target = migration.NewTargetService(sqlite.NewTarget(dbWithTransaction))
