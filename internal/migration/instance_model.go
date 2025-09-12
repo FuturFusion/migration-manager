@@ -104,6 +104,10 @@ func (i *Instance) GetOSType() api.OSType {
 		return api.OSTYPE_WINDOWS
 	}
 
+	if strings.HasPrefix(i.Properties.Description, "FortiGate") {
+		return api.OSTYPE_FORTIGATE
+	}
+
 	return api.OSTYPE_LINUX
 }
 

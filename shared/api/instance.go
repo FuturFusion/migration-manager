@@ -7,8 +7,9 @@ import (
 type OSType string
 
 const (
-	OSTYPE_WINDOWS OSType = "Windows"
-	OSTYPE_LINUX   OSType = "Linux"
+	OSTYPE_WINDOWS   OSType = "windows"
+	OSTYPE_LINUX     OSType = "linux"
+	OSTYPE_FORTIGATE OSType = "fortigate"
 )
 
 // Instance defines a VM instance to be migrated.
