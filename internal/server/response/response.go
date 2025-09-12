@@ -6,7 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/lxc/incus/v6/shared/api"
 
@@ -260,6 +263,141 @@ func (r *manualResponse) String() string {
 // Code returns the HTTP code.
 func (r *manualResponse) Code() int {
 	return http.StatusNotImplemented
+}
+
+// FileResponseEntry represents a file response entry.
+type FileResponseEntry struct {
+	// Required.
+	Identifier string
+	Filename   string
+
+	// Read from a filesystem path.
+	Path string
+
+	// Read from a file.
+	File         io.ReadSeeker
+	FileSize     int64
+	FileModified time.Time
+
+	// Optional.
+	Cleanup func()
+}
+
+type fileResponse struct {
+	req     *http.Request
+	files   []FileResponseEntry
+	headers map[string]string
+}
+
+// FileResponse returns a new file response.
+func FileResponse(r *http.Request, files []FileResponseEntry, headers map[string]string) Response {
+	return &fileResponse{r, files, headers}
+}
+
+func (r *fileResponse) Render(w http.ResponseWriter) error {
+	if r.headers != nil {
+		for k, v := range r.headers {
+			w.Header().Set(k, v)
+		}
+	}
+
+	// No file, well, it's easy then
+	if len(r.files) == 0 {
+		return nil
+	}
+
+	// For a single file, return it inline
+	if len(r.files) == 1 {
+		var rs io.ReadSeeker
+		var mt time.Time
+		var sz int64
+
+		if r.files[0].Cleanup != nil {
+			defer r.files[0].Cleanup()
+		}
+
+		if r.files[0].File != nil {
+			rs = r.files[0].File
+			mt = r.files[0].FileModified
+			sz = r.files[0].FileSize
+		} else {
+			f, err := os.Open(r.files[0].Path)
+			if err != nil {
+				return err
+			}
+
+			defer func() { _ = f.Close() }()
+
+			fi, err := f.Stat()
+			if err != nil {
+				return err
+			}
+
+			mt = fi.ModTime()
+			sz = fi.Size()
+			rs = f
+		}
+
+		// Only set Content-Type header if it is still set to the default or not yet set at all.
+		if w.Header().Get("Content-Type") == "application/json" || w.Header().Get("Content-Type") == "" {
+			w.Header().Set("Content-Type", "application/octet-stream")
+		}
+
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", sz))
+		w.Header().Set("Content-Disposition", fmt.Sprintf("inline;filename=%s", r.files[0].Filename))
+
+		http.ServeContent(w, r.req, r.files[0].Filename, mt, rs)
+
+		return nil
+	}
+
+	// Now the complex multipart answer.
+	mw := multipart.NewWriter(w)
+	defer func() { _ = mw.Close() }()
+
+	w.Header().Set("Content-Type", mw.FormDataContentType())
+	w.Header().Set("Transfer-Encoding", "chunked")
+
+	for _, entry := range r.files {
+		var rd io.Reader
+		if entry.File != nil {
+			rd = entry.File
+		} else {
+			fd, err := os.Open(entry.Path)
+			if err != nil {
+				return err
+			}
+
+			defer func() { _ = fd.Close() }() //nolint:revive
+
+			rd = fd
+		}
+
+		fw, err := mw.CreateFormFile(entry.Identifier, entry.Filename)
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(fw, rd)
+		if err != nil {
+			return err
+		}
+
+		if entry.Cleanup != nil {
+			entry.Cleanup()
+		}
+	}
+
+	return mw.Close()
+}
+
+func (r *fileResponse) String() string {
+	return fmt.Sprintf("%d files", len(r.files))
+}
+
+// Code returns the HTTP code.
+func (r *fileResponse) Code() int {
+	return http.StatusOK
 }
 
 // writeJSON encodes the body as JSON and sends it back to the client.
