@@ -2,18 +2,19 @@ package sys
 
 import (
 	"context"
-	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
+	"sync"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
 )
 
 // OS is a high-level facade for accessing operating-system level functionalities.
 type OS struct {
+	// A lock to manage filesystem access during writes.
+	writeLock sync.Mutex
+
 	// Directories
 	CacheDir string // Cache directory (e.g., /var/cache/migration-manager/)
 	LogDir   string // Log directory (e.g. /var/log/).
@@ -21,6 +22,8 @@ type OS struct {
 	VarDir   string // Data directory (e.g. /var/lib/migration-manager/).
 	ShareDir string // Static directory (e.g. /usr/share/migration-manager/).
 	UsrDir   string // Static directory (e.g. /usr/lib/migration-manager/).
+
+	ArtifactDir string // Location of user-supplied files (e.g. /var/lib/migration-manager/artifacts/).
 }
 
 // DefaultOS returns a fresh uninitialized OS instance with default values.
@@ -33,6 +36,8 @@ func DefaultOS() *OS {
 		UsrDir:   util.UsrPath(),
 		ShareDir: util.SharePath(),
 	}
+
+	newOS.ArtifactDir = filepath.Join(newOS.VarDir, "artifacts")
 
 	return newOS
 }
