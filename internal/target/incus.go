@@ -293,9 +293,6 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 
 	// Handle Windows-specific completion steps.
 	if apiDef.Config[osInfo.Key] == "win-prepare" {
-		// Remove the drivers ISO image.
-		delete(apiDef.Devices, "drivers")
-
 		// Fixup the OS name.
 		apiDef.Config[osInfo.Key] = apiDef.Config["user.migration.os"]
 	}
@@ -510,7 +507,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	return ret, nil
 }
 
-func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string, driversISOImage string) (func(), error) {
+func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -527,19 +524,6 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 		"boot.priority": "10",
 		"readonly":      "true",
 		"io.bus":        "virtio-blk",
-	}
-
-	// If this is a Windows VM, attach the virtio drivers ISO.
-	if apiDef.Config["image.os"] == "win-prepare" {
-		if driversISOImage == "" {
-			return nil, fmt.Errorf("Missing Windows drivers ISO image")
-		}
-
-		apiDef.Devices["drivers"] = map[string]string{
-			"type":   "disk",
-			"pool":   rootPool,
-			"source": driversISOImage,
-		}
 	}
 
 	// Create the instance.
