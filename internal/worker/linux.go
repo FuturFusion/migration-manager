@@ -31,19 +31,6 @@ const (
 	PARTITION_TYPE_LVM
 )
 
-type LSBLKOutput struct {
-	BlockDevices []struct {
-		Name     string `json:"name"`
-		Serial   string `json:"serial"`
-		Children []struct {
-			Name         string `json:"name"`
-			FSType       string `json:"fstype"`
-			PartLabel    string `json:"partlabel"`
-			PartTypeName string `json:"parttypename"`
-		} `json:"children"`
-	} `json:"blockdevices"`
-}
-
 type LVSOutput struct {
 	Report []struct {
 		LV []struct {
@@ -202,7 +189,7 @@ func DeactivateVG() error {
 }
 
 func DetermineWindowsPartitions() (base string, recovery string, err error) {
-	partitions, err := scanPartitions("")
+	partitions, err := internalUtil.ScanPartitions("")
 	if err != nil {
 		return "", "", err
 	}
@@ -255,7 +242,7 @@ func determineRootPartition() (string, int, []string, error) {
 		}
 	}
 
-	partitions, err := scanPartitions("")
+	partitions, err := internalUtil.ScanPartitions("")
 	if err != nil {
 		return "", PARTITION_TYPE_UNKNOWN, nil, err
 	}
@@ -312,26 +299,6 @@ func runScriptInChroot(scriptName string, args ...string) error {
 func scanVGs() (LVSOutput, error) {
 	ret := LVSOutput{}
 	output, err := subprocess.RunCommand("lvs", "-o", "vg_name,lv_name", "--reportformat", "json")
-	if err != nil {
-		return ret, err
-	}
-
-	err = json.Unmarshal([]byte(output), &ret)
-	if err != nil {
-		return ret, err
-	}
-
-	return ret, nil
-}
-
-func scanPartitions(device string) (LSBLKOutput, error) {
-	ret := LSBLKOutput{}
-	args := []string{"-J", "-o", "NAME,FSTYPE,PARTLABEL,PARTTYPENAME,SERIAL"}
-	if device != "" {
-		args = append(args, device)
-	}
-
-	output, err := subprocess.RunCommand("lsblk", args...)
 	if err != nil {
 		return ret, err
 	}
