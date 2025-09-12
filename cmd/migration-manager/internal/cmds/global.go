@@ -18,8 +18,11 @@ import (
 	"strings"
 
 	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v6/shared/cancel"
+	"github.com/lxc/incus/v6/shared/ioprogress"
 	"github.com/lxc/incus/v6/shared/revert"
 	localtls "github.com/lxc/incus/v6/shared/tls"
+	"github.com/lxc/incus/v6/shared/units"
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
@@ -265,6 +268,7 @@ func (c *CmdGlobal) doRequest(client *http.Client) func(*http.Request) (*http.Re
 		} else {
 			resp, err = client.Do(req) // nolint: bodyclose
 		}
+
 		if err != nil {
 			return nil, err
 		}
@@ -291,30 +295,75 @@ func (c *CmdGlobal) parseResponse(resp *http.Response) (*api.Response, error) {
 	return &response, nil
 }
 
-func (c *CmdGlobal) makeHTTPRequest(endpoint string, method string, query string, reader io.Reader) (*api.Response, *http.Response, error) {
+func (c *CmdGlobal) makeHTTPRequest(endpoint string, method string, query string, reader io.Reader) (*api.Response, http.Header, error) {
 	req, client, err := c.buildRequest(endpoint, method, query, reader)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.doRequest(client)(req)
+	resp, err := c.doRequest(client)(req) // nolint:bodyclose
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Linter isn't smart enough to determine resp.Body will be closed...
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	response, err := c.parseResponse(resp)
 	if err != nil {
-		return response, resp, err
+		return response, resp.Header, err
 	}
 
-	return response, resp, nil
+	return response, resp.Header, nil
 }
 
-func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.Response, *http.Response, error) {
+func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.Response, http.Header, error) {
 	return c.makeHTTPRequest(endpoint, method, query, bytes.NewBuffer(content))
+}
+
+func (c *CmdGlobal) doHTTPRequestV1Reader(endpoint string, method string, query string, reader io.Reader) (*api.Response, http.Header, error) {
+	return c.makeHTTPRequest(endpoint, method, query, reader)
+}
+
+func (c *CmdGlobal) doHTTPRequestV1Writer(endpoint string, method string, writer io.WriteSeeker, progress func(ioprogress.ProgressData)) (*api.Response, http.Header, error) {
+	req, client, err := c.buildRequest(endpoint, method, "", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, doneCh, err := cancel.CancelableDownload(nil, c.doRequest(client), req) //nolint:bodyclose
+	if err != nil {
+		return nil, nil, err
+	}
+
+	defer func() { _ = resp.Body.Close() }()
+	defer close(doneCh)
+	if resp.StatusCode != http.StatusOK {
+		response, err := c.parseResponse(resp)
+		if err != nil {
+			return response, resp.Header, fmt.Errorf("Failed to parse response: %w", err)
+		}
+	}
+
+	body := resp.Body
+	if progress != nil {
+		body = &ioprogress.ProgressReader{
+			ReadCloser: resp.Body,
+			Tracker: &ioprogress.ProgressTracker{
+				Length: resp.ContentLength,
+				Handler: func(percent int64, speed int64) {
+					progress(ioprogress.ProgressData{Text: fmt.Sprintf("%d%% (%s/s)", percent, units.GetByteSizeString(speed, 2))})
+				},
+			},
+		}
+	}
+
+	_, err = io.Copy(writer, body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return nil, resp.Header, nil
 }
 
 func responseToStruct(response *api.Response, targetStruct any) error {
