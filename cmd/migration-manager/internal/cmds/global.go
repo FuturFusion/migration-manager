@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -177,7 +178,7 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 	}
 
 	// Verify a simple connection to the migration manager.
-	resp, err := c.doHTTPRequestV1("", http.MethodGet, "", nil)
+	resp, _, err := c.doHTTPRequestV1("", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -209,20 +210,26 @@ func (c *CmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 	return false, nil
 }
 
-func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, content []byte) (*api.Response, error) {
-	var err error
-	var client *http.Client
-	var resp *http.Response
+func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, reader io.Reader) (*http.Request, *http.Client, error) {
+	requestString, err := url.JoinPath("/1.0/", endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
 
+	if query != "" {
+		requestString = fmt.Sprintf("%s?%s", requestString, query)
+	}
+
+	var client *http.Client
 	u, err := url.Parse(requestString)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if !c.FlagForceLocal && strings.HasPrefix(c.config.MigrationManagerServer, "https://") {
 		serverHost, err := url.Parse(c.config.MigrationManagerServer)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		u.Scheme = serverHost.Scheme
@@ -230,7 +237,7 @@ func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, content
 
 		client, err = getHTTPSClient(c.config.MigrationManagerServerCert, c.config.TLSClientCertFile, c.config.TLSClientKeyFile)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
 		u.Scheme = "http"
@@ -238,33 +245,39 @@ func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, content
 		client = internalUtil.UnixHTTPClient(c.os.GetUnixSocket())
 	}
 
-	req, err := http.NewRequest(method, u.String(), bytes.NewBuffer(content))
+	req, err := http.NewRequest(method, u.String(), reader)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	return req, client, nil
+}
 
-	if c.config.AuthType == "oidc" {
-		oidcClient := oidc.NewOIDCClient(path.Join(c.config.ConfigDir, "oidc-tokens.json"), c.config.MigrationManagerServerCert)
+func (c *CmdGlobal) doRequest(client *http.Client) func(*http.Request) (*http.Response, error) {
+	return func(req *http.Request) (*http.Response, error) {
+		var resp *http.Response
+		var err error
+		if c.config.AuthType == "oidc" {
+			oidcClient := oidc.NewOIDCClient(path.Join(c.config.ConfigDir, "oidc-tokens.json"), c.config.MigrationManagerServerCert)
 
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
-		resp, err = oidcClient.Do(req) // nolint: bodyclose
-	} else {
-		resp, err = client.Do(req) // nolint: bodyclose
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
+			resp, err = oidcClient.Do(req) // nolint: bodyclose
+		} else {
+			resp, err = client.Do(req) // nolint: bodyclose
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		return resp, nil
 	}
+}
 
-	if err != nil {
-		return nil, err
-	}
-
-	// Linter isn't smart enough to determine resp.Body will be closed...
-	defer resp.Body.Close()
-
+func (c *CmdGlobal) parseResponse(resp *http.Response) (*api.Response, error) {
 	decoder := json.NewDecoder(resp.Body)
 	response := api.Response{}
 
-	err = decoder.Decode(&response)
+	err := decoder.Decode(&response)
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid character 'C'") {
 			return nil, fmt.Errorf("Client sent an HTTP request to an HTTPS server")
@@ -278,17 +291,30 @@ func (c *CmdGlobal) makeHTTPRequest(requestString string, method string, content
 	return &response, nil
 }
 
-func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.Response, error) {
-	p, err := url.JoinPath("/1.0/", endpoint)
+func (c *CmdGlobal) makeHTTPRequest(endpoint string, method string, query string, reader io.Reader) (*api.Response, *http.Response, error) {
+	req, client, err := c.buildRequest(endpoint, method, query, reader)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	if query != "" {
-		return c.makeHTTPRequest(fmt.Sprintf("%s?%s", p, query), method, content)
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := c.doRequest(client)(req)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return c.makeHTTPRequest(p, method, content)
+	// Linter isn't smart enough to determine resp.Body will be closed...
+	defer resp.Body.Close()
+	response, err := c.parseResponse(resp)
+	if err != nil {
+		return response, resp, err
+	}
+
+	return response, resp, nil
+}
+
+func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.Response, *http.Response, error) {
+	return c.makeHTTPRequest(endpoint, method, query, bytes.NewBuffer(content))
 }
 
 func responseToStruct(response *api.Response, targetStruct any) error {
