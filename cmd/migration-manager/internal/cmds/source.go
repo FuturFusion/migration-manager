@@ -151,7 +151,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		resp, err := c.global.doHTTPRequestV1("/sources", http.MethodPost, "", content)
+		resp, _, err := c.global.doHTTPRequestV1("/sources", http.MethodPost, "", content)
 		if err != nil {
 			return err
 		}
@@ -208,7 +208,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all sources.
-	resp, err := c.global.doHTTPRequestV1("/sources", http.MethodGet, "recursion=1", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/sources", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -276,7 +276,7 @@ func (c *cmdSourceRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Remove the source.
-	_, err = c.global.doHTTPRequestV1("/sources/"+name, http.MethodDelete, "", nil)
+	_, _, err = c.global.doHTTPRequestV1("/sources/"+name, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -313,7 +313,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the existing source.
-	resp, err := c.global.doHTTPRequestV1("/sources/"+name, http.MethodGet, "", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/sources/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -386,7 +386,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resp, err = c.global.doHTTPRequestV1("/sources/"+origSourceName, http.MethodPut, "", content)
+	resp, _, err = c.global.doHTTPRequestV1("/sources/"+origSourceName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

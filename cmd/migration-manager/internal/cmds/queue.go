@@ -75,7 +75,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the current migration queue.
-	resp, err := c.global.doHTTPRequestV1("/queue", http.MethodGet, "recursion=1", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/queue", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 		header = append(header, "UUID", "Batch Status", "Batch Status Message", "Target", "Target Project`")
 
 		// Get the current migration queue.
-		resp, err := c.global.doHTTPRequestV1("/batches", http.MethodGet, "recursion=1", nil)
+		resp, _, err := c.global.doHTTPRequestV1("/batches", http.MethodGet, "recursion=1", nil)
 		if err != nil {
 			return err
 		}
@@ -172,7 +172,7 @@ func (c *cmdQueueRemove) Run(cmd *cobra.Command, args []string) error {
 	instanceUUID := args[0]
 
 	// Remove the queue.
-	_, err = c.global.doHTTPRequestV1("/queues/"+instanceUUID, http.MethodDelete, "", nil)
+	_, _, err = c.global.doHTTPRequestV1("/queues/"+instanceUUID, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}

@@ -132,7 +132,7 @@ func (c *cmdConfigNetworkEdit) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		resp, err := c.global.doHTTPRequestV1("/system/network", http.MethodGet, "", nil)
+		resp, _, err := c.global.doHTTPRequestV1("/system/network", http.MethodGet, "", nil)
 		if err != nil {
 			return err
 		}
@@ -165,7 +165,7 @@ func (c *cmdConfigNetworkEdit) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/system/network", http.MethodPut, "", b)
+	_, _, err = c.global.doHTTPRequestV1("/system/network", http.MethodPut, "", b)
 	if err != nil {
 		return err
 	}
@@ -193,7 +193,7 @@ func (c *cmdConfigNetworkShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resp, err := c.global.doHTTPRequestV1("/system/network", http.MethodGet, "", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/system/network", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -248,7 +248,7 @@ func (c *cmdConfigSecurityEdit) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	} else {
-		resp, err := c.global.doHTTPRequestV1("/system/security", http.MethodGet, "", nil)
+		resp, _, err := c.global.doHTTPRequestV1("/system/security", http.MethodGet, "", nil)
 		if err != nil {
 			return err
 		}
@@ -281,7 +281,7 @@ func (c *cmdConfigSecurityEdit) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/system/security", http.MethodPut, "", b)
+	_, _, err = c.global.doHTTPRequestV1("/system/security", http.MethodPut, "", b)
 	if err != nil {
 		return err
 	}
@@ -309,7 +309,7 @@ func (c *cmdConfigSecurityShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resp, err := c.global.doHTTPRequestV1("/system/security", http.MethodGet, "", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/system/security", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
