@@ -197,6 +197,13 @@ func TestNetworkUpdate(t *testing.T) {
 		wantHTTPStatus int
 	}{
 		{
+			name:           "success - only colon",
+			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
+			config:         api.SystemNetwork{Address: ":", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantConfig:     api.SystemNetwork{Address: "[::]:6443", WorkerEndpoint: "https://11.11.11.11:7777"},
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
 			name:           "success - braces and trailing colon",
 			initConfig:     api.SystemNetwork{WorkerEndpoint: "https://10.10.10.10:7777"},
 			config:         api.SystemNetwork{Address: "[::]:", WorkerEndpoint: "https://11.11.11.11:7777"},
