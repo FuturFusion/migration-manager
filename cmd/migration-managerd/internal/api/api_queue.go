@@ -392,12 +392,14 @@ func queueWorkerCommandPost(d *Daemon, r *http.Request) response.Response {
 
 	d.queueHandler.RecordWorkerUpdate(instanceUUID)
 	return response.SyncResponseETag(true, api.WorkerCommand{
-		Command:    workerCommand.Command,
-		Location:   workerCommand.Location,
-		SourceType: workerCommand.SourceType,
-		Source:     apiSourceJSON,
-		OS:         workerCommand.OS,
-		OSVersion:  workerCommand.OSVersion,
+		Command:      workerCommand.Command,
+		Location:     workerCommand.Location,
+		SourceType:   workerCommand.SourceType,
+		Source:       apiSourceJSON,
+		OS:           workerCommand.OS,
+		OSVersion:    workerCommand.OSVersion,
+		OSType:       workerCommand.OSType,
+		Architecture: workerCommand.Architecture,
 	}, workerCommand)
 }
 
