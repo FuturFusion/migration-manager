@@ -384,6 +384,7 @@ func daemonSetup(t *testing.T) *Daemon {
 	entities.PreparedStmts, err = entities.PrepareStmts(tx, false)
 	require.NoError(t, err)
 
+	daemon.artifact = migration.NewArtifactService(sqlite.NewArtifact(tx), daemon.os)
 	daemon.source = migration.NewSourceService(sqlite.NewSource(tx))
 	daemon.target = migration.NewTargetService(sqlite.NewTarget(tx))
 	daemon.instance = migration.NewInstanceService(sqlite.NewInstance(tx))
@@ -411,7 +412,7 @@ func daemonSetup(t *testing.T) *Daemon {
 func startTestDaemon(t *testing.T, daemon *Daemon, endpoints []APIEndpoint) (*http.Client, string) {
 	t.Helper()
 
-	for _, dir := range []string{daemon.os.CacheDir, daemon.os.LogDir, daemon.os.RunDir, daemon.os.VarDir, daemon.os.UsrDir, daemon.os.LocalDatabaseDir()} {
+	for _, dir := range []string{daemon.os.CacheDir, daemon.os.LogDir, daemon.os.RunDir, daemon.os.VarDir, daemon.os.UsrDir, daemon.os.LocalDatabaseDir(), daemon.os.ArtifactDir} {
 		if !incusUtil.PathExists(dir) {
 			require.NoError(t, os.MkdirAll(dir, 0o755))
 		}

@@ -30,10 +30,14 @@ type uuidCache map[string]uuid.UUID
 // newTestInstance creates a new Instance object with the given parameters.
 // - disks are a map of disk index to whether the disk is supported.
 // - nics are a map of nic index to the nic's IPv4 address.
-func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int]string, windows bool, ignoreRestrictions bool) migration.Instance {
+func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int]string, osType api.OSType, ignoreRestrictions bool) migration.Instance {
 	osName := "test_os"
-	if windows {
+	description := "description for " + name
+	switch osType {
+	case api.OSTYPE_WINDOWS:
 		osName = "windows"
+	case api.OSTYPE_FORTIGATE:
+		description = "FortiGate ..."
 	}
 
 	instUUID := uuid.New()
@@ -48,7 +52,7 @@ func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int
 		},
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
-				Description: "description for " + name,
+				Description: description,
 				CPUs:        1,
 				Memory:      1024 * 1024 * 1024,
 				Config:      map[string]string{},
@@ -62,7 +66,7 @@ func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int
 			LegacyBoot:       false,
 			TPM:              false,
 			BackgroundImport: true,
-			Architecture:     "test_arch",
+			Architecture:     "x86_64",
 			NICs:             []api.InstancePropertiesNIC{},
 			Disks:            []api.InstancePropertiesDisk{},
 			Snapshots:        []api.InstancePropertiesSnapshot{},
@@ -126,14 +130,15 @@ func TestMigration_beginImports(t *testing.T) {
 
 		scriptlet string
 
-		concurrentCreations int
-		hasVIXTarball       bool
-		hasWorker           bool
-		hasWorkerVolume     bool
-		assertErr           require.ErrorAssertionFunc
+		concurrentCreations     int
+		hasVMwareSDK            bool
+		hasWindowsDriversArches []string
+		hasFortigateImageArches []string
+		hasWorker               bool
+		hasWorkerVolume         bool
+		assertErr               require.ErrorAssertionFunc
 
 		backupCreateErr error
-		isoCreateErr    error
 		vmStartErr      map[string]error
 
 		ranCleanup           bool
@@ -143,8 +148,8 @@ func TestMigration_beginImports(t *testing.T) {
 		{
 			name: "2 vms (1 disk, 1 nic), initial placement",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -156,7 +161,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -168,8 +173,8 @@ func TestMigration_beginImports(t *testing.T) {
 		{
 			name: "2 vms (1 disk, 1 nic), initial placement, limit concurrency to 1",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -181,7 +186,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -193,8 +198,8 @@ func TestMigration_beginImports(t *testing.T) {
 		{
 			name: "2 vms (1 disk, 1 nic), initial placement, with pre-existing worker",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -206,7 +211,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true, // We still validate that the VIX tarball must exist.
+			hasVMwareSDK:    true, // We still validate that the VIX tarball must exist.
 			hasWorker:       false,
 			hasWorkerVolume: true,
 			rerunScriptlet:  false,
@@ -220,8 +225,8 @@ func TestMigration_beginImports(t *testing.T) {
 		{
 			name: "2 vms (1 disk, 1 nic), initial placement (windows VMs)",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, true, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, true, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_WINDOWS, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_WINDOWS, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -233,10 +238,37 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
-			hasWorker:       true,
-			hasWorkerVolume: false,
-			rerunScriptlet:  false,
+			hasVMwareSDK:            true,
+			hasWindowsDriversArches: []string{"x86_64"},
+			hasWorker:               true,
+			hasWorkerVolume:         false,
+			rerunScriptlet:          false,
+
+			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_IDLE, uuids["vm2"]: api.MIGRATIONSTATUS_IDLE},
+			resultBatchState:     api.BATCHSTATUS_RUNNING,
+			assertErr:            require.NoError,
+		},
+		{
+			name: "2 vms (1 disk, 1 nic), initial placement (fortigate VMs)",
+			instances: migration.Instances{
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_FORTIGATE, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_FORTIGATE, false),
+			},
+
+			initialPlacements: map[uuid.UUID]api.Placement{
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+			},
+
+			targetDetails: []target.IncusDetails{
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+			},
+
+			hasVMwareSDK:            true,
+			hasFortigateImageArches: []string{"x86_64"},
+			hasWorker:               true,
+			hasWorkerVolume:         false,
+			rerunScriptlet:          false,
 
 			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_IDLE, uuids["vm2"]: api.MIGRATIONSTATUS_IDLE},
 			resultBatchState:     api.BATCHSTATUS_RUNNING,
@@ -245,8 +277,8 @@ func TestMigration_beginImports(t *testing.T) {
 		{
 			name: "2 vms (1 disk, 1 nic), initial placement with missing network on 1 vm",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{}, false, true), // Ignore restrictions so VM is not blocked
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{}, api.OSTYPE_LINUX, true), // Ignore restrictions so VM is not blocked
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -258,7 +290,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -270,8 +302,8 @@ func TestMigration_beginImports(t *testing.T) {
 		{
 			name: "2 vms (1 disk, 1 nic), initial placement to different targets",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -284,7 +316,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "tgt2", Projects: []string{"project2"}, StoragePools: []string{"pool2"}, NetworksByProject: setMap{"project2": {"net2"}}, InstancesByProject: setMap{"project2": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -296,8 +328,8 @@ func TestMigration_beginImports(t *testing.T) {
 		{
 			name: "2 vms (1 disk, 1 nic), rerun placement with no scriptlet",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -310,7 +342,7 @@ func TestMigration_beginImports(t *testing.T) {
 				{Name: "default", Projects: []string{"default"}, StoragePools: []string{"default"}, NetworksByProject: setMap{"default": {"default"}}, InstancesByProject: setMap{"default": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  true,
@@ -322,8 +354,8 @@ func TestMigration_beginImports(t *testing.T) {
 		{
 			name: "2 vms (1 disk, 1 nic), rerun placement with scriptlet",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -342,7 +374,7 @@ def placement(instance, batch):
 	set_pool('{}_disk_1'.format(instance.properties.name), 'pool2')
 	set_network('net_id_1', 'net2')`,
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  true,
@@ -354,8 +386,8 @@ def placement(instance, batch):
 		{
 			name: "blocked vm remains blocked",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: ""}, false, false), // No IP means the VM will be blocked
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: ""}, api.OSTYPE_LINUX, false), // No IP means the VM will be blocked
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -367,7 +399,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -379,8 +411,8 @@ def placement(instance, batch):
 		{
 			name: "missing vix tarball -- all blocked",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -392,7 +424,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   false,
+			hasVMwareSDK:    false,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -404,8 +436,8 @@ def placement(instance, batch):
 		{
 			name: "missing worker binary -- all blocked, batch errored",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -417,7 +449,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       false,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -429,8 +461,8 @@ def placement(instance, batch):
 		{
 			name: "failed backup creation -- all blocked, batch errored",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -442,7 +474,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -454,37 +486,66 @@ def placement(instance, batch):
 			backupCreateErr: boom.Error,
 		},
 		{
-			name: "failed iso creation -- all blocked, batch errored",
+			name: "missing os image artifacts -- only windows and fortigate blocked",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, true, false), // requires a windows VM
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_WINDOWS, false), // requires a windows VM
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm3", map[int]bool{1: true}, map[int]string{1: "10.0.0.12"}, api.OSTYPE_FORTIGATE, false), // requires a fortigate VM
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
 				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
 				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm3"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm3_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
 			},
 
 			targetDetails: []target.IncusDetails{
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
 
-			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_WAITING, uuids["vm2"]: api.MIGRATIONSTATUS_WAITING},
-			resultBatchState:     api.BATCHSTATUS_ERROR,
+			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_BLOCKED, uuids["vm2"]: api.MIGRATIONSTATUS_IDLE, uuids["vm3"]: api.MIGRATIONSTATUS_BLOCKED},
+			resultBatchState:     api.BATCHSTATUS_RUNNING,
 			assertErr:            require.NoError,
+		},
+		{
+			name: "os image artifact doesn't match architecture -- only windows and fortigate blocked",
+			instances: migration.Instances{
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_WINDOWS, false), // requires a windows VM
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm3", map[int]bool{1: true}, map[int]string{1: "10.0.0.12"}, api.OSTYPE_FORTIGATE, false), // requires a fortigate VM
+			},
 
-			isoCreateErr: boom.Error,
+			initialPlacements: map[uuid.UUID]api.Placement{
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm3"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm3_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+			},
+
+			targetDetails: []target.IncusDetails{
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+			},
+
+			hasVMwareSDK:            true,
+			hasWindowsDriversArches: []string{"aarch64"},
+			hasFortigateImageArches: []string{"aarch64"},
+			hasWorker:               true,
+			hasWorkerVolume:         false,
+			rerunScriptlet:          false,
+
+			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_BLOCKED, uuids["vm2"]: api.MIGRATIONSTATUS_IDLE, uuids["vm3"]: api.MIGRATIONSTATUS_BLOCKED},
+			resultBatchState:     api.BATCHSTATUS_RUNNING,
+			assertErr:            require.NoError,
 		},
 		{
 			name: "failed instance start -- queue entry error",
 			instances: migration.Instances{
-				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, false, false),
-				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, false, false),
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
@@ -496,7 +557,7 @@ def placement(instance, batch):
 				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
 			},
 
-			hasVIXTarball:   true,
+			hasVMwareSDK:    true,
 			hasWorker:       true,
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
@@ -535,14 +596,11 @@ def placement(instance, batch):
 					CreateStoragePoolVolumeFromBackupFunc: func(poolName, backupFilePath string) ([]incus.Operation, error) {
 						return []incus.Operation{}, tc.backupCreateErr
 					},
-					CreateStoragePoolVolumeFromISOFunc: func(poolName, backupFilePath string) ([]incus.Operation, error) {
-						return []incus.Operation{}, tc.isoCreateErr
-					},
 					CreateVMDefinitionFunc: func(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint, endpoint string) (incusAPI.InstancesPost, error) {
 						tgt := target.InternalIncusTarget{InternalTarget: target.NewInternalTarget(t, "6.0")}
 						return tgt.CreateVMDefinition(instanceDef, usedNetworks, q, fingerprint, endpoint)
 					},
-					CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage, driversISOImage string) (func(), error) {
+					CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
 						return func() { ranCleanup = true }, nil
 					},
 					GetDetailsFunc: func(ctx context.Context) (*target.IncusDetails, error) {
@@ -566,10 +624,30 @@ def placement(instance, batch):
 
 			// Always write the worker image and drivers ISO so that we don't reach out to GitHub.
 			require.NoError(t, os.WriteFile(filepath.Join(d.os.CacheDir, util.RawWorkerImage()), nil, 0o660))
-			require.NoError(t, os.WriteFile(filepath.Join(d.os.CacheDir, "virtio-win-x.iso"), nil, 0o660))
 
-			if tc.hasVIXTarball {
-				require.NoError(t, os.WriteFile(filepath.Join(d.os.VarDir, "VMware-vix-disklib.tar.gz"), nil, 0o660))
+			if tc.hasVMwareSDK {
+				art := migration.Artifact{UUID: uuid.New(), Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}}
+				_, err := d.artifact.Create(d.ShutdownCtx, art)
+				require.NoError(t, err)
+
+				require.NoError(t, os.MkdirAll(d.artifact.FileDirectory(art.UUID), 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(d.artifact.FileDirectory(art.UUID), "vmware-sdk.tar.gz"), nil, 0o644))
+			}
+
+			if tc.hasWindowsDriversArches != nil {
+				art := migration.Artifact{UUID: uuid.New(), Type: api.ARTIFACTTYPE_DRIVER, Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: tc.hasWindowsDriversArches}}
+				_, err := d.artifact.Create(d.ShutdownCtx, art)
+				require.NoError(t, err)
+				require.NoError(t, os.MkdirAll(d.artifact.FileDirectory(art.UUID), 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(d.artifact.FileDirectory(art.UUID), "virtio-win.iso"), nil, 0o644))
+			}
+
+			if tc.hasFortigateImageArches != nil {
+				art := migration.Artifact{UUID: uuid.New(), Type: api.ARTIFACTTYPE_OSIMAGE, Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: tc.hasFortigateImageArches, Versions: []string{"7.4"}}}
+				_, err := d.artifact.Create(d.ShutdownCtx, art)
+				require.NoError(t, err)
+				require.NoError(t, os.MkdirAll(d.artifact.FileDirectory(art.UUID), 0o755))
+				require.NoError(t, os.WriteFile(filepath.Join(d.artifact.FileDirectory(art.UUID), "fortigate.qcow2"), nil, 0o644))
 			}
 
 			if tc.hasWorker {
