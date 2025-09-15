@@ -12,19 +12,25 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/cancel"
+	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 
 	"github.com/FuturFusion/migration-manager/internal"
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/source"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/internal/worker"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -236,8 +242,16 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand) (do
 	slog.Info("Performing final migration tasks")
 	w.sendStatusResponse(api.WORKERRESPONSE_RUNNING, "Performing final migration tasks")
 
-	// Windows-specific
-	if strings.Contains(strings.ToLower(cmd.OS), "windows") {
+	switch cmd.OSType {
+	case api.OSTYPE_WINDOWS:
+		file, cleanup, err := w.getArtifact(api.ARTIFACTTYPE_DRIVER, cmd, "")
+		if err != nil {
+			w.sendErrorResponse(err)
+			return false
+		}
+
+		defer cleanup()
+
 		winVer, err := worker.MapWindowsVersionToAbbrev(cmd.OSVersion)
 		if err != nil {
 			w.sendErrorResponse(err)
@@ -250,7 +264,7 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand) (do
 			return false
 		}
 
-		err = worker.WindowsInjectDrivers(ctx, winVer, "/dev/"+base, "/dev/"+recovery)
+		err = worker.WindowsInjectDrivers(ctx, winVer, "/dev/"+base, "/dev/"+recovery, file)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false

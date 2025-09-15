@@ -35,7 +35,6 @@ const (
 
 const (
 	bitLockerMountPath       string = "/run/mount/dislocker/"
-	driversMountDevice       string = "/dev/disk/by-id/scsi-0QEMU_QEMU_CD-ROM_incus_drivers"
 	driversMountPath         string = "/run/mount/drivers/"
 	windowsMainMountPath     string = "/run/mount/win_main/"
 	windowsRecoveryMountPath string = "/run/mount/win_recovery/"
@@ -93,7 +92,7 @@ func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error
 	return err
 }
 
-func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartition string, recoveryPartition string) error {
+func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartition string, recoveryPartition string, isoFile string) error {
 	slog.Info("Preparing to inject Windows drivers into VM")
 
 	c := internalUtil.UnixHTTPClient("/dev/incus/sock")
@@ -122,7 +121,7 @@ func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartit
 	}
 
 	// Mount the virtio drivers image.
-	err = DoMount(driversMountDevice, driversMountPath, nil)
+	err = DoMount(isoFile, driversMountPath, []string{"-o", "loop"})
 	if err != nil {
 		return err
 	}
