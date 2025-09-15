@@ -25,7 +25,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "success - vmware sdk",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeSDK,
+				Type:       api.ARTIFACTTYPE_SDK,
 				Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE},
 			},
 			assertErr: require.NoError,
@@ -34,7 +34,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "success - windows",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeOSImage,
+				Type:       api.ARTIFACTTYPE_DRIVER,
 				Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}},
 			},
 			assertErr: require.NoError,
@@ -43,7 +43,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "success - fortigate",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeOSImage,
+				Type:       api.ARTIFACTTYPE_OSIMAGE,
 				Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}, Versions: []string{"7.4"}},
 			},
 			assertErr: require.NoError,
@@ -52,7 +52,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "error - vmware sdk with version",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeSDK,
+				Type:       api.ARTIFACTTYPE_SDK,
 				Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE, Versions: []string{"1.0"}},
 			},
 			assertErr: require.Error,
@@ -61,7 +61,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "error - vmware sdk with architecture",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeSDK,
+				Type:       api.ARTIFACTTYPE_SDK,
 				Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE, Architectures: []string{"x86_64"}},
 			},
 			assertErr: require.Error,
@@ -70,7 +70,25 @@ func TestArtifact_Create(t *testing.T) {
 			name: "error - sdk with without source",
 			artifact: migration.Artifact{
 				UUID: uuid.New(),
-				Type: api.ArtifactTypeSDK,
+				Type: api.ARTIFACTTYPE_SDK,
+			},
+			assertErr: require.Error,
+		},
+		{
+			name: "error - windows os image",
+			artifact: migration.Artifact{
+				UUID:       uuid.New(),
+				Type:       api.ARTIFACTTYPE_OSIMAGE,
+				Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}},
+			},
+			assertErr: require.Error,
+		},
+		{
+			name: "success - fortigate driver",
+			artifact: migration.Artifact{
+				UUID:       uuid.New(),
+				Type:       api.ARTIFACTTYPE_DRIVER,
+				Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}, Versions: []string{"7.4"}},
 			},
 			assertErr: require.Error,
 		},
@@ -78,7 +96,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "error - os image without os",
 			artifact: migration.Artifact{
 				UUID: uuid.New(),
-				Type: api.ArtifactTypeOSImage,
+				Type: api.ARTIFACTTYPE_DRIVER,
 			},
 			assertErr: require.Error,
 		},
@@ -86,7 +104,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "error - fortigate image without version",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeOSImage,
+				Type:       api.ARTIFACTTYPE_OSIMAGE,
 				Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}},
 			},
 			assertErr: require.Error,
@@ -95,7 +113,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "error - fortigate image with invalid version",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeOSImage,
+				Type:       api.ARTIFACTTYPE_OSIMAGE,
 				Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}, Versions: []string{"version1"}},
 			},
 			assertErr: require.Error,
@@ -104,7 +122,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "error - fortigate image without architecture",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeOSImage,
+				Type:       api.ARTIFACTTYPE_OSIMAGE,
 				Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Versions: []string{"1.0"}},
 			},
 			assertErr: require.Error,
@@ -113,7 +131,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "error - fortigate image with invalid architecture",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeOSImage,
+				Type:       api.ARTIFACTTYPE_OSIMAGE,
 				Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Versions: []string{"1.0"}, Architectures: []string{"fake-arch"}},
 			},
 			assertErr: require.Error,
@@ -122,7 +140,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "error - virtio-win image with invalid architecture",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeOSImage,
+				Type:       api.ARTIFACTTYPE_DRIVER,
 				Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"fake-arch"}},
 			},
 			assertErr: require.Error,
@@ -131,7 +149,7 @@ func TestArtifact_Create(t *testing.T) {
 			name: "error - virtio-win image with no architecture",
 			artifact: migration.Artifact{
 				UUID:       uuid.New(),
-				Type:       api.ArtifactTypeOSImage,
+				Type:       api.ARTIFACTTYPE_DRIVER,
 				Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS},
 			},
 			assertErr: require.Error,
@@ -169,8 +187,8 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			name:      "success - linux from vmware (sdk)",
 			assertErr: require.NoError,
 			artifacts: []api.Artifact{{
-				ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeSDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
-				HasContent:   true,
+				ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
+				Files:        []string{"vmware-sdk.tar.gz"},
 			}},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE},
 		},
@@ -179,12 +197,12 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			assertErr: require.NoError,
 			artifacts: []api.Artifact{
 				{
-					ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeSDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
-					HasContent:   true,
+					ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
+					Files:        []string{"vmware-sdk.tar.gz"},
 				},
 				{
-					ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeOSImage, Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}}},
-					HasContent:   true,
+					ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_DRIVER, Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}}},
+					Files:        []string{"virtio-win.iso"},
 				},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{OS: "Windows", Architecture: "x86_64"}},
@@ -194,12 +212,12 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			assertErr: require.NoError,
 			artifacts: []api.Artifact{
 				{
-					ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeSDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
-					HasContent:   true,
+					ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
+					Files:        []string{"vmware-sdk.tar.gz"},
 				},
 				{
-					ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeOSImage, Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}}},
-					HasContent:   true,
+					ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_OSIMAGE, Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}}},
+					Files:        []string{"fortigate.qcow2"},
 				},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{
@@ -212,8 +230,8 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			assertErr: require.Error,
 			artifacts: []api.Artifact{
 				{
-					ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeOSImage, Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}}},
-					HasContent:   true,
+					ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_OSIMAGE, Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}}},
+					Files:        []string{"fortigate.qcow2"},
 				},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{
@@ -226,12 +244,12 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			assertErr: require.Error,
 			artifacts: []api.Artifact{
 				{
-					ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeSDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
-					HasContent:   true,
+					ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
+					Files:        []string{"vmware-sdk.tar.gz"},
 				},
 				{
-					ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeOSImage, Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}}},
-					HasContent:   true,
+					ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_OSIMAGE, Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}}},
+					Files:        []string{"fortigate.qcow2"},
 				},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{
@@ -243,8 +261,8 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			name:      "error - fortigate from vmware (empty matching artifacts)",
 			assertErr: require.Error,
 			artifacts: []api.Artifact{
-				{ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeSDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}}},
-				{ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeOSImage, Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}}}},
+				{ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}}},
+				{ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_OSIMAGE, Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}}}},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{
 				InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Description: "FortiGate"},
@@ -256,8 +274,8 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			assertErr: require.Error,
 			artifacts: []api.Artifact{
 				{
-					ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeOSImage, Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}}},
-					HasContent:   true,
+					ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_DRIVER, Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}}},
+					Files:        []string{"virtio-win.iso"},
 				},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{OS: "Windows", Architecture: "x86_64"}},
@@ -267,12 +285,12 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			assertErr: require.Error,
 			artifacts: []api.Artifact{
 				{
-					ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeSDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
-					HasContent:   true,
+					ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
+					Files:        []string{"vmware-sdk.tar.gz"},
 				},
 				{
-					ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeOSImage, Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}}},
-					HasContent:   true,
+					ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_DRIVER, Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}}},
+					Files:        []string{"virtio-win.iso"},
 				},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{OS: "Windows", Architecture: "aarch64"}},
@@ -287,8 +305,8 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			name:      "error - windows from vmware (empty matching artifacts)",
 			assertErr: require.Error,
 			artifacts: []api.Artifact{
-				{ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeSDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}}},
-				{ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeOSImage, Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}}}},
+				{ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}}},
+				{ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_OSIMAGE, Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}}}},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{OS: "Windows", Architecture: "x86_64"}},
 		},
@@ -302,7 +320,7 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			name:      "error - linux from vmware (empty matching artifacts)",
 			assertErr: require.Error,
 			artifacts: []api.Artifact{{
-				ArtifactPost: api.ArtifactPost{Type: api.ArtifactTypeSDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
+				ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}},
 			}},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE},
 		},
@@ -321,11 +339,13 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 					UUID:       uuid.New(),
 					Type:       a.Type,
 					Properties: a.Properties,
+					Files:      a.Files,
 				}
 
 				artifacts = append(artifacts, art)
-				if a.HasContent {
-					require.NoError(t, os.WriteFile(filepath.Join(dir, art.UUID.String()+".tar.gz"), nil, 0o644))
+				for _, f := range art.Files {
+					require.NoError(t, os.MkdirAll(filepath.Join(dir, art.UUID.String()), 0o755))
+					require.NoError(t, os.WriteFile(filepath.Join(dir, art.UUID.String(), f), nil, 0o644))
 				}
 			}
 
