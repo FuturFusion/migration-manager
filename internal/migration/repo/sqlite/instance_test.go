@@ -237,9 +237,23 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	err = batch.AssignBatch(ctx, testBatch.Name, instanceA.UUID)
 	require.NoError(t, err)
 
+	// Set the batch to running.
+	testBatch.Status = api.BATCHSTATUS_RUNNING
+	err = batch.Update(ctx, testBatch.Name, testBatch)
+	require.NoError(t, err)
+
 	// Cannot modify source anymore.
-	err = sourceSvc.DeleteByName(context.TODO(), testSource.Name, instanceSvc)
+	err = sourceSvc.Update(context.TODO(), testSource.Name, &testSource, instanceSvc)
 	require.Error(t, err)
+
+	// Set the batch to modifiable.
+	testBatch.Status = api.BATCHSTATUS_FINISHED
+	err = batch.Update(ctx, testBatch.Name, testBatch)
+	require.NoError(t, err)
+
+	// Can update the source now.
+	err = sourceSvc.Update(context.TODO(), testSource.Name, &testSource, instanceSvc)
+	require.NoError(t, err)
 
 	// Unassign instanceA from testBatch.
 	err = batch.UnassignBatch(ctx, testBatch.Name, instanceA.UUID)

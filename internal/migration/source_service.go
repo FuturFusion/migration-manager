@@ -150,7 +150,11 @@ func (s sourceService) canBeModified(ctx context.Context, sourceName string, ins
 		}
 
 		if len(batches) > 0 {
-			return nil, fmt.Errorf("Instance %q cannot be modified because it is part of a batch", instanceUUID)
+			for _, b := range batches {
+				if !b.CanBeModified() {
+					return nil, fmt.Errorf("Instance %q cannot be modified because it is part of a batch", instanceUUID)
+				}
+			}
 		}
 	}
 
