@@ -282,6 +282,27 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand) (do
 			w.sendErrorResponse(err)
 			return false
 		}
+
+	case api.OSTYPE_FORTIGATE:
+		ver, err := worker.DetermineFortigateVersion()
+		if err != nil {
+			w.sendErrorResponse(err)
+			return false
+		}
+
+		file, cleanup, err := w.getArtifact(api.ARTIFACTTYPE_OSIMAGE, cmd, ver)
+		if err != nil {
+			w.sendErrorResponse(err)
+			return false
+		}
+
+		defer cleanup()
+
+		err = worker.ReplaceFortigateBoot(file)
+		if err != nil {
+			w.sendErrorResponse(err)
+			return false
+		}
 	}
 
 	// Linux-specific

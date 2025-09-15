@@ -1,10 +1,97 @@
 package worker
 
 import (
+	"os"
 	"path/filepath"
 
+	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
 )
+
+func DetermineFortigateVersion() (string, error) {
+	// Determine the root partition.
+	rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition(looksLikeFortigateRootPartition)
+	if err != nil {
+		return "", err
+	}
+
+	// Activate VG prior to mounting, if needed.
+	if rootPartitionType == PARTITION_TYPE_LVM {
+		err := ActivateVG()
+		if err != nil {
+			return "", err
+		}
+
+		defer func() { _ = DeactivateVG() }()
+	}
+
+	// Mount the migrated root partition.
+	err = DoMount(rootPartition, chrootMountPath, rootMountOpts)
+	if err != nil {
+		return "", err
+	}
+
+	defer func() { _ = DoUnmount(chrootMountPath) }()
+
+	scriptName := "fortigate-determine-version.sh"
+	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
+	if err != nil {
+		return "", err
+	}
+
+	// Write the fortigateVersion script to /tmp.
+	err = os.WriteFile(filepath.Join("/tmp", scriptName), script, 0o755)
+	if err != nil {
+		return "", err
+	}
+
+	args := []string{filepath.Join("/tmp", scriptName)}
+	version, err := subprocess.RunCommand("/bin/sh", args...)
+	if err != nil {
+		return "", err
+	}
+
+	return version, nil
+}
+
+func ReplaceFortigateBoot(kvmFile string) error {
+	rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition(looksLikeFortigateRootPartition)
+	if err != nil {
+		return err
+	}
+
+	// Activate VG prior to mounting, if needed.
+	if rootPartitionType == PARTITION_TYPE_LVM {
+		err := ActivateVG()
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = DeactivateVG() }()
+	}
+
+	scriptName := "fortigate-replace-boot.sh"
+	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
+	if err != nil {
+		return err
+	}
+
+	// Write the fortigateVersion script to /tmp.
+	err = os.WriteFile(filepath.Join("/tmp", scriptName), script, 0o755)
+	if err != nil {
+		return err
+	}
+
+	args := []string{filepath.Join("/tmp", scriptName)}
+	args = append(args, kvmFile, rootPartition)
+	args = append(args, rootMountOpts...)
+	_, err = subprocess.RunCommand("/bin/sh", args...)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func looksLikeFortigateRootPartition(partition string, opts []string) bool {
 	// Mount the potential root partition.
