@@ -213,6 +213,19 @@ func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) e
 		return err
 	}
 
+	sdkFile, cleanup, err := w.getArtifact(api.ARTIFACTTYPE_SDK, cmd, "")
+	if err != nil {
+		return err
+	}
+
+	defer cleanup()
+
+	// unpack the vmware SDK.
+	err = util.UnpackTarball("/tmp/vmware", sdkFile)
+	if err != nil {
+		return fmt.Errorf("Failed to unpack SDK: %w", err)
+	}
+
 	// Do the actual import.
 	return w.source.ImportDisks(ctx, cmd.Location, func(status string, isImportant bool) {
 		slog.Info(status) //nolint:sloglint

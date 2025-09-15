@@ -94,7 +94,7 @@ func (b *NbdkitBuilder) Build() (*NbdkitServer, error) {
 		fmt.Sprintf("compression=%s", b.compression),
 		fmt.Sprintf("vm=moref=%s", b.vm),
 		fmt.Sprintf("snapshot=%s", b.snapshot),
-		"libdir=/opt/vmware-vix-disklib-distrib",
+		"libdir=/tmp/vmware/vmware-vix-disklib-distrib",
 		"transports=file:nbdssl:nbd",
 		b.filename,
 	)
