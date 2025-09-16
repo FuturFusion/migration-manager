@@ -509,3 +509,144 @@ func getIncusConfig(ctx context.Context, client *http.Client, key string) (strin
 
 	return string(out), nil
 }
+
+func (w *Worker) getArtifact(artifactType api.ArtifactType, cmd api.WorkerCommand, osVersion string) (string, func(), error) {
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	query := fmt.Sprintf("secret=%s&instance=%s", w.token, w.uuid)
+	resp, err := w.doHTTPRequestV1("/artifacts", http.MethodGet, query, nil)
+	if err != nil {
+		return "", nil, err
+	}
+
+	var artifacts []api.Artifact
+	err = responseToStruct(resp, &artifacts)
+	if err != nil {
+		return "", nil, err
+	}
+
+	var artifact *api.Artifact
+	var dir string
+	switch artifactType {
+	case api.ARTIFACTTYPE_DRIVER:
+		artifact, err = w.matchDriverArtifact(artifacts, cmd)
+	case api.ARTIFACTTYPE_OSIMAGE:
+		artifact, err = w.matchImageArtifact(artifacts, cmd, osVersion)
+	case api.ARTIFACTTYPE_SDK:
+		artifact, err = w.matchSourceArtifact(artifacts, cmd)
+	default:
+		return "", nil, fmt.Errorf("Unknown artifact type %q", artifactType)
+	}
+
+	if err != nil {
+		return "", nil, err
+	}
+
+	dir = filepath.Join("/tmp", artifact.UUID.String())
+	err = os.MkdirAll(dir, 0o755)
+	if err != nil {
+		return "", nil, err
+	}
+
+	reverter.Add(func() { _ = os.RemoveAll(dir) })
+	requiredFile, err := artifact.DefaultArtifactFile()
+	if err != nil {
+		return "", nil, err
+	}
+
+	var hasRequiredFile bool
+	for _, file := range artifact.Files {
+		if file != requiredFile {
+			continue
+		}
+
+		hasRequiredFile = true
+		f, err := os.Create(filepath.Join(dir, file))
+		if err != nil {
+			return "", nil, err
+		}
+
+		defer func() { _ = f.Close() }() //nolint:revive
+		err = w.doHTTPRequestV1Writer("/artifacts/"+artifact.UUID.String()+"/files/"+file, http.MethodGet, query, f)
+		if err != nil {
+			return "", nil, err
+		}
+
+		break
+	}
+
+	if !hasRequiredFile {
+		return "", nil, fmt.Errorf("Required file %q not found", requiredFile)
+	}
+
+	cleanup := reverter.Clone().Fail
+
+	reverter.Success()
+
+	return filepath.Join(dir, requiredFile), cleanup, nil
+}
+
+func (w *Worker) matchSourceArtifact(artifacts []api.Artifact, cmd api.WorkerCommand) (*api.Artifact, error) {
+	var artifact *api.Artifact
+	for _, a := range artifacts {
+		if a.Type == api.ARTIFACTTYPE_SDK && a.Properties.SourceType == cmd.SourceType {
+			artifact = &a
+			break
+		}
+	}
+
+	if artifact == nil {
+		return nil, fmt.Errorf("Failed to find matching artifact for source type %q", cmd.SourceType)
+	}
+
+	return artifact, nil
+}
+
+func (w *Worker) matchDriverArtifact(artifacts []api.Artifact, cmd api.WorkerCommand) (*api.Artifact, error) {
+	var artifact *api.Artifact
+	for _, a := range artifacts {
+		match := a.Type == api.ARTIFACTTYPE_DRIVER && a.Properties.OS == cmd.OSType && slices.Contains(a.Properties.Architectures, cmd.Architecture)
+		if match {
+			artifact = &a
+			break
+		}
+	}
+
+	if artifact == nil {
+		return nil, fmt.Errorf("Failed to find a matching artifact for %q architecture %q", cmd.OSType, cmd.Architecture)
+	}
+
+	return artifact, nil
+}
+
+func (w *Worker) matchImageArtifact(artifacts []api.Artifact, cmd api.WorkerCommand, osVersion string) (*api.Artifact, error) {
+	var artifact *api.Artifact
+	for _, a := range artifacts {
+		match := a.Type == api.ARTIFACTTYPE_OSIMAGE && a.Properties.OS == cmd.OSType && slices.Contains(a.Properties.Architectures, cmd.Architecture)
+		expected := semver.Canonical("v" + osVersion)
+		if expected == "" {
+			return nil, fmt.Errorf("Invalid OS version %q", osVersion)
+		}
+
+		var versionsMatch bool
+		for _, v := range a.Properties.Versions {
+			if semver.Compare(semver.MajorMinor("v"+v), semver.MajorMinor(expected)) == 0 {
+				versionsMatch = true
+				break
+			}
+		}
+
+		match = match && versionsMatch
+		if match {
+			artifact = &a
+			break
+		}
+	}
+
+	if artifact == nil {
+		return nil, fmt.Errorf("Failed to find a matching artifact for %q architecture %q version %q", cmd.OSType, cmd.Architecture, osVersion)
+	}
+
+	return artifact, nil
+}
