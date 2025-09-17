@@ -8,21 +8,26 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager-worker/internal/worker"
 	"github.com/FuturFusion/migration-manager/internal/logger"
+	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-const uuid = "ced6491e-b614-11ef-a01b-677fcc190026"
+const uuidA = "ced6491e-b614-11ef-a01b-677fcc190026"
 
 var errGracefulEndOfTest = fmt.Errorf("graceful end of test")
 
@@ -314,6 +319,17 @@ func TestRun(t *testing.T) {
 				t.Fatal("invalid test case, at least on migration-managerd response is required")
 			}
 
+			sdkArtifactUUID := uuid.New()
+			artifactDir, err := os.MkdirTemp("/tmp", "migration-test-artifacts")
+			require.NoError(t, err)
+			artifactResponseDir, err := os.MkdirTemp("/tmp", "migration-test-artifacts-response")
+			require.NoError(t, err)
+
+			defer func() {
+				_ = os.RemoveAll(artifactDir)
+				_ = os.RemoveAll(artifactResponseDir)
+			}()
+
 			// Create migration-managerd double.
 			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				switch r.RequestURI {
@@ -324,7 +340,7 @@ func TestRun(t *testing.T) {
 					}
 
 					fallthrough
-				case fmt.Sprintf("/1.0/queue/%s/worker/command?secret=", uuid):
+				case fmt.Sprintf("/1.0/queue/%s/worker/command?secret=", uuidA):
 					if r.RequestURI != "/1.0" {
 						if r.Method != http.MethodPost {
 							cancel(fmt.Errorf("Unsupported method %q", r.Method))
@@ -341,7 +357,7 @@ func TestRun(t *testing.T) {
 					tc.migrationManagerdResponses = tc.migrationManagerdResponses[1:]
 
 					respFunc(tc.instanceSpec, cancel, w, r)
-				case fmt.Sprintf("/1.0/queue/%s/worker?secret=", uuid):
+				case fmt.Sprintf("/1.0/queue/%s/worker?secret=", uuidA):
 					if r.Method != http.MethodPost {
 						cancel(fmt.Errorf("Unsupported method %q", r.Method))
 						return
@@ -369,6 +385,51 @@ func TestRun(t *testing.T) {
 					}
 
 					_, _ = w.Write([]byte(`{}`))
+				case fmt.Sprintf("/1.0/artifacts?secret=&instance=%s", uuidA):
+					if r.Method != http.MethodGet {
+						cancel(fmt.Errorf("Unsupported method %q", r.Method))
+						return
+					}
+
+					err := response.SyncResponse(true, []api.Artifact{{
+						ArtifactPost: api.ArtifactPost{
+							Type:       api.ARTIFACTTYPE_SDK,
+							Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE},
+						},
+						UUID:  sdkArtifactUUID,
+						Files: []string{"vmware-sdk.tar.gz"},
+					}}).Render(w)
+					if err != nil {
+						cancel(fmt.Errorf("Response error: %w", err))
+						return
+					}
+
+				case fmt.Sprintf("/1.0/artifacts/%s/files/vmware-sdk.tar.gz?secret=&instance=%s", sdkArtifactUUID, uuidA):
+					if r.Method != http.MethodGet {
+						cancel(fmt.Errorf("Unsupported method %q", r.Method))
+						return
+					}
+
+					// This API will return a tarball containing a directory named after the artifact UUID, containing only the vmware-sdk tarball.
+					tarPath := filepath.Join(artifactResponseDir, sdkArtifactUUID.String(), "vmware-sdk.tar.gz")
+					_ = os.MkdirAll(filepath.Dir(tarPath), 0o755)
+
+					// Ensure the files don't survive past the API call.
+					defer func() { _ = os.RemoveAll(filepath.Dir(tarPath)) }()
+
+					// Make an empty tarball, as the worker will try to unpack it.
+					_, err := subprocess.RunCommand("tar", "-czf", tarPath, "--files-from", "/dev/null")
+					if err != nil {
+						cancel(fmt.Errorf("Dummy tarball error: %w", err))
+						return
+					}
+
+					err = response.FileResponse(r, []response.FileResponseEntry{{Path: tarPath}}, nil).Render(w)
+					if err != nil {
+						cancel(fmt.Errorf("Response error: %w", err))
+						return
+					}
+
 				default:
 					cancel(fmt.Errorf("Unsupported request %q", r.RequestURI))
 					return
@@ -382,7 +443,7 @@ func TestRun(t *testing.T) {
 				case "/1.0/config/user.migration.endpoint":
 					_, _ = w.Write([]byte(ts.URL))
 				case "/1.0/config/user.migration.uuid":
-					_, _ = w.Write([]byte(uuid))
+					_, _ = w.Write([]byte(uuidA))
 				}
 			}))
 
@@ -446,6 +507,9 @@ func TestRun(t *testing.T) {
 			wg.Wait()
 
 			require.ErrorIs(t, context.Cause(ctx), tc.wantEndOfTestCause)
+
+			_ = os.RemoveAll(artifactDir)
+			_ = os.Remove(artifactResponseDir)
 		})
 	}
 }
@@ -453,10 +517,17 @@ func TestRun(t *testing.T) {
 func workerCommandResponse(command api.WorkerCommandType, signalEndOfTest bool) func(instanceSpec instanceDetails, cancel context.CancelCauseFunc, w http.ResponseWriter, r *http.Request) {
 	return func(instanceSpec instanceDetails, cancel context.CancelCauseFunc, w http.ResponseWriter, r *http.Request) {
 		cmd := api.WorkerCommand{
-			Command:   command,
-			OS:        instanceSpec.OS,
-			OSVersion: instanceSpec.OSVersion,
-			Location:  instanceSpec.Location,
+			Command:      command,
+			OS:           instanceSpec.OS,
+			OSVersion:    instanceSpec.OSVersion,
+			OSType:       api.OSTYPE_LINUX,
+			Location:     instanceSpec.Location,
+			Architecture: "x86_64",
+			SourceType:   api.SOURCETYPE_VMWARE,
+		}
+
+		if strings.Contains(strings.ToLower(cmd.OS), "windows") {
+			cmd.OSType = api.OSTYPE_WINDOWS
 		}
 
 		metadata, err := json.Marshal(cmd)

@@ -31,19 +31,6 @@ const (
 	PARTITION_TYPE_LVM
 )
 
-type LSBLKOutput struct {
-	BlockDevices []struct {
-		Name     string `json:"name"`
-		Serial   string `json:"serial"`
-		Children []struct {
-			Name         string `json:"name"`
-			FSType       string `json:"fstype"`
-			PartLabel    string `json:"partlabel"`
-			PartTypeName string `json:"parttypename"`
-		} `json:"children"`
-	} `json:"blockdevices"`
-}
-
 type LVSOutput struct {
 	Report []struct {
 		LV []struct {
@@ -59,7 +46,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, distro string, majorVersion
 	slog.Info("Preparing to perform post-migration configuration of VM")
 
 	// Determine the root partition.
-	rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition()
+	rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition(looksLikeLinuxRootPartition)
 	if err != nil {
 		return err
 	}
@@ -202,7 +189,7 @@ func DeactivateVG() error {
 }
 
 func DetermineWindowsPartitions() (base string, recovery string, err error) {
-	partitions, err := scanPartitions("")
+	partitions, err := internalUtil.ScanPartitions("")
 	if err != nil {
 		return "", "", err
 	}
@@ -233,7 +220,7 @@ func DetermineWindowsPartitions() (base string, recovery string, err error) {
 	return base, recovery, nil
 }
 
-func determineRootPartition() (string, int, []string, error) {
+func determineRootPartition(looksLikeRootPartition func(partition string, opts []string) bool) (string, int, []string, error) {
 	lvs, err := scanVGs()
 	if err != nil {
 		return "", PARTITION_TYPE_UNKNOWN, nil, err
@@ -255,7 +242,7 @@ func determineRootPartition() (string, int, []string, error) {
 		}
 	}
 
-	partitions, err := scanPartitions("")
+	partitions, err := internalUtil.ScanPartitions("")
 	if err != nil {
 		return "", PARTITION_TYPE_UNKNOWN, nil, err
 	}
@@ -324,27 +311,7 @@ func scanVGs() (LVSOutput, error) {
 	return ret, nil
 }
 
-func scanPartitions(device string) (LSBLKOutput, error) {
-	ret := LSBLKOutput{}
-	args := []string{"-J", "-o", "NAME,FSTYPE,PARTLABEL,PARTTYPENAME,SERIAL"}
-	if device != "" {
-		args = append(args, device)
-	}
-
-	output, err := subprocess.RunCommand("lsblk", args...)
-	if err != nil {
-		return ret, err
-	}
-
-	err = json.Unmarshal([]byte(output), &ret)
-	if err != nil {
-		return ret, err
-	}
-
-	return ret, nil
-}
-
-func looksLikeRootPartition(partition string, opts []string) bool {
+func looksLikeLinuxRootPartition(partition string, opts []string) bool {
 	// Mount the potential root partition.
 	err := DoMount(partition, chrootMountPath, opts)
 	if err != nil {

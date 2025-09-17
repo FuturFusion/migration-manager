@@ -76,7 +76,7 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all networks.
-	resp, err := c.global.doHTTPRequestV1("/networks", http.MethodGet, "recursion=1", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/networks", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (c *cmdNetworkRemove) Run(cmd *cobra.Command, args []string) error {
 	source := args[1]
 
 	// Remove the network.
-	_, err = c.global.doHTTPRequestV1("/networks/"+name, http.MethodDelete, "source="+source, nil)
+	_, _, err = c.global.doHTTPRequestV1("/networks/"+name, http.MethodDelete, "source="+source, nil)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	source := args[1]
 
 	// Get the existing network.
-	resp, err := c.global.doHTTPRequestV1("/networks/"+name, http.MethodGet, "source="+source, nil)
+	resp, _, err := c.global.doHTTPRequestV1("/networks/"+name, http.MethodGet, "source="+source, nil)
 	if err != nil {
 		return err
 	}
@@ -208,7 +208,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/networks/"+network.Identifier, http.MethodPut, "source="+source, content)
+	_, _, err = c.global.doHTTPRequestV1("/networks/"+network.Identifier, http.MethodPut, "source="+source, content)
 	if err != nil {
 		return err
 	}

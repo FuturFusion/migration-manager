@@ -181,7 +181,7 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		resp, err := c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
+		resp, _, err := c.global.doHTTPRequestV1("/targets", http.MethodPost, "", content)
 		if err != nil {
 			return err
 		}
@@ -240,7 +240,7 @@ func (c *cmdTargetList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the list of all targets.
-	resp, err := c.global.doHTTPRequestV1("/targets", http.MethodGet, "recursion=1", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/targets", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -309,7 +309,7 @@ func (c *cmdTargetRemove) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Remove the target.
-	_, err = c.global.doHTTPRequestV1("/targets/"+name, http.MethodDelete, "", nil)
+	_, _, err = c.global.doHTTPRequestV1("/targets/"+name, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -346,7 +346,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Get the existing target.
-	resp, err := c.global.doHTTPRequestV1("/targets/"+name, http.MethodGet, "", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/targets/"+name, http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -463,7 +463,7 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resp, err = c.global.doHTTPRequestV1("/targets/"+origTargetName, http.MethodPut, "", content)
+	resp, _, err = c.global.doHTTPRequestV1("/targets/"+origTargetName, http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

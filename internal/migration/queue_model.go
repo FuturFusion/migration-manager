@@ -28,12 +28,14 @@ type QueueEntry struct {
 type QueueEntries []QueueEntry
 
 type WorkerCommand struct {
-	Command    api.WorkerCommandType
-	Location   string
-	SourceType api.SourceType
-	Source     Source
-	OS         string
-	OSVersion  string
+	Command      api.WorkerCommandType
+	Location     string
+	SourceType   api.SourceType
+	Source       Source
+	OS           string
+	OSVersion    string
+	OSType       api.OSType
+	Architecture string
 }
 
 func (q QueueEntry) IsMigrating() bool {

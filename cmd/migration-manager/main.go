@@ -42,6 +42,10 @@ func main() {
 	app.SetVersionTemplate("{{.Version}}\n")
 	app.Version = version.Version
 
+	// artifact sub-command
+	artifactCmd := cmds.CmdArtifact{Global: &globalCmd}
+	app.AddCommand(artifactCmd.Command())
+
 	// batch sub-command
 	batchCmd := cmds.CmdBatch{Global: &globalCmd}
 	app.AddCommand(batchCmd.Command())

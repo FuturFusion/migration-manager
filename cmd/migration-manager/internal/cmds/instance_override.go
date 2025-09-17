@@ -74,7 +74,7 @@ func (c *cmdInstanceOverrideRemove) Run(cmd *cobra.Command, args []string) error
 	UUIDString := args[0]
 
 	// Remove the instance override.
-	_, err = c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodDelete, "", nil)
+	_, _, err = c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
@@ -114,7 +114,7 @@ func (c *cmdInstanceOverrideShow) Run(cmd *cobra.Command, args []string) error {
 	UUIDString := args[0]
 
 	// Get the instance override.
-	resp, err := c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodGet, "", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -176,7 +176,7 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 	UUIDString := args[0]
 
 	// Get the existing instance override.
-	resp, err := c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodGet, "", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}
@@ -321,7 +321,7 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	_, err = c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodPut, "", content)
+	_, _, err = c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}

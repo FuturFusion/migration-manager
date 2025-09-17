@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
@@ -51,10 +52,13 @@ type APIEndpoint struct {
 	Patch  APIEndpointAction
 }
 
+type Authenticator func(d *Daemon, w http.ResponseWriter, r *http.Request) (bool, string, string, error)
+
 // APIEndpointAction represents an action on an API endpoint.
 type APIEndpointAction struct {
 	Handler        func(d *Daemon, r *http.Request) response.Response
 	AccessHandler  func(d *Daemon, r *http.Request) response.Response
+	Authenticator  Authenticator
 	AllowUntrusted bool
 }
 
@@ -70,6 +74,7 @@ type Daemon struct {
 	target       migration.TargetService
 	queue        migration.QueueService
 	warning      migration.WarningService
+	artifact     migration.ArtifactService
 
 	errgroup *errgroup.Group
 
@@ -103,12 +108,10 @@ func NewDaemon() *Daemon {
 	return d
 }
 
-// allowAuthenticated is an AccessHandler which allows only authenticated requests. This should be used in conjunction
-// with further access control within the handler (e.g. to filter resources the user is able to view/edit).
-func allowAuthenticated(d *Daemon, r *http.Request) response.Response {
-	err := d.checkTrustedClient(r)
+func allowWithToken(d *Daemon, r *http.Request) response.Response {
+	err := d.checkQueueToken(r)
 	if err != nil {
-		return response.SmartError(err)
+		return response.Forbidden(err)
 	}
 
 	return response.EmptySyncResponse
@@ -134,7 +137,7 @@ func allowPermission(objectType auth.ObjectType, entitlement auth.Entitlement) f
 
 // Convenience function around Authenticate.
 func (d *Daemon) checkTrustedClient(r *http.Request) error {
-	trusted, _, _, err := d.Authenticate(nil, r)
+	trusted, _, _, err := DefaultAuthenticate(d, nil, r)
 	if err != nil {
 		return err
 	}
@@ -146,14 +149,75 @@ func (d *Daemon) checkTrustedClient(r *http.Request) error {
 	return nil
 }
 
-// Authenticate validates an incoming http Request
+// checkQueueToken first checks TLS trusted clients, and if none are found, checks for the 'secret' and 'instance' query parameters to find a token matching an existing queue entry.
+// If no 'instance' parameter is given, an attempt is made to parse the URL for the instance UUID.
+func (d *Daemon) checkQueueToken(r *http.Request) error {
+	err := d.checkTrustedClient(r)
+	if err == nil {
+		return nil
+	}
+
+	// Get the secret token.
+	err = r.ParseForm()
+	if err != nil {
+		return fmt.Errorf("Failed to parse required query parameters: %w", err)
+	}
+
+	secretUUID, err := uuid.Parse(r.Form.Get("secret"))
+	if err != nil {
+		return fmt.Errorf("Failed to parse required 'secret' query paremeter: %w", err)
+	}
+
+	instKey := r.Form.Get("instance")
+	if instKey == "" {
+		instKey = instanceUUIDFromRequestURL(r)
+		if instKey == "" {
+			return fmt.Errorf("Missing required 'instance' query parameter")
+		}
+	}
+
+	instanceUUID, err := uuid.Parse(instKey)
+	if err != nil {
+		return fmt.Errorf("Failed to parse instance UUID %q: %w", instKey, err)
+	}
+
+	// Get the instance.
+	i, err := d.queue.GetByInstanceUUID(r.Context(), instanceUUID)
+	if err != nil {
+		return fmt.Errorf("Failed to find queue entry for instance UUID %q: %w", instKey, err)
+	}
+
+	if secretUUID != i.SecretToken {
+		return fmt.Errorf("Unknown access token %q", secretUUID)
+	}
+
+	return nil
+}
+
+// TokenAuthenticate attempts normal authentication, and falls back to token-based authentication.
+// If using token-based authentication, the request will be assumed to be coming from the migration worker.
+func TokenAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
+	trusted, username, protocol, err := DefaultAuthenticate(d, w, r)
+	if err == nil && !trusted {
+		err := d.checkQueueToken(r)
+		if err != nil {
+			return false, "", "", err
+		}
+
+		return true, "migration-manager-worker", incusAPI.AuthenticationMethodTLS, nil
+	}
+
+	return trusted, username, protocol, err
+}
+
+// DefaultAuthenticate validates an incoming http Request
 // It will check over what protocol it came, what type of request it is and
 // will validate the TLS certificate.
 //
 // This does not perform authorization, only validates authentication.
 // Returns whether trusted or not, the username (or certificate fingerprint) of the trusted client, and the type of
 // client that has been authenticated (unix or tls).
-func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
+func DefaultAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
 	// Local unix socket queries.
 	if r.RemoteAddr == "@" && r.TLS == nil {
 		return true, "", "unix", nil
@@ -181,11 +245,6 @@ func (d *Daemon) Authenticate(w http.ResponseWriter, r *http.Request) (bool, str
 		if trusted {
 			return true, username, incusAPI.AuthenticationMethodTLS, nil
 		}
-	}
-
-	// migration-manager-worker with an access token.
-	if d.workerAccessTokenValid(r) {
-		return true, "migration-manager-worker", incusAPI.AuthenticationMethodTLS, nil
 	}
 
 	// Reject unauthorized.
@@ -221,6 +280,7 @@ func (d *Daemon) Start() error {
 		return err
 	}
 
+	d.artifact = migration.NewArtifactService(sqlite.NewArtifact(dbWithTransaction), d.os)
 	d.warning = migration.NewWarningService(sqlite.NewWarning(dbWithTransaction))
 	d.network = migration.NewNetworkService(sqlite.NewNetwork(dbWithTransaction))
 	d.target = migration.NewTargetService(sqlite.NewTarget(dbWithTransaction))
@@ -626,9 +686,29 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 	restAPI.HandleFunc(uri, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
+		var authenticator Authenticator
+		switch r.Method {
+		case "GET":
+			authenticator = c.Get.Authenticator
+		case "HEAD":
+			authenticator = c.Head.Authenticator
+		case "PUT":
+			authenticator = c.Put.Authenticator
+		case "POST":
+			authenticator = c.Post.Authenticator
+		case "DELETE":
+			authenticator = c.Delete.Authenticator
+		case "PATCH":
+			authenticator = c.Patch.Authenticator
+		}
+
+		if authenticator == nil {
+			authenticator = DefaultAuthenticate
+		}
+
 		// Authentication
 		verifier := d.OIDCVerifier()
-		trusted, username, protocol, err := d.Authenticate(w, r)
+		trusted, username, protocol, err := authenticator(d, w, r)
 		if err != nil {
 			_, ok := err.(*oidc.AuthError)
 			if ok {

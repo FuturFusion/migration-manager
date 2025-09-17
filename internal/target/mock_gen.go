@@ -34,7 +34,7 @@ var _ Target = &TargetMock{}
 //			ConnectFunc: func(ctx context.Context) error {
 //				panic("mock out the Connect method")
 //			},
-//			CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string, driversISOImage string) (func(), error) {
+//			CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
 //				panic("mock out the CreateNewVM method")
 //			},
 //			CreateStoragePoolVolumeFromBackupFunc: func(poolName string, backupFilePath string) ([]incus.Operation, error) {
@@ -123,7 +123,7 @@ type TargetMock struct {
 	ConnectFunc func(ctx context.Context) error
 
 	// CreateNewVMFunc mocks the CreateNewVM method.
-	CreateNewVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string, driversISOImage string) (func(), error)
+	CreateNewVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error)
 
 	// CreateStoragePoolVolumeFromBackupFunc mocks the CreateStoragePoolVolumeFromBackup method.
 	CreateStoragePoolVolumeFromBackupFunc func(poolName string, backupFilePath string) ([]incus.Operation, error)
@@ -227,8 +227,6 @@ type TargetMock struct {
 			Placement api.Placement
 			// BootISOImage is the bootISOImage argument value.
 			BootISOImage string
-			// DriversISOImage is the driversISOImage argument value.
-			DriversISOImage string
 		}
 		// CreateStoragePoolVolumeFromBackup holds details about calls to the CreateStoragePoolVolumeFromBackup method.
 		CreateStoragePoolVolumeFromBackup []struct {
@@ -508,29 +506,27 @@ func (mock *TargetMock) ConnectCalls() []struct {
 }
 
 // CreateNewVM calls CreateNewVMFunc.
-func (mock *TargetMock) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string, driversISOImage string) (func(), error) {
+func (mock *TargetMock) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
 	if mock.CreateNewVMFunc == nil {
 		panic("TargetMock.CreateNewVMFunc: method is nil but Target.CreateNewVM was just called")
 	}
 	callInfo := struct {
-		Ctx             context.Context
-		InstDef         migration.Instance
-		ApiDef          incusAPI.InstancesPost
-		Placement       api.Placement
-		BootISOImage    string
-		DriversISOImage string
+		Ctx          context.Context
+		InstDef      migration.Instance
+		ApiDef       incusAPI.InstancesPost
+		Placement    api.Placement
+		BootISOImage string
 	}{
-		Ctx:             ctx,
-		InstDef:         instDef,
-		ApiDef:          apiDef,
-		Placement:       placement,
-		BootISOImage:    bootISOImage,
-		DriversISOImage: driversISOImage,
+		Ctx:          ctx,
+		InstDef:      instDef,
+		ApiDef:       apiDef,
+		Placement:    placement,
+		BootISOImage: bootISOImage,
 	}
 	mock.lockCreateNewVM.Lock()
 	mock.calls.CreateNewVM = append(mock.calls.CreateNewVM, callInfo)
 	mock.lockCreateNewVM.Unlock()
-	return mock.CreateNewVMFunc(ctx, instDef, apiDef, placement, bootISOImage, driversISOImage)
+	return mock.CreateNewVMFunc(ctx, instDef, apiDef, placement, bootISOImage)
 }
 
 // CreateNewVMCalls gets all the calls that were made to CreateNewVM.
@@ -538,20 +534,18 @@ func (mock *TargetMock) CreateNewVM(ctx context.Context, instDef migration.Insta
 //
 //	len(mockedTarget.CreateNewVMCalls())
 func (mock *TargetMock) CreateNewVMCalls() []struct {
-	Ctx             context.Context
-	InstDef         migration.Instance
-	ApiDef          incusAPI.InstancesPost
-	Placement       api.Placement
-	BootISOImage    string
-	DriversISOImage string
+	Ctx          context.Context
+	InstDef      migration.Instance
+	ApiDef       incusAPI.InstancesPost
+	Placement    api.Placement
+	BootISOImage string
 } {
 	var calls []struct {
-		Ctx             context.Context
-		InstDef         migration.Instance
-		ApiDef          incusAPI.InstancesPost
-		Placement       api.Placement
-		BootISOImage    string
-		DriversISOImage string
+		Ctx          context.Context
+		InstDef      migration.Instance
+		ApiDef       incusAPI.InstancesPost
+		Placement    api.Placement
+		BootISOImage string
 	}
 	mock.lockCreateNewVM.RLock()
 	calls = mock.calls.CreateNewVM

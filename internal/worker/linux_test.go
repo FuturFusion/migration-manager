@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/worker"
 )
 
@@ -59,7 +60,7 @@ var oneVG = `
 `
 
 func TestLSBLKUnmarshaling(t *testing.T) {
-	lsblkOutput := worker.LSBLKOutput{}
+	lsblkOutput := util.LSBLKOutput{}
 	err := json.Unmarshal([]byte(lsblk), &lsblkOutput)
 	require.NoError(t, err)
 	require.Len(t, lsblkOutput.BlockDevices, 1)

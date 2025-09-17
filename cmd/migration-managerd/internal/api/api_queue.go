@@ -37,62 +37,32 @@ var queueWorkerCmd = APIEndpoint{
 	Path: "queue/{uuid}/worker",
 
 	// Endpoints used by the migration worker which authenticates via a randomly-generated UUID unique to each instance.
-	Post: APIEndpointAction{Handler: queueWorkerPost, AccessHandler: allowAuthenticated},
+	Post: APIEndpointAction{Handler: queueWorkerPost, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
 }
 
 var queueWorkerCommandCmd = APIEndpoint{
 	Path: "queue/{uuid}/worker/command",
 
-	Post: APIEndpointAction{Handler: queueWorkerCommandPost, AccessHandler: allowAuthenticated},
+	Post: APIEndpointAction{Handler: queueWorkerCommandPost, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
 }
 
-// Authenticate a migration worker. Allow a GET for an existing instance so the worker can get its instructions,
-// and for POST require the secret token to be valid when the worker reports back.
-func (d *Daemon) workerAccessTokenValid(r *http.Request) bool {
+func instanceUUIDFromRequestURL(r *http.Request) string {
 	// Only allow GET and POST methods.
 	if r.Method != http.MethodGet && r.Method != http.MethodPost {
-		return false
+		return ""
 	}
 
 	// Limit to just queue status updates
 	pathParts := strings.Split(r.URL.Path, "/")
 	if len(pathParts) < 5 {
-		return false
+		return ""
 	}
 
-	if pathParts[2] != "queue" {
-		return false
+	if pathParts[2] != "queue" && pathParts[4] != "worker" {
+		return ""
 	}
 
-	// Ensure we got a valid instance UUID.
-	instanceUUID, err := uuid.Parse(pathParts[3])
-	if err != nil {
-		return false
-	}
-
-	// Get the instance.
-	i, err := d.queue.GetByInstanceUUID(r.Context(), instanceUUID)
-	if err != nil {
-		return false
-	}
-
-	if r.Method == http.MethodPost {
-		// Get the secret token.
-		err = r.ParseForm()
-		if err != nil {
-			return false
-		}
-
-		secretUUID, err := uuid.Parse(r.Form.Get("secret"))
-		if err != nil {
-			return false
-		}
-
-		return secretUUID == i.SecretToken
-	}
-
-	// Allow a GET for a valid instance.
-	return r.Method == http.MethodGet
+	return pathParts[3]
 }
 
 // swagger:operation GET /1.0/queue queue queueRoot_get
@@ -422,12 +392,14 @@ func queueWorkerCommandPost(d *Daemon, r *http.Request) response.Response {
 
 	d.queueHandler.RecordWorkerUpdate(instanceUUID)
 	return response.SyncResponseETag(true, api.WorkerCommand{
-		Command:    workerCommand.Command,
-		Location:   workerCommand.Location,
-		SourceType: workerCommand.SourceType,
-		Source:     apiSourceJSON,
-		OS:         workerCommand.OS,
-		OSVersion:  workerCommand.OSVersion,
+		Command:      workerCommand.Command,
+		Location:     workerCommand.Location,
+		SourceType:   workerCommand.SourceType,
+		Source:       apiSourceJSON,
+		OS:           workerCommand.OS,
+		OSVersion:    workerCommand.OSVersion,
+		OSType:       workerCommand.OSType,
+		Architecture: workerCommand.Architecture,
 	}, workerCommand)
 }
 

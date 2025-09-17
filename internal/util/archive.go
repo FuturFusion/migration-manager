@@ -42,6 +42,85 @@ func CreateTarball(target string, contentPath string) error {
 	})
 }
 
+// UnpackTarball creates the target directory and unpacks the tarball into it.
+func UnpackTarball(target string, tarballPath string) error {
+	t, err := os.Open(tarballPath)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = t.Close() }()
+
+	gzipReader, err := gzip.NewReader(t)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = gzipReader.Close() }()
+
+	tarReader := tar.NewReader(gzipReader)
+	links := []*tar.Header{}
+	for {
+		header, err := tarReader.Next()
+		if err != nil && err != io.EOF {
+			return err
+		}
+
+		if err != nil {
+			break
+		}
+
+		nextPath := filepath.Join(target, header.Name)
+		switch header.Typeflag {
+		case tar.TypeReg:
+			err := os.MkdirAll(filepath.Dir(nextPath), 0o755)
+			if err != nil {
+				return err
+			}
+
+			f, err := os.Create(nextPath)
+			if err != nil {
+				return err
+			}
+
+			_, err = io.Copy(f, tarReader)
+			if err != nil {
+				return err
+			}
+
+			err = f.Close()
+			if err != nil {
+				return err
+			}
+
+		case tar.TypeDir:
+			err := os.MkdirAll(nextPath, os.FileMode(header.Mode))
+			if err != nil {
+				return err
+			}
+
+		case tar.TypeSymlink, tar.TypeLink:
+			links = append(links, header)
+		}
+	}
+
+	for _, header := range links {
+		var err error
+		switch header.Typeflag {
+		case tar.TypeSymlink:
+			err = os.Symlink(header.Linkname, filepath.Join(target, header.Name))
+		case tar.TypeLink:
+			err = os.Link(header.Linkname, filepath.Join(target, header.Name))
+		}
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func archiveDir(tarWriter *tar.Writer, contentDir string) filepath.WalkFunc {
 	return func(path string, info fs.FileInfo, err error) error {
 		if err != nil || path == contentDir {

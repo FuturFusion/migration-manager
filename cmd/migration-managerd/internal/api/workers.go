@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -62,24 +61,27 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 		return fmt.Errorf("Failed to fetch blocked instances: %w", err)
 	}
 
+	artifacts, err := d.artifact.GetAll(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to fetch artifact records: %w", err)
+	}
+
+	blockedInstances := map[uuid.UUID]string{}
 	instancesByUUID := make(map[uuid.UUID]migration.Instance, len(queueInstances))
 	for _, inst := range queueInstances {
 		instancesByUUID[inst.UUID] = inst
-	}
-
-	// Check the filesystem for the required user-supplied files.
-	var blockMsg string
-	err = d.os.ValidateFileSystem()
-	if err != nil {
-		slog.Error("Blocking queue entries due to filesystem error", slog.Any("error", err))
-		blockMsg = fmt.Sprintf("Filesystem error: %v", err.Error())
+		err := d.artifact.HasRequiredArtifactsForInstance(artifacts, inst)
+		if err != nil {
+			slog.Error("Blocking queue entries due to artifact error", slog.Any("error", err))
+			blockedInstances[inst.UUID] = fmt.Sprintf("Artifact error: %v", err.Error())
+		}
 	}
 
 	for _, q := range entries {
 		// Block all entries if we failed to validate the filesystem.
-		if blockMsg != "" {
-			if q.MigrationStatusMessage != blockMsg {
-				_, err := d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_BLOCKED, blockMsg, q.ImportStage, q.GetWindowID())
+		if blockedInstances[q.InstanceUUID] != "" {
+			if q.MigrationStatusMessage != blockedInstances[q.InstanceUUID] {
+				_, err := d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_BLOCKED, blockedInstances[q.InstanceUUID], q.ImportStage, q.GetWindowID())
 				if err != nil {
 					return fmt.Errorf("Failed to unblock queue entry %q: %w", q.InstanceUUID, err)
 				}
@@ -247,7 +249,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 
 	// visitedLocations is a map of VM OS type to target name to project name to pool name.
 	// This is used so that we ensure each pool in each target is checked only once for volumes in a particular project, for a particular VM OS.
-	visitedLocations := map[bool]map[string]map[string]map[string]bool{}
+	visitedLocations := map[string]map[string]map[string]bool{}
 	ignoredBatches := []string{}
 	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
 		// Set a 120s timeout for creating the volumes on the target before instance creation.
@@ -258,28 +260,20 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 		for instUUID, q := range state.QueueEntries {
 			for _, pool := range q.Placement.StoragePools {
 				// for every instance in this batch, check volumes at the corresponding target, unless we did already.
-				var containsWindowsVM bool
-				for _, inst := range state.Instances {
-					if inst.GetOSType() == api.OSTYPE_WINDOWS {
-						containsWindowsVM = true
-						break
-					}
+				if visitedLocations == nil {
+					visitedLocations = map[string]map[string]map[string]bool{}
 				}
 
-				if visitedLocations[containsWindowsVM] == nil {
-					visitedLocations[containsWindowsVM] = map[string]map[string]map[string]bool{}
+				if visitedLocations[q.Placement.TargetName] == nil {
+					visitedLocations[q.Placement.TargetName] = map[string]map[string]bool{}
 				}
 
-				if visitedLocations[containsWindowsVM][q.Placement.TargetName] == nil {
-					visitedLocations[containsWindowsVM][q.Placement.TargetName] = map[string]map[string]bool{}
+				if visitedLocations[q.Placement.TargetName][q.Placement.TargetProject] == nil {
+					visitedLocations[q.Placement.TargetName][q.Placement.TargetProject] = map[string]bool{}
 				}
 
-				if visitedLocations[containsWindowsVM][q.Placement.TargetName][q.Placement.TargetProject] == nil {
-					visitedLocations[containsWindowsVM][q.Placement.TargetName][q.Placement.TargetProject] = map[string]bool{}
-				}
-
-				if !visitedLocations[containsWindowsVM][q.Placement.TargetName][q.Placement.TargetProject][pool] {
-					err := d.ensureISOImagesExistInStoragePool(timeoutCtx, state.Targets[instUUID], containsWindowsVM, state.Batch, pool, q.Placement.TargetProject)
+				if !visitedLocations[q.Placement.TargetName][q.Placement.TargetProject][pool] {
+					err := d.ensureISOImagesExistInStoragePool(timeoutCtx, state.Targets[instUUID], state.Batch, pool, q.Placement.TargetProject)
 					if err != nil {
 						log.Error("Failed to validate batch", logger.Err(err))
 						_, err := d.batch.UpdateStatusByName(ctx, state.Batch.Name, api.BATCHSTATUS_ERROR, err.Error())
@@ -289,7 +283,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 
 						ignoredBatches = append(ignoredBatches, state.Batch.Name)
 					} else {
-						visitedLocations[containsWindowsVM][q.Placement.TargetName][q.Placement.TargetProject][pool] = true
+						visitedLocations[q.Placement.TargetName][q.Placement.TargetProject][pool] = true
 					}
 				}
 			}
@@ -372,7 +366,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 }
 
 // ensureISOImagesExistInStoragePool ensures the necessary image files exist on the daemon to be imported to the storage volume.
-func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, tgt migration.Target, needsDriverISO bool, batch migration.Batch, pool string, project string) error {
+func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, tgt migration.Target, batch migration.Batch, pool string, project string) error {
 	log := slog.With(
 		slog.String("method", "ensureISOImagesExistInStoragePool"),
 		slog.String("storage_pool", pool),
@@ -406,28 +400,21 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, tgt migr
 		return err
 	}
 
-	volumeMap := make(map[string]bool, len(volumes))
+	var workerVolumeExists bool
 	for _, vol := range volumes {
-		volumeMap[vol] = true
+		if vol == "custom/"+util.WorkerVolume() {
+			workerVolumeExists = true
+			break
+		}
 	}
-
-	existingDriverName, err := d.os.GetVirtioDriversISOName()
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("Failed to find Virtio drivers ISO: %w", err)
-	}
-
-	missingBaseImg := !volumeMap["custom/"+util.WorkerVolume()]
-	missingDriverISO := needsDriverISO && (existingDriverName == "" || !volumeMap["custom/"+existingDriverName])
 
 	// If we need to download missing files, or upload them to the target, set a status message.
-	if missingBaseImg || missingDriverISO {
+	if !workerVolumeExists {
 		_, err := d.batch.UpdateStatusByName(ctx, batch.Name, batch.Status, "Downloading artifacts")
 		if err != nil {
 			return fmt.Errorf("Failed to update batch %q status message: %w", batch.Name, err)
 		}
-	}
 
-	if missingBaseImg {
 		log.Info("Worker image doesn't exist in storage pool, importing...")
 		err = d.os.LoadWorkerImage(ctx)
 		if err != nil {
@@ -443,30 +430,6 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, tgt migr
 			err = op.WaitContext(ctx)
 			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 				return err
-			}
-		}
-	}
-
-	if missingDriverISO {
-		driversISOPath, err := d.os.LoadVirtioWinISO()
-		if err != nil {
-			return err
-		}
-
-		driversISO := filepath.Base(driversISOPath)
-		if !volumeMap["custom/"+driversISO] {
-			log.Info("ISO image doesn't exist in storage pool, importing...")
-
-			ops, err := it.CreateStoragePoolVolumeFromISO(pool, driversISOPath)
-			if err != nil {
-				return err
-			}
-
-			for _, op := range ops {
-				err = op.WaitContext(ctx)
-				if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
-					return err
-				}
 			}
 		}
 	}
@@ -538,14 +501,6 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to set project %q for target %q: %w", q.Placement.TargetProject, it.GetName(), err)
 	}
 
-	var driverISOName string
-	if inst.GetOSType() == api.OSTYPE_WINDOWS {
-		driverISOName, err = d.os.GetVirtioDriversISOName()
-		if err != nil {
-			return fmt.Errorf("Failed to get driver ISO path: %w", err)
-		}
-	}
-
 	cert, err := d.ServerCert().PublicKeyX509()
 	if err != nil {
 		return fmt.Errorf("Failed to parse server certificate: %w", err)
@@ -558,7 +513,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to create instance definition: %w", err)
 	}
 
-	cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, q.Placement, util.WorkerVolume(), driverISOName)
+	cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, q.Placement, util.WorkerVolume())
 	if err != nil {
 		return fmt.Errorf("Failed to create new instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
 	}

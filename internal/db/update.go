@@ -117,6 +117,20 @@ var updates = map[int]schema.Update{
 	10: updateFromV9,
 	11: updateFromV10,
 	12: updateFromV11,
+	13: updateFromV12,
+}
+
+func updateFromV12(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE artifacts (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    uuid       TEXT NOT NULL,
+    type       TEXT NOT NULL,
+    properties TEXT NOT NULL,
+    UNIQUE (uuid)
+  );
+`)
+
+	return err
 }
 
 func updateFromV11(ctx context.Context, tx *sql.Tx) error {

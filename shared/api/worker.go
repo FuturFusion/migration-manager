@@ -49,6 +49,14 @@ type WorkerCommand struct {
 	// The version of the operating system
 	// Example: 24.04
 	OSVersion string `json:"os_version" yaml:"os_version"`
+
+	// Operating system type
+	// Example: linux
+	OSType OSType `json:"os_type" yaml:"os_type"`
+
+	// Architecture of the instance
+	// Example: x86_64
+	Architecture string `json:"architecture" yaml:"architecture"`
 }
 
 // WorkerResponse defines a response received from a worker.
