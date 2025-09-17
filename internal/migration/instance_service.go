@@ -131,27 +131,25 @@ func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 			return err
 		}
 
-		// If the old instance could be migrated, make sure its not in a locked batch before changing, unless to disable migration manually.
-		if oldInstance.DisabledReason() == nil {
-			batches, err := s.repo.GetBatchesByUUID(ctx, instance.UUID)
-			if err != nil {
-				return err
+		batches, err := s.repo.GetBatchesByUUID(ctx, instance.UUID)
+		if err != nil {
+			return err
+		}
+
+		if len(batches) > 0 {
+			var unrestrictedForBatch, inRunningBatch bool
+			for _, b := range batches {
+				if oldInstance.DisabledReason(b.RestrictionOverrides) == nil {
+					unrestrictedForBatch = true
+					inRunningBatch = !b.CanBeModified()
+					break
+				}
 			}
 
-			if len(batches) > 0 {
-				modifiable := false
-				if instance.Overrides.DisableMigration {
-					modifiable = true
-					for _, b := range batches {
-						if !b.CanBeModified() {
-							modifiable = false
-							break
-						}
-					}
-				}
-
-				if !modifiable {
-					return fmt.Errorf("Instance %q is already assigned to a batch: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
+			// If the instance can be migrated as-is in any of its batches, the only allowed change is to disable migration, unless the batch has already started.
+			if unrestrictedForBatch {
+				if inRunningBatch || !instance.Overrides.DisableMigration {
+					return fmt.Errorf("Instance %q is part of a batch and cannot be modified: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
 				}
 			}
 		}
@@ -172,13 +170,22 @@ func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		if oldInstance.DisabledReason() == nil {
-			batches, err := s.repo.GetBatchesByUUID(ctx, id)
-			if err != nil {
-				return err
+		batches, err := s.repo.GetBatchesByUUID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if len(batches) > 0 {
+			var cannotModify bool
+			for _, b := range batches {
+				if oldInstance.DisabledReason(b.RestrictionOverrides) == nil {
+					cannotModify = true
+					break
+				}
 			}
 
-			if len(batches) > 0 {
+			// If the instance can be migrated as-is in any of its batches, then it cannot be deleted.
+			if cannotModify {
 				return fmt.Errorf("Cannot delete instance %q: Either assigned to a batch or currently migrating: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
 			}
 		}
