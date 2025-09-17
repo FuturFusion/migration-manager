@@ -689,7 +689,7 @@ def placement(instance, batch):
 				require.NoError(t, err)
 
 				state := api.MIGRATIONSTATUS_WAITING
-				if i.DisabledReason() != nil {
+				if i.DisabledReason(batch.RestrictionOverrides) != nil {
 					state = api.MIGRATIONSTATUS_BLOCKED
 				}
 
