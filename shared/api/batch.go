@@ -95,6 +95,9 @@ type BatchPut struct {
 
 	// Time in UTC when the batch was started.
 	StartDate time.Time `json:"start_date" yaml:"start_date"`
+
+	// Overrides to allow migrating instances that are otherwise restricted.
+	RestrictionOverrides InstanceRestrictionOverride `json:"instance_restriction_overrides" yaml:"instance_restriction_overrides"`
 }
 
 // MigrationWindow defines the scheduling of a batch migration.
@@ -125,4 +128,10 @@ type BatchConstraint struct {
 
 	// Minimum amount of time required for an instance to boot after initial disk import. Migration window duration must be at least this much.
 	MinInstanceBootTime string `json:"min_instance_boot_time" yaml:"min_instance_boot_time"`
+}
+
+type InstanceRestrictionOverride struct {
+	AllowUnknownOS          bool `json:"allow_unknown_os" yaml:"allow_unknown_os"`
+	AllowNoIPv4             bool `json:"allow_no_ipv4" yaml:"allow_no_ipv4"`
+	AllowNoBackgroundImport bool `json:"allow_no_background_import" yaml:"allow_no_background_import"`
 }

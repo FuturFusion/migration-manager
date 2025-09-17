@@ -270,6 +270,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		DefaultTargetProject: apiBatch.DefaultTargetProject,
 		PostMigrationRetries: apiBatch.PostMigrationRetries,
 		Constraints:          constraints,
+		RestrictionOverrides: apiBatch.RestrictionOverrides,
 	}
 
 	_, err = d.batch.Create(ctx, batch)
@@ -528,6 +529,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		DefaultStoragePool:   batch.DefaultStoragePool,
 		Constraints:          constraints,
 		PostMigrationRetries: batch.PostMigrationRetries,
+		RestrictionOverrides: batch.RestrictionOverrides,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))
