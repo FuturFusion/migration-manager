@@ -77,6 +77,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 		}
 	}
 
+	batchMap := map[string]*migration.Batch{}
 	for _, q := range entries {
 		// Block all entries if we failed to validate the filesystem.
 		if blockedInstances[q.InstanceUUID] != "" {
@@ -95,8 +96,15 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			continue
 		}
 
+		if batchMap[q.BatchName] == nil {
+			batchMap[q.BatchName], err = d.batch.GetByName(ctx, q.BatchName)
+			if err != nil {
+				return fmt.Errorf("Failed to get batch for queue entry %q: %w", inst.Properties.Location, err)
+			}
+		}
+
 		// Otherwise check why the VM is blocked, and unblock it if needed.
-		err := inst.DisabledReason()
+		err := inst.DisabledReason(batchMap[q.BatchName].RestrictionOverrides)
 		if err != nil {
 			slog.Warn("Instance is blocked from migration", slog.String("location", inst.Properties.Location), slog.String("reason", err.Error()))
 			continue

@@ -790,7 +790,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 
 			status := api.MIGRATIONSTATUS_WAITING
 			message := "Preparing for migration"
-			err = inst.DisabledReason()
+			err = inst.DisabledReason(batch.RestrictionOverrides)
 			if err != nil {
 				status = api.MIGRATIONSTATUS_BLOCKED
 				message = err.Error()
