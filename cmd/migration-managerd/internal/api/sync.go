@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/url"
@@ -491,7 +492,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 			for _, instUUID := range allInstances {
 				// If the instance is already assigned, then omit it from consideration, unless it is disabled.
 				inst, ok := assignedInstancesByUUID[instUUID]
-				if ok && inst.DisabledReason() == nil {
+				if ok && inst.DisabledReason(api.InstanceRestrictionOverride{}) == nil {
 					_, ok := srcInstances[instUUID]
 					if ok {
 						delete(srcInstances, instUUID)
@@ -599,8 +600,12 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			// Delete the instances that don't exist on the source.
 			log.Info("Deleting instance with no source record")
 			err := i.DeleteByUUID(ctx, instUUID)
+			if err != nil && !errors.Is(err, migration.ErrOperationNotPermitted) {
+				return nil, fmt.Errorf("Failed to delete instance %q: %w", instUUID, err)
+			}
+
 			if err != nil {
-				return nil, err
+				log.Error("Failed to delete instance", slog.Any("error", err))
 			}
 
 			continue
@@ -745,8 +750,12 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			log.Info("Syncing changes to instance from source")
 			inst.LastUpdateFromSource = srcInst.LastUpdateFromSource
 			err := i.Update(ctx, &inst)
-			if err != nil {
+			if err != nil && !errors.Is(err, migration.ErrOperationNotPermitted) {
 				return nil, fmt.Errorf("Failed to update instance: %w", err)
+			}
+
+			if err != nil {
+				log.Error("Failed to update instance", slog.Any("error", err))
 			}
 		}
 	}

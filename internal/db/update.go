@@ -118,6 +118,35 @@ var updates = map[int]schema.Update{
 	11: updateFromV10,
 	12: updateFromV11,
 	13: updateFromV12,
+	14: updateFromV13,
+}
+
+func updateFromV13(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE batches_new (
+    id                     INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name                   TEXT NOT NULL,
+    default_target         TEXT NOT NULL,
+    default_target_project TEXT NOT NULL,
+    status                 TEXT NOT NULL,
+    status_message         TEXT NOT NULL,
+    default_storage_pool   TEXT NOT NULL,
+    include_expression     TEXT NOT NULL,
+    constraints            TEXT NOT NULL,
+    start_date             DATETIME NOT NULL,
+    post_migration_retries INTEGER NOT NULL,
+		rerun_scriptlets       INTEGER NOT NULL,
+    placement_scriptlet    TEXT NOT NULL,
+		restriction_overrides  TEXT NOT NULL,
+    UNIQUE (name)
+);
+
+		INSERT INTO batches_new (id, name, default_target, default_target_project, status, status_message, default_storage_pool, include_expression, constraints, start_date, post_migration_retries, rerun_scriptlets, placement_scriptlet, restriction_overrides)
+		SELECT batches.id, batches.name, batches.default_target, batches.default_target_project, batches.status, batches.status_message, batches.default_storage_pool, batches.include_expression, batches.constraints, batches.start_date, batches.post_migration_retries, batches.rerun_scriptlets, batches.placement_scriptlet, '{}' FROM batches;
+DROP TABLE batches;
+ALTER TABLE batches_new RENAME TO batches;
+`)
+
+	return err
 }
 
 func updateFromV12(ctx context.Context, tx *sql.Tx) error {

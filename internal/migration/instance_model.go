@@ -54,7 +54,7 @@ func (i Instance) Validate() error {
 }
 
 // DisabledReason returns the underlying reason for why the instance is disabled.
-func (i Instance) DisabledReason() error {
+func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) error {
 	if i.Overrides.DisableMigration {
 		return fmt.Errorf("Migration is manually disabled")
 	}
@@ -64,7 +64,9 @@ func (i Instance) DisabledReason() error {
 	}
 
 	if i.Properties.OS == "" || i.Properties.OSVersion == "" {
-		return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
+		if !overrides.AllowUnknownOS {
+			return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
+		}
 	}
 
 	ipRestrict := len(i.Properties.NICs) > 0
@@ -75,11 +77,11 @@ func (i Instance) DisabledReason() error {
 		}
 	}
 
-	if ipRestrict {
+	if ipRestrict && !overrides.AllowNoIPv4 {
 		return fmt.Errorf("Could not determine instance IP, check if guest agent is running")
 	}
 
-	if !i.Properties.BackgroundImport {
+	if !i.Properties.BackgroundImport && !overrides.AllowNoBackgroundImport {
 		return fmt.Errorf("Background import is not supported")
 	}
 

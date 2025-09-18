@@ -33,7 +33,8 @@ type Batch struct {
 	PlacementScriptlet string
 
 	PostMigrationRetries int
-	Constraints          []BatchConstraint `db:"marshal=json"`
+	Constraints          []BatchConstraint               `db:"marshal=json"`
+	RestrictionOverrides api.InstanceRestrictionOverride `db:"marshal=json"`
 }
 
 type BatchConstraint struct {
@@ -416,6 +417,7 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 			PostMigrationRetries: b.PostMigrationRetries,
 			RerunScriptlets:      b.RerunScriptlets,
 			PlacementScriptlet:   b.PlacementScriptlet,
+			RestrictionOverrides: b.RestrictionOverrides,
 		},
 		Status:        b.Status,
 		StatusMessage: b.StatusMessage,
