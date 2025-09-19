@@ -265,7 +265,7 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand) (do
 
 		defer cleanup()
 
-		winVer, err := worker.MapWindowsVersionToAbbrev(cmd.OSVersion)
+		winVer, err := util.MapWindowsVersionToAbbrev(cmd.OSVersion)
 		if err != nil {
 			w.sendErrorResponse(err)
 			return false
