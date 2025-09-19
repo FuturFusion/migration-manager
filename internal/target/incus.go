@@ -282,9 +282,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 
 	// Remove the migration ISO image.
 	delete(apiDef.Devices, util.WorkerVolume())
-
-	// Don't set any profiles by default.
-	apiDef.Profiles = []string{}
+	apiDef.Profiles = []string{"default"}
 
 	osInfo, err := defs.Get(properties.InstanceOS)
 	if err != nil {
