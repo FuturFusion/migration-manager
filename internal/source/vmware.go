@@ -301,6 +301,14 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			Properties:           *vmProps,
 		}
 
+		if inst.GetOSType() == api.OSTYPE_WINDOWS {
+			_, err := util.MapWindowsVersionToAbbrev(inst.Properties.OSVersion)
+			if err != nil {
+				warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, fmt.Sprintf("%q: %v", inst.Properties.Location, err.Error())))
+				continue
+			}
+		}
+
 		err = inst.DisabledReason(api.InstanceRestrictionOverride{})
 		if err != nil {
 			warnings = append(warnings, migration.NewSyncWarning(api.InstanceCannotMigrate, s.Name, fmt.Sprintf("%q: %v", inst.Properties.Location, err.Error())))

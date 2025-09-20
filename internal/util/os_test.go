@@ -1,11 +1,11 @@
-package worker_test
+package util_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/FuturFusion/migration-manager/internal/worker"
+	"github.com/FuturFusion/migration-manager/internal/util"
 )
 
 // Windows names taken from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
@@ -32,30 +32,6 @@ func TestMapWindowsVersionToAbbrevSuccess(t *testing.T) {
 			want: "2k25",
 		},
 		{
-			name: "Windows 7 (64 bit)",
-			want: "w7",
-		},
-		{
-			name: "Windows 7",
-			want: "w7",
-		},
-		{
-			name: "Windows Server 2008 R2 (64 bit)",
-			want: "2k8r2",
-		},
-		{
-			name: "Windows 8 (64 bit)",
-			want: "w8",
-		},
-		{
-			name: "Windows 8",
-			want: "w8",
-		},
-		{
-			name: "Windows 8 Server (64 bit)",
-			want: "w8",
-		},
-		{
 			name: "Windows 10 (64 bit)",
 			want: "w10",
 		},
@@ -67,55 +43,11 @@ func TestMapWindowsVersionToAbbrevSuccess(t *testing.T) {
 			name: "Windows 10 Server (64 bit)",
 			want: "w10",
 		},
-		{
-			name: "Windows Small Business Server 2003",
-			want: "2k3",
-		},
-		{
-			name: "Windows Server 2003, Datacenter Edition (64 bit)",
-			want: "2k3",
-		},
-		{
-			name: "Windows Server 2003, Datacenter Edition",
-			want: "2k3",
-		},
-		{
-			name: "Windows Server 2003, Enterprise Edition (64 bit)",
-			want: "2k3",
-		},
-		{
-			name: "Windows Server 2003, Enterprise Edition",
-			want: "2k3",
-		},
-		{
-			name: "Windows Server 2003, Standard Edition (64 bit)",
-			want: "2k3",
-		},
-		{
-			name: "Windows Server 2003, Standard Edition",
-			want: "2k3",
-		},
-		{
-			name: "Windows Server 2003, Web Edition",
-			want: "2k3",
-		},
-		{
-			name: "Windows XP Home Edition",
-			want: "xp",
-		},
-		{
-			name: "Windows XP Professional Edition (64 bit)",
-			want: "xp",
-		},
-		{
-			name: "Windows XP Professional",
-			want: "xp",
-		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := worker.MapWindowsVersionToAbbrev(tc.name)
+			got, err := util.MapWindowsVersionToAbbrev(tc.name)
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
 		})
@@ -169,11 +101,62 @@ func TestMapWindowsVersionToAbbrevNotSupported(t *testing.T) {
 		{
 			name: "Windows Vista",
 		},
+		{
+			name: "Windows Small Business Server 2003",
+		},
+		{
+			name: "Windows Server 2003, Datacenter Edition (64 bit)",
+		},
+		{
+			name: "Windows Server 2003, Datacenter Edition",
+		},
+		{
+			name: "Windows Server 2003, Enterprise Edition (64 bit)",
+		},
+		{
+			name: "Windows Server 2003, Enterprise Edition",
+		},
+		{
+			name: "Windows Server 2003, Standard Edition (64 bit)",
+		},
+		{
+			name: "Windows Server 2003, Standard Edition",
+		},
+		{
+			name: "Windows Server 2003, Web Edition",
+		},
+		{
+			name: "Windows XP Home Edition",
+		},
+		{
+			name: "Windows XP Professional Edition (64 bit)",
+		},
+		{
+			name: "Windows XP Professional",
+		},
+		{
+			name: "Windows 7 (64 bit)",
+		},
+		{
+			name: "Windows 7",
+		},
+		{
+			name: "Windows Server 2008 R2 (64 bit)",
+		},
+		{
+			name: "Windows 8 (64 bit)",
+		},
+		{
+			name: "Windows 8",
+		},
+		{
+			name: "Windows 8 Server (64 bit)",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := worker.MapWindowsVersionToAbbrev(tc.name)
+			_, err := util.MapWindowsVersionToAbbrev(tc.name)
 			require.Error(t, err)
 		})
 	}
