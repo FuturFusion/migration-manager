@@ -67,6 +67,31 @@ func (q QueueEntry) StatusBeforeMigrationWindow() bool {
 	}
 }
 
+// IsCommitted returns whether the queue entry is past the point of no return (the source VM has been powered off, or is about to be by some concurrent task).
+func (q QueueEntry) IsCommitted() bool {
+	switch q.MigrationStatus {
+	case api.MIGRATIONSTATUS_BLOCKED,
+		api.MIGRATIONSTATUS_CREATING,
+		api.MIGRATIONSTATUS_ERROR,
+		api.MIGRATIONSTATUS_FINISHED,
+		api.MIGRATIONSTATUS_WAITING,
+		api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
+		return false
+	case api.MIGRATIONSTATUS_FINAL_IMPORT,
+		api.MIGRATIONSTATUS_POST_IMPORT,
+		api.MIGRATIONSTATUS_WORKER_DONE:
+		return true
+	case api.MIGRATIONSTATUS_IDLE:
+		// We can be idle for many reasons:
+		// - waiting for migration window (not committed, import stage is 'final')
+		// - window has started, but waiting for concurrent import limit (not committed, import stage is 'final')
+		// - waiting for post-migration steps (committed, import stage is 'complete')
+		return q.ImportStage != IMPORTSTAGE_COMPLETE
+	}
+
+	return true
+}
+
 type ImportStage string
 
 const (
