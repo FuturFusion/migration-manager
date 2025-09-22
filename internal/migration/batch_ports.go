@@ -23,6 +23,7 @@ type BatchService interface {
 	DeleteByName(ctx context.Context, name string) error
 	StartBatchByName(ctx context.Context, name string) error
 	StopBatchByName(ctx context.Context, name string) error
+	ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService) error
 
 	AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
 	ChangeMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error

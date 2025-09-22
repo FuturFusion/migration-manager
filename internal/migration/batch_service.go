@@ -385,3 +385,67 @@ func (s batchService) DeterminePlacement(ctx context.Context, instance Instance,
 
 	return batch.GetIncusPlacement(instance, usedNetworks, *rawPlacement)
 }
+
+// ResetBatchByName returns the batch to Defined state, and removes all associated queue entries. Also cleans up target and source concurrency limits.
+func (s batchService) ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService) error {
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		batch, err := s.repo.GetByName(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		// Batch is not started, so nothing to do.
+		if batch.Status == api.BATCHSTATUS_DEFINED {
+			return nil
+		}
+
+		entries, err := queueSvc.GetAllByBatch(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		var entriesCommitted bool
+		for _, q := range entries {
+			// Check if there are any committed queue entries that prevent resetting the batch.
+			if q.IsCommitted() {
+				entriesCommitted = true
+				break
+			}
+		}
+
+		if entriesCommitted {
+			return fmt.Errorf("Queue entries have already begun final import or post-migration steps: %w", ErrOperationNotPermitted)
+		}
+
+		instances, err := s.instance.GetAllQueued(ctx, entries)
+		if err != nil {
+			return err
+		}
+
+		err = queueSvc.DeleteAllByBatch(ctx, name)
+		if err != nil {
+			return fmt.Errorf("Failed to remove all queue entries for batch %q: %w", name, err)
+		}
+
+		batch.Status = api.BATCHSTATUS_DEFINED
+		batch.StatusMessage = string(api.BATCHSTATUS_DEFINED)
+		err = s.repo.Update(ctx, name, *batch)
+		if err != nil {
+			return fmt.Errorf("Failed to reset batch %q: %w", name, err)
+		}
+
+		instMap := make(map[uuid.UUID]Instance, len(entries))
+		for _, inst := range instances {
+			instMap[inst.UUID] = inst
+		}
+
+		for _, q := range entries {
+			if q.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT || q.MigrationStatus == api.MIGRATIONSTATUS_FINAL_IMPORT {
+				sourceSvc.RemoveActiveImport(instMap[q.InstanceUUID].Source)
+				targetSvc.RemoveActiveImport(q.Placement.TargetName)
+			}
+		}
+
+		return nil
+	})
+}
