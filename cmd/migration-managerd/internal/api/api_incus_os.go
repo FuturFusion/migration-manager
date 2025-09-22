@@ -40,6 +40,9 @@ func apiOSProxy(d *Daemon, r *http.Request) response.Response {
 		},
 	}
 
+	// Set a proxy header so Incus OS can strip the "/os" prefix from the path.
+	r.Header.Add("X-IncusOS-Proxy", "/os")
+
 	return response.ManualResponse(func(w http.ResponseWriter) error {
 		http.StripPrefix("/os", proxy).ServeHTTP(w, r)
 
