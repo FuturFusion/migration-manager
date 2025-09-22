@@ -20,6 +20,7 @@ var api10 = []APIEndpoint{
 	artifactFileCmd,
 	batchCmd,
 	batchInstancesCmd,
+	batchResetCmd,
 	batchStartCmd,
 	batchStopCmd,
 	batchesCmd,
