@@ -56,4 +56,5 @@ type BatchRepo interface {
 	GetMigrationWindow(ctx context.Context, windowID int64) (*MigrationWindow, error)
 	AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
 	UnassignMigrationWindows(ctx context.Context, batch string) error
+	UpdateMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
 }
