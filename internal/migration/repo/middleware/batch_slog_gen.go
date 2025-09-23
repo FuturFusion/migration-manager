@@ -322,3 +322,23 @@ func (_d BatchRepoWithSlog) Update(ctx context.Context, name string, batch _sour
 	}()
 	return _d._base.Update(ctx, name, batch)
 }
+
+// UpdateMigrationWindows implements _sourceMigration.BatchRepo
+func (_d BatchRepoWithSlog) UpdateMigrationWindows(ctx context.Context, batch string, windows _sourceMigration.MigrationWindows) (err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.String("batch", batch),
+		slog.Any("windows", windows),
+	).Debug("BatchRepoWithSlog: calling UpdateMigrationWindows")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("BatchRepoWithSlog: method UpdateMigrationWindows returned an error")
+		} else {
+			log.Debug("BatchRepoWithSlog: method UpdateMigrationWindows finished")
+		}
+	}()
+	return _d._base.UpdateMigrationWindows(ctx, batch, windows)
+}
