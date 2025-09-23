@@ -17,7 +17,7 @@ type BatchService interface {
 	GetAllNames(ctx context.Context) ([]string, error)
 	GetAllNamesByState(ctx context.Context, status api.BatchStatusType) ([]string, error)
 	GetByName(ctx context.Context, name string) (*Batch, error)
-	Update(ctx context.Context, name string, batch *Batch) error
+	Update(ctx context.Context, queueSvc QueueService, name string, batch *Batch) error
 	UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusMessage string) (*Batch, error)
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
@@ -26,7 +26,7 @@ type BatchService interface {
 	ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService) error
 
 	AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
-	ChangeMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
+	ChangeMigrationWindows(ctx context.Context, queueSvc QueueService, batch string, newWindows MigrationWindows) error
 
 	GetMigrationWindows(ctx context.Context, batch string) (MigrationWindows, error)
 	GetMigrationWindow(ctx context.Context, windowID int64) (*MigrationWindow, error)

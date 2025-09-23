@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -87,7 +88,86 @@ func (s batchService) GetByName(ctx context.Context, name string) (*Batch, error
 	return s.repo.GetByName(ctx, name)
 }
 
-func (s batchService) Update(ctx context.Context, name string, batch *Batch) error {
+// canUpdateRunningBatch returns an error if the modified batch cannot be committed because the batch is already running.
+// - Placement and instance filtering cannot be modified for a running batch.
+// - Constraints that match to queue entries that have already entered final import cannot be added or removed.
+func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueService, newBatch Batch, oldBatch Batch) error {
+	if oldBatch.Status != api.BATCHSTATUS_RUNNING {
+		return nil
+	}
+
+	// If the constraints changed, keep a list of all old and new constraints to check if any matching queue entry is already committed.
+	var constraintsToCheck []BatchConstraint
+	if !slices.Equal(oldBatch.Constraints, newBatch.Constraints) {
+		constraintsToCheck = oldBatch.Constraints
+		for _, c := range newBatch.Constraints {
+			if !slices.Contains(constraintsToCheck, c) {
+				constraintsToCheck = append(constraintsToCheck, c)
+			}
+		}
+	}
+
+	if len(constraintsToCheck) > 0 {
+		instances, err := s.instance.GetAllByBatch(ctx, oldBatch.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get instances for batch %q: %w", oldBatch.Name, err)
+		}
+
+		queueEntries, err := queueSvc.GetAllByBatch(ctx, oldBatch.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get queue entries for batch %q: %w", oldBatch.Name, err)
+		}
+
+		queueMap := make(map[uuid.UUID]QueueEntry, len(queueEntries))
+		for _, q := range queueEntries {
+			queueMap[q.InstanceUUID] = q
+		}
+
+		for i, c := range constraintsToCheck {
+			// If the constraint at this index hasn't changed, then we don't need to check it.
+			if i < len(oldBatch.Constraints) && oldBatch.Constraints[i] == c {
+				continue
+			}
+
+			for _, inst := range instances {
+				match, err := inst.MatchesCriteria(c.IncludeExpression)
+				if err != nil {
+					return fmt.Errorf("Failed to check constraint %q against instance %q: %w", c.IncludeExpression, inst.Properties.Location, err)
+				}
+
+				if match {
+					q, ok := queueMap[inst.UUID]
+					if !ok {
+						continue
+					}
+
+					if q.IsCommitted() {
+						return fmt.Errorf("Matching constraint %q cannot be modified for committed queue entry with status %q: %w", c.IncludeExpression, q.MigrationStatus, ErrOperationNotPermitted)
+					}
+				}
+			}
+		}
+	}
+
+	if oldBatch.Name != newBatch.Name {
+		return fmt.Errorf("Cannot rename running batch %q: %w", oldBatch.Name, ErrOperationNotPermitted)
+	}
+
+	if oldBatch.DefaultStoragePool != newBatch.DefaultStoragePool ||
+		oldBatch.DefaultTarget != newBatch.DefaultTarget ||
+		oldBatch.DefaultTargetProject != newBatch.DefaultTargetProject ||
+		oldBatch.PlacementScriptlet != newBatch.PlacementScriptlet {
+		return fmt.Errorf("Cannot placement of running batch %q: %w", oldBatch.Name, ErrOperationNotPermitted)
+	}
+
+	if oldBatch.IncludeExpression != newBatch.IncludeExpression {
+		return fmt.Errorf("Cannot modify include expression of running batch %q: %w", oldBatch.Name, ErrOperationNotPermitted)
+	}
+
+	return nil
+}
+
+func (s batchService) Update(ctx context.Context, queueSvc QueueService, name string, batch *Batch) error {
 	// Reset batch state in testing mode.
 	if util.InTestingMode() {
 		batch.Status = api.BATCHSTATUS_DEFINED
@@ -107,8 +187,11 @@ func (s batchService) Update(ctx context.Context, name string, batch *Batch) err
 			return err
 		}
 
-		if !oldBatch.CanBeModified() && !util.InTestingMode() {
-			return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", name, ErrOperationNotPermitted)
+		if oldBatch.Status == api.BATCHSTATUS_RUNNING && !util.InTestingMode() {
+			err := s.canUpdateRunningBatch(ctx, queueSvc, *batch, *oldBatch)
+			if err != nil {
+				return err
+			}
 		}
 
 		err = s.repo.Update(ctx, name, *batch)
@@ -116,11 +199,16 @@ func (s batchService) Update(ctx context.Context, name string, batch *Batch) err
 			return err
 		}
 
-		if oldBatch.PlacementScriptlet != batch.PlacementScriptlet && batch.PlacementScriptlet != "" {
-			updateScriptlet = true
+		// Only modify instances and placement if the batch is not running.
+		if oldBatch.Status != api.BATCHSTATUS_RUNNING || util.InTestingMode() {
+			if oldBatch.PlacementScriptlet != batch.PlacementScriptlet && batch.PlacementScriptlet != "" {
+				updateScriptlet = true
+			}
+
+			return s.UpdateInstancesAssignedToBatch(ctx, *batch)
 		}
 
-		return s.UpdateInstancesAssignedToBatch(ctx, *batch)
+		return nil
 	})
 	if err != nil {
 		return err
@@ -325,19 +413,77 @@ func (s batchService) AssignMigrationWindows(ctx context.Context, batch string, 
 	return s.repo.AssignMigrationWindows(ctx, batch, windows)
 }
 
-func (s batchService) ChangeMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error {
-	err := windows.Validate()
+func (s batchService) ChangeMigrationWindows(ctx context.Context, queueSvc QueueService, batchName string, newWindows MigrationWindows) error {
+	err := newWindows.Validate()
 	if err != nil {
-		return fmt.Errorf("Failed to assign migration window to batch %q: %w", batch, err)
+		return fmt.Errorf("Failed to assign migration window to batch %q: %w", batchName, err)
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		err := s.repo.UnassignMigrationWindows(ctx, batch)
+		batch, err := s.repo.GetByName(ctx, batchName)
 		if err != nil {
-			return fmt.Errorf("Failed to clean up migration windows for batch %q: %w", batch, err)
+			return fmt.Errorf("Failed to get batch %q: %w", batchName, err)
 		}
 
-		return s.repo.AssignMigrationWindows(ctx, batch, windows)
+		oldWindows, err := s.repo.GetMigrationWindowsByBatch(ctx, batch.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get current migration windows for batch %q: %w", batch.Name, err)
+		}
+
+		// Keep this list nil by default so we don't write anything unless the windows actually change.
+		var changedWindows MigrationWindows
+		if len(oldWindows) != len(newWindows) {
+			changedWindows = newWindows
+		} else {
+			windowMap := map[string]bool{}
+			for _, w := range oldWindows {
+				windowMap[w.Key()] = true
+			}
+
+			changed := false
+			for _, w := range newWindows {
+				if !windowMap[w.Key()] {
+					changed = true
+					break
+				}
+			}
+
+			if changed {
+				changedWindows = append(MigrationWindows{}, newWindows...)
+			}
+		}
+
+		newWindowMap := make(map[string]MigrationWindow, len(newWindows))
+		for _, w := range newWindows {
+			newWindowMap[w.Key()] = w
+		}
+
+		removedWindows := MigrationWindows{}
+		for _, w := range oldWindows {
+			_, ok := newWindowMap[w.Key()]
+			if !ok {
+				removedWindows = append(removedWindows, w)
+			}
+		}
+
+		if batch.Status == api.BATCHSTATUS_RUNNING {
+			entries, err := queueSvc.GetAllByBatch(ctx, batch.Name)
+			if err != nil {
+				return fmt.Errorf("Failed to get queue entries for batch %q: %w", batch.Name, err)
+			}
+
+			for _, e := range entries {
+				if e.IsCommitted() && len(removedWindows) > 0 {
+					return fmt.Errorf("Cannot remove migration windows from batch %q with committed queue entries: %w", batch.Name, ErrOperationNotPermitted)
+				}
+			}
+		}
+
+		if changedWindows != nil {
+			return s.repo.UpdateMigrationWindows(ctx, batch.Name, changedWindows)
+		}
+
+		return nil
 	})
 }
 
