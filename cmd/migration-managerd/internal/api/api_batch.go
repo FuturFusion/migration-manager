@@ -475,41 +475,6 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	dbWindows, err := d.batch.GetMigrationWindows(ctx, batch.Name)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get current migration windows for batch %q: %w", batch.Name, err))
-	}
-
-	var changedWindows migration.MigrationWindows
-	if len(dbWindows) != len(batch.MigrationWindows) {
-		changedWindows = make(migration.MigrationWindows, len(batch.MigrationWindows))
-		for i, w := range batch.MigrationWindows {
-			changedWindows[i] = migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
-		}
-	} else {
-		windowMap := map[string]bool{}
-		for _, w := range dbWindows {
-			windowMap[w.Key()] = true
-		}
-
-		changed := false
-		for _, w := range batch.MigrationWindows {
-			newWindow := migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
-			if !windowMap[newWindow.Key()] {
-				changed = true
-				break
-			}
-		}
-
-		if changed {
-			changedWindows = migration.MigrationWindows{}
-			for _, w := range batch.MigrationWindows {
-				newWindow := migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
-				changedWindows = append(changedWindows, newWindow)
-			}
-		}
-	}
-
 	if batch.DefaultTarget == "" {
 		batch.DefaultTarget = api.DefaultTarget
 	}
@@ -522,7 +487,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		batch.DefaultStoragePool = api.DefaultStoragePool
 	}
 
-	err = d.batch.Update(ctx, name, &migration.Batch{
+	err = d.batch.Update(ctx, d.queue, name, &migration.Batch{
 		ID:                   currentBatch.ID,
 		Name:                 batch.Name,
 		Status:               currentBatch.Status,
@@ -542,11 +507,14 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))
 	}
 
-	if changedWindows != nil {
-		err := d.batch.ChangeMigrationWindows(ctx, batch.Name, changedWindows)
-		if err != nil {
-			return response.SmartError(fmt.Errorf("Failed to update migration windows for batch %q: %w", batch.Name, err))
-		}
+	windows := make(migration.MigrationWindows, 0, len(batch.MigrationWindows))
+	for _, w := range batch.MigrationWindows {
+		windows = append(windows, migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout})
+	}
+
+	err = d.batch.ChangeMigrationWindows(ctx, d.queue, batch.Name, windows)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to update migration windows for batch %q: %w", batch.Name, err))
 	}
 
 	err = trans.Commit()
