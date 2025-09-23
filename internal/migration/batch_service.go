@@ -158,7 +158,7 @@ func (s batchService) UpdateStatusByName(ctx context.Context, name string, statu
 }
 
 func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch Batch) error {
-	if !batch.CanBeModified() {
+	if batch.Status == api.BATCHSTATUS_RUNNING {
 		return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", batch.Name, ErrOperationNotPermitted)
 	}
 
@@ -237,7 +237,7 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 			return err
 		}
 
-		if !oldBatch.CanBeModified() {
+		if oldBatch.Status == api.BATCHSTATUS_RUNNING {
 			return fmt.Errorf("Cannot delete batch %q: Currently in a migration phase: %w", name, ErrOperationNotPermitted)
 		}
 

@@ -371,18 +371,6 @@ func (b Batch) HasValidWindow(windows []MigrationWindow) error {
 	return nil
 }
 
-func (b Batch) CanBeModified() bool {
-	switch b.Status {
-	case api.BATCHSTATUS_DEFINED,
-		api.BATCHSTATUS_STOPPED,
-		api.BATCHSTATUS_FINISHED,
-		api.BATCHSTATUS_ERROR:
-		return true
-	default:
-		return false
-	}
-}
-
 type Batches []Batch
 
 // ToAPI returns the API representation of a batch.

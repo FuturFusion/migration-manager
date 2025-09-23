@@ -9,6 +9,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type instanceService struct {
@@ -141,7 +142,7 @@ func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 			for _, b := range batches {
 				if oldInstance.DisabledReason(b.RestrictionOverrides) == nil {
 					unrestrictedForBatch = true
-					inRunningBatch = !b.CanBeModified()
+					inRunningBatch = b.Status == api.BATCHSTATUS_RUNNING
 					break
 				}
 			}
