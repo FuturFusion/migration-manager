@@ -617,7 +617,7 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 		resetState = api.MIGRATIONSTATUS_WAITING
 		resetImportStage = migration.IMPORTSTAGE_BACKGROUND
 		log.Warn("Cleaning up target instance due to migration window deadline")
-		err := it.CleanupVM(timeoutCtx, state.Instances[instUUID].Properties.Name)
+		err := it.CleanupVM(timeoutCtx, state.Instances[instUUID].Properties.Name, false)
 		if err != nil {
 			return fmt.Errorf("Failed to clean up instance %q due to migration window deadline: %w", state.Instances[instUUID].Properties.Location, err)
 		}

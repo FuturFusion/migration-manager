@@ -116,8 +116,8 @@ type Target interface {
 	// CheckIncusAgent repeatedly calls Exec on the instance until the context errors out, or the exec succeeds.
 	CheckIncusAgent(ctx context.Context, instanceName string) error
 
-	// CleanupVM fully deletes the VM and all of its volumes.
-	CleanupVM(ctx context.Context, name string) error
+	// CleanupVM fully deletes the VM and all of its volumes. If requireWorkerVolume is true, the worker volume must be present for the VM to be cleaned up.
+	CleanupVM(ctx context.Context, name string, requireWorkerVolume bool) error
 
 	// GetDetails fetches top-level details about the entities that exist on the target.
 	GetDetails(ctx context.Context) (*IncusDetails, error)

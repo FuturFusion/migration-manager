@@ -67,6 +67,9 @@ var _ migration.BatchRepo = &BatchRepoMock{}
 //			UpdateFunc: func(ctx context.Context, name string, batch migration.Batch) error {
 //				panic("mock out the Update method")
 //			},
+//			UpdateMigrationWindowsFunc: func(ctx context.Context, batch string, windows migration.MigrationWindows) error {
+//				panic("mock out the UpdateMigrationWindows method")
+//			},
 //		}
 //
 //		// use mockedBatchRepo in code that requires migration.BatchRepo
@@ -118,6 +121,9 @@ type BatchRepoMock struct {
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, name string, batch migration.Batch) error
+
+	// UpdateMigrationWindowsFunc mocks the UpdateMigrationWindows method.
+	UpdateMigrationWindowsFunc func(ctx context.Context, batch string, windows migration.MigrationWindows) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -232,6 +238,15 @@ type BatchRepoMock struct {
 			// Batch is the batch argument value.
 			Batch migration.Batch
 		}
+		// UpdateMigrationWindows holds details about calls to the UpdateMigrationWindows method.
+		UpdateMigrationWindows []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Batch is the batch argument value.
+			Batch string
+			// Windows is the windows argument value.
+			Windows migration.MigrationWindows
+		}
 	}
 	lockAssignBatch                sync.RWMutex
 	lockAssignMigrationWindows     sync.RWMutex
@@ -248,6 +263,7 @@ type BatchRepoMock struct {
 	lockUnassignBatch              sync.RWMutex
 	lockUnassignMigrationWindows   sync.RWMutex
 	lockUpdate                     sync.RWMutex
+	lockUpdateMigrationWindows     sync.RWMutex
 }
 
 // AssignBatch calls AssignBatchFunc.
@@ -799,5 +815,45 @@ func (mock *BatchRepoMock) UpdateCalls() []struct {
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// UpdateMigrationWindows calls UpdateMigrationWindowsFunc.
+func (mock *BatchRepoMock) UpdateMigrationWindows(ctx context.Context, batch string, windows migration.MigrationWindows) error {
+	if mock.UpdateMigrationWindowsFunc == nil {
+		panic("BatchRepoMock.UpdateMigrationWindowsFunc: method is nil but BatchRepo.UpdateMigrationWindows was just called")
+	}
+	callInfo := struct {
+		Ctx     context.Context
+		Batch   string
+		Windows migration.MigrationWindows
+	}{
+		Ctx:     ctx,
+		Batch:   batch,
+		Windows: windows,
+	}
+	mock.lockUpdateMigrationWindows.Lock()
+	mock.calls.UpdateMigrationWindows = append(mock.calls.UpdateMigrationWindows, callInfo)
+	mock.lockUpdateMigrationWindows.Unlock()
+	return mock.UpdateMigrationWindowsFunc(ctx, batch, windows)
+}
+
+// UpdateMigrationWindowsCalls gets all the calls that were made to UpdateMigrationWindows.
+// Check the length with:
+//
+//	len(mockedBatchRepo.UpdateMigrationWindowsCalls())
+func (mock *BatchRepoMock) UpdateMigrationWindowsCalls() []struct {
+	Ctx     context.Context
+	Batch   string
+	Windows migration.MigrationWindows
+} {
+	var calls []struct {
+		Ctx     context.Context
+		Batch   string
+		Windows migration.MigrationWindows
+	}
+	mock.lockUpdateMigrationWindows.RLock()
+	calls = mock.calls.UpdateMigrationWindows
+	mock.lockUpdateMigrationWindows.RUnlock()
 	return calls
 }

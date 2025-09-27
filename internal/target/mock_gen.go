@@ -28,7 +28,7 @@ var _ Target = &TargetMock{}
 //			CheckIncusAgentFunc: func(ctx context.Context, instanceName string) error {
 //				panic("mock out the CheckIncusAgent method")
 //			},
-//			CleanupVMFunc: func(ctx context.Context, name string) error {
+//			CleanupVMFunc: func(ctx context.Context, name string, requireWorkerVolume bool) error {
 //				panic("mock out the CleanupVM method")
 //			},
 //			ConnectFunc: func(ctx context.Context) error {
@@ -117,7 +117,7 @@ type TargetMock struct {
 	CheckIncusAgentFunc func(ctx context.Context, instanceName string) error
 
 	// CleanupVMFunc mocks the CleanupVM method.
-	CleanupVMFunc func(ctx context.Context, name string) error
+	CleanupVMFunc func(ctx context.Context, name string, requireWorkerVolume bool) error
 
 	// ConnectFunc mocks the Connect method.
 	ConnectFunc func(ctx context.Context) error
@@ -209,6 +209,8 @@ type TargetMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// RequireWorkerVolume is the requireWorkerVolume argument value.
+			RequireWorkerVolume bool
 		}
 		// Connect holds details about calls to the Connect method.
 		Connect []struct {
@@ -438,21 +440,23 @@ func (mock *TargetMock) CheckIncusAgentCalls() []struct {
 }
 
 // CleanupVM calls CleanupVMFunc.
-func (mock *TargetMock) CleanupVM(ctx context.Context, name string) error {
+func (mock *TargetMock) CleanupVM(ctx context.Context, name string, requireWorkerVolume bool) error {
 	if mock.CleanupVMFunc == nil {
 		panic("TargetMock.CleanupVMFunc: method is nil but Target.CleanupVM was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx                 context.Context
+		Name                string
+		RequireWorkerVolume bool
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:                 ctx,
+		Name:                name,
+		RequireWorkerVolume: requireWorkerVolume,
 	}
 	mock.lockCleanupVM.Lock()
 	mock.calls.CleanupVM = append(mock.calls.CleanupVM, callInfo)
 	mock.lockCleanupVM.Unlock()
-	return mock.CleanupVMFunc(ctx, name)
+	return mock.CleanupVMFunc(ctx, name, requireWorkerVolume)
 }
 
 // CleanupVMCalls gets all the calls that were made to CleanupVM.
@@ -460,12 +464,14 @@ func (mock *TargetMock) CleanupVM(ctx context.Context, name string) error {
 //
 //	len(mockedTarget.CleanupVMCalls())
 func (mock *TargetMock) CleanupVMCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx                 context.Context
+	Name                string
+	RequireWorkerVolume bool
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx                 context.Context
+		Name                string
+		RequireWorkerVolume bool
 	}
 	mock.lockCleanupVM.RLock()
 	calls = mock.calls.CleanupVM

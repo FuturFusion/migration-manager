@@ -16,6 +16,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -51,6 +52,12 @@ var batchStopCmd = APIEndpoint{
 	Path: "batches/{name}/stop",
 
 	Post: APIEndpointAction{Handler: batchStopPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
+}
+
+var batchResetCmd = APIEndpoint{
+	Path: "batches/{name}/reset",
+
+	Post: APIEndpointAction{Handler: batchResetPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
 }
 
 // swagger:operation GET /1.0/batches batches batches_get
@@ -468,41 +475,6 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	dbWindows, err := d.batch.GetMigrationWindows(ctx, batch.Name)
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed to get current migration windows for batch %q: %w", batch.Name, err))
-	}
-
-	var changedWindows migration.MigrationWindows
-	if len(dbWindows) != len(batch.MigrationWindows) {
-		changedWindows = make(migration.MigrationWindows, len(batch.MigrationWindows))
-		for i, w := range batch.MigrationWindows {
-			changedWindows[i] = migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
-		}
-	} else {
-		windowMap := map[string]bool{}
-		for _, w := range dbWindows {
-			windowMap[w.Key()] = true
-		}
-
-		changed := false
-		for _, w := range batch.MigrationWindows {
-			newWindow := migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
-			if !windowMap[newWindow.Key()] {
-				changed = true
-				break
-			}
-		}
-
-		if changed {
-			changedWindows = migration.MigrationWindows{}
-			for _, w := range batch.MigrationWindows {
-				newWindow := migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
-				changedWindows = append(changedWindows, newWindow)
-			}
-		}
-	}
-
 	if batch.DefaultTarget == "" {
 		batch.DefaultTarget = api.DefaultTarget
 	}
@@ -515,7 +487,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		batch.DefaultStoragePool = api.DefaultStoragePool
 	}
 
-	err = d.batch.Update(ctx, name, &migration.Batch{
+	err = d.batch.Update(ctx, d.queue, name, &migration.Batch{
 		ID:                   currentBatch.ID,
 		Name:                 batch.Name,
 		Status:               currentBatch.Status,
@@ -535,11 +507,14 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))
 	}
 
-	if changedWindows != nil {
-		err := d.batch.ChangeMigrationWindows(ctx, batch.Name, changedWindows)
-		if err != nil {
-			return response.SmartError(fmt.Errorf("Failed to update migration windows for batch %q: %w", batch.Name, err))
-		}
+	windows := make(migration.MigrationWindows, 0, len(batch.MigrationWindows))
+	for _, w := range batch.MigrationWindows {
+		windows = append(windows, migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout})
+	}
+
+	err = d.batch.ChangeMigrationWindows(ctx, d.queue, batch.Name, windows)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to update migration windows for batch %q: %w", batch.Name, err))
 	}
 
 	err = trans.Commit()
@@ -841,6 +816,99 @@ func batchStopPost(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
 	err := d.batch.StopBatchByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponse(true, nil)
+}
+
+// swagger:operation POST /1.0/batches/{name}/reset batches batches_reset_post
+//
+//	Reset a batch
+//
+//	Resets a batch, removes all queue entries, and cleans up incomplete target VMs and volumes.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func batchResetPost(d *Daemon, r *http.Request) response.Response {
+	name := r.PathValue("name")
+	err := transaction.Do(r.Context(), func(ctx context.Context) error {
+		// Get a record of all queue entries before we wipe the records.
+		entries, err := d.queue.GetAllByBatch(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		err = d.batch.ResetBatchByName(ctx, name, d.queue, d.source, d.target)
+		if err != nil {
+			return err
+		}
+
+		// Get the list of VMs to to clean up.
+		instances, err := d.instance.GetAllQueued(ctx, entries)
+		if err != nil {
+			return err
+		}
+
+		instMap := make(map[uuid.UUID]migration.Instance, len(instances))
+		for _, inst := range instances {
+			instMap[inst.UUID] = inst
+		}
+
+		// Get the list of targets for the VMs to clean up according to the queue entry placement.
+		targets, err := d.target.GetAll(ctx)
+		if err != nil {
+			return err
+		}
+
+		targetMap := make(map[string]migration.Target, len(targets))
+		for _, t := range targets {
+			targetMap[t.Name] = t
+		}
+
+		for _, q := range entries {
+			inst := instMap[q.InstanceUUID]
+			t, ok := targetMap[q.Placement.TargetName]
+			if !ok {
+				continue
+			}
+
+			it, err := target.NewTarget(t.ToAPI())
+			if err != nil {
+				return err
+			}
+
+			err = it.Connect(ctx)
+			if err != nil {
+				return err
+			}
+
+			err = it.SetProject(q.Placement.TargetProject)
+			if err != nil {
+				return err
+			}
+
+			// Only remove VMs with a worker volume,
+			// in case we are resetting a completed or errored batch where some VMs have already completed migration.
+			err = it.CleanupVM(ctx, inst.Properties.Name, true)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}

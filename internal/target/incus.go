@@ -531,7 +531,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 	}
 
 	reverter.Add(func() {
-		_, _ = t.incusClient.DeleteInstance(apiDef.Name)
+		_ = t.CleanupVM(ctx, apiDef.Name, true)
 	})
 
 	err = op.WaitContext(ctx)
@@ -563,10 +563,6 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 			defaultDiskDef["pool"] = storagePool
 			diskKey := fmt.Sprintf("disk%d", i+1)
 			diskName := apiDef.Name + "-" + diskKey
-			reverter.Add(func() {
-				_ = tgtClient.DeleteStoragePoolVolume(storagePool, "custom", diskName)
-			})
-
 			err := tgtClient.CreateStoragePoolVolume(storagePool, incusAPI.StorageVolumesPost{
 				StorageVolumePut: incusAPI.StorageVolumePut{
 					Description: fmt.Sprintf("Migrated disk (%s)", disk.Name),
@@ -610,7 +606,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 }
 
 // CleanupVM fully deletes the VM and all of its volumes.
-func (t *InternalIncusTarget) CleanupVM(ctx context.Context, name string) error {
+func (t *InternalIncusTarget) CleanupVM(ctx context.Context, name string, requireWorkerVolume bool) error {
 	err := t.StopVM(ctx, name, true)
 	if err != nil {
 		return fmt.Errorf("Failed to stop target instance %q: %w", name, err)
@@ -619,6 +615,16 @@ func (t *InternalIncusTarget) CleanupVM(ctx context.Context, name string) error 
 	instInfo, _, err := t.GetInstance(name)
 	if err != nil {
 		return fmt.Errorf("Failed to get target instance %q config: %w", name, err)
+	}
+
+	// If the VM doesn't have the config key `user.migration_source` then assume it is not managed by Migration Manager.
+	if instInfo.Config["user.migration_source"] == "" {
+		return nil
+	}
+
+	// If requireWorkerVolume is set, ensure the worker volume is attached to the VM before attempting to delete it.
+	if requireWorkerVolume && instInfo.Devices[util.WorkerVolume()] == nil {
+		return nil
 	}
 
 	op, err := t.incusClient.DeleteInstance(name)

@@ -396,6 +396,10 @@ func TestBatchService_UpdateByID(t *testing.T) {
 		repoGetByNameErr              error
 		repoUpdateErr                 error
 		instanceSvcGetAllByBatchIDErr error
+		queueSvcGetAllByBatchErr      error
+
+		instanceSvcGetAllByBatch migration.Instances
+		queueSvcGetAllByBatch    migration.QueueEntries
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -415,6 +419,72 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
 			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - running batch",
+			batch: migration.Batch{
+				ID:                1,
+				Name:              "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				DefaultTarget:     "one",
+				IncludeExpression: "true",
+			},
+			repoGetByNameBatch: &migration.Batch{
+				ID:                1,
+				Name:              "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				DefaultTarget:     "one",
+				IncludeExpression: "true",
+				RerunScriptlets:   true,
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - modify matching constraint on running batch with non-committed queue entries",
+			batch: migration.Batch{
+				ID:                1,
+				Name:              "one",
+				DefaultTarget:     "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				IncludeExpression: "true",
+				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+			},
+			repoGetByNameBatch: &migration.Batch{
+				ID:                1,
+				Name:              "one",
+				DefaultTarget:     "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				IncludeExpression: "true",
+				Constraints:       []migration.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
+			},
+			queueSvcGetAllByBatch:    migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_WAITING}},
+			instanceSvcGetAllByBatch: migration.Instances{{UUID: uuidA}},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - add non-matching constraint on running batch with committed queue entries",
+			batch: migration.Batch{
+				ID:                1,
+				Name:              "one",
+				DefaultTarget:     "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				IncludeExpression: "true",
+				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+			},
+			repoGetByNameBatch: &migration.Batch{
+				ID:                1,
+				Name:              "one",
+				DefaultTarget:     "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				IncludeExpression: "true",
+				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}, {Name: "constraint2", IncludeExpression: "false"}},
+			},
+			queueSvcGetAllByBatch:    migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT}},
+			instanceSvcGetAllByBatch: migration.Instances{{UUID: uuidA}},
 
 			assertErr: require.NoError,
 		},
@@ -460,13 +530,55 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - status can not be modified",
+			name: "error - running batch - can't change name",
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "new-one",
 				Status:            api.BATCHSTATUS_RUNNING,
 				DefaultTarget:     "one",
 				IncludeExpression: "true",
+			},
+			repoGetByNameBatch: &migration.Batch{
+				ID:                1,
+				Name:              "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				DefaultTarget:     "one",
+				IncludeExpression: "true",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name: "error - running batch - can't change placement",
+			batch: migration.Batch{
+				ID:                1,
+				Name:              "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				DefaultTarget:     "new-one",
+				IncludeExpression: "true",
+			},
+			repoGetByNameBatch: &migration.Batch{
+				ID:                1,
+				Name:              "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				DefaultTarget:     "one",
+				IncludeExpression: "true",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
+		},
+		{
+			name: "error - running batch - can't change expression",
+			batch: migration.Batch{
+				ID:                1,
+				Name:              "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				DefaultTarget:     "one",
+				IncludeExpression: "true and true",
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
@@ -500,7 +612,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name: "error - repo.UpdateByID",
+			name: "error - instanceSvc.GetAllByBatch",
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
@@ -518,6 +630,53 @@ func TestBatchService_UpdateByID(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name: "error - queueSvc.GetAllByBatch",
+			batch: migration.Batch{
+				ID:                1,
+				Name:              "one",
+				DefaultTarget:     "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				IncludeExpression: "true",
+				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+			},
+			repoGetByNameBatch: &migration.Batch{
+				ID:                1,
+				Name:              "one",
+				DefaultTarget:     "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				IncludeExpression: "true",
+				Constraints:       []migration.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
+			},
+			queueSvcGetAllByBatchErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name: "error - modify matching constraint on running batch",
+			batch: migration.Batch{
+				ID:                1,
+				Name:              "one",
+				DefaultTarget:     "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				IncludeExpression: "true",
+				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+			},
+			repoGetByNameBatch: &migration.Batch{
+				ID:                1,
+				Name:              "one",
+				DefaultTarget:     "one",
+				Status:            api.BATCHSTATUS_RUNNING,
+				IncludeExpression: "true",
+				Constraints:       []migration.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
+			},
+			queueSvcGetAllByBatch:    migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT}},
+			instanceSvcGetAllByBatch: migration.Instances{{UUID: uuidA}},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -534,17 +693,23 @@ func TestBatchService_UpdateByID(t *testing.T) {
 
 			instanceSvc := &InstanceServiceMock{
 				GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
-					return nil, tc.instanceSvcGetAllByBatchIDErr
+					return tc.instanceSvcGetAllByBatch, tc.instanceSvcGetAllByBatchIDErr
 				},
 				GetAllFunc: func(ctx context.Context) (migration.Instances, error) {
 					return nil, nil
 				},
 			}
 
+			queueSvc := &QueueServiceMock{
+				GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.QueueEntries, error) {
+					return tc.queueSvcGetAllByBatch, tc.queueSvcGetAllByBatchErr
+				},
+			}
+
 			batchSvc := migration.NewBatchService(repo, instanceSvc)
 
 			// Run test
-			err := batchSvc.Update(context.Background(), tc.batch.Name, &tc.batch)
+			err := batchSvc.Update(context.Background(), queueSvc, tc.batch.Name, &tc.batch)
 
 			// Assert
 			tc.assertErr(t, err)

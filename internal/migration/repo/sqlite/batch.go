@@ -191,3 +191,66 @@ func (b batch) UnassignMigrationWindows(ctx context.Context, batch string) error
 		return nil
 	})
 }
+
+func (b batch) UpdateMigrationWindows(ctx context.Context, batch string, windows migration.MigrationWindows) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, b.db), func(ctx context.Context, tx transaction.TX) error {
+		batchID, err := entities.GetBatchID(ctx, tx, batch)
+		if err != nil {
+			return err
+		}
+
+		// Delete all associations.
+		err = entities.DeleteBatchMigrationWindows(ctx, tx, int(batchID))
+		if err != nil {
+			return err
+		}
+
+		existing, err := entities.GetMigrationWindows(ctx, tx)
+		if err != nil {
+			return err
+		}
+
+		existingMap := make(map[string]migration.MigrationWindow, len(existing))
+		for _, w := range existing {
+			existingMap[w.Key()] = w
+		}
+
+		payloads := []entities.BatchMigrationWindow{}
+		for _, window := range windows {
+			existing, ok := existingMap[window.Key()]
+			if ok {
+				// If an existing window exists, we can just assign that one.
+				window = existing
+			} else {
+				// Create any windows not seen before.
+				window.ID, err = entities.CreateMigrationWindow(ctx, tx, window)
+				if err != nil {
+					return err
+				}
+			}
+
+			payloads = append(payloads, entities.BatchMigrationWindow{BatchID: batchID, MigrationWindowID: window.ID})
+		}
+
+		// Assign all new windows.
+		err = entities.CreateBatchMigrationWindows(ctx, tx, payloads)
+		if err != nil {
+			return err
+		}
+
+		// Remove any migration windows with no batches assigned.
+		unassignedWindows, err := entities.GetMigrationWindowsByBatch(ctx, tx, nil)
+		if err != nil {
+			return err
+		}
+
+		for _, w := range unassignedWindows {
+			err := entities.DeleteMigrationWindow(ctx, tx, w.Start, w.End, w.Lockout)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+}
