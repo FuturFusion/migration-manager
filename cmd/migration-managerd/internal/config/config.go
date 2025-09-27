@@ -88,11 +88,19 @@ func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
 	return &newCfg, nil
 }
 
-func Validate(s api.SystemConfig) error {
-	if s.Network.Address != "" {
-		host, port, err := net.SplitHostPort(s.Network.Address)
+func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
+	if oldCfg.Network.Address != "" && newCfg.Network.Address == "" {
+		return fmt.Errorf("Network address %q cannot be unset", oldCfg.Network.Address)
+	}
+
+	if len(oldCfg.Security.TrustedTLSClientCertFingerprints) > 0 && len(newCfg.Security.TrustedTLSClientCertFingerprints) == 0 {
+		return fmt.Errorf("Last trusted TLS client certificate fingerprint cannot be removed")
+	}
+
+	if newCfg.Network.Address != "" {
+		host, port, err := net.SplitHostPort(newCfg.Network.Address)
 		if err != nil {
-			return fmt.Errorf("Server IP address %q is invalid", s.Network.Address)
+			return fmt.Errorf("Server IP address %q is invalid", newCfg.Network.Address)
 		}
 
 		ip := net.ParseIP(host)
@@ -110,30 +118,30 @@ func Validate(s api.SystemConfig) error {
 		}
 	}
 
-	if s.Network.WorkerEndpoint != "" {
-		endpoint, err := url.ParseRequestURI(s.Network.WorkerEndpoint)
+	if newCfg.Network.WorkerEndpoint != "" {
+		endpoint, err := url.ParseRequestURI(newCfg.Network.WorkerEndpoint)
 		if err != nil {
-			return fmt.Errorf("Failed to parse worker endpoint %q: %w", s.Network.WorkerEndpoint, err)
+			return fmt.Errorf("Failed to parse worker endpoint %q: %w", newCfg.Network.WorkerEndpoint, err)
 		}
 
 		if endpoint.Scheme == "" {
-			return fmt.Errorf("Failed to determine scheme for worker endpoint %q", s.Network.WorkerEndpoint)
+			return fmt.Errorf("Failed to determine scheme for worker endpoint %q", newCfg.Network.WorkerEndpoint)
 		}
 
 		if endpoint.Hostname() == "" {
-			return fmt.Errorf("Failed to determine host for worker endpoint %q", s.Network.WorkerEndpoint)
+			return fmt.Errorf("Failed to determine host for worker endpoint %q", newCfg.Network.WorkerEndpoint)
 		}
 
 		if endpoint.Port() == "" {
-			return fmt.Errorf("Failed to determine port for worker endpoint %q", s.Network.WorkerEndpoint)
+			return fmt.Errorf("Failed to determine port for worker endpoint %q", newCfg.Network.WorkerEndpoint)
 		}
 
 		if endpoint.Path != "" {
-			return fmt.Errorf("Worker endpoint %q contains path", s.Network.WorkerEndpoint)
+			return fmt.Errorf("Worker endpoint %q contains path", newCfg.Network.WorkerEndpoint)
 		}
 
 		if endpoint.RawQuery != "" {
-			return fmt.Errorf("Worker endpoint %q contains query", s.Network.WorkerEndpoint)
+			return fmt.Errorf("Worker endpoint %q contains query", newCfg.Network.WorkerEndpoint)
 		}
 	}
 
