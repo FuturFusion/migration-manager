@@ -69,20 +69,19 @@ func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
 			}
 
 			newCfg.Network.Address = net.JoinHostPort(ip.String(), ports.HTTPSDefaultPort)
-			return &newCfg, nil
-		}
+		} else {
+			if host == "" {
+				host = "::"
+			}
 
-		if host == "" {
-			host = "::"
-		}
+			ip, err := parseIP(host)
+			if err != nil {
+				return nil, err
+			}
 
-		ip, err := parseIP(host)
-		if err != nil {
-			return nil, err
-		}
-
-		if port == "" {
-			newCfg.Network.Address = net.JoinHostPort(ip.String(), ports.HTTPSDefaultPort)
+			if port == "" {
+				newCfg.Network.Address = net.JoinHostPort(ip.String(), ports.HTTPSDefaultPort)
+			}
 		}
 	}
 
