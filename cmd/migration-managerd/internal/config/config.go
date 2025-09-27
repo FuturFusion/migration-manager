@@ -69,20 +69,37 @@ func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
 			}
 
 			newCfg.Network.Address = net.JoinHostPort(ip.String(), ports.HTTPSDefaultPort)
-			return &newCfg, nil
-		}
+		} else {
+			if host == "" {
+				host = "::"
+			}
 
-		if host == "" {
-			host = "::"
-		}
+			ip, err := parseIP(host)
+			if err != nil {
+				return nil, err
+			}
 
-		ip, err := parseIP(host)
+			if port == "" {
+				newCfg.Network.Address = net.JoinHostPort(ip.String(), ports.HTTPSDefaultPort)
+			}
+		}
+	}
+
+	if newCfg.Network.Address != "" && newCfg.Network.WorkerEndpoint != "" {
+		endpoint, err := url.ParseRequestURI(newCfg.Network.WorkerEndpoint)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Failed to parse worker endpoint %q: %w", newCfg.Network.WorkerEndpoint, err)
 		}
 
-		if port == "" {
-			newCfg.Network.Address = net.JoinHostPort(ip.String(), ports.HTTPSDefaultPort)
+		// Assign the network address port if none is set on the worker endpoint.
+		if endpoint.Port() == "" {
+			_, port, err := net.SplitHostPort(newCfg.Network.Address)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to parse host:port of network address %q: %w", newCfg.Network.Address, err)
+			}
+
+			endpoint.Host = net.JoinHostPort(endpoint.Hostname(), port)
+			newCfg.Network.WorkerEndpoint = endpoint.String()
 		}
 	}
 
