@@ -567,7 +567,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 	changedOpenFGA := init || newCfg.Security.OpenFGA != oldCfg.Security.OpenFGA || !slices.Equal(newCfg.Security.TrustedTLSClientCertFingerprints, oldCfg.Security.TrustedTLSClientCertFingerprints)
 
 	updateHandlers := func(applyCfg api.SystemConfig) error {
-		err := config.Validate(applyCfg)
+		err := config.Validate(applyCfg, oldCfg)
 		if err != nil {
 			return err
 		}
