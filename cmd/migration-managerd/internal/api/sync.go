@@ -473,6 +473,13 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 					}
 
 					if existingProps.Segment.Name != "" && newProps.SegmentPath != "" {
+						slog.Info("Not syncing NSX network due to missing NSX configuration", slog.String("source", dbNetwork.Source), slog.String("identifier", dbNetwork.Identifier), slog.String("location", dbNetwork.Location))
+						// Also remove the source network entry so that the network is ignored.
+						_, ok := srcNetworks[dbNetwork.Identifier]
+						if ok {
+							delete(srcNetworks, dbNetwork.Identifier)
+						}
+
 						continue
 					}
 				}
