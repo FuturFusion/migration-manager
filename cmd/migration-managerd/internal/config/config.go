@@ -132,8 +132,15 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 			return fmt.Errorf("Failed to determine host for worker endpoint %q", newCfg.Network.WorkerEndpoint)
 		}
 
-		if endpoint.Port() == "" {
-			return fmt.Errorf("Failed to determine port for worker endpoint %q", newCfg.Network.WorkerEndpoint)
+		if endpoint.Port() != "" {
+			portInt, err := strconv.Atoi(endpoint.Port())
+			if err != nil {
+				return fmt.Errorf("Worker endpoint port %q is invalid: %w", endpoint.Port(), err)
+			}
+
+			if portInt < 1 || portInt > 0xffff {
+				return fmt.Errorf("Worker endpoint port %d is invalid", portInt)
+			}
 		}
 
 		if endpoint.Path != "" {
