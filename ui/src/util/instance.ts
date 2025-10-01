@@ -1,6 +1,12 @@
 import { Instance } from "types/instance";
 import { formatDate } from "util/date";
 
+export enum OSType {
+  Fortigate = "fortigate",
+  Linux = "linux",
+  Windows = "windows",
+}
+
 export const hasOverride = (item: Instance | undefined) => {
   if (!item) {
     return false;
