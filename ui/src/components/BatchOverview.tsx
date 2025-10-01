@@ -80,6 +80,30 @@ const BatchOverview = () => {
         </div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">Allow unknown os</div>
+        <div className="col-10 detail-table-cell">
+          {batch?.instance_restriction_overrides.allow_unknown_os
+            ? "Yes"
+            : "No"}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Allow no IPv4</div>
+        <div className="col-10 detail-table-cell">
+          {batch?.instance_restriction_overrides.allow_no_ipv4 ? "Yes" : "No"}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">
+          Allow no background import
+        </div>
+        <div className="col-10 detail-table-cell">
+          {batch?.instance_restriction_overrides.allow_no_background_import
+            ? "Yes"
+            : "No"}
+        </div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Migration windows</div>
         <div className="col-10 detail-table-cell">
           <Table borderless size="sm">

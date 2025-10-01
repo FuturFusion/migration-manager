@@ -83,6 +83,11 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
     post_migration_retries: 5,
     placement_scriptlet: "",
     rerun_scriptlets: false,
+    instance_restriction_overrides: {
+      allow_unknown_os: false,
+      allow_no_ipv4: false,
+      allow_no_background_import: false,
+    },
   };
 
   if (batch) {
@@ -105,6 +110,12 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
       post_migration_retries: batch.post_migration_retries,
       placement_scriptlet: batch.placement_scriptlet,
       rerun_scriptlets: batch.rerun_scriptlets,
+      instance_restriction_overrides: {
+        allow_unknown_os: batch.instance_restriction_overrides.allow_unknown_os,
+        allow_no_ipv4: batch.instance_restriction_overrides.allow_no_ipv4,
+        allow_no_background_import:
+          batch.instance_restriction_overrides.allow_no_background_import,
+      },
     };
   }
 
@@ -323,6 +334,70 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
                 !!formik.errors.rerun_scriptlets &&
                 formik.touched.rerun_scriptlets
               }
+            >
+              <option value="false">no</option>
+              <option value="true">yes</option>
+            </Form.Select>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="allow_unknown_os">
+            <Form.Label>Allow unknown os</Form.Label>
+            <Form.Select
+              name="instance_restriction_overrides.allow_unknown_os"
+              value={
+                formik.values.instance_restriction_overrides.allow_unknown_os
+                  ? "true"
+                  : "false"
+              }
+              onChange={(e) =>
+                formik.setFieldValue(
+                  "instance_restriction_overrides.allow_unknown_os",
+                  e.target.value === "true",
+                )
+              }
+              onBlur={formik.handleBlur}
+            >
+              <option value="false">no</option>
+              <option value="true">yes</option>
+            </Form.Select>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="allow_no_ipv4">
+            <Form.Label>Allow no IPv4</Form.Label>
+            <Form.Select
+              name="instance_restriction_overrides.allow_no_ipv4"
+              value={
+                formik.values.instance_restriction_overrides.allow_no_ipv4
+                  ? "true"
+                  : "false"
+              }
+              onChange={(e) =>
+                formik.setFieldValue(
+                  "instance_restriction_overrides.allow_no_ipv4",
+                  e.target.value === "true",
+                )
+              }
+              onBlur={formik.handleBlur}
+            >
+              <option value="false">no</option>
+              <option value="true">yes</option>
+            </Form.Select>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="allow_no_background_import">
+            <Form.Label>Allow no background import</Form.Label>
+            <Form.Select
+              name="instance_restriction_overrides.allow_no_background_import"
+              value={
+                formik.values.instance_restriction_overrides
+                  .allow_no_background_import
+                  ? "true"
+                  : "false"
+              }
+              onChange={(e) =>
+                formik.setFieldValue(
+                  "instance_restriction_overrides.allow_no_background_import",
+                  e.target.value === "true",
+                )
+              }
+              onBlur={formik.handleBlur}
             >
               <option value="false">no</option>
               <option value="true">yes</option>
