@@ -53,5 +53,10 @@ test("renders and submit BatchForm", async () => {
     post_migration_retries: 5,
     rerun_scriptlets: false,
     placement_scriptlet: "",
+    instance_restriction_overrides: {
+      allow_no_background_import: false,
+      allow_no_ipv4: false,
+      allow_unknown_os: false,
+    },
   });
 });

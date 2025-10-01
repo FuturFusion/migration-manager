@@ -12,6 +12,12 @@ export interface MigrationWindow {
   lockout: string | null;
 }
 
+export interface InstanceRestrictionOverride {
+  allow_unknown_os: bool;
+  allow_no_ipv4: bool;
+  allow_no_background_import: bool;
+}
+
 export interface Batch {
   include_expression: string;
   name: string;
@@ -26,6 +32,7 @@ export interface Batch {
   post_migration_retries: number;
   placement_scriptlet: string;
   rerun_scriptlets: boolean;
+  instance_restriction_overrides: InstanceRestrictionOverride;
 }
 
 export interface BatchFormValues {
@@ -41,4 +48,5 @@ export interface BatchFormValues {
   post_migration_retries: number;
   placement_scriptlet: string;
   rerun_scriptlets: boolean;
+  instance_restriction_overrides: InstanceRestrictionOverride;
 }
