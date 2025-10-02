@@ -103,7 +103,7 @@ func artifactPut(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	var apiArtifact api.ArtifactProperties
+	var apiArtifact api.ArtifactPut
 	err = json.NewDecoder(r.Body).Decode(&apiArtifact)
 	if err != nil {
 		return response.BadRequest(err)

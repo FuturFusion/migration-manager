@@ -16,7 +16,7 @@ type Artifact struct {
 
 	Type api.ArtifactType
 
-	Properties api.ArtifactProperties `db:"marshal=json"`
+	Properties api.ArtifactPut `db:"marshal=json"`
 
 	Files []string `db:"ignore"`
 }

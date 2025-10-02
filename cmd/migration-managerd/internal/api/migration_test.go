@@ -626,7 +626,7 @@ def placement(instance, batch):
 			require.NoError(t, os.WriteFile(filepath.Join(d.os.CacheDir, util.RawWorkerImage()), nil, 0o660))
 
 			if tc.hasVMwareSDK {
-				art := migration.Artifact{UUID: uuid.New(), Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactProperties{SourceType: api.SOURCETYPE_VMWARE}}
+				art := migration.Artifact{UUID: uuid.New(), Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactPut{SourceType: api.SOURCETYPE_VMWARE}}
 				_, err := d.artifact.Create(d.ShutdownCtx, art)
 				require.NoError(t, err)
 
@@ -635,7 +635,7 @@ def placement(instance, batch):
 			}
 
 			if tc.hasWindowsDriversArches != nil {
-				art := migration.Artifact{UUID: uuid.New(), Type: api.ARTIFACTTYPE_DRIVER, Properties: api.ArtifactProperties{OS: api.OSTYPE_WINDOWS, Architectures: tc.hasWindowsDriversArches}}
+				art := migration.Artifact{UUID: uuid.New(), Type: api.ARTIFACTTYPE_DRIVER, Properties: api.ArtifactPut{OS: api.OSTYPE_WINDOWS, Architectures: tc.hasWindowsDriversArches}}
 				_, err := d.artifact.Create(d.ShutdownCtx, art)
 				require.NoError(t, err)
 				require.NoError(t, os.MkdirAll(d.artifact.FileDirectory(art.UUID), 0o755))
@@ -643,7 +643,7 @@ def placement(instance, batch):
 			}
 
 			if tc.hasFortigateImageArches != nil {
-				art := migration.Artifact{UUID: uuid.New(), Type: api.ARTIFACTTYPE_OSIMAGE, Properties: api.ArtifactProperties{OS: api.OSTYPE_FORTIGATE, Architectures: tc.hasFortigateImageArches, Versions: []string{"7.4"}}}
+				art := migration.Artifact{UUID: uuid.New(), Type: api.ARTIFACTTYPE_OSIMAGE, Properties: api.ArtifactPut{OS: api.OSTYPE_FORTIGATE, Architectures: tc.hasFortigateImageArches, Versions: []string{"7.4"}}}
 				_, err := d.artifact.Create(d.ShutdownCtx, art)
 				require.NoError(t, err)
 				require.NoError(t, os.MkdirAll(d.artifact.FileDirectory(art.UUID), 0o755))

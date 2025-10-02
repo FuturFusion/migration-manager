@@ -25,10 +25,10 @@ type Artifact struct {
 type ArtifactPost struct {
 	Type ArtifactType `json:"type" yaml:"type"`
 
-	Properties ArtifactProperties `json:"properties" yaml:"properties"`
+	Properties ArtifactPut `json:"properties" yaml:"properties"`
 }
 
-type ArtifactProperties struct {
+type ArtifactPut struct {
 	// Description of the artifact.
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 
