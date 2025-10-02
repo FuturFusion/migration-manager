@@ -144,21 +144,11 @@ func artifactFilesPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	// If no explicit file name is given, use the default file name that we expect.
-	fileName := r.FormValue("name")
-	if fileName == "" {
-		fileName = defaultFileName
-	}
-
-	if fileName != defaultFileName {
-		return response.SmartError(fmt.Errorf("File %q not supported", fileName))
-	}
-
 	// lock the artifact for writing.
 	artifactLock.Lock()
 	defer artifactLock.Unlock()
 
-	err = d.artifact.WriteFile(art.UUID, fileName, r.Body)
+	err = d.artifact.WriteFile(art.UUID, defaultFileName, r.Body)
 	if err != nil {
 		return response.SmartError(err)
 	}
