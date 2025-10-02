@@ -256,7 +256,7 @@ func (c *cmdArtifactUpload) Run(cmd *cobra.Command, args []string) error {
 
 	data := api.ArtifactPost{
 		Type:       artType,
-		Properties: api.ArtifactProperties{},
+		Properties: api.ArtifactPut{},
 	}
 
 	if data.Type == api.ARTIFACTTYPE_OSIMAGE || data.Type == api.ARTIFACTTYPE_DRIVER {
