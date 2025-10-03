@@ -11,6 +11,8 @@ import (
 	"github.com/lxc/incus/v6/shared/util"
 )
 
+const VMwareSDKPath = "/tmp/vmware/vmware-vix-disklib-distrib"
+
 func DoMount(device string, path string, options []string) error {
 	if !util.PathExists(path) {
 		err := os.MkdirAll(path, 0o755)

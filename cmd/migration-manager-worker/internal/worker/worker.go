@@ -221,13 +221,13 @@ func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) e
 	defer cleanup()
 
 	// unpack the vmware SDK.
-	err = util.UnpackTarball("/tmp/vmware", sdkFile)
+	err = util.UnpackTarball(filepath.Dir(worker.VMwareSDKPath), sdkFile)
 	if err != nil {
 		return fmt.Errorf("Failed to unpack SDK: %w", err)
 	}
 
 	// Do the actual import.
-	return w.source.ImportDisks(ctx, cmd.Location, func(status string, isImportant bool) {
+	return w.source.ImportDisks(ctx, cmd.Location, worker.VMwareSDKPath, func(status string, isImportant bool) {
 		slog.Info(status) //nolint:sloglint
 
 		// Only send updates back to the server if important or once every 5 seconds.

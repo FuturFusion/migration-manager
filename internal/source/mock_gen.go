@@ -43,7 +43,7 @@ var _ Source = &SourceMock{}
 //			GetNameFunc: func() string {
 //				panic("mock out the GetName method")
 //			},
-//			ImportDisksFunc: func(ctx context.Context, vmName string, statusCallback func(string, bool)) error {
+//			ImportDisksFunc: func(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error {
 //				panic("mock out the ImportDisks method")
 //			},
 //			IsConnectedFunc: func() bool {
@@ -84,7 +84,7 @@ type SourceMock struct {
 	GetNameFunc func() string
 
 	// ImportDisksFunc mocks the ImportDisks method.
-	ImportDisksFunc func(ctx context.Context, vmName string, statusCallback func(string, bool)) error
+	ImportDisksFunc func(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error
 
 	// IsConnectedFunc mocks the IsConnected method.
 	IsConnectedFunc func() bool
@@ -138,6 +138,8 @@ type SourceMock struct {
 			Ctx context.Context
 			// VmName is the vmName argument value.
 			VmName string
+			// SdkPath is the sdkPath argument value.
+			SdkPath string
 			// StatusCallback is the statusCallback argument value.
 			StatusCallback func(string, bool)
 		}
@@ -393,23 +395,25 @@ func (mock *SourceMock) GetNameCalls() []struct {
 }
 
 // ImportDisks calls ImportDisksFunc.
-func (mock *SourceMock) ImportDisks(ctx context.Context, vmName string, statusCallback func(string, bool)) error {
+func (mock *SourceMock) ImportDisks(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error {
 	if mock.ImportDisksFunc == nil {
 		panic("SourceMock.ImportDisksFunc: method is nil but Source.ImportDisks was just called")
 	}
 	callInfo := struct {
 		Ctx            context.Context
 		VmName         string
+		SdkPath        string
 		StatusCallback func(string, bool)
 	}{
 		Ctx:            ctx,
 		VmName:         vmName,
+		SdkPath:        sdkPath,
 		StatusCallback: statusCallback,
 	}
 	mock.lockImportDisks.Lock()
 	mock.calls.ImportDisks = append(mock.calls.ImportDisks, callInfo)
 	mock.lockImportDisks.Unlock()
-	return mock.ImportDisksFunc(ctx, vmName, statusCallback)
+	return mock.ImportDisksFunc(ctx, vmName, sdkPath, statusCallback)
 }
 
 // ImportDisksCalls gets all the calls that were made to ImportDisks.
@@ -419,11 +423,13 @@ func (mock *SourceMock) ImportDisks(ctx context.Context, vmName string, statusCa
 func (mock *SourceMock) ImportDisksCalls() []struct {
 	Ctx            context.Context
 	VmName         string
+	SdkPath        string
 	StatusCallback func(string, bool)
 } {
 	var calls []struct {
 		Ctx            context.Context
 		VmName         string
+		SdkPath        string
 		StatusCallback func(string, bool)
 	}
 	mock.lockImportDisks.RLock()
