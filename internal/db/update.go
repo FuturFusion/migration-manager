@@ -119,6 +119,136 @@ var updates = map[int]schema.Update{
 	12: updateFromV11,
 	13: updateFromV12,
 	14: updateFromV13,
+	15: updateFromV14,
+}
+
+func updateFromV14(ctx context.Context, tx *sql.Tx) error {
+	// First fetch the fields to consolidate.
+	rows, err := tx.QueryContext(ctx, `SELECT id, default_target, default_target_project, default_storage_pool, post_migration_retries, rerun_scriptlets, placement_scriptlet, restriction_overrides FROM batches`)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = rows.Close() }()
+	type batchData struct {
+		id                   int64
+		target               string
+		project              string
+		pool                 string
+		retries              int
+		rerunScriptlets      bool
+		scriptlet            string
+		restrictionOverrides string
+	}
+
+	batches := []batchData{}
+	for rows.Next() {
+		data := batchData{}
+		err := rows.Scan(&data.id, &data.target, &data.project, &data.pool, &data.retries, &data.rerunScriptlets, &data.scriptlet, &data.restrictionOverrides)
+		if err != nil {
+			return err
+		}
+
+		batches = append(batches, data)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return err
+	}
+
+	// Insert the minimum set of fields.
+	_, err = tx.ExecContext(ctx, `CREATE TABLE batches_new (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name               TEXT NOT NULL,
+    status             TEXT NOT NULL,
+    status_message     TEXT NOT NULL,
+    include_expression TEXT NOT NULL,
+    constraints        TEXT NOT NULL,
+    start_date         DATETIME NOT NULL,
+    defaults           TEXT NOT NULL,
+    config             TEXT NOT NULL,
+    UNIQUE (name)
+);
+
+    INSERT INTO batches_new (id, name, status, status_message, include_expression, constraints, start_date, defaults, config)
+    SELECT id, name, status, status_message, include_expression, constraints, start_date, '{}', '{}' FROM batches;
+DROP TABLE batches;
+ALTER TABLE batches_new RENAME TO batches;
+
+CREATE TABLE queue_new (
+    id                               INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    instance_id                      INTEGER NOT NULL,
+    batch_id                         INTEGER NOT NULL,
+    migration_status                 TEXT NOT NULL,
+    migration_status_message         TEXT NOT NULL,
+    import_stage                     TEXT NOT NULL,
+    secret_token                     TEXT NOT NULL,
+    last_worker_status               INTEGER NOT NULL,
+    migration_window_id              INTEGER,
+    placement                        TEXT NOT NULL,
+    last_background_sync             DATETIME NOT NULL,
+    FOREIGN KEY(migration_window_id) REFERENCES migration_windows(id),
+    FOREIGN KEY(instance_id)         REFERENCES instances(id) ON DELETE CASCADE,
+    FOREIGN KEY(batch_id)            REFERENCES batches(id) ON DELETE CASCADE,
+    UNIQUE (instance_id)
+);
+
+    INSERT INTO queue_new (id, instance_id, batch_id, migration_status, migration_status_message, import_stage, secret_token, last_worker_status, migration_window_id, placement, last_background_sync)
+    SELECT id, instance_id, batch_id, migration_status, migration_status_message, import_stage, secret_token, last_worker_status, migration_window_id, placement, ? FROM queue;
+DROP TABLE queue;
+ALTER TABLE queue_new RENAME TO queue;
+`, time.Time{})
+	if err != nil {
+		return err
+	}
+
+	// Update the table with the consolidated config according to the pre-fetched data.
+	for _, b := range batches {
+		config := api.BatchConfig{
+			RerunScriptlets:          b.rerunScriptlets,
+			PostMigrationRetries:     b.retries,
+			RestrictionOverrides:     api.InstanceRestrictionOverride{},
+			BackgroundSyncInterval:   (10 * time.Minute).String(),
+			FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+			PlacementScriptlet:       b.scriptlet,
+		}
+
+		placement := api.BatchDefaults{
+			Placement: api.BatchPlacement{
+				Target:        b.target,
+				TargetProject: b.project,
+				StoragePool:   b.pool,
+			},
+		}
+
+		err := json.Unmarshal([]byte(b.restrictionOverrides), &config.RestrictionOverrides)
+		if err != nil {
+			return err
+		}
+
+		configBytes, err := json.Marshal(config)
+		if err != nil {
+			return err
+		}
+
+		placementBytes, err := json.Marshal(placement)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.ExecContext(ctx, `UPDATE batches SET defaults = ?, config = ? WHERE id = ?`, string(placementBytes), string(configBytes), b.id)
+		if err != nil {
+			return err
+		}
+	}
+
+	return err
 }
 
 func updateFromV13(ctx context.Context, tx *sql.Tx) error {
