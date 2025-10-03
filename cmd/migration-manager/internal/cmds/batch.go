@@ -113,22 +113,22 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(targets) == 1 {
-		b.DefaultTarget = targets[0]
-		fmt.Printf("Using target %q\n", b.DefaultTarget)
+		b.Defaults.Placement.Target = targets[0]
+		fmt.Printf("Using target %q\n", b.Defaults.Placement.Target)
 	} else {
 		defaultTargetHint := "(" + strings.Join(targets, ", ") + "): "
-		b.DefaultTarget, err = c.global.Asker.AskChoice("What target should this batch use? "+defaultTargetHint, targets, "")
+		b.Defaults.Placement.Target, err = c.global.Asker.AskChoice("What target should this batch use? "+defaultTargetHint, targets, "")
 		if err != nil {
 			return err
 		}
 	}
 
-	b.DefaultTargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? ", "", validate.IsNotEmpty)
+	b.Defaults.Placement.TargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? ", "", validate.IsNotEmpty)
 	if err != nil {
 		return err
 	}
 
-	b.DefaultStoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? ", "", validate.IsNotEmpty)
+	b.Defaults.Placement.StoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? ", "", validate.IsNotEmpty)
 	if err != nil {
 		return err
 	}
@@ -143,7 +143,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	b.PostMigrationRetries = int(retries)
+	b.Config.PostMigrationRetries = int(retries)
 
 	addWindows := true
 	for addWindows {
@@ -301,7 +301,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, b := range batches {
-		data = append(data, []string{b.Name, string(b.Status), b.StatusMessage, b.DefaultTarget, b.DefaultTargetProject, b.DefaultStoragePool, b.IncludeExpression, strconv.Itoa(len(b.MigrationWindows))})
+		data = append(data, []string{b.Name, string(b.Status), b.StatusMessage, b.Defaults.Placement.Target, b.Defaults.Placement.TargetProject, b.Defaults.Placement.StoragePool, b.IncludeExpression, strconv.Itoa(len(b.MigrationWindows))})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
@@ -418,13 +418,13 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	// Show the details
 	cmd.Printf("Batch: %s\n", b.Name)
 	cmd.Printf("  - Status:             %s\n", b.StatusMessage)
-	cmd.Printf("  - Target:             %s\n", b.DefaultTarget)
-	if b.DefaultTargetProject != "" {
-		cmd.Printf("  - Project:            %s\n", b.DefaultTargetProject)
+	cmd.Printf("  - Target:             %s\n", b.Defaults.Placement.Target)
+	if b.Defaults.Placement.TargetProject != "" {
+		cmd.Printf("  - Project:            %s\n", b.Defaults.Placement.TargetProject)
 	}
 
-	if b.DefaultStoragePool != "" {
-		cmd.Printf("  - Storage pool:       %s\n", b.DefaultStoragePool)
+	if b.Defaults.Placement.StoragePool != "" {
+		cmd.Printf("  - Storage pool:       %s\n", b.Defaults.Placement.StoragePool)
 	}
 
 	if b.IncludeExpression != "" {
