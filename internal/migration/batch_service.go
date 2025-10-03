@@ -54,8 +54,8 @@ func (s batchService) Create(ctx context.Context, batch Batch) (Batch, error) {
 		return Batch{}, err
 	}
 
-	if batch.PlacementScriptlet != "" {
-		err := scriptlet.BatchPlacementSet(s.scriptletLoader, batch.PlacementScriptlet, batch.Name)
+	if batch.Config.PlacementScriptlet != "" {
+		err := scriptlet.BatchPlacementSet(s.scriptletLoader, batch.Config.PlacementScriptlet, batch.Name)
 		if err != nil {
 			return Batch{}, err
 		}
@@ -153,10 +153,10 @@ func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueS
 		return fmt.Errorf("Cannot rename running batch %q: %w", oldBatch.Name, ErrOperationNotPermitted)
 	}
 
-	if oldBatch.DefaultStoragePool != newBatch.DefaultStoragePool ||
-		oldBatch.DefaultTarget != newBatch.DefaultTarget ||
-		oldBatch.DefaultTargetProject != newBatch.DefaultTargetProject ||
-		oldBatch.PlacementScriptlet != newBatch.PlacementScriptlet {
+	if oldBatch.Defaults.Placement.StoragePool != newBatch.Defaults.Placement.StoragePool ||
+		oldBatch.Defaults.Placement.Target != newBatch.Defaults.Placement.Target ||
+		oldBatch.Defaults.Placement.TargetProject != newBatch.Defaults.Placement.TargetProject ||
+		oldBatch.Config.PlacementScriptlet != newBatch.Config.PlacementScriptlet {
 		return fmt.Errorf("Cannot placement of running batch %q: %w", oldBatch.Name, ErrOperationNotPermitted)
 	}
 
@@ -201,7 +201,7 @@ func (s batchService) Update(ctx context.Context, queueSvc QueueService, name st
 
 		// Only modify instances and placement if the batch is not running.
 		if oldBatch.Status != api.BATCHSTATUS_RUNNING || util.InTestingMode() {
-			if oldBatch.PlacementScriptlet != batch.PlacementScriptlet && batch.PlacementScriptlet != "" {
+			if oldBatch.Config.PlacementScriptlet != batch.Config.PlacementScriptlet && batch.Config.PlacementScriptlet != "" {
 				updateScriptlet = true
 			}
 
@@ -215,7 +215,7 @@ func (s batchService) Update(ctx context.Context, queueSvc QueueService, name st
 	}
 
 	if updateScriptlet {
-		err := scriptlet.BatchPlacementSet(s.scriptletLoader, batch.PlacementScriptlet, batch.Name)
+		err := scriptlet.BatchPlacementSet(s.scriptletLoader, batch.Config.PlacementScriptlet, batch.Name)
 		if err != nil {
 			return err
 		}
@@ -515,7 +515,7 @@ func (s batchService) GetEarliestWindow(ctx context.Context, batch string) (*Mig
 }
 
 func (s batchService) DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, migrationWindows MigrationWindows) (*api.Placement, error) {
-	if batch.PlacementScriptlet == "" {
+	if batch.Config.PlacementScriptlet == "" {
 		return batch.GetIncusPlacement(instance, usedNetworks, api.Placement{})
 	}
 
