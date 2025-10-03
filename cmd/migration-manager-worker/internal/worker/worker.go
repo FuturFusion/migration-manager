@@ -200,6 +200,13 @@ func (w *Worker) importDisks(ctx context.Context, cmd api.WorkerCommand) {
 		return
 	}
 
+	slog.Info("Performing dry-run of post-import steps")
+	err = w.postImportTasks(ctx, cmd, true)
+	if err != nil {
+		w.sendErrorResponse(err)
+		return
+	}
+
 	slog.Info("Disk import completed successfully")
 	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Disk import completed successfully")
 }
