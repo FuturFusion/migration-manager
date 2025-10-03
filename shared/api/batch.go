@@ -112,6 +112,12 @@ type BatchConfig struct {
 
 	// Overrides to allow migrating instances that are otherwise restricted.
 	RestrictionOverrides InstanceRestrictionOverride `json:"instance_restriction_overrides" yaml:"instance_restriction_overrides"`
+
+	// Interval over which background sync will be rerun until the migration window has begun.
+	BackgroundSyncInterval string `json:"background_sync_interval" yaml:"background_sync_interval"`
+
+	// The minimum amount of time before the migration window begins that background sync can be re-attempted.
+	FinalBackgroundSyncLimit string `json:"final_background_sync_limit" yaml:"final_background_sync_limit"`
 }
 
 // MigrationWindow defines the scheduling of a batch migration.

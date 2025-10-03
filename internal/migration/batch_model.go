@@ -204,6 +204,28 @@ func (b Batch) Validate() error {
 		}
 	}
 
+	syncInterval, err := time.ParseDuration(b.Config.BackgroundSyncInterval)
+	if err != nil {
+		return NewValidationErrf("Invalid background sync interval %q: %v", b.Config.BackgroundSyncInterval, err)
+	}
+
+	finalSyncLimit, err := time.ParseDuration(b.Config.FinalBackgroundSyncLimit)
+	if err != nil {
+		return NewValidationErrf("Invalid final background sync limit %q: %v", b.Config.FinalBackgroundSyncLimit, err)
+	}
+
+	if finalSyncLimit > syncInterval {
+		return NewValidationErrf("Final background sync limit %q cannot be greater than the background sync interval %q", b.Config.FinalBackgroundSyncLimit, b.Config.BackgroundSyncInterval)
+	}
+
+	if finalSyncLimit <= 0 {
+		return NewValidationErrf("Final background sync limit %q must be greater than 0", b.Config.FinalBackgroundSyncLimit)
+	}
+
+	if syncInterval <= 0 {
+		return NewValidationErrf("Background sync interval %q must be greater than 0", b.Config.FinalBackgroundSyncLimit)
+	}
+
 	return nil
 }
 
