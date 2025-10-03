@@ -11,7 +11,6 @@ type InstanceProperties struct {
 	UUID             uuid.UUID `json:"uuid"              yaml:"uuid"              expr:"uuid"`
 	Name             string    `json:"name"              yaml:"name"              expr:"name"`
 	Location         string    `json:"location"          yaml:"location"          expr:"location"`
-	OS               string    `json:"os"                yaml:"os"                expr:"os"`
 	OSVersion        string    `json:"os_version"        yaml:"os_version"        expr:"os_version"`
 	SecureBoot       bool      `json:"secure_boot"       yaml:"secure_boot"       expr:"secure_boot"`
 	LegacyBoot       bool      `json:"legacy_boot"       yaml:"legacy_boot"       expr:"legacy_boot"`
@@ -31,6 +30,7 @@ type InstancePropertiesConfigurable struct {
 	CPUs        int64             `json:"cpus"                  yaml:"cpus"                  expr:"cpus"`
 	Memory      int64             `json:"memory"                yaml:"memory"                expr:"memory"`
 	Config      map[string]string `json:"config"                yaml:"config"                expr:"config"`
+	OS          string            `json:"os"                    yaml:"os"                    expr:"os"`
 }
 
 // InstancePropertiesNIC are all properties supported by instance NICs.
@@ -60,6 +60,10 @@ type InstancePropertiesSnapshot struct {
 func (i *InstanceProperties) Apply(cfg InstancePropertiesConfigurable) {
 	if cfg.Description != "" {
 		i.Description = cfg.Description
+	}
+
+	if cfg.OS != "" {
+		i.OS = cfg.OS
 	}
 
 	if cfg.CPUs != 0 {

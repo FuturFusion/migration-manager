@@ -173,9 +173,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "24.04",
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -218,9 +218,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "24.04",
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -264,9 +264,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "24.04",
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -309,9 +309,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "24.04",
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -352,9 +352,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "24.04",
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -397,9 +397,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "24.04",
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -437,10 +437,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:         "/some/instance/A",
-					OS:               "ubuntu",
-					OSVersion:        "24.04",
-					BackgroundImport: true,
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
+					BackgroundImport:               true,
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -483,10 +483,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:         "/some/instance/A",
-					OS:               "ubuntu",
-					OSVersion:        "24.04",
-					BackgroundImport: true,
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
+					BackgroundImport:               true,
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -530,10 +530,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:         "/some/instance/A",
-					OS:               "ubuntu",
-					OSVersion:        "24.04",
-					BackgroundImport: false,
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
+					BackgroundImport:               false,
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -577,10 +577,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:         "/some/instance/A",
-					OS:               "ubuntu",
-					OSVersion:        "24.04",
-					BackgroundImport: true,
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
+					BackgroundImport:               true,
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -624,10 +624,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:         "/some/instance/A",
-					OS:               "ubuntu",
-					OSVersion:        "24.04",
-					BackgroundImport: false,
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
+					BackgroundImport:               false,
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -675,10 +675,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:         "/some/instance/A",
-					OS:               "ubuntu",
-					OSVersion:        "24.04",
-					BackgroundImport: true,
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
+					BackgroundImport:               true,
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -721,10 +721,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:         "/some/instance/A",
-					OS:               "ubuntu",
-					OSVersion:        "24.04",
-					BackgroundImport: true,
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
+					BackgroundImport:               true,
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -767,10 +767,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:         "/some/instance/A",
-					OS:               "ubuntu",
-					OSVersion:        "24.04",
-					BackgroundImport: true,
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
+					BackgroundImport:               true,
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -813,10 +813,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:         "/some/instance/A",
-					OS:               "ubuntu",
-					OSVersion:        "24.04",
-					BackgroundImport: true,
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
+					BackgroundImport:               true,
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -870,10 +870,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					Name:      "A",
-					OS:        "ubuntu",
-					OSVersion: "24.04",
+					Location:                       "/some/instance/A",
+					Name:                           "A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
 				},
 			},
 			sourceSvcGetByIDErr: boom.Error,
@@ -895,10 +895,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					Name:      "A",
-					OS:        "ubuntu",
-					OSVersion: "24.04",
+					Location:                       "/some/instance/A",
+					Name:                           "A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -919,10 +919,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					Name:      "A",
-					OS:        "ubuntu",
-					OSVersion: "24.04",
+					Location:                       "/some/instance/A",
+					Name:                           "A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -944,10 +944,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				UUID:   uuidA,
 				Source: "one",
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					Name:      "A",
-					OS:        "ubuntu",
-					OSVersion: "24.04",
+					Location:                       "/some/instance/A",
+					Name:                           "A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -982,10 +982,10 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source: "one",
 				UUID:   uuidA,
 				Properties: api.InstanceProperties{
-					Location:         "/some/instance/A",
-					OS:               "ubuntu",
-					OSVersion:        "24.04",
-					BackgroundImport: true,
+					Location:                       "/some/instance/A",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu"},
+					OSVersion:                      "24.04",
+					BackgroundImport:               true,
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
