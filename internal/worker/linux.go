@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,7 +43,39 @@ type LVSOutput struct {
 
 const chrootMountPath string = "/run/mount/target/"
 
-func LinuxDoPostMigrationConfig(ctx context.Context, distro string, majorVersion int) error {
+func LinuxDoPostMigrationConfig(ctx context.Context, osName string, dryRun bool) error {
+	// Get the disto's major version, if possible.
+	majorVersion := -1
+	// VMware API doesn't distinguish openSUSE and Ubuntu versions.
+	if !strings.Contains(strings.ToLower(osName), "opensuse") && !strings.Contains(strings.ToLower(osName), "ubuntu") {
+		majorVersionRegex := regexp.MustCompile(`^\w+?(\d+)(_64)?$`)
+		matches := majorVersionRegex.FindStringSubmatch(osName)
+		if len(matches) > 1 {
+			majorVersion, _ = strconv.Atoi(majorVersionRegex.FindStringSubmatch(osName)[1])
+		}
+	}
+
+	distro := ""
+	if strings.Contains(strings.ToLower(osName), "centos") {
+		distro = "CentOS"
+	} else if strings.Contains(strings.ToLower(osName), "debian") {
+		distro = "Debian"
+	} else if strings.Contains(strings.ToLower(osName), "opensuse") {
+		distro = "openSUSE"
+	} else if strings.Contains(strings.ToLower(osName), "oracle") {
+		distro = "Oracle"
+	} else if strings.Contains(strings.ToLower(osName), "rhel") {
+		distro = "RHEL"
+	} else if strings.Contains(strings.ToLower(osName), "sles") {
+		distro = "SUSE"
+	} else if strings.Contains(strings.ToLower(osName), "ubuntu") {
+		distro = "Ubuntu"
+	}
+
+	if distro == "" {
+		return nil
+	}
+
 	slog.Info("Preparing to perform post-migration configuration of VM")
 
 	// Determine the root partition.
@@ -186,38 +219,6 @@ func ActivateVG() error {
 func DeactivateVG() error {
 	_, err := subprocess.RunCommand("vgchange", "-a", "n")
 	return err
-}
-
-func DetermineWindowsPartitions() (base string, recovery string, err error) {
-	partitions, err := internalUtil.ScanPartitions("")
-	if err != nil {
-		return "", "", err
-	}
-
-	for _, dev := range partitions.BlockDevices {
-		if dev.Serial != "incus_root" {
-			continue
-		}
-
-		for _, child := range dev.Children {
-			if child.PartLabel == "Basic data partition" && child.PartTypeName == "Microsoft basic data" {
-				base = child.Name
-			} else if child.PartTypeName == "Windows recovery environment" {
-				recovery = child.Name
-			}
-		}
-	}
-
-	if base == "" || recovery == "" {
-		b, err := json.Marshal(partitions)
-		if err != nil {
-			return "", "", err
-		}
-
-		return "", "", fmt.Errorf("Could not determine partitions: %v", string(b))
-	}
-
-	return base, recovery, nil
 }
 
 func determineRootPartition(looksLikeRootPartition func(partition string, opts []string) bool) (string, int, []string, error) {
