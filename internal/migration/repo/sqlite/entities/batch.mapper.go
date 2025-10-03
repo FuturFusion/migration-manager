@@ -13,27 +13,27 @@ import (
 )
 
 var batchObjects = RegisterStmt(`
-SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.default_target, batches.default_target_project, batches.default_storage_pool, batches.rerun_scriptlets, batches.placement_scriptlet, batches.post_migration_retries, batches.constraints, batches.restriction_overrides
+SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.constraints, batches.config, batches.defaults
   FROM batches
   ORDER BY batches.name
 `)
 
 var batchObjectsByID = RegisterStmt(`
-SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.default_target, batches.default_target_project, batches.default_storage_pool, batches.rerun_scriptlets, batches.placement_scriptlet, batches.post_migration_retries, batches.constraints, batches.restriction_overrides
+SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.constraints, batches.config, batches.defaults
   FROM batches
   WHERE ( batches.id = ? )
   ORDER BY batches.name
 `)
 
 var batchObjectsByName = RegisterStmt(`
-SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.default_target, batches.default_target_project, batches.default_storage_pool, batches.rerun_scriptlets, batches.placement_scriptlet, batches.post_migration_retries, batches.constraints, batches.restriction_overrides
+SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.constraints, batches.config, batches.defaults
   FROM batches
   WHERE ( batches.name = ? )
   ORDER BY batches.name
 `)
 
 var batchObjectsByStatus = RegisterStmt(`
-SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.default_target, batches.default_target_project, batches.default_storage_pool, batches.rerun_scriptlets, batches.placement_scriptlet, batches.post_migration_retries, batches.constraints, batches.restriction_overrides
+SELECT batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.constraints, batches.config, batches.defaults
   FROM batches
   WHERE ( batches.status = ? )
   ORDER BY batches.name
@@ -58,13 +58,13 @@ SELECT batches.id FROM batches
 `)
 
 var batchCreate = RegisterStmt(`
-INSERT INTO batches (name, status, status_message, include_expression, start_date, default_target, default_target_project, default_storage_pool, rerun_scriptlets, placement_scriptlet, post_migration_retries, constraints, restriction_overrides)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO batches (name, status, status_message, include_expression, start_date, constraints, config, defaults)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 `)
 
 var batchUpdate = RegisterStmt(`
 UPDATE batches
-  SET name = ?, status = ?, status_message = ?, include_expression = ?, start_date = ?, default_target = ?, default_target_project = ?, default_storage_pool = ?, rerun_scriptlets = ?, placement_scriptlet = ?, post_migration_retries = ?, constraints = ?, restriction_overrides = ?
+  SET name = ?, status = ?, status_message = ?, include_expression = ?, start_date = ?, constraints = ?, config = ?, defaults = ?
  WHERE id = ?
 `)
 
@@ -156,7 +156,7 @@ func GetBatch(ctx context.Context, db dbtx, name string) (_ *migration.Batch, _e
 // batchColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Batch entity.
 func batchColumns() string {
-	return "batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.default_target, batches.default_target_project, batches.default_storage_pool, batches.rerun_scriptlets, batches.placement_scriptlet, batches.post_migration_retries, batches.constraints, batches.restriction_overrides"
+	return "batches.id, batches.name, batches.status, batches.status_message, batches.include_expression, batches.start_date, batches.constraints, batches.config, batches.defaults"
 }
 
 // getBatches can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -166,8 +166,9 @@ func getBatches(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migration.B
 	dest := func(scan func(dest ...any) error) error {
 		b := migration.Batch{}
 		var constraintsStr string
-		var restrictionOverridesStr string
-		err := scan(&b.ID, &b.Name, &b.Status, &b.StatusMessage, &b.IncludeExpression, &b.StartDate, &b.DefaultTarget, &b.DefaultTargetProject, &b.DefaultStoragePool, &b.RerunScriptlets, &b.PlacementScriptlet, &b.PostMigrationRetries, &constraintsStr, &restrictionOverridesStr)
+		var configStr string
+		var defaultsStr string
+		err := scan(&b.ID, &b.Name, &b.Status, &b.StatusMessage, &b.IncludeExpression, &b.StartDate, &constraintsStr, &configStr, &defaultsStr)
 		if err != nil {
 			return err
 		}
@@ -177,7 +178,12 @@ func getBatches(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migration.B
 			return err
 		}
 
-		err = unmarshalJSON(restrictionOverridesStr, &b.RestrictionOverrides)
+		err = unmarshalJSON(configStr, &b.Config)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(defaultsStr, &b.Defaults)
 		if err != nil {
 			return err
 		}
@@ -202,8 +208,9 @@ func getBatchesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]mig
 	dest := func(scan func(dest ...any) error) error {
 		b := migration.Batch{}
 		var constraintsStr string
-		var restrictionOverridesStr string
-		err := scan(&b.ID, &b.Name, &b.Status, &b.StatusMessage, &b.IncludeExpression, &b.StartDate, &b.DefaultTarget, &b.DefaultTargetProject, &b.DefaultStoragePool, &b.RerunScriptlets, &b.PlacementScriptlet, &b.PostMigrationRetries, &constraintsStr, &restrictionOverridesStr)
+		var configStr string
+		var defaultsStr string
+		err := scan(&b.ID, &b.Name, &b.Status, &b.StatusMessage, &b.IncludeExpression, &b.StartDate, &constraintsStr, &configStr, &defaultsStr)
 		if err != nil {
 			return err
 		}
@@ -213,7 +220,12 @@ func getBatchesRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]mig
 			return err
 		}
 
-		err = unmarshalJSON(restrictionOverridesStr, &b.RestrictionOverrides)
+		err = unmarshalJSON(configStr, &b.Config)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(defaultsStr, &b.Defaults)
 		if err != nil {
 			return err
 		}
@@ -445,7 +457,7 @@ func CreateBatch(ctx context.Context, db dbtx, object migration.Batch) (_ int64,
 		_err = mapErr(_err, "Batch")
 	}()
 
-	args := make([]any, 13)
+	args := make([]any, 8)
 
 	// Populate the statement arguments.
 	args[0] = object.Name
@@ -453,24 +465,24 @@ func CreateBatch(ctx context.Context, db dbtx, object migration.Batch) (_ int64,
 	args[2] = object.StatusMessage
 	args[3] = object.IncludeExpression
 	args[4] = object.StartDate
-	args[5] = object.DefaultTarget
-	args[6] = object.DefaultTargetProject
-	args[7] = object.DefaultStoragePool
-	args[8] = object.RerunScriptlets
-	args[9] = object.PlacementScriptlet
-	args[10] = object.PostMigrationRetries
 	marshaledConstraints, err := marshalJSON(object.Constraints)
 	if err != nil {
 		return -1, err
 	}
 
-	args[11] = marshaledConstraints
-	marshaledRestrictionOverrides, err := marshalJSON(object.RestrictionOverrides)
+	args[5] = marshaledConstraints
+	marshaledConfig, err := marshalJSON(object.Config)
 	if err != nil {
 		return -1, err
 	}
 
-	args[12] = marshaledRestrictionOverrides
+	args[6] = marshaledConfig
+	marshaledDefaults, err := marshalJSON(object.Defaults)
+	if err != nil {
+		return -1, err
+	}
+
+	args[7] = marshaledDefaults
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, batchCreate)
@@ -518,12 +530,17 @@ func UpdateBatch(ctx context.Context, db tx, name string, object migration.Batch
 		return err
 	}
 
-	marshaledRestrictionOverrides, err := marshalJSON(object.RestrictionOverrides)
+	marshaledConfig, err := marshalJSON(object.Config)
 	if err != nil {
 		return err
 	}
 
-	result, err := stmt.Exec(object.Name, object.Status, object.StatusMessage, object.IncludeExpression, object.StartDate, object.DefaultTarget, object.DefaultTargetProject, object.DefaultStoragePool, object.RerunScriptlets, object.PlacementScriptlet, object.PostMigrationRetries, marshaledConstraints, marshaledRestrictionOverrides, id)
+	marshaledDefaults, err := marshalJSON(object.Defaults)
+	if err != nil {
+		return err
+	}
+
+	result, err := stmt.Exec(object.Name, object.Status, object.StatusMessage, object.IncludeExpression, object.StartDate, marshaledConstraints, marshaledConfig, marshaledDefaults, id)
 	if err != nil {
 		return fmt.Errorf("Update \"batches\" entry failed: %w", err)
 	}
