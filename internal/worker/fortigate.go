@@ -80,6 +80,14 @@ func ReplaceFortigateBoot(kvmFile string, dryRun bool) error {
 		defer func() { _ = DeactivateVG() }()
 	}
 
+	// After activating the VG, ensure the mapping is to a loop device if performing dry-run.
+	if dryRun {
+		err := ensureMountIsLoop(rootPartition, rootPartitionType)
+		if err != nil {
+			return err
+		}
+	}
+
 	scriptName := "fortigate-replace-boot.sh"
 	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
 	if err != nil {

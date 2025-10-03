@@ -269,3 +269,38 @@ func lsblkWaitToPopulate(disk string, timeout time.Duration) error {
 
 	return ctx.Err()
 }
+
+func ensureMountIsLoop(rootPartition string, rootPartitionType PartitionType) error {
+	if rootPartitionType != PARTITION_TYPE_LVM {
+		if !strings.HasPrefix(rootPartition, "/dev/loop") {
+			return fmt.Errorf("Partition is %q, not a loop device", rootPartition)
+		}
+	}
+
+	parts := strings.Split(rootPartition, "/")
+	if len(parts) < 3 || parts[2] == "" {
+		return fmt.Errorf("Failed to determine vg_name from %q", rootPartition)
+	}
+
+	vgName := parts[2]
+	pvs, err := scanPVs()
+	if err != nil {
+		return err
+	}
+
+	if len(pvs.Report) > 0 && len(pvs.Report[0].PV) > 0 {
+		for _, report := range pvs.Report {
+			for _, pv := range report.PV {
+				if pv.VGName != vgName {
+					continue
+				}
+
+				if !strings.HasPrefix(pv.PVName, "/dev/loop") {
+					return fmt.Errorf("Volume group %q is mapped to physical volume %q, not a loop device", vgName, pv.PVName)
+				}
+			}
+		}
+	}
+
+	return nil
+}

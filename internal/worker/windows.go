@@ -149,6 +149,16 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 		if err != nil {
 			return err
 		}
+
+		err = ensureMountIsLoop(mainPartition, PARTITION_TYPE_PLAIN)
+		if err != nil {
+			return fmt.Errorf("Unexpected main partition location: %w", err)
+		}
+
+		err = ensureMountIsLoop(recoveryPartition, PARTITION_TYPE_PLAIN)
+		if err != nil {
+			return fmt.Errorf("Unexpected recovery partition location: %w", err)
+		}
 	}
 
 	c := internalUtil.UnixHTTPClient("/dev/incus/sock")
