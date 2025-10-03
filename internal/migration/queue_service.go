@@ -162,17 +162,6 @@ func (s queueService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 
 func (s queueService) DeleteAllByBatch(ctx context.Context, batch string) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		entries, err := s.repo.GetAllByBatch(ctx, batch)
-		if err != nil {
-			return fmt.Errorf("Failed to get queue entries for batch %q: %w", batch, err)
-		}
-
-		for _, entry := range entries {
-			if entry.IsMigrating() {
-				return fmt.Errorf("Cannot delete queue entry %q: Currently in a migration phase: %w", entry.InstanceUUID.String(), ErrOperationNotPermitted)
-			}
-		}
-
 		return s.repo.DeleteAllByBatch(ctx, batch)
 	})
 }

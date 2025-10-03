@@ -132,12 +132,23 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		err := d.reassessBlockedInstances(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to reassess blocked queue entries: %w", err)
 		}
 
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WAITING)
 		if err != nil {
 			return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
+		}
+
+		if len(migrationState) == 0 {
+			return nil
 		}
 
 		// Get all networks so we can determine the target network if not overridden via scriptlet.

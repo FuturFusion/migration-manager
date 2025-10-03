@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
@@ -902,7 +903,7 @@ func batchResetPost(d *Daemon, r *http.Request) response.Response {
 			// Only remove VMs with a worker volume,
 			// in case we are resetting a completed or errored batch where some VMs have already completed migration.
 			err = it.CleanupVM(ctx, inst.Properties.Name, true)
-			if err != nil {
+			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 				return err
 			}
 		}

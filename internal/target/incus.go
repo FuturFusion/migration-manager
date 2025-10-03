@@ -484,6 +484,9 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 		hwaddrs = append(hwaddrs, nic.HardwareAddress)
 	}
 
+	// This config key will persist to indicate that this VM was migrated through migration manager.
+	ret.Config["user.migration_source"] = instanceDef.Source
+
 	ret.Config["user.migration.hwaddrs"] = strings.Join(hwaddrs, " ")
 	ret.Config["user.migration.source_type"] = "VMware"
 	ret.Config["user.migration.source"] = instanceDef.Source
@@ -607,14 +610,16 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 
 // CleanupVM fully deletes the VM and all of its volumes.
 func (t *InternalIncusTarget) CleanupVM(ctx context.Context, name string, requireWorkerVolume bool) error {
-	err := t.StopVM(ctx, name, true)
-	if err != nil {
-		return fmt.Errorf("Failed to stop target instance %q: %w", name, err)
-	}
-
 	instInfo, _, err := t.GetInstance(name)
 	if err != nil {
 		return fmt.Errorf("Failed to get target instance %q config: %w", name, err)
+	}
+
+	if instInfo.Status == "Running" {
+		err := t.StopVM(ctx, name, true)
+		if err != nil {
+			return fmt.Errorf("Failed to stop target instance %q: %w", name, err)
+		}
 	}
 
 	// If the VM doesn't have the config key `user.migration_source` then assume it is not managed by Migration Manager.
