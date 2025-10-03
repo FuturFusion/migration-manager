@@ -666,14 +666,22 @@ def placement(instance, batch):
 			}
 
 			batch := migration.Batch{
-				Name:                 "b1",
-				DefaultTarget:        "default",
-				DefaultTargetProject: "default",
-				DefaultStoragePool:   "default",
-				Status:               api.BATCHSTATUS_DEFINED,
-				IncludeExpression:    "true",
-				RerunScriptlets:      tc.rerunScriptlet,
-				PlacementScriptlet:   tc.scriptlet,
+				Name: "b1",
+				Defaults: api.BatchDefaults{
+					Placement: api.BatchPlacement{
+						Target:        "default",
+						TargetProject: "default",
+						StoragePool:   "default",
+					},
+				},
+				Status:            api.BATCHSTATUS_DEFINED,
+				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					RerunScriptlets:          tc.rerunScriptlet,
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					PlacementScriptlet:       tc.scriptlet,
+				},
 			}
 
 			_, err = d.batch.Create(d.ShutdownCtx, batch)
@@ -689,7 +697,7 @@ def placement(instance, batch):
 				require.NoError(t, err)
 
 				state := api.MIGRATIONSTATUS_WAITING
-				if i.DisabledReason(batch.RestrictionOverrides) != nil {
+				if i.DisabledReason(batch.Config.RestrictionOverrides) != nil {
 					state = api.MIGRATIONSTATUS_BLOCKED
 				}
 

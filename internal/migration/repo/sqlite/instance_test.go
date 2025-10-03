@@ -56,7 +56,24 @@ var (
 		},
 	}
 
-	testBatch     = migration.Batch{ID: 1, Name: "TestBatch", DefaultTarget: "TestTarget", Status: api.BATCHSTATUS_DEFINED, IncludeExpression: "true"}
+	testBatch = migration.Batch{
+		ID:   1,
+		Name: "TestBatch",
+		Defaults: api.BatchDefaults{
+			Placement: api.BatchPlacement{
+				Target:        "TestTarget",
+				TargetProject: "TestProject",
+				StoragePool:   "TestPool",
+			},
+		},
+		Status:            api.BATCHSTATUS_DEFINED,
+		IncludeExpression: "true",
+		Config: api.BatchConfig{
+			BackgroundSyncInterval:   (10 * time.Minute).String(),
+			FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+		},
+	}
+
 	instanceAUUID = uuid.Must(uuid.NewRandom())
 
 	instanceA = migration.Instance{

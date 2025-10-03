@@ -3,6 +3,7 @@ package migration_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -13,6 +14,8 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/testing/queue"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
+
+var defaultPlacement = api.BatchDefaults{Placement: api.BatchPlacement{Target: "one", TargetProject: "default", StoragePool: "default"}}
 
 func TestBatchService_Create(t *testing.T) {
 	tests := []struct {
@@ -29,16 +32,24 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoCreateBatch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 
 			assertErr: require.NoError,
@@ -76,7 +87,6 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "", // invalid
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
 			},
@@ -118,9 +128,13 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoCreateErr: boom.Error,
 
@@ -131,9 +145,13 @@ func TestBatchService_Create(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			instanceSvcGetAllByBatchIDErr: boom.Error,
 
@@ -408,16 +426,24 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "new-one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 
 			assertErr: require.NoError,
@@ -428,16 +454,24 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
-				RerunScriptlets:   true,
+				Config: api.BatchConfig{
+					RerunScriptlets:          true,
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 
 			assertErr: require.NoError,
@@ -447,18 +481,26 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
 				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
 				Constraints:       []migration.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			queueSvcGetAllByBatch:    migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_WAITING}},
 			instanceSvcGetAllByBatch: migration.Instances{{UUID: uuidA}},
@@ -470,18 +512,26 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
 				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
 				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}, {Name: "constraint2", IncludeExpression: "false"}},
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			queueSvcGetAllByBatch:    migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT}},
 			instanceSvcGetAllByBatch: migration.Instances{{UUID: uuidA}},
@@ -491,10 +541,10 @@ func TestBatchService_UpdateByID(t *testing.T) {
 		{
 			name: "error - invalid id",
 			batch: migration.Batch{
-				ID:            -1, // invalid
-				Name:          "new-one",
-				DefaultTarget: "one",
-				Status:        api.BATCHSTATUS_DEFINED,
+				ID:       -1, // invalid
+				Name:     "new-one",
+				Defaults: defaultPlacement,
+				Status:   api.BATCHSTATUS_DEFINED,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -505,10 +555,10 @@ func TestBatchService_UpdateByID(t *testing.T) {
 		{
 			name: "error - name empty",
 			batch: migration.Batch{
-				ID:            1,
-				Name:          "", // empty
-				DefaultTarget: "one",
-				Status:        api.BATCHSTATUS_DEFINED,
+				ID:       1,
+				Name:     "", // empty
+				Defaults: defaultPlacement,
+				Status:   api.BATCHSTATUS_DEFINED,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -522,8 +572,12 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "new-one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameErr: boom.Error,
 
@@ -535,15 +589,23 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "new-one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -553,18 +615,28 @@ func TestBatchService_UpdateByID(t *testing.T) {
 		{
 			name: "error - running batch - can't change placement",
 			batch: migration.Batch{
-				ID:                1,
-				Name:              "one",
-				Status:            api.BATCHSTATUS_RUNNING,
-				DefaultTarget:     "new-one",
+				ID:     1,
+				Name:   "one",
+				Status: api.BATCHSTATUS_RUNNING,
+				Defaults: api.BatchDefaults{
+					Placement: api.BatchPlacement{Target: "changed", StoragePool: "default", TargetProject: "default"},
+				},
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -577,15 +649,23 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true and true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -598,14 +678,22 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
-				ID:            1,
-				Name:          "one",
-				DefaultTarget: "one",
-				Status:        api.BATCHSTATUS_DEFINED,
+				ID:       1,
+				Name:     "one",
+				Defaults: defaultPlacement,
+				Status:   api.BATCHSTATUS_DEFINED,
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoUpdateErr: boom.Error,
 
@@ -617,14 +705,22 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
-				ID:            1,
-				Name:          "one",
-				DefaultTarget: "one",
-				Status:        api.BATCHSTATUS_DEFINED,
+				ID:       1,
+				Name:     "one",
+				Defaults: defaultPlacement,
+				Status:   api.BATCHSTATUS_DEFINED,
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			instanceSvcGetAllByBatchIDErr: boom.Error,
 
@@ -635,18 +731,26 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
 				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
 				Constraints:       []migration.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			queueSvcGetAllByBatchErr: boom.Error,
 
@@ -657,18 +761,26 @@ func TestBatchService_UpdateByID(t *testing.T) {
 			batch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
 				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			repoGetByNameBatch: &migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
 				Constraints:       []migration.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				},
 			},
 			queueSvcGetAllByBatch:    migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT}},
 			instanceSvcGetAllByBatch: migration.Instances{{UUID: uuidA}},
@@ -1179,7 +1291,7 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 			repoGetByNameBatch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
 			},
@@ -1207,7 +1319,7 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 			repoGetByNameBatch: migration.Batch{
 				ID:                1,
 				Name:              "one",
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
 			},
@@ -1223,7 +1335,7 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 			},
 			repoUpdateStatusByIDErr: boom.Error,
@@ -1272,7 +1384,7 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 			},
 
@@ -1300,7 +1412,7 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_DEFINED,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 			},
 
@@ -1315,7 +1427,7 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 				ID:                1,
 				Name:              "one",
 				Status:            api.BATCHSTATUS_RUNNING,
-				DefaultTarget:     "one",
+				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 			},
 			repoUpdateStatusByIDErr: boom.Error,
@@ -1802,13 +1914,21 @@ def placement(instance, batch):
 
 		batchSvc := migration.NewBatchService(repo, instanceSvc)
 		batch, err := batchSvc.Create(ctx, migration.Batch{
-			Name:                 "testbatch",
-			Status:               api.BATCHSTATUS_DEFINED,
-			IncludeExpression:    "true",
-			DefaultTarget:        "default",
-			DefaultTargetProject: "default",
-			DefaultStoragePool:   "default",
-			PlacementScriptlet:   tc.scriptlet,
+			Name:              "testbatch",
+			Status:            api.BATCHSTATUS_DEFINED,
+			IncludeExpression: "true",
+			Defaults: api.BatchDefaults{
+				Placement: api.BatchPlacement{
+					Target:        "default",
+					TargetProject: "default",
+					StoragePool:   "default",
+				},
+			},
+			Config: api.BatchConfig{
+				BackgroundSyncInterval:   (10 * time.Minute).String(),
+				FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+				PlacementScriptlet:       tc.scriptlet,
+			},
 		})
 		tc.batchCreateAssertErr(t, err)
 

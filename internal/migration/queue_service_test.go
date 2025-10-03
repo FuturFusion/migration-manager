@@ -168,7 +168,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName: migration.Batch{DefaultTarget: "one", Name: "one"},
+			batchSvcGetByName: migration.Batch{Defaults: defaultPlacement, Name: "one"},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
 				Source: "one",
@@ -213,7 +213,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName: migration.Batch{DefaultTarget: "one", Name: "one"},
+			batchSvcGetByName: migration.Batch{Defaults: defaultPlacement, Name: "one"},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
 				Source: "one",
@@ -259,7 +259,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName: migration.Batch{DefaultTarget: "one", Name: "one"},
+			batchSvcGetByName: migration.Batch{Defaults: defaultPlacement, Name: "one"},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
 				Source: "one",
@@ -304,7 +304,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName: migration.Batch{DefaultTarget: "one", Name: "one"},
+			batchSvcGetByName: migration.Batch{Defaults: defaultPlacement, Name: "one"},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
 				Source: "one",
@@ -347,7 +347,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName: migration.Batch{DefaultTarget: "one", Name: "one"},
+			batchSvcGetByName: migration.Batch{Defaults: defaultPlacement, Name: "one"},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
 				Source: "one",
@@ -391,7 +391,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName:    migration.Batch{DefaultTarget: "one", Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1}}},
+			batchSvcGetByName:    migration.Batch{Defaults: defaultPlacement, Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -431,7 +431,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		{
 			name:                  "success - background disk sync",
 			uuidArg:               uuidA,
-			batchSvcGetByName:     migration.Batch{DefaultTarget: "one", Name: "one"},
+			batchSvcGetByName:     migration.Batch{Defaults: defaultPlacement, Name: "one"},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", ImportStage: migration.IMPORTSTAGE_BACKGROUND, MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -477,7 +477,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		{
 			name:                  "success - migration window started (perform final import)",
 			uuidArg:               uuidA,
-			batchSvcGetByName:     migration.Batch{DefaultTarget: "one", Name: "one"},
+			batchSvcGetByName:     migration.Batch{Defaults: defaultPlacement, Name: "one"},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, ImportStage: migration.IMPORTSTAGE_FINAL, Placement: api.Placement{TargetName: "one"}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -524,7 +524,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		{
 			name:                  "success - migration window started (perform full initial import)",
 			uuidArg:               uuidA,
-			batchSvcGetByName:     migration.Batch{DefaultTarget: "one", Name: "one"},
+			batchSvcGetByName:     migration.Batch{Defaults: defaultPlacement, Name: "one"},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, ImportStage: migration.IMPORTSTAGE_BACKGROUND, Placement: api.Placement{TargetName: "one"}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -571,7 +571,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		{
 			name:                  "success - migration window started (perform post import)",
 			uuidArg:               uuidA,
-			batchSvcGetByName:     migration.Batch{DefaultTarget: "one", Name: "one"},
+			batchSvcGetByName:     migration.Batch{Defaults: defaultPlacement, Name: "one"},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, ImportStage: migration.IMPORTSTAGE_COMPLETE, Placement: api.Placement{TargetName: "one"}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -618,7 +618,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		{
 			name:                  "success - migration window started (perform post import with full import)",
 			uuidArg:               uuidA,
-			batchSvcGetByName:     migration.Batch{DefaultTarget: "one", Name: "one"},
+			batchSvcGetByName:     migration.Batch{Defaults: defaultPlacement, Name: "one"},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, ImportStage: migration.IMPORTSTAGE_COMPLETE, Placement: api.Placement{TargetName: "one"}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -669,7 +669,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName:    migration.Batch{DefaultTarget: "one", Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1}}},
+			batchSvcGetByName:    migration.Batch{Defaults: defaultPlacement, Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -715,7 +715,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName:    migration.Batch{DefaultTarget: "one", Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
+			batchSvcGetByName:    migration.Batch{Defaults: defaultPlacement, Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -761,7 +761,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName:    migration.Batch{DefaultTarget: "one", Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
+			batchSvcGetByName:    migration.Batch{Defaults: defaultPlacement, Name: "one", Constraints: []migration.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -1122,7 +1122,7 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 				Placement:       api.Placement{TargetName: "one"},
 			},
 			instanceSvcGetByUUIDInstance: migration.Instance{UUID: uuidA, Source: "one"},
-			batchSvcGetByNameBatch:       migration.Batch{Name: "one", DefaultTarget: "one"},
+			batchSvcGetByNameBatch:       migration.Batch{Name: "one", Defaults: defaultPlacement},
 
 			assertErr:                  require.NoError,
 			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
