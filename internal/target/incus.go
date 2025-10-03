@@ -382,6 +382,10 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 			instance.Config[info.Key] = "2"
 		case properties.InstanceMemory:
 			instance.Config[info.Key] = "4GiB"
+			if p.BackgroundImport {
+				instance.Config[info.Key] = "8GiB"
+			}
+
 		case properties.InstanceLegacyBoot:
 			instance.Config[info.Key] = "false"
 		case properties.InstanceSecureBoot:
