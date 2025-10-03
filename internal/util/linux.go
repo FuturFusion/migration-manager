@@ -11,18 +11,22 @@ type LSBLKOutput struct {
 	BlockDevices []struct {
 		Name     string `json:"name"`
 		Serial   string `json:"serial"`
+		PKName   string `json:"pkname"` // This will only be set if the input is a partition, not a parent disk.
+		PartN    int    `json:"partn"`  // This will only be set if the input is a partition, not a parent disk.
 		Children []struct {
 			Name         string `json:"name"`
 			FSType       string `json:"fstype"`
 			PartLabel    string `json:"partlabel"`
 			PartTypeName string `json:"parttypename"`
+			PKName       string `json:"pkname"`
+			PartN        int    `json:"partn"`
 		} `json:"children"`
 	} `json:"blockdevices"`
 }
 
 func ScanPartitions(device string) (LSBLKOutput, error) {
 	ret := LSBLKOutput{}
-	args := []string{"-J", "-o", "NAME,FSTYPE,PARTLABEL,PARTTYPENAME,SERIAL"}
+	args := []string{"-J", "-o", "NAME,FSTYPE,PARTLABEL,PARTTYPENAME,SERIAL,PKNAME,PARTN"}
 	if device != "" {
 		args = append(args, device)
 	}
