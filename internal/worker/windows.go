@@ -137,6 +137,20 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 		return err
 	}
 
+	if dryRun {
+		mainPartition, _, err = setupDiskClone(mainPartition, PARTITION_TYPE_PLAIN, nil)
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = cleanupDiskClone(PARTITION_TYPE_PLAIN) }()
+
+		recoveryPartition, err = getMatchingPartition(recoveryPartition, mainPartition)
+		if err != nil {
+			return err
+		}
+	}
+
 	c := internalUtil.UnixHTTPClient("/dev/incus/sock")
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
 	defer cancel()

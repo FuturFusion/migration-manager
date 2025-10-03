@@ -86,9 +86,19 @@ func LinuxDoPostMigrationConfig(ctx context.Context, osName string, dryRun bool)
 		return err
 	}
 
+	var vgFilter []string
+	if dryRun {
+		rootPartition, vgFilter, err = setupDiskClone(rootPartition, rootPartitionType, rootMountOpts)
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = cleanupDiskClone(rootPartitionType) }()
+	}
+
 	// Activate VG prior to mounting, if needed.
 	if rootPartitionType == PARTITION_TYPE_LVM {
-		err := ActivateVG()
+		err := ActivateVG(vgFilter...)
 		if err != nil {
 			return err
 		}
@@ -213,7 +223,14 @@ func LinuxDoPostMigrationConfig(ctx context.Context, osName string, dryRun bool)
 	return nil
 }
 
-func ActivateVG() error {
+func ActivateVG(opts ...string) error {
+	if len(opts) > 0 {
+		args := []string{"-a", "y", "--config"}
+		args = append(args, opts...)
+		_, err := subprocess.RunCommand("vgchange", args...)
+		return err
+	}
+
 	_, err := subprocess.RunCommand("vgchange", "-a", "y")
 	return err
 }
