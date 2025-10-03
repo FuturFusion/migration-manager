@@ -3,15 +3,19 @@ package cmds
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/termios"
 	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -55,9 +59,9 @@ func (c *CmdBatch) Command() *cobra.Command {
 	batchStopCmd := cmdBatchStop{global: c.Global}
 	cmd.AddCommand(batchStopCmd.Command())
 
-	// Update
-	batchUpdateCmd := cmdBatchUpdate{global: c.Global}
-	cmd.AddCommand(batchUpdateCmd.Command())
+	// Edit
+	batchEditCmd := cmdBatchEdit{global: c.Global}
+	cmd.AddCommand(batchEditCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
@@ -113,22 +117,22 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(targets) == 1 {
-		b.DefaultTarget = targets[0]
-		fmt.Printf("Using target %q\n", b.DefaultTarget)
+		b.Defaults.Placement.Target = targets[0]
+		fmt.Printf("Using target %q\n", b.Defaults.Placement.Target)
 	} else {
 		defaultTargetHint := "(" + strings.Join(targets, ", ") + "): "
-		b.DefaultTarget, err = c.global.Asker.AskChoice("What target should this batch use? "+defaultTargetHint, targets, "")
+		b.Defaults.Placement.Target, err = c.global.Asker.AskChoice("What target should this batch use? "+defaultTargetHint, targets, "")
 		if err != nil {
 			return err
 		}
 	}
 
-	b.DefaultTargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? ", "", validate.IsNotEmpty)
+	b.Defaults.Placement.TargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? ", "", validate.IsNotEmpty)
 	if err != nil {
 		return err
 	}
 
-	b.DefaultStoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? ", "", validate.IsNotEmpty)
+	b.Defaults.Placement.StoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? ", "", validate.IsNotEmpty)
 	if err != nil {
 		return err
 	}
@@ -143,7 +147,7 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	b.PostMigrationRetries = int(retries)
+	b.Config.PostMigrationRetries = int(retries)
 
 	addWindows := true
 	for addWindows {
@@ -301,7 +305,7 @@ func (c *cmdBatchList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, b := range batches {
-		data = append(data, []string{b.Name, string(b.Status), b.StatusMessage, b.DefaultTarget, b.DefaultTargetProject, b.DefaultStoragePool, b.IncludeExpression, strconv.Itoa(len(b.MigrationWindows))})
+		data = append(data, []string{b.Name, string(b.Status), b.StatusMessage, b.Defaults.Placement.Target, b.Defaults.Placement.TargetProject, b.Defaults.Placement.StoragePool, b.IncludeExpression, strconv.Itoa(len(b.MigrationWindows))})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
@@ -418,13 +422,13 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 	// Show the details
 	cmd.Printf("Batch: %s\n", b.Name)
 	cmd.Printf("  - Status:             %s\n", b.StatusMessage)
-	cmd.Printf("  - Target:             %s\n", b.DefaultTarget)
-	if b.DefaultTargetProject != "" {
-		cmd.Printf("  - Project:            %s\n", b.DefaultTargetProject)
+	cmd.Printf("  - Target:             %s\n", b.Defaults.Placement.Target)
+	if b.Defaults.Placement.TargetProject != "" {
+		cmd.Printf("  - Project:            %s\n", b.Defaults.Placement.TargetProject)
 	}
 
-	if b.DefaultStoragePool != "" {
-		cmd.Printf("  - Storage pool:       %s\n", b.DefaultStoragePool)
+	if b.Defaults.Placement.StoragePool != "" {
+		cmd.Printf("  - Storage pool:       %s\n", b.Defaults.Placement.StoragePool)
 	}
 
 	if b.IncludeExpression != "" {
@@ -546,17 +550,17 @@ func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Update the batch.
-type cmdBatchUpdate struct {
+// Edit the batch.
+type cmdBatchEdit struct {
 	global *CmdGlobal
 }
 
-func (c *cmdBatchUpdate) Command() *cobra.Command {
+func (c *cmdBatchEdit) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "update <name>"
-	cmd.Short = "Update batch"
+	cmd.Use = "edit <name>"
+	cmd.Short = "Edit batch"
 	cmd.Long = `Description:
-  Update batch
+  Edit batch as YAML
 `
 
 	cmd.RunE = c.Run
@@ -564,7 +568,13 @@ func (c *cmdBatchUpdate) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdBatchEdit) helpTemplate() string {
+	return `### This is a YAML representation of batch configuration.
+### Any line starting with a '# will be ignored.
+###`
+}
+
+func (c *cmdBatchEdit) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
 	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
 	if exit {
@@ -583,176 +593,52 @@ func (c *cmdBatchUpdate) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("No targets have been defined, cannot add a batch.")
 	}
 
-	// Get the existing batch.
-	resp, _, err := c.global.doHTTPRequestV1("/batches/"+name, http.MethodGet, "", nil)
-	if err != nil {
-		return err
-	}
-
-	b := api.Batch{}
-
-	err = responseToStruct(resp, &b)
-	if err != nil {
-		return err
-	}
-
-	// Prompt for updates.
-	origBatchName := b.Name
-
-	b.Name, err = c.global.Asker.AskString("Batch name [default="+b.Name+"]: ", b.Name, nil)
-	if err != nil {
-		return err
-	}
-
-	var targetChoices string
-	if len(targets) > 1 {
-		targetChoices = " (" + strings.Join(targets, ", ") + ")"
-	}
-
-	b.DefaultTarget, err = c.global.Asker.AskChoice("Target"+targetChoices+" [default="+b.DefaultTarget+"]: ", targets, b.DefaultTarget)
-	if err != nil {
-		return err
-	}
-
-	b.DefaultTargetProject, err = c.global.Asker.AskString("Project [default="+b.DefaultTargetProject+"]: ", b.DefaultTargetProject, nil)
-	if err != nil {
-		return err
-	}
-
-	b.DefaultStoragePool, err = c.global.Asker.AskString("Storage pool [default="+b.DefaultStoragePool+"]: ", b.DefaultStoragePool, nil)
-	if err != nil {
-		return err
-	}
-
-	b.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances [default="+b.IncludeExpression+"]: ", b.IncludeExpression, func(s string) error { return nil })
-	if err != nil {
-		return err
-	}
-
-	retries, err := c.global.Asker.AskInt("Maximum retries if post-migration steps are not successful: ", 0, 1024, strconv.Itoa(b.PostMigrationRetries), nil)
-	if err != nil {
-		return err
-	}
-
-	b.PostMigrationRetries = int(retries)
-
-	addWindows, err := c.global.Asker.AskBool("Replace migration windows? (yes/no) [default=no]: ", "no")
-	if err != nil {
-		return err
-	}
-
-	if addWindows {
-		b.MigrationWindows = []api.MigrationWindow{}
-	}
-
-	for addWindows {
-		windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
-			if s != "" {
-				_, err := time.Parse(time.DateTime, s)
-				return err
-			}
-
-			return nil
-		})
+	var contents []byte
+	if !termios.IsTerminal(getStdinFd()) {
+		contents, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Get the existing batch.
+		resp, _, err := c.global.doHTTPRequestV1("/batches/"+name, http.MethodGet, "", nil)
 		if err != nil {
 			return err
 		}
 
-		windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
-			if s != "" {
-				_, err := time.Parse(time.DateTime, s)
-				return err
-			}
-
-			return nil
-		})
+		b := api.Batch{}
+		err = responseToStruct(resp, &b)
 		if err != nil {
 			return err
 		}
 
-		if windowStart != "" || windowEnd != "" {
-			if b.MigrationWindows == nil {
-				b.MigrationWindows = []api.MigrationWindow{}
-			}
-
-			start, _ := time.Parse(time.DateTime, windowStart)
-			end, _ := time.Parse(time.DateTime, windowEnd)
-			b.MigrationWindows = append(b.MigrationWindows, api.MigrationWindow{Start: start, End: end})
+		data, err := yaml.Marshal(b.BatchPut)
+		if err != nil {
+			return err
 		}
 
-		addWindows, err = c.global.Asker.AskBool("Add more migration windows? (yes/no) [default=no]: ", "no")
+		contents, err = textEditor("", []byte(c.helpTemplate()+"\n\n"+string(data)))
 		if err != nil {
 			return err
 		}
 	}
 
-	addConstraints, err := c.global.Asker.AskBool("Replace constraints? (yes/no) [default=no]: ", "no")
+	newdata := api.Batch{}
+	err = yaml.Unmarshal(contents, &newdata)
 	if err != nil {
 		return err
 	}
 
-	if addConstraints {
-		b.Constraints = []api.BatchConstraint{}
-	}
-
-	for addConstraints {
-		var constraint api.BatchConstraint
-		constraint.Name, err = c.global.Asker.AskString("Constraint name: ", "", nil)
-		if err != nil {
-			return err
-		}
-
-		constraint.Description, err = c.global.Asker.AskString("Constraint description (empty to skip): ", "", validate.IsAny)
-		if err != nil {
-			return err
-		}
-
-		constraint.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances: ", "", validate.IsAny)
-		if err != nil {
-			return err
-		}
-
-		maxConcurrent, err := c.global.Asker.AskString("Maximum concurrent instance (empty to skip): ", "0", validate.IsInt64)
-		if err != nil {
-			return err
-		}
-
-		constraint.MaxConcurrentInstances, err = strconv.Atoi(maxConcurrent)
-		if err != nil {
-			return err
-		}
-
-		constraint.MinInstanceBootTime, err = c.global.Asker.AskString("Minimum instance boot time (empty to skip): ", "", func(s string) error {
-			if s != "" {
-				return validate.IsMinimumDuration(0)(s)
-			}
-
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		b.Constraints = append(b.Constraints, constraint)
-		addConstraints, err = c.global.Asker.AskBool("Add more constraints? (yes/no) [default=no]: ", "no")
-		if err != nil {
-			return err
-		}
-	}
-
-	newBatchName := b.Name
-
-	content, err := json.Marshal(b.BatchPut)
+	b, err := json.Marshal(newdata)
 	if err != nil {
 		return err
 	}
 
-	_, _, err = c.global.doHTTPRequestV1("/batches/"+origBatchName, http.MethodPut, "", content)
+	_, _, err = c.global.doHTTPRequestV1("/batches/"+args[0], http.MethodPut, "", b)
 	if err != nil {
 		return err
 	}
 
-	cmd.Printf("Successfully updated batch %q.\n", newBatchName)
 	return nil
 }
 

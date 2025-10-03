@@ -14,9 +14,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -150,7 +148,7 @@ func (w *Worker) Run(ctx context.Context) {
 				return false
 
 			case api.WORKERCOMMAND_POST_IMPORT:
-				return w.postImportTasks(ctx, cmd)
+				return w.doPostImportTasks(ctx, cmd)
 
 			default:
 				slog.Error("Received unknown command", slog.Any("command", cmd.Command))
@@ -202,6 +200,13 @@ func (w *Worker) importDisks(ctx context.Context, cmd api.WorkerCommand) {
 		return
 	}
 
+	slog.Info("Performing dry-run of post-import steps")
+	err = w.postImportTasks(ctx, cmd, true)
+	if err != nil {
+		w.sendErrorResponse(err)
+		return
+	}
+
 	slog.Info("Disk import completed successfully")
 	w.sendStatusResponse(api.WORKERRESPONSE_SUCCESS, "Disk import completed successfully")
 }
@@ -221,13 +226,13 @@ func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) e
 	defer cleanup()
 
 	// unpack the vmware SDK.
-	err = util.UnpackTarball("/tmp/vmware", sdkFile)
+	err = util.UnpackTarball(filepath.Dir(worker.VMwareSDKPath), sdkFile)
 	if err != nil {
 		return fmt.Errorf("Failed to unpack SDK: %w", err)
 	}
 
 	// Do the actual import.
-	return w.source.ImportDisks(ctx, cmd.Location, func(status string, isImportant bool) {
+	return w.source.ImportDisks(ctx, cmd.Location, worker.VMwareSDKPath, func(status string, isImportant bool) {
 		slog.Info(status) //nolint:sloglint
 
 		// Only send updates back to the server if important or once every 5 seconds.
@@ -238,12 +243,61 @@ func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) e
 	})
 }
 
-// postImportTasks performs some finalizing tasks. If everything is executed
+func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand, dryRun bool) error {
+	if w.source == nil {
+		err := w.connectSource(ctx, cmd.SourceType, cmd.Source)
+		if err != nil {
+			return err
+		}
+	}
+
+	switch cmd.OSType {
+	case api.OSTYPE_WINDOWS:
+		file, cleanup, err := w.getArtifact(api.ARTIFACTTYPE_DRIVER, cmd, "")
+		if err != nil {
+			return err
+		}
+
+		defer cleanup()
+		err = worker.WindowsInjectDrivers(ctx, cmd.OSVersion, file, dryRun)
+		if err != nil {
+			return err
+		}
+
+	case api.OSTYPE_FORTIGATE:
+		ver, err := worker.DetermineFortigateVersion()
+		if err != nil {
+			return err
+		}
+
+		file, cleanup, err := w.getArtifact(api.ARTIFACTTYPE_OSIMAGE, cmd, ver)
+		if err != nil {
+			return err
+		}
+
+		defer cleanup()
+
+		err = worker.ReplaceFortigateBoot(file, dryRun)
+		if err != nil {
+			return err
+		}
+
+	case api.OSTYPE_LINUX:
+		err := worker.LinuxDoPostMigrationConfig(ctx, cmd.OS, dryRun)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// doPostImportTasks performs some finalizing tasks. If everything is executed
 // successfully, this function returns true, signaling the everything is done
 // and migration-manager-worker can shut down.
 // If there is an error or not all the finalizing work has been performed
 // yet, false is returned.
-func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand) (done bool) {
+func (w *Worker) doPostImportTasks(ctx context.Context, cmd api.WorkerCommand) (done bool) {
 	if w.source == nil {
 		err := w.connectSource(ctx, cmd.SourceType, cmd.Source)
 		if err != nil {
@@ -255,92 +309,10 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand) (do
 	slog.Info("Performing final migration tasks")
 	w.sendStatusResponse(api.WORKERRESPONSE_RUNNING, "Performing final migration tasks")
 
-	switch cmd.OSType {
-	case api.OSTYPE_WINDOWS:
-		file, cleanup, err := w.getArtifact(api.ARTIFACTTYPE_DRIVER, cmd, "")
-		if err != nil {
-			w.sendErrorResponse(err)
-			return false
-		}
-
-		defer cleanup()
-
-		winVer, err := util.MapWindowsVersionToAbbrev(cmd.OSVersion)
-		if err != nil {
-			w.sendErrorResponse(err)
-			return false
-		}
-
-		base, recovery, err := worker.DetermineWindowsPartitions()
-		if err != nil {
-			w.sendErrorResponse(err)
-			return false
-		}
-
-		err = worker.WindowsInjectDrivers(ctx, winVer, "/dev/"+base, "/dev/"+recovery, file)
-		if err != nil {
-			w.sendErrorResponse(err)
-			return false
-		}
-
-	case api.OSTYPE_FORTIGATE:
-		ver, err := worker.DetermineFortigateVersion()
-		if err != nil {
-			w.sendErrorResponse(err)
-			return false
-		}
-
-		file, cleanup, err := w.getArtifact(api.ARTIFACTTYPE_OSIMAGE, cmd, ver)
-		if err != nil {
-			w.sendErrorResponse(err)
-			return false
-		}
-
-		defer cleanup()
-
-		err = worker.ReplaceFortigateBoot(file)
-		if err != nil {
-			w.sendErrorResponse(err)
-			return false
-		}
-	}
-
-	// Linux-specific
-
-	// Get the disto's major version, if possible.
-	majorVersion := -1
-	// VMware API doesn't distinguish openSUSE and Ubuntu versions.
-	if !strings.Contains(strings.ToLower(cmd.OS), "opensuse") && !strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
-		majorVersionRegex := regexp.MustCompile(`^\w+?(\d+)(_64)?$`)
-		matches := majorVersionRegex.FindStringSubmatch(cmd.OS)
-		if len(matches) > 1 {
-			majorVersion, _ = strconv.Atoi(majorVersionRegex.FindStringSubmatch(cmd.OS)[1])
-		}
-	}
-
-	distro := ""
-	if strings.Contains(strings.ToLower(cmd.OS), "centos") {
-		distro = "CentOS"
-	} else if strings.Contains(strings.ToLower(cmd.OS), "debian") {
-		distro = "Debian"
-	} else if strings.Contains(strings.ToLower(cmd.OS), "opensuse") {
-		distro = "openSUSE"
-	} else if strings.Contains(strings.ToLower(cmd.OS), "oracle") {
-		distro = "Oracle"
-	} else if strings.Contains(strings.ToLower(cmd.OS), "rhel") {
-		distro = "RHEL"
-	} else if strings.Contains(strings.ToLower(cmd.OS), "sles") {
-		distro = "SUSE"
-	} else if strings.Contains(strings.ToLower(cmd.OS), "ubuntu") {
-		distro = "Ubuntu"
-	}
-
-	if distro != "" {
-		err := worker.LinuxDoPostMigrationConfig(ctx, distro, majorVersion)
-		if err != nil {
-			w.sendErrorResponse(err)
-			return false
-		}
+	err := w.postImportTasks(ctx, cmd, false)
+	if err != nil {
+		w.sendErrorResponse(err)
+		return false
 	}
 
 	// When the worker is done, the VM will be forced off, so call sync() to ensure all data is saved to disk.

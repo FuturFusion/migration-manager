@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -42,6 +43,38 @@ const (
 
 func init() {
 	_ = pongo2.RegisterFilter("toHex", toHex)
+}
+
+func DetermineWindowsPartitions() (base string, recovery string, err error) {
+	partitions, err := internalUtil.ScanPartitions("")
+	if err != nil {
+		return "", "", err
+	}
+
+	for _, dev := range partitions.BlockDevices {
+		if dev.Serial != "incus_root" {
+			continue
+		}
+
+		for _, child := range dev.Children {
+			if child.PartLabel == "Basic data partition" && child.PartTypeName == "Microsoft basic data" {
+				base = child.Name
+			} else if child.PartTypeName == "Windows recovery environment" {
+				recovery = child.Name
+			}
+		}
+	}
+
+	if base == "" || recovery == "" {
+		b, err := json.Marshal(partitions)
+		if err != nil {
+			return "", "", err
+		}
+
+		return "", "", fmt.Errorf("Could not determine partitions: %v", string(b))
+	}
+
+	return "/dev/" + base, "/dev/" + recovery, nil
 }
 
 func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
@@ -92,8 +125,41 @@ func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error
 	return err
 }
 
-func WindowsInjectDrivers(ctx context.Context, windowsVersion string, mainPartition string, recoveryPartition string, isoFile string) error {
+func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string, dryRun bool) error {
 	slog.Info("Preparing to inject Windows drivers into VM")
+	windowsVersion, err := internalUtil.MapWindowsVersionToAbbrev(osVersion)
+	if err != nil {
+		return err
+	}
+
+	mainPartition, recoveryPartition, err := DetermineWindowsPartitions()
+	if err != nil {
+		return err
+	}
+
+	if dryRun {
+		mainPartition, _, err = setupDiskClone(mainPartition, PARTITION_TYPE_PLAIN, nil)
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = cleanupDiskClone(PARTITION_TYPE_PLAIN) }()
+
+		recoveryPartition, err = getMatchingPartition(recoveryPartition, mainPartition)
+		if err != nil {
+			return err
+		}
+
+		err = ensureMountIsLoop(mainPartition, PARTITION_TYPE_PLAIN)
+		if err != nil {
+			return fmt.Errorf("Unexpected main partition location: %w", err)
+		}
+
+		err = ensureMountIsLoop(recoveryPartition, PARTITION_TYPE_PLAIN)
+		if err != nil {
+			return fmt.Errorf("Unexpected recovery partition location: %w", err)
+		}
+	}
 
 	c := internalUtil.UnixHTTPClient("/dev/incus/sock")
 	ctx, cancel := context.WithTimeout(ctx, time.Second*5)

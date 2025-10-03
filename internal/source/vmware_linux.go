@@ -23,13 +23,13 @@ type InternalVMwareSourceSpecific struct {
 	vddkConfig    *vmware_nbdkit.VddkConfig
 }
 
-func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, statusCallback func(string, bool)) error {
+func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error {
 	vm, err := s.getVM(ctx, vmName)
 	if err != nil {
 		return err
 	}
 
-	NbdkitServers := vmware_nbdkit.NewNbdkitServers(s.vddkConfig, vm, statusCallback)
+	NbdkitServers := vmware_nbdkit.NewNbdkitServers(s.vddkConfig, vm, sdkPath, statusCallback)
 
 	// Occasionally connecting to VMware via nbdkit is flaky, so retry a couple of times before returning an error.
 	for i := 0; i < 5; i++ {

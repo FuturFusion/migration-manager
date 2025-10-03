@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
@@ -253,31 +254,34 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		}
 	}
 
-	if apiBatch.DefaultTarget == "" {
-		apiBatch.DefaultTarget = api.DefaultTarget
+	if apiBatch.Defaults.Placement.Target == "" {
+		apiBatch.Defaults.Placement.Target = api.DefaultTarget
 	}
 
-	if apiBatch.DefaultTargetProject == "" {
-		apiBatch.DefaultTargetProject = api.DefaultTargetProject
+	if apiBatch.Defaults.Placement.TargetProject == "" {
+		apiBatch.Defaults.Placement.TargetProject = api.DefaultTargetProject
 	}
 
-	if apiBatch.DefaultStoragePool == "" {
-		apiBatch.DefaultStoragePool = api.DefaultStoragePool
+	if apiBatch.Defaults.Placement.StoragePool == "" {
+		apiBatch.Defaults.Placement.StoragePool = api.DefaultStoragePool
+	}
+
+	if apiBatch.Config.BackgroundSyncInterval == "" {
+		apiBatch.Config.BackgroundSyncInterval = (time.Minute * 10).String()
+	}
+
+	if apiBatch.Config.FinalBackgroundSyncLimit == "" {
+		apiBatch.Config.FinalBackgroundSyncLimit = (time.Minute * 10).String()
 	}
 
 	batch := migration.Batch{
-		Name:                 apiBatch.Name,
-		Status:               api.BATCHSTATUS_DEFINED,
-		StatusMessage:        string(api.BATCHSTATUS_DEFINED),
-		IncludeExpression:    apiBatch.IncludeExpression,
-		RerunScriptlets:      apiBatch.RerunScriptlets,
-		PlacementScriptlet:   apiBatch.PlacementScriptlet,
-		DefaultTarget:        apiBatch.DefaultTarget,
-		DefaultStoragePool:   apiBatch.DefaultStoragePool,
-		DefaultTargetProject: apiBatch.DefaultTargetProject,
-		PostMigrationRetries: apiBatch.PostMigrationRetries,
-		Constraints:          constraints,
-		RestrictionOverrides: apiBatch.RestrictionOverrides,
+		Name:              apiBatch.Name,
+		Status:            api.BATCHSTATUS_DEFINED,
+		StatusMessage:     string(api.BATCHSTATUS_DEFINED),
+		IncludeExpression: apiBatch.IncludeExpression,
+		Defaults:          apiBatch.Defaults,
+		Constraints:       constraints,
+		Config:            apiBatch.Config,
 	}
 
 	_, err = d.batch.Create(ctx, batch)
@@ -475,33 +479,16 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	if batch.DefaultTarget == "" {
-		batch.DefaultTarget = api.DefaultTarget
-	}
-
-	if batch.DefaultTargetProject == "" {
-		batch.DefaultTargetProject = api.DefaultTargetProject
-	}
-
-	if batch.DefaultStoragePool == "" {
-		batch.DefaultStoragePool = api.DefaultStoragePool
-	}
-
 	err = d.batch.Update(ctx, d.queue, name, &migration.Batch{
-		ID:                   currentBatch.ID,
-		Name:                 batch.Name,
-		Status:               currentBatch.Status,
-		StatusMessage:        currentBatch.StatusMessage,
-		IncludeExpression:    batch.IncludeExpression,
-		StartDate:            batch.StartDate,
-		RerunScriptlets:      batch.RerunScriptlets,
-		PlacementScriptlet:   batch.PlacementScriptlet,
-		DefaultTarget:        batch.DefaultTarget,
-		DefaultTargetProject: batch.DefaultTargetProject,
-		DefaultStoragePool:   batch.DefaultStoragePool,
-		Constraints:          constraints,
-		PostMigrationRetries: batch.PostMigrationRetries,
-		RestrictionOverrides: batch.RestrictionOverrides,
+		ID:                currentBatch.ID,
+		Name:              batch.Name,
+		Status:            currentBatch.Status,
+		StatusMessage:     currentBatch.StatusMessage,
+		IncludeExpression: batch.IncludeExpression,
+		StartDate:         currentBatch.StartDate,
+		Constraints:       constraints,
+		Config:            batch.Config,
+		Defaults:          batch.Defaults,
 	})
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))
@@ -765,7 +752,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 
 			status := api.MIGRATIONSTATUS_WAITING
 			message := "Preparing for migration"
-			err = inst.DisabledReason(batch.RestrictionOverrides)
+			err = inst.DisabledReason(batch.Config.RestrictionOverrides)
 			if err != nil {
 				status = api.MIGRATIONSTATUS_BLOCKED
 				message = err.Error()
@@ -902,7 +889,7 @@ func batchResetPost(d *Daemon, r *http.Request) response.Response {
 			// Only remove VMs with a worker volume,
 			// in case we are resetting a completed or errored batch where some VMs have already completed migration.
 			err = it.CleanupVM(ctx, inst.Properties.Name, true)
-			if err != nil {
+			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 				return err
 			}
 		}

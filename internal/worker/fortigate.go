@@ -54,20 +54,38 @@ func DetermineFortigateVersion() (string, error) {
 	return version, nil
 }
 
-func ReplaceFortigateBoot(kvmFile string) error {
+func ReplaceFortigateBoot(kvmFile string, dryRun bool) error {
 	rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition(looksLikeFortigateRootPartition)
 	if err != nil {
 		return err
 	}
 
+	var vgFilter []string
+	if dryRun {
+		rootPartition, vgFilter, err = setupDiskClone(rootPartition, rootPartitionType, rootMountOpts)
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = cleanupDiskClone(rootPartitionType) }()
+	}
+
 	// Activate VG prior to mounting, if needed.
 	if rootPartitionType == PARTITION_TYPE_LVM {
-		err := ActivateVG()
+		err := ActivateVG(vgFilter...)
 		if err != nil {
 			return err
 		}
 
 		defer func() { _ = DeactivateVG() }()
+	}
+
+	// After activating the VG, ensure the mapping is to a loop device if performing dry-run.
+	if dryRun {
+		err := ensureMountIsLoop(rootPartition, rootPartitionType)
+		if err != nil {
+			return err
+		}
 	}
 
 	scriptName := "fortigate-replace-boot.sh"

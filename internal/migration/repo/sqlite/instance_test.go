@@ -56,7 +56,24 @@ var (
 		},
 	}
 
-	testBatch     = migration.Batch{ID: 1, Name: "TestBatch", DefaultTarget: "TestTarget", Status: api.BATCHSTATUS_DEFINED, IncludeExpression: "true"}
+	testBatch = migration.Batch{
+		ID:   1,
+		Name: "TestBatch",
+		Defaults: api.BatchDefaults{
+			Placement: api.BatchPlacement{
+				Target:        "TestTarget",
+				TargetProject: "TestProject",
+				StoragePool:   "TestPool",
+			},
+		},
+		Status:            api.BATCHSTATUS_DEFINED,
+		IncludeExpression: "true",
+		Config: api.BatchConfig{
+			BackgroundSyncInterval:   (10 * time.Minute).String(),
+			FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+		},
+	}
+
 	instanceAUUID = uuid.Must(uuid.NewRandom())
 
 	instanceA = migration.Instance{
@@ -67,10 +84,10 @@ var (
 				Description: "annotation",
 				CPUs:        2,
 				Memory:      4294967296,
+				OS:          "Ubuntu",
 			},
 			Location:         "/path/UbuntuVM",
 			Architecture:     "x86_64",
-			OS:               "Ubuntu",
 			OSVersion:        "24.04",
 			BackgroundImport: true,
 			Disks: []api.InstancePropertiesDisk{
@@ -104,10 +121,10 @@ var (
 				Description: "annotation",
 				CPUs:        2,
 				Memory:      4294967296,
+				OS:          "Windows",
 			},
 			Location:         "/path/WindowsVM",
 			Architecture:     "x86_64",
-			OS:               "Windows",
 			OSVersion:        "11",
 			BackgroundImport: false,
 			Disks: []api.InstancePropertiesDisk{
@@ -146,10 +163,10 @@ var (
 				Description: "annotation",
 				CPUs:        4,
 				Memory:      4294967296,
+				OS:          "Debian",
 			},
 			Location:         "/path/DebianVM",
 			Architecture:     "arm64",
-			OS:               "Debian",
 			OSVersion:        "bookworm",
 			BackgroundImport: true,
 			Disks: []api.InstancePropertiesDisk{

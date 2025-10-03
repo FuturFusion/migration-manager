@@ -19,6 +19,7 @@ type QueueEntry struct {
 	MigrationStatus        api.MigrationStatusType
 	MigrationStatusMessage string
 	LastWorkerStatus       api.WorkerResponseType
+	LastBackgroundSync     time.Time
 
 	MigrationWindowID sql.NullInt64
 

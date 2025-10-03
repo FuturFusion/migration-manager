@@ -104,7 +104,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 		}
 
 		// Otherwise check why the VM is blocked, and unblock it if needed.
-		err := inst.DisabledReason(batchMap[q.BatchName].RestrictionOverrides)
+		err := inst.DisabledReason(batchMap[q.BatchName].Config.RestrictionOverrides)
 		if err != nil {
 			slog.Warn("Instance is blocked from migration", slog.String("location", inst.Properties.Location), slog.String("reason", err.Error()))
 			continue
@@ -132,12 +132,23 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		err := d.reassessBlockedInstances(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to reassess blocked queue entries: %w", err)
 		}
 
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	err = transaction.Do(ctx, func(ctx context.Context) error {
 		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WAITING)
 		if err != nil {
 			return fmt.Errorf("Failed to compile migration state for batch processing: %w", err)
+		}
+
+		if len(migrationState) == 0 {
+			return nil
 		}
 
 		// Get all networks so we can determine the target network if not overridden via scriptlet.
@@ -176,7 +187,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 		placementErrs := map[uuid.UUID]error{}
 		err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
 			return util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
-				if state.Batch.RerunScriptlets {
+				if state.Batch.Config.RerunScriptlets {
 					usedNetworks := migration.FilterUsedNetworks(allNetworks, migration.Instances{instance})
 					placement, err := d.batch.DeterminePlacement(ctx, instance, usedNetworks, state.Batch, state.MigrationWindows)
 					if err != nil {
@@ -220,7 +231,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 		for _, state := range migrationState {
 			for instUUID, q := range state.QueueEntries {
 				// Update the db record for any changed placements.
-				if state.Batch.RerunScriptlets {
+				if state.Batch.Config.RerunScriptlets {
 					stateChanged = true
 					_, err := d.queue.UpdatePlacementByUUID(ctx, instUUID, state.QueueEntries[instUUID].Placement)
 					if err != nil {
@@ -781,9 +792,9 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 		// If the migration window has already ended, we have no capacity to retry.
 		if !w.Ended() {
 			numRetries := d.instance.GetPostMigrationRetries(i.UUID)
-			if numRetries < batch.PostMigrationRetries {
+			if numRetries < batch.Config.PostMigrationRetries {
 				d.instance.RecordPostMigrationRetry(i.UUID)
-				log.Error("Instance failed post-migration steps, retrying", slog.String("error", errString), slog.Int("retry_count", numRetries), slog.Int("max_retries", batch.PostMigrationRetries))
+				log.Error("Instance failed post-migration steps, retrying", slog.String("error", errString), slog.Int("retry_count", numRetries), slog.Int("max_retries", batch.Config.PostMigrationRetries))
 				return
 			}
 

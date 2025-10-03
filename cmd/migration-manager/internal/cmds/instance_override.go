@@ -188,13 +188,23 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	var defaultOverride string
+	var defaultComment string
 	if override.Comment != "" {
-		defaultOverride = "[default=" + override.Comment + "]"
+		defaultComment = "[default=" + override.Comment + "]"
+	}
+
+	var defaultOS string
+	if override.Properties.OS != "" {
+		defaultOS = "[default=" + override.Properties.OS + "]"
 	}
 
 	// Prompt for updates.
-	override.Comment, err = c.global.Asker.AskString("Comment "+defaultOverride+": ", override.Comment, func(s string) error { return nil })
+	override.Comment, err = c.global.Asker.AskString("Comment "+defaultComment+": ", override.Comment, func(s string) error { return nil })
+	if err != nil {
+		return err
+	}
+
+	override.Properties.OS, err = c.global.Asker.AskString("OS "+defaultOS+": ", override.Properties.OS, func(s string) error { return nil })
 	if err != nil {
 		return err
 	}

@@ -18,27 +18,51 @@ import (
 
 var (
 	batchA = migration.Batch{
-		Name:                 "BatchA",
-		DefaultTarget:        "TestTarget",
-		DefaultTargetProject: "default",
-		DefaultStoragePool:   "pool1",
-		IncludeExpression:    "include",
+		Name: "BatchA",
+		Defaults: api.BatchDefaults{
+			Placement: api.BatchPlacement{
+				Target:        "TestTarget",
+				TargetProject: "default",
+				StoragePool:   "pool1",
+			},
+		},
+		IncludeExpression: "include",
+		Config: api.BatchConfig{
+			BackgroundSyncInterval:   (10 * time.Minute).String(),
+			FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+		},
 	}
 
 	batchB = migration.Batch{
-		Name:                 "BatchB",
-		DefaultTarget:        "TestTarget",
-		DefaultTargetProject: "m-project",
-		DefaultStoragePool:   "pool2",
-		IncludeExpression:    "",
+		Name: "BatchB",
+		Defaults: api.BatchDefaults{
+			Placement: api.BatchPlacement{
+				Target:        "TestTarget",
+				TargetProject: "m-project",
+				StoragePool:   "pool2",
+			},
+		},
+		IncludeExpression: "",
+		Config: api.BatchConfig{
+			BackgroundSyncInterval:   (10 * time.Minute).String(),
+			FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+		},
 	}
 
 	batchC = migration.Batch{
-		Name:                 "BatchC",
-		DefaultTarget:        "TestTarget",
-		DefaultTargetProject: "default",
-		DefaultStoragePool:   "pool3",
-		IncludeExpression:    "include",
+		Name: "BatchC",
+		Defaults: api.BatchDefaults{
+			Placement: api.BatchPlacement{
+				Target:        "TestTarget",
+				TargetProject: "default",
+				StoragePool:   "pool3",
+			},
+		},
+		IncludeExpression: "include",
+		Config: api.BatchConfig{
+			BackgroundSyncInterval:   (10 * time.Minute).String(),
+			FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+		},
 	}
 
 	windows = migration.MigrationWindows{

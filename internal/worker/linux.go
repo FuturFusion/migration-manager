@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,10 +26,12 @@ import (
 //go:embed scripts/*
 var embeddedScripts embed.FS
 
+type PartitionType string
+
 const (
-	PARTITION_TYPE_UNKNOWN = iota
-	PARTITION_TYPE_PLAIN
-	PARTITION_TYPE_LVM
+	PARTITION_TYPE_UNKNOWN PartitionType = "unknown"
+	PARTITION_TYPE_PLAIN   PartitionType = "plain"
+	PARTITION_TYPE_LVM     PartitionType = "lvm"
 )
 
 type LVSOutput struct {
@@ -37,12 +40,48 @@ type LVSOutput struct {
 			VGName string `json:"vg_name"`
 			LVName string `json:"lv_name"`
 		} `json:"lv"`
+		PV []struct {
+			VGName string `json:"vg_name"`
+			PVName string `json:"pv_name"`
+		} `json:"pv"`
 	} `json:"report"`
 }
 
 const chrootMountPath string = "/run/mount/target/"
 
-func LinuxDoPostMigrationConfig(ctx context.Context, distro string, majorVersion int) error {
+func LinuxDoPostMigrationConfig(ctx context.Context, osName string, dryRun bool) error {
+	// Get the disto's major version, if possible.
+	majorVersion := -1
+	// VMware API doesn't distinguish openSUSE and Ubuntu versions.
+	if !strings.Contains(strings.ToLower(osName), "opensuse") && !strings.Contains(strings.ToLower(osName), "ubuntu") {
+		majorVersionRegex := regexp.MustCompile(`^\w+?(\d+)(_64)?$`)
+		matches := majorVersionRegex.FindStringSubmatch(osName)
+		if len(matches) > 1 {
+			majorVersion, _ = strconv.Atoi(majorVersionRegex.FindStringSubmatch(osName)[1])
+		}
+	}
+
+	distro := ""
+	if strings.Contains(strings.ToLower(osName), "centos") {
+		distro = "CentOS"
+	} else if strings.Contains(strings.ToLower(osName), "debian") {
+		distro = "Debian"
+	} else if strings.Contains(strings.ToLower(osName), "opensuse") {
+		distro = "openSUSE"
+	} else if strings.Contains(strings.ToLower(osName), "oracle") {
+		distro = "Oracle"
+	} else if strings.Contains(strings.ToLower(osName), "rhel") {
+		distro = "RHEL"
+	} else if strings.Contains(strings.ToLower(osName), "sles") {
+		distro = "SUSE"
+	} else if strings.Contains(strings.ToLower(osName), "ubuntu") {
+		distro = "Ubuntu"
+	}
+
+	if distro == "" {
+		return nil
+	}
+
 	slog.Info("Preparing to perform post-migration configuration of VM")
 
 	// Determine the root partition.
@@ -51,14 +90,32 @@ func LinuxDoPostMigrationConfig(ctx context.Context, distro string, majorVersion
 		return err
 	}
 
+	var vgFilter []string
+	if dryRun {
+		rootPartition, vgFilter, err = setupDiskClone(rootPartition, rootPartitionType, rootMountOpts)
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = cleanupDiskClone(rootPartitionType) }()
+	}
+
 	// Activate VG prior to mounting, if needed.
 	if rootPartitionType == PARTITION_TYPE_LVM {
-		err := ActivateVG()
+		err := ActivateVG(vgFilter...)
 		if err != nil {
 			return err
 		}
 
 		defer func() { _ = DeactivateVG() }()
+	}
+
+	// After activating the VG, ensure the mapping is to a loop device if performing dry-run.
+	if dryRun {
+		err := ensureMountIsLoop(rootPartition, rootPartitionType)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Mount the migrated root partition.
@@ -178,7 +235,14 @@ func LinuxDoPostMigrationConfig(ctx context.Context, distro string, majorVersion
 	return nil
 }
 
-func ActivateVG() error {
+func ActivateVG(opts ...string) error {
+	if len(opts) > 0 {
+		args := []string{"-a", "y", "--config"}
+		args = append(args, opts...)
+		_, err := subprocess.RunCommand("vgchange", args...)
+		return err
+	}
+
 	_, err := subprocess.RunCommand("vgchange", "-a", "y")
 	return err
 }
@@ -188,39 +252,7 @@ func DeactivateVG() error {
 	return err
 }
 
-func DetermineWindowsPartitions() (base string, recovery string, err error) {
-	partitions, err := internalUtil.ScanPartitions("")
-	if err != nil {
-		return "", "", err
-	}
-
-	for _, dev := range partitions.BlockDevices {
-		if dev.Serial != "incus_root" {
-			continue
-		}
-
-		for _, child := range dev.Children {
-			if child.PartLabel == "Basic data partition" && child.PartTypeName == "Microsoft basic data" {
-				base = child.Name
-			} else if child.PartTypeName == "Windows recovery environment" {
-				recovery = child.Name
-			}
-		}
-	}
-
-	if base == "" || recovery == "" {
-		b, err := json.Marshal(partitions)
-		if err != nil {
-			return "", "", err
-		}
-
-		return "", "", fmt.Errorf("Could not determine partitions: %v", string(b))
-	}
-
-	return base, recovery, nil
-}
-
-func determineRootPartition(looksLikeRootPartition func(partition string, opts []string) bool) (string, int, []string, error) {
+func determineRootPartition(looksLikeRootPartition func(partition string, opts []string) bool) (string, PartitionType, []string, error) {
 	lvs, err := scanVGs()
 	if err != nil {
 		return "", PARTITION_TYPE_UNKNOWN, nil, err
@@ -299,6 +331,21 @@ func runScriptInChroot(scriptName string, args ...string) error {
 func scanVGs() (LVSOutput, error) {
 	ret := LVSOutput{}
 	output, err := subprocess.RunCommand("lvs", "-o", "vg_name,lv_name", "--reportformat", "json")
+	if err != nil {
+		return ret, err
+	}
+
+	err = json.Unmarshal([]byte(output), &ret)
+	if err != nil {
+		return ret, err
+	}
+
+	return ret, nil
+}
+
+func scanPVs() (LVSOutput, error) {
+	ret := LVSOutput{}
+	output, err := subprocess.RunCommand("pvs", "-o", "vg_name,pv_name", "--reportformat", "json")
 	if err != nil {
 		return ret, err
 	}

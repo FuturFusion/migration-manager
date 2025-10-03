@@ -140,7 +140,7 @@ func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 		if len(batches) > 0 {
 			var unrestrictedForBatch, inRunningBatch bool
 			for _, b := range batches {
-				if oldInstance.DisabledReason(b.RestrictionOverrides) == nil {
+				if oldInstance.DisabledReason(b.Config.RestrictionOverrides) == nil {
 					unrestrictedForBatch = true
 					inRunningBatch = b.Status == api.BATCHSTATUS_RUNNING
 					break
@@ -179,7 +179,7 @@ func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 		if len(batches) > 0 {
 			var cannotModify bool
 			for _, b := range batches {
-				if oldInstance.DisabledReason(b.RestrictionOverrides) == nil {
+				if oldInstance.DisabledReason(b.Config.RestrictionOverrides) == nil {
 					cannotModify = true
 					break
 				}

@@ -24,6 +24,7 @@ type NbdkitBuilder struct {
 	snapshot    string
 	filename    string
 	compression CompressionMethod
+	sdk         string
 }
 
 func NewNbdkitBuilder() *NbdkitBuilder {
@@ -70,6 +71,11 @@ func (b *NbdkitBuilder) Compression(method CompressionMethod) *NbdkitBuilder {
 	return b
 }
 
+func (b *NbdkitBuilder) SDK(filename string) *NbdkitBuilder {
+	b.sdk = filename
+	return b
+}
+
 func (b *NbdkitBuilder) Build() (*NbdkitServer, error) {
 	tmp, err := os.MkdirTemp("", "migratekit-")
 	if err != nil {
@@ -94,7 +100,7 @@ func (b *NbdkitBuilder) Build() (*NbdkitServer, error) {
 		fmt.Sprintf("compression=%s", b.compression),
 		fmt.Sprintf("vm=moref=%s", b.vm),
 		fmt.Sprintf("snapshot=%s", b.snapshot),
-		"libdir=/tmp/vmware/vmware-vix-disklib-distrib",
+		fmt.Sprintf("libdir=%s", b.sdk),
 		"transports=file:nbdssl:nbd",
 		b.filename,
 	)

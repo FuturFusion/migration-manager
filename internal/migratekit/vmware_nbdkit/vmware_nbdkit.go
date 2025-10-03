@@ -45,6 +45,7 @@ type NbdkitServers struct {
 	SnapshotRef    types.ManagedObjectReference
 	Servers        []*NbdkitServer
 	StatusCallback func(string, bool)
+	SDKPath        string
 }
 
 type NbdkitServer struct {
@@ -53,12 +54,13 @@ type NbdkitServer struct {
 	Nbdkit  *nbdkit.NbdkitServer
 }
 
-func NewNbdkitServers(vddk *VddkConfig, vm *object.VirtualMachine, statusCallback func(string, bool)) *NbdkitServers {
+func NewNbdkitServers(vddk *VddkConfig, vm *object.VirtualMachine, sdkPath string, statusCallback func(string, bool)) *NbdkitServers {
 	return &NbdkitServers{
 		VddkConfig:     vddk,
 		VirtualMachine: vm,
 		Servers:        []*NbdkitServer{},
 		StatusCallback: statusCallback,
+		SDKPath:        sdkPath,
 	}
 }
 
@@ -122,6 +124,7 @@ func (s *NbdkitServers) Start(ctx context.Context) error {
 				Snapshot(s.SnapshotRef.Value).
 				Filename(diskName).
 				Compression(s.VddkConfig.Compression).
+				SDK(s.SDKPath).
 				Build()
 			if err != nil {
 				return err

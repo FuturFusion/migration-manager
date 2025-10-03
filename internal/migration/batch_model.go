@@ -23,18 +23,12 @@ type Batch struct {
 	Status            api.BatchStatusType
 	StatusMessage     string
 	IncludeExpression string
-	StartDate         time.Time
 
-	DefaultTarget        string
-	DefaultTargetProject string
-	DefaultStoragePool   string
+	StartDate time.Time
 
-	RerunScriptlets    bool
-	PlacementScriptlet string
-
-	PostMigrationRetries int
-	Constraints          []BatchConstraint               `db:"marshal=json"`
-	RestrictionOverrides api.InstanceRestrictionOverride `db:"marshal=json"`
+	Constraints []BatchConstraint `db:"marshal=json"`
+	Config      api.BatchConfig   `db:"marshal=json"`
+	Defaults    api.BatchDefaults `db:"marshal=json"`
 }
 
 type BatchConstraint struct {
@@ -58,8 +52,8 @@ type BatchConstraint struct {
 // It defaults to the batch-level definitions unless the given TargetPlacement has overridden them.
 func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, placement api.Placement) (*api.Placement, error) {
 	resp := &api.Placement{
-		TargetName:    b.DefaultTarget,
-		TargetProject: b.DefaultTargetProject,
+		TargetName:    b.Defaults.Placement.Target,
+		TargetProject: b.Defaults.Placement.TargetProject,
 		StoragePools:  map[string]string{},
 		Networks:      map[string]string{},
 		VlanIDs:       map[string]string{},
@@ -71,7 +65,7 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 			continue
 		}
 
-		resp.StoragePools[d.Name] = b.DefaultStoragePool
+		resp.StoragePools[d.Name] = b.Defaults.Placement.StoragePool
 	}
 
 	// Handle per-network overrides.
@@ -166,8 +160,16 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, %q is not a valid name: %v", b.Name, err)
 	}
 
-	if b.DefaultTarget == "" {
-		return NewValidationErrf("Invalid batch, target can not be empty")
+	if b.Defaults.Placement.Target == "" {
+		return NewValidationErrf("Invalid batch placement, target can not be empty")
+	}
+
+	if b.Defaults.Placement.TargetProject == "" {
+		return NewValidationErrf("Invalid batch placement, default target project can not be empty")
+	}
+
+	if b.Defaults.Placement.StoragePool == "" {
+		return NewValidationErrf("Invalid batch placement, default target storage pool can not be empty")
 	}
 
 	err = b.Status.Validate()
@@ -180,8 +182,8 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch %q is not a valid include expression: %v", b.IncludeExpression, err)
 	}
 
-	if b.PostMigrationRetries < 0 {
-		return NewValidationErrf("Invalid batch, post-migration retry count (%d) must be larger than 0", b.PostMigrationRetries)
+	if b.Config.PostMigrationRetries < 0 {
+		return NewValidationErrf("Invalid batch, post-migration retry count (%d) must be larger than 0", b.Config.PostMigrationRetries)
 	}
 
 	for _, c := range b.Constraints {
@@ -195,11 +197,33 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Cannot set start time before batch %q has started", b.Name)
 	}
 
-	if b.PlacementScriptlet != "" {
-		err := scriptlet.BatchPlacementValidate(b.PlacementScriptlet, b.Name)
+	if b.Config.PlacementScriptlet != "" {
+		err := scriptlet.BatchPlacementValidate(b.Config.PlacementScriptlet, b.Name)
 		if err != nil {
 			return NewValidationErrf("Invalid placement scriptlet: %v", err)
 		}
+	}
+
+	syncInterval, err := time.ParseDuration(b.Config.BackgroundSyncInterval)
+	if err != nil {
+		return NewValidationErrf("Invalid background sync interval %q: %v", b.Config.BackgroundSyncInterval, err)
+	}
+
+	finalSyncLimit, err := time.ParseDuration(b.Config.FinalBackgroundSyncLimit)
+	if err != nil {
+		return NewValidationErrf("Invalid final background sync limit %q: %v", b.Config.FinalBackgroundSyncLimit, err)
+	}
+
+	if finalSyncLimit > syncInterval {
+		return NewValidationErrf("Final background sync limit %q cannot be greater than the background sync interval %q", b.Config.FinalBackgroundSyncLimit, b.Config.BackgroundSyncInterval)
+	}
+
+	if finalSyncLimit <= 0 {
+		return NewValidationErrf("Final background sync limit %q must be greater than 0", b.Config.FinalBackgroundSyncLimit)
+	}
+
+	if syncInterval <= 0 {
+		return NewValidationErrf("Background sync interval %q must be greater than 0", b.Config.FinalBackgroundSyncLimit)
 	}
 
 	return nil
@@ -394,19 +418,14 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 
 	return api.Batch{
 		BatchPut: api.BatchPut{
-			Name:                 b.Name,
-			DefaultTarget:        b.DefaultTarget,
-			DefaultTargetProject: b.DefaultTargetProject,
-			DefaultStoragePool:   b.DefaultStoragePool,
-			IncludeExpression:    b.IncludeExpression,
-			MigrationWindows:     apiWindows,
-			Constraints:          constraints,
-			StartDate:            b.StartDate,
-			PostMigrationRetries: b.PostMigrationRetries,
-			RerunScriptlets:      b.RerunScriptlets,
-			PlacementScriptlet:   b.PlacementScriptlet,
-			RestrictionOverrides: b.RestrictionOverrides,
+			Name:              b.Name,
+			IncludeExpression: b.IncludeExpression,
+			MigrationWindows:  apiWindows,
+			Constraints:       constraints,
+			Defaults:          b.Defaults,
+			Config:            b.Config,
 		},
+		StartDate:     b.StartDate,
 		Status:        b.Status,
 		StatusMessage: b.StatusMessage,
 	}

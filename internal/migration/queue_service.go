@@ -10,6 +10,7 @@ import (
 	"slices"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
@@ -162,17 +163,6 @@ func (s queueService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 
 func (s queueService) DeleteAllByBatch(ctx context.Context, batch string) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
-		entries, err := s.repo.GetAllByBatch(ctx, batch)
-		if err != nil {
-			return fmt.Errorf("Failed to get queue entries for batch %q: %w", batch, err)
-		}
-
-		for _, entry := range entries {
-			if entry.IsMigrating() {
-				return fmt.Errorf("Cannot delete queue entry %q: Currently in a migration phase: %w", entry.InstanceUUID.String(), ErrOperationNotPermitted)
-			}
-		}
-
 		return s.repo.DeleteAllByBatch(ctx, batch)
 	})
 }
@@ -358,6 +348,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			return fmt.Errorf("Failed to get source %q: %w", instance.Source, err)
 		}
 
+		instance.Properties.Apply(instance.Overrides.Properties)
 		// Setup the default "idle" command
 		workerCommand = WorkerCommand{
 			Command:      api.WORKERCOMMAND_IDLE,
@@ -404,8 +395,11 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		}
 
 		// Determine what action, if any, the worker should start.
+		// The linter tries to be extra-smart here and inspects all the if-conditions below,
+		// but leaving this variable unset would make this whole block brittle to changes.
+		newStatusMessage := queueEntry.MigrationStatusMessage //nolint:ineffassign,staticcheck
 		newStatus := queueEntry.MigrationStatus
-		newStatusMessage := queueEntry.MigrationStatusMessage
+		newImportStage := queueEntry.ImportStage
 
 		var sourceLimitReached bool
 		if sourceProperties.ImportLimit > 0 {
@@ -432,13 +426,15 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 				return err
 			}
 
+			var begun bool
+			log := slog.With(slog.String("location", instance.Properties.Location), slog.String("batch", queueEntry.BatchName))
 			if err != nil {
-				slog.Warn("No matching migration window found, skipping final import for now", slog.String("instance", instance.Properties.Location), slog.Any("error", err))
-				return nil
+				log.Warn("No matching migration window found, skipping final import for now", slog.Any("error", err))
+			} else {
+				begun = window.Begun()
+				log.Info("Selected migration window", slog.String("start", window.Start.String()), slog.String("end", window.End.String()), slog.Bool("begun", begun))
 			}
 
-			begun := window.Begun()
-			slog.Info("Selected migration window", slog.String("start", window.Start.String()), slog.String("end", window.End.String()), slog.Bool("begun", begun), slog.String("location", instance.Properties.Location))
 			if begun {
 				if !window.IsEmpty() {
 					// Assign the migration window to the queue entry.
@@ -455,6 +451,55 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 					newStatus = api.MIGRATIONSTATUS_POST_IMPORT
 					newStatusMessage = string(api.MIGRATIONSTATUS_POST_IMPORT)
 				}
+			} else {
+				// Only perform background resync if it's supported and we haven't entered final migration anyway.
+				if queueEntry.ImportStage != IMPORTSTAGE_FINAL || !instance.Properties.BackgroundImport || queueEntry.LastBackgroundSync.IsZero() {
+					return nil
+				}
+
+				batch, err := s.batch.GetByName(ctx, queueEntry.BatchName)
+				if err != nil {
+					return fmt.Errorf("Failed to get queue entry batch %q: %w", queueEntry.BatchName, err)
+				}
+
+				syncInterval, err := time.ParseDuration(batch.Config.BackgroundSyncInterval)
+				if err != nil {
+					return fmt.Errorf("Invalid background sync interval %q: %w", batch.Config.BackgroundSyncInterval, err)
+				}
+
+				finalSyncLimit, err := time.ParseDuration(batch.Config.FinalBackgroundSyncLimit)
+				if err != nil {
+					return fmt.Errorf("Invalid final background sync limit %q: %w", batch.Config.FinalBackgroundSyncLimit, err)
+				}
+
+				now := time.Now().UTC()
+				var resync bool
+				// It has been more then BackgroundSyncInterval time since the last sync.
+				timeSinceLastSync := now.Sub(queueEntry.LastBackgroundSync)
+				if timeSinceLastSync >= syncInterval {
+					// Only resync if window won't have begun before the next interval is reached.
+					if window == nil || window.Start.After(now.Add(syncInterval)) {
+						resync = true
+					}
+				}
+
+				if !resync && window != nil {
+					// If time between the last sync and the window start time is less than the sync interval, but more then the final sync buffer, then sync anyway.
+					if window.Start.Sub(queueEntry.LastBackgroundSync) < syncInterval && window.Start.Sub(now) >= finalSyncLimit {
+						resync = true
+					}
+				}
+
+				if !resync {
+					return nil
+				}
+
+				// Repeat background sync if supported and interval is reached.
+				log.Info("Issuing background sync top-up")
+				workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
+				newStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
+				newStatusMessage = string(api.MIGRATIONSTATUS_BACKGROUND_IMPORT)
+				newImportStage = IMPORTSTAGE_BACKGROUND
 			}
 		}
 
@@ -464,8 +509,8 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		}
 
 		// Update queueEntry in the database, and set the worker update time.
-		if newStatus != queueEntry.MigrationStatus || newStatusMessage != queueEntry.MigrationStatusMessage {
-			_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, queueEntry.ImportStage, windowID)
+		if newStatus != queueEntry.MigrationStatus || newStatusMessage != queueEntry.MigrationStatusMessage || newImportStage != queueEntry.ImportStage {
+			_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, newImportStage, windowID)
 			if err != nil {
 				return fmt.Errorf("Failed updating instance %q: %w", instance.UUID.String(), err)
 			}
@@ -507,6 +552,7 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 				entry.ImportStage = IMPORTSTAGE_FINAL
 				entry.MigrationStatus = api.MIGRATIONSTATUS_IDLE
 				entry.MigrationStatusMessage = "Waiting for migration window"
+				entry.LastBackgroundSync = time.Now().UTC()
 
 			case api.MIGRATIONSTATUS_FINAL_IMPORT:
 				entry.ImportStage = IMPORTSTAGE_COMPLETE
