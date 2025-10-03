@@ -26,10 +26,12 @@ import (
 //go:embed scripts/*
 var embeddedScripts embed.FS
 
+type PartitionType string
+
 const (
-	PARTITION_TYPE_UNKNOWN = iota
-	PARTITION_TYPE_PLAIN
-	PARTITION_TYPE_LVM
+	PARTITION_TYPE_UNKNOWN PartitionType = "unknown"
+	PARTITION_TYPE_PLAIN   PartitionType = "plain"
+	PARTITION_TYPE_LVM     PartitionType = "lvm"
 )
 
 type LVSOutput struct {
@@ -221,7 +223,7 @@ func DeactivateVG() error {
 	return err
 }
 
-func determineRootPartition(looksLikeRootPartition func(partition string, opts []string) bool) (string, int, []string, error) {
+func determineRootPartition(looksLikeRootPartition func(partition string, opts []string) bool) (string, PartitionType, []string, error) {
 	lvs, err := scanVGs()
 	if err != nil {
 		return "", PARTITION_TYPE_UNKNOWN, nil, err
