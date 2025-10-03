@@ -395,8 +395,10 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		}
 
 		// Determine what action, if any, the worker should start.
+		// The linter tries to be extra-smart here and inspects all the if-conditions below,
+		// but leaving this variable unset would make this whole block brittle to changes.
+		newStatusMessage := queueEntry.MigrationStatusMessage //nolint:ineffassign,staticcheck
 		newStatus := queueEntry.MigrationStatus
-		newStatusMessage := queueEntry.MigrationStatusMessage
 		newImportStage := queueEntry.ImportStage
 
 		var sourceLimitReached bool
