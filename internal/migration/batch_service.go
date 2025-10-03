@@ -575,6 +575,7 @@ func (s batchService) ResetBatchByName(ctx context.Context, name string, queueSv
 
 		batch.Status = api.BATCHSTATUS_DEFINED
 		batch.StatusMessage = string(api.BATCHSTATUS_DEFINED)
+		batch.StartDate = time.Time{}
 		err = s.repo.Update(ctx, name, *batch)
 		if err != nil {
 			return fmt.Errorf("Failed to reset batch %q: %w", name, err)

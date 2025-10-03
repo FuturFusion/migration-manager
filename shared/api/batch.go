@@ -40,7 +40,7 @@ func (b BatchStatusType) Validate() error {
 //
 // swagger:model
 type Batch struct {
-	BatchPut
+	BatchPut `yaml:",inline"`
 
 	// The status of this batch
 	// Example: BATCHSTATUS_DEFINED
@@ -49,6 +49,9 @@ type Batch struct {
 	// A free-form string to provide additional information about the status
 	// Example: "4 of 5 instances migrated"
 	StatusMessage string `json:"status_message" yaml:"status_message"`
+
+	// Time in UTC when the batch was started.
+	StartDate time.Time `json:"start_date" yaml:"start_date"`
 }
 
 // BatchPut defines the configurable fields of Batch.
@@ -59,33 +62,10 @@ type BatchPut struct {
 	// Example: MyBatch
 	Name string `json:"name" yaml:"name"`
 
-	// The destination target name to be used by all instances in this batch
-	// Example: Mytarget
-	DefaultTarget string `json:"default_target" yaml:"default_target"`
-
-	// The target project to use
-	// Example: default
-	DefaultTargetProject string `json:"default_target_project" yaml:"default_target_project"`
-
-	// The Incus storage pool that this batch should use for creating VMs and mounting ISO images
-	// Example: local
-	DefaultStoragePool string `json:"default_storage_pool" yaml:"default_storage_pool"`
-
-	// Whether to re-run scriptlets if a migration restarts
-	RerunScriptlets bool `json:"rerun_scriptlets" yaml:"rerun_scriptlets"`
-
-	// The placement scriptlet used to determine the target for queued instances.
-	// Example: starlark scriptlet
-	PlacementScriptlet string `json:"placement_scriptlet" yaml:"placement_scriptlet"`
-
 	// A Expression used to select instances to add to this batch
 	// Language reference: https://expr-lang.org/docs/language-definition
 	// Example: GetInventoryPath() matches "^foobar/.*"
 	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
-
-	// PostMigrationRetries is the maximum number of times post-migration steps will be retried upon errors.
-	// Example: 5
-	PostMigrationRetries int `json:"post_migration_retries" yaml:"post_migration_retries"`
 
 	// Set of migration window timings.
 	MigrationWindows []MigrationWindow `json:"migration_windows" yaml:"migration_windows"`
@@ -93,8 +73,42 @@ type BatchPut struct {
 	// Set of constraints to apply to the batch.
 	Constraints []BatchConstraint `json:"constraints" yaml:"constraints"`
 
-	// Time in UTC when the batch was started.
-	StartDate time.Time `json:"start_date" yaml:"start_date"`
+	// Target placement configuration for the batch.
+	Defaults BatchDefaults `json:"defaults" yaml:"defaults"`
+
+	// Additional configuration for the batch.
+	Config BatchConfig `json:"config" yaml:"config"`
+}
+
+type BatchDefaults struct {
+	Placement BatchPlacement `json:"placement" yaml:"placement"`
+}
+
+type BatchPlacement struct {
+	// The destination target name to be used by all instances in this batch
+	// Example: Mytarget
+	Target string `json:"target" yaml:"target"`
+
+	// The target project to use
+	// Example: default
+	TargetProject string `json:"target_project" yaml:"target_project"`
+
+	// The Incus storage pool that this batch should use for creating VMs and mounting ISO images
+	// Example: local
+	StoragePool string `json:"storage_pool" yaml:"storage_pool"`
+}
+
+type BatchConfig struct {
+	// Whether to re-run scriptlets if a migration restarts
+	RerunScriptlets bool `json:"rerun_scriptlets" yaml:"rerun_scriptlets"`
+
+	// The placement scriptlet used to determine the target for queued instances.
+	// Example: starlark scriptlet
+	PlacementScriptlet string `json:"placement_scriptlet" yaml:"placement_scriptlet"`
+
+	// PostMigrationRetries is the maximum number of times post-migration steps will be retried upon errors.
+	// Example: 5
+	PostMigrationRetries int `json:"post_migration_retries" yaml:"post_migration_retries"`
 
 	// Overrides to allow migrating instances that are otherwise restricted.
 	RestrictionOverrides InstanceRestrictionOverride `json:"instance_restriction_overrides" yaml:"instance_restriction_overrides"`

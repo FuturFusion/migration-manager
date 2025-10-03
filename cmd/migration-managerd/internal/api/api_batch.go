@@ -494,7 +494,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		Status:               currentBatch.Status,
 		StatusMessage:        currentBatch.StatusMessage,
 		IncludeExpression:    batch.IncludeExpression,
-		StartDate:            batch.StartDate,
+		StartDate:            currentBatch.StartDate,
 		RerunScriptlets:      batch.RerunScriptlets,
 		PlacementScriptlet:   batch.PlacementScriptlet,
 		DefaultTarget:        batch.DefaultTarget,
