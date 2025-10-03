@@ -119,7 +119,7 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 
 		lastUpdate := "No update"
 		if !q.LastWorkerResponse.IsZero() {
-			lastUpdate = time.Now().UTC().Sub(q.LastWorkerResponse).String() + " ago"
+			lastUpdate = time.Now().UTC().Sub(q.LastWorkerResponse).Truncate(time.Second).String() + " ago"
 		}
 
 		window := "none"
