@@ -43,16 +43,16 @@ const Batch = () => {
           sortKey: item.status_message,
         },
         {
-          content: item.default_target,
-          sortKey: item.default_target,
+          content: item.defaults.placement.target,
+          sortKey: item.defaults.placement.target,
         },
         {
-          content: item.default_target_project,
-          sortKey: item.default_target_project,
+          content: item.defaults.placement.target_project,
+          sortKey: item.defaults.placement.target_project,
         },
         {
-          content: item.default_storage_pool,
-          sortKey: item.default_storage_pool,
+          content: item.defaults.placement.storage_pool,
+          sortKey: item.defaults.placement.storage_pool,
         },
         {
           content: item.include_expression,
