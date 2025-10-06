@@ -121,6 +121,10 @@ func WithSource(src source.Source) WorkerOption {
 func (w *Worker) Run(ctx context.Context) {
 	slog.Info("Starting up", slog.String("version", version.Version))
 
+	// Try to clean up artifacts when the worker first starts, or restarts.
+	_ = w.cleanupArtifacts()
+	defer func() { _ = w.cleanupArtifacts() }()
+
 	for {
 		done := func() (done bool) {
 			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid+"/worker/command", http.MethodPost, "secret="+w.token, nil)
@@ -675,4 +679,22 @@ func (w *Worker) matchImageArtifact(artifacts []api.Artifact, cmd api.WorkerComm
 	}
 
 	return artifact, nil
+}
+
+func (w *Worker) cleanupArtifacts() error {
+	err := os.RemoveAll(filepath.Dir(worker.VMwareSDKPath))
+	if err != nil {
+		return err
+	}
+
+	for artifactUUID := range w.lastArtifactUpdates {
+		err := os.RemoveAll(filepath.Join("/tmp", artifactUUID.String()))
+		if err != nil {
+			return err
+		}
+
+		delete(w.lastArtifactUpdates, artifactUUID)
+	}
+
+	return nil
 }
