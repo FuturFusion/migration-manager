@@ -42,21 +42,29 @@ test("renders and submit BatchForm", async () => {
   expect(handleSubmit).toHaveBeenCalledTimes(1);
   expect(handleSubmit).toHaveBeenCalledWith({
     name: "Batch1",
-    default_storage_pool: "default",
-    default_target: "t1",
-    default_target_project: "default",
     include_expression: "false",
     status: "",
     status_message: "",
     migration_windows: [],
     constraints: [],
-    post_migration_retries: 5,
-    rerun_scriptlets: false,
-    placement_scriptlet: "",
-    instance_restriction_overrides: {
-      allow_no_background_import: false,
-      allow_no_ipv4: false,
-      allow_unknown_os: false,
+    config: {
+      background_sync_interval: "10m",
+      final_background_sync_limit: "10m",
+      post_migration_retries: 5,
+      rerun_scriptlets: false,
+      placement_scriptlet: "",
+      instance_restriction_overrides: {
+        allow_no_background_import: false,
+        allow_no_ipv4: false,
+        allow_unknown_os: false,
+      },
+    },
+    defaults: {
+      placement: {
+        storage_pool: "default",
+        target: "t1",
+        target_project: "default",
+      },
     },
   });
 });

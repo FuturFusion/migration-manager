@@ -2,7 +2,7 @@ import { FC, useEffect, useState } from "react";
 import { Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
-import { useFormik } from "formik";
+import { FormikErrors, useFormik } from "formik";
 import { fetchInstances } from "api/instances";
 import { fetchTargets } from "api/targets";
 import BatchConstraintsWidget from "components/BatchConstraintsWidget";
@@ -45,15 +45,20 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
 
   const validateForm = (
     values: BatchFormValues,
-  ): Partial<Record<keyof BatchFormValues, string>> => {
-    const errors: Partial<Record<keyof BatchFormValues, string>> = {};
+  ): FormikErrors<BatchFormValues> => {
+    const errors: FormikErrors<BatchFormValues> = {};
 
     if (!values.name) {
       errors.name = "Name is required";
     }
 
-    if (!values.default_target || Number(values.default_target) < 1) {
-      errors.default_target = "Target is required";
+    if (
+      !values.defaults.placement.target ||
+      Number(values.defaults.placement.target) < 1
+    ) {
+      errors.defaults ??= {};
+      errors.defaults.placement ??= {};
+      errors.defaults.placement.target = "Target is required";
     }
 
     if (!values.include_expression) {
@@ -72,21 +77,29 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
 
   let formikInitialValues: BatchFormValues = {
     name: "",
-    default_storage_pool: "default",
-    default_target: "",
-    default_target_project: "default",
     status: "",
     status_message: "",
     include_expression: "",
     migration_windows: [],
     constraints: [],
-    post_migration_retries: 5,
-    placement_scriptlet: "",
-    rerun_scriptlets: false,
-    instance_restriction_overrides: {
-      allow_unknown_os: false,
-      allow_no_ipv4: false,
-      allow_no_background_import: false,
+    config: {
+      instance_restriction_overrides: {
+        allow_unknown_os: false,
+        allow_no_ipv4: false,
+        allow_no_background_import: false,
+      },
+      post_migration_retries: 5,
+      placement_scriptlet: "",
+      rerun_scriptlets: false,
+      background_sync_interval: "10m",
+      final_background_sync_limit: "10m",
+    },
+    defaults: {
+      placement: {
+        storage_pool: "default",
+        target: "",
+        target_project: "default",
+      },
     },
   };
 
@@ -99,22 +112,33 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
 
     formikInitialValues = {
       name: batch.name,
-      default_storage_pool: batch.default_storage_pool,
-      default_target: batch.default_target,
-      default_target_project: batch.default_target_project,
       status: batch.status,
       status_message: batch.status_message,
       include_expression: batch.include_expression,
       migration_windows: migrationWindows,
       constraints: batch.constraints,
-      post_migration_retries: batch.post_migration_retries,
-      placement_scriptlet: batch.placement_scriptlet,
-      rerun_scriptlets: batch.rerun_scriptlets,
-      instance_restriction_overrides: {
-        allow_unknown_os: batch.instance_restriction_overrides.allow_unknown_os,
-        allow_no_ipv4: batch.instance_restriction_overrides.allow_no_ipv4,
-        allow_no_background_import:
-          batch.instance_restriction_overrides.allow_no_background_import,
+      config: {
+        instance_restriction_overrides: {
+          allow_unknown_os:
+            batch.config.instance_restriction_overrides.allow_unknown_os,
+          allow_no_ipv4:
+            batch.config.instance_restriction_overrides.allow_no_ipv4,
+          allow_no_background_import:
+            batch.config.instance_restriction_overrides
+              .allow_no_background_import,
+        },
+        post_migration_retries: batch.config.post_migration_retries,
+        placement_scriptlet: batch.config.placement_scriptlet,
+        rerun_scriptlets: batch.config.rerun_scriptlets,
+        background_sync_interval: batch.config.background_sync_interval,
+        final_background_sync_limit: batch.config.final_background_sync_limit,
+      },
+      defaults: {
+        placement: {
+          storage_pool: batch.defaults.placement.storage_pool,
+          target: batch.defaults.placement.target,
+          target_project: batch.defaults.placement.target_project,
+        },
       },
     };
   }
@@ -150,14 +174,20 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
 
       const modifiedValues = {
         ...values,
-        default_target_project:
-          values.default_target_project != ""
-            ? values.default_target_project
-            : "default",
-        default_storage_pool:
-          values.default_storage_pool != ""
-            ? values.default_storage_pool
-            : "default",
+        defaults: {
+          ...values.defaults,
+          placement: {
+            ...values.defaults.placement,
+            target_project:
+              values.defaults.placement.target_project != ""
+                ? values.defaults.placement.target_project
+                : "default",
+            storage_pool:
+              values.defaults.placement.storage_pool != ""
+                ? values.defaults.placement.storage_pool
+                : "default",
+          },
+        },
         migration_windows: formattedMigrationWindows,
       };
 
@@ -209,17 +239,17 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               {formik.errors.name}
             </Form.Control.Feedback>
           </Form.Group>
-          <Form.Group controlId="default_target">
+          <Form.Group controlId="defaultTarget">
             <Form.Label>Default target</Form.Label>
             {!isLoadingTargets && !targetsError && (
               <Form.Select
-                name="default_target"
-                value={formik.values.default_target}
+                name="defaults.placement.target"
+                value={formik.values.defaults.placement.target}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
                 isInvalid={
-                  !!formik.errors.default_target &&
-                  formik.touched.default_target
+                  !!formik.errors.defaults?.placement?.target &&
+                  formik.touched.defaults?.placement?.target
                 }
               >
                 <option value="">-- Select an option --</option>
@@ -231,25 +261,25 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               </Form.Select>
             )}
             <Form.Control.Feedback type="invalid">
-              {formik.errors.default_target}
+              {formik.errors.defaults?.placement?.target}
             </Form.Control.Feedback>
           </Form.Group>
-          <Form.Group className="mb-3" controlId="default_project">
+          <Form.Group className="mb-3" controlId="defaultProject">
             <Form.Label>Default project</Form.Label>
             <Form.Control
               type="text"
-              name="default_target_project"
-              value={formik.values.default_target_project}
+              name="defaults.placement.target_project"
+              value={formik.values.defaults.placement.target_project}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
             />
           </Form.Group>
-          <Form.Group className="mb-3" controlId="default_storage">
+          <Form.Group className="mb-3" controlId="defaultStorage">
             <Form.Label>Default storage pool</Form.Label>
             <Form.Control
               type="text"
-              name="default_storage_pool"
-              value={formik.values.default_storage_pool}
+              name="defaults.placement.storage_pool"
+              value={formik.values.defaults.placement.storage_pool}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
             />
@@ -258,17 +288,17 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
             <Form.Label>Post migration retries</Form.Label>
             <Form.Control
               type="number"
-              name="post_migration_retries"
-              value={formik.values.post_migration_retries}
+              name="config.post_migration_retries"
+              value={formik.values.config.post_migration_retries}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               isInvalid={
-                !!formik.errors.post_migration_retries &&
-                formik.touched.post_migration_retries
+                !!formik.errors.config?.post_migration_retries &&
+                formik.touched.config?.post_migration_retries
               }
             />
             <Form.Control.Feedback type="invalid">
-              {formik.errors.post_migration_retries}
+              {formik.errors.config?.post_migration_retries}
             </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3" controlId="include_expression">
@@ -306,14 +336,34 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               </Form.Control.Feedback>
             </InputGroup>
           </Form.Group>
+          <Form.Group className="mb-3" controlId="backgroundSyncInterval">
+            <Form.Label>Background sync interval</Form.Label>
+            <Form.Control
+              type="text"
+              name="config.background_sync_interval"
+              value={formik.values.config.background_sync_interval}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="finalBackgroundSyncLimit">
+            <Form.Label>Final background sync limit</Form.Label>
+            <Form.Control
+              type="text"
+              name="config.final_background_sync_limit"
+              value={formik.values.config.final_background_sync_limit}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            />
+          </Form.Group>
           <Form.Group className="mb-3" controlId="placement scriptlet">
             <Form.Label>Placement scriptlet</Form.Label>
             <Form.Control
               type="text"
               as="textarea"
               rows={10}
-              name="placement_scriptlet"
-              value={formik.values.placement_scriptlet}
+              name="config.placement_scriptlet"
+              value={formik.values.config.placement_scriptlet}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
             />
@@ -321,18 +371,18 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
           <Form.Group className="mb-3" controlId="rerun_scriptlets">
             <Form.Label>Re-run scriptlets</Form.Label>
             <Form.Select
-              name="rerun_scriptlets"
-              value={formik.values.rerun_scriptlets ? "true" : "false"}
+              name="config.rerun_scriptlets"
+              value={formik.values.config.rerun_scriptlets ? "true" : "false"}
               onChange={(e) =>
                 formik.setFieldValue(
-                  "rerun_scriptlets",
+                  "config.rerun_scriptlets",
                   e.target.value === "true",
                 )
               }
               onBlur={formik.handleBlur}
               isInvalid={
-                !!formik.errors.rerun_scriptlets &&
-                formik.touched.rerun_scriptlets
+                !!formik.errors.config?.rerun_scriptlets &&
+                formik.touched.config?.rerun_scriptlets
               }
             >
               <option value="false">no</option>
@@ -342,15 +392,16 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
           <Form.Group className="mb-3" controlId="allow_unknown_os">
             <Form.Label>Allow unknown os</Form.Label>
             <Form.Select
-              name="instance_restriction_overrides.allow_unknown_os"
+              name="config.instance_restriction.overrides_allow_unknown_os"
               value={
-                formik.values.instance_restriction_overrides.allow_unknown_os
+                formik.values.config.instance_restriction_overrides
+                  .allow_unknown_os
                   ? "true"
                   : "false"
               }
               onChange={(e) =>
                 formik.setFieldValue(
-                  "instance_restriction_overrides.allow_unknown_os",
+                  "config.instance_restriction_overrides.allow_unknown_os",
                   e.target.value === "true",
                 )
               }
@@ -363,15 +414,16 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
           <Form.Group className="mb-3" controlId="allow_no_ipv4">
             <Form.Label>Allow no IPv4</Form.Label>
             <Form.Select
-              name="instance_restriction_overrides.allow_no_ipv4"
+              name="config.instance_restriction_overrides.allow_no_ipv4"
               value={
-                formik.values.instance_restriction_overrides.allow_no_ipv4
+                formik.values.config.instance_restriction_overrides
+                  .allow_no_ipv4
                   ? "true"
                   : "false"
               }
               onChange={(e) =>
                 formik.setFieldValue(
-                  "instance_restriction_overrides.allow_no_ipv4",
+                  "config.instance_restriction_overrides.allow_no_ipv4",
                   e.target.value === "true",
                 )
               }
@@ -384,16 +436,16 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
           <Form.Group className="mb-3" controlId="allow_no_background_import">
             <Form.Label>Allow no background import</Form.Label>
             <Form.Select
-              name="instance_restriction_overrides.allow_no_background_import"
+              name="config.instance_restriction_overrides.allow_no_background_import"
               value={
-                formik.values.instance_restriction_overrides
+                formik.values.config.instance_restriction_overrides
                   .allow_no_background_import
                   ? "true"
                   : "false"
               }
               onChange={(e) =>
                 formik.setFieldValue(
-                  "instance_restriction_overrides.allow_no_background_import",
+                  "config.instance_restriction_overrides.allow_no_background_import",
                   e.target.value === "true",
                 )
               }

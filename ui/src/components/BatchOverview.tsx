@@ -36,18 +36,20 @@ const BatchOverview = () => {
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Default target</div>
-        <div className="col-10 detail-table-cell">{batch?.default_target}</div>
+        <div className="col-10 detail-table-cell">
+          {batch?.defaults.placement.target}
+        </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Default project</div>
         <div className="col-10 detail-table-cell">
-          {batch?.default_target_project}
+          {batch?.defaults.placement.target_project}
         </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Default storage pool</div>
         <div className="col-10 detail-table-cell">
-          {batch?.default_storage_pool}
+          {batch?.defaults.placement.storage_pool}
         </div>
       </div>
       <div className="row">
@@ -69,20 +71,42 @@ const BatchOverview = () => {
             className="bg-light p-3 rounded"
             style={{ whiteSpace: "pre-wrap" }}
           >
-            <code>{batch?.placement_scriptlet}</code>
+            <code>{batch?.config.placement_scriptlet}</code>
           </pre>
         </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Re-run scriptlets</div>
         <div className="col-10 detail-table-cell">
-          {batch?.rerun_scriptlets ? "Yes" : "No"}
+          {batch?.config.rerun_scriptlets ? "Yes" : "No"}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Post migration retries</div>
+        <div className="col-10 detail-table-cell">
+          {batch?.config.post_migration_retries}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">
+          Background sync interval
+        </div>
+        <div className="col-10 detail-table-cell">
+          {batch?.config.background_sync_interval}
+        </div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">
+          Final background sync limit
+        </div>
+        <div className="col-10 detail-table-cell">
+          {batch?.config.final_background_sync_limit}
         </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Allow unknown os</div>
         <div className="col-10 detail-table-cell">
-          {batch?.instance_restriction_overrides.allow_unknown_os
+          {batch?.config.instance_restriction_overrides.allow_unknown_os
             ? "Yes"
             : "No"}
         </div>
@@ -90,7 +114,9 @@ const BatchOverview = () => {
       <div className="row">
         <div className="col-2 detail-table-header">Allow no IPv4</div>
         <div className="col-10 detail-table-cell">
-          {batch?.instance_restriction_overrides.allow_no_ipv4 ? "Yes" : "No"}
+          {batch?.config.instance_restriction_overrides.allow_no_ipv4
+            ? "Yes"
+            : "No"}
         </div>
       </div>
       <div className="row">
@@ -98,7 +124,8 @@ const BatchOverview = () => {
           Allow no background import
         </div>
         <div className="col-10 detail-table-cell">
-          {batch?.instance_restriction_overrides.allow_no_background_import
+          {batch?.config.instance_restriction_overrides
+            .allow_no_background_import
             ? "Yes"
             : "No"}
         </div>

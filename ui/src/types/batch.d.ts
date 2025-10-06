@@ -1,3 +1,28 @@
+export interface InstanceRestrictionOverride {
+  allow_unknown_os: bool;
+  allow_no_ipv4: bool;
+  allow_no_background_import: bool;
+}
+
+export interface BatchConfig {
+  placement_scriptlet: string;
+  rerun_scriptlets: boolean;
+  post_migration_retries: number;
+  instance_restriction_overrides: InstanceRestrictionOverride;
+  background_sync_interval: string;
+  final_background_sync_limit: string;
+}
+
+export interface BatchPlacement {
+  storage_pool: string;
+  target: string;
+  target_project: string;
+}
+
+export interface BatchDefaults {
+  placement: BatchPlacement;
+}
+
 export interface BatchConstraint {
   name: string;
   description: string;
@@ -12,41 +37,25 @@ export interface MigrationWindow {
   lockout: string | null;
 }
 
-export interface InstanceRestrictionOverride {
-  allow_unknown_os: bool;
-  allow_no_ipv4: bool;
-  allow_no_background_import: bool;
-}
-
 export interface Batch {
   include_expression: string;
   name: string;
   start_date: string;
   status: string;
   status_message: string;
-  default_storage_pool: string;
-  default_target: string;
-  default_target_project: string;
   migration_windows: MigrationWindow[];
   constraints: BatchConstraint[];
-  post_migration_retries: number;
-  placement_scriptlet: string;
-  rerun_scriptlets: boolean;
-  instance_restriction_overrides: InstanceRestrictionOverride;
+  defaults: BatchDefaults;
+  config: BatchConfig;
 }
 
 export interface BatchFormValues {
   name: string;
-  default_storage_pool: string;
-  default_target: string;
-  default_target_project: string;
   status: string;
   status_message: string;
   include_expression: string;
   migration_windows: MigrationWindow[];
   constraints: BatchConstraint[];
-  post_migration_retries: number;
-  placement_scriptlet: string;
-  rerun_scriptlets: boolean;
-  instance_restriction_overrides: InstanceRestrictionOverride;
+  defaults: BatchDefaults;
+  config: BatchConfig;
 }
