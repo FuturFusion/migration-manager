@@ -120,6 +120,26 @@ var updates = map[int]schema.Update{
 	13: updateFromV12,
 	14: updateFromV13,
 	15: updateFromV14,
+	16: updateFromV15,
+}
+
+func updateFromV15(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE artifacts_new (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    uuid         TEXT NOT NULL,
+    type         TEXT NOT NULL,
+    properties   TEXT NOT NULL,
+    last_updated DATETIME NOT NULL,
+    UNIQUE (uuid)
+  );
+
+INSERT INTO artifacts_new (id, uuid, type, properties, last_updated)
+SELECT id, uuid, type, properties, ? FROM artifacts;
+DROP TABLE artifacts;
+ALTER TABLE artifacts_new RENAME TO artifacts;
+`, time.Now().UTC())
+
+	return err
 }
 
 func updateFromV14(ctx context.Context, tx *sql.Tx) error {

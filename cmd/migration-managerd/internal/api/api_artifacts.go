@@ -70,7 +70,7 @@ func artifactsPost(d *Daemon, r *http.Request) response.Response {
 	art := migration.Artifact{
 		UUID:       uuid.New(),
 		Type:       apiArtifact.Type,
-		Properties: apiArtifact.Properties,
+		Properties: apiArtifact.ArtifactPut,
 	}
 
 	_, err = d.artifact.Create(r.Context(), art)

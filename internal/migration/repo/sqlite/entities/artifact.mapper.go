@@ -8,33 +8,34 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/google/uuid"
 )
 
 var artifactObjects = RegisterStmt(`
-SELECT artifacts.id, artifacts.uuid, artifacts.type, artifacts.properties
+SELECT artifacts.id, artifacts.uuid, artifacts.type, artifacts.last_updated, artifacts.properties
   FROM artifacts
   ORDER BY artifacts.uuid
 `)
 
 var artifactObjectsByID = RegisterStmt(`
-SELECT artifacts.id, artifacts.uuid, artifacts.type, artifacts.properties
+SELECT artifacts.id, artifacts.uuid, artifacts.type, artifacts.last_updated, artifacts.properties
   FROM artifacts
   WHERE ( artifacts.id = ? )
   ORDER BY artifacts.uuid
 `)
 
 var artifactObjectsByUUID = RegisterStmt(`
-SELECT artifacts.id, artifacts.uuid, artifacts.type, artifacts.properties
+SELECT artifacts.id, artifacts.uuid, artifacts.type, artifacts.last_updated, artifacts.properties
   FROM artifacts
   WHERE ( artifacts.uuid = ? )
   ORDER BY artifacts.uuid
 `)
 
 var artifactObjectsByType = RegisterStmt(`
-SELECT artifacts.id, artifacts.uuid, artifacts.type, artifacts.properties
+SELECT artifacts.id, artifacts.uuid, artifacts.type, artifacts.last_updated, artifacts.properties
   FROM artifacts
   WHERE ( artifacts.type = ? )
   ORDER BY artifacts.uuid
@@ -46,13 +47,13 @@ SELECT artifacts.id FROM artifacts
 `)
 
 var artifactCreate = RegisterStmt(`
-INSERT INTO artifacts (uuid, type, properties)
-  VALUES (?, ?, ?)
+INSERT INTO artifacts (uuid, type, last_updated, properties)
+  VALUES (?, ?, ?, ?)
 `)
 
 var artifactUpdate = RegisterStmt(`
 UPDATE artifacts
-  SET uuid = ?, type = ?, properties = ?
+  SET uuid = ?, type = ?, last_updated = ?, properties = ?
  WHERE id = ?
 `)
 
@@ -140,7 +141,7 @@ func GetArtifact(ctx context.Context, db dbtx, uuid uuid.UUID) (_ *migration.Art
 // artifactColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Artifact entity.
 func artifactColumns() string {
-	return "artifacts.id, artifacts.uuid, artifacts.type, artifacts.properties"
+	return "artifacts.id, artifacts.uuid, artifacts.type, artifacts.last_updated, artifacts.properties"
 }
 
 // getArtifacts can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -150,7 +151,7 @@ func getArtifacts(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migration
 	dest := func(scan func(dest ...any) error) error {
 		a := migration.Artifact{}
 		var propertiesStr string
-		err := scan(&a.ID, &a.UUID, &a.Type, &propertiesStr)
+		err := scan(&a.ID, &a.UUID, &a.Type, &a.LastUpdated, &propertiesStr)
 		if err != nil {
 			return err
 		}
@@ -180,7 +181,7 @@ func getArtifactsRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]m
 	dest := func(scan func(dest ...any) error) error {
 		a := migration.Artifact{}
 		var propertiesStr string
-		err := scan(&a.ID, &a.UUID, &a.Type, &propertiesStr)
+		err := scan(&a.ID, &a.UUID, &a.Type, &a.LastUpdated, &propertiesStr)
 		if err != nil {
 			return err
 		}
@@ -329,17 +330,18 @@ func CreateArtifact(ctx context.Context, db dbtx, object migration.Artifact) (_ 
 		_err = mapErr(_err, "Artifact")
 	}()
 
-	args := make([]any, 3)
+	args := make([]any, 4)
 
 	// Populate the statement arguments.
 	args[0] = object.UUID
 	args[1] = object.Type
+	args[2] = time.Now().UTC().Format(time.RFC3339)
 	marshaledProperties, err := marshalJSON(object.Properties)
 	if err != nil {
 		return -1, err
 	}
 
-	args[2] = marshaledProperties
+	args[3] = marshaledProperties
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, artifactCreate)
@@ -387,7 +389,7 @@ func UpdateArtifact(ctx context.Context, db tx, uuid uuid.UUID, object migration
 		return err
 	}
 
-	result, err := stmt.Exec(object.UUID, object.Type, marshaledProperties, id)
+	result, err := stmt.Exec(object.UUID, object.Type, time.Now().UTC().Format(time.RFC3339), marshaledProperties, id)
 	if err != nil {
 		return fmt.Errorf("Update \"artifacts\" entry failed: %w", err)
 	}

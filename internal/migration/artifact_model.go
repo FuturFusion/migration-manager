@@ -2,6 +2,7 @@ package migration
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/osarch"
@@ -14,7 +15,8 @@ type Artifact struct {
 	ID   int64
 	UUID uuid.UUID `db:"primary=yes"`
 
-	Type api.ArtifactType
+	Type        api.ArtifactType
+	LastUpdated time.Time `db:"update_timestamp"`
 
 	Properties api.ArtifactPut `db:"marshal=json"`
 
@@ -118,10 +120,11 @@ func (a Artifact) Validate() error {
 func (a Artifact) ToAPI() api.Artifact {
 	return api.Artifact{
 		ArtifactPost: api.ArtifactPost{
-			Type:       a.Type,
-			Properties: a.Properties,
+			ArtifactPut: a.Properties,
+			Type:        a.Type,
 		},
-		UUID:  a.UUID,
-		Files: a.Files,
+		UUID:        a.UUID,
+		LastUpdated: a.LastUpdated,
+		Files:       a.Files,
 	}
 }
