@@ -15,7 +15,7 @@ const (
 )
 
 type Artifact struct {
-	ArtifactPost
+	ArtifactPost `yaml:",inline"`
 
 	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
 
@@ -23,9 +23,9 @@ type Artifact struct {
 }
 
 type ArtifactPost struct {
-	Type ArtifactType `json:"type" yaml:"type"`
+	ArtifactPut `yaml:",inline"`
 
-	Properties ArtifactPut `json:"properties" yaml:"properties"`
+	Type ArtifactType `json:"type" yaml:"type"`
 }
 
 type ArtifactPut struct {
@@ -49,30 +49,30 @@ type ArtifactPut struct {
 func (a Artifact) DefaultArtifactFile() (string, error) {
 	switch a.Type {
 	case ARTIFACTTYPE_DRIVER:
-		switch a.Properties.OS {
+		switch a.OS {
 		case OSTYPE_WINDOWS:
 			// Windows expects the VirtIO drivers ISO.
 			return "virtio-win.iso", nil
 		default:
-			return "", fmt.Errorf("Unknown artifact OS %q", a.Properties.OS)
+			return "", fmt.Errorf("Unknown artifact OS %q", a.OS)
 		}
 
 	case ARTIFACTTYPE_OSIMAGE:
-		switch a.Properties.OS {
+		switch a.OS {
 		case OSTYPE_FORTIGATE:
 			// Fortigate expects a qcow2 image containing a KVM build.
 			return "fortigate.qcow2", nil
 		default:
-			return "", fmt.Errorf("Unknown artifact OS %q", a.Properties.OS)
+			return "", fmt.Errorf("Unknown artifact OS %q", a.OS)
 		}
 
 	case ARTIFACTTYPE_SDK:
-		switch a.Properties.SourceType {
+		switch a.SourceType {
 		case SOURCETYPE_VMWARE:
 			// VMware expects the VMware disklib SDK tarball.
 			return string(SOURCETYPE_VMWARE) + "-sdk.tar.gz", nil
 		default:
-			return "", fmt.Errorf("Unknown artifact source type %q", a.Properties.SourceType)
+			return "", fmt.Errorf("Unknown artifact source type %q", a.SourceType)
 		}
 
 	default:
