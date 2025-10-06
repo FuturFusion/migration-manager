@@ -596,7 +596,7 @@ func (w *Worker) getArtifact(artifactType api.ArtifactType, cmd api.WorkerComman
 func (w *Worker) matchSourceArtifact(artifacts []api.Artifact, cmd api.WorkerCommand) (*api.Artifact, error) {
 	var artifact *api.Artifact
 	for _, a := range artifacts {
-		if a.Type == api.ARTIFACTTYPE_SDK && a.Properties.SourceType == cmd.SourceType {
+		if a.Type == api.ARTIFACTTYPE_SDK && a.SourceType == cmd.SourceType {
 			artifact = &a
 			break
 		}
@@ -612,7 +612,7 @@ func (w *Worker) matchSourceArtifact(artifacts []api.Artifact, cmd api.WorkerCom
 func (w *Worker) matchDriverArtifact(artifacts []api.Artifact, cmd api.WorkerCommand) (*api.Artifact, error) {
 	var artifact *api.Artifact
 	for _, a := range artifacts {
-		match := a.Type == api.ARTIFACTTYPE_DRIVER && a.Properties.OS == cmd.OSType && slices.Contains(a.Properties.Architectures, cmd.Architecture)
+		match := a.Type == api.ARTIFACTTYPE_DRIVER && a.OS == cmd.OSType && slices.Contains(a.Architectures, cmd.Architecture)
 		if match {
 			artifact = &a
 			break
@@ -629,14 +629,14 @@ func (w *Worker) matchDriverArtifact(artifacts []api.Artifact, cmd api.WorkerCom
 func (w *Worker) matchImageArtifact(artifacts []api.Artifact, cmd api.WorkerCommand, osVersion string) (*api.Artifact, error) {
 	var artifact *api.Artifact
 	for _, a := range artifacts {
-		match := a.Type == api.ARTIFACTTYPE_OSIMAGE && a.Properties.OS == cmd.OSType && slices.Contains(a.Properties.Architectures, cmd.Architecture)
+		match := a.Type == api.ARTIFACTTYPE_OSIMAGE && a.OS == cmd.OSType && slices.Contains(a.Architectures, cmd.Architecture)
 		expected := semver.Canonical("v" + osVersion)
 		if expected == "" {
 			return nil, fmt.Errorf("Invalid OS version %q", osVersion)
 		}
 
 		var versionsMatch bool
-		for _, v := range a.Properties.Versions {
+		for _, v := range a.Versions {
 			if semver.Compare(semver.MajorMinor("v"+v), semver.MajorMinor(expected)) == 0 {
 				versionsMatch = true
 				break

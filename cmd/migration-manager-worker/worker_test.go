@@ -393,8 +393,8 @@ func TestRun(t *testing.T) {
 
 					err := response.SyncResponse(true, []api.Artifact{{
 						ArtifactPost: api.ArtifactPost{
-							Type:       api.ARTIFACTTYPE_SDK,
-							Properties: api.ArtifactPut{SourceType: api.SOURCETYPE_VMWARE},
+							Type:        api.ARTIFACTTYPE_SDK,
+							ArtifactPut: api.ArtifactPut{SourceType: api.SOURCETYPE_VMWARE},
 						},
 						UUID:  sdkArtifactUUID,
 						Files: []string{"vmware-sdk.tar.gz"},

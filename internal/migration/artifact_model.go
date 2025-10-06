@@ -118,8 +118,8 @@ func (a Artifact) Validate() error {
 func (a Artifact) ToAPI() api.Artifact {
 	return api.Artifact{
 		ArtifactPost: api.ArtifactPost{
-			Type:       a.Type,
-			Properties: a.Properties,
+			ArtifactPut: a.Properties,
+			Type:        a.Type,
 		},
 		UUID:  a.UUID,
 		Files: a.Files,

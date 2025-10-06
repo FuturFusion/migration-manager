@@ -255,8 +255,8 @@ func (c *cmdArtifactUpload) Run(cmd *cobra.Command, args []string) error {
 	filePath := args[2]
 
 	data := api.ArtifactPost{
-		Type:       artType,
-		Properties: api.ArtifactPut{},
+		Type:        artType,
+		ArtifactPut: api.ArtifactPut{},
 	}
 
 	if data.Type == api.ARTIFACTTYPE_OSIMAGE || data.Type == api.ARTIFACTTYPE_DRIVER {
@@ -265,10 +265,10 @@ func (c *cmdArtifactUpload) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		data.Properties.OS = api.OSType(args[1])
-		data.Properties.Architectures = strings.Split(args[3], ",")
+		data.OS = api.OSType(args[1])
+		data.Architectures = strings.Split(args[3], ",")
 		if len(args) == 5 {
-			data.Properties.Versions = strings.Split(args[4], ",")
+			data.Versions = strings.Split(args[4], ",")
 		}
 	} else {
 		exit, err := c.global.CheckArgs(cmd, args, 3, 3)
@@ -276,7 +276,7 @@ func (c *cmdArtifactUpload) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		data.Properties.SourceType = api.SourceType(args[1])
+		data.SourceType = api.SourceType(args[1])
 	}
 
 	b, err := json.Marshal(data)
