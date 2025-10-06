@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/cancel"
 	"github.com/lxc/incus/v6/shared/revert"
@@ -41,8 +42,9 @@ type Worker struct {
 	uuid               string
 	token              string
 
-	lastUpdate time.Time
-	idleSleep  time.Duration
+	lastUpdate          time.Time
+	idleSleep           time.Duration
+	lastArtifactUpdates map[uuid.UUID]time.Time
 }
 
 type WorkerOption func(*Worker) error
@@ -65,7 +67,7 @@ func NewWorker(ctx context.Context, client *http.Client, opts ...WorkerOption) (
 		return nil, fmt.Errorf("Failed to find trusted certificate fingerprint from Incus: %w", err)
 	}
 
-	uuid, err := getIncusConfig(ctx, client, "user.migration.uuid")
+	workerUUID, err := getIncusConfig(ctx, client, "user.migration.uuid")
 	if err != nil {
 		return nil, fmt.Errorf("Failed to find instance UUID from Incus: %w", err)
 	}
@@ -76,13 +78,14 @@ func NewWorker(ctx context.Context, client *http.Client, opts ...WorkerOption) (
 	}
 
 	wrkr := &Worker{
-		endpoint:           parsedURL,
-		source:             nil,
-		uuid:               uuid,
-		token:              token,
-		trustedFingerprint: fingerprint,
-		lastUpdate:         time.Now().UTC(),
-		idleSleep:          10 * time.Second,
+		endpoint:            parsedURL,
+		source:              nil,
+		uuid:                workerUUID,
+		token:               token,
+		trustedFingerprint:  fingerprint,
+		lastUpdate:          time.Now().UTC(),
+		idleSleep:           10 * time.Second,
+		lastArtifactUpdates: map[uuid.UUID]time.Time{},
 	}
 
 	for _, opt := range opts {
@@ -218,17 +221,22 @@ func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) e
 		return err
 	}
 
-	sdkFile, cleanup, err := w.getArtifact(api.ARTIFACTTYPE_SDK, cmd, "")
+	sdkFile, imported, err := w.getArtifact(api.ARTIFACTTYPE_SDK, cmd, "")
 	if err != nil {
 		return err
 	}
 
-	defer cleanup()
+	if imported {
+		err := os.RemoveAll(filepath.Dir(worker.VMwareSDKPath))
+		if err != nil {
+			return err
+		}
 
-	// unpack the vmware SDK.
-	err = util.UnpackTarball(filepath.Dir(worker.VMwareSDKPath), sdkFile)
-	if err != nil {
-		return fmt.Errorf("Failed to unpack SDK: %w", err)
+		// unpack the vmware SDK.
+		err = util.UnpackTarball(filepath.Dir(worker.VMwareSDKPath), sdkFile)
+		if err != nil {
+			return fmt.Errorf("Failed to unpack SDK: %w", err)
+		}
 	}
 
 	// Do the actual import.
@@ -253,12 +261,11 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand, dry
 
 	switch cmd.OSType {
 	case api.OSTYPE_WINDOWS:
-		file, cleanup, err := w.getArtifact(api.ARTIFACTTYPE_DRIVER, cmd, "")
+		file, _, err := w.getArtifact(api.ARTIFACTTYPE_DRIVER, cmd, "")
 		if err != nil {
 			return err
 		}
 
-		defer cleanup()
 		err = worker.WindowsInjectDrivers(ctx, cmd.OSVersion, file, dryRun)
 		if err != nil {
 			return err
@@ -270,12 +277,10 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand, dry
 			return err
 		}
 
-		file, cleanup, err := w.getArtifact(api.ARTIFACTTYPE_OSIMAGE, cmd, ver)
+		file, _, err := w.getArtifact(api.ARTIFACTTYPE_OSIMAGE, cmd, ver)
 		if err != nil {
 			return err
 		}
-
-		defer cleanup()
 
 		err = worker.ReplaceFortigateBoot(file, dryRun)
 		if err != nil {
@@ -516,20 +521,20 @@ func getIncusConfig(ctx context.Context, client *http.Client, key string) (strin
 	return string(out), nil
 }
 
-func (w *Worker) getArtifact(artifactType api.ArtifactType, cmd api.WorkerCommand, osVersion string) (string, func(), error) {
+func (w *Worker) getArtifact(artifactType api.ArtifactType, cmd api.WorkerCommand, osVersion string) (string, bool, error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
 	query := fmt.Sprintf("secret=%s&instance=%s", w.token, w.uuid)
 	resp, err := w.doHTTPRequestV1("/artifacts", http.MethodGet, query, nil)
 	if err != nil {
-		return "", nil, err
+		return "", false, err
 	}
 
 	var artifacts []api.Artifact
 	err = responseToStruct(resp, &artifacts)
 	if err != nil {
-		return "", nil, err
+		return "", false, err
 	}
 
 	var artifact *api.Artifact
@@ -542,55 +547,70 @@ func (w *Worker) getArtifact(artifactType api.ArtifactType, cmd api.WorkerComman
 	case api.ARTIFACTTYPE_SDK:
 		artifact, err = w.matchSourceArtifact(artifacts, cmd)
 	default:
-		return "", nil, fmt.Errorf("Unknown artifact type %q", artifactType)
+		return "", false, fmt.Errorf("Unknown artifact type %q", artifactType)
 	}
 
 	if err != nil {
-		return "", nil, err
+		return "", false, err
+	}
+
+	requiredFile, err := artifact.DefaultArtifactFile()
+	if err != nil {
+		return "", false, err
 	}
 
 	dir = filepath.Join("/tmp", artifact.UUID.String())
-	err = os.MkdirAll(dir, 0o755)
-	if err != nil {
-		return "", nil, err
+	artifactPath := filepath.Join(dir, requiredFile)
+
+	_, err = os.Stat(artifactPath)
+	if err != nil && !os.IsNotExist(err) {
+		return "", false, fmt.Errorf("Failed to stat artifact file %q: %w", artifactPath, err)
 	}
 
-	reverter.Add(func() { _ = os.RemoveAll(dir) })
-	requiredFile, err := artifact.DefaultArtifactFile()
-	if err != nil {
-		return "", nil, err
-	}
-
-	var hasRequiredFile bool
-	for _, file := range artifact.Files {
-		if file != requiredFile {
-			continue
-		}
-
-		hasRequiredFile = true
-		f, err := os.Create(filepath.Join(dir, file))
+	newArtifact := err != nil || !artifact.LastUpdated.Equal(w.lastArtifactUpdates[artifact.UUID])
+	if newArtifact {
+		err = os.RemoveAll(dir)
 		if err != nil {
-			return "", nil, err
+			return "", false, err
 		}
 
-		defer func() { _ = f.Close() }() //nolint:revive
-		err = w.doHTTPRequestV1Writer("/artifacts/"+artifact.UUID.String()+"/files/"+file, http.MethodGet, query, f)
+		err = os.MkdirAll(dir, 0o755)
 		if err != nil {
-			return "", nil, err
+			return "", false, err
 		}
 
-		break
+		reverter.Add(func() { _ = os.RemoveAll(dir) })
+
+		var hasRequiredFile bool
+		for _, file := range artifact.Files {
+			if file != requiredFile {
+				continue
+			}
+
+			hasRequiredFile = true
+			f, err := os.Create(filepath.Join(dir, file))
+			if err != nil {
+				return "", false, err
+			}
+
+			defer func() { _ = f.Close() }() //nolint:revive
+			err = w.doHTTPRequestV1Writer("/artifacts/"+artifact.UUID.String()+"/files/"+file, http.MethodGet, query, f)
+			if err != nil {
+				return "", false, err
+			}
+
+			break
+		}
+
+		if !hasRequiredFile {
+			return "", false, fmt.Errorf("Required file %q not found", requiredFile)
+		}
 	}
 
-	if !hasRequiredFile {
-		return "", nil, fmt.Errorf("Required file %q not found", requiredFile)
-	}
-
-	cleanup := reverter.Clone().Fail
-
+	w.lastArtifactUpdates[artifact.UUID] = artifact.LastUpdated
 	reverter.Success()
 
-	return filepath.Join(dir, requiredFile), cleanup, nil
+	return artifactPath, newArtifact, nil
 }
 
 func (w *Worker) matchSourceArtifact(artifacts []api.Artifact, cmd api.WorkerCommand) (*api.Artifact, error) {
