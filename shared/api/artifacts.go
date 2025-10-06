@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -17,7 +18,8 @@ const (
 type Artifact struct {
 	ArtifactPost `yaml:",inline"`
 
-	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
+	UUID        uuid.UUID `json:"uuid" yaml:"uuid"`
+	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
 
 	Files []string `json:"files" yaml:"files"`
 }
