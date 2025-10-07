@@ -593,7 +593,7 @@ def placement(instance, batch):
 
 						return tc.vmStartErr[instanceName]
 					},
-					CreateStoragePoolVolumeFromBackupFunc: func(poolName, backupFilePath string) ([]incus.Operation, error) {
+					CreateStoragePoolVolumeFromBackupFunc: func(poolName, backupFilePath string, volumeName string) ([]incus.Operation, error) {
 						return []incus.Operation{}, tc.backupCreateErr
 					},
 					CreateVMDefinitionFunc: func(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint, endpoint string) (incusAPI.InstancesPost, error) {
@@ -614,7 +614,7 @@ def placement(instance, batch):
 					},
 					GetStoragePoolVolumeNamesFunc: func(pool string) ([]string, error) {
 						if tc.hasWorkerVolume {
-							return []string{"custom/" + util.WorkerVolume()}, nil
+							return []string{"custom/" + util.WorkerVolume("x86_64")}, nil
 						}
 
 						return []string{}, nil
@@ -623,7 +623,7 @@ def placement(instance, batch):
 			}
 
 			// Always write the worker image and drivers ISO so that we don't reach out to GitHub.
-			require.NoError(t, os.WriteFile(filepath.Join(d.os.CacheDir, util.RawWorkerImage()), nil, 0o660))
+			require.NoError(t, os.WriteFile(filepath.Join(d.os.CacheDir, util.RawWorkerImage("x86_64")), nil, 0o660))
 
 			if tc.hasVMwareSDK {
 				art := migration.Artifact{UUID: uuid.New(), Type: api.ARTIFACTTYPE_SDK, Properties: api.ArtifactPut{SourceType: api.SOURCETYPE_VMWARE}}

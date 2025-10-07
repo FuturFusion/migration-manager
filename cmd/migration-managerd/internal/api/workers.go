@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -292,7 +291,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				}
 
 				if !visitedLocations[q.Placement.TargetName][q.Placement.TargetProject][pool] {
-					err := d.ensureISOImagesExistInStoragePool(timeoutCtx, state.Targets[instUUID], state.Batch, pool, q.Placement.TargetProject)
+					err := d.ensureISOImagesExistInStoragePool(timeoutCtx, state.Instances[instUUID], state.Targets[instUUID], state.Batch, pool, q.Placement.TargetProject)
 					if err != nil {
 						log.Error("Failed to validate batch", logger.Err(err))
 						_, err := d.batch.UpdateStatusByName(ctx, state.Batch.Name, api.BATCHSTATUS_ERROR, err.Error())
@@ -385,7 +384,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 }
 
 // ensureISOImagesExistInStoragePool ensures the necessary image files exist on the daemon to be imported to the storage volume.
-func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, tgt migration.Target, batch migration.Batch, pool string, project string) error {
+func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance migration.Instance, tgt migration.Target, batch migration.Batch, pool string, project string) error {
 	log := slog.With(
 		slog.String("method", "ensureISOImagesExistInStoragePool"),
 		slog.String("storage_pool", pool),
@@ -421,7 +420,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, tgt migr
 
 	var workerVolumeExists bool
 	for _, vol := range volumes {
-		if vol == "custom/"+util.WorkerVolume() {
+		if vol == "custom/"+util.WorkerVolume(instance.Properties.Architecture) {
 			workerVolumeExists = true
 			break
 		}
@@ -435,12 +434,12 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, tgt migr
 		}
 
 		log.Info("Worker image doesn't exist in storage pool, importing...")
-		err = d.os.LoadWorkerImage(ctx)
+		workerPath, err := d.os.LoadWorkerImage(ctx, instance.Properties.Architecture)
 		if err != nil {
 			return err
 		}
 
-		ops, err := it.CreateStoragePoolVolumeFromBackup(pool, filepath.Join(d.os.CacheDir, util.RawWorkerImage()))
+		ops, err := it.CreateStoragePoolVolumeFromBackup(pool, workerPath, util.WorkerVolume(instance.Properties.Architecture))
 		if err != nil {
 			return err
 		}
@@ -532,7 +531,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to create instance definition: %w", err)
 	}
 
-	cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, q.Placement, util.WorkerVolume())
+	cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, q.Placement, util.WorkerVolume(inst.Properties.Architecture))
 	if err != nil {
 		return fmt.Errorf("Failed to create new instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
 	}
