@@ -60,7 +60,7 @@ func (s *OS) LocalDatabaseDir() string {
 
 // LoadWorkerImage writes the VMWare vix tarball to the worker image.
 // If the worker image does not exist, it is fetched from the current project version's corresponding GitHub release.
-func (s *OS) LoadWorkerImage(ctx context.Context) error {
+func (s *OS) LoadWorkerImage(ctx context.Context, arch string) (string, error) {
 	s.writeLock.Lock()
 	defer s.writeLock.Unlock()
 
@@ -68,38 +68,42 @@ func (s *OS) LoadWorkerImage(ctx context.Context) error {
 	binaryPath := filepath.Join(s.CacheDir, "migration-manager-worker.tar.gz")
 	err := util.CreateTarball(binaryPath, filepath.Join(s.UsrDir, "migration-manager-worker"))
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	defer func() { _ = os.Remove(binaryPath) }()
 
 	binaryFile, err := os.Open(binaryPath)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	rawWorkerPath := filepath.Join(s.CacheDir, util.RawWorkerImage())
+	rawWorkerPath := filepath.Join(s.CacheDir, util.RawWorkerImage(arch))
+	if util.IsIncusOS() {
+		rawWorkerPath = filepath.Join(s.ImageDir, util.RawWorkerImage(arch))
+	}
+
 	_, err = os.Stat(rawWorkerPath)
 	if err != nil && !os.IsNotExist(err) {
-		return err
+		return "", err
 	}
 
 	// If the image doesn't exist yet, then download it from GitHub.
 	if err != nil {
 		g, err := util.GetProjectRepo(ctx, false)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		err = g.DownloadAsset(ctx, rawWorkerPath, "migration-manager-worker.img.gz")
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 
 	rawImgFile, err := os.OpenFile(rawWorkerPath, os.O_WRONLY, 0o600)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	defer rawImgFile.Close()
@@ -107,14 +111,14 @@ func (s *OS) LoadWorkerImage(ctx context.Context) error {
 	// Move to the first partition offset.
 	_, err = rawImgFile.Seek(616448*512, io.SeekStart)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// Write the migration manager worker at the offset.
 	_, err = io.Copy(rawImgFile, binaryFile)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return rawWorkerPath, nil
 }
