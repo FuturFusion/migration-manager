@@ -1,20 +1,21 @@
 package config
 
 import (
-	"crypto/x509"
 	"os"
 	"path"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type Config struct {
-	AuthType                   string            `yaml:"auth_type"`
-	ConfigDir                  string            `yaml:"config_dir"`
-	MigrationManagerServer     string            `yaml:"migration_manager_server"`
-	MigrationManagerServerCert *x509.Certificate `yaml:"migration_manager_server_cert"`
-	TLSClientCertFile          string            `yaml:"tls_client_cert_file"`
-	TLSClientKeyFile           string            `yaml:"tls_client_key_file"`
+	AuthType                   string          `yaml:"auth_type"`
+	ConfigDir                  string          `yaml:"config_dir"`
+	MigrationManagerServer     string          `yaml:"migration_manager_server"`
+	MigrationManagerServerCert api.Certificate `yaml:"migration_manager_server_cert"`
+	TLSClientCertFile          string          `yaml:"tls_client_cert_file"`
+	TLSClientKeyFile           string          `yaml:"tls_client_key_file"`
 }
 
 func NewConfig(configDir string) *Config {
