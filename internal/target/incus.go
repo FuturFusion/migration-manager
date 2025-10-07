@@ -281,7 +281,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	}
 
 	// Remove the migration ISO image.
-	delete(apiDef.Devices, util.WorkerVolume())
+	delete(apiDef.Devices, util.WorkerVolume(i.Properties.Architecture))
 	apiDef.Profiles = []string{"default"}
 
 	osInfo, err := defs.Get(properties.InstanceOS)
@@ -522,7 +522,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 
 	rootPool := placement.StoragePools[instDef.Properties.Disks[0].Name]
 	// Attach bootable ISO to run migration of this VM.
-	apiDef.Devices[util.WorkerVolume()] = map[string]string{
+	apiDef.Devices[util.WorkerVolume(instDef.Properties.Architecture)] = map[string]string{
 		"type":          "disk",
 		"pool":          rootPool,
 		"source":        bootISOImage,
@@ -632,7 +632,7 @@ func (t *InternalIncusTarget) CleanupVM(ctx context.Context, name string, requir
 	}
 
 	// If requireWorkerVolume is set, ensure the worker volume is attached to the VM before attempting to delete it.
-	if requireWorkerVolume && instInfo.Devices[util.WorkerVolume()] == nil {
+	if requireWorkerVolume && instInfo.Devices[util.WorkerVolume(instInfo.Architecture)] == nil {
 		return nil
 	}
 
@@ -811,7 +811,7 @@ func (t *InternalIncusTarget) GetStoragePoolVolumeNames(pool string) ([]string, 
 	return t.incusClient.GetStoragePoolVolumeNames(pool)
 }
 
-func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string) ([]incus.Operation, error) {
+func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string, volumeName string) ([]incus.Operation, error) {
 	pool, _, err := t.incusClient.GetStoragePool(poolName)
 	if err != nil {
 		return nil, err
@@ -838,7 +838,7 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string,
 	}
 
 	if err != nil {
-		err := createIncusBackup(backupName, backupFilePath, pool)
+		err := createIncusBackup(backupName, backupFilePath, pool, volumeName)
 		if err != nil {
 			return nil, err
 		}
@@ -851,7 +851,7 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string,
 			return nil, err
 		}
 
-		createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: util.WorkerVolume()}
+		createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: volumeName}
 		op, err := t.incusClient.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
 		if err != nil {
 			return nil, err
@@ -873,7 +873,7 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string,
 			return nil, err
 		}
 
-		createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: util.WorkerVolume()}
+		createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: volumeName}
 		target := t.incusClient.UseTarget(member)
 		op, err := target.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
 		if err != nil {
@@ -960,7 +960,7 @@ type backupIndexFile struct {
 }
 
 // createIncusBackup creates a backup tarball at backupPath with the given imagePath, for the given pool.
-func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.StoragePool) error {
+func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.StoragePool, volumeName string) error {
 	imgFile, err := os.Open(imagePath)
 	if err != nil {
 		return err
@@ -1003,7 +1003,7 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 
 	// Create the backup index file.
 	index := backupIndexFile{
-		Name:    util.WorkerVolume(),
+		Name:    volumeName,
 		Backend: pool.Driver,
 		Pool:    pool.Name,
 		Type:    "custom",
@@ -1016,7 +1016,7 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 					},
 					Description: "Temporary image for the migration-manager worker",
 				},
-				Name:        util.WorkerVolume(),
+				Name:        volumeName,
 				Type:        "custom",
 				ContentType: "block",
 			},
