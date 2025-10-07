@@ -24,15 +24,13 @@ const ArtifactForm: FC<Props> = ({ artifact, onSubmit }) => {
   if (artifact) {
     formikInitialValues = {
       type: artifact.type,
-      description: artifact.properties.description,
-      os: artifact.properties.os,
-      architectures: artifact.properties.architectures
-        ? artifact.properties.architectures.join(",")
+      description: artifact.description,
+      os: artifact.os,
+      architectures: artifact.architectures
+        ? artifact.architectures.join(",")
         : "",
-      versions: artifact.properties.versions
-        ? artifact.properties.versions.join(",")
-        : "",
-      source_type: artifact.properties.source_type,
+      versions: artifact.versions ? artifact.versions.join(",") : "",
+      source_type: artifact.source_type,
     };
   }
 
@@ -42,14 +40,12 @@ const ArtifactForm: FC<Props> = ({ artifact, onSubmit }) => {
     onSubmit: (values: ArtifactFormValues) => {
       const artifact: Artifact = {
         type: values.type,
-        properties: {
-          description: values.description,
-          os: values.os,
-          architectures:
-            values.architectures === "" ? [] : values.architectures.split(","),
-          versions: values.versions === "" ? [] : values.versions.split(","),
-          source_type: values.source_type,
-        },
+        description: values.description,
+        os: values.os,
+        architectures:
+          values.architectures === "" ? [] : values.architectures.split(","),
+        versions: values.versions === "" ? [] : values.versions.split(","),
+        source_type: values.source_type,
         files: [],
       };
       onSubmit(artifact);

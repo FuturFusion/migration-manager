@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router";
 import { fetchArtifact } from "api/artifacts";
+import { formatDate } from "util/date";
 
 const ArtifactOverview = () => {
   const { uuid } = useParams();
@@ -34,32 +35,30 @@ const ArtifactOverview = () => {
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Description</div>
-        <div className="col-10 detail-table-cell">
-          {artifact?.properties.description}
-        </div>
+        <div className="col-10 detail-table-cell">{artifact?.description}</div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">OS</div>
-        <div className="col-10 detail-table-cell">
-          {artifact?.properties.os}
-        </div>
+        <div className="col-10 detail-table-cell">{artifact?.os}</div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Architectures</div>
         <div className="col-10 detail-table-cell">
-          {artifact?.properties.architectures}
+          {artifact?.architectures}
         </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Versions</div>
-        <div className="col-10 detail-table-cell">
-          {artifact?.properties.versions}
-        </div>
+        <div className="col-10 detail-table-cell">{artifact?.versions}</div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Source type</div>
+        <div className="col-10 detail-table-cell">{artifact?.source_type}</div>
+      </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Last updated</div>
         <div className="col-10 detail-table-cell">
-          {artifact?.properties.source_type}
+          {formatDate(artifact?.last_updated)}
         </div>
       </div>
     </div>

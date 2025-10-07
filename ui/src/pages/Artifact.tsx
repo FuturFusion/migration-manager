@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router";
 import { fetchArtifacts } from "api/artifacts";
 import DataTable from "components/DataTable";
+import { formatDate } from "util/date";
 
 const Artifact = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ const Artifact = () => {
     queryFn: fetchArtifacts,
   });
 
-  const headers = ["UUID", "Type"];
+  const headers = ["UUID", "Type", "Last updated"];
   const rows = artifacts.map((item) => {
     return {
       cols: [
@@ -30,6 +31,10 @@ const Artifact = () => {
         {
           content: item.type,
           sortKey: item.type,
+        },
+        {
+          content: formatDate(item.last_updated),
+          sortKey: item.last_updated,
         },
       ],
     };
