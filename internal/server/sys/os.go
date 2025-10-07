@@ -24,20 +24,21 @@ type OS struct {
 	UsrDir   string // Static directory (e.g. /usr/lib/migration-manager/).
 
 	ArtifactDir string // Location of user-supplied files (e.g. /var/lib/migration-manager/artifacts/).
+	ImageDir    string // Location of the worker images (e.g. /usr/share/migration-manager/images/).
 }
 
 // DefaultOS returns a fresh uninitialized OS instance with default values.
 func DefaultOS() *OS {
 	newOS := &OS{
-		CacheDir: util.CachePath(),
-		LogDir:   util.LogPath(),
-		RunDir:   util.RunPath(),
-		VarDir:   util.VarPath(),
-		UsrDir:   util.UsrPath(),
-		ShareDir: util.SharePath(),
+		CacheDir:    util.CachePath(),
+		LogDir:      util.LogPath(),
+		RunDir:      util.RunPath(),
+		VarDir:      util.VarPath(),
+		UsrDir:      util.UsrPath(),
+		ShareDir:    util.SharePath(),
+		ArtifactDir: util.VarPath("artifacts"),
+		ImageDir:    util.SharePath("images"),
 	}
-
-	newOS.ArtifactDir = filepath.Join(newOS.VarDir, "artifacts")
 
 	return newOS
 }
