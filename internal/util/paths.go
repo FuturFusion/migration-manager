@@ -8,13 +8,18 @@ import (
 )
 
 // WorkerVolume represents the name of the storage volume containing the migration worker.
-func WorkerVolume() string {
-	return "migration-worker-" + version.GoVersion()
+func WorkerVolume(arch string) string {
+	return "migration-worker-" + arch + "-" + version.GoVersion()
 }
 
 // RawWorkerImage represents the raw worker image supplied to an Incus target.
-func RawWorkerImage() string {
-	return WorkerVolume() + ".img"
+func RawWorkerImage(arch string) string {
+	prefix := "worker-" + arch
+	if !IsIncusOS() {
+		prefix = prefix + "-" + version.GoVersion()
+	}
+
+	return prefix + ".img"
 }
 
 // CachePath returns the directory that migration manager should use for caching assets. If MIGRATION_MANAGER_DIR is
