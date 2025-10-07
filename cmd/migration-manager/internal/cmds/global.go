@@ -17,7 +17,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/lxc/incus/v6/shared/api"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/cancel"
 	"github.com/lxc/incus/v6/shared/ioprogress"
 	"github.com/lxc/incus/v6/shared/revert"
@@ -31,6 +31,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/client/oidc"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
 	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 //go:generate go run github.com/matryer/moq -fmt goimports -out asker_mock_gen_test.go -rm . Asker
@@ -133,7 +134,7 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 		if err != nil {
 			switch actualErr := err.(*url.Error).Unwrap().(type) {
 			case *tls.CertificateVerificationError:
-				c.config.MigrationManagerServerCert = actualErr.UnverifiedCertificates[0]
+				c.config.MigrationManagerServerCert = api.Certificate{Certificate: actualErr.UnverifiedCertificates[0]}
 				return nil
 			}
 
@@ -149,8 +150,8 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 
 	c.config.MigrationManagerServer = server
 
-	if c.config.MigrationManagerServerCert != nil {
-		trustedCert, err := c.Asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? (yes/no) [default=no]: ", localtls.CertFingerprint(c.config.MigrationManagerServerCert)), "no")
+	if c.config.MigrationManagerServerCert.Certificate != nil {
+		trustedCert, err := c.Asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? (yes/no) [default=no]: ", localtls.CertFingerprint(c.config.MigrationManagerServerCert.Certificate)), "no")
 		if err != nil {
 			return err
 		}
@@ -238,7 +239,7 @@ func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, r
 		u.Scheme = serverHost.Scheme
 		u.Host = serverHost.Host
 
-		client, err = getHTTPSClient(c.config.MigrationManagerServerCert, c.config.TLSClientCertFile, c.config.TLSClientKeyFile)
+		client, err = getHTTPSClient(c.config.MigrationManagerServerCert.Certificate, c.config.TLSClientCertFile, c.config.TLSClientKeyFile)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -261,7 +262,7 @@ func (c *CmdGlobal) doRequest(client *http.Client) func(*http.Request) (*http.Re
 		var resp *http.Response
 		var err error
 		if c.config.AuthType == "oidc" {
-			oidcClient := oidc.NewOIDCClient(path.Join(c.config.ConfigDir, "oidc-tokens.json"), c.config.MigrationManagerServerCert)
+			oidcClient := oidc.NewOIDCClient(path.Join(c.config.ConfigDir, "oidc-tokens.json"), c.config.MigrationManagerServerCert.Certificate)
 
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
 			resp, err = oidcClient.Do(req) // nolint: bodyclose
@@ -277,9 +278,9 @@ func (c *CmdGlobal) doRequest(client *http.Client) func(*http.Request) (*http.Re
 	}
 }
 
-func (c *CmdGlobal) parseResponse(resp *http.Response) (*api.Response, error) {
+func (c *CmdGlobal) parseResponse(resp *http.Response) (*incusAPI.Response, error) {
 	decoder := json.NewDecoder(resp.Body)
-	response := api.Response{}
+	response := incusAPI.Response{}
 
 	err := decoder.Decode(&response)
 	if err != nil {
@@ -295,7 +296,7 @@ func (c *CmdGlobal) parseResponse(resp *http.Response) (*api.Response, error) {
 	return &response, nil
 }
 
-func (c *CmdGlobal) makeHTTPRequest(endpoint string, method string, query string, reader io.Reader) (*api.Response, http.Header, error) {
+func (c *CmdGlobal) makeHTTPRequest(endpoint string, method string, query string, reader io.Reader) (*incusAPI.Response, http.Header, error) {
 	req, client, err := c.buildRequest(endpoint, method, query, reader)
 	if err != nil {
 		return nil, nil, err
@@ -317,15 +318,15 @@ func (c *CmdGlobal) makeHTTPRequest(endpoint string, method string, query string
 	return response, resp.Header, nil
 }
 
-func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*api.Response, http.Header, error) {
+func (c *CmdGlobal) doHTTPRequestV1(endpoint string, method string, query string, content []byte) (*incusAPI.Response, http.Header, error) {
 	return c.makeHTTPRequest(endpoint, method, query, bytes.NewBuffer(content))
 }
 
-func (c *CmdGlobal) doHTTPRequestV1Reader(endpoint string, method string, query string, reader io.Reader) (*api.Response, http.Header, error) {
+func (c *CmdGlobal) doHTTPRequestV1Reader(endpoint string, method string, query string, reader io.Reader) (*incusAPI.Response, http.Header, error) {
 	return c.makeHTTPRequest(endpoint, method, query, reader)
 }
 
-func (c *CmdGlobal) doHTTPRequestV1Writer(endpoint string, method string, writer io.WriteSeeker, progress func(ioprogress.ProgressData)) (*api.Response, http.Header, error) {
+func (c *CmdGlobal) doHTTPRequestV1Writer(endpoint string, method string, writer io.WriteSeeker, progress func(ioprogress.ProgressData)) (*incusAPI.Response, http.Header, error) {
 	req, client, err := c.buildRequest(endpoint, method, "", nil)
 	if err != nil {
 		return nil, nil, err
@@ -366,7 +367,7 @@ func (c *CmdGlobal) doHTTPRequestV1Writer(endpoint string, method string, writer
 	return nil, resp.Header, nil
 }
 
-func responseToStruct(response *api.Response, targetStruct any) error {
+func responseToStruct(response *incusAPI.Response, targetStruct any) error {
 	return json.Unmarshal(response.Metadata, &targetStruct)
 }
 

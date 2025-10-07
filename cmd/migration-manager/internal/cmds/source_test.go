@@ -21,6 +21,7 @@ import (
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/config"
 	"github.com/FuturFusion/migration-manager/internal/testcert"
 	"github.com/FuturFusion/migration-manager/internal/testing/queue"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 var vCenterSimulator *simulator.Server
@@ -174,7 +175,7 @@ func TestSourceAdd(t *testing.T) {
 					Asker: asker,
 					config: &config.Config{
 						MigrationManagerServer:     migrationManagerd.URL,
-						MigrationManagerServerCert: serverCert,
+						MigrationManagerServerCert: api.Certificate{Certificate: serverCert},
 					},
 				},
 				flagTrustedServerCertificateFingerprint: tc.trustedServerCertificateFingerprint,
@@ -299,7 +300,7 @@ func TestSourceList(t *testing.T) {
 				global: &CmdGlobal{
 					config: &config.Config{
 						MigrationManagerServer:     migrationManagerd.URL,
-						MigrationManagerServerCert: serverCert,
+						MigrationManagerServerCert: api.Certificate{Certificate: serverCert},
 					},
 				},
 				flagFormat: `csv`,
@@ -392,7 +393,7 @@ func TestSourceRemove(t *testing.T) {
 				global: &CmdGlobal{
 					config: &config.Config{
 						MigrationManagerServer:     migrationManagerd.URL,
-						MigrationManagerServerCert: serverCert,
+						MigrationManagerServerCert: api.Certificate{Certificate: serverCert},
 					},
 				},
 			}
@@ -554,7 +555,7 @@ func TestSourceUpdate(t *testing.T) {
 					Asker: asker,
 					config: &config.Config{
 						MigrationManagerServer:     migrationManagerd.URL,
-						MigrationManagerServerCert: serverCert,
+						MigrationManagerServerCert: api.Certificate{Certificate: serverCert},
 					},
 				},
 			}

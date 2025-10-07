@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"io"
 	"log/slog"
@@ -419,7 +418,7 @@ func (w *Worker) makeRequest(endpoint string, method string, query string, reade
 					return &tls.CertificateVerificationError{Err: fmt.Errorf("No trusted fingerprint found")}
 				}
 
-				fingerprint, err := incusTLS.CertFingerprintStr(string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: rawCerts[0]})))
+				fingerprint, err := incusTLS.CertFingerprintStr(api.CertEncodeToPEM(rawCerts[0]))
 				if err != nil {
 					return &tls.CertificateVerificationError{Err: err}
 				}
