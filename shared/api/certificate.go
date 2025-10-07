@@ -19,9 +19,11 @@ func (c *Certificate) UnmarshalYAML(unmarshal func(v any) error) error {
 	}
 
 	parsedCert := Certificate{}
-	parsedCert.Certificate, err = decodeCert([]byte(certStr))
-	if err != nil {
-		return err
+	if certStr != "" {
+		parsedCert.Certificate, err = decodeCert([]byte(certStr))
+		if err != nil {
+			return err
+		}
 	}
 
 	*c = parsedCert
@@ -41,9 +43,11 @@ func (c *Certificate) UnmarshalJSON(b []byte) error {
 	}
 
 	parsedCert := Certificate{}
-	parsedCert.Certificate, err = decodeCert([]byte(certStr))
-	if err != nil {
-		return err
+	if certStr != "" {
+		parsedCert.Certificate, err = decodeCert([]byte(certStr))
+		if err != nil {
+			return err
+		}
 	}
 
 	*c = parsedCert
