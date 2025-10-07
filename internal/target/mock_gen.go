@@ -37,7 +37,7 @@ var _ Target = &TargetMock{}
 //			CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
 //				panic("mock out the CreateNewVM method")
 //			},
-//			CreateStoragePoolVolumeFromBackupFunc: func(poolName string, backupFilePath string) ([]incus.Operation, error) {
+//			CreateStoragePoolVolumeFromBackupFunc: func(poolName string, backupFilePath string, volumeName string) ([]incus.Operation, error) {
 //				panic("mock out the CreateStoragePoolVolumeFromBackup method")
 //			},
 //			CreateStoragePoolVolumeFromISOFunc: func(pool string, isoFilePath string) ([]incus.Operation, error) {
@@ -126,7 +126,7 @@ type TargetMock struct {
 	CreateNewVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error)
 
 	// CreateStoragePoolVolumeFromBackupFunc mocks the CreateStoragePoolVolumeFromBackup method.
-	CreateStoragePoolVolumeFromBackupFunc func(poolName string, backupFilePath string) ([]incus.Operation, error)
+	CreateStoragePoolVolumeFromBackupFunc func(poolName string, backupFilePath string, volumeName string) ([]incus.Operation, error)
 
 	// CreateStoragePoolVolumeFromISOFunc mocks the CreateStoragePoolVolumeFromISO method.
 	CreateStoragePoolVolumeFromISOFunc func(pool string, isoFilePath string) ([]incus.Operation, error)
@@ -236,6 +236,8 @@ type TargetMock struct {
 			PoolName string
 			// BackupFilePath is the backupFilePath argument value.
 			BackupFilePath string
+			// VolumeName is the volumeName argument value.
+			VolumeName string
 		}
 		// CreateStoragePoolVolumeFromISO holds details about calls to the CreateStoragePoolVolumeFromISO method.
 		CreateStoragePoolVolumeFromISO []struct {
@@ -560,21 +562,23 @@ func (mock *TargetMock) CreateNewVMCalls() []struct {
 }
 
 // CreateStoragePoolVolumeFromBackup calls CreateStoragePoolVolumeFromBackupFunc.
-func (mock *TargetMock) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string) ([]incus.Operation, error) {
+func (mock *TargetMock) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string, volumeName string) ([]incus.Operation, error) {
 	if mock.CreateStoragePoolVolumeFromBackupFunc == nil {
 		panic("TargetMock.CreateStoragePoolVolumeFromBackupFunc: method is nil but Target.CreateStoragePoolVolumeFromBackup was just called")
 	}
 	callInfo := struct {
 		PoolName       string
 		BackupFilePath string
+		VolumeName     string
 	}{
 		PoolName:       poolName,
 		BackupFilePath: backupFilePath,
+		VolumeName:     volumeName,
 	}
 	mock.lockCreateStoragePoolVolumeFromBackup.Lock()
 	mock.calls.CreateStoragePoolVolumeFromBackup = append(mock.calls.CreateStoragePoolVolumeFromBackup, callInfo)
 	mock.lockCreateStoragePoolVolumeFromBackup.Unlock()
-	return mock.CreateStoragePoolVolumeFromBackupFunc(poolName, backupFilePath)
+	return mock.CreateStoragePoolVolumeFromBackupFunc(poolName, backupFilePath, volumeName)
 }
 
 // CreateStoragePoolVolumeFromBackupCalls gets all the calls that were made to CreateStoragePoolVolumeFromBackup.
@@ -584,10 +588,12 @@ func (mock *TargetMock) CreateStoragePoolVolumeFromBackup(poolName string, backu
 func (mock *TargetMock) CreateStoragePoolVolumeFromBackupCalls() []struct {
 	PoolName       string
 	BackupFilePath string
+	VolumeName     string
 } {
 	var calls []struct {
 		PoolName       string
 		BackupFilePath string
+		VolumeName     string
 	}
 	mock.lockCreateStoragePoolVolumeFromBackup.RLock()
 	calls = mock.calls.CreateStoragePoolVolumeFromBackup
