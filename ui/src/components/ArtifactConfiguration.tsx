@@ -11,7 +11,7 @@ const ArtifactConfiguration = () => {
   const navigate = useNavigate();
 
   const onSubmit = (artifact: Artifact) => {
-    updateArtifact(uuid, JSON.stringify(artifact.properties, null, 2))
+    updateArtifact(uuid, JSON.stringify(artifact, null, 2))
       .then((response) => {
         if (response.error_code == 0) {
           notify.success(`Artifact ${uuid} updated`);
