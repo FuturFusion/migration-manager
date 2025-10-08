@@ -36,6 +36,9 @@ type InternalIncusTarget struct {
 	incusClient         incus.InstanceServer
 }
 
+// WorkerImageBuildPrefix is the prefix used for all files that are written as part of the storage volume creation process for the worker image.
+const WorkerImageBuildPrefix = "worker-img-build_"
+
 var _ Target = &InternalIncusTarget{}
 
 var NewTarget = func(t api.Target) (Target, error) {
@@ -831,7 +834,8 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string,
 		}
 	}
 
-	backupName := filepath.Join(util.CachePath(), fmt.Sprintf("%s_%s_%s_%s_worker.tar.gz", t.GetName(), pool.Name, architecture, version.GoVersion()))
+	// Use all the target parameters in the file name in case other worker images are being concurrently created.
+	backupName := filepath.Join(util.CachePath(), fmt.Sprintf("%s%s_%s_%s_%s_worker.tar.gz", WorkerImageBuildPrefix, t.GetName(), pool.Name, architecture, version.GoVersion()))
 	err = createIncusBackup(backupName, backupFilePath, pool, volumeName)
 	if err != nil {
 		return nil, nil, err
@@ -976,7 +980,7 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 	dir := filepath.Dir(backupPath)
 
 	// Create a temporary directory to build the backup image.
-	tmpDir, err := os.MkdirTemp(dir, "build-worker-img_")
+	tmpDir, err := os.MkdirTemp(dir, WorkerImageBuildPrefix)
 	if err != nil {
 		return err
 	}
