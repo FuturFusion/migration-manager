@@ -175,6 +175,7 @@ func (s *InternalVMwareSource) GetNSXManagerIP(ctx context.Context) (string, err
 }
 
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, migration.Warnings, error) {
+	log := slog.With(slog.String("source", s.Name))
 	ret := migration.Instances{}
 
 	warnings := migration.Warnings{}
@@ -183,7 +184,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	var notFoundErr *find.NotFoundError
 	if err != nil {
 		if errors.As(err, &notFoundErr) {
-			slog.Warn("Registered source has no VMs", slog.String("source", s.Name))
+			log.Warn("Registered source has no VMs")
 
 			return ret, nil, nil
 		}
@@ -191,14 +192,13 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		return nil, nil, err
 	}
 
-	var networks []object.NetworkReference
-	networks, err = finder.NetworkList(ctx, "/...")
+	networks, err := finder.NetworkList(ctx, "/...")
 	if err != nil {
 		if !errors.As(err, &notFoundErr) {
 			return nil, nil, err
 		}
 
-		slog.Warn("Registered source has no networks", slog.String("source", s.Name))
+		log.Warn("Registered source has no datastores")
 	}
 
 	networkLocationsByID := map[string]string{}
@@ -228,6 +228,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	}
 
 	for _, vm := range vms {
+		log := log.With(slog.String("location", vm.InventoryPath))
 		// Ignore any vCLS instances.
 		if regexp.MustCompile(`/vCLS/`).Match([]byte(vm.InventoryPath)) {
 			continue
@@ -260,7 +261,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 			msg := fmt.Sprintf("Failed to import %q: %v", vm.InventoryPath, err)
 			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, msg))
-			slog.Error("Failed to record vm properties", slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.Any("error", err))
+			log.Error("Failed to record vm properties", slog.Any("error", err))
 			continue
 		}
 
@@ -281,11 +282,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 			vmResourcePool, err := vm.ResourcePool(ctx)
 			if err != nil {
-				slog.Error("Failed determine resource pool for VM", slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.Any("error", err))
+				log.Error("Failed determine resource pool for VM", slog.Any("error", err))
 			} else {
 				poolName, err := vmResourcePool.ObjectName(ctx)
 				if err != nil {
-					slog.Error("Failed determine resource pool name for VM", slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.Any("error", err))
+					log.Error("Failed determine resource pool name for VM", slog.Any("error", err))
 				} else {
 					resourcePoolKey := fmt.Sprintf("%s.resource_pool", s.SourceType)
 					vmProps.Config[resourcePoolKey] = poolName
