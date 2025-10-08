@@ -199,7 +199,7 @@ type cmdArtifactRemove struct {
 
 func (c *cmdArtifactRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "export <uuid> <file-name>"
+	cmd.Use = "remove <uuid> <file-name>"
 	cmd.Short = "Remove an artifact file"
 
 	cmd.RunE = c.Run
