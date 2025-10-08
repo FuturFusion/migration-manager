@@ -57,11 +57,11 @@ func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int
 				Memory:      1024 * 1024 * 1024,
 				Config:      map[string]string{},
 				OS:          osName,
+				OSVersion:   "test_os_version",
 			},
 			UUID:             instUUID,
 			Name:             name,
 			Location:         "/path/to/" + name,
-			OSVersion:        "test_os_version",
 			SecureBoot:       false,
 			LegacyBoot:       false,
 			TPM:              false,
@@ -593,8 +593,8 @@ def placement(instance, batch):
 
 						return tc.vmStartErr[instanceName]
 					},
-					CreateStoragePoolVolumeFromBackupFunc: func(poolName, backupFilePath string, volumeName string) ([]incus.Operation, error) {
-						return []incus.Operation{}, tc.backupCreateErr
+					CreateStoragePoolVolumeFromBackupFunc: func(poolName, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
+						return []incus.Operation{}, func() {}, tc.backupCreateErr
 					},
 					CreateVMDefinitionFunc: func(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint, endpoint string) (incusAPI.InstancesPost, error) {
 						tgt := target.InternalIncusTarget{InternalTarget: target.NewInternalTarget(t, "6.0")}

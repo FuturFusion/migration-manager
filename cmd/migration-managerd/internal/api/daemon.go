@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"slices"
 	"sync"
 	"time"
@@ -35,6 +36,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
 	tlsutil "github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
@@ -251,8 +253,30 @@ func DefaultAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (boo
 	return false, "", "", nil
 }
 
+// cleanupCacheDir removes extraneous files from the Migration Manager cache directory.
+func (d *Daemon) cleanupCacheDir() error {
+	files, err := filepath.Glob(filepath.Join(d.os.CacheDir, target.WorkerImageBuildPrefix+"*"))
+	if err != nil {
+		return err
+	}
+
+	for _, f := range files {
+		err := os.RemoveAll(f)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (d *Daemon) Start() error {
 	cfg, err := config.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	err = d.cleanupCacheDir()
 	if err != nil {
 		return err
 	}

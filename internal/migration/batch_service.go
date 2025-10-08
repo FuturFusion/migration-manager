@@ -524,6 +524,11 @@ func (s batchService) DeterminePlacement(ctx context.Context, instance Instance,
 		apiNetworks = append(apiNetworks, n.ToAPI())
 	}
 
+	err := scriptlet.BatchPlacementSet(s.scriptletLoader, batch.Config.PlacementScriptlet, batch.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	rawPlacement, err := scriptlet.BatchPlacementRun(ctx, s.scriptletLoader, instance.ToAPI(), batch.ToAPI(migrationWindows), apiNetworks)
 	if err != nil {
 		return nil, err

@@ -85,10 +85,10 @@ var (
 				CPUs:        2,
 				Memory:      4294967296,
 				OS:          "Ubuntu",
+				OSVersion:   "24.04",
 			},
 			Location:         "/path/UbuntuVM",
 			Architecture:     "x86_64",
-			OSVersion:        "24.04",
 			BackgroundImport: true,
 			Disks: []api.InstancePropertiesDisk{
 				{
@@ -122,10 +122,10 @@ var (
 				CPUs:        2,
 				Memory:      4294967296,
 				OS:          "Windows",
+				OSVersion:   "11",
 			},
 			Location:         "/path/WindowsVM",
 			Architecture:     "x86_64",
-			OSVersion:        "11",
 			BackgroundImport: false,
 			Disks: []api.InstancePropertiesDisk{
 				{
@@ -164,10 +164,10 @@ var (
 				CPUs:        4,
 				Memory:      4294967296,
 				OS:          "Debian",
+				OSVersion:   "bookworm",
 			},
 			Location:         "/path/DebianVM",
 			Architecture:     "arm64",
-			OSVersion:        "bookworm",
 			BackgroundImport: true,
 			Disks: []api.InstancePropertiesDisk{
 				{

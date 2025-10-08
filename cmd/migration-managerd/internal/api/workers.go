@@ -439,10 +439,13 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 			return err
 		}
 
-		ops, err := it.CreateStoragePoolVolumeFromBackup(pool, workerPath, util.WorkerVolume(instance.Properties.Architecture))
+		ops, cleanup, err := it.CreateStoragePoolVolumeFromBackup(pool, workerPath, instance.Properties.Architecture, util.WorkerVolume(instance.Properties.Architecture))
 		if err != nil {
 			return err
 		}
+
+		// Always clean up created files.
+		defer cleanup()
 
 		for _, op := range ops {
 			err = op.WaitContext(ctx)

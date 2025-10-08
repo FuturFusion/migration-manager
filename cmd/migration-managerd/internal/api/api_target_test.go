@@ -364,7 +364,7 @@ func daemonSetup(t *testing.T) *Daemon {
 
 	var err error
 
-	logger := slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{}))
+	logger := slog.New(slog.DiscardHandler)
 
 	tmpDir := t.TempDir()
 	require.NoError(t, os.Setenv("MIGRATION_MANAGER_DIR", tmpDir))
