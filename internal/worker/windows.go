@@ -268,6 +268,23 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 		return err
 	}
 
+	hivexScriptName := "hivex-disable-vm-tools.sh"
+	hivexScript, err := embeddedScripts.ReadFile(filepath.Join("scripts/", hivexScriptName))
+	if err != nil {
+		return err
+	}
+
+	// Write the hivex script to /tmp.
+	err = os.WriteFile(filepath.Join("/tmp", hivexScriptName), hivexScript, 0o755)
+	if err != nil {
+		return err
+	}
+
+	_, err = subprocess.RunCommand("/bin/sh", filepath.Join("/tmp", hivexScriptName))
+	if err != nil {
+		return err
+	}
+
 	// Re-assign network configs to the new NIC if we have MACs.
 	if len(hwAddrs) > 0 {
 		hivexScriptName := "hivex-assign-netcfg.sh"
