@@ -198,6 +198,15 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			return nil, nil, err
 		}
 
+		log.Warn("Registered source has no networks")
+	}
+
+	datastores, err := finder.DatastoreList(ctx, "/...")
+	if err != nil {
+		if !errors.As(err, &notFoundErr) {
+			return nil, nil, err
+		}
+
 		log.Warn("Registered source has no datastores")
 	}
 
@@ -300,6 +309,41 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			SourceType:           s.SourceType,
 			LastUpdateFromSource: time.Now().UTC(),
 			Properties:           *vmProps,
+		}
+
+		// Check if background import is really active.
+		if inst.Properties.BackgroundImport {
+			for _, disk := range inst.Properties.Disks {
+				if !disk.Supported {
+					continue
+				}
+
+				var datastore *object.Datastore
+				var diskPath string
+				for _, store := range datastores {
+					name := filepath.Base(store.InventoryPath)
+					path, ok := strings.CutPrefix(disk.Name, "["+name+"] ")
+					if ok {
+						datastore = store
+						diskPath = path
+						break
+					}
+				}
+
+				if datastore == nil {
+					log.Warn("Failed to find datastore for disk", slog.String("disk", disk.Name))
+					inst.Properties.BackgroundImport = false
+					break
+				}
+
+				diskPath, _ = strings.CutSuffix(diskPath, ".vmdk")
+				_, err := datastore.Stat(ctx, diskPath+"-ctk.vmdk")
+				if err != nil {
+					log.Warn("Failed to find ctk file in datastore", slog.String("disk", disk.Name), slog.String("datastore", datastore.InventoryPath), slog.String("file", diskPath+"-ctk.vmdk"), slog.Any("error", err))
+					inst.Properties.BackgroundImport = false
+					break
+				}
+			}
 		}
 
 		if inst.GetOSType() == api.OSTYPE_WINDOWS {
