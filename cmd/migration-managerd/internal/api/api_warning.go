@@ -185,7 +185,7 @@ func warningPut(d *Daemon, r *http.Request) response.Response {
 		// Validate ETag
 		err = util.EtagCheck(r, currentWarning)
 		if err != nil {
-			return incusAPI.StatusErrorf(http.StatusPreconditionFailed, err.Error())
+			return incusAPI.StatusErrorf(http.StatusPreconditionFailed, "%v", err.Error())
 		}
 
 		_, err = d.warning.UpdateStatusByUUID(ctx, wUUID, warning.Status)
