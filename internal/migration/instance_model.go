@@ -63,10 +63,16 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 		return nil
 	}
 
-	if i.Properties.OS == "" || i.Properties.OSVersion == "" {
+	props := i.Properties
+	props.Apply(i.Overrides.Properties)
+	if props.OS == "" || props.OSVersion == "" {
 		if !overrides.AllowUnknownOS {
 			return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
 		}
+	}
+
+	if props.Architecture == "" {
+		return fmt.Errorf("Could not determine instance architecture, check if guest agent is running")
 	}
 
 	ipRestrict := len(i.Properties.NICs) > 0

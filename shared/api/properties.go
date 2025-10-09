@@ -16,7 +16,6 @@ type InstanceProperties struct {
 	TPM              bool      `json:"tpm"               yaml:"tpm"               expr:"tpm"`
 	Running          bool      `json:"running"           yaml:"running"           expr:"running"`
 	BackgroundImport bool      `json:"background_import" yaml:"background_import" expr:"background_import"`
-	Architecture     string    `json:"architecture"      yaml:"architecture"      expr:"architecture"`
 
 	NICs      []InstancePropertiesNIC      `json:"nics"      yaml:"nics"      expr:"nics"`
 	Disks     []InstancePropertiesDisk     `json:"disks"     yaml:"disks"     expr:"disks"`
@@ -25,12 +24,13 @@ type InstanceProperties struct {
 
 // InstancePropertiesConfigurable are the configurable properties of an instance.
 type InstancePropertiesConfigurable struct {
-	Description string            `json:"description,omitempty" yaml:"description,omitempty" expr:"description"`
-	CPUs        int64             `json:"cpus"                  yaml:"cpus"                  expr:"cpus"`
-	Memory      int64             `json:"memory"                yaml:"memory"                expr:"memory"`
-	Config      map[string]string `json:"config"                yaml:"config"                expr:"config"`
-	OS          string            `json:"os"                    yaml:"os"                    expr:"os"`
-	OSVersion   string            `json:"os_version"            yaml:"os_version"            expr:"os_version"`
+	Description  string            `json:"description,omitempty" yaml:"description,omitempty" expr:"description"`
+	CPUs         int64             `json:"cpus"                  yaml:"cpus"                  expr:"cpus"`
+	Memory       int64             `json:"memory"                yaml:"memory"                expr:"memory"`
+	Config       map[string]string `json:"config"                yaml:"config"                expr:"config"`
+	OS           string            `json:"os"                    yaml:"os"                    expr:"os"`
+	OSVersion    string            `json:"os_version"            yaml:"os_version"            expr:"os_version"`
+	Architecture string            `json:"architecture"          yaml:"architecture"          expr:"architecture"`
 }
 
 // InstancePropertiesNIC are all properties supported by instance NICs.
@@ -68,6 +68,10 @@ func (i *InstanceProperties) Apply(cfg InstancePropertiesConfigurable) {
 
 	if cfg.OSVersion != "" {
 		i.OSVersion = cfg.OSVersion
+	}
+
+	if cfg.Architecture != "" {
+		i.Architecture = cfg.Architecture
 	}
 
 	if cfg.CPUs != 0 {
