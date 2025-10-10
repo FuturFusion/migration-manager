@@ -428,7 +428,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 
 	// If we need to download missing files, or upload them to the target, set a status message.
 	if !workerVolumeExists {
-		_, err := d.batch.UpdateStatusByName(ctx, batch.Name, batch.Status, "Downloading artifacts")
+		_, err := d.batch.UpdateStatusByName(ctx, batch.Name, batch.Status, "Uploading worker volume")
 		if err != nil {
 			return fmt.Errorf("Failed to update batch %q status message: %w", batch.Name, err)
 		}
@@ -452,6 +452,11 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 				return err
 			}
+		}
+
+		_, err = d.batch.UpdateStatusByName(ctx, batch.Name, batch.Status, string(api.BATCHSTATUS_RUNNING))
+		if err != nil {
+			return fmt.Errorf("Failed to update batch %q status message: %w", batch.Name, err)
 		}
 	}
 
