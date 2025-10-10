@@ -162,7 +162,7 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 	}
 
 	c := internalUtil.UnixHTTPClient("/dev/incus/sock")
-	ctx, cancel := context.WithTimeout(ctx, time.Second*5)
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://unix.socket/1.0/config/user.migration.hwaddrs", nil)
@@ -236,15 +236,30 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 
 	defer func() { _ = DoUnmount(windowsRecoveryMountPath) }()
 
+	// The cloned disk takes longer to populate, so wait an initial 10s before commencing.
+	if dryRun {
+		time.Sleep(10 * time.Second)
+	}
+
 	// ntfs-3g is a FUSE-backed file system; the newly mounted file systems might not be ready right away, so wait until they are.
 	mountCheckTries := 0
 	for !util.PathExists(filepath.Join(windowsMainMountPath, "Windows")) || !util.PathExists(filepath.Join(windowsRecoveryMountPath, "Recovery")) {
-		if mountCheckTries > 100 {
+		maxTries := 100
+		interval := 100 * time.Millisecond
+		if dryRun {
+			// Increase the wait duration so sub-files populate too.
+			maxTries = 10
+			interval = 5 * time.Second
+		}
+
+		if mountCheckTries > maxTries {
 			return fmt.Errorf("Windows partitions failed to mount properly; can't inject drivers")
 		}
 
+		slog.Warn("Windows partition failed to mount properly, retrying", slog.Int("retries", mountCheckTries))
+
 		mountCheckTries++
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(interval)
 	}
 
 	// Finally get around to injecting the drivers.

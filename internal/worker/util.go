@@ -146,7 +146,7 @@ func setupDiskClone(rootPartition string, rootPartitionType PartitionType, rootM
 
 	// Some fields of `lsblk` seem to take a while to populate, so retry for up to 10s.
 	cloneDisk := parts[1]
-	err = lsblkWaitToPopulate(cloneDisk, time.Second*10)
+	err = lsblkWaitToPopulate(rootPartition, cloneDisk, time.Second*30)
 	if err != nil {
 		return "", nil, fmt.Errorf("Error waiting for lsblk to populate fields: %w", err)
 	}
@@ -237,9 +237,25 @@ func getMatchingPartition(partition string, disk string) (string, error) {
 	return "/dev/" + matchingPart, nil
 }
 
-func lsblkWaitToPopulate(disk string, timeout time.Duration) error {
+func lsblkWaitToPopulate(minPartition string, disk string, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
+	_, err := subprocess.RunCommand("udevadm", "settle")
+	if err != nil {
+		return err
+	}
+
+	lsblk, err := internalUtil.ScanPartitions(minPartition)
+	if err != nil {
+		return err
+	}
+
+	if len(lsblk.BlockDevices) == 0 {
+		return fmt.Errorf("Unable to inspect partition %q", minPartition)
+	}
+
+	minPartNum := lsblk.BlockDevices[0].PartN
 
 	for ctx.Err() == nil {
 		lsblk, err := internalUtil.ScanPartitions(disk)
@@ -251,15 +267,19 @@ func lsblkWaitToPopulate(disk string, timeout time.Duration) error {
 			return fmt.Errorf("Unable to inspect disk %q", disk)
 		}
 
-		var retry bool
+		var foundMatch bool
 		for _, part := range lsblk.BlockDevices[0].Children {
 			if part.PartN == 0 || part.PKName == "" {
-				retry = true
+				foundMatch = false
 				break
+			}
+
+			if part.PartN == minPartNum {
+				foundMatch = true
 			}
 		}
 
-		if retry {
+		if !foundMatch {
 			time.Sleep(1 * time.Second)
 			continue
 		}
