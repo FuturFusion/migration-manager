@@ -271,7 +271,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 	ignoredBatches := []string{}
 	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
 		// Set a 120s timeout for creating the volumes on the target before instance creation.
-		timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
+		timeoutCtx, cancel := context.WithTimeout(ctx, time.Minute*5)
 		defer cancel()
 
 		log := log.With(slog.String("batch", state.Batch.Name))
@@ -507,7 +507,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Minute*5)
 	defer cancel()
 
 	// Connect to the target.
@@ -605,7 +605,7 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 		}
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Minute*5)
 	defer cancel()
 
 	it, err := target.NewTarget(state.Targets[instUUID].ToAPI())
@@ -836,7 +836,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 		return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*120)
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Minute*5)
 	defer cancel()
 
 	// Connect to the target.
