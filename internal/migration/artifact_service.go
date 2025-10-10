@@ -12,6 +12,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -135,7 +136,7 @@ func (a artifactService) HasRequiredArtifactsForInstance(artifacts Artifacts, in
 
 		switch art.Type {
 		case api.ARTIFACTTYPE_DRIVER:
-			if !driverArtifactExists && art.Properties.OS == osType && slices.Contains(art.Properties.Architectures, inst.Properties.Architecture) {
+			if !driverArtifactExists && art.Properties.OS == osType && util.MatchArchitecture(art.Properties.Architectures, inst.Properties.Architecture) == nil {
 				if !slices.Contains(art.Files, requiredFile) {
 					return fmt.Errorf("Failed to find content for required %q artifact", art.Type)
 				}
@@ -144,7 +145,7 @@ func (a artifactService) HasRequiredArtifactsForInstance(artifacts Artifacts, in
 			}
 
 		case api.ARTIFACTTYPE_OSIMAGE:
-			if !osArtifactExists && art.Properties.OS == osType && slices.Contains(art.Properties.Architectures, inst.Properties.Architecture) {
+			if !osArtifactExists && art.Properties.OS == osType && util.MatchArchitecture(art.Properties.Architectures, inst.Properties.Architecture) == nil {
 				if !slices.Contains(art.Files, requiredFile) {
 					return fmt.Errorf("Failed to find content for required %q artifact", art.Type)
 				}

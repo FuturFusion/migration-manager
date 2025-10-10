@@ -13,7 +13,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -635,7 +634,7 @@ func (w *Worker) matchSourceArtifact(artifacts []api.Artifact, cmd api.WorkerCom
 func (w *Worker) matchDriverArtifact(artifacts []api.Artifact, cmd api.WorkerCommand) (*api.Artifact, error) {
 	var artifact *api.Artifact
 	for _, a := range artifacts {
-		match := a.Type == api.ARTIFACTTYPE_DRIVER && a.OS == cmd.OSType && slices.Contains(a.Architectures, cmd.Architecture)
+		match := a.Type == api.ARTIFACTTYPE_DRIVER && a.OS == cmd.OSType && util.MatchArchitecture(a.Architectures, cmd.Architecture) == nil
 		if match {
 			artifact = &a
 			break
@@ -652,7 +651,7 @@ func (w *Worker) matchDriverArtifact(artifacts []api.Artifact, cmd api.WorkerCom
 func (w *Worker) matchImageArtifact(artifacts []api.Artifact, cmd api.WorkerCommand, osVersion string) (*api.Artifact, error) {
 	var artifact *api.Artifact
 	for _, a := range artifacts {
-		match := a.Type == api.ARTIFACTTYPE_OSIMAGE && a.OS == cmd.OSType && slices.Contains(a.Architectures, cmd.Architecture)
+		match := a.Type == api.ARTIFACTTYPE_OSIMAGE && a.OS == cmd.OSType && util.MatchArchitecture(a.Architectures, cmd.Architecture) == nil
 		expected := semver.Canonical("v" + osVersion)
 		if expected == "" {
 			return nil, fmt.Errorf("Invalid OS version %q", osVersion)
