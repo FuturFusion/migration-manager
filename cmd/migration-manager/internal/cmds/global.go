@@ -428,7 +428,7 @@ func validateSHA256Format(s string) error {
 }
 
 // Spawn the editor with a temporary YAML file for editing configs.
-func textEditor(inPath string, inContent []byte) ([]byte, error) {
+func textEditor(inContent []byte) ([]byte, error) {
 	var f *os.File
 	var err error
 	var yamlPath string
@@ -451,47 +451,43 @@ func textEditor(inPath string, inContent []byte) ([]byte, error) {
 		}
 	}
 
-	if inPath == "" {
-		// If provided input, create a new file
-		f, err = os.CreateTemp("", "migration_manager_editor_")
-		if err != nil {
-			return []byte{}, err
-		}
-
-		reverter := revert.New()
-		defer reverter.Fail()
-
-		reverter.Add(func() {
-			_ = f.Close()
-			_ = os.Remove(f.Name())
-		})
-
-		err = os.Chmod(f.Name(), 0o600)
-		if err != nil {
-			return []byte{}, err
-		}
-
-		_, err = f.Write(inContent)
-		if err != nil {
-			return []byte{}, err
-		}
-
-		err = f.Close()
-		if err != nil {
-			return []byte{}, err
-		}
-
-		yamlPath = fmt.Sprintf("%s.yaml", f.Name())
-		err = os.Rename(f.Name(), yamlPath)
-		if err != nil {
-			return []byte{}, err
-		}
-
-		reverter.Success()
-		reverter.Add(func() { _ = os.Remove(yamlPath) })
-	} else {
-		yamlPath = inPath
+	// If provided input, create a new file
+	f, err = os.CreateTemp("", "migration_manager_editor_")
+	if err != nil {
+		return []byte{}, err
 	}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	reverter.Add(func() {
+		_ = f.Close()
+		_ = os.Remove(f.Name())
+	})
+
+	err = os.Chmod(f.Name(), 0o600)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	_, err = f.Write(inContent)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	err = f.Close()
+	if err != nil {
+		return []byte{}, err
+	}
+
+	yamlPath = fmt.Sprintf("%s.yaml", f.Name())
+	err = os.Rename(f.Name(), yamlPath)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	reverter.Success()
+	reverter.Add(func() { _ = os.Remove(yamlPath) })
 
 	cmdParts := strings.Fields(editor)
 	cmd := exec.Command(cmdParts[0], append(cmdParts[1:], yamlPath)...)
