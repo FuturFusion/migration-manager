@@ -522,14 +522,14 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - cannot edit if in a running batch",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
 				Overrides:  api.InstanceOverride{Comment: "edited instance"},
 
 				Source: "one",
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
 
 				Source: "one",
 			},
@@ -541,14 +541,14 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - cannot edit if in a non-running batch",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
 				Overrides:  api.InstanceOverride{Comment: "edited instance"},
 
 				Source: "one",
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
 
 				Source: "one",
 			},
@@ -613,13 +613,13 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - already assigned to batch",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
 
 				Source: "one",
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
 
 				Source: "one",
 			},
@@ -636,14 +636,14 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - can't disable, already assigned to running batch",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
 				Overrides:  api.InstanceOverride{DisableMigration: true},
 
 				Source: "one",
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
 
 				Source: "one",
 			},
@@ -749,7 +749,7 @@ func TestInstanceService_DeleteByUUID(t *testing.T) {
 			uuidArg: uuidA,
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", Name: "path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
 			},
 			instanceSvcGetBatchesByUUID: migration.Batches{{}},
 

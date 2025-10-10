@@ -81,14 +81,14 @@ var (
 		LastUpdateFromSource: time.Now().UTC(),
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
-				Description: "annotation",
-				CPUs:        2,
-				Memory:      4294967296,
-				OS:          "Ubuntu",
-				OSVersion:   "24.04",
+				Description:  "annotation",
+				CPUs:         2,
+				Memory:       4294967296,
+				OS:           "Ubuntu",
+				OSVersion:    "24.04",
+				Architecture: "x86_64",
 			},
 			Location:         "/path/UbuntuVM",
-			Architecture:     "x86_64",
 			BackgroundImport: true,
 			Disks: []api.InstancePropertiesDisk{
 				{
@@ -118,14 +118,14 @@ var (
 		LastUpdateFromSource: time.Now().UTC(),
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
-				Description: "annotation",
-				CPUs:        2,
-				Memory:      4294967296,
-				OS:          "Windows",
-				OSVersion:   "11",
+				Description:  "annotation",
+				CPUs:         2,
+				Memory:       4294967296,
+				OS:           "Windows",
+				OSVersion:    "11",
+				Architecture: "x86_64",
 			},
 			Location:         "/path/WindowsVM",
-			Architecture:     "x86_64",
 			BackgroundImport: false,
 			Disks: []api.InstancePropertiesDisk{
 				{
@@ -160,14 +160,14 @@ var (
 		LastUpdateFromSource: time.Now().UTC(),
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
-				Description: "annotation",
-				CPUs:        4,
-				Memory:      4294967296,
-				OS:          "Debian",
-				OSVersion:   "bookworm",
+				Description:  "annotation",
+				CPUs:         4,
+				Memory:       4294967296,
+				OS:           "Debian",
+				OSVersion:    "bookworm",
+				Architecture: "arm64",
 			},
 			Location:         "/path/DebianVM",
-			Architecture:     "arm64",
 			BackgroundImport: true,
 			Disks: []api.InstancePropertiesDisk{
 				{
