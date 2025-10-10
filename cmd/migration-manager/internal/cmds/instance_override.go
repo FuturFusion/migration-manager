@@ -2,14 +2,16 @@ package cmds
 
 import (
 	"encoding/json"
-	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 
+	"github.com/lxc/incus/v6/shared/termios"
 	"github.com/lxc/incus/v6/shared/units"
-	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -152,10 +154,10 @@ type cmdInstanceOverrideUpdate struct {
 
 func (c *cmdInstanceOverrideUpdate) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "set <uuid>"
-	cmd.Short = "Set instance overrides"
+	cmd.Use = "edit <uuid>"
+	cmd.Short = "Edit instance overrides"
 	cmd.Long = `Description:
-  Update instance override
+  Update instance override as YAML
 
   Only a few fields can be updated, such as the number of vCPUs or memory. Updating
   other values must be done on through the UI/API of the instance's Source.
@@ -164,6 +166,12 @@ func (c *cmdInstanceOverrideUpdate) Command() *cobra.Command {
 	cmd.RunE = c.Run
 
 	return cmd
+}
+
+func (c *cmdInstanceOverrideUpdate) helpTemplate() string {
+	return `### This is a YAML representation of instance override configuration.
+### Any line starting with a '# will be ignored.
+###`
 }
 
 func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error {
@@ -175,168 +183,44 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 
 	UUIDString := args[0]
 
-	// Get the existing instance override.
-	resp, _, err := c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodGet, "", nil)
-	if err != nil {
-		return err
-	}
-
-	override := api.InstanceOverride{}
-
-	err = responseToStruct(resp, &override)
-	if err != nil {
-		return err
-	}
-
-	var defaultComment string
-	if override.Comment != "" {
-		defaultComment = "[default=" + override.Comment + "]"
-	}
-
-	var defaultOS string
-	if override.Properties.OS != "" {
-		defaultOS = "[default=" + override.Properties.OS + "]"
-	}
-
-	var defaultOSVersion string
-	if override.Properties.OSVersion != "" {
-		defaultOSVersion = "[default=" + override.Properties.OSVersion + "]"
-	}
-
-	// Prompt for updates.
-	override.Comment, err = c.global.Asker.AskString("Comment "+defaultComment+": ", override.Comment, func(s string) error { return nil })
-	if err != nil {
-		return err
-	}
-
-	override.Properties.OS, err = c.global.Asker.AskString("OS "+defaultOS+": ", override.Properties.OS, func(s string) error { return nil })
-	if err != nil {
-		return err
-	}
-
-	override.Properties.OSVersion, err = c.global.Asker.AskString("OS Version "+defaultOSVersion+": ", override.Properties.OSVersion, func(s string) error { return nil })
-	if err != nil {
-		return err
-	}
-
-	disableMigration := "no"
-	if override.DisableMigration {
-		disableMigration = "yes"
-	}
-
-	override.DisableMigration, err = c.global.Asker.AskBool("Disable migration of this instance? (yes/no) [default="+disableMigration+"]: ", disableMigration)
-	if err != nil {
-		return err
-	}
-
-	ignoreRestrictions := "no"
-	if override.IgnoreRestrictions {
-		ignoreRestrictions = "yes"
-	}
-
-	override.IgnoreRestrictions, err = c.global.Asker.AskBool("Ignore restrictions for this instance (yes/no) [default="+ignoreRestrictions+"]: ", ignoreRestrictions)
-	if err != nil {
-		return err
-	}
-
-	displayOverride := ""
-	if override.Properties.CPUs != 0 {
-		displayOverride = "default=[" + strconv.Itoa(int(override.Properties.CPUs)) + "]: "
+	var contents []byte
+	if !termios.IsTerminal(getStdinFd()) {
+		contents, err = io.ReadAll(os.Stdin)
+		if err != nil {
+			return err
+		}
 	} else {
-		displayOverride = "(empty to skip): "
+		// Get the existing instance override.
+		resp, _, err := c.global.doHTTPRequestV1("/instances/"+UUIDString+"/override", http.MethodGet, "", nil)
+		if err != nil {
+			return err
+		}
+
+		override := api.InstanceOverride{}
+
+		err = responseToStruct(resp, &override)
+		if err != nil {
+			return err
+		}
+
+		data, err := yaml.Marshal(override)
+		if err != nil {
+			return err
+		}
+
+		contents, err = textEditor([]byte(c.helpTemplate() + "\n\n" + string(data)))
+		if err != nil {
+			return err
+		}
 	}
 
-	val, err := c.global.Asker.AskInt("Number of vCPUs "+displayOverride, 0, 1024, strconv.Itoa(int(override.Properties.CPUs)), nil)
+	newdata := api.InstanceOverride{}
+	err = yaml.Unmarshal(contents, &newdata)
 	if err != nil {
 		return err
 	}
 
-	if override.Properties.CPUs != val {
-		override.Properties.CPUs = val
-	}
-
-	if override.Properties.Memory != 0 {
-		displayOverride = "[" + units.GetByteSizeStringIEC(override.Properties.Memory, 2) + "]: "
-	} else {
-		displayOverride = "(empty to skip): "
-	}
-
-	memoryString, err := c.global.Asker.AskString("Memory "+displayOverride, fmt.Sprintf("%dB", override.Properties.Memory), func(s string) error {
-		_, err := units.ParseByteSizeString(s)
-		return err
-	})
-	if err != nil {
-		return err
-	}
-
-	val, _ = units.ParseByteSizeString(memoryString)
-
-	if override.Properties.Memory != val {
-		override.Properties.Memory = val
-	}
-
-	if len(override.Properties.Config) > 0 {
-		removeKey, err := c.global.Asker.AskBool("Remove config entries? (yes/no) [default=no]: ", "no")
-		if err != nil {
-			return err
-		}
-
-		if removeKey {
-			toRemove := []string{}
-			for k, v := range override.Properties.Config {
-				remove, err := c.global.Asker.AskBool(fmt.Sprintf("Remove entry %q = %q? (yes/no) [default=no]: ", k, v), "no")
-				if err != nil {
-					return err
-				}
-
-				if remove {
-					toRemove = append(toRemove, k)
-				}
-			}
-
-			for _, k := range toRemove {
-				delete(override.Properties.Config, k)
-			}
-		}
-	}
-
-	addKey := true
-	for addKey {
-		addKey, err = c.global.Asker.AskBool("Add or replace a config entry? (yes/no) [default=no]: ", "no")
-		if err != nil {
-			return err
-		}
-
-		if !addKey {
-			break
-		}
-
-		key, err := c.global.Asker.AskString("Config key (empty to skip): ", "", validate.IsAny)
-		if err != nil {
-			return err
-		}
-
-		if key == "" {
-			break
-		}
-
-		value, err := c.global.Asker.AskString("Config value (empty to skip): ", "", validate.IsAny)
-		if err != nil {
-			return err
-		}
-
-		if value == "" {
-			break
-		}
-
-		if override.Properties.Config == nil {
-			override.Properties.Config = map[string]string{}
-		}
-
-		override.Properties.Config[key] = value
-	}
-
-	content, err := json.Marshal(override)
+	content, err := json.Marshal(newdata)
 	if err != nil {
 		return err
 	}
@@ -346,6 +230,5 @@ func (c *cmdInstanceOverrideUpdate) Run(cmd *cobra.Command, args []string) error
 		return err
 	}
 
-	cmd.Printf("Successfully updated instance override %q.\n", UUIDString)
 	return nil
 }

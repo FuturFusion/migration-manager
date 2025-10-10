@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -85,6 +86,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		TLSClientKey:  t.TLSClientKey,
 		TLSClientCert: t.TLSClientCert,
 		OIDCTokens:    t.OIDCTokens,
+		Proxy:         func(r *http.Request) (*url.URL, error) { return nil, nil },
 	}
 
 	var serverCert *x509.Certificate
@@ -615,6 +617,15 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 
 // CleanupVM fully deletes the VM and all of its volumes.
 func (t *InternalIncusTarget) CleanupVM(ctx context.Context, name string, requireWorkerVolume bool) error {
+	names, err := t.GetInstanceNames()
+	if err != nil {
+		return fmt.Errorf("Failed to get instance names: %w", err)
+	}
+
+	if !slices.Contains(names, name) {
+		return nil
+	}
+
 	instInfo, _, err := t.GetInstance(name)
 	if err != nil {
 		return fmt.Errorf("Failed to get target instance %q config: %w", name, err)

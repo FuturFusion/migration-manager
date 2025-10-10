@@ -148,7 +148,7 @@ func (c *cmdConfigNetworkEdit) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		contents, err = textEditor("", []byte(c.helpTemplate()+"\n\n"+string(data)))
+		contents, err = textEditor([]byte(c.helpTemplate() + "\n\n" + string(data)))
 		if err != nil {
 			return err
 		}
@@ -264,7 +264,7 @@ func (c *cmdConfigSecurityEdit) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		contents, err = textEditor("", []byte(c.helpTemplate()+"\n\n"+string(data)))
+		contents, err = textEditor([]byte(c.helpTemplate() + "\n\n" + string(data)))
 		if err != nil {
 			return err
 		}

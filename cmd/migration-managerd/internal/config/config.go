@@ -80,8 +80,10 @@ func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
 			}
 
 			if port == "" {
-				newCfg.Network.Address = net.JoinHostPort(ip.String(), ports.HTTPSDefaultPort)
+				port = ports.HTTPSDefaultPort
 			}
+
+			newCfg.Network.Address = net.JoinHostPort(ip.String(), port)
 		}
 	}
 
