@@ -2,6 +2,7 @@ package sys
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -90,6 +91,10 @@ func (s *OS) LoadWorkerImage(ctx context.Context, arch string) (string, error) {
 
 	// If the image doesn't exist yet, then download it from GitHub.
 	if err != nil {
+		if util.IsIncusOS() {
+			return "", fmt.Errorf("Missing raw worker image %q: %w", rawWorkerPath, err)
+		}
+
 		g, err := util.GetProjectRepo(ctx, false)
 		if err != nil {
 			return "", err
@@ -101,24 +106,39 @@ func (s *OS) LoadWorkerImage(ctx context.Context, arch string) (string, error) {
 		}
 	}
 
-	rawImgFile, err := os.OpenFile(rawWorkerPath, os.O_WRONLY, 0o600)
+	rawImgFile, err := os.OpenFile(rawWorkerPath, os.O_RDONLY, 0o600)
 	if err != nil {
 		return "", err
 	}
 
 	defer rawImgFile.Close()
 
+	// Make a copy of the worker image.
+	tmpImgPath := filepath.Join(s.CacheDir, filepath.Base(rawWorkerPath))
+	tmpImgFile, err := os.OpenFile(tmpImgPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
+	if err != nil {
+		return "", fmt.Errorf("Failed to open file %q for writing: %w", tmpImgPath, err)
+	}
+
+	defer tmpImgFile.Close()
+
+	// Copy across to the file.
+	_, err = io.Copy(tmpImgFile, rawImgFile)
+	if err != nil {
+		return "", fmt.Errorf("Failed to write file content: %w", err)
+	}
+
 	// Move to the first partition offset.
-	_, err = rawImgFile.Seek(616448*512, io.SeekStart)
+	_, err = tmpImgFile.Seek(616448*512, io.SeekStart)
 	if err != nil {
 		return "", err
 	}
 
 	// Write the migration manager worker at the offset.
-	_, err = io.Copy(rawImgFile, binaryFile)
+	_, err = io.Copy(tmpImgFile, binaryFile)
 	if err != nil {
 		return "", err
 	}
 
-	return rawWorkerPath, nil
+	return tmpImgPath, nil
 }
