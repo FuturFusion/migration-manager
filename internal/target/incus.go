@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
@@ -85,6 +86,7 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		TLSClientKey:  t.TLSClientKey,
 		TLSClientCert: t.TLSClientCert,
 		OIDCTokens:    t.OIDCTokens,
+		Proxy:         func(r *http.Request) (*url.URL, error) { return nil, nil },
 	}
 
 	var serverCert *x509.Certificate
