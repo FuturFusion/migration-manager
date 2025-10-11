@@ -11,6 +11,9 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/util"
 )
 
+// WorkerImageBuildPrefix is the prefix used for all files that are written as part of the storage volume creation process for the worker image.
+const WorkerImageBuildPrefix = "worker-img-build_"
+
 // OS is a high-level facade for accessing operating-system level functionalities.
 type OS struct {
 	// A lock to manage filesystem access during writes.
@@ -114,7 +117,7 @@ func (s *OS) LoadWorkerImage(ctx context.Context, arch string) (string, error) {
 	defer rawImgFile.Close()
 
 	// Make a copy of the worker image.
-	tmpImgPath := filepath.Join(s.CacheDir, filepath.Base(rawWorkerPath))
+	tmpImgPath := filepath.Join(s.CacheDir, WorkerImageBuildPrefix+arch+".img")
 	tmpImgFile, err := os.OpenFile(tmpImgPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return "", fmt.Errorf("Failed to open file %q for writing: %w", tmpImgPath, err)

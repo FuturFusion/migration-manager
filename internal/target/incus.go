@@ -24,6 +24,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/properties"
+	"github.com/FuturFusion/migration-manager/internal/server/sys"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -36,9 +37,6 @@ type InternalIncusTarget struct {
 	incusConnectionArgs *incus.ConnectionArgs
 	incusClient         incus.InstanceServer
 }
-
-// WorkerImageBuildPrefix is the prefix used for all files that are written as part of the storage volume creation process for the worker image.
-const WorkerImageBuildPrefix = "worker-img-build_"
 
 var _ Target = &InternalIncusTarget{}
 
@@ -774,6 +772,10 @@ func (t *InternalIncusTarget) CheckIncusAgent(ctx context.Context, instanceName 
 			return nil
 		}
 
+		if incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return fmt.Errorf("Instance failed to appear: %w", err)
+		}
+
 		// Sleep 1s to avoid spamming the agent.
 		time.Sleep(time.Second)
 	}
@@ -846,7 +848,7 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string,
 	}
 
 	// Use all the target parameters in the file name in case other worker images are being concurrently created.
-	backupName := filepath.Join(util.CachePath(), fmt.Sprintf("%s%s_%s_%s_%s_worker.tar.gz", WorkerImageBuildPrefix, t.GetName(), pool.Name, architecture, version.GoVersion()))
+	backupName := filepath.Join(util.CachePath(), fmt.Sprintf("%s%s_%s_%s_%s_worker.tar.gz", sys.WorkerImageBuildPrefix, t.GetName(), pool.Name, architecture, version.GoVersion()))
 	err = createIncusBackup(backupName, backupFilePath, pool, volumeName)
 	if err != nil {
 		return nil, nil, err
@@ -991,7 +993,7 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 	dir := filepath.Dir(backupPath)
 
 	// Create a temporary directory to build the backup image.
-	tmpDir, err := os.MkdirTemp(dir, WorkerImageBuildPrefix)
+	tmpDir, err := os.MkdirTemp(dir, sys.WorkerImageBuildPrefix)
 	if err != nil {
 		return err
 	}
