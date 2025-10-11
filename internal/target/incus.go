@@ -774,6 +774,10 @@ func (t *InternalIncusTarget) CheckIncusAgent(ctx context.Context, instanceName 
 			return nil
 		}
 
+		if incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return fmt.Errorf("Instance failed to appear: %w", err)
+		}
+
 		// Sleep 1s to avoid spamming the agent.
 		time.Sleep(time.Second)
 	}
