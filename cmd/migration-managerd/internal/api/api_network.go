@@ -229,7 +229,7 @@ func networkPut(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Missing 'source' query paramterer"))
 	}
 
-	var overrides api.NetworkOverride
+	var overrides api.NetworkPlacement
 
 	err := json.NewDecoder(r.Body).Decode(&overrides)
 	if err != nil {
