@@ -201,7 +201,7 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 }
 
 // SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
-func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry, allNetworks migration.Networks) error {
+func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry) error {
 	props := i.Properties
 	props.Apply(i.Overrides.Properties)
 

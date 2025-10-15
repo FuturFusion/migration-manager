@@ -72,7 +72,7 @@ type Target interface {
 	SetProject(project string) error
 
 	// SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
-	SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry, allNetworks migration.Networks) error
+	SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry) error
 
 	// Creates a VM definition for use with the Incus REST API.
 	CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string) (incusAPI.InstancesPost, error)
