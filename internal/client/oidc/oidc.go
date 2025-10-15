@@ -122,7 +122,7 @@ func saveTokensToFile(tokensFile string, tokens *oidc.Tokens[*oidc.IDTokenClaims
 		return err
 	}
 
-	return os.WriteFile(tokensFile, contents, 0o644)
+	return os.WriteFile(tokensFile, contents, 0o600)
 }
 
 // GetAccessToken returns the Access Token from the OidcClient's tokens, or an empty string if no tokens are present.
