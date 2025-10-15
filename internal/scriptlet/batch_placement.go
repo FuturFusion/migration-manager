@@ -95,9 +95,36 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 	setNetworkFunc := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var nicID string
 		var netName string
-		err := starlark.UnpackArgs(b.Name(), args, kwargs, "nic_id", &nicID, "network_name", &netName)
+		var nicType string
+		var vlanID string
+		err := starlark.UnpackArgs(b.Name(), args, kwargs, "nic_id", &nicID, "network_name", &netName, "nic_type", &nicType, "vlan_id", &vlanID)
 		if err != nil {
 			return nil, err
+		}
+
+		if nicType == "" {
+			nicType = string(api.INCUSNICTYPE_MANAGED)
+		}
+
+		err = api.ValidNICType(nicType)
+		if err != nil {
+			slog.Error("Batch placement failed. Invalid NIC type", slog.String("nic_type", nicType))
+			return nil, err
+		}
+
+		if vlanID != "" {
+			if nicType != string(api.INCUSNICTYPE_BRIDGED) {
+				slog.Error("Batch placement failed. Vlan tagging not supported for NIC type", slog.String("nic_type", nicType))
+				return nil, fmt.Errorf("Vlan tagging (%q) is not supported for NIC type %q", vlanID, nicType)
+			}
+
+			for _, id := range strings.Split(vlanID, ",") {
+				intID, err := strconv.Atoi(id)
+				if err != nil || intID == 0 {
+					slog.Error("Batch placement failed. VLAN ID is invalid")
+					return nil, fmt.Errorf("Invalid vlan ID %q: %w", vlanID, err)
+				}
+			}
 		}
 
 		if netName == "" {
@@ -118,66 +145,17 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		}
 
 		if resp.Networks == nil {
-			resp.Networks = map[string]string{}
+			resp.Networks = map[string]api.NetworkPlacement{}
 		}
 
-		resp.Networks[nicID] = netName
-		slog.Info("Batch placement assigned network for instance", slog.String("location", instance.Properties.Location), slog.String("nic", nicID), slog.String("network", netName))
-
-		return starlark.None, nil
-	}
-
-	setVlanFunc := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var nicID string
-		var vlanID string
-		err := starlark.UnpackArgs(b.Name(), args, kwargs, "nic_id", &nicID, "vlan_id", &vlanID)
-		if err != nil {
-			return nil, err
+		resp.Networks[nicID] = api.NetworkPlacement{
+			Network: netName,
+			NICType: api.IncusNICType(nicType),
+			VlanID:  vlanID,
 		}
 
-		if vlanID == "" {
-			slog.Error("Batch placement failed. Target network name is empty")
-			return nil, errors.New("Target network name is empty")
-		}
+		slog.Info("Batch placement assigned network for instance", slog.String("location", instance.Properties.Location), slog.String("nic", nicID), slog.String("network", netName), slog.String("nic_type", nicType), slog.String("vlan_id", vlanID))
 
-		for _, id := range strings.Split(vlanID, ",") {
-			intID, err := strconv.Atoi(id)
-			if err != nil || intID == 0 {
-				slog.Error("Batch placement failed. VLAN ID is invalid")
-				return nil, fmt.Errorf("Invalid vlan ID %q: %w", vlanID, err)
-			}
-		}
-
-		var nicExists bool
-		for _, d := range instance.Properties.NICs {
-			if d.ID == nicID {
-				nicExists = true
-				break
-			}
-		}
-
-		if !nicExists {
-			return nil, fmt.Errorf("No NIC found with ID %q on instance %q", nicID, instance.Properties.Location)
-		}
-
-		var supportsVLAN bool
-		for _, n := range usedNetworks {
-			if n.Identifier == nicID && n.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
-				supportsVLAN = true
-				break
-			}
-		}
-
-		if !supportsVLAN {
-			return nil, fmt.Errorf("NIC %q does not support VLAN tagging", nicID)
-		}
-
-		if resp.VlanIDs == nil {
-			resp.VlanIDs = map[string]string{}
-		}
-
-		resp.VlanIDs[nicID] = vlanID
-		slog.Info("Batch placement assigned VLAN ID for instance", slog.String("location", instance.Properties.Location), slog.String("nic", nicID), slog.String("vlan_id", vlanID))
 		return starlark.None, nil
 	}
 
@@ -190,7 +168,6 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		"set_project": starlark.NewBuiltin("set_project", setProjectFunc),
 		"set_pool":    starlark.NewBuiltin("set_pool", setPoolFunc),
 		"set_network": starlark.NewBuiltin("set_network", setNetworkFunc),
-		"set_vlan":    starlark.NewBuiltin("set_vlan", setVlanFunc),
 	}
 
 	prog, thread, err := BatchPlacementProgram(loader, batch.Name)
