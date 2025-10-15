@@ -2,11 +2,16 @@ package cmds
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
+	"os"
 	"sort"
 
+	"github.com/lxc/incus/v6/shared/termios"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
+	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -89,11 +94,16 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Identifier", "Name", "Location", "Source", "Type"}
+	header := []string{"Identifier", "Location", "Source", "Type", "Target Network", "Target NIC Type", "Target Vlan"}
 	data := [][]string{}
 
 	for _, n := range networks {
-		data = append(data, []string{n.Identifier, n.Name(), n.Location, n.Source, string(n.Type)})
+		placement, err := internalAPI.GetNetworkPlacement(n)
+		if err != nil {
+			return err
+		}
+
+		data = append(data, []string{n.Identifier, n.Location, n.Source, string(n.Type), placement.Network, string(placement.NICType), placement.VlanID})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
@@ -146,15 +156,21 @@ type cmdNetworkUpdate struct {
 
 func (c *cmdNetworkUpdate) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "update <name> <source>"
-	cmd.Short = "Update network"
+	cmd.Use = "edit <name> <source>"
+	cmd.Short = "Update target network configuration"
 	cmd.Long = `Description:
-  Update network
+  Update target network configuration as YAML
 `
 
 	cmd.RunE = c.Run
 
 	return cmd
+}
+
+func (c *cmdNetworkUpdate) helpTemplate() string {
+	return `### This is a YAML representation of network configuration.
+### Any line starting with a '# will be ignored.
+###`
 }
 
 func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
@@ -167,52 +183,53 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 	source := args[1]
 
-	// Get the existing network.
-	resp, _, err := c.global.doHTTPRequestV1("/networks/"+name, http.MethodGet, "source="+source, nil)
-	if err != nil {
-		return err
-	}
-
-	network := api.Network{}
-
-	err = responseToStruct(resp, &network)
-	if err != nil {
-		return err
-	}
-
-	// Prompt for updates.
-
-	if network.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
-		defaultConfig := "[default=" + network.BridgeName + "]: "
-
-		name, err = c.global.Asker.AskString("Parent bridge name "+defaultConfig, network.BridgeName, nil)
+	var contents []byte
+	if !termios.IsTerminal(getStdinFd()) {
+		contents, err = io.ReadAll(os.Stdin)
 		if err != nil {
 			return err
 		}
-
-		network.BridgeName = name
 	} else {
-		defaultConfig := "[default=" + network.Name() + "]: "
-
-		name, err = c.global.Asker.AskString("Target network name "+defaultConfig, network.Name(), nil)
+		// Get the existing network.
+		resp, _, err := c.global.doHTTPRequestV1("/networks/"+name, http.MethodGet, "source="+source, nil)
 		if err != nil {
 			return err
 		}
 
-		network.NetworkOverride.Name = name
+		network := api.Network{}
+
+		err = responseToStruct(resp, &network)
+		if err != nil {
+			return err
+		}
+
+		data, err := yaml.Marshal(network.Overrides)
+		if err != nil {
+			return err
+		}
+
+		contents, err = textEditor([]byte(c.helpTemplate() + "\n\n" + string(data)))
+		if err != nil {
+			return err
+		}
 	}
 
-	// Update the network.
-	content, err := json.Marshal(network.NetworkOverride)
+	newdata := api.NetworkPlacement{}
+	err = yaml.Unmarshal(contents, &newdata)
 	if err != nil {
 		return err
 	}
 
-	_, _, err = c.global.doHTTPRequestV1("/networks/"+network.Identifier, http.MethodPut, "source="+source, content)
+	content, err := json.Marshal(newdata)
 	if err != nil {
 		return err
 	}
 
-	cmd.Printf("Successfully updated network %q in source %q.\n", network.Name(), source)
+	// Get the existing network.
+	_, _, err = c.global.doHTTPRequestV1("/networks/"+name, http.MethodPut, "source="+source, content)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

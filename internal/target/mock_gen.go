@@ -88,7 +88,7 @@ var _ Target = &TargetMock{}
 //			SetClientTLSCredentialsFunc: func(key string, cert string) error {
 //				panic("mock out the SetClientTLSCredentials method")
 //			},
-//			SetPostMigrationVMConfigFunc: func(ctx context.Context, i migration.Instance, q migration.QueueEntry, allNetworks migration.Networks) error {
+//			SetPostMigrationVMConfigFunc: func(ctx context.Context, i migration.Instance, q migration.QueueEntry) error {
 //				panic("mock out the SetPostMigrationVMConfig method")
 //			},
 //			SetProjectFunc: func(project string) error {
@@ -177,7 +177,7 @@ type TargetMock struct {
 	SetClientTLSCredentialsFunc func(key string, cert string) error
 
 	// SetPostMigrationVMConfigFunc mocks the SetPostMigrationVMConfig method.
-	SetPostMigrationVMConfigFunc func(ctx context.Context, i migration.Instance, q migration.QueueEntry, allNetworks migration.Networks) error
+	SetPostMigrationVMConfigFunc func(ctx context.Context, i migration.Instance, q migration.QueueEntry) error
 
 	// SetProjectFunc mocks the SetProject method.
 	SetProjectFunc func(project string) error
@@ -339,8 +339,6 @@ type TargetMock struct {
 			I migration.Instance
 			// Q is the q argument value.
 			Q migration.QueueEntry
-			// AllNetworks is the allNetworks argument value.
-			AllNetworks migration.Networks
 		}
 		// SetProject holds details about calls to the SetProject method.
 		SetProject []struct {
@@ -1134,25 +1132,23 @@ func (mock *TargetMock) SetClientTLSCredentialsCalls() []struct {
 }
 
 // SetPostMigrationVMConfig calls SetPostMigrationVMConfigFunc.
-func (mock *TargetMock) SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry, allNetworks migration.Networks) error {
+func (mock *TargetMock) SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry) error {
 	if mock.SetPostMigrationVMConfigFunc == nil {
 		panic("TargetMock.SetPostMigrationVMConfigFunc: method is nil but Target.SetPostMigrationVMConfig was just called")
 	}
 	callInfo := struct {
-		Ctx         context.Context
-		I           migration.Instance
-		Q           migration.QueueEntry
-		AllNetworks migration.Networks
+		Ctx context.Context
+		I   migration.Instance
+		Q   migration.QueueEntry
 	}{
-		Ctx:         ctx,
-		I:           i,
-		Q:           q,
-		AllNetworks: allNetworks,
+		Ctx: ctx,
+		I:   i,
+		Q:   q,
 	}
 	mock.lockSetPostMigrationVMConfig.Lock()
 	mock.calls.SetPostMigrationVMConfig = append(mock.calls.SetPostMigrationVMConfig, callInfo)
 	mock.lockSetPostMigrationVMConfig.Unlock()
-	return mock.SetPostMigrationVMConfigFunc(ctx, i, q, allNetworks)
+	return mock.SetPostMigrationVMConfigFunc(ctx, i, q)
 }
 
 // SetPostMigrationVMConfigCalls gets all the calls that were made to SetPostMigrationVMConfig.
@@ -1160,16 +1156,14 @@ func (mock *TargetMock) SetPostMigrationVMConfig(ctx context.Context, i migratio
 //
 //	len(mockedTarget.SetPostMigrationVMConfigCalls())
 func (mock *TargetMock) SetPostMigrationVMConfigCalls() []struct {
-	Ctx         context.Context
-	I           migration.Instance
-	Q           migration.QueueEntry
-	AllNetworks migration.Networks
+	Ctx context.Context
+	I   migration.Instance
+	Q   migration.QueueEntry
 } {
 	var calls []struct {
-		Ctx         context.Context
-		I           migration.Instance
-		Q           migration.QueueEntry
-		AllNetworks migration.Networks
+		Ctx context.Context
+		I   migration.Instance
+		Q   migration.QueueEntry
 	}
 	mock.lockSetPostMigrationVMConfig.RLock()
 	calls = mock.calls.SetPostMigrationVMConfig

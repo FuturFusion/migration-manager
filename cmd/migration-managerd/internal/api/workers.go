@@ -670,17 +670,11 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 	log := slog.With(slog.String("method", "finalizeCompleteInstances"))
 	var migrationState map[string]queue.MigrationState
-	var allNetworks migration.Networks
 
 	queueEntriesToReset := map[uuid.UUID]bool{}
 	windowsByQueueUUID := map[uuid.UUID]migration.MigrationWindow{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
-		allNetworks, err = d.network.GetAll(ctx)
-		if err != nil {
-			return fmt.Errorf("Failed to get all networks: %w", err)
-		}
-
 		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WORKER_DONE, api.MIGRATIONSTATUS_FINAL_IMPORT, api.MIGRATIONSTATUS_POST_IMPORT)
 		if err != nil {
 			return fmt.Errorf("Failed to compile migration state for final import steps: %w", err)
@@ -723,13 +717,8 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 				return nil
 			}
 
-			instanceList := make(migration.Instances, 0, len(state.Instances))
-			for _, inst := range state.Instances {
-				instanceList = append(instanceList, inst)
-			}
-
 			window := windowsByQueueUUID[instUUID]
-			err := d.configureMigratedInstances(ctx, state.QueueEntries[instUUID], window, instance, state.Sources[instUUID], state.Targets[instUUID], state.Batch, migration.FilterUsedNetworks(allNetworks, instanceList))
+			err := d.configureMigratedInstances(ctx, state.QueueEntries[instUUID], window, instance, state.Sources[instUUID], state.Targets[instUUID], state.Batch)
 			if err != nil {
 				return err
 			}
@@ -777,7 +766,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 
 // configureMigratedInstances updates the configuration of instances concurrently after they have finished migrating. Errors will result in the instance state becoming ERRORED.
 // If an instance succeeds, its state will be moved to FINISHED.
-func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.QueueEntry, w migration.MigrationWindow, i migration.Instance, s migration.Source, t migration.Target, batch migration.Batch, activeNetworks migration.Networks) (_err error) {
+func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.QueueEntry, w migration.MigrationWindow, i migration.Instance, s migration.Source, t migration.Target, batch migration.Batch) (_err error) {
 	log := slog.With(
 		slog.String("method", "configureMigratedInstances"),
 		slog.String("target", t.Name),
@@ -856,7 +845,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 		return fmt.Errorf("Failed to set target %q project %q: %w", it.GetName(), q.Placement.TargetProject, err)
 	}
 
-	err = it.SetPostMigrationVMConfig(timeoutCtx, i, q, activeNetworks)
+	err = it.SetPostMigrationVMConfig(timeoutCtx, i, q)
 	if err != nil {
 		return fmt.Errorf("Failed to update post-migration config for instance %q in %q: %w", i.GetName(), it.GetName(), err)
 	}

@@ -1,12 +1,9 @@
 package migration
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
-	"strconv"
-	"strings"
 	"time"
 
 	incusAPI "github.com/lxc/incus/v6/shared/api"
@@ -55,8 +52,7 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 		TargetName:    b.Defaults.Placement.Target,
 		TargetProject: b.Defaults.Placement.TargetProject,
 		StoragePools:  map[string]string{},
-		Networks:      map[string]string{},
-		VlanIDs:       map[string]string{},
+		Networks:      map[string]api.NetworkPlacement{},
 	}
 
 	// Use the same pool for all supported disks by default.
@@ -83,38 +79,12 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 			return nil, err
 		}
 
-		var networkName string
-		if baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
-			networkName = baseNetwork.Overrides.BridgeName
-			if networkName == "" {
-				networkName = "br0"
-			}
-
-			vlanID := baseNetwork.Overrides.VlanID
-			if vlanID != "" {
-				resp.VlanIDs[n.ID] = vlanID
-			} else {
-				var netProps internalAPI.VCenterNetworkProperties
-				err := json.Unmarshal(baseNetwork.Properties, &netProps)
-				if err != nil {
-					return nil, fmt.Errorf("Failed to parse network properties for network %q: %w", baseNetwork.Location, err)
-				}
-
-				if len(netProps.VlanRanges) > 0 {
-					resp.VlanIDs[n.ID] = strings.Join(netProps.VlanRanges, ",")
-				} else if netProps.VlanID != 0 {
-					resp.VlanIDs[n.ID] = strconv.Itoa(netProps.VlanID)
-				}
-			}
-		} else {
-			if baseNetwork.Overrides.Name != "" || baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX || baseNetwork.Type == api.NETWORKTYPE_VMWARE_NSX {
-				networkName = baseNetwork.ToAPI().Name()
-			} else {
-				networkName = "default"
-			}
+		netCfg, err := internalAPI.GetNetworkPlacement(baseNetwork.ToAPI())
+		if err != nil {
+			return nil, fmt.Errorf("Unable to determine placement for neteork %q: %w", baseNetwork.ToAPI().Name(), err)
 		}
 
-		resp.Networks[n.ID] = networkName
+		resp.Networks[n.ID] = *netCfg
 	}
 
 	// Override with placement values if set.
@@ -126,12 +96,8 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 		resp.TargetProject = placement.TargetProject
 	}
 
-	for id, netName := range placement.Networks {
-		resp.Networks[id] = netName
-	}
-
-	for id, vlanID := range placement.VlanIDs {
-		resp.VlanIDs[id] = vlanID
+	for id, netCfg := range placement.Networks {
+		resp.Networks[id] = netCfg
 	}
 
 	for disk, pool := range placement.StoragePools {

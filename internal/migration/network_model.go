@@ -17,7 +17,7 @@ type Network struct {
 
 	Properties json.RawMessage `db:"marshal=json"`
 
-	Overrides api.NetworkOverride `db:"marshal=json"`
+	Overrides api.NetworkPlacement `db:"marshal=json"`
 }
 
 func (n Network) Validate() error {
@@ -57,12 +57,15 @@ func (n Network) Validate() error {
 		}
 	}
 
-	if n.Overrides.Name != "" && n.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
-		return NewValidationErrf("Networks of type %q cannot set a target network name", n.Type)
-	}
+	if n.Overrides != (api.NetworkPlacement{}) {
+		err := api.ValidNICType(string(n.Overrides.NICType))
+		if err != nil {
+			return NewValidationErrf("Invalid network override: %v", err)
+		}
 
-	if n.Overrides.BridgeName != "" && slices.Contains([]api.NetworkType{api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX, api.NETWORKTYPE_VMWARE_NSX, api.NETWORKTYPE_VMWARE_STANDARD}, n.Type) {
-		return NewValidationErrf("Networks of type %q cannot set a parent bridge name", n.Type)
+		if n.Overrides.NICType != api.INCUSNICTYPE_BRIDGED && n.Overrides.VlanID != "" {
+			return NewValidationErrf("Vlan tagging not supported by NIC type %q", n.Overrides.NICType)
+		}
 	}
 
 	return nil
@@ -93,11 +96,11 @@ type Networks []Network
 // ToAPI returns the API representation of a network.
 func (n Network) ToAPI() api.Network {
 	return api.Network{
-		Identifier:      n.Identifier,
-		Location:        n.Location,
-		Source:          n.Source,
-		Type:            n.Type,
-		Properties:      n.Properties,
-		NetworkOverride: n.Overrides,
+		Identifier: n.Identifier,
+		Location:   n.Location,
+		Source:     n.Source,
+		Type:       n.Type,
+		Properties: n.Properties,
+		Overrides:  n.Overrides,
 	}
 }

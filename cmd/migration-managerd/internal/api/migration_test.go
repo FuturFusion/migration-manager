@@ -153,8 +153,8 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -178,8 +178,8 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -203,8 +203,8 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -230,8 +230,8 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -256,8 +256,8 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -282,8 +282,8 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -307,8 +307,8 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt2", TargetProject: "project2", StoragePools: map[string]string{"vm2_disk_1": "pool2"}, Networks: map[string]string{"net_id_1": "net2"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt2", TargetProject: "project2", StoragePools: map[string]string{"vm2_disk_1": "pool2"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net2", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -333,13 +333,13 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
 				// Since there's no scriptlet to run, the batch defaults will be used.
-				{Name: "default", Projects: []string{"default"}, StoragePools: []string{"default"}, NetworksByProject: setMap{"default": {"default"}}, InstancesByProject: setMap{"default": {}}},
+				{Name: "default", Projects: []string{"default"}, StoragePools: []string{"default"}, NetworksByProject: setMap{"default": {"network_1"}}, InstancesByProject: setMap{"default": {}}},
 			},
 
 			hasVMwareSDK:    true,
@@ -359,8 +359,8 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -372,7 +372,7 @@ def placement(instance, batch):
 	set_target('tgt2')
 	set_project('project2')
 	set_pool('{}_disk_1'.format(instance.properties.name), 'pool2')
-	set_network('net_id_1', 'net2')`,
+	set_network('net_id_1', 'net2', 'managed', '')`,
 
 			hasVMwareSDK:    true,
 			hasWorker:       true,
@@ -391,8 +391,8 @@ def placement(instance, batch):
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -416,8 +416,8 @@ def placement(instance, batch):
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -441,8 +441,8 @@ def placement(instance, batch):
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -466,8 +466,8 @@ def placement(instance, batch):
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -494,9 +494,9 @@ def placement(instance, batch):
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm3"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm3_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm3"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm3_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -521,9 +521,9 @@ def placement(instance, batch):
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm3"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm3_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm3"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm3_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{
@@ -549,8 +549,8 @@ def placement(instance, batch):
 			},
 
 			initialPlacements: map[uuid.UUID]api.Placement{
-				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
-				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]string{"net_id_1": "net1"}},
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"net_id_1": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			},
 
 			targetDetails: []target.IncusDetails{

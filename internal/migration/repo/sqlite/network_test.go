@@ -17,8 +17,8 @@ import (
 
 func TestNetworkDatabaseActions(t *testing.T) {
 	networkA := migration.Network{Identifier: "networkA", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Properties: []byte("{}")}
-	networkB := migration.Network{Identifier: "networkB", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Overrides: api.NetworkOverride{Name: "foo"}, Properties: []byte("{}")}
-	networkC := migration.Network{Identifier: "networkC", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkC", Source: testSource.Name, Overrides: api.NetworkOverride{Name: "bar"}, Properties: []byte("{}")}
+	networkB := migration.Network{Identifier: "networkB", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Overrides: api.NetworkPlacement{Network: "foo"}, Properties: []byte("{}")}
+	networkC := migration.Network{Identifier: "networkC", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkC", Source: testSource.Name, Overrides: api.NetworkPlacement{Network: "bar"}, Properties: []byte("{}")}
 
 	ctx := context.Background()
 
@@ -72,7 +72,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.Equal(t, networkA, *dbNetworkA)
 
 	// Test updating a network.
-	networkB.Overrides.Name = "baz"
+	networkB.Overrides.Network = "baz"
 	err = network.Update(ctx, networkB)
 	require.NoError(t, err)
 	dbNetworkB, err := network.GetByNameAndSource(ctx, networkB.Identifier, networkB.Source)
