@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 )
@@ -22,12 +23,28 @@ const (
 	NETWORKTYPE_VMWARE_NSX NetworkType = "nsx"
 )
 
+type IncusNICType string
+
+const (
+	INCUSNICTYPE_BRIDGED IncusNICType = "bridged"
+	INCUSNICTYPE_MANAGED IncusNICType = "managed"
+)
+
+func ValidNICType(s string) error {
+	switch IncusNICType(s) {
+	case INCUSNICTYPE_BRIDGED:
+	case INCUSNICTYPE_MANAGED:
+	default:
+		return fmt.Errorf("Unknown NIC type %q", s)
+	}
+
+	return nil
+}
+
 // Network defines the network config for use by the migration manager.
 //
 // swagger:model
 type Network struct {
-	NetworkOverride
-
 	// The identifier of the network
 	// Example: network-23
 	Identifier string `json:"identifier" yaml:"identifier"`
@@ -46,19 +63,22 @@ type Network struct {
 
 	// Additional properties of the network.
 	Properties json.RawMessage `json:"properties" yaml:"properties"`
+
+	// Overrides to the network placement configuration.
+	Overrides NetworkPlacement `json:"override" yaml:"override"`
 }
 
-// NetworkOverride defines the configurable properties of Network.
+// NetworkPlacement defines the configurable properties of Network.
 //
 // swagger:model
-type NetworkOverride struct {
+type NetworkPlacement struct {
 	// Name of the network on the target.
 	// Example: "vmware"
-	Name string `json:"name" yaml:"name"`
+	Network string `json:"network" yaml:"network"`
 
-	// Name of the parent bridge to use with a VLAN.
-	// Example: br0
-	BridgeName string `json:"bridge_name" yaml:"bridge_name"`
+	// NIC type of the interface.
+	// Example: bridged
+	NICType IncusNICType `json:"nictype" ymal:"nictype"`
 
 	// Name of the VLAN ID to use with a VLAN network.
 	// Example: 1
@@ -67,9 +87,5 @@ type NetworkOverride struct {
 
 // Name returns the overrided network name, or transforms the default name into an API compatible one.
 func (n Network) Name() string {
-	if n.NetworkOverride.Name != "" {
-		return n.NetworkOverride.Name
-	}
-
 	return strings.ReplaceAll(filepath.Base(n.Location), " ", "-")
 }
