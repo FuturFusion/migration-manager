@@ -228,37 +228,29 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 
 	for idx, nic := range props.NICs {
 		nicDeviceName := fmt.Sprintf("eth%d", idx)
-		var baseNetwork migration.Network
-		for _, net := range allNetworks {
-			if nic.ID == net.Identifier && i.Source == net.Source {
-				baseNetwork = net
-				break
-			}
-		}
-
-		if baseNetwork.Identifier == "" {
-			err = fmt.Errorf("No network %q associated with instance %q on target %q", nic.ID, props.Name, t.GetName())
-			return err
+		netCfg, ok := q.Placement.Networks[nic.ID]
+		if !ok {
+			return fmt.Errorf("No network placement found for NIC id %q for instance %q on target %q", nic.ID, props.Name, t.GetName())
 		}
 
 		if apiDef.Devices[nicDeviceName] == nil {
 			apiDef.Devices[nicDeviceName] = map[string]string{}
 		}
 
-		if baseNetwork.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
+		switch netCfg.NICType {
+		case api.INCUSNICTYPE_BRIDGED:
 			apiDef.Devices[nicDeviceName]["nictype"] = "bridged"
-			apiDef.Devices[nicDeviceName]["parent"] = q.Placement.Networks[nic.ID]
-
-			vlanID, ok := q.Placement.VlanIDs[nic.ID]
-			if ok {
-				if strings.Contains(vlanID, ",") {
-					apiDef.Devices[nicDeviceName]["vlan.tagged"] = vlanID
+			apiDef.Devices[nicDeviceName]["parent"] = netCfg.Network
+			if netCfg.VlanID != "" {
+				if strings.Contains(netCfg.VlanID, ",") {
+					apiDef.Devices[nicDeviceName]["vlan.tagged"] = netCfg.VlanID
 				} else {
-					apiDef.Devices[nicDeviceName]["vlan"] = vlanID
+					apiDef.Devices[nicDeviceName]["vlan"] = netCfg.VlanID
 				}
 			}
-		} else {
-			apiDef.Devices[nicDeviceName]["network"] = q.Placement.Networks[nic.ID]
+
+		case api.INCUSNICTYPE_MANAGED:
+			apiDef.Devices[nicDeviceName]["network"] = netCfg.Network
 			if nic.IPv4Address != "" {
 				ipv4Info, err := nicDefs.Get(properties.InstanceNICIPv4Address)
 				if err != nil {
@@ -1134,8 +1126,8 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 	}
 
 	for _, net := range placement.Networks {
-		if !slices.Contains(info.NetworksByProject[placement.TargetProject], net) {
-			return fmt.Errorf("No network found with name %q on target %q in project %q", net, info.Name, placement.TargetProject)
+		if !slices.Contains(info.NetworksByProject[placement.TargetProject], net.Network) {
+			return fmt.Errorf("No network found with name %q on target %q in project %q", net.Network, info.Name, placement.TargetProject)
 		}
 	}
 
