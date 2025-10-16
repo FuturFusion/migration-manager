@@ -236,10 +236,7 @@ func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, r
 		u.Scheme = serverHost.Scheme
 		u.Host = serverHost.Host
 
-		client, err = getHTTPSClient(remote.ServerCert.Certificate, c.config.CertInfo)
-		if err != nil {
-			return nil, nil, err
-		}
+		client = getHTTPSClient(remote.ServerCert.Certificate, c.config.CertInfo)
 	} else {
 		u.Scheme = "http"
 		u.Host = "unix.socket"
@@ -368,7 +365,7 @@ func responseToStruct(response *incusAPI.Response, targetStruct any) error {
 	return json.Unmarshal(response.Metadata, &targetStruct)
 }
 
-func getHTTPSClient(serverCert *x509.Certificate, certInfo *localtls.CertInfo) (*http.Client, error) {
+func getHTTPSClient(serverCert *x509.Certificate, certInfo *localtls.CertInfo) *http.Client {
 	cert := tls.Certificate{}
 
 	// If a client TLS certificate is configured, use it
@@ -389,7 +386,7 @@ func getHTTPSClient(serverCert *x509.Certificate, certInfo *localtls.CertInfo) (
 
 	client.Transport = transport
 
-	return client, nil
+	return client
 }
 
 func validateAbsFilePathExists(s string) error {
