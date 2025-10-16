@@ -56,6 +56,26 @@ type CmdGlobal struct {
 	FlagVersion    bool
 }
 
+func (c *CmdGlobal) GetDefaultRemote() config.Remote {
+	if c.config.DefaultRemote == "" {
+		return config.Remote{
+			Addr:     c.os.GetUnixSocket(),
+			AuthType: config.AuthTypeUntrusted,
+		}
+	}
+
+	remote, ok := c.config.Remotes[c.config.DefaultRemote]
+	if !ok || remote.Addr == "" || remote.AuthType == "" {
+		c.Cmd.PrintErrf("Warning: default remote %q is misconfigured, falling back to local unix socket\n", c.config.DefaultRemote)
+		return config.Remote{
+			Addr:     c.os.GetUnixSocket(),
+			AuthType: config.AuthTypeUntrusted,
+		}
+	}
+
+	return remote
+}
+
 func (c *CmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 	var err error
 
@@ -84,7 +104,6 @@ func (c *CmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 	}
 
 	configDir = os.ExpandEnv(configDir)
-	configFile := path.Join(configDir, "config.yml")
 	if !util.PathExists(configDir) {
 		// Create the config dir if it doesn't exist
 		err = os.MkdirAll(configDir, 0o750)
@@ -94,64 +113,34 @@ func (c *CmdGlobal) PreRun(cmd *cobra.Command, args []string) error {
 	}
 
 	// Load the configuration
-	if util.PathExists(configFile) {
-		c.config, err = config.LoadConfig(configFile)
-		if err != nil {
-			return err
-		}
-
-		c.config.ConfigDir = configDir
-	} else {
-		c.config = config.NewConfig(configDir)
+	c.config, err = config.LoadConfig(configDir)
+	if err != nil {
+		return err
 	}
 
 	return c.CheckConfigStatus()
 }
 
-func (c *CmdGlobal) CheckConfigStatus() error {
-	if c.config.MigrationManagerServer != "" {
-		return nil
-	}
-
-	c.Cmd.Printf("No config found, performing first-time configuration...\n")
-
-	if util.PathExists(c.os.GetUnixSocket()) {
-		c.Cmd.Printf("Using local unix socket to communicate with migration manager.\n")
-
-		c.config.MigrationManagerServer = c.os.GetUnixSocket()
-
-		return c.config.SaveConfig()
-	}
-
-	server, err := c.Asker.AskString("Please enter the migration manager server URL: ", "", func(s string) error {
-		if !strings.HasPrefix(s, "https://") {
-			return fmt.Errorf("Server URL must start with 'https://'")
-		}
-
-		// Try connecting to the given server. Verifies that the URL is correct while it's easy to prompt the user for a correction.
-		// If we get a certificate verification error, grab the certificate to prompt the user for a TOFU-style use.
-		resp, err := http.Get(s)
+func (c *CmdGlobal) CheckRemoteConnectivity(remoteName string, remote *config.Remote) error {
+	// Get the server certificate of the remote.
+	oldServerCert := remote.ServerCert.Certificate
+	if remote.AuthType != config.AuthTypeUntrusted && oldServerCert == nil {
+		resp, err := http.Get(remote.Addr)
 		if err != nil {
 			switch actualErr := err.(*url.Error).Unwrap().(type) {
 			case *tls.CertificateVerificationError:
-				c.config.MigrationManagerServerCert = api.Certificate{Certificate: actualErr.UnverifiedCertificates[0]}
-				return nil
+				remote.ServerCert = api.Certificate{Certificate: actualErr.UnverifiedCertificates[0]}
+			default:
+				return err
 			}
-
-			return err
+		} else {
+			_ = resp.Body.Close()
 		}
-
-		resp.Body.Close()
-		return nil
-	})
-	if err != nil {
-		return err
 	}
 
-	c.config.MigrationManagerServer = server
-
-	if c.config.MigrationManagerServerCert.Certificate != nil {
-		trustedCert, err := c.Asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? (yes/no) [default=no]: ", localtls.CertFingerprint(c.config.MigrationManagerServerCert.Certificate)), "no")
+	// Prompt the user if the server cert changes.
+	if remote.ServerCert.Certificate != oldServerCert && remote.ServerCert.Certificate != nil {
+		trustedCert, err := c.Asker.AskBool(fmt.Sprintf("Server presented an untrusted TLS certificate with SHA256 fingerprint %s. Is this the correct fingerprint? (yes/no) [default=no]: ", localtls.CertFingerprint(remote.ServerCert.Certificate)), "no")
 		if err != nil {
 			return err
 		}
@@ -161,24 +150,18 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 		}
 	}
 
-	c.config.AuthType, err = c.Asker.AskChoice("What type of authentication should be used? (none, oidc, tls) [default=none]: ", []string{"none", "oidc", "tls"}, "none")
-	if err != nil {
-		return err
-	}
-
-	switch c.config.AuthType {
-	case "none":
-		c.config.AuthType = "untrusted"
-	case "tls":
-		c.config.TLSClientCertFile, err = c.Asker.AskString("Please enter the absolute path to client TLS certificate: ", "", validateAbsFilePathExists)
-		if err != nil {
-			return err
-		}
-
-		c.config.TLSClientKeyFile, err = c.Asker.AskString("Please enter the absolute path to client TLS key: ", "", validateAbsFilePathExists)
-		if err != nil {
-			return err
-		}
+	// Set this as the active remote temporarily so we use it for the request.
+	if c.config.DefaultRemote != remoteName {
+		oldForceLocal := c.FlagForceLocal
+		oldDefault := c.config.DefaultRemote
+		c.config.DefaultRemote = remoteName
+		c.FlagForceLocal = false
+		c.config.Remotes[remoteName] = *remote
+		defer func() {
+			delete(c.config.Remotes, remoteName)
+			c.config.DefaultRemote = oldDefault
+			c.FlagForceLocal = oldForceLocal
+		}()
 	}
 
 	// Verify a simple connection to the migration manager.
@@ -193,20 +176,33 @@ func (c *CmdGlobal) CheckConfigStatus() error {
 		return err
 	}
 
-	if serverInfo.Auth != c.config.AuthType {
-		return fmt.Errorf("Received authentication mismatch: got %q, expected %q", serverInfo.Auth, c.config.AuthType)
+	if serverInfo.Auth != string(remote.AuthType) {
+		return fmt.Errorf("Received authentication mismatch: got %q, expected %q. Ensure the server trusts the client fingerprint %q", serverInfo.Auth, remote.AuthType, c.config.CertInfo.Fingerprint())
 	}
 
+	return nil
+}
+
+func (c *CmdGlobal) CheckConfigStatus() error {
+	remote := c.GetDefaultRemote()
+	unixSocketPath := c.os.GetUnixSocket()
+	if remote.Addr == unixSocketPath {
+		c.FlagForceLocal = true
+		return nil
+	}
+
+	err := c.CheckRemoteConnectivity(c.config.DefaultRemote, &remote)
+	if err != nil {
+		return err
+	}
+
+	// Run SaveConfig to store the server cert in case it changed.
 	return c.config.SaveConfig()
 }
 
 func (c *CmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, maxArgs int) (bool, error) {
 	if len(args) < minArgs || (maxArgs != -1 && len(args) > maxArgs) {
 		_ = cmd.Help()
-
-		if len(args) == 0 {
-			return true, nil
-		}
 
 		return true, fmt.Errorf("Invalid number of arguments")
 	}
@@ -230,8 +226,9 @@ func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, r
 		return nil, nil, err
 	}
 
-	if !c.FlagForceLocal && strings.HasPrefix(c.config.MigrationManagerServer, "https://") {
-		serverHost, err := url.Parse(c.config.MigrationManagerServer)
+	remote := c.GetDefaultRemote()
+	if !c.FlagForceLocal && strings.HasPrefix(remote.Addr, "https://") {
+		serverHost, err := url.Parse(remote.Addr)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -239,7 +236,7 @@ func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, r
 		u.Scheme = serverHost.Scheme
 		u.Host = serverHost.Host
 
-		client, err = getHTTPSClient(c.config.MigrationManagerServerCert.Certificate, c.config.TLSClientCertFile, c.config.TLSClientKeyFile)
+		client, err = getHTTPSClient(remote.ServerCert.Certificate, c.config.CertInfo)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -260,10 +257,10 @@ func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, r
 func (c *CmdGlobal) doRequest(client *http.Client) func(*http.Request) (*http.Response, error) {
 	return func(req *http.Request) (*http.Response, error) {
 		var resp *http.Response
+		remote := c.GetDefaultRemote()
 		var err error
-		if c.config.AuthType == "oidc" {
-			oidcClient := oidc.NewOIDCClient(path.Join(c.config.ConfigDir, "oidc-tokens.json"), c.config.MigrationManagerServerCert.Certificate)
-
+		if remote.AuthType == config.AuthTypeOIDC {
+			oidcClient := oidc.NewOIDCClient(c.config.OIDCTokenPath(c.config.DefaultRemote), remote.ServerCert.Certificate)
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
 			resp, err = oidcClient.Do(req) // nolint: bodyclose
 		} else {
@@ -371,20 +368,17 @@ func responseToStruct(response *incusAPI.Response, targetStruct any) error {
 	return json.Unmarshal(response.Metadata, &targetStruct)
 }
 
-func getHTTPSClient(serverCert *x509.Certificate, tlsCertFile string, tlsKeyFile string) (*http.Client, error) {
-	var err error
+func getHTTPSClient(serverCert *x509.Certificate, certInfo *localtls.CertInfo) (*http.Client, error) {
 	cert := tls.Certificate{}
 
 	// If a client TLS certificate is configured, use it
-	if util.PathExists(tlsCertFile) {
-		cert, err = tls.LoadX509KeyPair(tlsCertFile, tlsKeyFile)
-		if err != nil {
-			return nil, err
-		}
+	if certInfo != nil {
+		cert = certInfo.KeyPair()
 	}
 
 	// Define the https transport
-	tlsConfig := internalUtil.GetTOFUServerConfig(serverCert)
+	tlsConfig := &tls.Config{}
+	localtls.TLSConfigWithTrustedCert(tlsConfig, serverCert)
 	tlsConfig.Certificates = []tls.Certificate{cert}
 	transport := &http.Transport{
 		TLSClientConfig: tlsConfig,
