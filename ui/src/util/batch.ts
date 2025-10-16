@@ -41,7 +41,7 @@ export const handleStartBatch = (
   void startBatch(batchName)
     .then((response) => {
       if (response.error_code === 0) {
-        onSuccess(`Batch ${batchName} stopped`);
+        onSuccess(`Batch ${batchName} started`);
         return;
       }
       onError(`Error when starting batch ${batchName}. ${response.error}`);
