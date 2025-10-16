@@ -71,6 +71,10 @@ func main() {
 	queueCmd := cmds.CmdQueue{Global: &globalCmd}
 	app.AddCommand(queueCmd.Command())
 
+	// remote sub-command
+	remoteCmd := cmds.CmdRemote{Global: &globalCmd}
+	app.AddCommand(remoteCmd.Command())
+
 	// source sub-command
 	sourceCmd := cmds.CmdSource{Global: &globalCmd}
 	app.AddCommand(sourceCmd.Command())
