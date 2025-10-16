@@ -84,3 +84,12 @@ export const stopBatch = (name: string): Promise<APIResponse<null>> => {
       .catch(reject);
   });
 };
+
+export const resetBatch = (name: string): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/batches/${name}/reset`, { method: "POST" })
+      .then((response) => response.json())
+      .then(resolve)
+      .catch(reject);
+  });
+};

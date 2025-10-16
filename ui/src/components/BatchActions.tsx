@@ -5,12 +5,15 @@ import {
   MdOutlinePlayCircle,
   MdOutlineStopCircle,
 } from "react-icons/md";
+import { RiResetLeftLine } from "react-icons/ri";
 import BatchDeleteModal from "components/BatchDeleteModal";
 import { useNotification } from "context/notificationContext";
 import { Batch } from "types/batch";
 import {
+  canResetBatch,
   canStartBatch,
   canStopBatch,
+  handleResetBatch,
   handleStartBatch,
   handleStopBatch,
 } from "util/batch";
@@ -67,17 +70,43 @@ const BatchActions: FC<Props> = ({ batch }) => {
     );
   };
 
+  const onReset = () => {
+    if (!canResetBatch(batch) || opInprogress) {
+      return;
+    }
+
+    setOpInprogress(true);
+
+    handleResetBatch(
+      batch.name,
+      (message) => {
+        setOpInprogress(false);
+        void queryClient.invalidateQueries({ queryKey: ["batches"] });
+        notify.success(message);
+      },
+      (message) => {
+        setOpInprogress(false);
+        notify.error(message);
+      },
+    );
+  };
+
   const startStyle = {
     cursor: "pointer",
-    color: canStartBatch(batch) ? "grey" : "lightgrey",
+    color: canStartBatch(batch) && !opInprogress ? "grey" : "lightgrey",
   };
 
   const stopStyle = {
     cursor: "pointer",
-    color: canStopBatch(batch) ? "grey" : "lightgrey",
+    color: canStopBatch(batch) && !opInprogress ? "grey" : "lightgrey",
   };
 
-  const deleteStyle = {
+  const resetStyle = {
+    cursor: "pointer",
+    color: canResetBatch(batch) && !opInprogress ? "grey" : "lightgrey",
+  };
+
+  const buttonStyle = {
     cursor: "pointer",
     color: "grey",
   };
@@ -102,9 +131,16 @@ const BatchActions: FC<Props> = ({ batch }) => {
           onStop();
         }}
       />
+      <RiResetLeftLine
+        size={22}
+        style={resetStyle}
+        onClick={() => {
+          onReset();
+        }}
+      />
       <MdOutlineDelete
         size={25}
-        style={deleteStyle}
+        style={buttonStyle}
         onClick={() => {
           onDelete();
         }}
