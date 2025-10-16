@@ -93,9 +93,9 @@ func TestSourceAdd(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success - no args", // handled by root command, show usage
+			name: "error - no args", // handled by root command, show usage
 
-			assertErr: require.NoError,
+			assertErr: require.Error,
 		},
 		{
 			name: "error - too few args",
@@ -174,8 +174,14 @@ func TestSourceAdd(t *testing.T) {
 				global: &CmdGlobal{
 					Asker: asker,
 					config: &config.Config{
-						MigrationManagerServer:     migrationManagerd.URL,
-						MigrationManagerServerCert: api.Certificate{Certificate: serverCert},
+						DefaultRemote: "default",
+						Remotes: map[string]config.Remote{
+							"default": {
+								Addr:       migrationManagerd.URL,
+								AuthType:   config.AuthTypeTLS,
+								ServerCert: api.Certificate{Certificate: serverCert},
+							},
+						},
 					},
 				},
 				flagTrustedServerCertificateFingerprint: tc.trustedServerCertificateFingerprint,
@@ -299,8 +305,14 @@ func TestSourceList(t *testing.T) {
 			list := cmdSourceList{
 				global: &CmdGlobal{
 					config: &config.Config{
-						MigrationManagerServer:     migrationManagerd.URL,
-						MigrationManagerServerCert: api.Certificate{Certificate: serverCert},
+						DefaultRemote: "default",
+						Remotes: map[string]config.Remote{
+							"default": {
+								Addr:       migrationManagerd.URL,
+								AuthType:   config.AuthTypeTLS,
+								ServerCert: api.Certificate{Certificate: serverCert},
+							},
+						},
 					},
 				},
 				flagFormat: `csv`,
@@ -357,7 +369,7 @@ func TestSourceRemove(t *testing.T) {
   "status": "Success"
 }`,
 
-			assertErr: require.NoError, // handled by root command, show usage
+			assertErr: require.Error, // handled by root command, show usage
 		},
 		{
 			name:                        "error - too many arguments",
@@ -392,8 +404,14 @@ func TestSourceRemove(t *testing.T) {
 			remove := cmdSourceRemove{
 				global: &CmdGlobal{
 					config: &config.Config{
-						MigrationManagerServer:     migrationManagerd.URL,
-						MigrationManagerServerCert: api.Certificate{Certificate: serverCert},
+						DefaultRemote: "default",
+						Remotes: map[string]config.Remote{
+							"default": {
+								Addr:       migrationManagerd.URL,
+								AuthType:   config.AuthTypeTLS,
+								ServerCert: api.Certificate{Certificate: serverCert},
+							},
+						},
 					},
 				},
 			}
@@ -451,9 +469,9 @@ func TestSourceUpdate(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success - no args", // handled by root command, show usage
+			name: "error - no args", // handled by root command, show usage
 
-			assertErr: require.NoError,
+			assertErr: require.Error,
 		},
 		{
 			name: "error - too many args",
@@ -554,8 +572,14 @@ func TestSourceUpdate(t *testing.T) {
 				global: &CmdGlobal{
 					Asker: asker,
 					config: &config.Config{
-						MigrationManagerServer:     migrationManagerd.URL,
-						MigrationManagerServerCert: api.Certificate{Certificate: serverCert},
+						DefaultRemote: "default",
+						Remotes: map[string]config.Remote{
+							"default": {
+								Addr:       migrationManagerd.URL,
+								AuthType:   config.AuthTypeTLS,
+								ServerCert: api.Certificate{Certificate: serverCert},
+							},
+						},
 					},
 				},
 			}
