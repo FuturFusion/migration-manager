@@ -2,7 +2,11 @@ package migration
 
 import (
 	"encoding/json"
+	"fmt"
+	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 
 	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -94,13 +98,37 @@ func FilterUsedNetworks(nets Networks, vms Instances) Networks {
 type Networks []Network
 
 // ToAPI returns the API representation of a network.
-func (n Network) ToAPI() api.Network {
-	return api.Network{
+func (n Network) ToAPI() (*api.Network, error) {
+	// Assume a managed network of the same name by default.
+	placement := api.NetworkPlacement{
+		NICType: api.INCUSNICTYPE_MANAGED,
+		Network: strings.ReplaceAll(filepath.Base(n.Location), " ", "-"),
+	}
+
+	// Set bridged config for VMware port groups.
+	if n.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
+		placement.NICType = api.INCUSNICTYPE_BRIDGED
+
+		var netProps internalAPI.VCenterNetworkProperties
+		err := json.Unmarshal(n.Properties, &netProps)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse network properties for network %q: %w", n.Location, err)
+		}
+
+		if len(netProps.VlanRanges) > 0 {
+			placement.VlanID = strings.Join(netProps.VlanRanges, ",")
+		} else if netProps.VlanID != 0 {
+			placement.VlanID = strconv.Itoa(netProps.VlanID)
+		}
+	}
+
+	return &api.Network{
 		Identifier: n.Identifier,
 		Location:   n.Location,
 		Source:     n.Source,
 		Type:       n.Type,
 		Properties: n.Properties,
+		Placement:  placement,
 		Overrides:  n.Overrides,
-	}
+	}, nil
 }

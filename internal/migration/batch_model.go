@@ -9,7 +9,6 @@ import (
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/validate"
 
-	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/scriptlet"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -66,25 +65,26 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 
 	// Handle per-network overrides.
 	for _, n := range instance.Properties.NICs {
-		var baseNetwork Network
+		var baseNetwork api.Network
 		for _, net := range usedNetworks {
 			if n.ID == net.Identifier && instance.Source == net.Source {
-				baseNetwork = net
+				apiNet, err := net.ToAPI()
+				if err != nil {
+					return nil, err
+				}
+
+				baseNetwork = *apiNet
 				break
 			}
 		}
 
 		if baseNetwork.Identifier == "" {
-			err := fmt.Errorf("No network %q associated with instance %q on source %q", n.ID, instance.Properties.Name, instance.Source)
-			return nil, err
+			return nil, fmt.Errorf("No network %q associated with instance %q on source %q", n.ID, instance.Properties.Name, instance.Source)
 		}
 
-		netCfg, err := internalAPI.GetNetworkPlacement(baseNetwork.ToAPI())
-		if err != nil {
-			return nil, fmt.Errorf("Unable to determine placement for neteork %q: %w", baseNetwork.ToAPI().Name(), err)
-		}
-
-		resp.Networks[n.ID] = *netCfg
+		netCfg := baseNetwork.Placement
+		netCfg.Apply(baseNetwork.Overrides)
+		resp.Networks[n.ID] = netCfg
 	}
 
 	// Override with placement values if set.

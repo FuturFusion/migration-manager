@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -98,10 +97,8 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, n := range networks {
-		placement, err := internalAPI.GetNetworkPlacement(n)
-		if err != nil {
-			return err
-		}
+		placement := n.Placement
+		placement.Apply(n.Overrides)
 
 		data = append(data, []string{n.Identifier, n.Location, n.Source, string(n.Type), placement.Network, string(placement.NICType), placement.VlanID})
 	}
@@ -226,7 +223,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the existing network.
-	_, _, err = c.global.doHTTPRequestV1("/networks/"+name, http.MethodPut, "source="+source, content)
+	_, _, err = c.global.doHTTPRequestV1("/networks/"+name+"/override", http.MethodPut, "source="+source, content)
 	if err != nil {
 		return err
 	}

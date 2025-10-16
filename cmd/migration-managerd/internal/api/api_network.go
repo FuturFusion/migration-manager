@@ -25,13 +25,18 @@ var networkCmd = APIEndpoint{
 
 	Delete: APIEndpointAction{Handler: networkDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
 	Get:    APIEndpointAction{Handler: networkGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
-	Put:    APIEndpointAction{Handler: networkPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 var networkInstancesCmd = APIEndpoint{
 	Path: "networks/{name}/instances",
 
 	Get: APIEndpointAction{Handler: networkInstancesGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+}
+
+var networkOverrideCmd = APIEndpoint{
+	Path: "networks/{name}/override",
+
+	Put: APIEndpointAction{Handler: networkOverridePut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 // swagger:operation GET /1.0/networks networks networks_get
@@ -80,7 +85,12 @@ func networksGet(d *Daemon, r *http.Request) response.Response {
 
 	result := make([]api.Network, 0, len(networks))
 	for _, network := range networks {
-		result = append(result, network.ToAPI())
+		apiNet, err := network.ToAPI()
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		result = append(result, *apiNet)
 	}
 
 	return response.SyncResponse(true, result)
@@ -180,18 +190,23 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	apiNet, err := network.ToAPI()
+	if err != nil {
+		return response.SmartError(err)
+	}
+
 	return response.SyncResponseETag(
 		true,
-		network.ToAPI(),
+		apiNet,
 		network,
 	)
 }
 
-// swagger:operation PUT /1.0/networks/{name} networks network_put
+// swagger:operation PUT /1.0/networks/{name}/override networks network_override_put
 //
-//	Update the network
+//	Update the network overrides
 //
-//	Updates the network definition.
+//	Updates the network override definition.
 //
 //	---
 //	consumes:
@@ -222,7 +237,7 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/PreconditionFailed"
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
-func networkPut(d *Daemon, r *http.Request) response.Response {
+func networkOverridePut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 	srcName := r.FormValue("source")
 	if srcName == "" {
