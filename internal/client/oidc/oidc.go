@@ -3,6 +3,7 @@ package oidc
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -15,13 +16,12 @@ import (
 	"syscall"
 	"time"
 
+	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"github.com/lxc/incus/v6/shared/util"
 	"github.com/zitadel/oidc/v3/pkg/client/rp"
 	httphelper "github.com/zitadel/oidc/v3/pkg/http"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 	"golang.org/x/oauth2"
-
-	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )
 
 // ErrOIDCExpired is returned when the token is expired and we can't retry the request ourselves.
@@ -73,9 +73,8 @@ type OidcClient struct {
 
 // NewOIDCClient constructs a new OidcClient, ensuring the token field is non-nil to prevent panics during authentication.
 func NewOIDCClient(tokensFile string, serverCert *x509.Certificate) *OidcClient {
-	transport := &http.Transport{
-		TLSClientConfig: internalUtil.GetTOFUServerConfig(serverCert),
-	}
+	transport := &http.Transport{TLSClientConfig: &tls.Config{}}
+	incusTLS.TLSConfigWithTrustedCert(transport.TLSClientConfig, serverCert)
 
 	client := OidcClient{
 		tokens:        loadTokensFromFile(tokensFile),
