@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { startBatch, stopBatch } from "api/batches";
+import { resetBatch, startBatch, stopBatch } from "api/batches";
 import { Batch } from "types/batch";
 
 export enum BatchStatus {
@@ -10,6 +10,15 @@ export enum BatchStatus {
   Finished = "Finished",
   Error = "Error",
 }
+
+export const canResetBatch = (batch: Batch) => {
+  const status = batch.status;
+  if (status == BatchStatus.Running) {
+    return true;
+  }
+
+  return false;
+};
 
 export const canStartBatch = (batch: Batch) => {
   const status = batch.status;
@@ -66,6 +75,24 @@ export const handleStopBatch = (
     })
     .catch((e) => {
       onError(`Error when stopping batch ${batchName}. ${e}`);
+    });
+};
+
+export const handleResetBatch = (
+  batchName: string,
+  onSuccess: (message: string) => void,
+  onError: (message: string) => void,
+) => {
+  void resetBatch(batchName)
+    .then((response) => {
+      if (response.error_code === 0) {
+        onSuccess(`Batch ${batchName} reset successfully`);
+        return;
+      }
+      onError(`Error when resetting batch ${batchName}. ${response.error}`);
+    })
+    .catch((e) => {
+      onError(`Error when resetting batch ${batchName}. ${e}`);
     });
 };
 
