@@ -3,8 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"path/filepath"
-	"strings"
 )
 
 type NetworkType string
@@ -64,6 +62,9 @@ type Network struct {
 	// Additional properties of the network.
 	Properties json.RawMessage `json:"properties" yaml:"properties"`
 
+	// Target placement configuration for the network.
+	Placement NetworkPlacement `json:"placement" yaml:"placement"`
+
 	// Overrides to the network placement configuration.
 	Overrides NetworkPlacement `json:"override" yaml:"override"`
 }
@@ -85,7 +86,18 @@ type NetworkPlacement struct {
 	VlanID string `json:"vlan_id" yaml:"vlan_id"`
 }
 
-// Name returns the overrided network name, or transforms the default name into an API compatible one.
-func (n Network) Name() string {
-	return strings.ReplaceAll(filepath.Base(n.Location), " ", "-")
+// Apply updates the properties with the given set of configurable properties.
+// Only non-default values will be applied.
+func (n *NetworkPlacement) Apply(overrides NetworkPlacement) {
+	if overrides.NICType != "" {
+		n.NICType = overrides.NICType
+	}
+
+	if overrides.Network != "" {
+		n.Network = overrides.Network
+	}
+
+	if overrides.VlanID != "" {
+		n.VlanID = overrides.VlanID
+	}
 }
