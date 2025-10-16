@@ -521,7 +521,12 @@ func (s batchService) DeterminePlacement(ctx context.Context, instance Instance,
 
 	apiNetworks := make([]api.Network, len(usedNetworks))
 	for _, n := range usedNetworks {
-		apiNetworks = append(apiNetworks, n.ToAPI())
+		apiNet, err := n.ToAPI()
+		if err != nil {
+			return nil, err
+		}
+
+		apiNetworks = append(apiNetworks, *apiNet)
 	}
 
 	err := scriptlet.BatchPlacementSet(s.scriptletLoader, batch.Config.PlacementScriptlet, batch.Name)
