@@ -216,15 +216,17 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		return err
 	}
 
-	// Stop the instance.
-	err = t.StopVM(ctx, props.Name, true)
-	if err != nil {
-		return fmt.Errorf("Failed to stop instance %q on target %q: %w", props.Name, t.GetName(), err)
-	}
-
 	apiDef, _, err := t.GetInstance(props.Name)
 	if err != nil {
 		return fmt.Errorf("Failed to get configuration for instance %q on target %q: %w", props.Name, t.GetName(), err)
+	}
+
+	if apiDef.Status == "Running" {
+		// Stop the instance.
+		err = t.StopVM(ctx, props.Name, true)
+		if err != nil {
+			return fmt.Errorf("Failed to stop instance %q on target %q: %w", props.Name, t.GetName(), err)
+		}
 	}
 
 	for idx, nic := range props.NICs {
