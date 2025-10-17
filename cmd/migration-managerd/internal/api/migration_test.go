@@ -125,7 +125,7 @@ func TestMigration_beginImports(t *testing.T) {
 			}
 
 			for _, name := range n {
-				netPlacement[p] = append(netPlacement[p], incusAPI.Network{Name: name})
+				netPlacement[p] = append(netPlacement[p], incusAPI.Network{Name: name, Managed: true})
 			}
 		}
 

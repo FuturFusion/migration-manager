@@ -259,7 +259,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 				}
 
 				// Don't set ipv4 address for physical networks.
-				if network.Type != "physical" {
+				if slices.Contains([]string{"bridge", "ovn"}, network.Type) {
 					ipv4Info, err := nicDefs.Get(properties.InstanceNICIPv4Address)
 					if err != nil {
 						return err
@@ -1146,7 +1146,7 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 		var exists bool
 		for _, n := range info.NetworksByProject[placement.TargetProject] {
 			exists = n.Name == targetNet.Network
-			if exists && targetNet.NICType == api.INCUSNICTYPE_MANAGED && n.Type != "physical" && instNIC.IPv4Address != "" && n.Config["ipv4.address"] != "" {
+			if exists && targetNet.NICType == api.INCUSNICTYPE_MANAGED && slices.Contains([]string{"bridge", "ovn"}, n.Type) && instNIC.IPv4Address != "" && n.Config["ipv4.address"] != "" {
 				ip := net.ParseIP(instNIC.IPv4Address)
 				if ip == nil {
 					return fmt.Errorf("Failed to parse instance NIC %q IP %q", instNIC.Network, instNIC.IPv4Address)
@@ -1163,6 +1163,10 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 			}
 
 			if exists {
+				if !n.Managed && targetNet.NICType == api.INCUSNICTYPE_MANAGED {
+					return fmt.Errorf("Target network %q is not a managed network", n.Name)
+				}
+
 				break
 			}
 		}
