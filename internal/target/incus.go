@@ -770,7 +770,7 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 
 // CheckIncusAgent repeatedly calls Exec on the instance until the context errors out, or the exec succeeds.
 func (t *InternalIncusTarget) CheckIncusAgent(ctx context.Context, instanceName string) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Second*120)
+	ctx, cancel := context.WithTimeout(ctx, t.Timeout())
 	defer cancel()
 
 	var err error
