@@ -340,7 +340,7 @@ func TestRun(t *testing.T) {
 					}
 
 					fallthrough
-				case fmt.Sprintf("/1.0/queue/%s/worker/command?secret=", uuidA):
+				case fmt.Sprintf("/internal/worker/%s/:command?secret=", uuidA):
 					if r.RequestURI != "/1.0" {
 						if r.Method != http.MethodPost {
 							cancel(fmt.Errorf("Unsupported method %q", r.Method))
@@ -357,7 +357,7 @@ func TestRun(t *testing.T) {
 					tc.migrationManagerdResponses = tc.migrationManagerdResponses[1:]
 
 					respFunc(tc.instanceSpec, cancel, w, r)
-				case fmt.Sprintf("/1.0/queue/%s/worker?secret=", uuidA):
+				case fmt.Sprintf("/internal/worker/%s/:update?secret=", uuidA):
 					if r.Method != http.MethodPost {
 						cancel(fmt.Errorf("Unsupported method %q", r.Method))
 						return
