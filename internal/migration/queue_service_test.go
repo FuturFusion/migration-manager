@@ -2,10 +2,13 @@ package migration_test
 
 import (
 	"context"
+	"database/sql"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
@@ -1271,6 +1274,332 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+		})
+	}
+}
+
+func TestQueueService_GetNextWindow(t *testing.T) {
+	type window struct {
+		s int
+		e int
+	}
+
+	toWindows := func(ws []window, t time.Time) migration.MigrationWindows {
+		windows := make([]migration.MigrationWindow, len(ws))
+		for i, w := range ws {
+			windows[i] = migration.MigrationWindow{
+				ID:    int64(i),
+				Start: t.Add(time.Duration(w.s) * time.Minute),
+				End:   t.Add(time.Duration(w.e) * time.Minute),
+			}
+		}
+
+		return windows
+	}
+
+	cases := []struct {
+		name        string
+		queueEntry  migration.QueueEntry
+		constraints []migration.BatchConstraint
+
+		matchingInstances    []int // slice where the index represents the constraint index, and the value is the number of matching instances.
+		notMatchingInstances []int // slice where the index represents the constraint index, and the value is the number of non-matching instances.
+		targetExprValue      int   // corresponds to index-1 of the matching constraint (0 is none).
+		windows              []window
+
+		wantWindowIndex int
+		assertErr       require.ErrorAssertionFunc
+	}{
+		{
+			name:                 "success - no constraints",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{},
+			matchingInstances:    []int{},
+			notMatchingInstances: []int{},
+			targetExprValue:      0,
+			windows:              []window{{s: 10, e: 20}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - no constraints, matches already started window",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{},
+			matchingInstances:    []int{},
+			notMatchingInstances: []int{},
+			targetExprValue:      0,
+			windows:              []window{{s: 10, e: 20}, {s: -30, e: 40}},
+			wantWindowIndex:      1,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - window already assigned",
+			queueEntry:           migration.QueueEntry{MigrationWindowID: sql.NullInt64{Valid: true, Int64: 1}},
+			constraints:          []migration.BatchConstraint{},
+			matchingInstances:    []int{},
+			notMatchingInstances: []int{},
+			targetExprValue:      0,
+			windows:              []window{{s: 10, e: 20}, {s: 30, e: 40}},
+			wantWindowIndex:      1,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - window already assigned, but ended",
+			queueEntry:           migration.QueueEntry{MigrationWindowID: sql.NullInt64{Valid: true, Int64: 1}},
+			constraints:          []migration.BatchConstraint{},
+			matchingInstances:    []int{},
+			notMatchingInstances: []int{},
+			targetExprValue:      0,
+			windows:              []window{{s: 10, e: 20}, {s: -30, e: -40}, {s: -30, e: 2}},
+			wantWindowIndex:      2,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - constraint matches but limit not reached (no other instances)",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MaxConcurrentInstances: 10}},
+			matchingInstances:    []int{},
+			notMatchingInstances: []int{},
+			targetExprValue:      1,
+			windows:              []window{{s: 10, e: 20}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - constraint matches but limit not reached (no other instances)",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MaxConcurrentInstances: 1}},
+			matchingInstances:    []int{},
+			notMatchingInstances: []int{},
+			targetExprValue:      1,
+			windows:              []window{{s: 10, e: 20}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - constraint matches only other instances",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MaxConcurrentInstances: 3}},
+			matchingInstances:    []int{3},
+			notMatchingInstances: []int{},
+			targetExprValue:      0,
+			windows:              []window{{s: 10, e: 20}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - constraint matches only other instances, with some not matching",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MaxConcurrentInstances: 3}},
+			matchingInstances:    []int{3},
+			notMatchingInstances: []int{3},
+			targetExprValue:      0,
+			windows:              []window{{s: 10, e: 20}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - constraint matches target and other instances, with some not matching",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MaxConcurrentInstances: 4}},
+			matchingInstances:    []int{3},
+			notMatchingInstances: []int{3},
+			targetExprValue:      1,
+			windows:              []window{{s: 10, e: 20}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - last constraint considered first - sequential match",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MaxConcurrentInstances: 3}, {IncludeExpression: "cpus == 2", MaxConcurrentInstances: 3}, {IncludeExpression: "cpus == 3", MaxConcurrentInstances: 3}},
+			matchingInstances:    []int{3, 3, 2},
+			notMatchingInstances: []int{3, 3, 3},
+			targetExprValue:      3,
+			windows:              []window{{s: 10, e: 20}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - last constraint considered first",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 2", MaxConcurrentInstances: 1}, {IncludeExpression: "cpus == 2", MaxConcurrentInstances: 3}},
+			matchingInstances:    []int{0, 2},
+			notMatchingInstances: []int{3, 3},
+			targetExprValue:      2,
+			windows:              []window{{s: 10, e: 20}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - matching constraints with unlimited concurrency",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1"}, {IncludeExpression: "cpus == 2"}},
+			matchingInstances:    []int{5, 5},
+			notMatchingInstances: []int{3, 3},
+			targetExprValue:      1,
+			windows:              []window{{s: 10, e: 20}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - matches constraint with boot time forcing later window",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: time.Minute * 5}},
+			matchingInstances:    []int{3},
+			notMatchingInstances: []int{3},
+			targetExprValue:      1,
+			windows:              []window{{s: 10, e: 14}, {s: 30, e: 40}},
+			wantWindowIndex:      1,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - matches constraint with boot time forcing later window, respects time left",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: time.Minute * 5}},
+			matchingInstances:    []int{3},
+			notMatchingInstances: []int{3},
+			targetExprValue:      1,
+			windows:              []window{{s: 10, e: 14}, {s: -30, e: 6}, {s: -30, e: 7}, {s: 1, e: 8}}, // expects >1 minute buffer.
+			wantWindowIndex:      2,                                                                      // picks the earliest valid window.
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "success - non-matching constraint with boot time using earlier window",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: time.Minute * 5}},
+			matchingInstances:    []int{3},
+			notMatchingInstances: []int{3},
+			targetExprValue:      0,
+			windows:              []window{{s: 10, e: 14}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr:            require.NoError,
+		},
+		{
+			name:                 "error - constraint limit reached",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MaxConcurrentInstances: 3}},
+			matchingInstances:    []int{3},
+			notMatchingInstances: []int{3},
+			targetExprValue:      1,
+			windows:              []window{{s: 10, e: 14}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.True(t, incusAPI.StatusErrorCheck(err, http.StatusNotFound))
+			},
+		},
+		{
+			name:                 "error - constraint limit reached, earlier matches ignored",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 2", MaxConcurrentInstances: 10}, {IncludeExpression: "cpus == 2", MaxConcurrentInstances: 3}},
+			matchingInstances:    []int{0, 3},
+			notMatchingInstances: []int{3, 3},
+			targetExprValue:      2,
+			windows:              []window{{s: 10, e: 14}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.True(t, incusAPI.StatusErrorCheck(err, http.StatusNotFound))
+			},
+		},
+		{
+			name:                 "error - no valid window for boot time",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: time.Hour}},
+			matchingInstances:    []int{3},
+			notMatchingInstances: []int{3},
+			targetExprValue:      1,
+			windows:              []window{{s: 10, e: 14}, {s: 30, e: 40}},
+			wantWindowIndex:      0,
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.True(t, incusAPI.StatusErrorCheck(err, http.StatusNotFound))
+			},
+		},
+		{
+			name:                 "error - no valid window with no restrictions",
+			queueEntry:           migration.QueueEntry{},
+			constraints:          []migration.BatchConstraint{{IncludeExpression: "cpus == 1"}},
+			matchingInstances:    []int{3},
+			notMatchingInstances: []int{3},
+			targetExprValue:      1,
+			windows:              []window{{s: -10, e: -14}, {s: -30, e: -40}, {s: -35, e: 1}, {s: 10, e: 11}}, // all windows ended, or fail >1 min buffer requirement.
+			wantWindowIndex:      0,
+			assertErr: func(tt require.TestingT, err error, i ...any) {
+				require.True(t, incusAPI.StatusErrorCheck(err, http.StatusNotFound))
+			},
+		},
+	}
+
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
+
+			// sanity check.
+			require.LessOrEqual(t, len(tc.matchingInstances), len(tc.constraints))
+			require.LessOrEqual(t, len(tc.notMatchingInstances), len(tc.constraints))
+			require.LessOrEqual(t, tc.targetExprValue, len(tc.constraints))
+
+			now := time.Now().UTC()
+			windows := toWindows(tc.windows, now)
+			tc.queueEntry.InstanceUUID = uuid.New()
+			repo := &mock.QueueRepoMock{
+				GetAllByBatchAndStateFunc: func(ctx context.Context, batch string, statuses ...api.MigrationStatusType) (migration.QueueEntries, error) {
+					entries := []migration.QueueEntry{tc.queueEntry}
+					for _, count := range tc.matchingInstances {
+						for i := 0; i < count; i++ {
+							entries = append(entries, migration.QueueEntry{})
+						}
+					}
+
+					for _, count := range tc.notMatchingInstances {
+						for i := 0; i < count; i++ {
+							entries = append(entries, migration.QueueEntry{})
+						}
+					}
+
+					return entries, nil
+				},
+			}
+
+			instanceSvc := &InstanceServiceMock{
+				GetAllQueuedFunc: func(ctx context.Context, queue migration.QueueEntries) (migration.Instances, error) {
+					targetInstance := migration.Instance{
+						UUID:       tc.queueEntry.InstanceUUID,
+						Properties: api.InstanceProperties{InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{CPUs: int64(tc.targetExprValue)}},
+					}
+
+					instances := []migration.Instance{targetInstance}
+					for idx, count := range tc.matchingInstances {
+						for i := 0; i < count; i++ {
+							instances = append(instances, migration.Instance{Properties: api.InstanceProperties{InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{CPUs: int64(idx) + 1}}})
+						}
+					}
+
+					for _, count := range tc.notMatchingInstances {
+						for i := 0; i < count; i++ {
+							instances = append(instances, migration.Instance{})
+						}
+					}
+
+					return instances, nil
+				},
+			}
+
+			batchSvc := &BatchServiceMock{
+				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
+					return &migration.Batch{Constraints: tc.constraints}, nil
+				},
+
+				GetMigrationWindowsFunc: func(ctx context.Context, batch string) (migration.MigrationWindows, error) {
+					return windows, nil
+				},
+			}
+
+			queueSvc := migration.NewQueueService(repo, batchSvc, instanceSvc, nil, nil)
+			w, err := queueSvc.GetNextWindow(context.Background(), tc.queueEntry)
+			tc.assertErr(t, err)
+			if err == nil {
+				require.Equal(t, &windows[tc.wantWindowIndex], w)
+			}
 		})
 	}
 }
