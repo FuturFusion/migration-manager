@@ -25,10 +25,105 @@ var systemSecurityCmd = APIEndpoint{
 	Put: APIEndpointAction{Handler: systemSecurityPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
+var systemSettingsCmd = APIEndpoint{
+	Path: "system/settings",
+
+	Get: APIEndpointAction{Handler: systemSettingsGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Put: APIEndpointAction{Handler: systemSettingsPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+}
+
 var systemCertificateCmd = APIEndpoint{
 	Path: "system/certificate",
 
 	Post: APIEndpointAction{Handler: systemCertificateUpdate, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+}
+
+// swagger:operation GET /1.0/system/settings system_settings system_settings_get
+//
+//	Get the system settings configuration
+//
+//	Returns the system settings configuration.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API system settings
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: System settings configuration
+//	          items:
+//	            $ref: "#/definitions/SystemSettings"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func systemSettingsGet(d *Daemon, r *http.Request) response.Response {
+	return response.SyncResponse(true, d.config.Settings)
+}
+
+// swagger:operation PUT /1.0/system/settings system_settings system_settings_put
+//
+//	Update the system settings configuration
+//
+//	Updates the system settings configuration.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: system_settings
+//	    description: System settings configuration
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/SystemSettings"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func systemSettingsPut(d *Daemon, r *http.Request) response.Response {
+	var cfg api.SystemSettings
+	err := json.NewDecoder(r.Body).Decode(&cfg)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	newConfig := d.config
+	newConfig.Settings = cfg
+
+	err = d.ReloadConfig(false, newConfig)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
 }
 
 // swagger:operation GET /1.0/system/network system_network system_network_get
