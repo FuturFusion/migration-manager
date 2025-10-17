@@ -64,8 +64,9 @@ type APIEndpointAction struct {
 }
 
 type Daemon struct {
-	db *db.Node
-	os *sys.OS
+	db         *db.Node
+	os         *sys.OS
+	logHandler *slog.LevelVar
 
 	queueHandler *queue.Handler
 	batch        migration.BatchService
@@ -94,12 +95,13 @@ type Daemon struct {
 	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
 }
 
-func NewDaemon() *Daemon {
+func NewDaemon(logHandler *slog.LevelVar) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	d := &Daemon{
 		db:             &db.Node{},
 		os:             sys.DefaultOS(),
+		logHandler:     logHandler,
 		batchLock:      util.NewIDLock[string](),
 		ShutdownCtx:    shutdownCtx,
 		ShutdownCancel: shutdownCancel,

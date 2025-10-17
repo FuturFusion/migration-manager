@@ -21,7 +21,7 @@ type cmdGlobal struct {
 }
 
 func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
-	err := logger.InitLogger(c.flagLogFile, true, true)
+	_, err := logger.InitLogger(c.flagLogFile, true, true)
 	if err != nil {
 		return err
 	}

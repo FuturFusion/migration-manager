@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -22,10 +23,13 @@ type cmdGlobal struct {
 	flagLogFile    string
 	flagLogDebug   bool
 	flagLogVerbose bool
+
+	logHandler *slog.LevelVar
 }
 
 func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
-	err := logger.InitLogger(c.flagLogFile, c.flagLogVerbose, c.flagLogDebug)
+	var err error
+	c.logHandler, err = logger.InitLogger(c.flagLogFile, c.flagLogVerbose, c.flagLogDebug)
 	if err != nil {
 		return err
 	}
