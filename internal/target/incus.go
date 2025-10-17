@@ -252,12 +252,20 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		case api.INCUSNICTYPE_MANAGED:
 			apiDef.Devices[nicDeviceName]["network"] = netCfg.Network
 			if nic.IPv4Address != "" {
-				ipv4Info, err := nicDefs.Get(properties.InstanceNICIPv4Address)
+				network, _, err := t.incusClient.GetNetwork(netCfg.Network)
 				if err != nil {
-					return err
+					return fmt.Errorf("Failed to fetch network configuration from target %q: %w", t.GetName(), err)
 				}
 
-				apiDef.Devices[nicDeviceName][ipv4Info.Key] = nic.IPv4Address
+				// Don't set ipv4 address for physical networks.
+				if network.Type != "physical" {
+					ipv4Info, err := nicDefs.Get(properties.InstanceNICIPv4Address)
+					if err != nil {
+						return err
+					}
+
+					apiDef.Devices[nicDeviceName][ipv4Info.Key] = nic.IPv4Address
+				}
 			}
 		}
 
