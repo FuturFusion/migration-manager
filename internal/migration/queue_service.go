@@ -243,7 +243,7 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Migrati
 
 	// If there are no constraints on the batch, or if the instance matches none of them, just return the earliest migration window.
 	if constraint == nil {
-		return windows.GetEarliest()
+		return windows.GetEarliest(0)
 	}
 
 	statusMap := make(map[uuid.UUID]api.MigrationStatusType, len(entries))
@@ -270,23 +270,11 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Migrati
 
 	if constraint.MaxConcurrentInstances == 0 || numMatches <= constraint.MaxConcurrentInstances {
 		// If there is no minimum migration time, we just use the earliest valid migration window.
-		if constraint.MinInstanceBootTime == 0 {
-			return windows.GetEarliest()
-		}
-
-		// Get the earliest window that fits the constraint duration.
-		index := slices.IndexFunc(windows, func(w MigrationWindow) bool {
-			return w.FitsDuration(constraint.MinInstanceBootTime)
-		})
-
-		// If we found a matching window, then stop checking constraints and return.
-		if index != -1 {
-			return &windows[index], nil
-		}
+		return windows.GetEarliest(constraint.MinInstanceBootTime)
 	}
 
 	// Return a 404 if this instance matched a constraint, but no valid migration window could be found.
-	return nil, incusAPI.StatusErrorf(http.StatusNotFound, "No valid migration window found for instance %q", q.InstanceUUID)
+	return nil, incusAPI.StatusErrorf(http.StatusNotFound, "Not assigning migration window for instance %q, maximum limit %d reached", q.InstanceUUID, constraint.MaxConcurrentInstances)
 }
 
 // NewWorkerCommandByInstanceID gets the next worker command for the instance with the given UUID, and updates the instance state accordingly.
