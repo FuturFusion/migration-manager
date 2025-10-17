@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
@@ -77,14 +78,14 @@ func TestTargetsPost(t *testing.T) {
 		{
 			name: "success",
 
-			targetJSON: `{"name": "new", "target_type": "incus", "properties": {"endpoint": "https://some-endpoint"}}`,
+			targetJSON: `{"name": "new", "target_type": "incus", "properties": {"endpoint": "https://some-endpoint", "connection_timeout": "10m"}}`,
 
 			wantHTTPStatus: http.StatusCreated,
 		},
 		{
 			name: "error - name already exists",
 
-			targetJSON: `{"name": "foo", "target_type": "incus", "properties": {"endpoint": "https://some-endpoint"}}`,
+			targetJSON: `{"name": "foo", "target_type": "incus", "properties": {"endpoint": "https://some-endpoint", "connection_timeout": "10m"}}`,
 
 			wantHTTPStatus: http.StatusBadRequest,
 		},
@@ -250,7 +251,7 @@ func TestTargetPut(t *testing.T) {
 			name: "success",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": "incus", "properties": {"endpoint": "https://some-endpoint"}}`,
+			targetJSON: `{"name": "foo", "target_type": "incus", "properties": {"endpoint": "https://some-endpoint", "connection_timeout": "10m"}}`,
 
 			wantHTTPStatus: http.StatusCreated,
 		},
@@ -258,13 +259,13 @@ func TestTargetPut(t *testing.T) {
 			name: "success with etag",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": "incus", "properties": {"endpoint": "https://some-endpoint"}}`,
+			targetJSON: `{"name": "foo", "target_type": "incus", "properties": {"endpoint": "https://some-endpoint", "connection_timeout": "10m"}}`,
 			targetEtag: func() string {
 				etag, err := util.EtagHash(migration.Target{
 					ID:         1,
 					Name:       "foo",
 					TargetType: api.TARGETTYPE_INCUS,
-					Properties: json.RawMessage(`{"endpoint": "bar", "connectivity_status": "OK"}`),
+					Properties: json.RawMessage(`{"endpoint": "bar", "connectivity_status": "OK", "connection_timeout": "10m"}`),
 				})
 				require.NoError(t, err)
 				return etag
@@ -311,7 +312,7 @@ func TestTargetPut(t *testing.T) {
 			name: "error - invalid etag",
 
 			targetName: "foo",
-			targetJSON: `{"name": "foo", "target_type": "incus", "properties": {"endpoint": "https://some-endpoint"}}`,
+			targetJSON: `{"name": "foo", "target_type": "incus", "properties": {"endpoint": "https://some-endpoint", "connection_timeout": "10m"}}`,
 			targetEtag: "invalid_etag",
 
 			wantHTTPStatus: http.StatusPreconditionFailed,
@@ -455,6 +456,9 @@ func seedDBWithConnectivityTarget(t *testing.T, daemon *Daemon) {
 		GetNameFunc: func() string {
 			return "foo"
 		},
+		TimeoutFunc: func() time.Duration {
+			return time.Second
+		},
 	}
 
 	seedDBWithTargets(t, daemon, []target.Target{tgt})
@@ -468,7 +472,7 @@ func seedDBWithTargets(t *testing.T, daemon *Daemon, targets []target.Target) {
 		_, err := daemon.target.Create(ctx, migration.Target{
 			Name:       tgt.GetName(),
 			TargetType: api.TARGETTYPE_INCUS,
-			Properties: json.RawMessage(`{"endpoint": "bar"}`),
+			Properties: json.RawMessage(`{"endpoint": "bar", "connection_timeout": "10m"}`),
 			EndpointFunc: func(s api.Target) (migration.TargetEndpoint, error) {
 				return tgt, nil
 			},

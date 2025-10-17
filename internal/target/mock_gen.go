@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -100,6 +101,9 @@ var _ Target = &TargetMock{}
 //			StopVMFunc: func(ctx context.Context, name string, force bool) error {
 //				panic("mock out the StopVM method")
 //			},
+//			TimeoutFunc: func() time.Duration {
+//				panic("mock out the Timeout method")
+//			},
 //			UpdateInstanceFunc: func(name string, instanceDef incusAPI.InstancePut, ETag string) (incus.Operation, error) {
 //				panic("mock out the UpdateInstance method")
 //			},
@@ -187,6 +191,9 @@ type TargetMock struct {
 
 	// StopVMFunc mocks the StopVM method.
 	StopVMFunc func(ctx context.Context, name string, force bool) error
+
+	// TimeoutFunc mocks the Timeout method.
+	TimeoutFunc func() time.Duration
 
 	// UpdateInstanceFunc mocks the UpdateInstance method.
 	UpdateInstanceFunc func(name string, instanceDef incusAPI.InstancePut, ETag string) (incus.Operation, error)
@@ -361,6 +368,9 @@ type TargetMock struct {
 			// Force is the force argument value.
 			Force bool
 		}
+		// Timeout holds details about calls to the Timeout method.
+		Timeout []struct {
+		}
 		// UpdateInstance holds details about calls to the UpdateInstance method.
 		UpdateInstance []struct {
 			// Name is the name argument value.
@@ -401,6 +411,7 @@ type TargetMock struct {
 	lockSetProject                        sync.RWMutex
 	lockStartVM                           sync.RWMutex
 	lockStopVM                            sync.RWMutex
+	lockTimeout                           sync.RWMutex
 	lockUpdateInstance                    sync.RWMutex
 	lockWithAdditionalRootCertificate     sync.RWMutex
 }
@@ -1276,6 +1287,33 @@ func (mock *TargetMock) StopVMCalls() []struct {
 	mock.lockStopVM.RLock()
 	calls = mock.calls.StopVM
 	mock.lockStopVM.RUnlock()
+	return calls
+}
+
+// Timeout calls TimeoutFunc.
+func (mock *TargetMock) Timeout() time.Duration {
+	if mock.TimeoutFunc == nil {
+		panic("TargetMock.TimeoutFunc: method is nil but Target.Timeout was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockTimeout.Lock()
+	mock.calls.Timeout = append(mock.calls.Timeout, callInfo)
+	mock.lockTimeout.Unlock()
+	return mock.TimeoutFunc()
+}
+
+// TimeoutCalls gets all the calls that were made to Timeout.
+// Check the length with:
+//
+//	len(mockedTarget.TimeoutCalls())
+func (mock *TargetMock) TimeoutCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockTimeout.RLock()
+	calls = mock.calls.Timeout
+	mock.lockTimeout.RUnlock()
 	return calls
 }
 
