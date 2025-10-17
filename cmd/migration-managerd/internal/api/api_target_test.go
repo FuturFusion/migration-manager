@@ -53,7 +53,7 @@ func TestTargetsGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			daemon := daemonSetup(t)
-			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd})
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd}, nil)
 			seedDBWithConnectivityTarget(t, daemon)
 
 			// Execute test
@@ -101,7 +101,7 @@ func TestTargetsPost(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			daemon := daemonSetup(t)
-			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd})
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd}, nil)
 			seedDBWithConnectivityTarget(t, daemon)
 
 			// Execute test
@@ -161,7 +161,7 @@ func TestTargetDelete(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			daemon := daemonSetup(t)
-			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd, targetCmd})
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd, targetCmd}, nil)
 			seedDBWithConnectivityTarget(t, daemon)
 
 			// Execute test
@@ -223,7 +223,7 @@ func TestTargetGet(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			daemon := daemonSetup(t)
-			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd, targetCmd})
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd, targetCmd}, nil)
 			seedDBWithConnectivityTarget(t, daemon)
 
 			// Execute test
@@ -322,7 +322,7 @@ func TestTargetPut(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			daemon := daemonSetup(t)
-			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd, targetCmd})
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{targetsCmd, targetCmd}, nil)
 			seedDBWithConnectivityTarget(t, daemon)
 
 			headers := map[string]string{
@@ -409,7 +409,7 @@ func daemonSetup(t *testing.T) *Daemon {
 	return daemon
 }
 
-func startTestDaemon(t *testing.T, daemon *Daemon, endpoints []APIEndpoint) (*http.Client, string) {
+func startTestDaemon(t *testing.T, daemon *Daemon, endpoints []APIEndpoint, internalEndpoints []APIEndpoint) (*http.Client, string) {
 	t.Helper()
 
 	for _, dir := range []string{daemon.os.CacheDir, daemon.os.LogDir, daemon.os.RunDir, daemon.os.VarDir, daemon.os.UsrDir, daemon.os.LocalDatabaseDir(), daemon.os.ArtifactDir} {
@@ -421,6 +421,10 @@ func startTestDaemon(t *testing.T, daemon *Daemon, endpoints []APIEndpoint) (*ht
 	router := http.NewServeMux()
 	for _, cmd := range endpoints {
 		daemon.createCmd(router, "1.0", cmd)
+	}
+
+	for _, cmd := range internalEndpoints {
+		daemon.createCmd(router, "internal", cmd)
 	}
 
 	// Setup a HTTPS server and configure it to request client TLS certificates.
