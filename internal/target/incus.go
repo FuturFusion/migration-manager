@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -1065,7 +1066,7 @@ type IncusDetails struct {
 	Name               string
 	Projects           []string
 	StoragePools       []string
-	NetworksByProject  map[string][]string
+	NetworksByProject  map[string][]incusAPI.Network
 	InstancesByProject map[string][]string
 }
 
@@ -1085,10 +1086,10 @@ func (t *InternalIncusTarget) GetDetails(ctx context.Context) (*IncusDetails, er
 		return nil, err
 	}
 
-	networksByProject := map[string][]string{}
+	networksByProject := map[string][]incusAPI.Network{}
 	for _, p := range projects {
 		client := t.incusClient.UseProject(p)
-		networks, err := client.GetNetworkNames()
+		networks, err := client.GetNetworks()
 		if err != nil {
 			return nil, err
 		}
@@ -1133,9 +1134,41 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 		return fmt.Errorf("Instance already exists with name %q on target %q in project %q", inst.GetName(), info.Name, placement.TargetProject)
 	}
 
-	for _, net := range placement.Networks {
-		if !slices.Contains(info.NetworksByProject[placement.TargetProject], net.Network) {
-			return fmt.Errorf("No network found with name %q on target %q in project %q", net.Network, info.Name, placement.TargetProject)
+	for id, targetNet := range placement.Networks {
+		var instNIC api.InstancePropertiesNIC
+		for _, nic := range inst.Properties.NICs {
+			if nic.ID == id {
+				instNIC = nic
+				break
+			}
+		}
+
+		var exists bool
+		for _, n := range info.NetworksByProject[placement.TargetProject] {
+			exists = n.Name == targetNet.Network
+			if exists && targetNet.NICType == api.INCUSNICTYPE_MANAGED && n.Type != "physical" && instNIC.IPv4Address != "" && n.Config["ipv4.address"] != "" {
+				ip := net.ParseIP(instNIC.IPv4Address)
+				if ip == nil {
+					return fmt.Errorf("Failed to parse instance NIC %q IP %q", instNIC.Network, instNIC.IPv4Address)
+				}
+
+				_, cidr, err := net.ParseCIDR(n.Config["ipv4.address"])
+				if err != nil {
+					return fmt.Errorf("Failed to parse target network %q subnet %q: %w", n.Name, n.Config["ipv4.address"], err)
+				}
+
+				if !cidr.Contains(ip) {
+					return fmt.Errorf("Target network %q does not contain IP %q in subnet %q", n.Name, instNIC.IPv4Address, n.Config["ipv4.address"])
+				}
+			}
+
+			if exists {
+				break
+			}
+		}
+
+		if !exists {
+			return fmt.Errorf("No network found with name %q on target %q in project %q", targetNet.Network, info.Name, placement.TargetProject)
 		}
 	}
 

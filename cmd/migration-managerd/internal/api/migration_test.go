@@ -117,6 +117,20 @@ func TestMigration_beginImports(t *testing.T) {
 
 	// just a convenience to reduce line length.
 	type setMap map[string][]string
+	netMap := func(set setMap) map[string][]incusAPI.Network {
+		netPlacement := map[string][]incusAPI.Network{}
+		for p, n := range set {
+			if netPlacement[p] == nil {
+				netPlacement[p] = []incusAPI.Network{}
+			}
+
+			for _, name := range n {
+				netPlacement[p] = append(netPlacement[p], incusAPI.Network{Name: name})
+			}
+		}
+
+		return netPlacement
+	}
 
 	uuids := uuidCache{}
 	cases := []struct {
@@ -158,7 +172,7 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:    true,
@@ -183,7 +197,7 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:    true,
@@ -208,7 +222,7 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:    true, // We still validate that the VIX tarball must exist.
@@ -235,7 +249,7 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:            true,
@@ -261,7 +275,7 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:            true,
@@ -287,7 +301,7 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:    true,
@@ -312,8 +326,8 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
-				{Name: "tgt2", Projects: []string{"project2"}, StoragePools: []string{"pool2"}, NetworksByProject: setMap{"project2": {"net2"}}, InstancesByProject: setMap{"project2": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt2", Projects: []string{"project2"}, StoragePools: []string{"pool2"}, NetworksByProject: netMap(setMap{"project2": {"net2"}}), InstancesByProject: setMap{"project2": {}}},
 			},
 
 			hasVMwareSDK:    true,
@@ -339,7 +353,7 @@ func TestMigration_beginImports(t *testing.T) {
 
 			targetDetails: []target.IncusDetails{
 				// Since there's no scriptlet to run, the batch defaults will be used.
-				{Name: "default", Projects: []string{"default"}, StoragePools: []string{"default"}, NetworksByProject: setMap{"default": {"network_1"}}, InstancesByProject: setMap{"default": {}}},
+				{Name: "default", Projects: []string{"default"}, StoragePools: []string{"default"}, NetworksByProject: netMap(setMap{"default": {"network_1"}}), InstancesByProject: setMap{"default": {}}},
 			},
 
 			hasVMwareSDK:    true,
@@ -364,7 +378,7 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt2", Projects: []string{"project2"}, StoragePools: []string{"pool2"}, NetworksByProject: setMap{"project2": {"net2"}}, InstancesByProject: setMap{"project2": {}}},
+				{Name: "tgt2", Projects: []string{"project2"}, StoragePools: []string{"pool2"}, NetworksByProject: netMap(setMap{"project2": {"net2"}}), InstancesByProject: setMap{"project2": {}}},
 			},
 
 			scriptlet: `
@@ -396,7 +410,7 @@ def placement(instance, batch):
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:    true,
@@ -421,7 +435,7 @@ def placement(instance, batch):
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:    false,
@@ -446,7 +460,7 @@ def placement(instance, batch):
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:    true,
@@ -471,7 +485,7 @@ def placement(instance, batch):
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:    true,
@@ -500,7 +514,7 @@ def placement(instance, batch):
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:    true,
@@ -527,7 +541,7 @@ def placement(instance, batch):
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:            true,
@@ -554,7 +568,7 @@ def placement(instance, batch):
 			},
 
 			targetDetails: []target.IncusDetails{
-				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: setMap{"project1": {"net1"}}, InstancesByProject: setMap{"project1": {}}},
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
 			},
 
 			hasVMwareSDK:    true,
