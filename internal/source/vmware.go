@@ -896,14 +896,18 @@ func parseArchitecture(archName string, archBits string) (string, error) {
 	archID := osarch.ARCH_UNKNOWN
 	switch archName {
 	case "X86":
-		if archBits == "32" {
+		switch archBits {
+		case "64":
+			archID = osarch.ARCH_64BIT_INTEL_X86
+		case "32":
 			archID = osarch.ARCH_32BIT_INTEL_X86
 		}
 
 	case "Arm":
-		if archBits == "64" {
+		switch archBits {
+		case "64":
 			archID = osarch.ARCH_64BIT_ARMV8_LITTLE_ENDIAN
-		} else {
+		case "32":
 			archID = osarch.ARCH_32BIT_ARMV8_LITTLE_ENDIAN
 		}
 	}
