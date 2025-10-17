@@ -303,7 +303,7 @@ func TestRun(t *testing.T) {
 
 	// Enable logging if tests are executed in verbose mode.
 	if testing.Verbose() {
-		err := logger.InitLogger("", true, true)
+		_, err := logger.InitLogger("", true, true)
 		require.NoError(t, err)
 	}
 

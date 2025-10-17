@@ -370,8 +370,12 @@ func daemonSetup(t *testing.T) *Daemon {
 	require.NoError(t, os.Setenv("MIGRATION_MANAGER_DIR", tmpDir))
 	require.NoError(t, os.Unsetenv("MIGRATION_MANAGER_TESTING"))
 
-	daemon := NewDaemon()
+	daemon := NewDaemon(&slog.LevelVar{})
 	daemon.config = api.SystemConfig{
+		Settings: api.SystemSettings{
+			SyncInterval: "10m",
+			LogLevel:     "WARN",
+		},
 		Security: api.SystemSecurity{
 			TrustedTLSClientCertFingerprints: []string{testcert.LocalhostCertFingerprint},
 		},

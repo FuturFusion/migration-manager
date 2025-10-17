@@ -37,7 +37,7 @@ func (c *cmdDaemon) Run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(`unknown command %q for %q`, args[0], cmd.CommandPath())
 	}
 
-	d := daemon.NewDaemon()
+	d := daemon.NewDaemon(c.global.logHandler)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, unix.SIGPWR)

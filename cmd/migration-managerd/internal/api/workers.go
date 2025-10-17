@@ -24,23 +24,67 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-func (d *Daemon) runPeriodicTask(ctx context.Context, task string, f func(context.Context) error, interval time.Duration) {
+type Task string
+
+const (
+	SyncTask       Task = "sync"
+	ImportTask     Task = "import"
+	PostImportTask Task = "post-import"
+)
+
+func (d *Daemon) runPeriodicTask(ctx context.Context, task Task, f func(context.Context) error, interval time.Duration) {
 	go func() {
 		for {
-			err := f(ctx)
-			if err != nil {
-				slog.Error("Failed to run periodic task", slog.String("task", task), logger.Err(err))
-			}
-
-			t := time.NewTimer(interval)
-
-			select {
-			case <-ctx.Done():
-				t.Stop()
+			if ctx.Err() != nil {
 				return
-			case <-t.C:
-				t.Stop()
 			}
+
+			// Don't run the sync task if it's disabled.
+			if task != SyncTask || !d.config.Settings.DisableAutoSync {
+				err := f(ctx)
+				if err != nil {
+					slog.Error("Failed to run periodic task", slog.String("task", string(task)), logger.Err(err))
+				}
+			}
+
+			// Override the default duration for sync tasks.
+			if task == SyncTask {
+				syncInterval, err := time.ParseDuration(d.config.Settings.SyncInterval)
+				if err != nil {
+					slog.Error("Invalid sync interval duration, falling back to %q")
+				} else {
+					interval = syncInterval
+				}
+			}
+
+			now := time.Now().UTC()
+			ctx, cancel := context.WithTimeout(ctx, interval)
+			defer cancel()
+
+			if task != SyncTask {
+				<-ctx.Done()
+				cancel()
+				continue
+			}
+
+			// If this is a sync task, check every 1s in case the interval changed and restart the parent loop if the new interval has already passed.
+			var done bool
+			for !done {
+				select {
+				case <-ctx.Done():
+					done = true
+				default:
+					syncInterval, err := time.ParseDuration(d.config.Settings.SyncInterval)
+					if err == nil && time.Now().UTC().After(now.Add(syncInterval)) {
+						done = true
+						continue
+					}
+
+					time.Sleep(1 * time.Second)
+				}
+			}
+
+			cancel()
 		}
 	}()
 }

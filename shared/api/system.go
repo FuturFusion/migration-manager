@@ -4,6 +4,21 @@ package api
 type SystemConfig struct {
 	Network  SystemNetwork  `json:"network"  yaml:"network"`
 	Security SystemSecurity `json:"security" yaml:"security"`
+	Settings SystemSettings `json:"settings" yaml:"settings"`
+}
+
+// SystemSettings represents global system settings.
+//
+// swagger:model
+type SystemSettings struct {
+	// Interval over which data from all sources will be periodically resynced.
+	SyncInterval string `json:"sync_interval" yaml:"sync_interval"`
+
+	// Whether automatic periodic sync of all sources should be disabled.
+	DisableAutoSync bool `json:"disable_auto_sync" yaml:"disable_auto_sync"`
+
+	// Daemon log level.
+	LogLevel string `json:"log_level" yaml:"log_level"`
 }
 
 // SystemNetwork represents the system's network configuration.

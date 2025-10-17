@@ -64,8 +64,9 @@ type APIEndpointAction struct {
 }
 
 type Daemon struct {
-	db *db.Node
-	os *sys.OS
+	db         *db.Node
+	os         *sys.OS
+	logHandler *slog.LevelVar
 
 	queueHandler *queue.Handler
 	batch        migration.BatchService
@@ -94,12 +95,13 @@ type Daemon struct {
 	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
 }
 
-func NewDaemon() *Daemon {
+func NewDaemon(logHandler *slog.LevelVar) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	d := &Daemon{
 		db:             &db.Node{},
 		os:             sys.DefaultOS(),
+		logHandler:     logHandler,
 		batchLock:      util.NewIDLock[string](),
 		ShutdownCtx:    shutdownCtx,
 		ShutdownCancel: shutdownCancel,
@@ -275,6 +277,8 @@ func (d *Daemon) Start() error {
 		return err
 	}
 
+	d.setLogLevel(cfg.Settings.LogLevel)
+
 	err = d.cleanupCacheDir()
 	if err != nil {
 		return err
@@ -365,13 +369,14 @@ func (d *Daemon) Start() error {
 	})
 
 	// Start background workers
-	d.runPeriodicTask(d.ShutdownCtx, "trySyncAllSources", d.trySyncAllSources, 10*time.Minute)
-	d.runPeriodicTask(d.ShutdownCtx, "beginImports", func(ctx context.Context) error {
+	d.runPeriodicTask(d.ShutdownCtx, SyncTask, d.trySyncAllSources, time.Minute*10)
+
+	d.runPeriodicTask(d.ShutdownCtx, ImportTask, func(ctx context.Context) error {
 		// Cleanup of instances is set to false for testing. In practice we should set it to true, so that we can retry creating VMs in case it fails.
 		return d.beginImports(ctx, !util.InTestingMode())
 	}, 10*time.Second)
 
-	d.runPeriodicTask(d.ShutdownCtx, "finalizeCompleteInstances", d.finalizeCompleteInstances, 10*time.Second)
+	d.runPeriodicTask(d.ShutdownCtx, PostImportTask, d.finalizeCompleteInstances, 10*time.Second)
 
 	select {
 	case <-errgroupCtx.Done():
@@ -574,6 +579,24 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	return err
 }
 
+func (d *Daemon) setLogLevel(levelStr string) {
+	level := d.logHandler.Level()
+	switch levelStr {
+	case slog.LevelDebug.String():
+		level = slog.LevelDebug
+	case slog.LevelInfo.String():
+		level = slog.LevelInfo
+	case slog.LevelWarn.String():
+		level = slog.LevelWarn
+	case slog.LevelError.String():
+		level = slog.LevelError
+	}
+
+	if level != d.logHandler.Level() {
+		d.logHandler.Set(level)
+	}
+}
+
 func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 	d.configLock.Lock()
 	defer d.configLock.Unlock()
@@ -594,6 +617,8 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 		if err != nil {
 			return err
 		}
+
+		d.setLogLevel(applyCfg.Settings.LogLevel)
 
 		if changedNetwork {
 			errCh := d.updateHTTPListener(applyCfg.Network.Address)
