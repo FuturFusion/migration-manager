@@ -152,7 +152,13 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, post-migration retry count (%d) must be larger than 0", b.Config.PostMigrationRetries)
 	}
 
+	exprs := map[string]bool{}
 	for _, c := range b.Constraints {
+		if exprs[c.IncludeExpression] {
+			return NewValidationErrf("Invalid batch constraint, include expression %q cannot be used more than once", c.IncludeExpression)
+		}
+
+		exprs[c.IncludeExpression] = true
 		err := c.Validate()
 		if err != nil {
 			return err
