@@ -68,4 +68,8 @@ type IncusProperties struct {
 	// Maximum number of concurrent instance creations that can occur
 	// Example: 10
 	CreateLimit int `json:"create_limit,omitempty" yaml:"create_limit,omitempty"`
+
+	// Timeout for establishing connections to the target.
+	// Example: 5m
+	ConnectionTimeout string `json:"connection_timeout" yaml:"connection_timeout"`
 }
