@@ -6,9 +6,12 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 
+	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/migration-manager/internal/ports"
@@ -87,6 +90,16 @@ func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
 		}
 	}
 
+	if newCfg.Settings.SyncInterval == "" {
+		newCfg.Settings.SyncInterval = (10 * time.Minute).Truncate(time.Minute).String()
+	}
+
+	if newCfg.Settings.LogLevel == "" {
+		newCfg.Settings.LogLevel = slog.LevelWarn.String()
+	} else {
+		newCfg.Settings.LogLevel = strings.ToUpper(s.Settings.LogLevel)
+	}
+
 	return &newCfg, nil
 }
 
@@ -152,6 +165,20 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 		if endpoint.RawQuery != "" {
 			return fmt.Errorf("Worker endpoint %q contains query", newCfg.Network.WorkerEndpoint)
 		}
+	}
+
+	syncInterval, err := time.ParseDuration(newCfg.Settings.SyncInterval)
+	if err != nil {
+		return fmt.Errorf("Invalid sync interval duration %q: %w", newCfg.Settings.SyncInterval, err)
+	}
+
+	if syncInterval <= time.Second {
+		return fmt.Errorf("Sync interval %q is too frequent, must be at least 1s", newCfg.Settings.SyncInterval)
+	}
+
+	validLogLevels := []string{slog.LevelDebug.String(), slog.LevelInfo.String(), slog.LevelWarn.String(), slog.LevelError.String()}
+	if !slices.Contains(validLogLevels, newCfg.Settings.LogLevel) {
+		return fmt.Errorf("Log level %q is invalid, must be one of %q", newCfg.Settings.LogLevel, strings.Join(validLogLevels, ","))
 	}
 
 	return nil
