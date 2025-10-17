@@ -33,8 +33,6 @@ var api10 = []APIEndpoint{
 	networksCmd,
 	queueRootCmd,
 	queueCmd,
-	queueWorkerCmd,
-	queueWorkerCommandCmd,
 	sourceCmd,
 	sourcesCmd,
 	sourcesSyncCmd,
@@ -45,6 +43,11 @@ var api10 = []APIEndpoint{
 	targetsCmd,
 	warningCmd,
 	warningsCmd,
+}
+
+var apiInternal = []APIEndpoint{
+	workerUpdateCmd,
+	workerCommandCmd,
 }
 
 // swagger:operation GET /1.0 server server_get_untrusted
