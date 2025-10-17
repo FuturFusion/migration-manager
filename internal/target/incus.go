@@ -1163,6 +1163,10 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 			}
 
 			if exists {
+				if !n.Managed && targetNet.NICType == api.INCUSNICTYPE_MANAGED {
+					return fmt.Errorf("Target network %q is not a managed network", n.Name)
+				}
+
 				break
 			}
 		}
