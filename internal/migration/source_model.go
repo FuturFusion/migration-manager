@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"net/url"
+	"strings"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -25,6 +26,10 @@ func (s Source) Validate() error {
 
 	if s.Name == "" {
 		return NewValidationErrf("Invalid source, name can not be empty")
+	}
+
+	if strings.HasPrefix(s.Name, ":") {
+		return NewValidationErrf("Invalid source, name %q can not begin with a colon", s.Name)
 	}
 
 	if s.SourceType != api.SOURCETYPE_COMMON && s.SourceType != api.SOURCETYPE_VMWARE && s.SourceType != api.SOURCETYPE_NSX {
