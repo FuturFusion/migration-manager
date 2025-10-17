@@ -506,7 +506,7 @@ func (s batchService) GetEarliestWindow(ctx context.Context, batch string) (*Mig
 		return &MigrationWindow{Start: time.Time{}, End: time.Time{}, Lockout: time.Time{}}, nil
 	}
 
-	earliest, err := windows.GetEarliest()
+	earliest, err := windows.GetEarliest(0)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get earliest migration window for batch %q: %w", batch, err)
 	}

@@ -152,7 +152,13 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, post-migration retry count (%d) must be larger than 0", b.Config.PostMigrationRetries)
 	}
 
+	exprs := map[string]bool{}
 	for _, c := range b.Constraints {
+		if exprs[c.IncludeExpression] {
+			return NewValidationErrf("Invalid batch constraint, include expression %q cannot be used more than once", c.IncludeExpression)
+		}
+
+		exprs[c.IncludeExpression] = true
 		err := c.Validate()
 		if err != nil {
 			return err
@@ -218,28 +224,22 @@ func (b BatchConstraint) Validate() error {
 }
 
 // GetEarliest returns the earliest valid migration window, or an error if none are found.
-func (ws MigrationWindows) GetEarliest() (*MigrationWindow, error) {
+func (ws MigrationWindows) GetEarliest(minDuration time.Duration) (*MigrationWindow, error) {
 	var earliestWindow *MigrationWindow
 	if len(ws) == 0 {
 		return &MigrationWindow{}, nil
 	}
 
 	for _, w := range ws {
-		if w.Validate() != nil {
-			continue
-		}
-
-		if w.Locked() {
-			continue
-		}
-
 		if earliestWindow == nil || w.Start.Before(earliestWindow.Start) {
-			earliestWindow = &w
+			if w.FitsDuration(minDuration) {
+				earliestWindow = &w
+			}
 		}
 	}
 
 	if earliestWindow == nil {
-		return nil, incusAPI.StatusErrorf(http.StatusNotFound, "No valid migration window found")
+		return nil, incusAPI.StatusErrorf(http.StatusNotFound, "No available migration windows")
 	}
 
 	return earliestWindow, nil
@@ -272,6 +272,11 @@ func (w MigrationWindow) FitsDuration(duration time.Duration) bool {
 		return false
 	}
 
+	// If the window is locked, do not consider it to be available.
+	if w.Locked() {
+		return false
+	}
+
 	// If the end time is infinite, then the duration fits.
 	if w.End.IsZero() {
 		return true
@@ -285,11 +290,7 @@ func (w MigrationWindow) FitsDuration(duration time.Duration) bool {
 
 	// TODO: Make this configurable per instance, once we tie instances to a migration window.
 	// Set a buffer for the instance to revert migration.
-	if duration > 0 {
-		duration += time.Minute
-	}
-
-	return start.Add(duration).Before(w.End)
+	return start.Add(duration + time.Minute).Before(w.End)
 }
 
 // Key returns an identifying key for the MigrationWindow, based on its timings.
