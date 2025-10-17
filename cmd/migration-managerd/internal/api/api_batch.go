@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"sync"
 	"time"
@@ -662,11 +663,21 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	defer batchStartLock.Unlock()
 	batchName := r.PathValue("name")
 
+	// Check the worker endpoint is valid before starting the batch.
+	workerURL, err := url.ParseRequestURI(d.getWorkerEndpoint())
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Cannot start batch, worker endpoint %q is invalid: %w", d.getWorkerEndpoint(), err))
+	}
+
+	if workerURL.Hostname() == "" || workerURL.Hostname() == "0.0.0.0" || workerURL.Hostname() == "::" {
+		return response.SmartError(fmt.Errorf("Worker endpoint cannot use a wildcard address: %q", d.getWorkerEndpoint()))
+	}
+
 	instances := map[uuid.UUID]migration.Instance{}
 	var batch *migration.Batch
 	var windows migration.MigrationWindows
 	var networks migration.Networks
-	err := transaction.Do(r.Context(), func(ctx context.Context) error {
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
 		var err error
 		batch, err = d.batch.GetByName(ctx, batchName)
 		if err != nil {
