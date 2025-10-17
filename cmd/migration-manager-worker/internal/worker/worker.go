@@ -94,7 +94,7 @@ func NewWorker(ctx context.Context, client *http.Client, opts ...WorkerOption) (
 	}
 
 	// Do a quick connectivity check to the endpoint.
-	_, err = wrkr.doHTTPRequestV1("", http.MethodGet, "", nil)
+	_, err = wrkr.doHTTPRequestV1("/1.0", http.MethodGet, "", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (w *Worker) Run(ctx context.Context) {
 
 	for {
 		done := func() (done bool) {
-			resp, err := w.doHTTPRequestV1("/queue/"+w.uuid+"/worker/command", http.MethodPost, "secret="+w.token, nil)
+			resp, err := w.doHTTPRequestV1("/internal/worker/"+w.uuid+"/:command", http.MethodPost, "secret="+w.token, nil)
 			if err != nil {
 				slog.Error("HTTP request failed", logger.Err(err))
 				return false
@@ -367,7 +367,7 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusMess
 		return
 	}
 
-	_, err = w.doHTTPRequestV1("/queue/"+w.uuid+"/worker", http.MethodPost, "secret="+w.token, content)
+	_, err = w.doHTTPRequestV1("/internal/worker/"+w.uuid+"/:update", http.MethodPost, "secret="+w.token, content)
 	if err != nil {
 		slog.Error("Failed to send status back to migration manager", logger.Err(err))
 		return
@@ -384,7 +384,7 @@ func (w *Worker) sendErrorResponse(err error) {
 		return
 	}
 
-	_, err = w.doHTTPRequestV1("/queue/"+w.uuid+"/worker", http.MethodPost, "secret="+w.token, content)
+	_, err = w.doHTTPRequestV1("/internal/worker/"+w.uuid+"/:update", http.MethodPost, "secret="+w.token, content)
 	if err != nil {
 		slog.Error("Failed to send error back to migration manager", logger.Err(err))
 		return
@@ -393,10 +393,7 @@ func (w *Worker) sendErrorResponse(err error) {
 
 func (w *Worker) makeRequest(endpoint string, method string, query string, reader io.Reader) (*http.Request, *http.Client, error) {
 	var err error
-	w.endpoint.Path, err = url.JoinPath("/1.0/", endpoint)
-	if err != nil {
-		return nil, nil, err
-	}
+	w.endpoint.Path = endpoint
 
 	w.endpoint.RawQuery = query
 
@@ -528,7 +525,7 @@ func (w *Worker) getArtifact(artifactType api.ArtifactType, cmd api.WorkerComman
 	defer reverter.Fail()
 
 	query := fmt.Sprintf("secret=%s&instance=%s", w.token, w.uuid)
-	resp, err := w.doHTTPRequestV1("/artifacts", http.MethodGet, query, nil)
+	resp, err := w.doHTTPRequestV1("/1.0/artifacts", http.MethodGet, query, nil)
 	if err != nil {
 		return "", false, err
 	}
@@ -596,7 +593,7 @@ func (w *Worker) getArtifact(artifactType api.ArtifactType, cmd api.WorkerComman
 			}
 
 			defer func() { _ = f.Close() }() //nolint:revive
-			err = w.doHTTPRequestV1Writer("/artifacts/"+artifact.UUID.String()+"/files/"+file, http.MethodGet, query, f)
+			err = w.doHTTPRequestV1Writer("/1.0/artifacts/"+artifact.UUID.String()+"/files/"+file, http.MethodGet, query, f)
 			if err != nil {
 				return "", false, err
 			}
