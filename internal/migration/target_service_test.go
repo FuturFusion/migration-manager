@@ -30,13 +30,13 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": "OK"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": "OK", "connection_timeout": "10m"}`),
 			},
 			repoCreateTarget: migration.Target{
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": "OK"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": "OK", "connection_timeout": "10m"}`),
 			},
 
 			assertErr: require.NoError,
@@ -47,7 +47,7 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         -1, // invalid
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connection_timeout": "10m"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -61,7 +61,7 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "", // empty
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connection_timeout": "10m"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -75,7 +75,21 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": ":|\\", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": ":|\\", "tls_client_key": "key", "tls_client_cert": "cert", "connection_timeout": "10m"}`),
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - invalid connection timeout",
+			target: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connectivity_status": "OK"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -89,7 +103,7 @@ func TestTargetService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connection_timeout": "10m"}`),
 			},
 			repoCreateErr: boom.Error,
 
@@ -316,7 +330,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connection_timeout": "10m"}`),
 			},
 
 			assertErr: require.NoError,
@@ -327,7 +341,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				ID:         -1, // invalid
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connection_timeout": "10m"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -341,7 +355,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "", // empty
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connection_timeout": "10m"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -355,7 +369,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": ":|\\", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": ":|\\", "tls_client_key": "key", "tls_client_cert": "cert", "connection_timeout": "10m"}`),
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -369,7 +383,7 @@ func TestTargetService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				TargetType: api.TARGETTYPE_INCUS,
-				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert"}`),
+				Properties: json.RawMessage(`{"endpoint": "endpoint.url", "tls_client_key": "key", "tls_client_cert": "cert", "connection_timeout": "10m"}`),
 			},
 			repoUpdateErr: boom.Error,
 

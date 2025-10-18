@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -137,6 +138,14 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		incusProperties.CreateLimit = int(createLimit)
+
+		incusProperties.ConnectionTimeout, err = c.global.Asker.AskString(fmt.Sprintf("Specify the timeout for connecting to the target [default=%s]: ", (5*time.Minute).String()), (5 * time.Minute).String(), func(s string) error {
+			_, err := time.ParseDuration(s)
+			return err
+		})
+		if err != nil {
+			return err
+		}
 
 		authType, err := c.global.Asker.AskChoice("Use OIDC or TLS certificates to authenticate to target? [default=oidc]: ", []string{"oidc", "tls"}, "oidc")
 		if err != nil {
@@ -396,6 +405,14 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		incusProperties.CreateLimit = int(createLimit)
+
+		incusProperties.ConnectionTimeout, err = c.global.Asker.AskString(fmt.Sprintf("Specify the timeout for connecting to the target [default=%s]: ", (5*time.Minute).String()), (5 * time.Minute).String(), func(s string) error {
+			_, err := time.ParseDuration(s)
+			return err
+		})
+		if err != nil {
+			return err
+		}
 
 		updateAuth, err := c.global.Asker.AskBool("Update configured authentication? (yes/no) [default=no]: ", "no")
 		if err != nil {

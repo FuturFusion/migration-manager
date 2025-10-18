@@ -314,10 +314,6 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 	visitedLocations := map[string]map[string]map[string]bool{}
 	ignoredBatches := []string{}
 	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
-		// Set a 120s timeout for creating the volumes on the target before instance creation.
-		timeoutCtx, cancel := context.WithTimeout(ctx, time.Minute*5)
-		defer cancel()
-
 		log := log.With(slog.String("batch", state.Batch.Name))
 		for instUUID, q := range state.QueueEntries {
 			for _, pool := range q.Placement.StoragePools {
@@ -335,7 +331,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				}
 
 				if !visitedLocations[q.Placement.TargetName][q.Placement.TargetProject][pool] {
-					err := d.ensureISOImagesExistInStoragePool(timeoutCtx, state.Instances[instUUID], state.Targets[instUUID], state.Batch, pool, q.Placement.TargetProject)
+					err := d.ensureISOImagesExistInStoragePool(ctx, state.Instances[instUUID], state.Targets[instUUID], state.Batch, pool, q.Placement.TargetProject)
 					if err != nil {
 						log.Error("Failed to validate batch", logger.Err(err))
 						_, err := d.batch.UpdateStatusByName(ctx, state.Batch.Name, api.BATCHSTATUS_ERROR, err.Error())
@@ -447,6 +443,9 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 		return err
 	}
 
+	ctx, cancel := context.WithTimeout(ctx, it.Timeout())
+	defer cancel()
+
 	err = it.Connect(ctx)
 	if err != nil {
 		return err
@@ -556,7 +555,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Minute*5)
+	timeoutCtx, cancel := context.WithTimeout(ctx, it.Timeout())
 	defer cancel()
 
 	// Connect to the target.
@@ -654,13 +653,13 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 		}
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Minute*5)
-	defer cancel()
-
 	it, err := target.NewTarget(state.Targets[instUUID].ToAPI())
 	if err != nil {
 		return fmt.Errorf("Failed to set up %q target-specific configuration: %w", state.Targets[instUUID].TargetType, err)
 	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, it.Timeout())
+	defer cancel()
 
 	err = it.Connect(timeoutCtx)
 	if err != nil {
@@ -874,7 +873,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 		return fmt.Errorf("Failed to construct target %q: %w", t.Name, err)
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, time.Minute*5)
+	timeoutCtx, cancel := context.WithTimeout(ctx, it.Timeout())
 	defer cancel()
 
 	// Connect to the target.

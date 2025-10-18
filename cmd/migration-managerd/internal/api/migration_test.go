@@ -600,6 +600,7 @@ def placement(instance, batch):
 					SetProjectFunc: func(project string) error { return nil },
 					GetNameFunc:    func() string { return t.Name },
 					StartVMFunc:    func(ctx context.Context, name string) error { return nil },
+					TimeoutFunc:    func() time.Duration { return time.Second },
 					CheckIncusAgentFunc: func(ctx context.Context, instanceName string) error {
 						if tc.vmStartErr == nil {
 							return nil
@@ -674,7 +675,7 @@ def placement(instance, batch):
 			require.NoError(t, err)
 
 			for _, tgt := range tc.targetDetails {
-				target := migration.Target{Name: tgt.Name, TargetType: api.TARGETTYPE_INCUS, Properties: json.RawMessage(fmt.Sprintf(`{"endpoint": "bar", "create_limit": %d}`, tc.concurrentCreations)), EndpointFunc: defaultTargetEndpoint}
+				target := migration.Target{Name: tgt.Name, TargetType: api.TARGETTYPE_INCUS, Properties: json.RawMessage(fmt.Sprintf(`{"endpoint": "bar", "create_limit": %d, "connection_timeout": "30s"}`, tc.concurrentCreations)), EndpointFunc: defaultTargetEndpoint}
 				_, err = d.target.Create(d.ShutdownCtx, target)
 				require.NoError(t, err)
 			}

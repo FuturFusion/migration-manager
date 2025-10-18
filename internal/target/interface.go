@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"encoding/json"
+	"time"
 
 	incus "github.com/lxc/incus/v6/client"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
@@ -52,6 +53,9 @@ type Target interface {
 
 	// Returns whether currently connected to the target or not.
 	IsConnected() bool
+
+	// Timeout returns the default timeout used for connecting to the target.
+	Timeout() time.Duration
 
 	// Returns whether the target is waiting to complete OIDC authentication.
 	IsWaitingForOIDCTokens() bool
