@@ -59,6 +59,10 @@ func (c *CmdBatch) Command() *cobra.Command {
 	batchStopCmd := cmdBatchStop{global: c.Global}
 	cmd.AddCommand(batchStopCmd.Command())
 
+	// Reset
+	batchResetCmd := cmdBatchReset{global: c.Global}
+	cmd.AddCommand(batchResetCmd.Command())
+
 	// Edit
 	batchEditCmd := cmdBatchEdit{global: c.Global}
 	cmd.AddCommand(batchEditCmd.Command())
@@ -504,7 +508,7 @@ func (c *cmdBatchStart) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Start the batch.
-	_, _, err = c.global.doHTTPRequestV1("/batches/"+name+"/start", http.MethodPost, "", nil)
+	_, _, err = c.global.doHTTPRequestV1("/batches/"+name+"/:start", http.MethodPost, "", nil)
 	if err != nil {
 		return err
 	}
@@ -541,12 +545,49 @@ func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
 	name := args[0]
 
 	// Start the batch.
-	_, _, err = c.global.doHTTPRequestV1("/batches/"+name+"/stop", http.MethodPost, "", nil)
+	_, _, err = c.global.doHTTPRequestV1("/batches/"+name+"/:stop", http.MethodPost, "", nil)
 	if err != nil {
 		return err
 	}
 
 	cmd.Printf("Successfully stopped batch %q.\n", name)
+	return nil
+}
+
+// Reset the batch.
+type cmdBatchReset struct {
+	global *CmdGlobal
+}
+
+func (c *cmdBatchReset) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "reset <name>"
+	cmd.Short = "Reset batch"
+	cmd.Long = `Description:
+  Deactivate a batch and reset the migration process for its instances.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdBatchReset) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	name := args[0]
+
+	// Start the batch.
+	_, _, err = c.global.doHTTPRequestV1("/batches/"+name+"/:reset", http.MethodPost, "", nil)
+	if err != nil {
+		return err
+	}
+
+	cmd.Printf("Successfully reset batch %q.\n", name)
 	return nil
 }
 
