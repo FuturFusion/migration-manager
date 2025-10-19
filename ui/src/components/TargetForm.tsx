@@ -15,6 +15,7 @@ interface Props {
 const TargetForm: FC<Props> = ({ target, onSubmit }) => {
   const importLimit = 50;
   const createLimit = 10;
+  const defaultConnectionTimeout = "5m";
   const [searchParams] = useSearchParams();
   const certFingerprint = searchParams.get("fingerprint");
   const [showFingerprintModal, setShowFingerprintModal] =
@@ -54,6 +55,7 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
     trustedServerCertificateFingerprint: "",
     importLimit: importLimit,
     createLimit: createLimit,
+    connectionTimeout: defaultConnectionTimeout,
   };
 
   if (target) {
@@ -68,6 +70,8 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
         target.properties.trusted_server_certificate_fingerprint,
       importLimit: target.properties.import_limit || importLimit,
       createLimit: target.properties.create_limit || createLimit,
+      connectionTimeout:
+        target.properties.connection_timeout || defaultConnectionTimeout,
     };
   }
 
@@ -86,6 +90,7 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
             values.trustedServerCertificateFingerprint,
           import_limit: values.importLimit,
           create_limit: values.createLimit,
+          connection_timeout: values.connectionTimeout,
         },
       };
 
@@ -273,6 +278,23 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
             />
             <Form.Control.Feedback type="invalid">
               {formik.errors.createLimit}
+            </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="connectionTimeout">
+            <Form.Label>Connection timeout</Form.Label>
+            <Form.Control
+              name="connectionTimeout"
+              value={formik.values.connectionTimeout}
+              disabled={formik.isSubmitting}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+              isInvalid={
+                !!formik.errors.connectionTimeout &&
+                formik.touched.connectionTimeout
+              }
+            />
+            <Form.Control.Feedback type="invalid">
+              {formik.errors.connectionTimeout}
             </Form.Control.Feedback>
           </Form.Group>
         </Form>

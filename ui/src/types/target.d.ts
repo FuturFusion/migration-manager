@@ -8,6 +8,7 @@ export interface IncusProperties {
   connectivity_status?: ExternalConnectivityStatus;
   import_limit: number;
   create_limit: number;
+  connection_timeout: string;
 }
 
 export interface Target {
@@ -26,4 +27,5 @@ export interface TargetFormValues {
   trustedServerCertificateFingerprint: string;
   importLimit: number;
   createLimit: number;
+  connectionTimeout: string;
 }
