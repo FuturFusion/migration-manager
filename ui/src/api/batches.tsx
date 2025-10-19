@@ -69,7 +69,7 @@ export const deleteBatch = (name: string): Promise<APIResponse<object>> => {
 
 export const startBatch = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/batches/${name}/start`, { method: "POST" })
+    fetch(`/1.0/batches/${name}/:start`, { method: "POST" })
       .then((response) => response.json())
       .then(resolve)
       .catch(reject);
@@ -78,7 +78,7 @@ export const startBatch = (name: string): Promise<APIResponse<null>> => {
 
 export const stopBatch = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/batches/${name}/stop`, { method: "POST" })
+    fetch(`/1.0/batches/${name}/:stop`, { method: "POST" })
       .then((response) => response.json())
       .then(resolve)
       .catch(reject);
@@ -87,7 +87,7 @@ export const stopBatch = (name: string): Promise<APIResponse<null>> => {
 
 export const resetBatch = (name: string): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/batches/${name}/reset`, { method: "POST" })
+    fetch(`/1.0/batches/${name}/:reset`, { method: "POST" })
       .then((response) => response.json())
       .then(resolve)
       .catch(reject);
