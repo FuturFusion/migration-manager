@@ -3,6 +3,7 @@ import Button from "react-bootstrap/Button";
 import { Link, useNavigate } from "react-router";
 import { fetchSources } from "api/sources";
 import DataTable from "components/DataTable";
+import SourceActions from "components/SourceActions";
 import { VMwareProperties, NSXProperties } from "types/source";
 import { SourceType } from "util/source";
 
@@ -26,6 +27,7 @@ const Source = () => {
     "Endpoint",
     "Connectivity status",
     "Username",
+    "Actions",
   ];
   const rows = sources.map((item) => {
     let connStatus = undefined;
@@ -72,6 +74,9 @@ const Source = () => {
         {
           content: username,
           sortKey: username,
+        },
+        {
+          content: <SourceActions source={item} />,
         },
       ],
     };
