@@ -33,6 +33,7 @@ test("renders and submit TargetForm with OIDC auth", async () => {
     name: "Target1",
     target_type: TargetType.Incus,
     properties: {
+      connection_timeout: "5m",
       endpoint: "192.168.1.10",
       tls_client_cert: "",
       tls_client_key: "",
@@ -80,6 +81,7 @@ test("renders and submit TargetForm with TLS auth", async () => {
     name: "Target2",
     target_type: TargetType.Incus,
     properties: {
+      connection_timeout: "5m",
       endpoint: "192.168.1.11",
       tls_client_cert: "foo",
       tls_client_key: "bar",
