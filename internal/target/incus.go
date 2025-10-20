@@ -31,6 +31,9 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
+// DefaultConnectionTimeout is the default timeout for connecting to an Incus target.
+const DefaultConnectionTimeout = 5 * time.Minute
+
 type InternalIncusTarget struct {
 	InternalTarget      `yaml:",inline"`
 	api.IncusProperties `yaml:",inline"`
@@ -62,9 +65,18 @@ func newInternalIncusTargetFrom(apiTarget api.Target) (*InternalIncusTarget, err
 		return nil, err
 	}
 
+	connTimeout := DefaultConnectionTimeout
+	if connProperties.ConnectionTimeout != "" {
+		connTimeout, err = time.ParseDuration(connProperties.ConnectionTimeout)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &InternalIncusTarget{
 		InternalTarget: InternalTarget{
-			Target: apiTarget,
+			Target:            apiTarget,
+			connectionTimeout: connTimeout,
 		},
 		IncusProperties: connProperties,
 	}, nil
@@ -760,7 +772,7 @@ func (t *InternalIncusTarget) PushFile(instanceName string, file string, destDir
 
 // CheckIncusAgent repeatedly calls Exec on the instance until the context errors out, or the exec succeeds.
 func (t *InternalIncusTarget) CheckIncusAgent(ctx context.Context, instanceName string) error {
-	ctx, cancel := context.WithTimeout(ctx, time.Second*120)
+	ctx, cancel := context.WithTimeout(ctx, t.Timeout())
 	defer cancel()
 
 	var err error

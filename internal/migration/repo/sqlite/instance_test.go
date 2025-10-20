@@ -40,7 +40,7 @@ var (
 	testTarget = migration.Target{
 		Name:       "TestTarget",
 		TargetType: api.TARGETTYPE_INCUS,
-		Properties: []byte(`{"endpoint": "https://localhost:6443"}`),
+		Properties: []byte(`{"endpoint": "https://localhost:6443", "connection_timeout": "10m"}`),
 		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
 			return &endpointMock.TargetEndpointMock{
 				ConnectFunc: func(ctx context.Context) error {
