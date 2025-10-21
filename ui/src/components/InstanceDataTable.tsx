@@ -2,7 +2,7 @@ import { FC } from "react";
 import { Link } from "react-router";
 import DataTable from "components/DataTable.tsx";
 import InstanceActions from "components/InstanceActions";
-import InstanceItemOverride from "components/InstanceItemOverride";
+import ItemOverride from "components/ItemOverride";
 import { Instance } from "types/instance";
 import { bytesToHumanReadable, hasOverride } from "util/instance";
 
@@ -61,7 +61,7 @@ const InstanceDataTable: FC<Props> = ({ instances, isLoading, error }) => {
         },
         {
           content: (
-            <InstanceItemOverride
+            <ItemOverride
               original={item.properties.cpus}
               override={item.overrides && item.overrides.properties.cpus}
               showOverride={
@@ -77,7 +77,7 @@ const InstanceDataTable: FC<Props> = ({ instances, isLoading, error }) => {
         },
         {
           content: (
-            <InstanceItemOverride
+            <ItemOverride
               original={bytesToHumanReadable(item.properties.memory)}
               override={bytesToHumanReadable(item.overrides?.properties.memory)}
               showOverride={

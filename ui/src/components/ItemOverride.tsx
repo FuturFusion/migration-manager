@@ -6,11 +6,7 @@ interface Props {
   showOverride: boolean;
 }
 
-const InstanceItemOverride: FC<Props> = ({
-  original,
-  override,
-  showOverride,
-}) => {
+const ItemOverride: FC<Props> = ({ original, override, showOverride }) => {
   const originalClass = showOverride ? "item-deleted" : "";
   return (
     <>
@@ -20,4 +16,4 @@ const InstanceItemOverride: FC<Props> = ({
   );
 };
 
-export default InstanceItemOverride;
+export default ItemOverride;

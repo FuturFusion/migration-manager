@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Table } from "react-bootstrap";
 import { Link, useParams } from "react-router";
 import { fetchInstance } from "api/instances";
-import InstanceItemOverride from "components/InstanceItemOverride";
+import ItemOverride from "components/ItemOverride";
 import { bytesToHumanReadable, hasOverride } from "util/instance";
 
 const InstanceOverview = () => {
@@ -63,7 +63,7 @@ const InstanceOverview = () => {
         <div className="row">
           <div className="col-2 detail-table-header">CPU</div>
           <div className="col-10 detail-table-cell">
-            <InstanceItemOverride
+            <ItemOverride
               original={instance.properties.cpus}
               override={
                 instance.overrides && instance.overrides.properties.cpus
@@ -77,7 +77,7 @@ const InstanceOverview = () => {
         <div className="row">
           <div className="col-2 detail-table-header">Memory</div>
           <div className="col-10 detail-table-cell">
-            <InstanceItemOverride
+            <ItemOverride
               original={bytesToHumanReadable(instance.properties.memory)}
               override={bytesToHumanReadable(
                 instance.overrides?.properties.memory,
