@@ -41,7 +41,7 @@ export const updateNetwork = (
   body: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/networks/${name}?source=${source}`, {
+    fetch(`/1.0/networks/${name}/override?source=${source}`, {
       method: "PUT",
       body: body,
     })

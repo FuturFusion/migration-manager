@@ -30,7 +30,11 @@ const NetworkOverview = () => {
       return false;
     }
 
-    if (network.name || network.bridge_name || network.vlan_id) {
+    if (
+      network.overrides?.network ||
+      network.overrides?.nictype ||
+      network.overrides?.vlan_id
+    ) {
       return true;
     }
 
@@ -63,25 +67,27 @@ const NetworkOverview = () => {
           <hr className="my-4" />
           <h6 className="mb-3">Overrides</h6>
           <div className="container">
-            {network?.name && (
+            {network?.overrides.network && (
               <div className="row">
-                <div className="col-2 detail-table-header">Name</div>
-                <div className="col-10 detail-table-cell">{network?.name}</div>
-              </div>
-            )}
-            {network?.bridge_name && (
-              <div className="row">
-                <div className="col-2 detail-table-header">Bridge name</div>
+                <div className="col-2 detail-table-header">Network</div>
                 <div className="col-10 detail-table-cell">
-                  {network?.bridge_name}
+                  {network?.overrides.network}
                 </div>
               </div>
             )}
-            {network?.vlan_id && (
+            {network?.overrides.nictype && (
+              <div className="row">
+                <div className="col-2 detail-table-header">NIC type</div>
+                <div className="col-10 detail-table-cell">
+                  {network?.overrides.nictype}
+                </div>
+              </div>
+            )}
+            {network?.overrides.vlan_id && (
               <div className="row">
                 <div className="col-2 detail-table-header">VLAN ID</div>
                 <div className="col-10 detail-table-cell">
-                  {network?.vlan_id}
+                  {network?.overrides.vlan_id}
                 </div>
               </div>
             )}

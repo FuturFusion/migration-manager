@@ -1,11 +1,12 @@
 import { FC } from "react";
-import { Button, Form, Row, Col } from "react-bootstrap";
+import { Button, Form } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "react-router";
 import { useFormik } from "formik";
 import { fetchNetwork, updateNetwork } from "api/networks";
 import { useNotification } from "context/notificationContext";
 import { APIResponse } from "types/response";
+import { IncusNICType } from "util/network";
 
 const NetworkOverrides: FC = () => {
   const { name } = useParams();
@@ -24,16 +25,16 @@ const NetworkOverrides: FC = () => {
   });
 
   let formikInitialValues = {
-    name: "",
-    bridge_name: "",
+    network: "",
+    nictype: "",
     vlan_id: "",
   };
 
   if (network) {
     formikInitialValues = {
-      name: network.name,
-      bridge_name: network.bridge_name,
-      vlan_id: network.vlan_id,
+      network: network.overrides?.network,
+      nictype: network.overrides?.nictype,
+      vlan_id: network.overrides?.vlan_id,
     };
   }
 
@@ -80,66 +81,54 @@ const NetworkOverrides: FC = () => {
 
   return (
     <Form noValidate>
-      <h6 className="mb-3">Virtual network mapping</h6>
       <div className="form-container">
-        <Form.Group as={Row} className="mb-3" controlId="name">
-          <Form.Label column sm={3}>
-            Name
-          </Form.Label>
-          <Col sm={9}>
-            <Form.Control
-              type="text"
-              name="name"
-              value={formik.values.name}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.name && formik.touched.name}
-            />
-            <Form.Control.Feedback type="invalid">
-              {formik.errors.name}
-            </Form.Control.Feedback>
-          </Col>
+        <Form.Group className="mb-3" controlId="network">
+          <Form.Label>Network</Form.Label>
+          <Form.Control
+            type="text"
+            name="network"
+            value={formik.values.network}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            isInvalid={!!formik.errors.network && formik.touched.network}
+          />
+          <Form.Control.Feedback type="invalid">
+            {formik.errors.network}
+          </Form.Control.Feedback>
         </Form.Group>
-      </div>
-      <h6 className="mb-3">Physical network mapping</h6>
-      <div className="form-container">
-        <Form.Group as={Row} className="mb-3" controlId="bridge_name">
-          <Form.Label column sm={3}>
-            Bridge name
-          </Form.Label>
-          <Col sm={9}>
-            <Form.Control
-              type="text"
-              name="bridge_name"
-              value={formik.values.bridge_name}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              isInvalid={
-                !!formik.errors.bridge_name && formik.touched.bridge_name
-              }
-            />
-            <Form.Control.Feedback type="invalid">
-              {formik.errors.bridge_name}
-            </Form.Control.Feedback>
-          </Col>
+        <Form.Group className="mb-3" controlId="nictype">
+          <Form.Label>NIC type</Form.Label>
+          <Form.Select
+            name="nictype"
+            value={formik.values.nictype}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            isInvalid={!!formik.errors.nictype && formik.touched.nictype}
+          >
+            <option value=""></option>
+            {Object.values(IncusNICType).map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </Form.Select>
+          <Form.Control.Feedback type="invalid">
+            {formik.errors.nictype}
+          </Form.Control.Feedback>
         </Form.Group>
-        <Form.Group as={Row} className="mb-3" controlId="vlan_id">
-          <Form.Label column sm={3}>
-            VLAN ID
-          </Form.Label>
-          <Col sm={9}>
-            <Form.Control
-              type="text"
-              name="vlan_id"
-              value={formik.values.vlan_id}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-              isInvalid={!!formik.errors.vlan_id && formik.touched.vlan_id}
-            />
-            <Form.Control.Feedback type="invalid">
-              {formik.errors.vlan_id}
-            </Form.Control.Feedback>
-          </Col>
+        <Form.Group className="mb-3" controlId="vlan_id">
+          <Form.Label>VLAN ID</Form.Label>
+          <Form.Control
+            type="text"
+            name="vlan_id"
+            value={formik.values.vlan_id}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            isInvalid={!!formik.errors.vlan_id && formik.touched.vlan_id}
+          />
+          <Form.Control.Feedback type="invalid">
+            {formik.errors.vlan_id}
+          </Form.Control.Feedback>
         </Form.Group>
         <Button
           className="float-end"
