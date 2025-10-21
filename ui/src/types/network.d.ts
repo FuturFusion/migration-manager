@@ -1,12 +1,19 @@
 import { NetworkType } from "util/network";
 
+type IncusNICType = "" | "bridged" | "managed";
+
+export interface NetworkPlacement {
+  network: string;
+  nictype: IncusNICType;
+  vlan_id: string;
+}
+
 export interface Network {
   identifier: string;
   source: string;
   type: NetworkType;
   location: string;
   properties: string;
-  name: string;
-  bridge_name: string;
-  vlan_id: string;
+  placement: NetworkPlacement;
+  overrides: NetworkPlacement;
 }

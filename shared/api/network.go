@@ -66,7 +66,7 @@ type Network struct {
 	Placement NetworkPlacement `json:"placement" yaml:"placement"`
 
 	// Overrides to the network placement configuration.
-	Overrides NetworkPlacement `json:"override" yaml:"override"`
+	Overrides NetworkPlacement `json:"overrides" yaml:"overrides"`
 }
 
 // NetworkPlacement defines the configurable properties of Network.

@@ -1,10 +1,11 @@
 import { MigrationWindow } from "types/batch";
+import { NetworkPlacement } from "types/network";
 
 export interface Placement {
   target_name: string;
   target_project: string;
   storage_pools: Record<string, string>;
-  networks: Record<string, string>;
+  networks: Record<string, NetworkPlacement>;
 }
 
 export interface QueueEntry {
