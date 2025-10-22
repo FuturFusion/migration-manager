@@ -171,17 +171,18 @@ func (d *Daemon) checkQueueToken(r *http.Request) error {
 		return fmt.Errorf("Failed to parse required 'secret' query paremeter: %w", err)
 	}
 
+	var instanceUUID uuid.UUID
 	instKey := r.Form.Get("instance")
-	if instKey == "" {
-		instKey = instanceUUIDFromRequestURL(r)
-		if instKey == "" {
-			return fmt.Errorf("Missing required 'instance' query parameter")
+	if instKey != "" {
+		instanceUUID, err = uuid.Parse(instKey)
+		if err != nil {
+			return fmt.Errorf("Failed to parse instance UUID from query parameter %q: %w", instKey, err)
 		}
-	}
-
-	instanceUUID, err := uuid.Parse(instKey)
-	if err != nil {
-		return fmt.Errorf("Failed to parse instance UUID %q: %w", instKey, err)
+	} else {
+		instanceUUID, err = instanceUUIDFromRequestURL(r)
+		if err != nil {
+			return fmt.Errorf("Missing required 'instance' query parameter: %w", err)
+		}
 	}
 
 	// Get the instance.
@@ -204,6 +205,7 @@ func TokenAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (bool,
 	if err == nil && !trusted {
 		err := d.checkQueueToken(r)
 		if err != nil {
+			slog.Error("Failed to validate request with token", slog.Any("error", err))
 			return false, "", "", err
 		}
 

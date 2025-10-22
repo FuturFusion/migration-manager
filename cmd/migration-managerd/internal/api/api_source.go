@@ -32,6 +32,12 @@ var sourceCmd = APIEndpoint{
 	Put:    APIEndpointAction{Handler: sourcePut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
+var sourcesSyncCmd = APIEndpoint{
+	Path: "sources/{name}/:sync",
+
+	Post: APIEndpointAction{Handler: sourcesSyncPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
+}
+
 // swagger:operation GET /1.0/sources sources sources_get
 //
 //	Get the sources
@@ -451,4 +457,31 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+apiSrc.Name)
+}
+
+// swagger:operation POST /1.0/sources/:sync sources sources_sync
+//
+//	Sync source data
+//
+//	Perform a sync to fetch new source data from all sources.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func sourcesSyncPost(d *Daemon, r *http.Request) response.Response {
+	err := d.trySyncAllSources(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
 }

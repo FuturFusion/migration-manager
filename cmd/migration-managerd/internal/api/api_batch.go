@@ -45,19 +45,19 @@ var batchInstancesCmd = APIEndpoint{
 }
 
 var batchStartCmd = APIEndpoint{
-	Path: "batches/{name}/start",
+	Path: "batches/{name}/:start",
 
 	Post: APIEndpointAction{Handler: batchStartPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanCreate)},
 }
 
 var batchStopCmd = APIEndpoint{
-	Path: "batches/{name}/stop",
+	Path: "batches/{name}/:stop",
 
 	Post: APIEndpointAction{Handler: batchStopPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
 }
 
 var batchResetCmd = APIEndpoint{
-	Path: "batches/{name}/reset",
+	Path: "batches/{name}/:reset",
 
 	Post: APIEndpointAction{Handler: batchResetPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
 }
