@@ -1,13 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import Button from "react-bootstrap/Button";
 import { Link, useNavigate } from "react-router";
-import { fetchSources } from "api/sources";
+import { fetchSources, syncSources } from "api/sources";
 import DataTable from "components/DataTable";
+import { useNotification } from "context/notificationContext";
 import { VMwareProperties, NSXProperties } from "types/source";
 import { SourceType } from "util/source";
 
 const Source = () => {
   const navigate = useNavigate();
+  const { notify } = useNotification();
   const refetchInterval = 5000; // 5 seconds
 
   const {
@@ -77,6 +79,20 @@ const Source = () => {
     };
   });
 
+  const handleSync = () => {
+    syncSources()
+      .then((response) => {
+        if (response.error_code == 0) {
+          notify.success(`Sources sync triggered successfully`);
+          return;
+        }
+        notify.error(response.error);
+      })
+      .catch((e) => {
+        notify.error(`Error during sources sync: ${e}`);
+      });
+  };
+
   if (isLoading) {
     return <div>Loading sources...</div>;
   }
@@ -93,7 +109,14 @@ const Source = () => {
             <div className="col-12">
               <Button
                 variant="success"
-                className="float-end"
+                className="float-end mx-2"
+                onClick={handleSync}
+              >
+                Sync
+              </Button>
+              <Button
+                variant="success"
+                className="float-end mx-2"
                 onClick={() => navigate("/ui/sources/create")}
               >
                 Create source
