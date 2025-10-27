@@ -31,6 +31,17 @@ export const createSource = (body: string): Promise<APIResponse<null>> => {
   });
 };
 
+export const syncSource = (name: string): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/sources/${name}/:sync`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const updateSource = (
   name: string,
   body: string,
