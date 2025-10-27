@@ -84,10 +84,11 @@ func (q QueueEntry) IsCommitted() bool {
 		return true
 	case api.MIGRATIONSTATUS_IDLE:
 		// We can be idle for many reasons:
-		// - waiting for migration window (not committed, import stage is 'final')
-		// - window has started, but waiting for concurrent import limit (not committed, import stage is 'final')
+		// - waiting for background import (not committed, import stage is 'background')
+		// - waiting for migration window after background import (not committed, import stage is 'final' or 'background' if background import is not supported)
+		// - window has started, but waiting for concurrent import limit (not committed, import stage is 'final', or 'background' if background import is not supported)
 		// - waiting for post-migration steps (committed, import stage is 'complete')
-		return q.ImportStage != IMPORTSTAGE_COMPLETE
+		return q.ImportStage == IMPORTSTAGE_COMPLETE
 	}
 
 	return true

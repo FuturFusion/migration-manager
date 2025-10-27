@@ -50,7 +50,7 @@ func TestCertificateUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
 			daemon := daemonSetup(t)
-			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemCertificateCmd})
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemCertificateCmd}, nil)
 
 			b, err := json.Marshal(tc.config)
 			require.NoError(t, err)
@@ -167,7 +167,7 @@ func TestSecurityUpdate(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemSecurityCmd})
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemSecurityCmd}, nil)
 
 			b, err := json.Marshal(tc.config)
 			require.NoError(t, err)
@@ -338,7 +338,7 @@ func TestNetworkUpdate(t *testing.T) {
 			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
 			// Setup
 			daemon := daemonSetup(t)
-			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemNetworkCmd})
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemNetworkCmd}, nil)
 
 			daemon.config.Network = tc.initConfig
 			if daemon.config.Network.Address != "" {

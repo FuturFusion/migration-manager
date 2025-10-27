@@ -2,12 +2,10 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
@@ -15,7 +13,6 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
-	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -31,38 +28,6 @@ var queueCmd = APIEndpoint{
 
 	Get:    APIEndpointAction{Handler: queueGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 	Delete: APIEndpointAction{Handler: queueDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
-}
-
-var queueWorkerCmd = APIEndpoint{
-	Path: "queue/{uuid}/worker",
-
-	// Endpoints used by the migration worker which authenticates via a randomly-generated UUID unique to each instance.
-	Post: APIEndpointAction{Handler: queueWorkerPost, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
-}
-
-var queueWorkerCommandCmd = APIEndpoint{
-	Path: "queue/{uuid}/worker/command",
-
-	Post: APIEndpointAction{Handler: queueWorkerCommandPost, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
-}
-
-func instanceUUIDFromRequestURL(r *http.Request) string {
-	// Only allow GET and POST methods.
-	if r.Method != http.MethodGet && r.Method != http.MethodPost {
-		return ""
-	}
-
-	// Limit to just queue status updates
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) < 5 {
-		return ""
-	}
-
-	if pathParts[2] != "queue" && pathParts[4] != "worker" {
-		return ""
-	}
-
-	return pathParts[3]
 }
 
 // swagger:operation GET /1.0/queue queue queueRoot_get
@@ -336,162 +301,4 @@ func queueDelete(d *Daemon, r *http.Request) response.Response {
 	}
 
 	return response.EmptySyncResponse
-}
-
-// swagger:operation POST /1.0/queue/{uuid}/worker/command queue queue_worker_command_post
-//
-//	Generate next worker command for instance
-//
-//	Generates the next worker command, if any, for this queued instance.
-//
-//	---
-//	produces:
-//	  - application/json
-//	responses:
-//	  "200":
-//	    description: WorkerCommand
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/WorkerCommand"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-func queueWorkerCommandPost(d *Daemon, r *http.Request) response.Response {
-	uuidString := r.PathValue("uuid")
-
-	instanceUUID, err := uuid.Parse(uuidString)
-	if err != nil {
-		return response.BadRequest(err)
-	}
-
-	workerCommand, err := d.queue.NewWorkerCommandByInstanceUUID(r.Context(), instanceUUID)
-	if err != nil {
-		return response.SmartError(err)
-	}
-
-	apiSourceJSON, err := json.Marshal(workerCommand.Source.ToAPI())
-	if err != nil {
-		return response.SmartError(err)
-	}
-
-	d.queueHandler.RecordWorkerUpdate(instanceUUID)
-	return response.SyncResponseETag(true, api.WorkerCommand{
-		Command:      workerCommand.Command,
-		Location:     workerCommand.Location,
-		SourceType:   workerCommand.SourceType,
-		Source:       apiSourceJSON,
-		OS:           workerCommand.OS,
-		OSVersion:    workerCommand.OSVersion,
-		OSType:       workerCommand.OSType,
-		Architecture: workerCommand.Architecture,
-	}, workerCommand)
-}
-
-// swagger:operation POST /1.0/queue/{uuid}/worker queue queue_worker_post
-//
-//	Sets worker response for instance
-//
-//	Sets the response from the worker for this queued instance.
-//
-//	---
-//	consumes:
-//	  - application/json
-//	produces:
-//	  - application/json
-//	parameters:
-//	  - in: body
-//	    name: response
-//	    description: WorkerResponse definition
-//	    required: true
-//	    schema:
-//	      $ref: "#/definitions/WorkerResponse"
-//	responses:
-//	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
-//	  "400":
-//	    $ref: "#/responses/BadRequest"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "412":
-//	    $ref: "#/responses/PreconditionFailed"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
-func queueWorkerPost(d *Daemon, r *http.Request) response.Response {
-	uuidString := r.PathValue("uuid")
-
-	instanceUUID, err := uuid.Parse(uuidString)
-	if err != nil {
-		return response.BadRequest(err)
-	}
-
-	// Decode the command response.
-	var resp api.WorkerResponse
-	err = json.NewDecoder(r.Body).Decode(&resp)
-	if err != nil {
-		return response.BadRequest(err)
-	}
-
-	updatedEntry, err := d.queue.ProcessWorkerUpdate(r.Context(), instanceUUID, resp.Status, resp.StatusMessage)
-	if err != nil {
-		return response.SmartError(err)
-	}
-
-	if updatedEntry.MigrationStatus == api.MIGRATIONSTATUS_ERROR {
-		var src *migration.Source
-		var inst *migration.Instance
-		err := transaction.Do(r.Context(), func(ctx context.Context) error {
-			var err error
-			inst, err = d.instance.GetByUUID(ctx, instanceUUID)
-			if err != nil {
-				return err
-			}
-
-			src, err = d.source.GetByName(ctx, inst.Source)
-			if err != nil {
-				return err
-			}
-
-			return nil
-		})
-		if err != nil {
-			return response.SmartError(err)
-		}
-
-		// Power on the source VM if it was initially running.
-		if inst.Properties.Running {
-			is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
-			if err != nil {
-				return response.SmartError(err)
-			}
-
-			err = is.Connect(r.Context())
-			if err != nil {
-				return response.SmartError(err)
-			}
-
-			err = is.PowerOnVM(r.Context(), inst.Properties.Location)
-			if err != nil {
-				return response.SmartError(err)
-			}
-		}
-	}
-
-	d.queueHandler.RecordWorkerUpdate(instanceUUID)
-	return response.SyncResponse(true, nil)
 }

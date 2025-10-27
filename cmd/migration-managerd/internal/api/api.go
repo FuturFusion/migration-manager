@@ -112,6 +112,10 @@ func restServer(d *Daemon) *http.Server {
 		d.createCmd(router, "1.0", c)
 	}
 
+	for _, c := range apiInternal {
+		d.createCmd(router, "internal", c)
+	}
+
 	d.createCmd(router, "os/", incusOSProxyCmd)
 
 	return &http.Server{
