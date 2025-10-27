@@ -127,7 +127,12 @@ func (c *CmdGlobal) CheckRemoteConnectivity(remoteName string, remote *config.Re
 	if remote.AuthType != config.AuthTypeUntrusted && oldServerCert == nil {
 		resp, err := http.Get(remote.Addr)
 		if err != nil {
-			switch actualErr := err.(*url.Error).Unwrap().(type) {
+			var urlErr *url.Error
+			if !errors.As(err, &urlErr) {
+				return err
+			}
+
+			switch actualErr := urlErr.Unwrap().(type) {
 			case *tls.CertificateVerificationError:
 				remote.ServerCert = api.Certificate{Certificate: actualErr.UnverifiedCertificates[0]}
 			default:
