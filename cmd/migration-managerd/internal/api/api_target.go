@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
@@ -232,7 +233,9 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 		return "", err
 	}
 
-	oidcClient := oidc.NewOIDCClient("", trustedCert)
+	transport := &http.Transport{TLSClientConfig: &tls.Config{}}
+	incusTLS.TLSConfigWithTrustedCert(transport.TLSClientConfig, trustedCert)
+	oidcClient := oidc.NewClient(&http.Client{Transport: transport}, "")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
 	tokenURL, resp, provider, err := oidcClient.FetchNewIncusTokenURL(req)
 	if err != nil {
@@ -249,8 +252,9 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 			return
 		}
 
+		tokens := oidcClient.GetOIDCTokens()
 		tgt.SetExternalConnectivityStatus(connectivityStatus)
-		tgt.SetOIDCTokens(oidcClient.GetOIDCTokens())
+		tgt.SetOIDCTokens(&tokens)
 		tgt.EndpointFunc = func(t api.Target) (migration.TargetEndpoint, error) {
 			return apiTarget.NewTarget(t)
 		}

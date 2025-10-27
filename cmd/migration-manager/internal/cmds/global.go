@@ -257,7 +257,9 @@ func (c *CmdGlobal) doRequest(client *http.Client) func(*http.Request) (*http.Re
 		remote := c.GetDefaultRemote()
 		var err error
 		if remote.AuthType == config.AuthTypeOIDC {
-			oidcClient := oidc.NewOIDCClient(c.config.OIDCTokenPath(c.config.DefaultRemote), remote.ServerCert.Certificate)
+			transport := &http.Transport{TLSClientConfig: &tls.Config{}}
+			localtls.TLSConfigWithTrustedCert(transport.TLSClientConfig, remote.ServerCert.Certificate)
+			oidcClient := oidc.NewClient(&http.Client{Transport: transport}, c.config.OIDCTokenPath(c.config.DefaultRemote))
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
 			resp, err = oidcClient.Do(req) // nolint: bodyclose
 		} else {
