@@ -19,9 +19,9 @@ type CmdRemote struct {
 func (c *CmdRemote) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "remote"
-	cmd.Short = "Manage the list of remote operations centers"
+	cmd.Short = "Manage the list of remote Migration Managers"
 	cmd.Long = `Description:
-  Manage the list of remote operations centers
+  Manage the list of remote Migration Managers
 `
 	// Allow this sub-command to function even with pre-run checks failing.
 	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
@@ -74,7 +74,7 @@ func (c *cmdRemoteAdd) Command() *cobra.Command {
 	cmd.Long = `Description:
   Add a new remote
 
-  Adds a new remote operations center.
+  Adds a new remote Migration Manager.
 `
 
 	cmd.Flags().StringVar(&c.authType, "auth-type", "tls", "Server authentication type (tls or oidc)")
@@ -223,7 +223,7 @@ func (c *cmdRemoteRemove) Command() *cobra.Command {
 	cmd.Long = `Description:
   Remove a remote
 
-  Removes a remote operations center.
+  Removes a remote Migration Manager.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
@@ -289,7 +289,7 @@ func (c *cmdRemoteSwitch) Command() *cobra.Command {
 	cmd.Long = `Description:
   Switch remote
 
-  Switches the default remote operations center that is interacted with.
+  Switches the default remote Migration Manager that is interacted with.
 `
 
 	cmd.PreRunE = c.validateArgsAndFlags
