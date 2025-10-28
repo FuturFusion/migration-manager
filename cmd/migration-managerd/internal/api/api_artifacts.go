@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -18,28 +19,28 @@ import (
 var artifactsCmd = APIEndpoint{
 	Path: "artifacts",
 
-	Get:  APIEndpointAction{Handler: artifactsGet, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
-	Post: APIEndpointAction{Handler: artifactsPost, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
+	Get:  APIEndpointAction{Handler: artifactsGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView), Authenticator: TokenAuthenticate},
+	Post: APIEndpointAction{Handler: artifactsPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanCreate), Authenticator: TokenAuthenticate},
 }
 
 var artifactCmd = APIEndpoint{
 	Path: "artifacts/{uuid}",
 
-	Get: APIEndpointAction{Handler: artifactGet, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
-	Put: APIEndpointAction{Handler: artifactPut, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
+	Get: APIEndpointAction{Handler: artifactGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView), Authenticator: TokenAuthenticate},
+	Put: APIEndpointAction{Handler: artifactPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit), Authenticator: TokenAuthenticate},
 }
 
 var artifactFilesCmd = APIEndpoint{
 	Path: "artifacts/{uuid}/files",
 
-	Post: APIEndpointAction{Handler: artifactFilesPost, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
+	Post: APIEndpointAction{Handler: artifactFilesPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit), Authenticator: TokenAuthenticate},
 }
 
 var artifactFileCmd = APIEndpoint{
 	Path: "artifacts/{uuid}/files/{name}",
 
-	Get:    APIEndpointAction{Handler: artifactFileGet, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
-	Delete: APIEndpointAction{Handler: artifactFileDelete, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
+	Get:    APIEndpointAction{Handler: artifactFileGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView), Authenticator: TokenAuthenticate},
+	Delete: APIEndpointAction{Handler: artifactFileDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete), Authenticator: TokenAuthenticate},
 }
 
 // artifactLock helps to manage concurrent reads and writes of artifact files.
