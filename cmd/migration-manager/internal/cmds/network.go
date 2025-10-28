@@ -2,6 +2,7 @@ package cmds
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -40,6 +41,10 @@ func (c *CmdNetwork) Command() *cobra.Command {
 	// Update
 	networkUpdateCmd := cmdNetworkUpdate{global: c.Global}
 	cmd.AddCommand(networkUpdateCmd.Command())
+
+	// Show
+	networkShowCmd := cmdNetworkShow{global: c.Global}
+	cmd.AddCommand(networkShowCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
@@ -228,5 +233,51 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	return nil
+}
+
+// Show the networks.
+type cmdNetworkShow struct {
+	global *CmdGlobal
+}
+
+func (c *cmdNetworkShow) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "show"
+	cmd.Short = "Show network configuration"
+	cmd.Long = `Description:
+  Show the network configuration as YAML
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 2, 2)
+	if exit {
+		return err
+	}
+
+	// Get the list of all networks.
+	resp, _, err := c.global.doHTTPRequestV1("/networks/"+args[0], http.MethodGet, "source="+args[1], nil)
+	if err != nil {
+		return err
+	}
+
+	var obj api.Network
+	err = responseToStruct(resp, &obj)
+	if err != nil {
+		return err
+	}
+
+	b, err := yaml.Marshal(obj)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(b))
 	return nil
 }

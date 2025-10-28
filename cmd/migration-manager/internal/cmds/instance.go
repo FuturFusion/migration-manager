@@ -1,6 +1,7 @@
 package cmds
 
 import (
+	"fmt"
 	"net/http"
 	"sort"
 	"strconv"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -30,6 +32,10 @@ func (c *CmdInstance) Command() *cobra.Command {
 	// List
 	instanceListCmd := cmdInstanceList{global: c.Global}
 	cmd.AddCommand(instanceListCmd.Command())
+
+	// Show
+	instanceShowCmd := cmdInstanceShow{global: c.Global}
+	cmd.AddCommand(instanceShowCmd.Command())
 
 	// Override
 	instanceOverrideCmd := CmdInstanceOverride{Global: c.Global}
@@ -88,23 +94,6 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Get nice names for the batches.
-	batches := []api.Batch{}
-	batchesMap := make(map[string]string)
-	resp, _, err = c.global.doHTTPRequestV1("/batches", http.MethodGet, "recursion=1", nil)
-	if err != nil {
-		return err
-	}
-
-	err = responseToStruct(resp, &batches)
-	if err != nil {
-		return err
-	}
-
-	for _, b := range batches {
-		batchesMap[b.Name] = b.Name
-	}
-
 	// Render the table.
 	header := []string{"UUID", "Source", "Location", "OS Version", "CPUs", "Memory", "Background Import", "Migration Disabled"}
 	if c.flagVerbose {
@@ -144,4 +133,50 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	sort.Sort(util.SortColumnsNaturally(data))
 
 	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, instances)
+}
+
+// Show the instances.
+type cmdInstanceShow struct {
+	global *CmdGlobal
+}
+
+func (c *cmdInstanceShow) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "show"
+	cmd.Short = "Show instance configuration"
+	cmd.Long = `Description:
+  Show the instance configuration as YAML
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdInstanceShow) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	// Get the list of all instances.
+	resp, _, err := c.global.doHTTPRequestV1("/instances/"+args[0], http.MethodGet, "", nil)
+	if err != nil {
+		return err
+	}
+
+	var obj api.Instance
+	err = responseToStruct(resp, &obj)
+	if err != nil {
+		return err
+	}
+
+	b, err := yaml.Marshal(obj)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(b))
+	return nil
 }
