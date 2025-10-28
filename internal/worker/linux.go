@@ -16,11 +16,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/api"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
 
 	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 //go:embed scripts/*
@@ -49,7 +50,7 @@ type LVSOutput struct {
 
 const chrootMountPath string = "/run/mount/target/"
 
-func LinuxDoPostMigrationConfig(ctx context.Context, osName string, dryRun bool) error {
+func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osName string, dryRun bool) error {
 	// Get the disto's major version, if possible.
 	majorVersion := -1
 	// VMware API doesn't distinguish openSUSE and Ubuntu versions.
@@ -205,7 +206,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, osName string, dryRun bool)
 	}
 
 	resp, err := c.Do(req)
-	if err != nil && !api.StatusErrorCheck(err, http.StatusNotFound) {
+	if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 		return err
 	}
 
@@ -226,6 +227,13 @@ func LinuxDoPostMigrationConfig(ctx context.Context, osName string, dryRun bool)
 	// Setup incus-agent service override for older versions of RHEL.
 	if internalUtil.IsRHELOrDerivative(distro) && majorVersion <= 7 {
 		err := runScriptInChroot("add-incus-agent-override-for-old-systemd.sh")
+		if err != nil {
+			return err
+		}
+	}
+
+	if !instance.Properties.LegacyBoot {
+		err := runScriptInChroot("reinstall-grub-uefi.sh")
 		if err != nil {
 			return err
 		}
