@@ -239,7 +239,8 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	for _, vm := range vms {
 		log := log.With(slog.String("location", vm.InventoryPath))
 		// Ignore any vCLS instances.
-		if regexp.MustCompile(`/vCLS/`).Match([]byte(vm.InventoryPath)) {
+		if strings.HasPrefix(vm.Name(), "vCLS-") {
+			log.Info("Ignoring vCLS tagged VM")
 			continue
 		}
 
@@ -271,6 +272,11 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 			msg := fmt.Sprintf("Failed to import %q: %v", vm.InventoryPath, err)
 			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, msg))
 			log.Error("Failed to record vm properties", slog.Any("error", err))
+			continue
+		}
+
+		if vmProps.Description == "VMware vCenter Server Appliance" {
+			log.Info("Ignoring vCenter Server tagged VM")
 			continue
 		}
 
