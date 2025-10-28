@@ -36,4 +36,9 @@ if getenforce >/dev/null 2>&1 ; then
 
   # Manually set the label for the file we already created because restorecon doesn't work in chroot.
   chcon system_u:object_r:init_exec_t:s0 /usr/lib/systemd/incus-agent-setup
+
+  # SELinux labeling for existing files may not carry over so restore it for whichever files need it.
+  if grep -q "^GRUB.*selinux=1" /etc/default/grub || grep -q "^SELINUX=enforcing" /etc/selinux/config ; then
+    touch /.autorelabel
+  fi
 fi
