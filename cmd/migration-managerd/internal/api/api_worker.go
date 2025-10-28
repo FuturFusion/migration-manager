@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
@@ -20,13 +21,13 @@ import (
 var workerUpdateCmd = APIEndpoint{
 	Path: "worker/{uuid}/:update",
 
-	Post: APIEndpointAction{Handler: workerUpdatePost, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
+	Post: APIEndpointAction{Handler: workerUpdatePost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit), Authenticator: TokenAuthenticate},
 }
 
 var workerCommandCmd = APIEndpoint{
 	Path: "worker/{uuid}/:command",
 
-	Post: APIEndpointAction{Handler: workerCommandPost, AccessHandler: allowWithToken, Authenticator: TokenAuthenticate},
+	Post: APIEndpointAction{Handler: workerCommandPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit), Authenticator: TokenAuthenticate},
 }
 
 func instanceUUIDFromRequestURL(r *http.Request) (uuid.UUID, error) {

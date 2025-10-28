@@ -340,8 +340,15 @@ func TestRun(t *testing.T) {
 					}
 
 					fallthrough
+				case fmt.Sprintf("/1.0/instances/%s?secret=&instance=%s", uuidA, uuidA):
+					if r.Method != http.MethodGet {
+						cancel(fmt.Errorf("Unsupported method %q", r.Method))
+						return
+					}
+
+					fallthrough
 				case fmt.Sprintf("/internal/worker/%s/:command?secret=", uuidA):
-					if r.RequestURI != "/1.0" {
+					if !strings.HasPrefix(r.RequestURI, "/1.0") {
 						if r.Method != http.MethodPost {
 							cancel(fmt.Errorf("Unsupported method %q", r.Method))
 							return

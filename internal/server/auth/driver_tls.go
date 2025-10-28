@@ -39,6 +39,11 @@ func (t *TLS) CheckPermission(ctx context.Context, r *http.Request, object Objec
 		return nil
 	}
 
+	if details.Username == "migration-manager-worker" {
+		// If the request is from migration-manager-worker, then it was authenticated by secret token and can be let through.
+		return nil
+	}
+
 	for _, fingerprint := range t.certificateFingerprints {
 		canonicalFingerprint := strings.ToLower(strings.ReplaceAll(fingerprint, ":", ""))
 		if canonicalFingerprint == details.Username {

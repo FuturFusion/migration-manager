@@ -261,6 +261,17 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand, dry
 		}
 	}
 
+	resp, err := w.doHTTPRequestV1("/1.0/instances/"+w.uuid, http.MethodGet, "secret="+w.token+"&instance="+w.uuid, nil)
+	if err != nil {
+		return err
+	}
+
+	var instance api.Instance
+	err = responseToStruct(resp, &instance)
+	if err != nil {
+		return err
+	}
+
 	switch cmd.OSType {
 	case api.OSTYPE_WINDOWS:
 		file, _, err := w.getArtifact(api.ARTIFACTTYPE_DRIVER, cmd, "")
@@ -290,7 +301,7 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand, dry
 		}
 
 	case api.OSTYPE_LINUX:
-		err := worker.LinuxDoPostMigrationConfig(ctx, cmd.OS, dryRun)
+		err := worker.LinuxDoPostMigrationConfig(ctx, instance, cmd.OS, dryRun)
 		if err != nil {
 			return err
 		}

@@ -27,7 +27,7 @@ var instancesCmd = APIEndpoint{
 var instanceCmd = APIEndpoint{
 	Path: "instances/{uuid}",
 
-	Get: APIEndpointAction{Handler: instanceGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Get: APIEndpointAction{Handler: instanceGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView), Authenticator: TokenAuthenticate},
 }
 
 var instanceOverrideCmd = APIEndpoint{

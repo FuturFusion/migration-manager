@@ -111,15 +111,6 @@ func NewDaemon(logHandler *slog.LevelVar) *Daemon {
 	return d
 }
 
-func allowWithToken(d *Daemon, r *http.Request) response.Response {
-	err := d.checkQueueToken(r)
-	if err != nil {
-		return response.Forbidden(err)
-	}
-
-	return response.EmptySyncResponse
-}
-
 // allowPermission is a wrapper to check access against a given object. Currently server is the only supported object.
 func allowPermission(objectType auth.ObjectType, entitlement auth.Entitlement) func(d *Daemon, r *http.Request) response.Response { // nolint:unparam
 	return func(d *Daemon, r *http.Request) response.Response {
