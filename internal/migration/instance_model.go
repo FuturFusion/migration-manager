@@ -50,6 +50,13 @@ func (i Instance) Validate() error {
 		return NewValidationErrf("Invalid instance, source id can not be empty")
 	}
 
+	if i.Overrides.Properties.Name != "" {
+		err := validate.IsHostname(i.Overrides.Properties.Name)
+		if err != nil {
+			return NewValidationErrf("Invalid instance override, name %q is not a valid hostname: %v", i.Overrides.Properties.Name, err)
+		}
+	}
+
 	return nil
 }
 
@@ -103,7 +110,10 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 // GetName returns the name of the instance, which may not be unique among all instances for a given source.
 // If a unique, human-readable identifier is needed, use the Location property.
 func (i Instance) GetName() string {
-	return i.Properties.Name
+	props := i.Properties
+	props.Apply(i.Overrides.Properties)
+
+	return props.Name
 }
 
 // GetOSType returns the OS type, as determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html

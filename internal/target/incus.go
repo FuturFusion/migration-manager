@@ -228,16 +228,16 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		return err
 	}
 
-	apiDef, _, err := t.GetInstance(props.Name)
+	apiDef, _, err := t.GetInstance(i.GetName())
 	if err != nil {
-		return fmt.Errorf("Failed to get configuration for instance %q on target %q: %w", props.Name, t.GetName(), err)
+		return fmt.Errorf("Failed to get configuration for instance %q on target %q: %w", i.GetName(), t.GetName(), err)
 	}
 
 	if apiDef.Status == "Running" {
 		// Stop the instance.
-		err = t.StopVM(ctx, props.Name, true)
+		err = t.StopVM(ctx, i.GetName(), true)
 		if err != nil {
-			return fmt.Errorf("Failed to stop instance %q on target %q: %w", props.Name, t.GetName(), err)
+			return fmt.Errorf("Failed to stop instance %q on target %q: %w", i.GetName(), t.GetName(), err)
 		}
 	}
 
@@ -245,7 +245,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		nicDeviceName := fmt.Sprintf("eth%d", idx)
 		netCfg, ok := q.Placement.Networks[nic.ID]
 		if !ok {
-			return fmt.Errorf("No network placement found for NIC id %q for instance %q on target %q", nic.ID, props.Name, t.GetName())
+			return fmt.Errorf("No network placement found for NIC id %q for instance %q on target %q", nic.ID, i.GetName(), t.GetName())
 		}
 
 		if apiDef.Devices[nicDeviceName] == nil {
@@ -364,21 +364,21 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	}
 
 	// Update the instance in Incus.
-	op, err := t.UpdateInstance(i.Properties.Name, apiDef.Writable(), "")
+	op, err := t.UpdateInstance(i.GetName(), apiDef.Writable(), "")
 	if err != nil {
-		return fmt.Errorf("Failed to update instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
+		return fmt.Errorf("Failed to update instance %q on target %q: %w", i.GetName(), t.GetName(), err)
 	}
 
 	err = op.WaitContext(ctx)
 	if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
-		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
+		return fmt.Errorf("Failed to wait for update to instance %q on target %q: %w", i.GetName(), t.GetName(), err)
 	}
 
 	// Only start the VM if it was initially running.
 	if i.Properties.Running {
-		err := t.StartVM(ctx, i.Properties.Name)
+		err := t.StartVM(ctx, i.GetName())
 		if err != nil {
-			return fmt.Errorf("Failed to start instance %q on target %q: %w", i.Properties.Name, t.GetName(), err)
+			return fmt.Errorf("Failed to start instance %q on target %q: %w", i.GetName(), t.GetName(), err)
 		}
 	}
 
@@ -474,7 +474,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
 	ret := incusAPI.InstancesPost{
-		Name: instanceDef.Properties.Name,
+		Name: instanceDef.GetName(),
 		Source: incusAPI.InstanceSource{
 			Type: "none",
 		},

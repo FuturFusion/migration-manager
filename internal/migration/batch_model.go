@@ -79,7 +79,7 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 		}
 
 		if baseNetwork.Identifier == "" {
-			return nil, fmt.Errorf("No network %q associated with instance %q on source %q", n.ID, instance.Properties.Name, instance.Source)
+			return nil, fmt.Errorf("No network %q associated with instance %q on source %q", n.ID, instance.GetName(), instance.Source)
 		}
 
 		netCfg := baseNetwork.Placement
