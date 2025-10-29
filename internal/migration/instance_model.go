@@ -9,6 +9,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/validate"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -72,6 +73,11 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 
 	props := i.Properties
 	props.Apply(i.Overrides.Properties)
+	err := validate.IsHostname(props.Name)
+	if err != nil {
+		return fmt.Errorf("Instance name %q is not a valid hostname: %w", props.Name, err)
+	}
+
 	if props.OS == "" || props.OSVersion == "" {
 		if !overrides.AllowUnknownOS {
 			return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
