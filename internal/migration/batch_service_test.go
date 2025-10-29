@@ -1593,8 +1593,8 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 						CPUs:   2,
 						Memory: 1024 * 1024 * 1024 * 4,
 						OS:     "Ubuntu 22.04",
+						Name:   "c",
 					},
-					Name:     "c",
 					Location: "/a/b/c",
 					Disks: []api.InstancePropertiesDisk{
 						{Name: "disk"},
