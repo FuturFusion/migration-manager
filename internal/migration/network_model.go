@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lxc/incus/v6/shared/validate"
+
 	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -62,6 +64,13 @@ func (n Network) Validate() error {
 	}
 
 	if n.Overrides != (api.NetworkPlacement{}) {
+		if n.Overrides.Network != "" {
+			err := validate.IsAPIName(n.Overrides.Network, false)
+			if err != nil {
+				return NewValidationErrf("Invalid network name override %q: %v", n.Overrides.Network, err)
+			}
+		}
+
 		err := api.ValidNICType(string(n.Overrides.NICType))
 		if err != nil {
 			return NewValidationErrf("Invalid network override: %v", err)

@@ -121,7 +121,7 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, id can not be negative")
 	}
 
-	err := validate.IsHostname(b.Name)
+	err := validate.IsAPIName(b.Name, false)
 	if err != nil {
 		return NewValidationErrf("Invalid batch, %q is not a valid name: %v", b.Name, err)
 	}
@@ -202,7 +202,7 @@ func (b Batch) Validate() error {
 }
 
 func (b BatchConstraint) Validate() error {
-	err := validate.IsHostname(b.Name)
+	err := validate.IsAPIName(b.Name, false)
 	if err != nil {
 		return NewValidationErrf("Invalid constraint, %q is not a valid name: %v", b.Name, err)
 	}
