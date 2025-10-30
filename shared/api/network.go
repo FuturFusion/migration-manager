@@ -3,6 +3,8 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type NetworkType string
@@ -43,6 +45,9 @@ func ValidNICType(s string) error {
 //
 // swagger:model
 type Network struct {
+	// UUID of the network.
+	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
+
 	// The source-specific identifier of the network
 	// Example: network-23
 	SourceSpecificID string `json:"source_specific_id" yaml:"source_specific_id"`

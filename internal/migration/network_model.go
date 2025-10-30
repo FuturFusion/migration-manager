@@ -138,6 +138,7 @@ func (n Network) ToAPI() (*api.Network, error) {
 	}
 
 	return &api.Network{
+		UUID:             n.UUID,
 		SourceSpecificID: n.SourceSpecificID,
 		Location:         n.Location,
 		Source:           n.Source,
