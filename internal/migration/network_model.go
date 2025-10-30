@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/validate"
 
 	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
@@ -16,6 +17,7 @@ import (
 
 type Network struct {
 	ID               int64
+	UUID             uuid.UUID
 	Type             api.NetworkType
 	SourceSpecificID string `db:"primary=yes"`
 	Location         string
@@ -29,6 +31,10 @@ type Network struct {
 func (n Network) Validate() error {
 	if n.ID < 0 {
 		return NewValidationErrf("Invalid network, id can not be negative")
+	}
+
+	if n.UUID == uuid.Nil {
+		return NewValidationErrf("Invalid network, UUID can not be empty")
 	}
 
 	if n.SourceSpecificID == "" {

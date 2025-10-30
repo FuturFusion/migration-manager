@@ -3,6 +3,8 @@ package sqlite
 import (
 	"context"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
@@ -45,4 +47,9 @@ func (n network) Update(ctx context.Context, in migration.Network) error {
 
 func (n network) DeleteByNameAndSource(ctx context.Context, name string, srcName string) error {
 	return entities.DeleteNetwork(ctx, transaction.GetDBTX(ctx, n.db), name, srcName)
+}
+
+// GetByUUID implements migration.NetworkRepo.
+func (n *network) GetByUUID(ctx context.Context, id uuid.UUID) (*migration.Network, error) {
+	return entities.GetNetworkByUUID(ctx, transaction.GetDBTX(ctx, n.db), id)
 }
