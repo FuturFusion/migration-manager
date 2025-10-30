@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	dbschema "github.com/FuturFusion/migration-manager/internal/db"
@@ -16,9 +17,9 @@ import (
 )
 
 func TestNetworkDatabaseActions(t *testing.T) {
-	networkA := migration.Network{SourceSpecificID: "networkA", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Properties: []byte("{}")}
-	networkB := migration.Network{SourceSpecificID: "networkB", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Overrides: api.NetworkPlacement{Network: "foo"}, Properties: []byte("{}")}
-	networkC := migration.Network{SourceSpecificID: "networkC", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkC", Source: testSource.Name, Overrides: api.NetworkPlacement{Network: "bar"}, Properties: []byte("{}")}
+	networkA := migration.Network{UUID: uuid.New(), SourceSpecificID: "networkA", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Properties: []byte("{}")}
+	networkB := migration.Network{UUID: uuid.New(), SourceSpecificID: "networkB", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Overrides: api.NetworkPlacement{Network: "foo"}, Properties: []byte("{}")}
+	networkC := migration.Network{UUID: uuid.New(), SourceSpecificID: "networkC", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkC", Source: testSource.Name, Overrides: api.NetworkPlacement{Network: "bar"}, Properties: []byte("{}")}
 
 	ctx := context.Background()
 
