@@ -760,39 +760,41 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					}
 				}
 
-				if netLocation != "" {
-					var ipv4, ipv6 string
-					for _, netInfo := range vmProperties.Guest.Net {
-						if netInfo.Network != filepath.Base(netLocation) || netInfo.IpConfig == nil || netInfo.IpConfig.IpAddress == nil {
+				if netLocation == "" {
+					return nil, fmt.Errorf("Unable to find network for network ID %q", str)
+				}
+
+				var ipv4, ipv6 string
+				for _, netInfo := range vmProperties.Guest.Net {
+					if netInfo.Network != filepath.Base(netLocation) || netInfo.IpConfig == nil || netInfo.IpConfig.IpAddress == nil {
+						continue
+					}
+
+					for _, ip := range netInfo.IpConfig.IpAddress {
+						parsed := net.ParseIP(ip.IpAddress)
+						if parsed == nil {
 							continue
 						}
 
-						for _, ip := range netInfo.IpConfig.IpAddress {
-							parsed := net.ParseIP(ip.IpAddress)
-							if parsed == nil {
-								continue
-							}
-
-							if parsed.To4() != nil && ipv4 == "" && !linkLocal4.Contains(parsed) {
-								ipv4 = parsed.String()
-							} else if parsed.To4() == nil && ipv6 == "" && !linkLocal6.Contains(parsed) {
-								ipv6 = parsed.String()
-							}
+						if parsed.To4() != nil && ipv4 == "" && !linkLocal4.Contains(parsed) {
+							ipv4 = parsed.String()
+						} else if parsed.To4() == nil && ipv6 == "" && !linkLocal6.Contains(parsed) {
+							ipv6 = parsed.String()
 						}
 					}
+				}
 
-					if ipv4 != "" {
-						err := subProps.Add(properties.InstanceNICIPv4Address, ipv4)
-						if err != nil {
-							return nil, err
-						}
+				if ipv4 != "" {
+					err := subProps.Add(properties.InstanceNICIPv4Address, ipv4)
+					if err != nil {
+						return nil, err
 					}
+				}
 
-					if ipv6 != "" {
-						err := subProps.Add(properties.InstanceNICIPv6Address, ipv6)
-						if err != nil {
-							return nil, err
-						}
+				if ipv6 != "" {
+					err := subProps.Add(properties.InstanceNICIPv6Address, ipv6)
+					if err != nil {
+						return nil, err
 					}
 				}
 
