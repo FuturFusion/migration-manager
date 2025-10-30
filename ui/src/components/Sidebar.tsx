@@ -7,7 +7,12 @@ import {
   BsStack,
   BsFillDatabaseFill,
 } from "react-icons/bs";
-import { MdLogin, MdLogout, MdWarningAmber } from "react-icons/md";
+import {
+  MdLogin,
+  MdLogout,
+  MdOutlineSettings,
+  MdWarningAmber,
+} from "react-icons/md";
 import { PiNetwork } from "react-icons/pi";
 import { useAuth } from "context/authContext";
 
@@ -93,6 +98,11 @@ const Sidebar = () => {
             <Nav className="flex-column">
               {isAuthenticated && (
                 <>
+                  <li>
+                    <Nav.Link as={Link} to="/ui/settings">
+                      <MdOutlineSettings /> Settings
+                    </Nav.Link>
+                  </li>
                   <li>
                     <Nav.Link
                       onClick={() => {
