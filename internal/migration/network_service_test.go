@@ -25,14 +25,14 @@ func TestNetworkService_Create(t *testing.T) {
 			name: "success",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 				Source:     "src",
 				Location:   "/path/to/one",
 			},
 			repoCreateNetwork: migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Source:     "src",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 				Location:   "/path/to/one",
@@ -44,7 +44,7 @@ func TestNetworkService_Create(t *testing.T) {
 			name: "error - invalid id",
 			network: migration.Network{
 				ID:         -1, // invalid
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Source:     "src",
 				Location:   "/path/to/one",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
@@ -59,7 +59,7 @@ func TestNetworkService_Create(t *testing.T) {
 			name: "error - name empty",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "", // empty
+				SourceSpecificID: "", // empty
 				Location:   "/path/to/one",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 				Source:     "src",
@@ -74,7 +74,7 @@ func TestNetworkService_Create(t *testing.T) {
 			name: "error - location empty",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Location:   "", // empty
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 				Source:     "src",
@@ -89,7 +89,7 @@ func TestNetworkService_Create(t *testing.T) {
 			name: "error - type empty",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Location:   "/path/to/one",
 				Source:     "src",
 			},
@@ -103,7 +103,7 @@ func TestNetworkService_Create(t *testing.T) {
 			name: "error - source empty",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Location:   "/path/to/one",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 			},
@@ -117,7 +117,7 @@ func TestNetworkService_Create(t *testing.T) {
 			name: "error - repo",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Location:   "/path/to/one",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 				Source:     "src",
@@ -163,11 +163,11 @@ func TestNetworkService_GetAll(t *testing.T) {
 			repoGetAllNetworks: migration.Networks{
 				migration.Network{
 					ID:         1,
-					Identifier: "one",
+					SourceSpecificID: "one",
 				},
 				migration.Network{
 					ID:         2,
-					Identifier: "two",
+					SourceSpecificID: "two",
 				},
 			},
 
@@ -220,7 +220,7 @@ func TestNetworkService_GetByName(t *testing.T) {
 			sourceArg: "src",
 			repoGetByNameNetwork: &migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Location:   "/path/to/one",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 			},
@@ -287,7 +287,7 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 			name: "success",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 				Location:   "/path/to/one",
 				Source:     "src",
@@ -299,7 +299,7 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 			name: "error - invalid id",
 			network: migration.Network{
 				ID:         -1, // invalid
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 				Location:   "/path/to/one",
 				Source:     "src",
@@ -314,7 +314,7 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 			name: "error - name empty",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "", // empty
+				SourceSpecificID: "", // empty
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 				Location:   "/path/to/one",
 				Source:     "src",
@@ -329,7 +329,7 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 			name: "error - type empty",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Location:   "/path/to/one",
 				Source:     "src",
 			},
@@ -343,7 +343,7 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 			name: "error - source empty",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Location:   "/path/to/one",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
 			},
@@ -357,7 +357,7 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 			name: "error - repo",
 			network: migration.Network{
 				ID:         1,
-				Identifier: "one",
+				SourceSpecificID: "one",
 				Location:   "/path/to/one",
 				Source:     "src",
 				Type:       api.NETWORKTYPE_VMWARE_STANDARD,

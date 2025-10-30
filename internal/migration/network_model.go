@@ -15,11 +15,11 @@ import (
 )
 
 type Network struct {
-	ID         int64
-	Type       api.NetworkType
-	Identifier string `db:"primary=yes"`
-	Location   string
-	Source     string `db:"primary=yes&join=sources.name"`
+	ID               int64
+	Type             api.NetworkType
+	SourceSpecificID string `db:"primary=yes"`
+	Location         string
+	Source           string `db:"primary=yes&join=sources.name"`
 
 	Properties json.RawMessage `db:"marshal=json"`
 
@@ -31,7 +31,7 @@ func (n Network) Validate() error {
 		return NewValidationErrf("Invalid network, id can not be negative")
 	}
 
-	if n.Identifier == "" {
+	if n.SourceSpecificID == "" {
 		return NewValidationErrf("Invalid network, name can not be empty")
 	}
 
@@ -95,7 +95,7 @@ func FilterUsedNetworks(nets Networks, vms Instances) Networks {
 
 	usedNetworks := Networks{}
 	for _, n := range nets {
-		src, ok := instanceNICsToSources[n.Identifier]
+		src, ok := instanceNICsToSources[n.SourceSpecificID]
 		if ok && n.Source == src {
 			usedNetworks = append(usedNetworks, n)
 		}
@@ -132,12 +132,12 @@ func (n Network) ToAPI() (*api.Network, error) {
 	}
 
 	return &api.Network{
-		Identifier: n.Identifier,
-		Location:   n.Location,
-		Source:     n.Source,
-		Type:       n.Type,
-		Properties: n.Properties,
-		Placement:  placement,
-		Overrides:  n.Overrides,
+		SourceSpecificID: n.SourceSpecificID,
+		Location:         n.Location,
+		Source:           n.Source,
+		Type:             n.Type,
+		Properties:       n.Properties,
+		Placement:        placement,
+		Overrides:        n.Overrides,
 	}, nil
 }

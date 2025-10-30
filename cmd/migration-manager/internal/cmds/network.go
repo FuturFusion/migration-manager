@@ -98,14 +98,14 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Identifier", "Location", "Source", "Type", "Target Network", "Target NIC Type", "Target Vlan"}
+	header := []string{"Source Specific ID", "Location", "Source", "Type", "Target Network", "Target NIC Type", "Target Vlan"}
 	data := [][]string{}
 
 	for _, n := range networks {
 		placement := n.Placement
 		placement.Apply(n.Overrides)
 
-		data = append(data, []string{n.Identifier, n.Location, n.Source, string(n.Type), placement.Network, string(placement.NICType), placement.VlanID})
+		data = append(data, []string{n.SourceSpecificID, n.Location, n.Source, string(n.Type), placement.Network, string(placement.NICType), placement.VlanID})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))

@@ -1656,7 +1656,7 @@ func TestBatchService_DeterminePlacement(t *testing.T) {
 		{
 			name:     "success - no scriptlet, with supported disk and network",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1", Network: "netname"}}},
-			networks: migration.Networks{{Identifier: "srcnet1", Location: "/path/to/netname"}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname"}},
 
 			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: netMap{"srcnet1": api.NetworkPlacement{Network: "netname", NICType: api.INCUSNICTYPE_MANAGED}}},
 			batchCreateAssertErr: require.NoError,
@@ -1665,7 +1665,7 @@ func TestBatchService_DeterminePlacement(t *testing.T) {
 		{
 			name:     "success - with scriptlet",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
-			networks: migration.Networks{{Identifier: "srcnet1"}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1"}},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1694,10 +1694,10 @@ def placement(instance, batch):
 				},
 			},
 			networks: migration.Networks{
-				{Identifier: "srcnet1", Location: "/path/to/netname1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED, Properties: netProps},
-				{Identifier: "srcnet2", Location: "/path/to/netname2", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED, Properties: netProps},
-				{Identifier: "srcnet3", Location: "/path/to/netname3"},
-				{Identifier: "srcnet4", Location: "/path/to/netname4", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED, Properties: netProps},
+				{SourceSpecificID: "srcnet1", Location: "/path/to/netname1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED, Properties: netProps},
+				{SourceSpecificID: "srcnet2", Location: "/path/to/netname2", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED, Properties: netProps},
+				{SourceSpecificID: "srcnet3", Location: "/path/to/netname3"},
+				{SourceSpecificID: "srcnet4", Location: "/path/to/netname4", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED, Properties: netProps},
 			},
 
 			scriptlet: `
@@ -1736,7 +1736,7 @@ def placement(instance, batch):
 					{ID: "srcnet2"},
 				},
 			},
-			networks: migration.Networks{{Identifier: "srcnet1", Location: "/path/to/netname1"}, {Identifier: "srcnet2", Location: "/path/to/netname2"}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}, {SourceSpecificID: "srcnet2", Location: "/path/to/netname2"}},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1763,7 +1763,7 @@ def placement(instance, batch):
 		{
 			name:     "error - scriptlet syntax",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
-			networks: migration.Networks{{Identifier: "srcnet1"}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1"}},
 
 			scriptlet: `
 def some_other_func(some_other_field):
@@ -1776,7 +1776,7 @@ def some_other_func(some_other_field):
 		{
 			name:     "error - set target pool for unknown disk",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
-			networks: migration.Networks{{Identifier: "srcnet1"}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1"}},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1789,7 +1789,7 @@ def placement(instance, batch):
 		{
 			name:     "error - set target pool for unsupported disk",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
-			networks: migration.Networks{{Identifier: "srcnet1"}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1"}},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1815,7 +1815,7 @@ def placement(instance, batch):
 		{
 			name:     "error - set target network for source network not assigned to instance",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{}},
-			networks: migration.Networks{{Identifier: "srcnet1"}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1"}},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1828,7 +1828,7 @@ def placement(instance, batch):
 		{
 			name:     "error - set target vlan ID for unknown network",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
-			networks: migration.Networks{{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1841,7 +1841,7 @@ def placement(instance, batch):
 		{
 			name:     "error - set target vlan ID for source network not assigned to instance",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{}},
-			networks: migration.Networks{{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1854,7 +1854,7 @@ def placement(instance, batch):
 		{
 			name:     "error - set target vlan ID for unsupported source network",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
-			networks: migration.Networks{{Identifier: "srcnet1"}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1"}},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1867,7 +1867,7 @@ def placement(instance, batch):
 		{
 			name:     "error - set target vlan ID 0",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
-			networks: migration.Networks{{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1880,7 +1880,7 @@ def placement(instance, batch):
 		{
 			name:     "error - set target vlan ID list with 0s",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
-			networks: migration.Networks{{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
 
 			scriptlet: `
 def placement(instance, batch):
@@ -1893,7 +1893,7 @@ def placement(instance, batch):
 		{
 			name:     "error - set target vlan ID invalid syntax",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{ID: "srcnet1"}}},
-			networks: migration.Networks{{Identifier: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
 
 			scriptlet: `
 def placement(instance, batch):

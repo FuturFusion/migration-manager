@@ -13,60 +13,60 @@ import (
 )
 
 var networkObjects = RegisterStmt(`
-SELECT networks.id, networks.type, networks.identifier, networks.location, sources.name AS source, networks.properties, networks.overrides
+SELECT networks.id, networks.type, networks.source_specific_id, networks.location, sources.name AS source, networks.properties, networks.overrides
   FROM networks
   JOIN sources ON networks.source_id = sources.id
-  ORDER BY networks.identifier, sources.id
+  ORDER BY networks.source_specific_id, sources.id
 `)
 
-var networkObjectsByIdentifier = RegisterStmt(`
-SELECT networks.id, networks.type, networks.identifier, networks.location, sources.name AS source, networks.properties, networks.overrides
+var networkObjectsBySourceSpecificID = RegisterStmt(`
+SELECT networks.id, networks.type, networks.source_specific_id, networks.location, sources.name AS source, networks.properties, networks.overrides
   FROM networks
   JOIN sources ON networks.source_id = sources.id
-  WHERE ( networks.identifier = ? )
-  ORDER BY networks.identifier, sources.id
+  WHERE ( networks.source_specific_id = ? )
+  ORDER BY networks.source_specific_id, sources.id
 `)
 
-var networkObjectsByIdentifierAndSource = RegisterStmt(`
-SELECT networks.id, networks.type, networks.identifier, networks.location, sources.name AS source, networks.properties, networks.overrides
+var networkObjectsBySourceSpecificIDAndSource = RegisterStmt(`
+SELECT networks.id, networks.type, networks.source_specific_id, networks.location, sources.name AS source, networks.properties, networks.overrides
   FROM networks
   JOIN sources ON networks.source_id = sources.id
-  WHERE ( networks.identifier = ? AND source = ? )
-  ORDER BY networks.identifier, sources.id
+  WHERE ( networks.source_specific_id = ? AND source = ? )
+  ORDER BY networks.source_specific_id, sources.id
 `)
 
 var networkObjectsBySource = RegisterStmt(`
-SELECT networks.id, networks.type, networks.identifier, networks.location, sources.name AS source, networks.properties, networks.overrides
+SELECT networks.id, networks.type, networks.source_specific_id, networks.location, sources.name AS source, networks.properties, networks.overrides
   FROM networks
   JOIN sources ON networks.source_id = sources.id
   WHERE ( source = ? )
-  ORDER BY networks.identifier, sources.id
+  ORDER BY networks.source_specific_id, sources.id
 `)
 
 var networkID = RegisterStmt(`
 SELECT networks.id FROM networks
   JOIN sources ON networks.source_id = sources.id
-  WHERE networks.identifier = ? AND sources.name = ?
+  WHERE networks.source_specific_id = ? AND sources.name = ?
 `)
 
 var networkCreate = RegisterStmt(`
-INSERT INTO networks (type, identifier, location, source_id, properties, overrides)
+INSERT INTO networks (type, source_specific_id, location, source_id, properties, overrides)
   VALUES (?, ?, ?, (SELECT sources.id FROM sources WHERE sources.name = ?), ?, ?)
 `)
 
 var networkUpdate = RegisterStmt(`
 UPDATE networks
-  SET type = ?, identifier = ?, location = ?, source_id = (SELECT sources.id FROM sources WHERE sources.name = ?), properties = ?, overrides = ?
+  SET type = ?, source_specific_id = ?, location = ?, source_id = (SELECT sources.id FROM sources WHERE sources.name = ?), properties = ?, overrides = ?
  WHERE id = ?
 `)
 
-var networkDeleteByIdentifierAndSource = RegisterStmt(`
-DELETE FROM networks WHERE identifier = ? AND source_id = (SELECT sources.id FROM sources WHERE sources.name = ?)
+var networkDeleteBySourceSpecificIDAndSource = RegisterStmt(`
+DELETE FROM networks WHERE source_specific_id = ? AND source_id = (SELECT sources.id FROM sources WHERE sources.name = ?)
 `)
 
 // GetNetworkID return the ID of the network with the given key.
 // generator: network ID
-func GetNetworkID(ctx context.Context, db tx, identifier string, source string) (_ int64, _err error) {
+func GetNetworkID(ctx context.Context, db tx, sourceSpecificID string, source string) (_ int64, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Network")
 	}()
@@ -76,7 +76,7 @@ func GetNetworkID(ctx context.Context, db tx, identifier string, source string) 
 		return -1, fmt.Errorf("Failed to get \"networkID\" prepared statement: %w", err)
 	}
 
-	row := stmt.QueryRowContext(ctx, identifier, source)
+	row := stmt.QueryRowContext(ctx, sourceSpecificID, source)
 	var id int64
 	err = row.Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -92,7 +92,7 @@ func GetNetworkID(ctx context.Context, db tx, identifier string, source string) 
 
 // NetworkExists checks if a network with the given key exists.
 // generator: network Exists
-func NetworkExists(ctx context.Context, db dbtx, identifier string, source string) (_ bool, _err error) {
+func NetworkExists(ctx context.Context, db dbtx, sourceSpecificID string, source string) (_ bool, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Network")
 	}()
@@ -102,7 +102,7 @@ func NetworkExists(ctx context.Context, db dbtx, identifier string, source strin
 		return false, fmt.Errorf("Failed to get \"networkID\" prepared statement: %w", err)
 	}
 
-	row := stmt.QueryRowContext(ctx, identifier, source)
+	row := stmt.QueryRowContext(ctx, sourceSpecificID, source)
 	var id int64
 	err = row.Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -118,13 +118,13 @@ func NetworkExists(ctx context.Context, db dbtx, identifier string, source strin
 
 // GetNetwork returns the network with the given key.
 // generator: network GetOne
-func GetNetwork(ctx context.Context, db dbtx, identifier string, source string) (_ *migration.Network, _err error) {
+func GetNetwork(ctx context.Context, db dbtx, sourceSpecificID string, source string) (_ *migration.Network, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Network")
 	}()
 
 	filter := NetworkFilter{}
-	filter.Identifier = &identifier
+	filter.SourceSpecificID = &sourceSpecificID
 	filter.Source = &source
 
 	objects, err := GetNetworks(ctx, db, filter)
@@ -145,7 +145,7 @@ func GetNetwork(ctx context.Context, db dbtx, identifier string, source string) 
 // networkColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the Network entity.
 func networkColumns() string {
-	return "networks.id, networks.type, networks.identifier, networks.location, sources.name AS source, networks.properties, networks.overrides"
+	return "networks.id, networks.type, networks.source_specific_id, networks.location, sources.name AS source, networks.properties, networks.overrides"
 }
 
 // getNetworks can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -156,7 +156,7 @@ func getNetworks(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migration.
 		n := migration.Network{}
 		var propertiesStr string
 		var overridesStr string
-		err := scan(&n.ID, &n.Type, &n.Identifier, &n.Location, &n.Source, &propertiesStr, &overridesStr)
+		err := scan(&n.ID, &n.Type, &n.SourceSpecificID, &n.Location, &n.Source, &propertiesStr, &overridesStr)
 		if err != nil {
 			return err
 		}
@@ -192,7 +192,7 @@ func getNetworksRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]mi
 		n := migration.Network{}
 		var propertiesStr string
 		var overridesStr string
-		err := scan(&n.ID, &n.Type, &n.Identifier, &n.Location, &n.Source, &propertiesStr, &overridesStr)
+		err := scan(&n.ID, &n.Type, &n.SourceSpecificID, &n.Location, &n.Source, &propertiesStr, &overridesStr)
 		if err != nil {
 			return err
 		}
@@ -245,18 +245,18 @@ func GetNetworks(ctx context.Context, db dbtx, filters ...NetworkFilter) (_ []mi
 	}
 
 	for i, filter := range filters {
-		if filter.Identifier != nil && filter.Source != nil {
-			args = append(args, []any{filter.Identifier, filter.Source}...)
+		if filter.SourceSpecificID != nil && filter.Source != nil {
+			args = append(args, []any{filter.SourceSpecificID, filter.Source}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, networkObjectsByIdentifierAndSource)
+				sqlStmt, err = Stmt(db, networkObjectsBySourceSpecificIDAndSource)
 				if err != nil {
-					return nil, fmt.Errorf("Failed to get \"networkObjectsByIdentifierAndSource\" prepared statement: %w", err)
+					return nil, fmt.Errorf("Failed to get \"networkObjectsBySourceSpecificIDAndSource\" prepared statement: %w", err)
 				}
 
 				break
 			}
 
-			query, err := StmtString(networkObjectsByIdentifierAndSource)
+			query, err := StmtString(networkObjectsBySourceSpecificIDAndSource)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to get \"networkObjects\" prepared statement: %w", err)
 			}
@@ -269,7 +269,31 @@ func GetNetworks(ctx context.Context, db dbtx, filters ...NetworkFilter) (_ []mi
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Source != nil && filter.Identifier == nil {
+		} else if filter.SourceSpecificID != nil && filter.Source == nil {
+			args = append(args, []any{filter.SourceSpecificID}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, networkObjectsBySourceSpecificID)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"networkObjectsBySourceSpecificID\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(networkObjectsBySourceSpecificID)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"networkObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.Source != nil && filter.SourceSpecificID == nil {
 			args = append(args, []any{filter.Source}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, networkObjectsBySource)
@@ -293,31 +317,7 @@ func GetNetworks(ctx context.Context, db dbtx, filters ...NetworkFilter) (_ []mi
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.Identifier != nil && filter.Source == nil {
-			args = append(args, []any{filter.Identifier}...)
-			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, networkObjectsByIdentifier)
-				if err != nil {
-					return nil, fmt.Errorf("Failed to get \"networkObjectsByIdentifier\" prepared statement: %w", err)
-				}
-
-				break
-			}
-
-			query, err := StmtString(networkObjectsByIdentifier)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to get \"networkObjects\" prepared statement: %w", err)
-			}
-
-			parts := strings.SplitN(query, "ORDER BY", 2)
-			if i == 0 {
-				copy(queryParts[:], parts)
-				continue
-			}
-
-			_, where, _ := strings.Cut(parts[0], "WHERE")
-			queryParts[0] += "OR" + where
-		} else if filter.Identifier == nil && filter.Source == nil {
+		} else if filter.SourceSpecificID == nil && filter.Source == nil {
 			return nil, fmt.Errorf("Cannot filter on empty NetworkFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -350,7 +350,7 @@ func CreateNetwork(ctx context.Context, db dbtx, object migration.Network) (_ in
 
 	// Populate the statement arguments.
 	args[0] = object.Type
-	args[1] = object.Identifier
+	args[1] = object.SourceSpecificID
 	args[2] = object.Location
 	args[3] = object.Source
 	marshaledProperties, err := marshalJSON(object.Properties)
@@ -392,12 +392,12 @@ func CreateNetwork(ctx context.Context, db dbtx, object migration.Network) (_ in
 
 // UpdateNetwork updates the network matching the given key parameters.
 // generator: network Update
-func UpdateNetwork(ctx context.Context, db tx, identifier string, source string, object migration.Network) (_err error) {
+func UpdateNetwork(ctx context.Context, db tx, sourceSpecificID string, source string, object migration.Network) (_err error) {
 	defer func() {
 		_err = mapErr(_err, "Network")
 	}()
 
-	id, err := GetNetworkID(ctx, db, identifier, source)
+	id, err := GetNetworkID(ctx, db, sourceSpecificID, source)
 	if err != nil {
 		return err
 	}
@@ -417,7 +417,7 @@ func UpdateNetwork(ctx context.Context, db tx, identifier string, source string,
 		return err
 	}
 
-	result, err := stmt.Exec(object.Type, object.Identifier, object.Location, object.Source, marshaledProperties, marshaledOverrides, id)
+	result, err := stmt.Exec(object.Type, object.SourceSpecificID, object.Location, object.Source, marshaledProperties, marshaledOverrides, id)
 	if err != nil {
 		return fmt.Errorf("Update \"networks\" entry failed: %w", err)
 	}
@@ -435,18 +435,18 @@ func UpdateNetwork(ctx context.Context, db tx, identifier string, source string,
 }
 
 // DeleteNetwork deletes the network matching the given key parameters.
-// generator: network DeleteOne-by-Identifier-and-Source
-func DeleteNetwork(ctx context.Context, db dbtx, identifier string, source string) (_err error) {
+// generator: network DeleteOne-by-SourceSpecificID-and-Source
+func DeleteNetwork(ctx context.Context, db dbtx, sourceSpecificID string, source string) (_err error) {
 	defer func() {
 		_err = mapErr(_err, "Network")
 	}()
 
-	stmt, err := Stmt(db, networkDeleteByIdentifierAndSource)
+	stmt, err := Stmt(db, networkDeleteBySourceSpecificIDAndSource)
 	if err != nil {
-		return fmt.Errorf("Failed to get \"networkDeleteByIdentifierAndSource\" prepared statement: %w", err)
+		return fmt.Errorf("Failed to get \"networkDeleteBySourceSpecificIDAndSource\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(identifier, source)
+	result, err := stmt.Exec(sourceSpecificID, source)
 	if err != nil {
 		return fmt.Errorf("Delete \"networks\": %w", err)
 	}

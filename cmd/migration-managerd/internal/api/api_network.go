@@ -272,7 +272,7 @@ func networkOverridePut(d *Daemon, r *http.Request) response.Response {
 
 	err = d.network.Update(ctx, &migration.Network{
 		ID:         currentNetwork.ID,
-		Identifier: currentNetwork.Identifier,
+		SourceSpecificID: currentNetwork.SourceSpecificID,
 		Location:   currentNetwork.Location,
 		Type:       currentNetwork.Type,
 		Properties: currentNetwork.Properties,
@@ -280,7 +280,7 @@ func networkOverridePut(d *Daemon, r *http.Request) response.Response {
 		Overrides:  overrides,
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", currentNetwork.Identifier, err))
+		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", currentNetwork.SourceSpecificID, err))
 	}
 
 	err = trans.Commit()
@@ -288,7 +288,7 @@ func networkOverridePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
-	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+currentNetwork.Identifier)
+	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+currentNetwork.SourceSpecificID)
 }
 
 // swagger:operation GET /1.0/networks/{name}/instances?source={source} networks networks_instances_get
@@ -356,7 +356,7 @@ func networkInstancesGet(d *Daemon, r *http.Request) response.Response {
 
 		for _, inst := range instances {
 			for _, nic := range inst.Properties.NICs {
-				if nic.ID == network.Identifier {
+				if nic.ID == network.SourceSpecificID {
 					result = append(result, inst.ToAPI())
 				}
 			}

@@ -67,7 +67,7 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 	for _, n := range instance.Properties.NICs {
 		var baseNetwork api.Network
 		for _, net := range usedNetworks {
-			if n.ID == net.Identifier && instance.Source == net.Source {
+			if n.ID == net.SourceSpecificID && instance.Source == net.Source {
 				apiNet, err := net.ToAPI()
 				if err != nil {
 					return nil, err
@@ -78,7 +78,7 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 			}
 		}
 
-		if baseNetwork.Identifier == "" {
+		if baseNetwork.SourceSpecificID == "" {
 			return nil, fmt.Errorf("No network %q associated with instance %q on source %q", n.ID, instance.GetName(), instance.Source)
 		}
 

@@ -43,9 +43,9 @@ func ValidNICType(s string) error {
 //
 // swagger:model
 type Network struct {
-	// The identifier of the network
+	// The source-specific identifier of the network
 	// Example: network-23
-	Identifier string `json:"identifier" yaml:"identifier"`
+	SourceSpecificID string `json:"source_specific_id" yaml:"source_specific_id"`
 
 	// vCenter source for the network
 	// Example: vcenter01

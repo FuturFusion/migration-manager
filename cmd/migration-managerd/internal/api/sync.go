@@ -441,16 +441,16 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 			// Build maps to make comparison easier.
 			assignedNetworksByName := map[string]migration.Network{}
 			for _, net := range migration.FilterUsedNetworks(allNetworks, assignedInstances) {
-				assignedNetworksByName[net.Identifier] = net
+				assignedNetworksByName[net.SourceSpecificID] = net
 			}
 
 			for _, dbNetwork := range allNetworks {
 				// If the network is already assigned, then omit it from consideration.
-				_, ok := assignedNetworksByName[dbNetwork.Identifier]
+				_, ok := assignedNetworksByName[dbNetwork.SourceSpecificID]
 				if ok {
-					_, ok := srcNetworks[dbNetwork.Identifier]
+					_, ok := srcNetworks[dbNetwork.SourceSpecificID]
 					if ok {
-						delete(srcNetworks, dbNetwork.Identifier)
+						delete(srcNetworks, dbNetwork.SourceSpecificID)
 					}
 
 					continue
@@ -458,7 +458,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 
 				// If the network data came from the instance, but we already have a network record from an NSX source, then don't overwrite it.
 				// We may get here if NSX somehow returns an error in this sync, but not in an earlier one.
-				srcNet, ok := srcNetworks[dbNetwork.Identifier]
+				srcNet, ok := srcNetworks[dbNetwork.SourceSpecificID]
 				if ok && slices.Contains([]api.NetworkType{api.NETWORKTYPE_VMWARE_NSX, api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX}, dbNetwork.Type) {
 					var existingProps internalAPI.NSXNetworkProperties
 					err := json.Unmarshal(dbNetwork.Properties, &existingProps)
@@ -473,18 +473,18 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 					}
 
 					if existingProps.Segment.Name != "" && newProps.SegmentPath != "" {
-						slog.Info("Not syncing NSX network due to missing NSX configuration", slog.String("source", dbNetwork.Source), slog.String("identifier", dbNetwork.Identifier), slog.String("location", dbNetwork.Location))
+						slog.Info("Not syncing NSX network due to missing NSX configuration", slog.String("source", dbNetwork.Source), slog.String("identifier", dbNetwork.SourceSpecificID), slog.String("location", dbNetwork.Location))
 						// Also remove the source network entry so that the network is ignored.
-						_, ok := srcNetworks[dbNetwork.Identifier]
+						_, ok := srcNetworks[dbNetwork.SourceSpecificID]
 						if ok {
-							delete(srcNetworks, dbNetwork.Identifier)
+							delete(srcNetworks, dbNetwork.SourceSpecificID)
 						}
 
 						continue
 					}
 				}
 
-				existingNetworks[dbNetwork.Identifier] = dbNetwork
+				existingNetworks[dbNetwork.SourceSpecificID] = dbNetwork
 			}
 
 			err = d.syncNetworksFromSource(ctx, srcName, d.network, existingNetworks, srcNetworks)
@@ -577,11 +577,11 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 	for name, network := range srcNetworks {
 		_, ok := existingNetworks[name]
 		if !ok {
-			log := log.With(slog.String("network_id", network.Identifier), slog.String("network", network.Location))
+			log := log.With(slog.String("network_id", network.SourceSpecificID), slog.String("network", network.Location))
 			log.Info("Recording new network detected on source")
 			_, err := n.Create(ctx, network)
 			if err != nil {
-				return fmt.Errorf("Failed to create network %q (%q): %w", network.Identifier, network.Location, err)
+				return fmt.Errorf("Failed to create network %q (%q): %w", network.SourceSpecificID, network.Location, err)
 			}
 		}
 	}
@@ -966,7 +966,7 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 	instanceMap := make(map[uuid.UUID]migration.Instance, len(instances))
 
 	for _, network := range networks {
-		networkMap[network.Identifier] = network
+		networkMap[network.SourceSpecificID] = network
 	}
 
 	for _, inst := range instances {

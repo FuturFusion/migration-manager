@@ -728,7 +728,7 @@ def placement(instance, batch):
 
 				for _, nic := range i.Properties.NICs {
 					if !createdNetworks[nic.ID] {
-						_, err = d.network.Create(d.ShutdownCtx, migration.Network{Type: api.NETWORKTYPE_VMWARE_STANDARD, Identifier: nic.ID, Location: "path/to/" + nic.Network, Source: i.Source})
+						_, err = d.network.Create(d.ShutdownCtx, migration.Network{Type: api.NETWORKTYPE_VMWARE_STANDARD, SourceSpecificID: nic.ID, Location: "path/to/" + nic.Network, Source: i.Source})
 						require.NoError(t, err)
 
 						createdNetworks[nic.ID] = true

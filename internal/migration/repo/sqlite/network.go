@@ -39,7 +39,7 @@ func (n network) GetByNameAndSource(ctx context.Context, name string, srcName st
 
 func (n network) Update(ctx context.Context, in migration.Network) error {
 	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, n.db), func(ctx context.Context, tx transaction.TX) error {
-		return entities.UpdateNetwork(ctx, tx, in.Identifier, in.Source, in)
+		return entities.UpdateNetwork(ctx, tx, in.SourceSpecificID, in.Source, in)
 	})
 }
 
