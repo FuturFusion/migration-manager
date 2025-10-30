@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/FuturFusion/migration-manager/internal/db/schema"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -121,6 +123,63 @@ var updates = map[int]schema.Update{
 	14: updateFromV13,
 	15: updateFromV14,
 	16: updateFromV15,
+	17: updateFromV16,
+}
+
+func updateFromV16(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE networks_new (
+    id                 INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    type               TEXT NOT NULL,
+    uuid               TEXT NOT NULL,
+    source_specific_id TEXT NOT NULL,
+    location           TEXT NOT NULL,
+    properties         TEXT NOT NULL,
+    source_id          INTEGER NOT NULL,
+    overrides          TEXT NOT NULL,
+    UNIQUE (uuid),
+    UNIQUE (source_specific_id, source_id),
+    FOREIGN KEY(source_id) REFERENCES sources(id) ON DELETE CASCADE
+  );
+
+INSERT INTO networks_new (id, type, uuid, source_specific_id, location, properties, source_id, overrides)
+SELECT id, type, random(), identifier, location, properties, source_id, overrides FROM networks;
+DROP TABLE networks;
+ALTER TABLE networks_new RENAME TO networks;
+`)
+	if err != nil {
+		return err
+	}
+
+	rows, err := tx.QueryContext(ctx, "SELECT id FROM networks")
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = rows.Close() }()
+	ids := []int64{}
+	for rows.Next() {
+		var id int64
+		err := rows.Scan(&id)
+		if err != nil {
+			return err
+		}
+
+		ids = append(ids, id)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+
+	for _, id := range ids {
+		_, err := tx.ExecContext(ctx, `UPDATE NETWORKS set uuid = ? where id = ?`, uuid.New(), id)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func updateFromV15(ctx context.Context, tx *sql.Tx) error {
