@@ -6,7 +6,7 @@ import (
 
 // InstanceProperties are all properties supported by instances.
 type InstanceProperties struct {
-	InstancePropertiesConfigurable
+	InstancePropertiesConfigurable `yaml:",inline"`
 
 	UUID             uuid.UUID `json:"uuid"              yaml:"uuid"              expr:"uuid"`
 	Location         string    `json:"location"          yaml:"location"          expr:"location"`
