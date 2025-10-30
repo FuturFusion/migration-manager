@@ -430,6 +430,33 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 			instanceIsAssigned[inst.UUID] = true
 		}
 
+		// Sync instances before networks so we can prune networks according to the most up-to-date information.
+		for srcName, srcInstances := range instancesBySrc {
+			// Ensure we only compare instances in the same source.
+			existingInstances := map[uuid.UUID]migration.Instance{}
+			allInstances, err := d.instance.GetAllBySource(ctx, srcName)
+			if err != nil {
+				return fmt.Errorf("Failed to get internal instance records for source %q: %w", srcName, err)
+			}
+
+			for _, inst := range allInstances {
+				// If the instance is already assigned, then omit it from consideration, unless it is disabled.
+				if instanceIsAssigned[inst.UUID] && inst.DisabledReason(api.InstanceRestrictionOverride{}) == nil {
+					delete(srcInstances, inst.UUID)
+					continue
+				}
+
+				existingInstances[inst.UUID] = inst
+			}
+
+			srcWarnings, err := syncInstancesFromSource(ctx, srcName, d.instance, existingInstances, srcInstances)
+			if err != nil {
+				return fmt.Errorf("Failed to sync instances from %q: %w", srcName, err)
+			}
+
+			warnings = append(warnings, srcWarnings...)
+		}
+
 		for srcName, srcNetworks := range networksBySrc {
 			// Ensure we only compare networks in the same source.
 			existingNetworks := map[string]migration.Network{}
@@ -438,16 +465,27 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 				return fmt.Errorf("Failed to get internal network records for source %q: %w", srcName, err)
 			}
 
+			allInstancesBySrc, err := d.instance.GetAllBySource(ctx, srcName)
+			if err != nil {
+				return fmt.Errorf("Failed to get all instances in source %q: %w", srcName, err)
+			}
+
 			// Build maps to make comparison easier.
 			assignedNetworksByName := map[string]migration.Network{}
 			for _, net := range migration.FilterUsedNetworks(allNetworks, assignedInstances) {
 				assignedNetworksByName[net.SourceSpecificID] = net
 			}
 
+			usedNetworksByName := map[string]migration.Network{}
+			for _, net := range migration.FilterUsedNetworks(allNetworks, allInstancesBySrc) {
+				usedNetworksByName[net.SourceSpecificID] = net
+			}
+
 			for _, dbNetwork := range allNetworks {
-				// If the network is already assigned, then omit it from consideration.
-				_, ok := assignedNetworksByName[dbNetwork.SourceSpecificID]
-				if ok {
+				// If the network is already assigned to a batch, or has no instances using it, then omit it from consideration.
+				_, netHasQueuedInstance := assignedNetworksByName[dbNetwork.SourceSpecificID]
+				_, netHasInstance := usedNetworksByName[dbNetwork.SourceSpecificID]
+				if netHasQueuedInstance || !netHasInstance {
 					_, ok := srcNetworks[dbNetwork.SourceSpecificID]
 					if ok {
 						delete(srcNetworks, dbNetwork.SourceSpecificID)
@@ -491,32 +529,6 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 			if err != nil {
 				return fmt.Errorf("Failed to sync networks from %q: %w", srcName, err)
 			}
-		}
-
-		for srcName, srcInstances := range instancesBySrc {
-			// Ensure we only compare instances in the same source.
-			existingInstances := map[uuid.UUID]migration.Instance{}
-			allInstances, err := d.instance.GetAllBySource(ctx, srcName)
-			if err != nil {
-				return fmt.Errorf("Failed to get internal instance records for source %q: %w", srcName, err)
-			}
-
-			for _, inst := range allInstances {
-				// If the instance is already assigned, then omit it from consideration, unless it is disabled.
-				if instanceIsAssigned[inst.UUID] && inst.DisabledReason(api.InstanceRestrictionOverride{}) == nil {
-					delete(srcInstances, inst.UUID)
-					continue
-				}
-
-				existingInstances[inst.UUID] = inst
-			}
-
-			srcWarnings, err := syncInstancesFromSource(ctx, srcName, d.instance, existingInstances, srcInstances)
-			if err != nil {
-				return fmt.Errorf("Failed to sync instances from %q: %w", srcName, err)
-			}
-
-			warnings = append(warnings, srcWarnings...)
 		}
 
 		return nil
