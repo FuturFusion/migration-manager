@@ -661,6 +661,12 @@ var batchStartLock sync.Mutex
 func batchStartPost(d *Daemon, r *http.Request) response.Response {
 	batchStartLock.Lock()
 	defer batchStartLock.Unlock()
+
+	err := d.WaitForSchemaUpdate(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
 	batchName := r.PathValue("name")
 
 	// Check the worker endpoint is valid before starting the batch.
