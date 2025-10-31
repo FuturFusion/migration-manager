@@ -14,6 +14,7 @@ import Instance from "pages/Instance";
 import InstanceDetail from "pages/InstanceDetail";
 import Network from "pages/Network";
 import NetworkDetail from "pages/NetworkDetail";
+import Settings from "pages/Settings";
 import Source from "pages/Source";
 import SourceCreate from "pages/SourceCreate";
 import SourceDetail from "pages/SourceDetail";
@@ -52,6 +53,8 @@ function App() {
         >
           <Routes>
             <Route path="/ui" element={<Home />} />
+            <Route path="/ui/settings" element={<Settings />} />
+            <Route path="/ui/settings/:activeTab" element={<Settings />} />
             <Route path="/ui/sources" element={<Source />} />
             <Route path="/ui/sources/create" element={<SourceCreate />} />
             <Route path="/ui/sources/:name" element={<SourceDetail />} />
