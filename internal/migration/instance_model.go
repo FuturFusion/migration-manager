@@ -9,6 +9,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/validate"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -50,6 +51,19 @@ func (i Instance) Validate() error {
 		return NewValidationErrf("Invalid instance, source id can not be empty")
 	}
 
+	if i.Overrides.Properties.Name != "" {
+		err := validate.IsHostname(i.Overrides.Properties.Name)
+		if err != nil {
+			return NewValidationErrf("Invalid instance override, name %q is not a valid hostname: %v", i.Overrides.Properties.Name, err)
+		}
+	}
+
+	for _, nic := range i.Properties.NICs {
+		if nic.UUID == uuid.Nil {
+			return NewValidationErrf("Instance NIC %q has empty UUID", nic.Network)
+		}
+	}
+
 	return nil
 }
 
@@ -65,6 +79,11 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 
 	props := i.Properties
 	props.Apply(i.Overrides.Properties)
+	err := validate.IsHostname(props.Name)
+	if err != nil {
+		return fmt.Errorf("Instance name %q is not a valid hostname: %w", props.Name, err)
+	}
+
 	if props.OS == "" || props.OSVersion == "" {
 		if !overrides.AllowUnknownOS {
 			return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
@@ -103,7 +122,10 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 // GetName returns the name of the instance, which may not be unique among all instances for a given source.
 // If a unique, human-readable identifier is needed, use the Location property.
 func (i Instance) GetName() string {
-	return i.Properties.Name
+	props := i.Properties
+	props.Apply(i.Overrides.Properties)
+
+	return props.Name
 }
 
 // GetOSType returns the OS type, as determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html

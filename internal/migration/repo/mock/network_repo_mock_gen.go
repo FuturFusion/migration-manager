@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/google/uuid"
 )
 
 // Ensure, that NetworkRepoMock does implement migration.NetworkRepo.
@@ -35,6 +36,9 @@ var _ migration.NetworkRepo = &NetworkRepoMock{}
 //			GetByNameAndSourceFunc: func(ctx context.Context, name string, src string) (*migration.Network, error) {
 //				panic("mock out the GetByNameAndSource method")
 //			},
+//			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.Network, error) {
+//				panic("mock out the GetByUUID method")
+//			},
 //			UpdateFunc: func(ctx context.Context, network migration.Network) error {
 //				panic("mock out the Update method")
 //			},
@@ -59,6 +63,9 @@ type NetworkRepoMock struct {
 
 	// GetByNameAndSourceFunc mocks the GetByNameAndSource method.
 	GetByNameAndSourceFunc func(ctx context.Context, name string, src string) (*migration.Network, error)
+
+	// GetByUUIDFunc mocks the GetByUUID method.
+	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.Network, error)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, network migration.Network) error
@@ -102,6 +109,13 @@ type NetworkRepoMock struct {
 			// Src is the src argument value.
 			Src string
 		}
+		// GetByUUID holds details about calls to the GetByUUID method.
+		GetByUUID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -115,6 +129,7 @@ type NetworkRepoMock struct {
 	lockGetAll                sync.RWMutex
 	lockGetAllBySource        sync.RWMutex
 	lockGetByNameAndSource    sync.RWMutex
+	lockGetByUUID             sync.RWMutex
 	lockUpdate                sync.RWMutex
 }
 
@@ -299,6 +314,42 @@ func (mock *NetworkRepoMock) GetByNameAndSourceCalls() []struct {
 	mock.lockGetByNameAndSource.RLock()
 	calls = mock.calls.GetByNameAndSource
 	mock.lockGetByNameAndSource.RUnlock()
+	return calls
+}
+
+// GetByUUID calls GetByUUIDFunc.
+func (mock *NetworkRepoMock) GetByUUID(ctx context.Context, id uuid.UUID) (*migration.Network, error) {
+	if mock.GetByUUIDFunc == nil {
+		panic("NetworkRepoMock.GetByUUIDFunc: method is nil but NetworkRepo.GetByUUID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetByUUID.Lock()
+	mock.calls.GetByUUID = append(mock.calls.GetByUUID, callInfo)
+	mock.lockGetByUUID.Unlock()
+	return mock.GetByUUIDFunc(ctx, id)
+}
+
+// GetByUUIDCalls gets all the calls that were made to GetByUUID.
+// Check the length with:
+//
+//	len(mockedNetworkRepo.GetByUUIDCalls())
+func (mock *NetworkRepoMock) GetByUUIDCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetByUUID.RLock()
+	calls = mock.calls.GetByUUID
+	mock.lockGetByUUID.RUnlock()
 	return calls
 }
 

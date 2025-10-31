@@ -152,7 +152,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 					migrationWindow = &migration.MigrationWindow{}
 				}
 
-				result = append(result, queueItem.ToAPI(instance.Properties.Name, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID), *migrationWindow))
+				result = append(result, queueItem.ToAPI(instance.GetName(), d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID), *migrationWindow))
 			}
 
 			return nil
@@ -255,7 +255,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 			}
 		}
 
-		instanceName = instance.Properties.Name
+		instanceName = instance.GetName()
 
 		return nil
 	})

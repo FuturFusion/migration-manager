@@ -430,69 +430,52 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 			instanceIsAssigned[inst.UUID] = true
 		}
 
+		// Generate UUIDs for networks.
+		dbNetworksBySrc := map[string]migration.Networks{}
 		for srcName, srcNetworks := range networksBySrc {
-			// Ensure we only compare networks in the same source.
-			existingNetworks := map[string]migration.Network{}
-			allNetworks, err := d.network.GetAllBySource(ctx, srcName)
+			dbNetworksBySrc[srcName], err = d.network.GetAllBySource(ctx, srcName)
 			if err != nil {
 				return fmt.Errorf("Failed to get internal network records for source %q: %w", srcName, err)
 			}
 
-			// Build maps to make comparison easier.
-			assignedNetworksByName := map[string]migration.Network{}
-			for _, net := range migration.FilterUsedNetworks(allNetworks, assignedInstances) {
-				assignedNetworksByName[net.Identifier] = net
+			dbNetworksByID := map[string]migration.Network{}
+			netUUIDsByID := map[string]uuid.UUID{}
+			for _, net := range dbNetworksBySrc[srcName] {
+				dbNetworksByID[net.SourceSpecificID] = net
+				netUUIDsByID[net.SourceSpecificID] = net.UUID
 			}
 
-			for _, dbNetwork := range allNetworks {
-				// If the network is already assigned, then omit it from consideration.
-				_, ok := assignedNetworksByName[dbNetwork.Identifier]
+			// Generate a UUID for each newly discovered network.
+			for _, srcNet := range srcNetworks {
+				dbNet, ok := dbNetworksByID[srcNet.SourceSpecificID]
 				if ok {
-					_, ok := srcNetworks[dbNetwork.Identifier]
-					if ok {
-						delete(srcNetworks, dbNetwork.Identifier)
+					srcNet.UUID = dbNet.UUID
+				} else {
+					srcNet.UUID, err = uuid.NewRandom()
+					if err != nil {
+						return fmt.Errorf("Failed to generate UUID for network %q in source %q: %w", srcNet.Location, srcName, err)
 					}
 
-					continue
+					netUUIDsByID[srcNet.SourceSpecificID] = srcNet.UUID
 				}
 
-				// If the network data came from the instance, but we already have a network record from an NSX source, then don't overwrite it.
-				// We may get here if NSX somehow returns an error in this sync, but not in an earlier one.
-				srcNet, ok := srcNetworks[dbNetwork.Identifier]
-				if ok && slices.Contains([]api.NetworkType{api.NETWORKTYPE_VMWARE_NSX, api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX}, dbNetwork.Type) {
-					var existingProps internalAPI.NSXNetworkProperties
-					err := json.Unmarshal(dbNetwork.Properties, &existingProps)
-					if err != nil {
-						return err
-					}
-
-					var newProps internalAPI.VCenterNetworkProperties
-					err = json.Unmarshal(srcNet.Properties, &newProps)
-					if err != nil {
-						return err
-					}
-
-					if existingProps.Segment.Name != "" && newProps.SegmentPath != "" {
-						slog.Info("Not syncing NSX network due to missing NSX configuration", slog.String("source", dbNetwork.Source), slog.String("identifier", dbNetwork.Identifier), slog.String("location", dbNetwork.Location))
-						// Also remove the source network entry so that the network is ignored.
-						_, ok := srcNetworks[dbNetwork.Identifier]
-						if ok {
-							delete(srcNetworks, dbNetwork.Identifier)
-						}
-
-						continue
-					}
-				}
-
-				existingNetworks[dbNetwork.Identifier] = dbNetwork
+				networksBySrc[srcName][srcNet.SourceSpecificID] = srcNet
 			}
 
-			err = d.syncNetworksFromSource(ctx, srcName, d.network, existingNetworks, srcNetworks)
-			if err != nil {
-				return fmt.Errorf("Failed to sync networks from %q: %w", srcName, err)
+			// Update instances NICs with the network UUID too.
+			for _, inst := range instancesBySrc[srcName] {
+				for i, nic := range inst.Properties.NICs {
+					netUUID, ok := netUUIDsByID[nic.ID]
+					if ok {
+						inst.Properties.NICs[i].UUID = netUUID
+					}
+				}
+
+				instancesBySrc[srcName][inst.UUID] = inst
 			}
 		}
 
+		// Sync instances before networks so we can prune networks according to the most up-to-date information.
 		for srcName, srcInstances := range instancesBySrc {
 			// Ensure we only compare instances in the same source.
 			existingInstances := map[uuid.UUID]migration.Instance{}
@@ -517,6 +500,76 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 			}
 
 			warnings = append(warnings, srcWarnings...)
+		}
+
+		for srcName, srcNetworks := range networksBySrc {
+			// Ensure we only compare networks in the same source.
+			existingNetworks := map[string]migration.Network{}
+
+			allInstancesBySrc, err := d.instance.GetAllBySource(ctx, srcName)
+			if err != nil {
+				return fmt.Errorf("Failed to get all instances in source %q: %w", srcName, err)
+			}
+
+			// Build maps to make comparison easier.
+			assignedNetworksByName := map[string]migration.Network{}
+			for _, net := range migration.FilterUsedNetworks(dbNetworksBySrc[srcName], assignedInstances) {
+				assignedNetworksByName[net.SourceSpecificID] = net
+			}
+
+			usedNetworksByName := map[string]migration.Network{}
+			for _, net := range migration.FilterUsedNetworks(dbNetworksBySrc[srcName], allInstancesBySrc) {
+				usedNetworksByName[net.SourceSpecificID] = net
+			}
+
+			for _, dbNetwork := range dbNetworksBySrc[srcName] {
+				// If the network is already assigned to a batch, or has no instances using it, then omit it from consideration.
+				_, netHasQueuedInstance := assignedNetworksByName[dbNetwork.SourceSpecificID]
+				_, netHasInstance := usedNetworksByName[dbNetwork.SourceSpecificID]
+				if netHasQueuedInstance || !netHasInstance {
+					_, ok := srcNetworks[dbNetwork.SourceSpecificID]
+					if ok {
+						delete(srcNetworks, dbNetwork.SourceSpecificID)
+					}
+
+					continue
+				}
+
+				// If the network data came from the instance, but we already have a network record from an NSX source, then don't overwrite it.
+				// We may get here if NSX somehow returns an error in this sync, but not in an earlier one.
+				srcNet, ok := srcNetworks[dbNetwork.SourceSpecificID]
+				if ok && slices.Contains([]api.NetworkType{api.NETWORKTYPE_VMWARE_NSX, api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX}, dbNetwork.Type) {
+					var existingProps internalAPI.NSXNetworkProperties
+					err := json.Unmarshal(dbNetwork.Properties, &existingProps)
+					if err != nil {
+						return err
+					}
+
+					var newProps internalAPI.VCenterNetworkProperties
+					err = json.Unmarshal(srcNet.Properties, &newProps)
+					if err != nil {
+						return err
+					}
+
+					if existingProps.Segment.Name != "" && newProps.SegmentPath != "" {
+						slog.Info("Not syncing NSX network due to missing NSX configuration", slog.String("source", dbNetwork.Source), slog.String("identifier", dbNetwork.SourceSpecificID), slog.String("location", dbNetwork.Location))
+						// Also remove the source network entry so that the network is ignored.
+						_, ok := srcNetworks[dbNetwork.SourceSpecificID]
+						if ok {
+							delete(srcNetworks, dbNetwork.SourceSpecificID)
+						}
+
+						continue
+					}
+				}
+
+				existingNetworks[dbNetwork.SourceSpecificID] = dbNetwork
+			}
+
+			err = d.syncNetworksFromSource(ctx, srcName, d.network, existingNetworks, srcNetworks)
+			if err != nil {
+				return fmt.Errorf("Failed to sync networks from %q: %w", srcName, err)
+			}
 		}
 
 		return nil
@@ -577,11 +630,11 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 	for name, network := range srcNetworks {
 		_, ok := existingNetworks[name]
 		if !ok {
-			log := log.With(slog.String("network_id", network.Identifier), slog.String("network", network.Location))
+			log := log.With(slog.String("network_id", network.SourceSpecificID), slog.String("network", network.Location))
 			log.Info("Recording new network detected on source")
 			_, err := n.Create(ctx, network)
 			if err != nil {
-				return fmt.Errorf("Failed to create network %q (%q): %w", network.Identifier, network.Location, err)
+				return fmt.Errorf("Failed to create network %q (%q): %w", network.SourceSpecificID, network.Location, err)
 			}
 		}
 	}
@@ -966,7 +1019,7 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 	instanceMap := make(map[uuid.UUID]migration.Instance, len(instances))
 
 	for _, network := range networks {
-		networkMap[network.Identifier] = network
+		networkMap[network.SourceSpecificID] = network
 	}
 
 	for _, inst := range instances {

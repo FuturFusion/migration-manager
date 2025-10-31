@@ -1,5 +1,4 @@
 //go:build cgo && linux
-// +build cgo,linux
 
 package source
 

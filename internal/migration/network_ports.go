@@ -1,6 +1,10 @@
 package migration
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+)
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg migration_test -out network_service_mock_gen_test.go -rm . NetworkService
 
@@ -9,8 +13,10 @@ type NetworkService interface {
 	GetAll(ctx context.Context) (Networks, error)
 	GetAllBySource(ctx context.Context, src string) (Networks, error)
 	GetByNameAndSource(ctx context.Context, name string, src string) (*Network, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (*Network, error)
 	Update(ctx context.Context, network *Network) error
 	DeleteByNameAndSource(ctx context.Context, name string, src string) error
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/network_repo_mock_gen.go -rm . NetworkRepo
@@ -21,6 +27,7 @@ type NetworkRepo interface {
 	Create(ctx context.Context, network Network) (int64, error)
 	GetAll(ctx context.Context) (Networks, error)
 	GetAllBySource(ctx context.Context, src string) (Networks, error)
+	GetByUUID(ctx context.Context, id uuid.UUID) (*Network, error)
 	GetByNameAndSource(ctx context.Context, name string, src string) (*Network, error)
 	Update(ctx context.Context, network Network) error
 	DeleteByNameAndSource(ctx context.Context, name string, src string) error

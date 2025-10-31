@@ -98,14 +98,14 @@ func (c *cmdNetworkList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Identifier", "Location", "Source", "Type", "Target Network", "Target NIC Type", "Target Vlan"}
+	header := []string{"UUID", "Source Specific ID", "Location", "Source", "Type", "Target Network", "Target NIC Type", "Target Vlan"}
 	data := [][]string{}
 
 	for _, n := range networks {
 		placement := n.Placement
 		placement.Apply(n.Overrides)
 
-		data = append(data, []string{n.Identifier, n.Location, n.Source, string(n.Type), placement.Network, string(placement.NICType), placement.VlanID})
+		data = append(data, []string{n.UUID.String(), n.SourceSpecificID, n.Location, n.Source, string(n.Type), placement.Network, string(placement.NICType), placement.VlanID})
 	}
 
 	sort.Sort(util.SortColumnsNaturally(data))
@@ -120,7 +120,7 @@ type cmdNetworkRemove struct {
 
 func (c *cmdNetworkRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "remove <name> <source>"
+	cmd.Use = "remove <uuid>"
 	cmd.Short = "Remove network"
 	cmd.Long = `Description:
   Remove network
@@ -133,21 +133,19 @@ func (c *cmdNetworkRemove) Command() *cobra.Command {
 
 func (c *cmdNetworkRemove) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := c.global.CheckArgs(cmd, args, 2, 2)
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
-	name := args[0]
-	source := args[1]
-
+	uuidStr := args[0]
 	// Remove the network.
-	_, _, err = c.global.doHTTPRequestV1("/networks/"+name, http.MethodDelete, "source="+source, nil)
+	_, _, err = c.global.doHTTPRequestV1("/networks/"+uuidStr, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
 
-	cmd.Printf("Successfully removed network %q from source %q.\n", name, source)
+	cmd.Printf("Successfully removed network %q.\n", uuidStr)
 	return nil
 }
 
@@ -158,7 +156,7 @@ type cmdNetworkUpdate struct {
 
 func (c *cmdNetworkUpdate) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "edit <name> <source>"
+	cmd.Use = "edit <uuid>"
 	cmd.Short = "Update target network configuration"
 	cmd.Long = `Description:
   Update target network configuration as YAML
@@ -177,13 +175,12 @@ func (c *cmdNetworkUpdate) helpTemplate() string {
 
 func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := c.global.CheckArgs(cmd, args, 2, 2)
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
-	name := args[0]
-	source := args[1]
+	uuidStr := args[0]
 
 	var contents []byte
 	if !termios.IsTerminal(getStdinFd()) {
@@ -193,7 +190,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 	} else {
 		// Get the existing network.
-		resp, _, err := c.global.doHTTPRequestV1("/networks/"+name, http.MethodGet, "source="+source, nil)
+		resp, _, err := c.global.doHTTPRequestV1("/networks/"+uuidStr, http.MethodGet, "", nil)
 		if err != nil {
 			return err
 		}
@@ -228,7 +225,7 @@ func (c *cmdNetworkUpdate) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the existing network.
-	_, _, err = c.global.doHTTPRequestV1("/networks/"+name+"/override", http.MethodPut, "source="+source, content)
+	_, _, err = c.global.doHTTPRequestV1("/networks/"+uuidStr+"/override", http.MethodPut, "", content)
 	if err != nil {
 		return err
 	}
@@ -243,7 +240,7 @@ type cmdNetworkShow struct {
 
 func (c *cmdNetworkShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "show"
+	cmd.Use = "show <uuid>"
 	cmd.Short = "Show network configuration"
 	cmd.Long = `Description:
   Show the network configuration as YAML
@@ -256,13 +253,13 @@ func (c *cmdNetworkShow) Command() *cobra.Command {
 
 func (c *cmdNetworkShow) Run(cmd *cobra.Command, args []string) error {
 	// Quick checks.
-	exit, err := c.global.CheckArgs(cmd, args, 2, 2)
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
 	if exit {
 		return err
 	}
 
 	// Get the list of all networks.
-	resp, _, err := c.global.doHTTPRequestV1("/networks/"+args[0], http.MethodGet, "source="+args[1], nil)
+	resp, _, err := c.global.doHTTPRequestV1("/networks/"+args[0], http.MethodGet, "", nil)
 	if err != nil {
 		return err
 	}

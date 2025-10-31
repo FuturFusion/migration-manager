@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -26,8 +27,9 @@ func (t Target) Validate() error {
 		return NewValidationErrf("Invalid target, id can not be negative")
 	}
 
-	if t.Name == "" {
-		return NewValidationErrf("Invalid target, name can not be empty")
+	err := validate.IsAPIName(t.Name, false)
+	if err != nil {
+		return NewValidationErrf("Invalid target, name %q: %v", t.Name, err)
 	}
 
 	if t.TargetType != api.TARGETTYPE_INCUS {
@@ -38,7 +40,6 @@ func (t Target) Validate() error {
 		return NewValidationErrf("Invalid target, properties can not be null")
 	}
 
-	var err error
 	switch t.TargetType {
 	case api.TARGETTYPE_INCUS:
 		err = t.validateTargetTypeIncus()

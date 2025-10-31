@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	_sourceMigration "github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/google/uuid"
 )
 
 // NetworkRepoWithSlog implements _sourceMigration.NetworkRepo that is instrumented with slog logger
@@ -123,6 +124,26 @@ func (_d NetworkRepoWithSlog) GetByNameAndSource(ctx context.Context, name strin
 		}
 	}()
 	return _d._base.GetByNameAndSource(ctx, name, src)
+}
+
+// GetByUUID implements _sourceMigration.NetworkRepo
+func (_d NetworkRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (np1 *_sourceMigration.Network, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("id", id),
+	).Debug("NetworkRepoWithSlog: calling GetByUUID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("np1", np1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("NetworkRepoWithSlog: method GetByUUID returned an error")
+		} else {
+			log.Debug("NetworkRepoWithSlog: method GetByUUID finished")
+		}
+	}()
+	return _d._base.GetByUUID(ctx, id)
 }
 
 // Update implements _sourceMigration.NetworkRepo

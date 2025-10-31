@@ -4,7 +4,8 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"net/url"
-	"strings"
+
+	"github.com/lxc/incus/v6/shared/validate"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -24,12 +25,9 @@ func (s Source) Validate() error {
 		return NewValidationErrf("Invalid source, id can not be negative")
 	}
 
-	if s.Name == "" {
-		return NewValidationErrf("Invalid source, name can not be empty")
-	}
-
-	if strings.HasPrefix(s.Name, ":") {
-		return NewValidationErrf("Invalid source, name %q can not begin with a colon", s.Name)
+	err := validate.IsAPIName(s.Name, false)
+	if err != nil {
+		return NewValidationErrf("Invalid source, name %q: %v", s.Name, err)
 	}
 
 	if s.SourceType != api.SOURCETYPE_COMMON && s.SourceType != api.SOURCETYPE_VMWARE && s.SourceType != api.SOURCETYPE_NSX {
@@ -40,7 +38,6 @@ func (s Source) Validate() error {
 		return NewValidationErrf("Invalid source, properties can not be null")
 	}
 
-	var err error
 	switch s.SourceType {
 	case api.SOURCETYPE_COMMON:
 		err = s.validateSourceTypeCommon()

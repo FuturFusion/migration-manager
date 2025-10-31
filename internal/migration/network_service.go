@@ -3,6 +3,10 @@ package migration
 import (
 	"context"
 	"fmt"
+
+	"github.com/google/uuid"
+
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 )
 
 type networkService struct {
@@ -70,4 +74,21 @@ func (n networkService) DeleteByNameAndSource(ctx context.Context, name string, 
 	}
 
 	return n.repo.DeleteByNameAndSource(ctx, name, srcName)
+}
+
+// DeleteByUUID implements NetworkService.
+func (n networkService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		network, err := n.repo.GetByUUID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("Failed to get network by UUID %q: %w", id.String(), err)
+		}
+
+		return n.repo.DeleteByNameAndSource(ctx, network.SourceSpecificID, network.Source)
+	})
+}
+
+// GetByUUID implements NetworkService.
+func (n networkService) GetByUUID(ctx context.Context, id uuid.UUID) (*Network, error) {
+	return n.repo.GetByUUID(ctx, id)
 }

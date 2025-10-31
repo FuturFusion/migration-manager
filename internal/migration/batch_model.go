@@ -67,7 +67,7 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 	for _, n := range instance.Properties.NICs {
 		var baseNetwork api.Network
 		for _, net := range usedNetworks {
-			if n.ID == net.Identifier && instance.Source == net.Source {
+			if n.ID == net.SourceSpecificID && instance.Source == net.Source {
 				apiNet, err := net.ToAPI()
 				if err != nil {
 					return nil, err
@@ -78,8 +78,8 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 			}
 		}
 
-		if baseNetwork.Identifier == "" {
-			return nil, fmt.Errorf("No network %q associated with instance %q on source %q", n.ID, instance.Properties.Name, instance.Source)
+		if baseNetwork.SourceSpecificID == "" {
+			return nil, fmt.Errorf("No network %q associated with instance %q on source %q", n.ID, instance.GetName(), instance.Source)
 		}
 
 		netCfg := baseNetwork.Placement
@@ -121,7 +121,7 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, id can not be negative")
 	}
 
-	err := validate.IsHostname(b.Name)
+	err := validate.IsAPIName(b.Name, false)
 	if err != nil {
 		return NewValidationErrf("Invalid batch, %q is not a valid name: %v", b.Name, err)
 	}
@@ -202,7 +202,7 @@ func (b Batch) Validate() error {
 }
 
 func (b BatchConstraint) Validate() error {
-	err := validate.IsHostname(b.Name)
+	err := validate.IsAPIName(b.Name, false)
 	if err != nil {
 		return NewValidationErrf("Invalid constraint, %q is not a valid name: %v", b.Name, err)
 	}
