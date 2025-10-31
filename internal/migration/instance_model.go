@@ -58,6 +58,12 @@ func (i Instance) Validate() error {
 		}
 	}
 
+	for _, nic := range i.Properties.NICs {
+		if nic.UUID == uuid.Nil {
+			return NewValidationErrf("Instance NIC %q has empty UUID", nic.Network)
+		}
+	}
+
 	return nil
 }
 
