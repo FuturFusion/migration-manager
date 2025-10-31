@@ -108,16 +108,17 @@ func (s *Schema) File(path string) {
 //
 // If no error occurs, the integer returned by this method is the
 // initial version that the schema has been upgraded from.
-func (s *Schema) Ensure(db *sql.DB) (int, error) {
+func (s *Schema) Ensure(db *sql.DB) (int, bool, error) {
 	var current int
 	aborted := false
 
 	// Disable foreign keys before performing a schema update so references aren't cascade deleted.
 	_, err := db.Exec("PRAGMA foreign_keys=OFF; PRAGMA legacy_alter_table=ON")
 	if err != nil {
-		return -1, err
+		return -1, false, err
 	}
 
+	var changed bool
 	err = query.Transaction(context.TODO(), db, func(ctx context.Context, tx *sql.Tx) error {
 		err := execFromFile(ctx, tx, s.path, s.hook)
 		if err != nil {
@@ -159,7 +160,7 @@ func (s *Schema) Ensure(db *sql.DB) (int, error) {
 			return nil
 		}
 
-		err = ensureUpdatesAreApplied(ctx, tx, current, s.updates, s.hook)
+		changed, err = ensureUpdatesAreApplied(ctx, tx, current, s.updates, s.hook)
 		if err != nil {
 			return err
 		}
@@ -167,20 +168,20 @@ func (s *Schema) Ensure(db *sql.DB) (int, error) {
 		return nil
 	})
 	if err != nil {
-		return -1, err
+		return -1, false, err
 	}
 
 	// Re-enable foreign keys before completing.
 	_, err = db.Exec("PRAGMA foreign_keys=ON; PRAGMA legacy_alter_table=OFF")
 	if err != nil {
-		return -1, err
+		return -1, false, err
 	}
 
 	if aborted {
-		return current, ErrGracefulAbort
+		return current, changed, ErrGracefulAbort
 	}
 
-	return current, nil
+	return current, changed, nil
 }
 
 // Ensure that the schema exists.
@@ -221,41 +222,43 @@ func queryCurrentVersion(ctx context.Context, tx *sql.Tx) (int, error) {
 }
 
 // Apply any pending update that was not yet applied.
-func ensureUpdatesAreApplied(ctx context.Context, tx *sql.Tx, current int, updates []Update, hook Hook) error {
+func ensureUpdatesAreApplied(ctx context.Context, tx *sql.Tx, current int, updates []Update, hook Hook) (bool, error) {
 	if current > len(updates) {
-		return fmt.Errorf(
+		return false, fmt.Errorf(
 			"schema version '%d' is more recent than expected '%d'",
 			current, len(updates))
 	}
 
 	// If there are no updates, there's nothing to do.
 	if len(updates) == 0 {
-		return nil
+		return false, nil
 	}
 
 	// Apply missing updates.
+	var changed bool
 	for _, update := range updates[current:] {
+		changed = true
 		if hook != nil {
 			err := hook(ctx, current, tx)
 			if err != nil {
-				return fmt.Errorf(
+				return false, fmt.Errorf(
 					"failed to execute hook (version %d): %v", current, err)
 			}
 		}
 		err := update(ctx, tx)
 		if err != nil {
-			return fmt.Errorf("failed to apply update %d: %w", current, err)
+			return false, fmt.Errorf("failed to apply update %d: %w", current, err)
 		}
 
 		current++
 
 		err = insertSchemaVersion(tx, current)
 		if err != nil {
-			return fmt.Errorf("failed to insert version %d", current)
+			return false, fmt.Errorf("failed to insert version %d", current)
 		}
 	}
 
-	return nil
+	return changed, nil
 }
 
 // Check that the given list of update version numbers doesn't have "holes",

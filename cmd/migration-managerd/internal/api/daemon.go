@@ -282,7 +282,8 @@ func (d *Daemon) Start() error {
 	slog.Info("Starting up", slog.String("version", version.Version))
 
 	// Open the local sqlite database.
-	d.db, err = db.OpenDatabase(d.os.LocalDatabaseDir())
+	var schemaChanged bool
+	d.db, schemaChanged, err = db.OpenDatabase(d.os.LocalDatabaseDir())
 	if err != nil {
 		slog.Error("Failed to open sqlite database", logger.Err(err))
 		return err
