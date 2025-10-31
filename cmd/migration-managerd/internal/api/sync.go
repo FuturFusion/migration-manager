@@ -430,6 +430,51 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 			instanceIsAssigned[inst.UUID] = true
 		}
 
+		// Generate UUIDs for networks.
+		dbNetworksBySrc := map[string]migration.Networks{}
+		for srcName, srcNetworks := range networksBySrc {
+			dbNetworksBySrc[srcName], err = d.network.GetAllBySource(ctx, srcName)
+			if err != nil {
+				return fmt.Errorf("Failed to get internal network records for source %q: %w", srcName, err)
+			}
+
+			dbNetworksByID := map[string]migration.Network{}
+			netUUIDsByID := map[string]uuid.UUID{}
+			for _, net := range dbNetworksBySrc[srcName] {
+				dbNetworksByID[net.SourceSpecificID] = net
+				netUUIDsByID[net.SourceSpecificID] = net.UUID
+			}
+
+			// Generate a UUID for each newly discovered network.
+			for _, srcNet := range srcNetworks {
+				dbNet, ok := dbNetworksByID[srcNet.SourceSpecificID]
+				if ok {
+					srcNet.UUID = dbNet.UUID
+				} else {
+					srcNet.UUID, err = uuid.NewRandom()
+					if err != nil {
+						return fmt.Errorf("Failed to generate UUID for network %q in source %q: %w", srcNet.Location, srcName, err)
+					}
+
+					netUUIDsByID[srcNet.SourceSpecificID] = srcNet.UUID
+				}
+
+				networksBySrc[srcName][srcNet.SourceSpecificID] = srcNet
+			}
+
+			// Update instances NICs with the network UUID too.
+			for _, inst := range instancesBySrc[srcName] {
+				for i, nic := range inst.Properties.NICs {
+					netUUID, ok := netUUIDsByID[nic.ID]
+					if ok {
+						inst.Properties.NICs[i].UUID = netUUID
+					}
+				}
+
+				instancesBySrc[srcName][inst.UUID] = inst
+			}
+		}
+
 		// Sync instances before networks so we can prune networks according to the most up-to-date information.
 		for srcName, srcInstances := range instancesBySrc {
 			// Ensure we only compare instances in the same source.
@@ -460,10 +505,6 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 		for srcName, srcNetworks := range networksBySrc {
 			// Ensure we only compare networks in the same source.
 			existingNetworks := map[string]migration.Network{}
-			allNetworks, err := d.network.GetAllBySource(ctx, srcName)
-			if err != nil {
-				return fmt.Errorf("Failed to get internal network records for source %q: %w", srcName, err)
-			}
 
 			allInstancesBySrc, err := d.instance.GetAllBySource(ctx, srcName)
 			if err != nil {
@@ -472,16 +513,16 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 
 			// Build maps to make comparison easier.
 			assignedNetworksByName := map[string]migration.Network{}
-			for _, net := range migration.FilterUsedNetworks(allNetworks, assignedInstances) {
+			for _, net := range migration.FilterUsedNetworks(dbNetworksBySrc[srcName], assignedInstances) {
 				assignedNetworksByName[net.SourceSpecificID] = net
 			}
 
 			usedNetworksByName := map[string]migration.Network{}
-			for _, net := range migration.FilterUsedNetworks(allNetworks, allInstancesBySrc) {
+			for _, net := range migration.FilterUsedNetworks(dbNetworksBySrc[srcName], allInstancesBySrc) {
 				usedNetworksByName[net.SourceSpecificID] = net
 			}
 
-			for _, dbNetwork := range allNetworks {
+			for _, dbNetwork := range dbNetworksBySrc[srcName] {
 				// If the network is already assigned to a batch, or has no instances using it, then omit it from consideration.
 				_, netHasQueuedInstance := assignedNetworksByName[dbNetwork.SourceSpecificID]
 				_, netHasInstance := usedNetworksByName[dbNetwork.SourceSpecificID]
