@@ -40,6 +40,7 @@ const InstanceOverrides: FC = () => {
   const overrideExists = hasOverride(instance);
 
   let formikInitialValues = {
+    name: "",
     comment: "",
     disable_migration: "false",
     ignore_restrictions: "false",
@@ -52,6 +53,7 @@ const InstanceOverrides: FC = () => {
   if (instance && overrideExists) {
     const overrides = instance.overrides;
     formikInitialValues = {
+      name: overrides.properties.name,
       comment: overrides.comment,
       disable_migration: overrides.disable_migration.toString(),
       ignore_restrictions: overrides.ignore_restrictions.toString(),
@@ -113,6 +115,7 @@ const InstanceOverrides: FC = () => {
         ignore_restrictions: values.ignore_restrictions == "true",
         comment: values.comment,
         properties: {
+          name: values.name,
           memory: memoryInBytes,
           cpus: values.cpus,
           config: values.config,
@@ -164,6 +167,20 @@ const InstanceOverrides: FC = () => {
   return (
     <div className="form-container">
       <Form noValidate>
+        <Form.Group className="mb-3" controlId="name">
+          <Form.Label>Name</Form.Label>
+          <Form.Control
+            type="text"
+            name="name"
+            value={formik.values.name}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            isInvalid={!!formik.errors.name && formik.touched.name}
+          />
+          <Form.Control.Feedback type="invalid">
+            {formik.errors.name}
+          </Form.Control.Feedback>
+        </Form.Group>
         <Form.Group className="mb-3" controlId="comment">
           <Form.Label>Comment</Form.Label>
           <Form.Control
