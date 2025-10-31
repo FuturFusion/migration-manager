@@ -382,7 +382,7 @@ func daemonSetup(t *testing.T) *Daemon {
 		},
 	}
 
-	daemon.db, err = db.OpenDatabase(tmpDir)
+	daemon.db, _, err = db.OpenDatabase(tmpDir)
 	require.NoError(t, err)
 
 	tx := transaction.Enable(daemon.db.DB)
