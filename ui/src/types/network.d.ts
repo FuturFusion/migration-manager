@@ -9,7 +9,8 @@ export interface NetworkPlacement {
 }
 
 export interface Network {
-  identifier: string;
+  uuid: string;
+  source_specific_id: string;
   source: string;
   type: NetworkType;
   location: string;

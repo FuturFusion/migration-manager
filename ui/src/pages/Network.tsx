@@ -15,7 +15,8 @@ const Network = () => {
   });
 
   const headers = [
-    "Identifier",
+    "UUID",
+    "Source specific ID",
     "Location",
     "Source",
     "Type",
@@ -28,14 +29,15 @@ const Network = () => {
       cols: [
         {
           content: (
-            <Link
-              to={`/ui/networks/${item.identifier}?source=${item.source}`}
-              className="data-table-link"
-            >
-              {item.identifier}
+            <Link to={`/ui/networks/${item.uuid}`} className="data-table-link">
+              {item.uuid}
             </Link>
           ),
-          sortKey: item.identifier,
+          sortKey: item.uuid,
+        },
+        {
+          content: item.source_specific_id,
+          sortKey: item.source_specific_id,
         },
         {
           content: item.location,

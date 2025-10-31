@@ -12,6 +12,7 @@ export interface InstancePropertiesDisk {
 }
 
 export interface InstancePropertiesNIC {
+  uuid: string;
   id: string;
   hardware_address: string;
   network: string;
@@ -41,6 +42,7 @@ export interface InstanceProperties {
 }
 
 export interface InstancePropertiesConfigurable {
+  name: string;
   description: string;
   cpus: number;
   memory: number;
