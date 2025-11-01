@@ -41,6 +41,7 @@ export interface InstanceProperties {
 }
 
 export interface InstancePropertiesConfigurable {
+  name: string;
   description: string;
   cpus: number;
   memory: number;

@@ -1,20 +1,18 @@
 import { useQuery } from "@tanstack/react-query";
-import { useParams, useSearchParams } from "react-router";
+import { useParams } from "react-router";
 import { fetchNetwork } from "api/networks";
 import { Network } from "types/network";
 
 const NetworkOverview = () => {
-  const { name } = useParams();
-  const [searchParams] = useSearchParams();
-  const source = searchParams.get("source");
+  const { uuid } = useParams();
 
   const {
     data: network = null,
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["networks", name, source],
-    queryFn: () => fetchNetwork(name, source),
+    queryKey: ["networks", uuid],
+    queryFn: () => fetchNetwork(uuid),
   });
 
   if (isLoading) {
@@ -46,8 +44,14 @@ const NetworkOverview = () => {
       <h6 className="mb-3">General</h6>
       <div className="container">
         <div className="row">
-          <div className="col-2 detail-table-header">Identifier</div>
-          <div className="col-10 detail-table-cell">{network?.identifier}</div>
+          <div className="col-2 detail-table-header">UUID</div>
+          <div className="col-10 detail-table-cell">{network?.uuid}</div>
+        </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">Source specific ID</div>
+          <div className="col-10 detail-table-cell">
+            {network?.source_specific_id}
+          </div>
         </div>
         <div className="row">
           <div className="col-2 detail-table-header">Location</div>
