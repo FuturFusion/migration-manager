@@ -859,8 +859,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:                       "/some/instance/A",
-					Name:                           "A",
-					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu", OSVersion: "24.04"},
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu", OSVersion: "24.04", Name: "A"},
 				},
 			},
 			sourceSvcGetByIDErr: boom.Error,
@@ -883,8 +882,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:                       "/some/instance/A",
-					Name:                           "A",
-					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu", OSVersion: "24.04"},
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu", OSVersion: "24.04", Name: "A"},
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -906,8 +904,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:                       "/some/instance/A",
-					Name:                           "A",
-					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu", OSVersion: "24.04"},
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu", OSVersion: "24.04", Name: "A"},
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -930,8 +927,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source: "one",
 				Properties: api.InstanceProperties{
 					Location:                       "/some/instance/A",
-					Name:                           "A",
-					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu", OSVersion: "24.04"},
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "ubuntu", OSVersion: "24.04", Name: "A"},
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{

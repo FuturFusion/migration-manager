@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
@@ -13,29 +14,33 @@ import (
 )
 
 func TestNetworkService_Create(t *testing.T) {
+	netUUID := uuid.New()
 	tests := []struct {
 		name              string
 		network           migration.Network
 		repoCreateNetwork migration.Network
 		repoCreateErr     error
+		getAllErr         error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
 			name: "success",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
-				Source:     "src",
-				Location:   "/path/to/one",
+				ID:               1,
+				UUID:             netUUID,
+				SourceSpecificID: "one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
+				Source:           "src",
+				Location:         "/path/to/one",
 			},
 			repoCreateNetwork: migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Source:     "src",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
-				Location:   "/path/to/one",
+				ID:               1,
+				UUID:             netUUID,
+				SourceSpecificID: "one",
+				Source:           "src",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
+				Location:         "/path/to/one",
 			},
 
 			assertErr: require.NoError,
@@ -43,11 +48,28 @@ func TestNetworkService_Create(t *testing.T) {
 		{
 			name: "error - invalid id",
 			network: migration.Network{
-				ID:         -1, // invalid
-				Identifier: "one",
-				Source:     "src",
-				Location:   "/path/to/one",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
+				ID:               -1, // invalid
+				UUID:             netUUID,
+				SourceSpecificID: "one",
+				Source:           "src",
+				Location:         "/path/to/one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - invalid uuid",
+			network: migration.Network{
+				ID:               1,
+				UUID:             uuid.Nil, // invalid
+				SourceSpecificID: "one",
+				Source:           "src",
+				Location:         "/path/to/one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -58,11 +80,12 @@ func TestNetworkService_Create(t *testing.T) {
 		{
 			name: "error - name empty",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "", // empty
-				Location:   "/path/to/one",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
-				Source:     "src",
+				ID:               1,
+				UUID:             netUUID,
+				SourceSpecificID: "", // empty
+				Location:         "/path/to/one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
+				Source:           "src",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -73,11 +96,12 @@ func TestNetworkService_Create(t *testing.T) {
 		{
 			name: "error - location empty",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Location:   "", // empty
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
-				Source:     "src",
+				ID:               1,
+				UUID:             netUUID,
+				SourceSpecificID: "one",
+				Location:         "", // empty
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
+				Source:           "src",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -88,10 +112,11 @@ func TestNetworkService_Create(t *testing.T) {
 		{
 			name: "error - type empty",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Location:   "/path/to/one",
-				Source:     "src",
+				ID:               1,
+				UUID:             netUUID,
+				SourceSpecificID: "one",
+				Location:         "/path/to/one",
+				Source:           "src",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -102,10 +127,11 @@ func TestNetworkService_Create(t *testing.T) {
 		{
 			name: "error - source empty",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Location:   "/path/to/one",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
+				ID:               1,
+				UUID:             netUUID,
+				SourceSpecificID: "one",
+				Location:         "/path/to/one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -116,11 +142,12 @@ func TestNetworkService_Create(t *testing.T) {
 		{
 			name: "error - repo",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Location:   "/path/to/one",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
-				Source:     "src",
+				ID:               1,
+				UUID:             netUUID,
+				SourceSpecificID: "one",
+				Location:         "/path/to/one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
+				Source:           "src",
 			},
 			repoCreateErr: boom.Error,
 
@@ -162,12 +189,12 @@ func TestNetworkService_GetAll(t *testing.T) {
 			name: "success",
 			repoGetAllNetworks: migration.Networks{
 				migration.Network{
-					ID:         1,
-					Identifier: "one",
+					ID:               1,
+					SourceSpecificID: "one",
 				},
 				migration.Network{
-					ID:         2,
-					Identifier: "two",
+					ID:               2,
+					SourceSpecificID: "two",
 				},
 			},
 
@@ -219,10 +246,10 @@ func TestNetworkService_GetByName(t *testing.T) {
 			nameArg:   "one",
 			sourceArg: "src",
 			repoGetByNameNetwork: &migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Location:   "/path/to/one",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
+				ID:               1,
+				SourceSpecificID: "one",
+				Location:         "/path/to/one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
 			},
 
 			assertErr: require.NoError,
@@ -286,11 +313,12 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		{
 			name: "success",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
-				Location:   "/path/to/one",
-				Source:     "src",
+				ID:               1,
+				UUID:             uuid.New(),
+				SourceSpecificID: "one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
+				Location:         "/path/to/one",
+				Source:           "src",
 			},
 
 			assertErr: require.NoError,
@@ -298,11 +326,28 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		{
 			name: "error - invalid id",
 			network: migration.Network{
-				ID:         -1, // invalid
-				Identifier: "one",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
-				Location:   "/path/to/one",
-				Source:     "src",
+				ID:               -1, // invalid
+				UUID:             uuid.New(),
+				SourceSpecificID: "one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
+				Location:         "/path/to/one",
+				Source:           "src",
+			},
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				var verr migration.ErrValidation
+				require.ErrorAs(tt, err, &verr, a...)
+			},
+		},
+		{
+			name: "error - invalid uuid",
+			network: migration.Network{
+				ID:               1,
+				UUID:             uuid.Nil, // invalid
+				SourceSpecificID: "one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
+				Location:         "/path/to/one",
+				Source:           "src",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -313,11 +358,12 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		{
 			name: "error - name empty",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "", // empty
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
-				Location:   "/path/to/one",
-				Source:     "src",
+				ID:               1,
+				UUID:             uuid.New(),
+				SourceSpecificID: "", // empty
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
+				Location:         "/path/to/one",
+				Source:           "src",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -328,10 +374,11 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		{
 			name: "error - type empty",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Location:   "/path/to/one",
-				Source:     "src",
+				ID:               1,
+				UUID:             uuid.New(),
+				SourceSpecificID: "one",
+				Location:         "/path/to/one",
+				Source:           "src",
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -342,10 +389,11 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		{
 			name: "error - source empty",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Location:   "/path/to/one",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
+				ID:               1,
+				UUID:             uuid.New(),
+				SourceSpecificID: "one",
+				Location:         "/path/to/one",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -356,11 +404,12 @@ func TestNetworkService_UpdateByID(t *testing.T) {
 		{
 			name: "error - repo",
 			network: migration.Network{
-				ID:         1,
-				Identifier: "one",
-				Location:   "/path/to/one",
-				Source:     "src",
-				Type:       api.NETWORKTYPE_VMWARE_STANDARD,
+				ID:               1,
+				UUID:             uuid.New(),
+				SourceSpecificID: "one",
+				Location:         "/path/to/one",
+				Source:           "src",
+				Type:             api.NETWORKTYPE_VMWARE_STANDARD,
 			},
 			repoUpdateErr: boom.Error,
 

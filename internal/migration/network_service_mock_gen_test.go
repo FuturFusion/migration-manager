@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/google/uuid"
 )
 
 // Ensure, that NetworkServiceMock does implement migration.NetworkService.
@@ -26,6 +27,9 @@ var _ migration.NetworkService = &NetworkServiceMock{}
 //			DeleteByNameAndSourceFunc: func(ctx context.Context, name string, src string) error {
 //				panic("mock out the DeleteByNameAndSource method")
 //			},
+//			DeleteByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the DeleteByUUID method")
+//			},
 //			GetAllFunc: func(ctx context.Context) (migration.Networks, error) {
 //				panic("mock out the GetAll method")
 //			},
@@ -34,6 +38,9 @@ var _ migration.NetworkService = &NetworkServiceMock{}
 //			},
 //			GetByNameAndSourceFunc: func(ctx context.Context, name string, src string) (*migration.Network, error) {
 //				panic("mock out the GetByNameAndSource method")
+//			},
+//			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.Network, error) {
+//				panic("mock out the GetByUUID method")
 //			},
 //			UpdateFunc: func(ctx context.Context, network *migration.Network) error {
 //				panic("mock out the Update method")
@@ -51,6 +58,9 @@ type NetworkServiceMock struct {
 	// DeleteByNameAndSourceFunc mocks the DeleteByNameAndSource method.
 	DeleteByNameAndSourceFunc func(ctx context.Context, name string, src string) error
 
+	// DeleteByUUIDFunc mocks the DeleteByUUID method.
+	DeleteByUUIDFunc func(ctx context.Context, id uuid.UUID) error
+
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Networks, error)
 
@@ -59,6 +69,9 @@ type NetworkServiceMock struct {
 
 	// GetByNameAndSourceFunc mocks the GetByNameAndSource method.
 	GetByNameAndSourceFunc func(ctx context.Context, name string, src string) (*migration.Network, error)
+
+	// GetByUUIDFunc mocks the GetByUUID method.
+	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.Network, error)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, network *migration.Network) error
@@ -81,6 +94,13 @@ type NetworkServiceMock struct {
 			// Src is the src argument value.
 			Src string
 		}
+		// DeleteByUUID holds details about calls to the DeleteByUUID method.
+		DeleteByUUID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
 			// Ctx is the ctx argument value.
@@ -102,6 +122,13 @@ type NetworkServiceMock struct {
 			// Src is the src argument value.
 			Src string
 		}
+		// GetByUUID holds details about calls to the GetByUUID method.
+		GetByUUID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -112,9 +139,11 @@ type NetworkServiceMock struct {
 	}
 	lockCreate                sync.RWMutex
 	lockDeleteByNameAndSource sync.RWMutex
+	lockDeleteByUUID          sync.RWMutex
 	lockGetAll                sync.RWMutex
 	lockGetAllBySource        sync.RWMutex
 	lockGetByNameAndSource    sync.RWMutex
+	lockGetByUUID             sync.RWMutex
 	lockUpdate                sync.RWMutex
 }
 
@@ -191,6 +220,42 @@ func (mock *NetworkServiceMock) DeleteByNameAndSourceCalls() []struct {
 	mock.lockDeleteByNameAndSource.RLock()
 	calls = mock.calls.DeleteByNameAndSource
 	mock.lockDeleteByNameAndSource.RUnlock()
+	return calls
+}
+
+// DeleteByUUID calls DeleteByUUIDFunc.
+func (mock *NetworkServiceMock) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	if mock.DeleteByUUIDFunc == nil {
+		panic("NetworkServiceMock.DeleteByUUIDFunc: method is nil but NetworkService.DeleteByUUID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockDeleteByUUID.Lock()
+	mock.calls.DeleteByUUID = append(mock.calls.DeleteByUUID, callInfo)
+	mock.lockDeleteByUUID.Unlock()
+	return mock.DeleteByUUIDFunc(ctx, id)
+}
+
+// DeleteByUUIDCalls gets all the calls that were made to DeleteByUUID.
+// Check the length with:
+//
+//	len(mockedNetworkService.DeleteByUUIDCalls())
+func (mock *NetworkServiceMock) DeleteByUUIDCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockDeleteByUUID.RLock()
+	calls = mock.calls.DeleteByUUID
+	mock.lockDeleteByUUID.RUnlock()
 	return calls
 }
 
@@ -299,6 +364,42 @@ func (mock *NetworkServiceMock) GetByNameAndSourceCalls() []struct {
 	mock.lockGetByNameAndSource.RLock()
 	calls = mock.calls.GetByNameAndSource
 	mock.lockGetByNameAndSource.RUnlock()
+	return calls
+}
+
+// GetByUUID calls GetByUUIDFunc.
+func (mock *NetworkServiceMock) GetByUUID(ctx context.Context, id uuid.UUID) (*migration.Network, error) {
+	if mock.GetByUUIDFunc == nil {
+		panic("NetworkServiceMock.GetByUUIDFunc: method is nil but NetworkService.GetByUUID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetByUUID.Lock()
+	mock.calls.GetByUUID = append(mock.calls.GetByUUID, callInfo)
+	mock.lockGetByUUID.Unlock()
+	return mock.GetByUUIDFunc(ctx, id)
+}
+
+// GetByUUIDCalls gets all the calls that were made to GetByUUID.
+// Check the length with:
+//
+//	len(mockedNetworkService.GetByUUIDCalls())
+func (mock *NetworkServiceMock) GetByUUIDCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetByUUID.RLock()
+	calls = mock.calls.GetByUUID
+	mock.lockGetByUUID.RUnlock()
 	return calls
 }
 

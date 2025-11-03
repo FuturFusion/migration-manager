@@ -899,7 +899,7 @@ func batchResetPost(d *Daemon, r *http.Request) response.Response {
 
 			// Only remove VMs with a worker volume,
 			// in case we are resetting a completed or errored batch where some VMs have already completed migration.
-			err = it.CleanupVM(ctx, inst.Properties.Name, true)
+			err = it.CleanupVM(ctx, inst.GetName(), true)
 			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 				return err
 			}

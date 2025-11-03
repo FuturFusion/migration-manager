@@ -59,9 +59,9 @@ func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int
 				OS:           osName,
 				OSVersion:    "test_os_version",
 				Architecture: "x86_64",
+				Name:         name,
 			},
 			UUID:             instUUID,
-			Name:             name,
 			Location:         "/path/to/" + name,
 			SecureBoot:       false,
 			LegacyBoot:       false,
@@ -83,6 +83,7 @@ func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int
 
 	for i, ipv4 := range nics {
 		inst.Properties.NICs = append(inst.Properties.NICs, api.InstancePropertiesNIC{
+			UUID:            uuid.New(),
 			ID:              fmt.Sprintf("%s_%d", "net_id", i),
 			HardwareAddress: "00:00:00:00:00:00",
 			Network:         fmt.Sprintf("network_%d", i),
@@ -728,7 +729,7 @@ def placement(instance, batch):
 
 				for _, nic := range i.Properties.NICs {
 					if !createdNetworks[nic.ID] {
-						_, err = d.network.Create(d.ShutdownCtx, migration.Network{Type: api.NETWORKTYPE_VMWARE_STANDARD, Identifier: nic.ID, Location: "path/to/" + nic.Network, Source: i.Source})
+						_, err = d.network.Create(d.ShutdownCtx, migration.Network{UUID: nic.UUID, Type: api.NETWORKTYPE_VMWARE_STANDARD, SourceSpecificID: nic.ID, Location: "path/to/" + nic.Network, Source: i.Source})
 						require.NoError(t, err)
 
 						createdNetworks[nic.ID] = true

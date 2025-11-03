@@ -33,6 +33,9 @@ type Instance struct {
 
 // GetName returns the name of the instance, which may not be unique among all instances for a given source.
 // If a unique, human-readable identifier is needed, use the Location property.
-func (i *Instance) GetName() string {
-	return i.Properties.Name
+func (i Instance) GetName() string {
+	props := i.Properties
+	props.Apply(i.Overrides.Properties)
+
+	return props.Name
 }

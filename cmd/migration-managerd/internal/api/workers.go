@@ -678,13 +678,13 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 		resetState = api.MIGRATIONSTATUS_WAITING
 		resetImportStage = migration.IMPORTSTAGE_BACKGROUND
 		log.Warn("Cleaning up target instance due to migration window deadline")
-		err := it.CleanupVM(timeoutCtx, state.Instances[instUUID].Properties.Name, false)
+		err := it.CleanupVM(timeoutCtx, state.Instances[instUUID].GetName(), false)
 		if err != nil {
 			return fmt.Errorf("Failed to clean up instance %q due to migration window deadline: %w", state.Instances[instUUID].Properties.Location, err)
 		}
 	} else {
 		// Stop the migration worker so it doesn't interfere with our state cleanup.
-		err = it.Exec(timeoutCtx, state.Instances[instUUID].Properties.Name, []string{"systemctl", "stop", "migration-manager-worker.service"})
+		err = it.Exec(timeoutCtx, state.Instances[instUUID].GetName(), []string{"systemctl", "stop", "migration-manager-worker.service"})
 		if err != nil {
 			return fmt.Errorf("Failed to stop migration worker on for instance %q: %w", state.Instances[instUUID].Properties.Location, err)
 		}
@@ -700,7 +700,7 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 	// Restart the migration worker if the instance is still running.
 	if state.QueueEntries[instUUID].MigrationStatus == api.MIGRATIONSTATUS_FINAL_IMPORT {
 		log.Warn("Restarting migration worker due to migration window deadline")
-		err := it.Exec(timeoutCtx, state.Instances[instUUID].Properties.Name, []string{"systemctl", "restart", "migration-manager-worker.service"})
+		err := it.Exec(timeoutCtx, state.Instances[instUUID].GetName(), []string{"systemctl", "restart", "migration-manager-worker.service"})
 		if err != nil {
 			return fmt.Errorf("Failed to restart migration worker on restarting instance %q: %w", state.Instances[instUUID].Properties.Location, err)
 		}

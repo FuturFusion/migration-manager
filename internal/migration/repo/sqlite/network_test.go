@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
 	dbschema "github.com/FuturFusion/migration-manager/internal/db"
@@ -16,9 +17,9 @@ import (
 )
 
 func TestNetworkDatabaseActions(t *testing.T) {
-	networkA := migration.Network{Identifier: "networkA", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Properties: []byte("{}")}
-	networkB := migration.Network{Identifier: "networkB", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Overrides: api.NetworkPlacement{Network: "foo"}, Properties: []byte("{}")}
-	networkC := migration.Network{Identifier: "networkC", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkC", Source: testSource.Name, Overrides: api.NetworkPlacement{Network: "bar"}, Properties: []byte("{}")}
+	networkA := migration.Network{UUID: uuid.New(), SourceSpecificID: "networkA", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Properties: []byte("{}")}
+	networkB := migration.Network{UUID: uuid.New(), SourceSpecificID: "networkB", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkA", Source: testSource.Name, Overrides: api.NetworkPlacement{Network: "foo"}, Properties: []byte("{}")}
+	networkC := migration.Network{UUID: uuid.New(), SourceSpecificID: "networkC", Type: api.NETWORKTYPE_VMWARE_STANDARD, Location: "/path/to/networkC", Source: testSource.Name, Overrides: api.NetworkPlacement{Network: "bar"}, Properties: []byte("{}")}
 
 	ctx := context.Background()
 
@@ -63,11 +64,11 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	require.Len(t, networks, 3)
 
 	// Should get back networkA unchanged.
-	dbNetworkA, err := network.GetByNameAndSource(ctx, networkA.Identifier, networkA.Source)
+	dbNetworkA, err := network.GetByNameAndSource(ctx, networkA.SourceSpecificID, networkA.Source)
 	require.NoError(t, err)
 	require.Equal(t, networkA, *dbNetworkA)
 
-	dbNetworkA, err = network.GetByNameAndSource(ctx, networkA.Identifier, networkA.Source)
+	dbNetworkA, err = network.GetByNameAndSource(ctx, networkA.SourceSpecificID, networkA.Source)
 	require.NoError(t, err)
 	require.Equal(t, networkA, *dbNetworkA)
 
@@ -75,14 +76,14 @@ func TestNetworkDatabaseActions(t *testing.T) {
 	networkB.Overrides.Network = "baz"
 	err = network.Update(ctx, networkB)
 	require.NoError(t, err)
-	dbNetworkB, err := network.GetByNameAndSource(ctx, networkB.Identifier, networkB.Source)
+	dbNetworkB, err := network.GetByNameAndSource(ctx, networkB.SourceSpecificID, networkB.Source)
 	require.NoError(t, err)
 	require.Equal(t, networkB, *dbNetworkB)
 
 	// Delete a network.
-	err = network.DeleteByNameAndSource(ctx, networkA.Identifier, networkA.Source)
+	err = network.DeleteByNameAndSource(ctx, networkA.SourceSpecificID, networkA.Source)
 	require.NoError(t, err)
-	_, err = network.GetByNameAndSource(ctx, networkA.Identifier, networkA.Source)
+	_, err = network.GetByNameAndSource(ctx, networkA.SourceSpecificID, networkA.Source)
 	require.ErrorIs(t, err, migration.ErrNotFound)
 
 	// Should have two networks remaining.
