@@ -90,6 +90,11 @@ func instanceUUIDFromRequestURL(r *http.Request) (uuid.UUID, error) {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func workerCommandPost(d *Daemon, r *http.Request) response.Response {
+	err := d.WaitForSchemaUpdate(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
 	uuidString := r.PathValue("uuid")
 
 	instanceUUID, err := uuid.Parse(uuidString)
@@ -150,6 +155,11 @@ func workerCommandPost(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func workerUpdatePost(d *Daemon, r *http.Request) response.Response {
+	err := d.WaitForSchemaUpdate(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
 	uuidString := r.PathValue("uuid")
 
 	instanceUUID, err := uuid.Parse(uuidString)
