@@ -11,12 +11,9 @@ export const fetchNetworks = (): Promise<Network[]> => {
   });
 };
 
-export const fetchNetwork = (
-  name: string | undefined,
-  source: string | null,
-): Promise<Network> => {
+export const fetchNetwork = (uuid: string | undefined): Promise<Network> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/networks/${name}?source=${source}`)
+    fetch(`/1.0/networks/${uuid}`)
       .then((response) => response.json())
       .then((data) => resolve(data.metadata))
       .catch(reject);
@@ -24,11 +21,10 @@ export const fetchNetwork = (
 };
 
 export const fetchNetworkInstances = (
-  name: string | undefined,
-  source: string | null,
+  uuid: string | undefined,
 ): Promise<Instance[]> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/networks/${name}/instances?source=${source}`)
+    fetch(`/1.0/networks/${uuid}/instances`)
       .then((response) => response.json())
       .then((data) => resolve(data.metadata))
       .catch(reject);
@@ -36,12 +32,11 @@ export const fetchNetworkInstances = (
 };
 
 export const updateNetwork = (
-  name: string | undefined,
-  source: string | null,
+  uuid: string | undefined,
   body: string,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/networks/${name}/override?source=${source}`, {
+    fetch(`/1.0/networks/${uuid}/override`, {
       method: "PUT",
       body: body,
     })

@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams, useSearchParams } from "react-router";
+import { useParams } from "react-router";
 import { useFormik } from "formik";
 import { fetchNetwork, updateNetwork } from "api/networks";
 import { useNotification } from "context/notificationContext";
@@ -9,9 +9,7 @@ import { APIResponse } from "types/response";
 import { IncusNICType } from "util/network";
 
 const NetworkOverrides: FC = () => {
-  const { name } = useParams();
-  const [searchParams] = useSearchParams();
-  const source = searchParams.get("source");
+  const { uuid } = useParams();
   const { notify } = useNotification();
   const queryClient = useQueryClient();
 
@@ -20,8 +18,8 @@ const NetworkOverrides: FC = () => {
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["networks", name, source],
-    queryFn: () => fetchNetwork(name, source),
+    queryKey: ["networks", uuid],
+    queryFn: () => fetchNetwork(uuid),
   });
 
   let formikInitialValues = {
@@ -41,27 +39,23 @@ const NetworkOverrides: FC = () => {
   const handleSuccessResponse = (response: APIResponse<null>) => {
     if (response.error_code == 0) {
       void queryClient.invalidateQueries({
-        queryKey: ["networks", name, source],
+        queryKey: ["networks", uuid],
       });
-      notify.success(`Override for the network ${name} saved.`);
+      notify.success(`Override for the network ${uuid} saved.`);
       return;
     }
-    notify.error(`Failed to save override for ${name}. ${response.error}`);
+    notify.error(`Failed to save override for ${uuid}. ${response.error}`);
   };
 
   const handleErrorResponse = (e: Error) => {
-    notify.error(`Failed to save override for ${name}. ${e}`);
+    notify.error(`Failed to save override for ${uuid}. ${e}`);
   };
 
   const formik = useFormik({
     initialValues: formikInitialValues,
     enableReinitialize: true,
     onSubmit: (values) => {
-      updateNetwork(
-        network?.identifier,
-        network?.source || "",
-        JSON.stringify(values, null, 2),
-      )
+      updateNetwork(network?.uuid, JSON.stringify(values, null, 2))
         .then((response) => {
           handleSuccessResponse(response);
         })

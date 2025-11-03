@@ -89,9 +89,9 @@ function App() {
               element={<QueueDetail />}
             />
             <Route path="/ui/networks" element={<Network />} />
-            <Route path="/ui/networks/:name" element={<NetworkDetail />} />
+            <Route path="/ui/networks/:uuid" element={<NetworkDetail />} />
             <Route
-              path="/ui/networks/:name/:activeTab"
+              path="/ui/networks/:uuid/:activeTab"
               element={<NetworkDetail />}
             />
             <Route path="/ui/artifacts" element={<Artifact />} />

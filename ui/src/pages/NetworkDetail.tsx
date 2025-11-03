@@ -1,14 +1,12 @@
-import { useNavigate, useParams, useSearchParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import NetworkInstances from "components/NetworkInstances";
 import NetworkOverview from "components/NetworkOverview";
 import NetworkOverrides from "components/NetworkOverrides";
 import TabView from "components/TabView";
 
 const NetworkDetail = () => {
-  const { name, activeTab } = useParams<{ name: string; activeTab: string }>();
+  const { uuid, activeTab } = useParams<{ uuid: string; activeTab: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const source = searchParams.get("source");
 
   const tabs = [
     {
@@ -35,9 +33,7 @@ const NetworkDetail = () => {
           defaultTab="overview"
           activeTab={activeTab}
           tabs={tabs}
-          onSelect={(key) =>
-            navigate(`/ui/networks/${name}/${key}?source=${source}`)
-          }
+          onSelect={(key) => navigate(`/ui/networks/${uuid}/${key}`)}
         />
       </div>
     </div>

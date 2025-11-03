@@ -61,6 +61,21 @@ const InstanceOverview = () => {
           </div>
         </div>
         <div className="row">
+          <div className="col-2 detail-table-header">Name</div>
+          <div className="col-10 detail-table-cell">
+            <ItemOverride
+              original={instance.properties.name}
+              override={
+                instance.overrides && instance.overrides.properties.name
+              }
+              showOverride={
+                hasOverride(instance) &&
+                instance.overrides.properties.name != ""
+              }
+            />
+          </div>
+        </div>
+        <div className="row">
           <div className="col-2 detail-table-header">CPU</div>
           <div className="col-10 detail-table-cell">
             <ItemOverride
@@ -137,7 +152,7 @@ const InstanceOverview = () => {
                       <td>{item.hardware_address}</td>
                       <td>
                         <Link
-                          to={`/ui/networks/${item.id}?source=${instance.source}`}
+                          to={`/ui/networks/${item.uuid}`}
                           className="data-table-link"
                         >
                           {item.network}
