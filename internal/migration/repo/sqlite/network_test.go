@@ -33,7 +33,7 @@ func TestNetworkDatabaseActions(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	_, err = dbschema.EnsureSchema(db, tmpDir)
+	_, _, err = dbschema.EnsureSchema(db, tmpDir)
 	require.NoError(t, err)
 
 	tx := transaction.Enable(db)

@@ -22,18 +22,18 @@ type Node struct {
 // OpenDatabase creates a new DB object.
 //
 // Return the newly created DB object.
-func OpenDatabase(dir string) (*Node, error) {
+func OpenDatabase(dir string) (*Node, bool, error) {
 	db, err := sqlite.Open(dir)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
-	_, err = EnsureSchema(db, dir)
+	_, changed, err := EnsureSchema(db, dir)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	node := &Node{
@@ -41,7 +41,7 @@ func OpenDatabase(dir string) (*Node, error) {
 		Dir: dir,
 	}
 
-	return node, nil
+	return node, changed, nil
 }
 
 // Transaction executes the database interactions invoked by the
@@ -62,7 +62,7 @@ func (n *Node) Close() error {
 //
 // Return the initial schema version found before starting the update, along
 // with any error occurred.
-func EnsureSchema(db *sql.DB, dir string) (int, error) {
+func EnsureSchema(db *sql.DB, dir string) (int, bool, error) {
 	backupDone := false
 
 	schema := Schema()

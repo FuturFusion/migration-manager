@@ -64,9 +64,10 @@ type APIEndpointAction struct {
 }
 
 type Daemon struct {
-	db         *db.Node
-	os         *sys.OS
-	logHandler *slog.LevelVar
+	db          *db.Node
+	os          *sys.OS
+	logHandler  *slog.LevelVar
+	migrationCh chan struct{}
 
 	queueHandler *queue.Handler
 	batch        migration.BatchService
@@ -100,6 +101,7 @@ func NewDaemon(logHandler *slog.LevelVar) *Daemon {
 
 	d := &Daemon{
 		db:             &db.Node{},
+		migrationCh:    make(chan struct{}),
 		os:             sys.DefaultOS(),
 		logHandler:     logHandler,
 		batchLock:      util.NewIDLock[string](),
@@ -282,7 +284,8 @@ func (d *Daemon) Start() error {
 	slog.Info("Starting up", slog.String("version", version.Version))
 
 	// Open the local sqlite database.
-	d.db, err = db.OpenDatabase(d.os.LocalDatabaseDir())
+	var schemaChanged bool
+	d.db, schemaChanged, err = db.OpenDatabase(d.os.LocalDatabaseDir())
 	if err != nil {
 		slog.Error("Failed to open sqlite database", logger.Err(err))
 		return err
@@ -361,6 +364,16 @@ func (d *Daemon) Start() error {
 		return err
 	})
 
+	if schemaChanged {
+		slog.Info("Schema version changed, initiating sync of all sources before allowing migrations")
+		err := d.trySyncAllSources(d.ShutdownCtx)
+		if err != nil {
+			return fmt.Errorf("Failed to perform full sync after schema update: %w", err)
+		}
+	}
+
+	close(d.migrationCh)
+
 	// Start background workers
 	d.runPeriodicTask(d.ShutdownCtx, SyncTask, d.trySyncAllSources, time.Minute*10)
 
@@ -384,6 +397,22 @@ func (d *Daemon) Start() error {
 	slog.Info("Daemon started")
 
 	return nil
+}
+
+func (d *Daemon) WaitForSchemaUpdate(ctx context.Context) error {
+	_, ok := ctx.Deadline()
+	if !ok {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Minute*10)
+		defer cancel()
+	}
+
+	select {
+	case <-ctx.Done():
+		return fmt.Errorf("Failed to wait for schema update sync: %w", ctx.Err())
+	case <-d.migrationCh:
+		return nil
+	}
 }
 
 func (d *Daemon) Authorizer() auth.Authorizer {
