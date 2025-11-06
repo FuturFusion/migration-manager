@@ -120,6 +120,10 @@ func (s windowService) ReplaceByBatch(ctx context.Context, queueSvc QueueService
 			if !newWindow.End.IsZero() && newWindow.End.Sub(oldWindow.End) < 0 {
 				return fmt.Errorf("Window %q end time cannot be reduced because it is assigned to queue entry %q", newWindow.Name, q.InstanceUUID)
 			}
+
+			if newWindow.Config.Capacity != 0 && (newWindow.Config.Capacity < oldWindow.Config.Capacity || oldWindow.Config.Capacity == 0) {
+				return fmt.Errorf("Window %q capacity must be cannot be reduced after assignment to queue entry %q", oldWindow.Name, q.InstanceUUID)
+			}
 		}
 
 		// Update and prune old windows.

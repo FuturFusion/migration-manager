@@ -19,4 +19,12 @@ type MigrationWindow struct {
 
 	// Lockout time after which the batch can no longer modify the target instance.
 	Lockout time.Time `json:"lockout" yaml:"lockout"`
+
+	// Configuration for the window.
+	Config MigrationWindowConfig `json:"config" yaml:"config"`
+}
+
+type MigrationWindowConfig struct {
+	// Number of instances that can be assigned to the window.
+	Capacity int `json:"capacity" yaml:"capacity"`
 }

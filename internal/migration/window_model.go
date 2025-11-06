@@ -24,6 +24,8 @@ type Window struct {
 	Lockout time.Time
 
 	Batch string `db:"join=batches.name&primary=yes"`
+
+	Config api.MigrationWindowConfig `db:"marshal=json"`
 }
 
 func (w Window) IsEmpty() bool {
@@ -122,6 +124,10 @@ func (w Window) Validate() error {
 		return fmt.Errorf("Batch migration window lockout time is after the end time")
 	}
 
+	if w.Config.Capacity < 0 {
+		return fmt.Errorf("Window capacity %q must be greater than 0", w.Config.Capacity)
+	}
+
 	return nil
 }
 
@@ -174,5 +180,6 @@ func (w Window) ToAPI() api.MigrationWindow {
 		Start:   w.Start,
 		End:     w.End,
 		Lockout: w.Lockout,
+		Config:  w.Config,
 	}
 }

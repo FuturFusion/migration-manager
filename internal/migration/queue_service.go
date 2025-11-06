@@ -184,7 +184,7 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Window,
 			return fmt.Errorf("Failed to get idle queue entries for batch %q: %w", q.BatchName, err)
 		}
 
-		windows, err = s.window.GetAllByBatch(ctx, q.BatchName)
+		batchWindows, err := s.window.GetAllByBatch(ctx, q.BatchName)
 		if err != nil {
 			return fmt.Errorf("Failed to get migration windows for batch %q: %w", q.BatchName, err)
 		}
@@ -197,6 +197,27 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Window,
 		batch, err = s.batch.GetByName(ctx, q.BatchName)
 		if err != nil {
 			return fmt.Errorf("Failed to get batch %q: %w", q.BatchName, err)
+		}
+
+		// Filter out windows that are at capacity.
+		allEntries, err := s.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get all queue entries: %w", err)
+		}
+
+		windowsInUse := map[string]int{}
+		for _, e := range allEntries {
+			window := e.GetWindowName()
+			if window != nil {
+				windowsInUse[*window] += 1
+			}
+		}
+
+		windows = Windows{}
+		for _, w := range batchWindows {
+			if w.Config.Capacity == 0 || windowsInUse[w.Name] < w.Config.Capacity || (q.GetWindowName() != nil && w.Name == *q.GetWindowName()) {
+				windows = append(windows, w)
+			}
 		}
 
 		return nil

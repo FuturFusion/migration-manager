@@ -278,6 +278,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 			End:     w.End,
 			Lockout: w.Lockout,
 			Batch:   apiBatch.Name,
+			Config:  w.Config,
 		}
 
 		_, err = d.window.Create(ctx, window)
@@ -470,6 +471,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 			End:     w.End,
 			Lockout: w.Lockout,
 			Batch:   batch.Name,
+			Config:  w.Config,
 		})
 	}
 
