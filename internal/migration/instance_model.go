@@ -195,7 +195,7 @@ func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Pro
 		return nil, nil, fmt.Errorf("Failed to convert object to expression-compatible type: %w", err)
 	}
 
-	options := append([]expr.Option{expr.Env(out)}, customFunctions...)
+	options := append([]expr.Option{expr.Env(out), expr.AllowUndefinedVariables()}, customFunctions...)
 
 	program, err := expr.Compile(expression, options...)
 	if err != nil {
