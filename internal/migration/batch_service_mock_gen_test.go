@@ -21,19 +21,13 @@ var _ migration.BatchService = &BatchServiceMock{}
 //
 //		// make and configure a mocked migration.BatchService
 //		mockedBatchService := &BatchServiceMock{
-//			AssignMigrationWindowsFunc: func(ctx context.Context, batch string, windows migration.MigrationWindows) error {
-//				panic("mock out the AssignMigrationWindows method")
-//			},
-//			ChangeMigrationWindowsFunc: func(ctx context.Context, queueSvc migration.QueueService, batch string, newWindows migration.MigrationWindows) error {
-//				panic("mock out the ChangeMigrationWindows method")
-//			},
 //			CreateFunc: func(ctx context.Context, batch migration.Batch) (migration.Batch, error) {
 //				panic("mock out the Create method")
 //			},
 //			DeleteByNameFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the DeleteByName method")
 //			},
-//			DeterminePlacementFunc: func(ctx context.Context, instance migration.Instance, usedNetworks migration.Networks, batch migration.Batch, migrationWindows migration.MigrationWindows) (*api.Placement, error) {
+//			DeterminePlacementFunc: func(ctx context.Context, instance migration.Instance, usedNetworks migration.Networks, batch migration.Batch, windows migration.Windows) (*api.Placement, error) {
 //				panic("mock out the DeterminePlacement method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (migration.Batches, error) {
@@ -50,15 +44,6 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			},
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 //				panic("mock out the GetByName method")
-//			},
-//			GetEarliestWindowFunc: func(ctx context.Context, batch string) (*migration.MigrationWindow, error) {
-//				panic("mock out the GetEarliestWindow method")
-//			},
-//			GetMigrationWindowFunc: func(ctx context.Context, windowID int64) (*migration.MigrationWindow, error) {
-//				panic("mock out the GetMigrationWindow method")
-//			},
-//			GetMigrationWindowsFunc: func(ctx context.Context, batch string) (migration.MigrationWindows, error) {
-//				panic("mock out the GetMigrationWindows method")
 //			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
@@ -85,12 +70,6 @@ var _ migration.BatchService = &BatchServiceMock{}
 //
 //	}
 type BatchServiceMock struct {
-	// AssignMigrationWindowsFunc mocks the AssignMigrationWindows method.
-	AssignMigrationWindowsFunc func(ctx context.Context, batch string, windows migration.MigrationWindows) error
-
-	// ChangeMigrationWindowsFunc mocks the ChangeMigrationWindows method.
-	ChangeMigrationWindowsFunc func(ctx context.Context, queueSvc migration.QueueService, batch string, newWindows migration.MigrationWindows) error
-
 	// CreateFunc mocks the Create method.
 	CreateFunc func(ctx context.Context, batch migration.Batch) (migration.Batch, error)
 
@@ -98,7 +77,7 @@ type BatchServiceMock struct {
 	DeleteByNameFunc func(ctx context.Context, name string) error
 
 	// DeterminePlacementFunc mocks the DeterminePlacement method.
-	DeterminePlacementFunc func(ctx context.Context, instance migration.Instance, usedNetworks migration.Networks, batch migration.Batch, migrationWindows migration.MigrationWindows) (*api.Placement, error)
+	DeterminePlacementFunc func(ctx context.Context, instance migration.Instance, usedNetworks migration.Networks, batch migration.Batch, windows migration.Windows) (*api.Placement, error)
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Batches, error)
@@ -114,15 +93,6 @@ type BatchServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Batch, error)
-
-	// GetEarliestWindowFunc mocks the GetEarliestWindow method.
-	GetEarliestWindowFunc func(ctx context.Context, batch string) (*migration.MigrationWindow, error)
-
-	// GetMigrationWindowFunc mocks the GetMigrationWindow method.
-	GetMigrationWindowFunc func(ctx context.Context, windowID int64) (*migration.MigrationWindow, error)
-
-	// GetMigrationWindowsFunc mocks the GetMigrationWindows method.
-	GetMigrationWindowsFunc func(ctx context.Context, batch string) (migration.MigrationWindows, error)
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -144,26 +114,6 @@ type BatchServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
-		// AssignMigrationWindows holds details about calls to the AssignMigrationWindows method.
-		AssignMigrationWindows []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Batch is the batch argument value.
-			Batch string
-			// Windows is the windows argument value.
-			Windows migration.MigrationWindows
-		}
-		// ChangeMigrationWindows holds details about calls to the ChangeMigrationWindows method.
-		ChangeMigrationWindows []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// QueueSvc is the queueSvc argument value.
-			QueueSvc migration.QueueService
-			// Batch is the batch argument value.
-			Batch string
-			// NewWindows is the newWindows argument value.
-			NewWindows migration.MigrationWindows
-		}
 		// Create holds details about calls to the Create method.
 		Create []struct {
 			// Ctx is the ctx argument value.
@@ -188,8 +138,8 @@ type BatchServiceMock struct {
 			UsedNetworks migration.Networks
 			// Batch is the batch argument value.
 			Batch migration.Batch
-			// MigrationWindows is the migrationWindows argument value.
-			MigrationWindows migration.MigrationWindows
+			// Windows is the windows argument value.
+			Windows migration.Windows
 		}
 		// GetAll holds details about calls to the GetAll method.
 		GetAll []struct {
@@ -221,27 +171,6 @@ type BatchServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
-		}
-		// GetEarliestWindow holds details about calls to the GetEarliestWindow method.
-		GetEarliestWindow []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Batch is the batch argument value.
-			Batch string
-		}
-		// GetMigrationWindow holds details about calls to the GetMigrationWindow method.
-		GetMigrationWindow []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// WindowID is the windowID argument value.
-			WindowID int64
-		}
-		// GetMigrationWindows holds details about calls to the GetMigrationWindows method.
-		GetMigrationWindows []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Batch is the batch argument value.
-			Batch string
 		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
@@ -302,109 +231,20 @@ type BatchServiceMock struct {
 			StatusMessage string
 		}
 	}
-	lockAssignMigrationWindows sync.RWMutex
-	lockChangeMigrationWindows sync.RWMutex
-	lockCreate                 sync.RWMutex
-	lockDeleteByName           sync.RWMutex
-	lockDeterminePlacement     sync.RWMutex
-	lockGetAll                 sync.RWMutex
-	lockGetAllByState          sync.RWMutex
-	lockGetAllNames            sync.RWMutex
-	lockGetAllNamesByState     sync.RWMutex
-	lockGetByName              sync.RWMutex
-	lockGetEarliestWindow      sync.RWMutex
-	lockGetMigrationWindow     sync.RWMutex
-	lockGetMigrationWindows    sync.RWMutex
-	lockRename                 sync.RWMutex
-	lockResetBatchByName       sync.RWMutex
-	lockStartBatchByName       sync.RWMutex
-	lockStopBatchByName        sync.RWMutex
-	lockUpdate                 sync.RWMutex
-	lockUpdateStatusByName     sync.RWMutex
-}
-
-// AssignMigrationWindows calls AssignMigrationWindowsFunc.
-func (mock *BatchServiceMock) AssignMigrationWindows(ctx context.Context, batch string, windows migration.MigrationWindows) error {
-	if mock.AssignMigrationWindowsFunc == nil {
-		panic("BatchServiceMock.AssignMigrationWindowsFunc: method is nil but BatchService.AssignMigrationWindows was just called")
-	}
-	callInfo := struct {
-		Ctx     context.Context
-		Batch   string
-		Windows migration.MigrationWindows
-	}{
-		Ctx:     ctx,
-		Batch:   batch,
-		Windows: windows,
-	}
-	mock.lockAssignMigrationWindows.Lock()
-	mock.calls.AssignMigrationWindows = append(mock.calls.AssignMigrationWindows, callInfo)
-	mock.lockAssignMigrationWindows.Unlock()
-	return mock.AssignMigrationWindowsFunc(ctx, batch, windows)
-}
-
-// AssignMigrationWindowsCalls gets all the calls that were made to AssignMigrationWindows.
-// Check the length with:
-//
-//	len(mockedBatchService.AssignMigrationWindowsCalls())
-func (mock *BatchServiceMock) AssignMigrationWindowsCalls() []struct {
-	Ctx     context.Context
-	Batch   string
-	Windows migration.MigrationWindows
-} {
-	var calls []struct {
-		Ctx     context.Context
-		Batch   string
-		Windows migration.MigrationWindows
-	}
-	mock.lockAssignMigrationWindows.RLock()
-	calls = mock.calls.AssignMigrationWindows
-	mock.lockAssignMigrationWindows.RUnlock()
-	return calls
-}
-
-// ChangeMigrationWindows calls ChangeMigrationWindowsFunc.
-func (mock *BatchServiceMock) ChangeMigrationWindows(ctx context.Context, queueSvc migration.QueueService, batch string, newWindows migration.MigrationWindows) error {
-	if mock.ChangeMigrationWindowsFunc == nil {
-		panic("BatchServiceMock.ChangeMigrationWindowsFunc: method is nil but BatchService.ChangeMigrationWindows was just called")
-	}
-	callInfo := struct {
-		Ctx        context.Context
-		QueueSvc   migration.QueueService
-		Batch      string
-		NewWindows migration.MigrationWindows
-	}{
-		Ctx:        ctx,
-		QueueSvc:   queueSvc,
-		Batch:      batch,
-		NewWindows: newWindows,
-	}
-	mock.lockChangeMigrationWindows.Lock()
-	mock.calls.ChangeMigrationWindows = append(mock.calls.ChangeMigrationWindows, callInfo)
-	mock.lockChangeMigrationWindows.Unlock()
-	return mock.ChangeMigrationWindowsFunc(ctx, queueSvc, batch, newWindows)
-}
-
-// ChangeMigrationWindowsCalls gets all the calls that were made to ChangeMigrationWindows.
-// Check the length with:
-//
-//	len(mockedBatchService.ChangeMigrationWindowsCalls())
-func (mock *BatchServiceMock) ChangeMigrationWindowsCalls() []struct {
-	Ctx        context.Context
-	QueueSvc   migration.QueueService
-	Batch      string
-	NewWindows migration.MigrationWindows
-} {
-	var calls []struct {
-		Ctx        context.Context
-		QueueSvc   migration.QueueService
-		Batch      string
-		NewWindows migration.MigrationWindows
-	}
-	mock.lockChangeMigrationWindows.RLock()
-	calls = mock.calls.ChangeMigrationWindows
-	mock.lockChangeMigrationWindows.RUnlock()
-	return calls
+	lockCreate             sync.RWMutex
+	lockDeleteByName       sync.RWMutex
+	lockDeterminePlacement sync.RWMutex
+	lockGetAll             sync.RWMutex
+	lockGetAllByState      sync.RWMutex
+	lockGetAllNames        sync.RWMutex
+	lockGetAllNamesByState sync.RWMutex
+	lockGetByName          sync.RWMutex
+	lockRename             sync.RWMutex
+	lockResetBatchByName   sync.RWMutex
+	lockStartBatchByName   sync.RWMutex
+	lockStopBatchByName    sync.RWMutex
+	lockUpdate             sync.RWMutex
+	lockUpdateStatusByName sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -480,27 +320,27 @@ func (mock *BatchServiceMock) DeleteByNameCalls() []struct {
 }
 
 // DeterminePlacement calls DeterminePlacementFunc.
-func (mock *BatchServiceMock) DeterminePlacement(ctx context.Context, instance migration.Instance, usedNetworks migration.Networks, batch migration.Batch, migrationWindows migration.MigrationWindows) (*api.Placement, error) {
+func (mock *BatchServiceMock) DeterminePlacement(ctx context.Context, instance migration.Instance, usedNetworks migration.Networks, batch migration.Batch, windows migration.Windows) (*api.Placement, error) {
 	if mock.DeterminePlacementFunc == nil {
 		panic("BatchServiceMock.DeterminePlacementFunc: method is nil but BatchService.DeterminePlacement was just called")
 	}
 	callInfo := struct {
-		Ctx              context.Context
-		Instance         migration.Instance
-		UsedNetworks     migration.Networks
-		Batch            migration.Batch
-		MigrationWindows migration.MigrationWindows
+		Ctx          context.Context
+		Instance     migration.Instance
+		UsedNetworks migration.Networks
+		Batch        migration.Batch
+		Windows      migration.Windows
 	}{
-		Ctx:              ctx,
-		Instance:         instance,
-		UsedNetworks:     usedNetworks,
-		Batch:            batch,
-		MigrationWindows: migrationWindows,
+		Ctx:          ctx,
+		Instance:     instance,
+		UsedNetworks: usedNetworks,
+		Batch:        batch,
+		Windows:      windows,
 	}
 	mock.lockDeterminePlacement.Lock()
 	mock.calls.DeterminePlacement = append(mock.calls.DeterminePlacement, callInfo)
 	mock.lockDeterminePlacement.Unlock()
-	return mock.DeterminePlacementFunc(ctx, instance, usedNetworks, batch, migrationWindows)
+	return mock.DeterminePlacementFunc(ctx, instance, usedNetworks, batch, windows)
 }
 
 // DeterminePlacementCalls gets all the calls that were made to DeterminePlacement.
@@ -508,18 +348,18 @@ func (mock *BatchServiceMock) DeterminePlacement(ctx context.Context, instance m
 //
 //	len(mockedBatchService.DeterminePlacementCalls())
 func (mock *BatchServiceMock) DeterminePlacementCalls() []struct {
-	Ctx              context.Context
-	Instance         migration.Instance
-	UsedNetworks     migration.Networks
-	Batch            migration.Batch
-	MigrationWindows migration.MigrationWindows
+	Ctx          context.Context
+	Instance     migration.Instance
+	UsedNetworks migration.Networks
+	Batch        migration.Batch
+	Windows      migration.Windows
 } {
 	var calls []struct {
-		Ctx              context.Context
-		Instance         migration.Instance
-		UsedNetworks     migration.Networks
-		Batch            migration.Batch
-		MigrationWindows migration.MigrationWindows
+		Ctx          context.Context
+		Instance     migration.Instance
+		UsedNetworks migration.Networks
+		Batch        migration.Batch
+		Windows      migration.Windows
 	}
 	mock.lockDeterminePlacement.RLock()
 	calls = mock.calls.DeterminePlacement
@@ -696,114 +536,6 @@ func (mock *BatchServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
-	return calls
-}
-
-// GetEarliestWindow calls GetEarliestWindowFunc.
-func (mock *BatchServiceMock) GetEarliestWindow(ctx context.Context, batch string) (*migration.MigrationWindow, error) {
-	if mock.GetEarliestWindowFunc == nil {
-		panic("BatchServiceMock.GetEarliestWindowFunc: method is nil but BatchService.GetEarliestWindow was just called")
-	}
-	callInfo := struct {
-		Ctx   context.Context
-		Batch string
-	}{
-		Ctx:   ctx,
-		Batch: batch,
-	}
-	mock.lockGetEarliestWindow.Lock()
-	mock.calls.GetEarliestWindow = append(mock.calls.GetEarliestWindow, callInfo)
-	mock.lockGetEarliestWindow.Unlock()
-	return mock.GetEarliestWindowFunc(ctx, batch)
-}
-
-// GetEarliestWindowCalls gets all the calls that were made to GetEarliestWindow.
-// Check the length with:
-//
-//	len(mockedBatchService.GetEarliestWindowCalls())
-func (mock *BatchServiceMock) GetEarliestWindowCalls() []struct {
-	Ctx   context.Context
-	Batch string
-} {
-	var calls []struct {
-		Ctx   context.Context
-		Batch string
-	}
-	mock.lockGetEarliestWindow.RLock()
-	calls = mock.calls.GetEarliestWindow
-	mock.lockGetEarliestWindow.RUnlock()
-	return calls
-}
-
-// GetMigrationWindow calls GetMigrationWindowFunc.
-func (mock *BatchServiceMock) GetMigrationWindow(ctx context.Context, windowID int64) (*migration.MigrationWindow, error) {
-	if mock.GetMigrationWindowFunc == nil {
-		panic("BatchServiceMock.GetMigrationWindowFunc: method is nil but BatchService.GetMigrationWindow was just called")
-	}
-	callInfo := struct {
-		Ctx      context.Context
-		WindowID int64
-	}{
-		Ctx:      ctx,
-		WindowID: windowID,
-	}
-	mock.lockGetMigrationWindow.Lock()
-	mock.calls.GetMigrationWindow = append(mock.calls.GetMigrationWindow, callInfo)
-	mock.lockGetMigrationWindow.Unlock()
-	return mock.GetMigrationWindowFunc(ctx, windowID)
-}
-
-// GetMigrationWindowCalls gets all the calls that were made to GetMigrationWindow.
-// Check the length with:
-//
-//	len(mockedBatchService.GetMigrationWindowCalls())
-func (mock *BatchServiceMock) GetMigrationWindowCalls() []struct {
-	Ctx      context.Context
-	WindowID int64
-} {
-	var calls []struct {
-		Ctx      context.Context
-		WindowID int64
-	}
-	mock.lockGetMigrationWindow.RLock()
-	calls = mock.calls.GetMigrationWindow
-	mock.lockGetMigrationWindow.RUnlock()
-	return calls
-}
-
-// GetMigrationWindows calls GetMigrationWindowsFunc.
-func (mock *BatchServiceMock) GetMigrationWindows(ctx context.Context, batch string) (migration.MigrationWindows, error) {
-	if mock.GetMigrationWindowsFunc == nil {
-		panic("BatchServiceMock.GetMigrationWindowsFunc: method is nil but BatchService.GetMigrationWindows was just called")
-	}
-	callInfo := struct {
-		Ctx   context.Context
-		Batch string
-	}{
-		Ctx:   ctx,
-		Batch: batch,
-	}
-	mock.lockGetMigrationWindows.Lock()
-	mock.calls.GetMigrationWindows = append(mock.calls.GetMigrationWindows, callInfo)
-	mock.lockGetMigrationWindows.Unlock()
-	return mock.GetMigrationWindowsFunc(ctx, batch)
-}
-
-// GetMigrationWindowsCalls gets all the calls that were made to GetMigrationWindows.
-// Check the length with:
-//
-//	len(mockedBatchService.GetMigrationWindowsCalls())
-func (mock *BatchServiceMock) GetMigrationWindowsCalls() []struct {
-	Ctx   context.Context
-	Batch string
-} {
-	var calls []struct {
-		Ctx   context.Context
-		Batch string
-	}
-	mock.lockGetMigrationWindows.RLock()
-	calls = mock.calls.GetMigrationWindows
-	mock.lockGetMigrationWindows.RUnlock()
 	return calls
 }
 
