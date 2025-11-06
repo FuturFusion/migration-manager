@@ -143,7 +143,7 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid status: %v", err)
 	}
 
-	_, err = InstanceFilterable{}.CompileIncludeExpression(b.IncludeExpression)
+	_, _, err = InstanceFilterable{}.CompileIncludeExpression(b.IncludeExpression)
 	if err != nil {
 		return NewValidationErrf("Invalid batch %q is not a valid include expression: %v", b.IncludeExpression, err)
 	}
@@ -207,7 +207,7 @@ func (b BatchConstraint) Validate() error {
 		return NewValidationErrf("Invalid constraint, %q is not a valid name: %v", b.Name, err)
 	}
 
-	_, err = InstanceFilterable{}.CompileIncludeExpression(b.IncludeExpression)
+	_, _, err = InstanceFilterable{}.CompileIncludeExpression(b.IncludeExpression)
 	if err != nil {
 		return NewValidationErrf("Invalid constraint %q is not a valid include expression: %v", b.IncludeExpression, err)
 	}
