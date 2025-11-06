@@ -79,7 +79,7 @@ type Target interface {
 	SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry) error
 
 	// Creates a VM definition for use with the Incus REST API.
-	CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string) (incusAPI.InstancesPost, error)
+	CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string, targetNetwork api.MigrationNetworkPlacement) (incusAPI.InstancesPost, error)
 
 	// Creates a new VM from the pre-populated API definition.
 	CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error)

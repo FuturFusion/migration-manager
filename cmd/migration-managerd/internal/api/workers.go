@@ -255,7 +255,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				}
 
 				// Verify that the target placement actually exists and the instance can be placed there.
-				err := target.CanPlaceInstance(ctx, info, state.QueueEntries[instUUID].Placement, instance.ToAPI())
+				err := target.CanPlaceInstance(ctx, info, state.QueueEntries[instUUID].Placement, instance.ToAPI(), state.Batch.ToAPI(nil))
 				if err != nil {
 					placementLock.Lock()
 					placementErrs[instUUID] = err
@@ -577,7 +577,15 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 
 	// Optionally clean up the VMs if we fail to create them.
 	usedNetworks := migration.FilterUsedNetworks(networks, migration.Instances{inst})
-	instanceDef, err := it.CreateVMDefinition(inst, usedNetworks, q, incusTLS.CertFingerprint(cert), d.getWorkerEndpoint())
+	var migrationNetwork api.MigrationNetworkPlacement
+	for _, n := range b.Defaults.MigrationNetwork {
+		if n.Target == q.Placement.TargetName && n.TargetProject == q.Placement.TargetProject {
+			migrationNetwork = n
+			break
+		}
+	}
+
+	instanceDef, err := it.CreateVMDefinition(inst, usedNetworks, q, incusTLS.CertFingerprint(cert), d.getWorkerEndpoint(), migrationNetwork)
 	if err != nil {
 		return fmt.Errorf("Failed to create instance definition: %w", err)
 	}
