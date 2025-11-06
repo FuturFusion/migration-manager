@@ -715,7 +715,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 	var migrationState map[string]queue.MigrationState
 
 	queueEntriesToReset := map[uuid.UUID]bool{}
-	windowsByQueueUUID := map[uuid.UUID]migration.MigrationWindow{}
+	windowsByQueueUUID := map[uuid.UUID]migration.Window{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 		migrationState, err = d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_WORKER_DONE, api.MIGRATIONSTATUS_FINAL_IMPORT, api.MIGRATIONSTATUS_POST_IMPORT)
@@ -730,7 +730,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 					continue
 				}
 
-				window, err := d.batch.GetMigrationWindow(ctx, *windowID)
+				window, err := d.window.GetByNameAndBatch(ctx, *windowID, q.BatchName)
 				if err != nil {
 					return fmt.Errorf("Failed to get migration window for queue entry %q: %w", q.InstanceUUID, err)
 				}
@@ -809,7 +809,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 
 // configureMigratedInstances updates the configuration of instances concurrently after they have finished migrating. Errors will result in the instance state becoming ERRORED.
 // If an instance succeeds, its state will be moved to FINISHED.
-func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.QueueEntry, w migration.MigrationWindow, i migration.Instance, s migration.Source, t migration.Target, batch migration.Batch) (_err error) {
+func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.QueueEntry, w migration.Window, i migration.Instance, s migration.Source, t migration.Target, batch migration.Batch) (_err error) {
 	log := slog.With(
 		slog.String("method", "configureMigratedInstances"),
 		slog.String("target", t.Name),

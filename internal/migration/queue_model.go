@@ -161,7 +161,7 @@ func (q QueueEntry) GetWindowID() *int64 {
 	return nil
 }
 
-func (q QueueEntry) ToAPI(instanceName string, lastWorkerUpdate time.Time, migrationWindow MigrationWindow) api.QueueEntry {
+func (q QueueEntry) ToAPI(instanceName string, lastWorkerUpdate time.Time, migrationWindow Window) api.QueueEntry {
 	return api.QueueEntry{
 		InstanceUUID:           q.InstanceUUID,
 		MigrationStatus:        q.MigrationStatus,
@@ -169,11 +169,7 @@ func (q QueueEntry) ToAPI(instanceName string, lastWorkerUpdate time.Time, migra
 		BatchName:              q.BatchName,
 		InstanceName:           instanceName,
 		LastWorkerResponse:     lastWorkerUpdate,
-		MigrationWindow: api.MigrationWindow{
-			Start:   migrationWindow.Start,
-			End:     migrationWindow.End,
-			Lockout: migrationWindow.Lockout,
-		},
+		MigrationWindow:        migrationWindow.ToAPI(),
 
 		Placement: q.Placement,
 	}

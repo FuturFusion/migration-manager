@@ -25,19 +25,21 @@ type queueService struct {
 	instance InstanceService
 	source   SourceService
 	target   TargetService
+	window   WindowService
 
 	workerLock *sync.Mutex
 }
 
 var _ QueueService = &queueService{}
 
-func NewQueueService(repo QueueRepo, batch BatchService, instance InstanceService, source SourceService, target TargetService) queueService {
+func NewQueueService(repo QueueRepo, batch BatchService, instance InstanceService, source SourceService, target TargetService, window WindowService) queueService {
 	queueSvc := queueService{
 		repo:       repo,
 		batch:      batch,
 		instance:   instance,
 		source:     source,
 		target:     target,
+		window:     window,
 		workerLock: &sync.Mutex{},
 	}
 
@@ -170,10 +172,10 @@ func (s queueService) DeleteAllByBatch(ctx context.Context, batch string) error 
 // - If the instance does not match any constraint, the earliest valid migration window is used.
 // - The earliest migration window valid for the the first matching constraint will be used otherwise.
 // - Returns a 404 if no migration window can be found, but the instance matched a constraint.
-func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*MigrationWindow, error) {
+func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Window, error) {
 	var entries QueueEntries
 	var instances Instances
-	var windows MigrationWindows
+	var windows Windows
 	var batch *Batch
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -182,7 +184,7 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Migrati
 			return fmt.Errorf("Failed to get idle queue entries for batch %q: %w", q.BatchName, err)
 		}
 
-		windows, err = s.batch.GetMigrationWindows(ctx, q.BatchName)
+		windows, err = s.window.GetAllByBatch(ctx, q.BatchName)
 		if err != nil {
 			return fmt.Errorf("Failed to get migration windows for batch %q: %w", q.BatchName, err)
 		}
