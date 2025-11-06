@@ -120,18 +120,6 @@ type BatchConfig struct {
 	FinalBackgroundSyncLimit string `json:"final_background_sync_limit" yaml:"final_background_sync_limit"`
 }
 
-// MigrationWindow defines the scheduling of a batch migration.
-type MigrationWindow struct {
-	// Start time for finalizing migrations after background import.
-	Start time.Time `json:"start" yaml:"start"`
-
-	// End time for finalizing migrations after background import.
-	End time.Time `json:"end" yaml:"end"`
-
-	// Lockout time after which the batch can no longer modify the target instance.
-	Lockout time.Time `json:"lockout" yaml:"lockout"`
-}
-
 // BatchConstraint is a constraint to be applied to a batch to determine which instances can be migrated.
 type BatchConstraint struct {
 	// Name of the constraint.
