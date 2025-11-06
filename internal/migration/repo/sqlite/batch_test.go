@@ -65,16 +65,19 @@ var (
 		},
 	}
 
-	windows = migration.MigrationWindows{
+	windows = migration.Windows{
 		{
+			Name:  "window1",
 			Start: time.Time{},
 			End:   time.Time{},
 		},
 		{
+			Name:  "window2",
 			Start: time.Now().UTC(),
 			End:   time.Time{},
 		},
 		{
+			Name:  "window3",
 			Start: time.Time{},
 			End:   time.Now().UTC(),
 		},
@@ -103,6 +106,7 @@ func TestBatchDatabaseActions(t *testing.T) {
 
 	targetSvc := migration.NewTargetService(sqlite.NewTarget(tx))
 	batch := sqlite.NewBatch(tx)
+	window := sqlite.NewMigrationWindow(tx)
 
 	_, err = targetSvc.Create(ctx, testTarget)
 	require.NoError(t, err)
@@ -124,38 +128,60 @@ func TestBatchDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, batches, 3)
 
-	err = batch.AssignMigrationWindows(ctx, batchA.Name, windows)
-	require.NoError(t, err)
+	for _, w := range windows {
+		w.Batch = batchA.Name
+		_, err := window.Create(ctx, w)
+		require.NoError(t, err)
+	}
 
-	wA, err := batch.GetMigrationWindowsByBatch(ctx, batchA.Name)
+	wA, err := window.GetAllByBatch(ctx, batchA.Name)
 	require.NoError(t, err)
 	require.Len(t, wA, 3)
 
-	wB, err := batch.GetMigrationWindowsByBatch(ctx, batchB.Name)
+	wB, err := window.GetAllByBatch(ctx, batchB.Name)
 	require.NoError(t, err)
 	require.Empty(t, wB)
 
-	err = batch.AssignMigrationWindows(ctx, batchB.Name, windows)
-	require.NoError(t, err)
+	for _, w := range windows {
+		w.Batch = batchB.Name
+		_, err := window.Create(ctx, w)
+		require.NoError(t, err)
+	}
 
-	wA, err = batch.GetMigrationWindowsByBatch(ctx, batchA.Name)
+	wA, err = window.GetAllByBatch(ctx, batchA.Name)
 	require.NoError(t, err)
 	require.Len(t, wA, 3)
 
-	wB, err = batch.GetMigrationWindowsByBatch(ctx, batchB.Name)
+	wB, err = window.GetAllByBatch(ctx, batchB.Name)
 	require.NoError(t, err)
 	require.Len(t, wB, 3)
 
-	err = batch.UnassignMigrationWindows(ctx, batchA.Name)
+	ws, err := window.GetAll(ctx)
 	require.NoError(t, err)
+	require.Len(t, ws, 6)
 
-	wA, err = batch.GetMigrationWindowsByBatch(ctx, batchA.Name)
+	for _, w := range windows {
+		err := window.DeleteByNameAndBatch(ctx, w.Name, batchA.Name)
+		require.NoError(t, err)
+	}
+
+	wA, err = window.GetAllByBatch(ctx, batchA.Name)
 	require.NoError(t, err)
 	require.Empty(t, wA)
 
-	wB, err = batch.GetMigrationWindowsByBatch(ctx, batchB.Name)
+	wB, err = window.GetAllByBatch(ctx, batchB.Name)
 	require.NoError(t, err)
 	require.Len(t, wB, 3)
+
+	ws, err = window.GetAll(ctx)
+	require.NoError(t, err)
+	require.Len(t, ws, 3)
+
+	for _, w := range windows {
+		w.Batch = batchA.Name
+		_, err := window.Create(ctx, w)
+		require.NoError(t, err)
+	}
 
 	// Should get back batchA unchanged.
 	dbBatchA, err := batch.GetByName(ctx, batchA.Name)
@@ -193,4 +219,11 @@ func TestBatchDatabaseActions(t *testing.T) {
 	// Can't add a duplicate batch.
 	_, err = batch.Create(ctx, batchB)
 	require.ErrorIs(t, err, migration.ErrConstraintViolation)
+
+	err = batch.DeleteByName(ctx, batchB.Name)
+	require.NoError(t, err)
+
+	ws, err = window.GetAll(ctx)
+	require.NoError(t, err)
+	require.Empty(t, ws)
 }

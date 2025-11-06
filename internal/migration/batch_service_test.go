@@ -484,7 +484,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
-				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+				Constraints:       []api.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
 					BackgroundSyncInterval:   (10 * time.Minute).String(),
 					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
@@ -496,7 +496,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
-				Constraints:       []migration.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
+				Constraints:       []api.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
 					BackgroundSyncInterval:   (10 * time.Minute).String(),
 					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
@@ -515,7 +515,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
-				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+				Constraints:       []api.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
 					BackgroundSyncInterval:   (10 * time.Minute).String(),
 					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
@@ -527,7 +527,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
-				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}, {Name: "constraint2", IncludeExpression: "false"}},
+				Constraints:       []api.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}, {Name: "constraint2", IncludeExpression: "false"}},
 				Config: api.BatchConfig{
 					BackgroundSyncInterval:   (10 * time.Minute).String(),
 					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
@@ -734,7 +734,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
-				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+				Constraints:       []api.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
 					BackgroundSyncInterval:   (10 * time.Minute).String(),
 					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
@@ -746,7 +746,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
-				Constraints:       []migration.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
+				Constraints:       []api.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
 					BackgroundSyncInterval:   (10 * time.Minute).String(),
 					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
@@ -764,7 +764,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
-				Constraints:       []migration.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
+				Constraints:       []api.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
 					BackgroundSyncInterval:   (10 * time.Minute).String(),
 					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
@@ -776,7 +776,7 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				Status:            api.BATCHSTATUS_RUNNING,
 				IncludeExpression: "true",
-				Constraints:       []migration.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
+				Constraints:       []api.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
 					BackgroundSyncInterval:   (10 * time.Minute).String(),
 					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
@@ -1121,7 +1121,6 @@ func TestBatchService_DeleteByName(t *testing.T) {
 		instanceSvcGetAllByBatchErr       error
 		instanceSvcUnassignFromBatchErr   error
 		repoDeleteByNameErr               error
-		repoUnassignWindowsErr            error
 
 		assertErr require.ErrorAssertionFunc
 	}{
@@ -1214,18 +1213,6 @@ func TestBatchService_DeleteByName(t *testing.T) {
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:    "error - repo.UnassignMigrationWindows",
-			nameArg: "one",
-			repoGetByNameBatch: &migration.Batch{
-				ID:     1,
-				Name:   "one",
-				Status: api.BATCHSTATUS_DEFINED,
-			},
-			repoUnassignWindowsErr: boom.Error,
-
-			assertErr: boom.ErrorIs,
-		},
-		{
 			name:    "error - repo.DeleteByName",
 			nameArg: "one",
 			repoGetByNameBatch: &migration.Batch{
@@ -1251,10 +1238,6 @@ func TestBatchService_DeleteByName(t *testing.T) {
 				},
 				UnassignBatchFunc: func(ctx context.Context, batchName string, instanceUUID uuid.UUID) error {
 					return tc.instanceSvcUnassignFromBatchErr
-				},
-
-				UnassignMigrationWindowsFunc: func(ctx context.Context, batch string) error {
-					return tc.repoUnassignWindowsErr
 				},
 			}
 
@@ -1940,7 +1923,7 @@ def placement(instance, batch):
 		tc.batchCreateAssertErr(t, err)
 
 		if err == nil {
-			placement, err := batchSvc.DeterminePlacement(ctx, migration.Instance{Properties: tc.instance}, tc.networks, batch, migration.MigrationWindows{})
+			placement, err := batchSvc.DeterminePlacement(ctx, migration.Instance{Properties: tc.instance}, tc.networks, batch, migration.Windows{})
 			tc.placementAssertErr(t, err)
 
 			if err == nil {

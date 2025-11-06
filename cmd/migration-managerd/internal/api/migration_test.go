@@ -591,7 +591,7 @@ def placement(instance, batch):
 
 			require.NoError(t, properties.InitDefinitions())
 			d := daemonSetup(t)
-			d.queueHandler = queue.NewMigrationHandler(d.batch, d.instance, d.network, d.source, d.target, d.queue)
+			d.queueHandler = queue.NewMigrationHandler(d.batch, d.instance, d.network, d.source, d.target, d.queue, d.window)
 			_, _ = startTestDaemon(t, d, nil, []APIEndpoint{workerUpdateCmd, workerCommandCmd})
 
 			var ranCleanup bool

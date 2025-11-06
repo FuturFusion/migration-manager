@@ -23,7 +23,7 @@ var _ migration.WindowService = &WindowServiceMock{}
 //			CreateFunc: func(ctx context.Context, window migration.Window) (migration.Window, error) {
 //				panic("mock out the Create method")
 //			},
-//			DeleteByNameAndBatchFunc: func(ctx context.Context, name string, batchName string) error {
+//			DeleteByNameAndBatchFunc: func(ctx context.Context, queueSvc migration.QueueService, name string, batchName string) error {
 //				panic("mock out the DeleteByNameAndBatch method")
 //			},
 //			GetAllFunc: func(ctx context.Context) (migration.Windows, error) {
@@ -52,7 +52,7 @@ type WindowServiceMock struct {
 	CreateFunc func(ctx context.Context, window migration.Window) (migration.Window, error)
 
 	// DeleteByNameAndBatchFunc mocks the DeleteByNameAndBatch method.
-	DeleteByNameAndBatchFunc func(ctx context.Context, name string, batchName string) error
+	DeleteByNameAndBatchFunc func(ctx context.Context, queueSvc migration.QueueService, name string, batchName string) error
 
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Windows, error)
@@ -82,6 +82,8 @@ type WindowServiceMock struct {
 		DeleteByNameAndBatch []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// QueueSvc is the queueSvc argument value.
+			QueueSvc migration.QueueService
 			// Name is the name argument value.
 			Name string
 			// BatchName is the batchName argument value.
@@ -173,23 +175,25 @@ func (mock *WindowServiceMock) CreateCalls() []struct {
 }
 
 // DeleteByNameAndBatch calls DeleteByNameAndBatchFunc.
-func (mock *WindowServiceMock) DeleteByNameAndBatch(ctx context.Context, name string, batchName string) error {
+func (mock *WindowServiceMock) DeleteByNameAndBatch(ctx context.Context, queueSvc migration.QueueService, name string, batchName string) error {
 	if mock.DeleteByNameAndBatchFunc == nil {
 		panic("WindowServiceMock.DeleteByNameAndBatchFunc: method is nil but WindowService.DeleteByNameAndBatch was just called")
 	}
 	callInfo := struct {
 		Ctx       context.Context
+		QueueSvc  migration.QueueService
 		Name      string
 		BatchName string
 	}{
 		Ctx:       ctx,
+		QueueSvc:  queueSvc,
 		Name:      name,
 		BatchName: batchName,
 	}
 	mock.lockDeleteByNameAndBatch.Lock()
 	mock.calls.DeleteByNameAndBatch = append(mock.calls.DeleteByNameAndBatch, callInfo)
 	mock.lockDeleteByNameAndBatch.Unlock()
-	return mock.DeleteByNameAndBatchFunc(ctx, name, batchName)
+	return mock.DeleteByNameAndBatchFunc(ctx, queueSvc, name, batchName)
 }
 
 // DeleteByNameAndBatchCalls gets all the calls that were made to DeleteByNameAndBatch.
@@ -198,11 +202,13 @@ func (mock *WindowServiceMock) DeleteByNameAndBatch(ctx context.Context, name st
 //	len(mockedWindowService.DeleteByNameAndBatchCalls())
 func (mock *WindowServiceMock) DeleteByNameAndBatchCalls() []struct {
 	Ctx       context.Context
+	QueueSvc  migration.QueueService
 	Name      string
 	BatchName string
 } {
 	var calls []struct {
 		Ctx       context.Context
+		QueueSvc  migration.QueueService
 		Name      string
 		BatchName string
 	}
