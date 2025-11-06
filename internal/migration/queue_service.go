@@ -84,7 +84,7 @@ func (s queueService) GetByInstanceUUID(ctx context.Context, id uuid.UUID) (*Que
 	return s.repo.GetByInstanceUUID(ctx, id)
 }
 
-func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage ImportStage, windowID *int64) (*QueueEntry, error) {
+func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage ImportStage, windowID *string) (*QueueEntry, error) {
 	err := status.Validate()
 	if err != nil {
 		return nil, NewValidationErrf("Invalid migration status: %v", err)
@@ -104,9 +104,9 @@ func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, stat
 		q.ImportStage = importStage
 
 		if windowID == nil {
-			q.MigrationWindowID = sql.NullInt64{}
+			q.MigrationWindowName = sql.NullString{}
 		} else {
-			q.MigrationWindowID = sql.NullInt64{Valid: true, Int64: *windowID}
+			q.MigrationWindowName = sql.NullString{Valid: true, String: *windowID}
 		}
 
 		return s.repo.Update(ctx, *q)
@@ -206,14 +206,9 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Window,
 	}
 
 	// If a window is already assigned, and hasn't ended, then re-use it.
-	existingID := q.GetWindowID()
-	if existingID != nil {
+	if q.GetWindowName() != nil {
 		for _, w := range windows {
-			if w.ID != *existingID {
-				continue
-			}
-
-			if !w.Ended() {
+			if w.Name == *q.GetWindowName() && !w.Ended() {
 				return &w, nil
 			}
 		}
@@ -384,7 +379,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			targetLimitReached = targetProperties.ImportLimit <= s.target.GetCachedImports(target.Name)
 		}
 
-		windowID := queueEntry.GetWindowID()
+		windowName := queueEntry.GetWindowName()
 		if targetLimitReached || sourceLimitReached {
 			newStatusMessage = "Waiting for other instances to finish importing"
 		} else if queueEntry.ImportStage == IMPORTSTAGE_BACKGROUND && instance.Properties.BackgroundImport {
@@ -411,7 +406,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			if begun {
 				if !window.IsEmpty() {
 					// Assign the migration window to the queue entry.
-					windowID = &window.ID
+					windowName = &window.Name
 				}
 
 				// If a migration window has not been defined, or it has and we have passed the start time, begin the final migration.
@@ -483,7 +478,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 
 		// Update queueEntry in the database, and set the worker update time.
 		if newStatus != queueEntry.MigrationStatus || newStatusMessage != queueEntry.MigrationStatusMessage || newImportStage != queueEntry.ImportStage {
-			_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, newImportStage, windowID)
+			_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, newImportStage, windowName)
 			if err != nil {
 				return fmt.Errorf("Failed updating instance %q: %w", instance.UUID.String(), err)
 			}

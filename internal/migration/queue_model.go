@@ -21,7 +21,7 @@ type QueueEntry struct {
 	LastWorkerStatus       api.WorkerResponseType
 	LastBackgroundSync     time.Time
 
-	MigrationWindowID sql.NullInt64
+	MigrationWindowName sql.NullString `db:"leftjoin=migration_windows.name"`
 
 	Placement api.Placement `db:"marshal=json"`
 }
@@ -152,9 +152,9 @@ func (q QueueEntry) Validate() error {
 	return nil
 }
 
-func (q QueueEntry) GetWindowID() *int64 {
-	if q.MigrationWindowID.Valid {
-		id := q.MigrationWindowID.Int64
+func (q QueueEntry) GetWindowName() *string {
+	if q.MigrationWindowName.Valid {
+		id := q.MigrationWindowName.String
 		return &id
 	}
 

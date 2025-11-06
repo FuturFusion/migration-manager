@@ -134,7 +134,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 				}
 
 				var migrationWindow *migration.Window
-				windowID := queueItem.GetWindowID()
+				windowID := queueItem.GetWindowName()
 				if windowID != nil {
 					migrationWindow, err = d.window.GetByNameAndBatch(ctx, *windowID, queueItem.BatchName)
 					if err != nil {
@@ -241,7 +241,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 			return err
 		}
 
-		windowID := queueItem.GetWindowID()
+		windowID := queueItem.GetWindowName()
 		if windowID != nil {
 			migrationWindow, err = d.window.GetByNameAndBatch(ctx, *windowID, queueItem.BatchName)
 			if err != nil {

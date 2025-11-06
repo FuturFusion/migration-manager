@@ -125,7 +125,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 		// Block all entries if we failed to validate the filesystem.
 		if blockedInstances[q.InstanceUUID] != "" {
 			if q.MigrationStatusMessage != blockedInstances[q.InstanceUUID] {
-				_, err := d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_BLOCKED, blockedInstances[q.InstanceUUID], q.ImportStage, q.GetWindowID())
+				_, err := d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_BLOCKED, blockedInstances[q.InstanceUUID], q.ImportStage, q.GetWindowName())
 				if err != nil {
 					return fmt.Errorf("Failed to unblock queue entry %q: %w", q.InstanceUUID, err)
 				}
@@ -153,7 +153,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			continue
 		}
 
-		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, string(api.MIGRATIONSTATUS_WAITING), q.ImportStage, q.GetWindowID())
+		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, string(api.MIGRATIONSTATUS_WAITING), q.ImportStage, q.GetWindowName())
 		if err != nil {
 			return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
 		}
@@ -232,7 +232,12 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			return util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
 				if state.Batch.Config.RerunScriptlets {
 					usedNetworks := migration.FilterUsedNetworks(allNetworks, migration.Instances{instance})
-					placement, err := d.batch.DeterminePlacement(ctx, instance, usedNetworks, state.Batch, state.MigrationWindows)
+					windows := make(migration.Windows, 0, len(state.Windows))
+					for _, w := range state.Windows {
+						windows = append(windows, w)
+					}
+
+					placement, err := d.batch.DeterminePlacement(ctx, instance, usedNetworks, state.Batch, windows)
 					if err != nil {
 						return err
 					}
@@ -287,7 +292,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				if ok {
 					stateChanged = true
 					blockedMsg := fmt.Sprintf("Cannot place instance: %v", err.Error())
-					_, err := d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_BLOCKED, blockedMsg, q.ImportStage, q.GetWindowID())
+					_, err := d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_BLOCKED, blockedMsg, q.ImportStage, q.GetWindowName())
 					if err != nil {
 						return fmt.Errorf("Failed to unblock queue entry %q: %w", q.InstanceUUID, err)
 					}
@@ -379,7 +384,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				}
 
 				d.target.RecordCreation(state.Targets[inst.UUID].Name)
-				_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, "Creating target instance definition", state.QueueEntries[inst.UUID].ImportStage, state.QueueEntries[inst.UUID].GetWindowID())
+				_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_CREATING, "Creating target instance definition", state.QueueEntries[inst.UUID].ImportStage, state.QueueEntries[inst.UUID].GetWindowName())
 				if err != nil {
 					return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
 				}
@@ -535,7 +540,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		if cleanupInstances {
 			log.Error("Failed attempt to create target instance. Trying again soon")
 			// Set the state to WAITING so it will be picked up again by beginImports.
-			_, err := d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, errString, migration.IMPORTSTAGE_BACKGROUND, q.GetWindowID())
+			_, err := d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, errString, migration.IMPORTSTAGE_BACKGROUND, q.GetWindowName())
 			if err != nil {
 				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_WAITING), logger.Err(err))
 			}
@@ -544,7 +549,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		}
 
 		// Try to set the instance state to ERRORED if it failed.
-		_, err := d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, errString, migration.IMPORTSTAGE_BACKGROUND, q.GetWindowID())
+		_, err := d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_ERROR, errString, migration.IMPORTSTAGE_BACKGROUND, q.GetWindowName())
 		if err != nil {
 			log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 		}
@@ -609,7 +614,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	}
 
 	// Set the instance state to IDLE before triggering the worker.
-	_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, "Waiting for worker to connect", migration.IMPORTSTAGE_BACKGROUND, q.GetWindowID())
+	_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_IDLE, "Waiting for worker to connect", migration.IMPORTSTAGE_BACKGROUND, q.GetWindowName())
 	if err != nil {
 		return fmt.Errorf("Failed to update instance status to %q: %w", api.MIGRATIONSTATUS_IDLE, err)
 	}
@@ -725,18 +730,13 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 
 		for _, s := range migrationState {
 			for _, q := range s.QueueEntries {
-				windowID := q.GetWindowID()
-				if windowID == nil {
+				windowName := q.GetWindowName()
+				if windowName == nil {
 					continue
 				}
 
-				window, err := d.window.GetByNameAndBatch(ctx, *windowID, q.BatchName)
-				if err != nil {
-					return fmt.Errorf("Failed to get migration window for queue entry %q: %w", q.InstanceUUID, err)
-				}
-
-				windowsByQueueUUID[q.InstanceUUID] = *window
-				if window.Ended() {
+				windowsByQueueUUID[q.InstanceUUID] = s.Windows[*windowName]
+				if windowsByQueueUUID[q.InstanceUUID].Ended() {
 					queueEntriesToReset[q.InstanceUUID] = true
 				}
 			}
@@ -838,7 +838,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 			}
 
 			// Only persist the state as errored if the window is still active, because this reverter might have been triggered by the window deadline cleanup.
-			_, err := d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, migration.IMPORTSTAGE_BACKGROUND, q.GetWindowID())
+			_, err := d.queue.UpdateStatusByUUID(ctx, i.UUID, api.MIGRATIONSTATUS_ERROR, errString, migration.IMPORTSTAGE_BACKGROUND, q.GetWindowName())
 			if err != nil {
 				log.Error("Failed to update instance status", slog.Any("status", api.MIGRATIONSTATUS_ERROR), logger.Err(err))
 			}
