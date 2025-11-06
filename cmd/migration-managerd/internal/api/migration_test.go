@@ -612,9 +612,9 @@ def placement(instance, batch):
 					CreateStoragePoolVolumeFromBackupFunc: func(poolName, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
 						return []incus.Operation{}, func() {}, tc.backupCreateErr
 					},
-					CreateVMDefinitionFunc: func(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint, endpoint string) (incusAPI.InstancesPost, error) {
+					CreateVMDefinitionFunc: func(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint, endpoint string, targeNetwork api.MigrationNetworkPlacement) (incusAPI.InstancesPost, error) {
 						tgt := target.InternalIncusTarget{InternalTarget: target.NewInternalTarget(t, "6.0")}
-						return tgt.CreateVMDefinition(instanceDef, usedNetworks, q, fingerprint, endpoint)
+						return tgt.CreateVMDefinition(instanceDef, usedNetworks, q, fingerprint, endpoint, targeNetwork)
 					},
 					CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
 						return func() { ranCleanup = true }, nil
