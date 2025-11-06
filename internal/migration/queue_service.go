@@ -218,7 +218,7 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Migrati
 	}
 
 	// Use the most recently added constraint that matches this queue entry's instance.
-	var constraint *BatchConstraint
+	var constraint *api.BatchConstraint
 	constraints := batch.Constraints
 	slices.Reverse(constraints)
 	for _, inst := range instances {
@@ -270,7 +270,15 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Migrati
 
 	if constraint.MaxConcurrentInstances == 0 || numMatches <= constraint.MaxConcurrentInstances {
 		// If there is no minimum migration time, we just use the earliest valid migration window.
-		return windows.GetEarliest(constraint.MinInstanceBootTime)
+		minBootTime := time.Duration(0)
+		if constraint.MinInstanceBootTime != "" {
+			minBootTime, err = time.ParseDuration(constraint.MinInstanceBootTime)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return windows.GetEarliest(minBootTime)
 	}
 
 	// Return a 404 if this instance matched a constraint, but no valid migration window could be found.

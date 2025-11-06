@@ -22,26 +22,9 @@ type Batch struct {
 
 	StartDate time.Time
 
-	Constraints []BatchConstraint `db:"marshal=json"`
-	Config      api.BatchConfig   `db:"marshal=json"`
-	Defaults    api.BatchDefaults `db:"marshal=json"`
-}
-
-type BatchConstraint struct {
-	// Name of the constraint.
-	Name string `json:"name" yaml:"name"`
-
-	// Description of the constraint.
-	Description string `json:"description" yaml:"description"`
-
-	// Expression used to select instances for the constraint.
-	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
-
-	// Maximum amount of matched instances that can concurrently migrate, before moving to the next migration window.
-	MaxConcurrentInstances int `json:"max_concurrent_instances" yaml:"max_concurrent_instances"`
-
-	// Minimum amount of time required for an instance to boot after initial disk import. Migration window duration must be at least this much.
-	MinInstanceBootTime time.Duration `json:"min_instance_boot_time" yaml:"min_instance_boot_time"`
+	Constraints []api.BatchConstraint `db:"marshal=json"`
+	Config      api.BatchConfig       `db:"marshal=json"`
+	Defaults    api.BatchDefaults     `db:"marshal=json"`
 }
 
 // GetIncusPlacement returns a TargetPlacement for the given instance and its networks.
@@ -154,14 +137,34 @@ func (b Batch) Validate() error {
 
 	exprs := map[string]bool{}
 	for _, c := range b.Constraints {
+		err := validate.IsAPIName(b.Name, false)
+		if err != nil {
+			return NewValidationErrf("Invalid constraint, %q is not a valid name: %v", b.Name, err)
+		}
+
 		if exprs[c.IncludeExpression] {
 			return NewValidationErrf("Invalid batch constraint, include expression %q cannot be used more than once", c.IncludeExpression)
 		}
 
 		exprs[c.IncludeExpression] = true
-		err := c.Validate()
+		_, err = InstanceFilterable{}.CompileIncludeExpression(b.IncludeExpression)
 		if err != nil {
-			return err
+			return NewValidationErrf("Invalid constraint %q is not a valid include expression: %v", b.IncludeExpression, err)
+		}
+
+		if c.MaxConcurrentInstances < 0 {
+			return NewValidationErrf("Invalid constraint max concurrent instances must not be negative")
+		}
+
+		if c.MinInstanceBootTime != "" {
+			bootTime, err := time.ParseDuration(c.MinInstanceBootTime)
+			if err != nil {
+				return NewValidationErrf("Invalid constraint minimum boot time %q: %v", c.MinInstanceBootTime, err)
+			}
+
+			if bootTime <= 0 {
+				return NewValidationErrf("Invalid constraint minimum boot time %q must be greater than 0", c.MinInstanceBootTime)
+			}
 		}
 	}
 
@@ -196,28 +199,6 @@ func (b Batch) Validate() error {
 
 	if syncInterval <= 0 {
 		return NewValidationErrf("Background sync interval %q must be greater than 0", b.Config.FinalBackgroundSyncLimit)
-	}
-
-	return nil
-}
-
-func (b BatchConstraint) Validate() error {
-	err := validate.IsAPIName(b.Name, false)
-	if err != nil {
-		return NewValidationErrf("Invalid constraint, %q is not a valid name: %v", b.Name, err)
-	}
-
-	_, err = InstanceFilterable{}.CompileIncludeExpression(b.IncludeExpression)
-	if err != nil {
-		return NewValidationErrf("Invalid constraint %q is not a valid include expression: %v", b.IncludeExpression, err)
-	}
-
-	if b.MaxConcurrentInstances < 0 {
-		return NewValidationErrf("Invalid constraint max concurrent instances must not be negative")
-	}
-
-	if b.MinInstanceBootTime < 0 {
-		return NewValidationErrf("Invalid constraint minimum migration time must not be negative")
 	}
 
 	return nil
@@ -371,24 +352,12 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 		apiWindows[i] = api.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
 	}
 
-	constraints := make([]api.BatchConstraint, len(b.Constraints))
-
-	for i, c := range b.Constraints {
-		constraints[i] = api.BatchConstraint{
-			Name:                   c.Name,
-			Description:            c.Description,
-			IncludeExpression:      c.IncludeExpression,
-			MaxConcurrentInstances: c.MaxConcurrentInstances,
-			MinInstanceBootTime:    c.MinInstanceBootTime.String(),
-		}
-	}
-
 	return api.Batch{
 		BatchPut: api.BatchPut{
 			Name:              b.Name,
 			IncludeExpression: b.IncludeExpression,
 			MigrationWindows:  apiWindows,
-			Constraints:       constraints,
+			Constraints:       b.Constraints,
 			Defaults:          b.Defaults,
 			Config:            b.Config,
 		},

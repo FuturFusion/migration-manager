@@ -97,7 +97,7 @@ func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueS
 	}
 
 	// If the constraints changed, keep a list of all old and new constraints to check if any matching queue entry is already committed.
-	var constraintsToCheck []BatchConstraint
+	var constraintsToCheck []api.BatchConstraint
 	if !slices.Equal(oldBatch.Constraints, newBatch.Constraints) {
 		constraintsToCheck = oldBatch.Constraints
 		for _, c := range newBatch.Constraints {

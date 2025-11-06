@@ -236,25 +236,6 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	constraints := make([]migration.BatchConstraint, len(apiBatch.Constraints))
-	for i, c := range apiBatch.Constraints {
-		var duration time.Duration
-		if c.MinInstanceBootTime != "" {
-			duration, err = time.ParseDuration(c.MinInstanceBootTime)
-			if err != nil {
-				return response.SmartError(fmt.Errorf("Failed to parse min migration time for batch %q: %w", apiBatch.Name, err))
-			}
-		}
-
-		constraints[i] = migration.BatchConstraint{
-			Name:                   c.Name,
-			Description:            c.Description,
-			IncludeExpression:      c.IncludeExpression,
-			MaxConcurrentInstances: c.MaxConcurrentInstances,
-			MinInstanceBootTime:    duration,
-		}
-	}
-
 	if apiBatch.Defaults.Placement.Target == "" {
 		apiBatch.Defaults.Placement.Target = api.DefaultTarget
 	}
@@ -281,7 +262,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		StatusMessage:     string(api.BATCHSTATUS_DEFINED),
 		IncludeExpression: apiBatch.IncludeExpression,
 		Defaults:          apiBatch.Defaults,
-		Constraints:       constraints,
+		Constraints:       apiBatch.Constraints,
 		Config:            apiBatch.Config,
 	}
 
@@ -449,25 +430,6 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	constraints := make([]migration.BatchConstraint, len(batch.Constraints))
-	for i, c := range batch.Constraints {
-		var duration time.Duration
-		if c.MinInstanceBootTime != "" {
-			duration, err = time.ParseDuration(c.MinInstanceBootTime)
-			if err != nil {
-				return response.SmartError(fmt.Errorf("Failed to parse min migration time for batch %q: %w", batch.Name, err))
-			}
-		}
-
-		constraints[i] = migration.BatchConstraint{
-			Name:                   c.Name,
-			Description:            c.Description,
-			IncludeExpression:      c.IncludeExpression,
-			MaxConcurrentInstances: c.MaxConcurrentInstances,
-			MinInstanceBootTime:    duration,
-		}
-	}
-
 	// Get the existing batch.
 	currentBatch, err := d.batch.GetByName(ctx, name)
 	if err != nil {
@@ -487,7 +449,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		StatusMessage:     currentBatch.StatusMessage,
 		IncludeExpression: batch.IncludeExpression,
 		StartDate:         currentBatch.StartDate,
-		Constraints:       constraints,
+		Constraints:       batch.Constraints,
 		Config:            batch.Config,
 		Defaults:          batch.Defaults,
 	})
