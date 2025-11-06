@@ -27,11 +27,11 @@ type Instance struct {
 }
 
 type InstanceFilterable struct {
-	api.InstanceProperties
+	api.InstanceProperties `yaml:",inline"`
 
-	Source               string         `expr:"source"`
-	SourceType           api.SourceType `expr:"source_type"`
-	LastUpdateFromSource time.Time      `expr:"last_update_from_source"`
+	Source               string         `yaml:"source"`
+	SourceType           api.SourceType `yaml:"source_type"`
+	LastUpdateFromSource time.Time      `yaml:"last_update_from_source"`
 }
 
 func (i Instance) Validate() error {
@@ -143,12 +143,12 @@ func (i *Instance) GetOSType() api.OSType {
 
 func (i Instance) MatchesCriteria(expression string) (bool, error) {
 	filterable := i.ToFilterable()
-	includeExpr, err := filterable.CompileIncludeExpression(expression)
+	includeExpr, parsed, err := filterable.CompileIncludeExpression(expression)
 	if err != nil {
 		return false, fmt.Errorf("Failed to compile include expression %q: %v", expression, err)
 	}
 
-	output, err := expr.Run(includeExpr, filterable)
+	output, err := expr.Run(includeExpr, parsed)
 	if err != nil {
 		return false, fmt.Errorf("Failed to run include expression %q with instance %v: %v", expression, filterable, err)
 	}
@@ -161,7 +161,7 @@ func (i Instance) MatchesCriteria(expression string) (bool, error) {
 	return result, nil
 }
 
-func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Program, error) {
+func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Program, map[string]any, error) {
 	customFunctions := []expr.Option{
 		expr.Function("path_base", func(params ...any) (any, error) {
 			if len(params) != 1 {
@@ -190,9 +190,19 @@ func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Pro
 		}),
 	}
 
-	options := append([]expr.Option{expr.Env(i)}, customFunctions...)
+	out, err := api.ParseExpr(i)
+	if err != nil {
+		return nil, nil, fmt.Errorf("Failed to convert object to expression-compatible type: %w", err)
+	}
 
-	return expr.Compile(expression, options...)
+	options := append([]expr.Option{expr.Env(out)}, customFunctions...)
+
+	program, err := expr.Compile(expression, options...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return program, out, nil
 }
 
 type Instances []Instance
