@@ -81,7 +81,21 @@ type BatchPut struct {
 }
 
 type BatchDefaults struct {
+	// Default target placement for instances. Can be overridden with the placement scriptlet.
 	Placement BatchPlacement `json:"placement" yaml:"placement"`
+
+	// Network configuration to use during migration of the instance. If unspecified, the default network configuration in the default profile will be used.
+	MigrationNetwork []MigrationNetworkPlacement `json:"migration_network" yaml:"migration_network"`
+}
+
+type MigrationNetworkPlacement struct {
+	NetworkPlacement `yaml:",inline"`
+
+	// Target that the network is available in.
+	Target string `json:"target" yaml:"target"`
+
+	// Target project that the network is available in.
+	TargetProject string `json:"target_project" yaml:"target_project"`
 }
 
 type BatchPlacement struct {
