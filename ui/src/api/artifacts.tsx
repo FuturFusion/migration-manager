@@ -1,14 +1,13 @@
 import { Artifact } from "types/artifact";
 import { APIResponse } from "types/response";
 
-export const createArtifact = (body: string): Promise<APIResponse<null>> => {
+export const createArtifact = (body: string): Promise<Response> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/artifacts`, {
       method: "POST",
       body: body,
     })
-      .then((response) => response.json())
-      .then((data) => resolve(data))
+      .then((response) => resolve(response))
       .catch(reject);
   });
 };
@@ -67,7 +66,7 @@ export const downloadArtifactFile = (
 
 export const uploadArtifactFile = (
   uuid: string | undefined,
-  body: File,
+  body: File | null,
 ): Promise<APIResponse<null>> => {
   return new Promise((resolve, reject) => {
     fetch(`/1.0/artifacts/${uuid}/files`, {

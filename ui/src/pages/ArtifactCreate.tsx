@@ -3,6 +3,7 @@ import { useNotification } from "context/notificationContext";
 import { createArtifact } from "api/artifacts";
 import ArtifactForm from "components/ArtifactForm";
 import { Artifact } from "types/artifact";
+import { APIResponse } from "types/response";
 
 const ArtifactCreate = () => {
   const { notify } = useNotification();
@@ -10,13 +11,14 @@ const ArtifactCreate = () => {
 
   const onSubmit = (artifact: Artifact) => {
     createArtifact(JSON.stringify(artifact, null, 2))
-      .then((response) => {
-        if (response.error_code == 0) {
+      .then(async (response) => {
+        const data = (await response.json()) as APIResponse<null>;
+        if (data.error_code == 0) {
           notify.success(`Artifact created`);
           navigate("/ui/artifacts");
           return;
         }
-        notify.error(response.error);
+        notify.error(data.error);
       })
       .catch((e) => {
         notify.error(`Error during artifact creation: ${e}`);
