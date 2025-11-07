@@ -14,21 +14,27 @@ test("add new item to MigrationWindowsWidget", async () => {
     await fireEvent.click(addButton);
   });
 
+  const nameInput = screen.getByPlaceholderText("Name");
   const startInput = screen.getByPlaceholderText("Start");
   const endInput = screen.getByPlaceholderText("End");
   const lockoutInput = screen.getByPlaceholderText("Lockout");
+  const capacityInput = screen.getByPlaceholderText("Capacity");
 
+  await userEvent.type(nameInput, "w");
   await userEvent.type(startInput, "2025-06-01 09:00:00");
   await userEvent.type(endInput, "2025-06-02 09:00:00");
   await userEvent.type(lockoutInput, "2025-06-03 09:00:00");
+  await userEvent.type(capacityInput, "5");
 
   // Check if onChange was called with correct data
-  expect(handleChange).toHaveBeenCalledTimes(3);
+  expect(handleChange).toHaveBeenCalledTimes(5);
   expect(handleChange).toHaveBeenCalledWith([
     {
+      name: "w",
       start: "2025-06-01 09:00:00",
       end: "2025-06-02 09:00:00",
       lockout: "2025-06-03 09:00:00",
+      config: { capacity: 5 },
     },
   ]);
 });
@@ -38,14 +44,18 @@ test("remove item from MigrationWindowsWidget", async () => {
 
   const val = [
     {
+      name: "w1",
       start: "2025-06-01 09:00:00",
       end: "2025-06-02 09:00:00",
       lockout: "2025-06-03 09:00:00",
+      config: { capacity: 0 },
     },
     {
+      name: "w2",
       start: "2025-06-04 09:00:00",
       end: "2025-06-05 09:00:00",
       lockout: "",
+      config: { capacity: 0 },
     },
   ];
 
@@ -61,9 +71,11 @@ test("remove item from MigrationWindowsWidget", async () => {
   expect(handleChange).toHaveBeenCalledTimes(1);
   expect(handleChange).toHaveBeenCalledWith([
     {
+      name: "w2",
       start: "2025-06-04 09:00:00",
       end: "2025-06-05 09:00:00",
       lockout: "",
+      config: { capacity: 0 },
     },
   ]);
 });

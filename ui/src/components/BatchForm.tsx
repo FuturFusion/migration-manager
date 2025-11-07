@@ -105,9 +105,13 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
 
   if (batch) {
     const migrationWindows = batch.migration_windows.map((item) => ({
+      name: item.name,
       start: formatDate(item.start?.toString()),
       end: formatDate(item.end?.toString()),
       lockout: formatDate(item.lockout?.toString()),
+      config: {
+        capacity: item.config?.capacity,
+      },
     }));
 
     formikInitialValues = {
@@ -166,9 +170,11 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
         }
 
         return {
+          name: item.name,
           start,
           end,
           lockout,
+          config: item.config,
         };
       });
 

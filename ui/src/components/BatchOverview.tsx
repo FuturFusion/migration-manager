@@ -136,17 +136,21 @@ const BatchOverview = () => {
           <Table borderless size="sm">
             <thead>
               <tr className="overview-table-header">
+                <th>Name</th>
                 <th>Start</th>
                 <th>End</th>
                 <th>Lockout</th>
+                <th>Capacity</th>
               </tr>
             </thead>
             <tbody>
               {batch?.migration_windows.map((item, index) => (
                 <tr key={index}>
+                  <td>{item.name}</td>
                   <td>{formatDate(item.start?.toString())}</td>
                   <td>{formatDate(item.end?.toString())}</td>
                   <td>{formatDate(item.lockout?.toString())}</td>
+                  <td>{item.config?.capacity ?? ""}</td>
                 </tr>
               ))}
             </tbody>
