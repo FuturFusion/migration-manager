@@ -168,7 +168,7 @@ func batchesGet(d *Daemon, r *http.Request) response.Response {
 		result := make([]api.Batch, 0, len(batches))
 
 		for _, batch := range batches {
-			windows, err := d.batch.GetMigrationWindows(ctx, batch.Name)
+			windows, err := d.window.GetAllByBatch(ctx, batch.Name)
 			if err != nil {
 				return response.SmartError(err)
 			}
@@ -236,25 +236,6 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	constraints := make([]migration.BatchConstraint, len(apiBatch.Constraints))
-	for i, c := range apiBatch.Constraints {
-		var duration time.Duration
-		if c.MinInstanceBootTime != "" {
-			duration, err = time.ParseDuration(c.MinInstanceBootTime)
-			if err != nil {
-				return response.SmartError(fmt.Errorf("Failed to parse min migration time for batch %q: %w", apiBatch.Name, err))
-			}
-		}
-
-		constraints[i] = migration.BatchConstraint{
-			Name:                   c.Name,
-			Description:            c.Description,
-			IncludeExpression:      c.IncludeExpression,
-			MaxConcurrentInstances: c.MaxConcurrentInstances,
-			MinInstanceBootTime:    duration,
-		}
-	}
-
 	if apiBatch.Defaults.Placement.Target == "" {
 		apiBatch.Defaults.Placement.Target = api.DefaultTarget
 	}
@@ -281,7 +262,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		StatusMessage:     string(api.BATCHSTATUS_DEFINED),
 		IncludeExpression: apiBatch.IncludeExpression,
 		Defaults:          apiBatch.Defaults,
-		Constraints:       constraints,
+		Constraints:       apiBatch.Constraints,
 		Config:            apiBatch.Config,
 	}
 
@@ -290,14 +271,20 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	windows := make(migration.MigrationWindows, len(apiBatch.MigrationWindows))
-	for i, w := range apiBatch.MigrationWindows {
-		windows[i] = migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
-	}
+	for _, w := range apiBatch.MigrationWindows {
+		window := migration.Window{
+			Name:    w.Name,
+			Start:   w.Start,
+			End:     w.End,
+			Lockout: w.Lockout,
+			Batch:   apiBatch.Name,
+			Config:  w.Config,
+		}
 
-	err = d.batch.AssignMigrationWindows(ctx, batch.Name, windows)
-	if err != nil {
-		return response.SmartError(err)
+		_, err = d.window.Create(ctx, window)
+		if err != nil {
+			return response.SmartError(err)
+		}
 	}
 
 	err = trans.Commit()
@@ -389,7 +376,7 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	windows, err := d.batch.GetMigrationWindows(ctx, name)
+	windows, err := d.window.GetAllByBatch(ctx, name)
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -449,25 +436,6 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		}
 	}()
 
-	constraints := make([]migration.BatchConstraint, len(batch.Constraints))
-	for i, c := range batch.Constraints {
-		var duration time.Duration
-		if c.MinInstanceBootTime != "" {
-			duration, err = time.ParseDuration(c.MinInstanceBootTime)
-			if err != nil {
-				return response.SmartError(fmt.Errorf("Failed to parse min migration time for batch %q: %w", batch.Name, err))
-			}
-		}
-
-		constraints[i] = migration.BatchConstraint{
-			Name:                   c.Name,
-			Description:            c.Description,
-			IncludeExpression:      c.IncludeExpression,
-			MaxConcurrentInstances: c.MaxConcurrentInstances,
-			MinInstanceBootTime:    duration,
-		}
-	}
-
 	// Get the existing batch.
 	currentBatch, err := d.batch.GetByName(ctx, name)
 	if err != nil {
@@ -487,7 +455,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		StatusMessage:     currentBatch.StatusMessage,
 		IncludeExpression: batch.IncludeExpression,
 		StartDate:         currentBatch.StartDate,
-		Constraints:       constraints,
+		Constraints:       batch.Constraints,
 		Config:            batch.Config,
 		Defaults:          batch.Defaults,
 	})
@@ -495,12 +463,19 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))
 	}
 
-	windows := make(migration.MigrationWindows, 0, len(batch.MigrationWindows))
+	windows := make(migration.Windows, 0, len(batch.MigrationWindows))
 	for _, w := range batch.MigrationWindows {
-		windows = append(windows, migration.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout})
+		windows = append(windows, migration.Window{
+			Name:    w.Name,
+			Start:   w.Start,
+			End:     w.End,
+			Lockout: w.Lockout,
+			Batch:   batch.Name,
+			Config:  w.Config,
+		})
 	}
 
-	err = d.batch.ChangeMigrationWindows(ctx, d.queue, batch.Name, windows)
+	err = d.window.ReplaceByBatch(ctx, d.queue, batch.Name, windows)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed to update migration windows for batch %q: %w", batch.Name, err))
 	}
@@ -681,7 +656,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 
 	instances := map[uuid.UUID]migration.Instance{}
 	var batch *migration.Batch
-	var windows migration.MigrationWindows
+	var windows migration.Windows
 	var networks migration.Networks
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
 		var err error
@@ -690,7 +665,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 			return fmt.Errorf("Failed to get batch %q: %w", batchName, err)
 		}
 
-		windows, err = d.batch.GetMigrationWindows(ctx, batchName)
+		windows, err = d.window.GetAllByBatch(ctx, batchName)
 		if err != nil {
 			return fmt.Errorf("Failed to get migration windows for batch %q: %w", batchName, err)
 		}
@@ -739,9 +714,9 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Cannot start batch %q with no instances", batch.Name))
 	}
 
-	err = batch.HasValidWindow(windows)
+	err = windows.HasValidWindow()
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Cannot start batch with invalid migration windows: %w", err))
+		return response.SmartError(fmt.Errorf("Cannot start batch %q with invalid migration windows: %w", batch.Name, err))
 	}
 
 	placementsByUUID := map[uuid.UUID]api.Placement{}

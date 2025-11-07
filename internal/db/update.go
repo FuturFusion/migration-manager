@@ -124,6 +124,32 @@ var updates = map[int]schema.Update{
 	15: updateFromV14,
 	16: updateFromV15,
 	17: updateFromV16,
+	18: updateFromV17,
+}
+
+func updateFromV17(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `CREATE TABLE migration_windows_new (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    name     TEXT NOT NULL,
+    lockout  DATETIME NOT NULL,
+    start    DATETIME NOT NULL,
+    end      DATETIME NOT NULL,
+    batch_id INTEGER NOT NULL,
+    config   TEXT NOT NULL,
+    UNIQUE(start, end, lockout, batch_id),
+    UNIQUE(name, batch_id),
+    FOREIGN KEY(batch_id) REFERENCES batches(id) ON DELETE CASCADE
+);
+
+    INSERT INTO migration_windows_new (id, name, lockout, start, end, config, batch_id)
+    SELECT batches_migration_windows.rowid, printf('window_%d', migration_windows.rowid), migration_windows.lockout, migration_windows.start, migration_windows.end, '{}', batches_migration_windows.batch_id
+		FROM migration_windows JOIN batches_migration_windows on batches_migration_windows.migration_window_id=migration_windows.id;
+DROP TABLE migration_windows;
+ALTER TABLE migration_windows_new RENAME TO migration_windows;
+DROP TABLE batches_migration_windows;
+`)
+
+	return err
 }
 
 func updateFromV16(ctx context.Context, tx *sql.Tx) error {

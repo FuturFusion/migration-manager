@@ -394,9 +394,10 @@ func daemonSetup(t *testing.T) *Daemon {
 	daemon.target = migration.NewTargetService(sqlite.NewTarget(tx))
 	daemon.instance = migration.NewInstanceService(sqlite.NewInstance(tx))
 	daemon.batch = migration.NewBatchService(sqlite.NewBatch(tx), daemon.instance)
-	daemon.queue = migration.NewQueueService(sqlite.NewQueue(tx), daemon.batch, daemon.instance, daemon.source, daemon.target)
+	daemon.window = migration.NewWindowService(sqlite.NewMigrationWindow(tx))
+	daemon.queue = migration.NewQueueService(sqlite.NewQueue(tx), daemon.batch, daemon.instance, daemon.source, daemon.target, daemon.window)
 	daemon.network = migration.NewNetworkService(sqlite.NewNetwork(tx))
-	daemon.queueHandler = queue.NewMigrationHandler(daemon.batch, daemon.instance, daemon.network, daemon.source, daemon.target, daemon.queue)
+	daemon.queueHandler = queue.NewMigrationHandler(daemon.batch, daemon.instance, daemon.network, daemon.source, daemon.target, daemon.queue, daemon.window)
 	daemon.errgroup = &errgroup.Group{}
 
 	daemon.serverCert, err = incusTLS.KeyPairAndCA(daemon.os.VarDir, "server", incusTLS.CertServer, true)

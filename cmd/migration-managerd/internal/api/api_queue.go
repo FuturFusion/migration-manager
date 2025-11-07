@@ -133,10 +133,10 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 					return err
 				}
 
-				var migrationWindow *migration.MigrationWindow
-				windowID := queueItem.GetWindowID()
+				var migrationWindow *migration.Window
+				windowID := queueItem.GetWindowName()
 				if windowID != nil {
-					migrationWindow, err = d.batch.GetMigrationWindow(ctx, *windowID)
+					migrationWindow, err = d.window.GetByNameAndBatch(ctx, *windowID, queueItem.BatchName)
 					if err != nil {
 						return err
 					}
@@ -149,7 +149,7 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 				}
 
 				if migrationWindow == nil {
-					migrationWindow = &migration.MigrationWindow{}
+					migrationWindow = &migration.Window{}
 				}
 
 				result = append(result, queueItem.ToAPI(instance.GetName(), d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID), *migrationWindow))
@@ -229,7 +229,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 
 	var queueItem *migration.QueueEntry
 	var instanceName string
-	var migrationWindow *migration.MigrationWindow
+	var migrationWindow *migration.Window
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
 		instance, err := d.instance.GetByUUID(ctx, UUID)
 		if err != nil {
@@ -241,9 +241,9 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 			return err
 		}
 
-		windowID := queueItem.GetWindowID()
+		windowID := queueItem.GetWindowName()
 		if windowID != nil {
-			migrationWindow, err = d.batch.GetMigrationWindow(ctx, *windowID)
+			migrationWindow, err = d.window.GetByNameAndBatch(ctx, *windowID, queueItem.BatchName)
 			if err != nil {
 				return err
 			}
@@ -264,7 +264,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if migrationWindow == nil {
-		migrationWindow = &migration.MigrationWindow{}
+		migrationWindow = &migration.Window{}
 	}
 
 	return response.SyncResponseETag(true, queueItem.ToAPI(instanceName, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID), *migrationWindow), queueItem)

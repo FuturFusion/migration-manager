@@ -25,14 +25,7 @@ type BatchService interface {
 	StopBatchByName(ctx context.Context, name string) error
 	ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService) error
 
-	AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
-	ChangeMigrationWindows(ctx context.Context, queueSvc QueueService, batch string, newWindows MigrationWindows) error
-
-	GetMigrationWindows(ctx context.Context, batch string) (MigrationWindows, error)
-	GetMigrationWindow(ctx context.Context, windowID int64) (*MigrationWindow, error)
-	GetEarliestWindow(ctx context.Context, batch string) (*MigrationWindow, error)
-
-	DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, migrationWindows MigrationWindows) (*api.Placement, error)
+	DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, windows Windows) (*api.Placement, error)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/batch_repo_mock_gen.go -rm . BatchRepo
@@ -51,10 +44,4 @@ type BatchRepo interface {
 	DeleteByName(ctx context.Context, name string) error
 	AssignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error
 	UnassignBatch(ctx context.Context, batchName string, instanceUUID uuid.UUID) error
-
-	GetMigrationWindowsByBatch(ctx context.Context, batch string) (MigrationWindows, error)
-	GetMigrationWindow(ctx context.Context, windowID int64) (*MigrationWindow, error)
-	AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
-	UnassignMigrationWindows(ctx context.Context, batch string) error
-	UpdateMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error
 }

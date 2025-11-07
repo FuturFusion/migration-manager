@@ -8,54 +8,71 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
-
-	"github.com/FuturFusion/migration-manager/internal/migration"
 )
 
 var migrationWindowObjects = RegisterStmt(`
-SELECT migration_windows.id, migration_windows.start, migration_windows.end, migration_windows.lockout
+SELECT migration_windows.id, migration_windows.name, migration_windows.start, migration_windows.end, migration_windows.lockout, batches.name AS batch, migration_windows.config
   FROM migration_windows
-  ORDER BY migration_windows.start, migration_windows.end, migration_windows.lockout
+  JOIN batches ON migration_windows.batch_id = batches.id
+  ORDER BY migration_windows.start
 `)
 
 var migrationWindowObjectsByID = RegisterStmt(`
-SELECT migration_windows.id, migration_windows.start, migration_windows.end, migration_windows.lockout
+SELECT migration_windows.id, migration_windows.name, migration_windows.start, migration_windows.end, migration_windows.lockout, batches.name AS batch, migration_windows.config
   FROM migration_windows
+  JOIN batches ON migration_windows.batch_id = batches.id
   WHERE ( migration_windows.id = ? )
-  ORDER BY migration_windows.start, migration_windows.end, migration_windows.lockout
+  ORDER BY migration_windows.start
 `)
 
-var migrationWindowObjectsByStartAndEndAndLockout = RegisterStmt(`
-SELECT migration_windows.id, migration_windows.start, migration_windows.end, migration_windows.lockout
+var migrationWindowObjectsByName = RegisterStmt(`
+SELECT migration_windows.id, migration_windows.name, migration_windows.start, migration_windows.end, migration_windows.lockout, batches.name AS batch, migration_windows.config
   FROM migration_windows
-  WHERE ( migration_windows.start = ? AND migration_windows.end = ? AND migration_windows.lockout = ? )
-  ORDER BY migration_windows.start, migration_windows.end, migration_windows.lockout
+  JOIN batches ON migration_windows.batch_id = batches.id
+  WHERE ( migration_windows.name = ? )
+  ORDER BY migration_windows.start
+`)
+
+var migrationWindowObjectsByBatch = RegisterStmt(`
+SELECT migration_windows.id, migration_windows.name, migration_windows.start, migration_windows.end, migration_windows.lockout, batches.name AS batch, migration_windows.config
+  FROM migration_windows
+  JOIN batches ON migration_windows.batch_id = batches.id
+  WHERE ( batch = ? )
+  ORDER BY migration_windows.start
+`)
+
+var migrationWindowObjectsByNameAndBatch = RegisterStmt(`
+SELECT migration_windows.id, migration_windows.name, migration_windows.start, migration_windows.end, migration_windows.lockout, batches.name AS batch, migration_windows.config
+  FROM migration_windows
+  JOIN batches ON migration_windows.batch_id = batches.id
+  WHERE ( migration_windows.name = ? AND batch = ? )
+  ORDER BY migration_windows.start
 `)
 
 var migrationWindowID = RegisterStmt(`
 SELECT migration_windows.id FROM migration_windows
-  WHERE migration_windows.start = ? AND migration_windows.end = ? AND migration_windows.lockout = ?
+  JOIN batches ON migration_windows.batch_id = batches.id
+  WHERE migration_windows.name = ? AND batches.name = ?
 `)
 
 var migrationWindowCreate = RegisterStmt(`
-INSERT INTO migration_windows (start, end, lockout)
-  VALUES (?, ?, ?)
+INSERT INTO migration_windows (name, start, end, lockout, batch_id, config)
+  VALUES (?, ?, ?, ?, (SELECT batches.id FROM batches WHERE batches.name = ?), ?)
 `)
 
 var migrationWindowUpdate = RegisterStmt(`
 UPDATE migration_windows
-  SET start = ?, end = ?, lockout = ?
+  SET name = ?, start = ?, end = ?, lockout = ?, batch_id = (SELECT batches.id FROM batches WHERE batches.name = ?), config = ?
  WHERE id = ?
 `)
 
-var migrationWindowDeleteByStartAndEndAndLockout = RegisterStmt(`
-DELETE FROM migration_windows WHERE start = ? AND end = ? AND lockout = ?
+var migrationWindowDeleteByNameAndBatch = RegisterStmt(`
+DELETE FROM migration_windows WHERE name = ? AND batch_id = (SELECT batches.id FROM batches WHERE batches.name = ?)
 `)
 
 // GetMigrationWindowID return the ID of the migration_window with the given key.
 // generator: migration_window ID
-func GetMigrationWindowID(ctx context.Context, db tx, start time.Time, end time.Time, lockout time.Time) (_ int64, _err error) {
+func GetMigrationWindowID(ctx context.Context, db tx, name string, batch string) (_ int64, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Migration_window")
 	}()
@@ -65,7 +82,7 @@ func GetMigrationWindowID(ctx context.Context, db tx, start time.Time, end time.
 		return -1, fmt.Errorf("Failed to get \"migrationWindowID\" prepared statement: %w", err)
 	}
 
-	row := stmt.QueryRowContext(ctx, start, end, lockout)
+	row := stmt.QueryRowContext(ctx, name, batch)
 	var id int64
 	err = row.Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -81,15 +98,14 @@ func GetMigrationWindowID(ctx context.Context, db tx, start time.Time, end time.
 
 // GetMigrationWindow returns the migration_window with the given key.
 // generator: migration_window GetOne
-func GetMigrationWindow(ctx context.Context, db dbtx, start time.Time, end time.Time, lockout time.Time) (_ *migration.MigrationWindow, _err error) {
+func GetMigrationWindow(ctx context.Context, db dbtx, name string, batch string) (_ *MigrationWindow, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Migration_window")
 	}()
 
 	filter := MigrationWindowFilter{}
-	filter.Start = &start
-	filter.End = &end
-	filter.Lockout = &lockout
+	filter.Name = &name
+	filter.Batch = &batch
 
 	objects, err := GetMigrationWindows(ctx, db, filter)
 	if err != nil {
@@ -109,16 +125,22 @@ func GetMigrationWindow(ctx context.Context, db dbtx, start time.Time, end time.
 // migrationWindowColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the MigrationWindow entity.
 func migrationWindowColumns() string {
-	return "migration_windows.id, migration_windows.start, migration_windows.end, migration_windows.lockout"
+	return "migration_windows.id, migration_windows.name, migration_windows.start, migration_windows.end, migration_windows.lockout, batches.name AS batch, migration_windows.config"
 }
 
 // getMigrationWindows can be used to run handwritten sql.Stmts to return a slice of objects.
-func getMigrationWindows(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migration.MigrationWindow, error) {
-	objects := make([]migration.MigrationWindow, 0)
+func getMigrationWindows(ctx context.Context, stmt *sql.Stmt, args ...any) ([]MigrationWindow, error) {
+	objects := make([]MigrationWindow, 0)
 
 	dest := func(scan func(dest ...any) error) error {
-		m := migration.MigrationWindow{}
-		err := scan(&m.ID, &m.Start, &m.End, &m.Lockout)
+		m := MigrationWindow{}
+		var configStr string
+		err := scan(&m.ID, &m.Name, &m.Start, &m.End, &m.Lockout, &m.Batch, &configStr)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(configStr, &m.Config)
 		if err != nil {
 			return err
 		}
@@ -137,12 +159,18 @@ func getMigrationWindows(ctx context.Context, stmt *sql.Stmt, args ...any) ([]mi
 }
 
 // getMigrationWindowsRaw can be used to run handwritten query strings to return a slice of objects.
-func getMigrationWindowsRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]migration.MigrationWindow, error) {
-	objects := make([]migration.MigrationWindow, 0)
+func getMigrationWindowsRaw(ctx context.Context, db dbtx, sql string, args ...any) ([]MigrationWindow, error) {
+	objects := make([]MigrationWindow, 0)
 
 	dest := func(scan func(dest ...any) error) error {
-		m := migration.MigrationWindow{}
-		err := scan(&m.ID, &m.Start, &m.End, &m.Lockout)
+		m := MigrationWindow{}
+		var configStr string
+		err := scan(&m.ID, &m.Name, &m.Start, &m.End, &m.Lockout, &m.Batch, &configStr)
+		if err != nil {
+			return err
+		}
+
+		err = unmarshalJSON(configStr, &m.Config)
 		if err != nil {
 			return err
 		}
@@ -162,7 +190,7 @@ func getMigrationWindowsRaw(ctx context.Context, db dbtx, sql string, args ...an
 
 // GetMigrationWindows returns all available migration_windows.
 // generator: migration_window GetMany
-func GetMigrationWindows(ctx context.Context, db dbtx, filters ...MigrationWindowFilter) (_ []migration.MigrationWindow, _err error) {
+func GetMigrationWindows(ctx context.Context, db dbtx, filters ...MigrationWindowFilter) (_ []MigrationWindow, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Migration_window")
 	}()
@@ -170,7 +198,7 @@ func GetMigrationWindows(ctx context.Context, db dbtx, filters ...MigrationWindo
 	var err error
 
 	// Result slice.
-	objects := make([]migration.MigrationWindow, 0)
+	objects := make([]MigrationWindow, 0)
 
 	// Pick the prepared statement and arguments to use based on active criteria.
 	var sqlStmt *sql.Stmt
@@ -185,18 +213,18 @@ func GetMigrationWindows(ctx context.Context, db dbtx, filters ...MigrationWindo
 	}
 
 	for i, filter := range filters {
-		if filter.Start != nil && filter.End != nil && filter.Lockout != nil && filter.ID == nil {
-			args = append(args, []any{filter.Start, filter.End, filter.Lockout}...)
+		if filter.Name != nil && filter.Batch != nil && filter.ID == nil {
+			args = append(args, []any{filter.Name, filter.Batch}...)
 			if len(filters) == 1 {
-				sqlStmt, err = Stmt(db, migrationWindowObjectsByStartAndEndAndLockout)
+				sqlStmt, err = Stmt(db, migrationWindowObjectsByNameAndBatch)
 				if err != nil {
-					return nil, fmt.Errorf("Failed to get \"migrationWindowObjectsByStartAndEndAndLockout\" prepared statement: %w", err)
+					return nil, fmt.Errorf("Failed to get \"migrationWindowObjectsByNameAndBatch\" prepared statement: %w", err)
 				}
 
 				break
 			}
 
-			query, err := StmtString(migrationWindowObjectsByStartAndEndAndLockout)
+			query, err := StmtString(migrationWindowObjectsByNameAndBatch)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to get \"migrationWindowObjects\" prepared statement: %w", err)
 			}
@@ -209,7 +237,31 @@ func GetMigrationWindows(ctx context.Context, db dbtx, filters ...MigrationWindo
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.ID != nil && filter.Start == nil && filter.End == nil && filter.Lockout == nil {
+		} else if filter.Name != nil && filter.ID == nil && filter.Batch == nil {
+			args = append(args, []any{filter.Name}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, migrationWindowObjectsByName)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"migrationWindowObjectsByName\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(migrationWindowObjectsByName)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"migrationWindowObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.ID != nil && filter.Name == nil && filter.Batch == nil {
 			args = append(args, []any{filter.ID}...)
 			if len(filters) == 1 {
 				sqlStmt, err = Stmt(db, migrationWindowObjectsByID)
@@ -233,7 +285,31 @@ func GetMigrationWindows(ctx context.Context, db dbtx, filters ...MigrationWindo
 
 			_, where, _ := strings.Cut(parts[0], "WHERE")
 			queryParts[0] += "OR" + where
-		} else if filter.ID == nil && filter.Start == nil && filter.End == nil && filter.Lockout == nil {
+		} else if filter.Batch != nil && filter.ID == nil && filter.Name == nil {
+			args = append(args, []any{filter.Batch}...)
+			if len(filters) == 1 {
+				sqlStmt, err = Stmt(db, migrationWindowObjectsByBatch)
+				if err != nil {
+					return nil, fmt.Errorf("Failed to get \"migrationWindowObjectsByBatch\" prepared statement: %w", err)
+				}
+
+				break
+			}
+
+			query, err := StmtString(migrationWindowObjectsByBatch)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to get \"migrationWindowObjects\" prepared statement: %w", err)
+			}
+
+			parts := strings.SplitN(query, "ORDER BY", 2)
+			if i == 0 {
+				copy(queryParts[:], parts)
+				continue
+			}
+
+			_, where, _ := strings.Cut(parts[0], "WHERE")
+			queryParts[0] += "OR" + where
+		} else if filter.ID == nil && filter.Name == nil && filter.Batch == nil {
 			return nil, fmt.Errorf("Cannot filter on empty MigrationWindowFilter")
 		} else {
 			return nil, errors.New("No statement exists for the given Filter")
@@ -257,17 +333,25 @@ func GetMigrationWindows(ctx context.Context, db dbtx, filters ...MigrationWindo
 
 // CreateMigrationWindow adds a new migration_window to the database.
 // generator: migration_window Create
-func CreateMigrationWindow(ctx context.Context, db dbtx, object migration.MigrationWindow) (_ int64, _err error) {
+func CreateMigrationWindow(ctx context.Context, db dbtx, object MigrationWindow) (_ int64, _err error) {
 	defer func() {
 		_err = mapErr(_err, "Migration_window")
 	}()
 
-	args := make([]any, 3)
+	args := make([]any, 6)
 
 	// Populate the statement arguments.
-	args[0] = object.Start
-	args[1] = object.End
-	args[2] = object.Lockout
+	args[0] = object.Name
+	args[1] = object.Start
+	args[2] = object.End
+	args[3] = object.Lockout
+	args[4] = object.Batch
+	marshaledConfig, err := marshalJSON(object.Config)
+	if err != nil {
+		return -1, err
+	}
+
+	args[5] = marshaledConfig
 
 	// Prepared statement to use.
 	stmt, err := Stmt(db, migrationWindowCreate)
@@ -295,12 +379,12 @@ func CreateMigrationWindow(ctx context.Context, db dbtx, object migration.Migrat
 
 // UpdateMigrationWindow updates the migration_window matching the given key parameters.
 // generator: migration_window Update
-func UpdateMigrationWindow(ctx context.Context, db tx, start time.Time, end time.Time, lockout time.Time, object migration.MigrationWindow) (_err error) {
+func UpdateMigrationWindow(ctx context.Context, db tx, name string, batch string, object MigrationWindow) (_err error) {
 	defer func() {
 		_err = mapErr(_err, "Migration_window")
 	}()
 
-	id, err := GetMigrationWindowID(ctx, db, start, end, lockout)
+	id, err := GetMigrationWindowID(ctx, db, name, batch)
 	if err != nil {
 		return err
 	}
@@ -310,7 +394,12 @@ func UpdateMigrationWindow(ctx context.Context, db tx, start time.Time, end time
 		return fmt.Errorf("Failed to get \"migrationWindowUpdate\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(object.Start, object.End, object.Lockout, id)
+	marshaledConfig, err := marshalJSON(object.Config)
+	if err != nil {
+		return err
+	}
+
+	result, err := stmt.Exec(object.Name, object.Start, object.End, object.Lockout, object.Batch, marshaledConfig, id)
 	if err != nil {
 		return fmt.Errorf("Update \"migration_windows\" entry failed: %w", err)
 	}
@@ -328,18 +417,18 @@ func UpdateMigrationWindow(ctx context.Context, db tx, start time.Time, end time
 }
 
 // DeleteMigrationWindow deletes the migration_window matching the given key parameters.
-// generator: migration_window DeleteOne-by-Start-and-End-and-Lockout
-func DeleteMigrationWindow(ctx context.Context, db dbtx, start time.Time, end time.Time, lockout time.Time) (_err error) {
+// generator: migration_window DeleteOne-by-Name-and-Batch
+func DeleteMigrationWindow(ctx context.Context, db dbtx, name string, batch string) (_err error) {
 	defer func() {
 		_err = mapErr(_err, "Migration_window")
 	}()
 
-	stmt, err := Stmt(db, migrationWindowDeleteByStartAndEndAndLockout)
+	stmt, err := Stmt(db, migrationWindowDeleteByNameAndBatch)
 	if err != nil {
-		return fmt.Errorf("Failed to get \"migrationWindowDeleteByStartAndEndAndLockout\" prepared statement: %w", err)
+		return fmt.Errorf("Failed to get \"migrationWindowDeleteByNameAndBatch\" prepared statement: %w", err)
 	}
 
-	result, err := stmt.Exec(start, end, lockout)
+	result, err := stmt.Exec(name, batch)
 	if err != nil {
 		return fmt.Errorf("Delete \"migration_windows\": %w", err)
 	}

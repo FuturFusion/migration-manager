@@ -25,19 +25,21 @@ type queueService struct {
 	instance InstanceService
 	source   SourceService
 	target   TargetService
+	window   WindowService
 
 	workerLock *sync.Mutex
 }
 
 var _ QueueService = &queueService{}
 
-func NewQueueService(repo QueueRepo, batch BatchService, instance InstanceService, source SourceService, target TargetService) queueService {
+func NewQueueService(repo QueueRepo, batch BatchService, instance InstanceService, source SourceService, target TargetService, window WindowService) queueService {
 	queueSvc := queueService{
 		repo:       repo,
 		batch:      batch,
 		instance:   instance,
 		source:     source,
 		target:     target,
+		window:     window,
 		workerLock: &sync.Mutex{},
 	}
 
@@ -82,7 +84,7 @@ func (s queueService) GetByInstanceUUID(ctx context.Context, id uuid.UUID) (*Que
 	return s.repo.GetByInstanceUUID(ctx, id)
 }
 
-func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage ImportStage, windowID *int64) (*QueueEntry, error) {
+func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage ImportStage, windowID *string) (*QueueEntry, error) {
 	err := status.Validate()
 	if err != nil {
 		return nil, NewValidationErrf("Invalid migration status: %v", err)
@@ -102,9 +104,9 @@ func (s queueService) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, stat
 		q.ImportStage = importStage
 
 		if windowID == nil {
-			q.MigrationWindowID = sql.NullInt64{}
+			q.MigrationWindowName = sql.NullString{}
 		} else {
-			q.MigrationWindowID = sql.NullInt64{Valid: true, Int64: *windowID}
+			q.MigrationWindowName = sql.NullString{Valid: true, String: *windowID}
 		}
 
 		return s.repo.Update(ctx, *q)
@@ -170,10 +172,10 @@ func (s queueService) DeleteAllByBatch(ctx context.Context, batch string) error 
 // - If the instance does not match any constraint, the earliest valid migration window is used.
 // - The earliest migration window valid for the the first matching constraint will be used otherwise.
 // - Returns a 404 if no migration window can be found, but the instance matched a constraint.
-func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*MigrationWindow, error) {
+func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Window, error) {
 	var entries QueueEntries
 	var instances Instances
-	var windows MigrationWindows
+	var windows Windows
 	var batch *Batch
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -182,7 +184,7 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Migrati
 			return fmt.Errorf("Failed to get idle queue entries for batch %q: %w", q.BatchName, err)
 		}
 
-		windows, err = s.batch.GetMigrationWindows(ctx, q.BatchName)
+		batchWindows, err := s.window.GetAllByBatch(ctx, q.BatchName)
 		if err != nil {
 			return fmt.Errorf("Failed to get migration windows for batch %q: %w", q.BatchName, err)
 		}
@@ -197,6 +199,27 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Migrati
 			return fmt.Errorf("Failed to get batch %q: %w", q.BatchName, err)
 		}
 
+		// Filter out windows that are at capacity.
+		allEntries, err := s.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get all queue entries: %w", err)
+		}
+
+		windowsInUse := map[string]int{}
+		for _, e := range allEntries {
+			window := e.GetWindowName()
+			if window != nil {
+				windowsInUse[*window] += 1
+			}
+		}
+
+		windows = Windows{}
+		for _, w := range batchWindows {
+			if w.Config.Capacity == 0 || windowsInUse[w.Name] < w.Config.Capacity || (q.GetWindowName() != nil && w.Name == *q.GetWindowName()) {
+				windows = append(windows, w)
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -204,21 +227,16 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Migrati
 	}
 
 	// If a window is already assigned, and hasn't ended, then re-use it.
-	existingID := q.GetWindowID()
-	if existingID != nil {
+	if q.GetWindowName() != nil {
 		for _, w := range windows {
-			if w.ID != *existingID {
-				continue
-			}
-
-			if !w.Ended() {
+			if w.Name == *q.GetWindowName() && !w.Ended() {
 				return &w, nil
 			}
 		}
 	}
 
 	// Use the most recently added constraint that matches this queue entry's instance.
-	var constraint *BatchConstraint
+	var constraint *api.BatchConstraint
 	constraints := batch.Constraints
 	slices.Reverse(constraints)
 	for _, inst := range instances {
@@ -270,7 +288,15 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Migrati
 
 	if constraint.MaxConcurrentInstances == 0 || numMatches <= constraint.MaxConcurrentInstances {
 		// If there is no minimum migration time, we just use the earliest valid migration window.
-		return windows.GetEarliest(constraint.MinInstanceBootTime)
+		minBootTime := time.Duration(0)
+		if constraint.MinInstanceBootTime != "" {
+			minBootTime, err = time.ParseDuration(constraint.MinInstanceBootTime)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return windows.GetEarliest(minBootTime)
 	}
 
 	// Return a 404 if this instance matched a constraint, but no valid migration window could be found.
@@ -374,7 +400,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			targetLimitReached = targetProperties.ImportLimit <= s.target.GetCachedImports(target.Name)
 		}
 
-		windowID := queueEntry.GetWindowID()
+		windowName := queueEntry.GetWindowName()
 		if targetLimitReached || sourceLimitReached {
 			newStatusMessage = "Waiting for other instances to finish importing"
 		} else if queueEntry.ImportStage == IMPORTSTAGE_BACKGROUND && instance.Properties.BackgroundImport {
@@ -401,7 +427,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			if begun {
 				if !window.IsEmpty() {
 					// Assign the migration window to the queue entry.
-					windowID = &window.ID
+					windowName = &window.Name
 				}
 
 				// If a migration window has not been defined, or it has and we have passed the start time, begin the final migration.
@@ -473,7 +499,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 
 		// Update queueEntry in the database, and set the worker update time.
 		if newStatus != queueEntry.MigrationStatus || newStatusMessage != queueEntry.MigrationStatusMessage || newImportStage != queueEntry.ImportStage {
-			_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, newImportStage, windowID)
+			_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, newStatusMessage, newImportStage, windowName)
 			if err != nil {
 				return fmt.Errorf("Failed updating instance %q: %w", instance.UUID.String(), err)
 			}

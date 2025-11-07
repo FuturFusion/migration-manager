@@ -49,7 +49,7 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			GetByInstanceUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, error) {
 //				panic("mock out the GetByInstanceUUID method")
 //			},
-//			GetNextWindowFunc: func(ctx context.Context, q migration.QueueEntry) (*migration.MigrationWindow, error) {
+//			GetNextWindowFunc: func(ctx context.Context, q migration.QueueEntry) (*migration.Window, error) {
 //				panic("mock out the GetNextWindow method")
 //			},
 //			NewWorkerCommandByInstanceUUIDFunc: func(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error) {
@@ -64,7 +64,7 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			UpdatePlacementByUUIDFunc: func(ctx context.Context, id uuid.UUID, placement api.Placement) (*migration.QueueEntry, error) {
 //				panic("mock out the UpdatePlacementByUUID method")
 //			},
-//			UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *int64) (*migration.QueueEntry, error) {
+//			UpdateStatusByUUIDFunc: func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *string) (*migration.QueueEntry, error) {
 //				panic("mock out the UpdateStatusByUUID method")
 //			},
 //		}
@@ -102,7 +102,7 @@ type QueueServiceMock struct {
 	GetByInstanceUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, error)
 
 	// GetNextWindowFunc mocks the GetNextWindow method.
-	GetNextWindowFunc func(ctx context.Context, q migration.QueueEntry) (*migration.MigrationWindow, error)
+	GetNextWindowFunc func(ctx context.Context, q migration.QueueEntry) (*migration.Window, error)
 
 	// NewWorkerCommandByInstanceUUIDFunc mocks the NewWorkerCommandByInstanceUUID method.
 	NewWorkerCommandByInstanceUUIDFunc func(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error)
@@ -117,7 +117,7 @@ type QueueServiceMock struct {
 	UpdatePlacementByUUIDFunc func(ctx context.Context, id uuid.UUID, placement api.Placement) (*migration.QueueEntry, error)
 
 	// UpdateStatusByUUIDFunc mocks the UpdateStatusByUUID method.
-	UpdateStatusByUUIDFunc func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *int64) (*migration.QueueEntry, error)
+	UpdateStatusByUUIDFunc func(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *string) (*migration.QueueEntry, error)
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -240,7 +240,7 @@ type QueueServiceMock struct {
 			// ImportStage is the importStage argument value.
 			ImportStage migration.ImportStage
 			// WindowID is the windowID argument value.
-			WindowID *int64
+			WindowID *string
 		}
 	}
 	lockCreateEntry                    sync.RWMutex
@@ -589,7 +589,7 @@ func (mock *QueueServiceMock) GetByInstanceUUIDCalls() []struct {
 }
 
 // GetNextWindow calls GetNextWindowFunc.
-func (mock *QueueServiceMock) GetNextWindow(ctx context.Context, q migration.QueueEntry) (*migration.MigrationWindow, error) {
+func (mock *QueueServiceMock) GetNextWindow(ctx context.Context, q migration.QueueEntry) (*migration.Window, error) {
 	if mock.GetNextWindowFunc == nil {
 		panic("QueueServiceMock.GetNextWindowFunc: method is nil but QueueService.GetNextWindow was just called")
 	}
@@ -781,7 +781,7 @@ func (mock *QueueServiceMock) UpdatePlacementByUUIDCalls() []struct {
 }
 
 // UpdateStatusByUUID calls UpdateStatusByUUIDFunc.
-func (mock *QueueServiceMock) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *int64) (*migration.QueueEntry, error) {
+func (mock *QueueServiceMock) UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage migration.ImportStage, windowID *string) (*migration.QueueEntry, error) {
 	if mock.UpdateStatusByUUIDFunc == nil {
 		panic("QueueServiceMock.UpdateStatusByUUIDFunc: method is nil but QueueService.UpdateStatusByUUID was just called")
 	}
@@ -791,7 +791,7 @@ func (mock *QueueServiceMock) UpdateStatusByUUID(ctx context.Context, id uuid.UU
 		Status        api.MigrationStatusType
 		StatusMessage string
 		ImportStage   migration.ImportStage
-		WindowID      *int64
+		WindowID      *string
 	}{
 		Ctx:           ctx,
 		ID:            id,
@@ -816,7 +816,7 @@ func (mock *QueueServiceMock) UpdateStatusByUUIDCalls() []struct {
 	Status        api.MigrationStatusType
 	StatusMessage string
 	ImportStage   migration.ImportStage
-	WindowID      *int64
+	WindowID      *string
 } {
 	var calls []struct {
 		Ctx           context.Context
@@ -824,7 +824,7 @@ func (mock *QueueServiceMock) UpdateStatusByUUIDCalls() []struct {
 		Status        api.MigrationStatusType
 		StatusMessage string
 		ImportStage   migration.ImportStage
-		WindowID      *int64
+		WindowID      *string
 	}
 	mock.lockUpdateStatusByUUID.RLock()
 	calls = mock.calls.UpdateStatusByUUID

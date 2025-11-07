@@ -97,7 +97,7 @@ func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueS
 	}
 
 	// If the constraints changed, keep a list of all old and new constraints to check if any matching queue entry is already committed.
-	var constraintsToCheck []BatchConstraint
+	var constraintsToCheck []api.BatchConstraint
 	if !slices.Equal(oldBatch.Constraints, newBatch.Constraints) {
 		constraintsToCheck = oldBatch.Constraints
 		for _, c := range newBatch.Constraints {
@@ -343,11 +343,6 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 			}
 		}
 
-		err = s.repo.UnassignMigrationWindows(ctx, name)
-		if err != nil {
-			return err
-		}
-
 		return s.repo.DeleteByName(ctx, name)
 	})
 }
@@ -405,117 +400,7 @@ func (s batchService) StopBatchByName(ctx context.Context, name string) (err err
 	})
 }
 
-func (s batchService) AssignMigrationWindows(ctx context.Context, batch string, windows MigrationWindows) error {
-	err := windows.Validate()
-	if err != nil {
-		return fmt.Errorf("Failed to assign migration window to batch %q: %w", batch, err)
-	}
-
-	return s.repo.AssignMigrationWindows(ctx, batch, windows)
-}
-
-func (s batchService) ChangeMigrationWindows(ctx context.Context, queueSvc QueueService, batchName string, newWindows MigrationWindows) error {
-	err := newWindows.Validate()
-	if err != nil {
-		return fmt.Errorf("Failed to assign migration window to batch %q: %w", batchName, err)
-	}
-
-	return transaction.Do(ctx, func(ctx context.Context) error {
-		batch, err := s.repo.GetByName(ctx, batchName)
-		if err != nil {
-			return fmt.Errorf("Failed to get batch %q: %w", batchName, err)
-		}
-
-		oldWindows, err := s.repo.GetMigrationWindowsByBatch(ctx, batch.Name)
-		if err != nil {
-			return fmt.Errorf("Failed to get current migration windows for batch %q: %w", batch.Name, err)
-		}
-
-		// Keep this list nil by default so we don't write anything unless the windows actually change.
-		var changedWindows MigrationWindows
-		if len(oldWindows) != len(newWindows) {
-			changedWindows = newWindows
-		} else {
-			windowMap := map[string]bool{}
-			for _, w := range oldWindows {
-				windowMap[w.Key()] = true
-			}
-
-			changed := false
-			for _, w := range newWindows {
-				if !windowMap[w.Key()] {
-					changed = true
-					break
-				}
-			}
-
-			if changed {
-				changedWindows = append(MigrationWindows{}, newWindows...)
-			}
-		}
-
-		newWindowMap := make(map[string]MigrationWindow, len(newWindows))
-		for _, w := range newWindows {
-			newWindowMap[w.Key()] = w
-		}
-
-		removedWindows := MigrationWindows{}
-		for _, w := range oldWindows {
-			_, ok := newWindowMap[w.Key()]
-			if !ok {
-				removedWindows = append(removedWindows, w)
-			}
-		}
-
-		if batch.Status == api.BATCHSTATUS_RUNNING {
-			entries, err := queueSvc.GetAllByBatch(ctx, batch.Name)
-			if err != nil {
-				return fmt.Errorf("Failed to get queue entries for batch %q: %w", batch.Name, err)
-			}
-
-			for _, e := range entries {
-				if e.IsCommitted() && len(removedWindows) > 0 {
-					return fmt.Errorf("Cannot remove migration windows from batch %q with committed queue entries: %w", batch.Name, ErrOperationNotPermitted)
-				}
-			}
-		}
-
-		if changedWindows != nil {
-			return s.repo.UpdateMigrationWindows(ctx, batch.Name, changedWindows)
-		}
-
-		return nil
-	})
-}
-
-func (s batchService) GetMigrationWindows(ctx context.Context, batch string) (MigrationWindows, error) {
-	return s.repo.GetMigrationWindowsByBatch(ctx, batch)
-}
-
-func (s batchService) GetMigrationWindow(ctx context.Context, windowID int64) (*MigrationWindow, error) {
-	return s.repo.GetMigrationWindow(ctx, windowID)
-}
-
-func (s batchService) GetEarliestWindow(ctx context.Context, batch string) (*MigrationWindow, error) {
-	windows, err := s.repo.GetMigrationWindowsByBatch(ctx, batch)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get batch %q migration windows: %w", batch, err)
-	}
-
-	// If there are no explicit windows exist, return a zeroed MigrationWindow.
-	if len(windows) == 0 {
-		return &MigrationWindow{Start: time.Time{}, End: time.Time{}, Lockout: time.Time{}}, nil
-	}
-
-	earliest, err := windows.GetEarliest(0)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to get earliest migration window for batch %q: %w", batch, err)
-	}
-
-	return earliest, nil
-}
-
-func (s batchService) DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, migrationWindows MigrationWindows) (*api.Placement, error) {
+func (s batchService) DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, windows Windows) (*api.Placement, error) {
 	if batch.Config.PlacementScriptlet == "" {
 		return batch.GetIncusPlacement(instance, usedNetworks, api.Placement{})
 	}
@@ -535,7 +420,7 @@ func (s batchService) DeterminePlacement(ctx context.Context, instance Instance,
 		return nil, err
 	}
 
-	rawPlacement, err := scriptlet.BatchPlacementRun(ctx, s.scriptletLoader, instance.ToAPI(), batch.ToAPI(migrationWindows), apiNetworks)
+	rawPlacement, err := scriptlet.BatchPlacementRun(ctx, s.scriptletLoader, instance.ToAPI(), batch.ToAPI(windows), apiNetworks)
 	if err != nil {
 		return nil, err
 	}

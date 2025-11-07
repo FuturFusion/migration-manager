@@ -3,6 +3,7 @@ package sqlite_test
 import (
 	"context"
 	"crypto/x509"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -188,6 +189,27 @@ var (
 		Source:     "TestSource",
 		SourceType: api.SOURCETYPE_COMMON,
 	}
+
+	qA = migration.QueueEntry{
+		InstanceUUID:           instanceAUUID,
+		BatchName:              testBatch.Name,
+		SecretToken:            uuid.New(),
+		ImportStage:            migration.IMPORTSTAGE_BACKGROUND,
+		MigrationStatus:        api.MIGRATIONSTATUS_WAITING,
+		MigrationStatusMessage: "msg",
+		LastWorkerStatus:       0,
+		LastBackgroundSync:     time.Time{},
+		MigrationWindowName: sql.NullString{
+			String: "window1",
+			Valid:  true,
+		},
+		Placement: api.Placement{
+			TargetName:    "default",
+			TargetProject: "default",
+			StoragePools:  map[string]string{"root": "default"},
+			Networks:      map[string]api.NetworkPlacement{},
+		},
+	}
 )
 
 func TestInstanceDatabaseActions(t *testing.T) {
@@ -218,6 +240,11 @@ func TestInstanceDatabaseActions(t *testing.T) {
 
 	batch := sqlite.NewBatch(tx)
 	batchSvc := migration.NewBatchService(batch, instanceSvc)
+
+	windowSvc := migration.NewWindowService(sqlite.NewMigrationWindow(tx))
+
+	queue := sqlite.NewQueue(tx)
+	queueSvc := migration.NewQueueService(queue, batchSvc, instanceSvc, sourceSvc, targetSvc, windowSvc)
 
 	// Cannot add an instance with an invalid source.
 	_, err = instance.Create(ctx, instanceA)
@@ -295,11 +322,43 @@ func TestInstanceDatabaseActions(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, instanceB, *dbInstanceB)
 
+	// Create some window records.
+	_, err = windowSvc.Create(ctx, migration.Window{Name: "window1", Start: time.Now().UTC(), End: time.Now().UTC().Add(10 * time.Minute), Batch: testBatch.Name})
+	require.NoError(t, err)
+	_, err = windowSvc.Create(ctx, migration.Window{Name: "window2", Start: time.Now().UTC(), End: time.Now().UTC().Add(10 * time.Minute), Batch: testBatch.Name})
+	require.NoError(t, err)
+
+	// Create a queue entry record.
+	qA, err = queueSvc.CreateEntry(ctx, qA)
+	require.NoError(t, err)
+
+	// Ensure the database record matches.
+	q, err := queueSvc.GetByInstanceUUID(ctx, instanceAUUID)
+	require.NoError(t, err)
+	require.Equal(t, qA, *q)
+
+	// Change its window.
+	qA.MigrationWindowName = sql.NullString{Valid: true, String: "window2"}
+	err = queueSvc.Update(ctx, &qA)
+	require.NoError(t, err)
+
+	// Ensure the database record matches.
+	q, err = queueSvc.GetByInstanceUUID(ctx, instanceAUUID)
+	require.NoError(t, err)
+	require.Equal(t, qA, *q)
+
+	err = windowSvc.DeleteByNameAndBatch(ctx, queueSvc, "window2", testBatch.Name)
+	require.Error(t, err)
+
 	// Delete an instance.
 	err = instance.DeleteByUUID(ctx, instanceA.UUID)
 	require.NoError(t, err)
 	_, err = instance.GetByUUID(ctx, instanceA.UUID)
 	require.ErrorIs(t, err, migration.ErrNotFound)
+
+	// Queue entry should be gone.
+	_, err = queueSvc.GetByInstanceUUID(ctx, instanceAUUID)
+	require.Error(t, err)
 
 	// Should have two instances remaining.
 	instances, err = instance.GetAll(ctx)

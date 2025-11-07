@@ -23,12 +23,13 @@ type Handler struct {
 	source   migration.SourceService
 	target   migration.TargetService
 	queue    migration.QueueService
+	window   migration.WindowService
 
 	workerUpdateCache *util.Cache[uuid.UUID, time.Time]
 }
 
 // NewMigrationHandler creates a new handler for queued migrations.
-func NewMigrationHandler(b migration.BatchService, i migration.InstanceService, n migration.NetworkService, s migration.SourceService, t migration.TargetService, q migration.QueueService) *Handler {
+func NewMigrationHandler(b migration.BatchService, i migration.InstanceService, n migration.NetworkService, s migration.SourceService, t migration.TargetService, q migration.QueueService, w migration.WindowService) *Handler {
 	return &Handler{
 		batchLock:         util.NewIDLock[string](),
 		workerUpdateCache: util.NewCache[uuid.UUID, time.Time](),
@@ -39,13 +40,15 @@ func NewMigrationHandler(b migration.BatchService, i migration.InstanceService, 
 		source:   s,
 		target:   t,
 		queue:    q,
+		window:   w,
 	}
 }
 
 // MigrationState is a cache of all migration data for a batch, queued by instance.
 type MigrationState struct {
-	Batch            migration.Batch
-	MigrationWindows migration.MigrationWindows
+	Batch migration.Batch
+
+	Windows map[string]migration.Window
 
 	Targets      map[uuid.UUID]migration.Target
 	QueueEntries map[uuid.UUID]migration.QueueEntry
@@ -81,7 +84,7 @@ func (s *Handler) GetMigrationState(ctx context.Context, batchStatus api.BatchSt
 	var targets migration.Targets
 	var sources migration.Sources
 	var instances migration.Instances
-	windowsByBatch := map[string]migration.MigrationWindows{}
+	windowsByBatch := map[string]map[string]migration.Window{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
 		entries, err = s.queue.GetAllByState(ctx, migrationStatuses...)
@@ -95,9 +98,17 @@ func (s *Handler) GetMigrationState(ctx context.Context, batchStatus api.BatchSt
 		}
 
 		for _, b := range batches {
-			windowsByBatch[b.Name], err = s.batch.GetMigrationWindows(ctx, b.Name)
+			if windowsByBatch[b.Name] == nil {
+				windowsByBatch[b.Name] = map[string]migration.Window{}
+			}
+
+			windows, err := s.window.GetAllByBatch(ctx, b.Name)
 			if err != nil {
 				return err
+			}
+
+			for _, w := range windows {
+				windowsByBatch[b.Name][w.Name] = w
 			}
 		}
 
@@ -151,12 +162,12 @@ func (s *Handler) GetMigrationState(ctx context.Context, batchStatus api.BatchSt
 
 	for _, b := range batchMap {
 		state := MigrationState{
-			Batch:            b,
-			MigrationWindows: windowsByBatch[b.Name],
-			QueueEntries:     queueMap[b.Name],
-			Instances:        map[uuid.UUID]migration.Instance{},
-			Sources:          map[uuid.UUID]migration.Source{},
-			Targets:          map[uuid.UUID]migration.Target{},
+			Batch:        b,
+			Windows:      windowsByBatch[b.Name],
+			QueueEntries: queueMap[b.Name],
+			Instances:    map[uuid.UUID]migration.Instance{},
+			Sources:      map[uuid.UUID]migration.Source{},
+			Targets:      map[uuid.UUID]migration.Target{},
 		}
 
 		for _, inst := range instances {

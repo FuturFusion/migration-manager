@@ -14,72 +14,80 @@ import (
 )
 
 var queueEntryObjects = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, queue.migration_window_id, queue.placement
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, migration_windows.name AS migration_window_name, queue.placement
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
+  LEFT JOIN migration_windows ON queue.migration_window_id = migration_windows.id
   ORDER BY instances.id
 `)
 
 var queueEntryObjectsByInstanceUUID = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, queue.migration_window_id, queue.placement
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, migration_windows.name AS migration_window_name, queue.placement
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
+  LEFT JOIN migration_windows ON queue.migration_window_id = migration_windows.id
   WHERE ( instance_uuid = ? )
   ORDER BY instances.id
 `)
 
 var queueEntryObjectsByBatchName = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, queue.migration_window_id, queue.placement
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, migration_windows.name AS migration_window_name, queue.placement
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
+  LEFT JOIN migration_windows ON queue.migration_window_id = migration_windows.id
   WHERE ( batch_name = ? )
   ORDER BY instances.id
 `)
 
 var queueEntryObjectsByMigrationStatus = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, queue.migration_window_id, queue.placement
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, migration_windows.name AS migration_window_name, queue.placement
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
+  LEFT JOIN migration_windows ON queue.migration_window_id = migration_windows.id
   WHERE ( queue.migration_status = ? )
   ORDER BY instances.id
 `)
 
 var queueEntryObjectsByImportStage = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, queue.migration_window_id, queue.placement
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, migration_windows.name AS migration_window_name, queue.placement
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
+  LEFT JOIN migration_windows ON queue.migration_window_id = migration_windows.id
   WHERE ( queue.import_stage = ? )
   ORDER BY instances.id
 `)
 
 var queueEntryObjectsByBatchNameAndMigrationStatus = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, queue.migration_window_id, queue.placement
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, migration_windows.name AS migration_window_name, queue.placement
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
+  LEFT JOIN migration_windows ON queue.migration_window_id = migration_windows.id
   WHERE ( batch_name = ? AND queue.migration_status = ? )
   ORDER BY instances.id
 `)
 
 var queueEntryObjectsByBatchNameAndImportStage = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, queue.migration_window_id, queue.placement
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, migration_windows.name AS migration_window_name, queue.placement
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
+  LEFT JOIN migration_windows ON queue.migration_window_id = migration_windows.id
   WHERE ( batch_name = ? AND queue.import_stage = ? )
   ORDER BY instances.id
 `)
 
 var queueEntryObjectsByBatchNameAndMigrationStatusAndImportStage = RegisterStmt(`
-SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, queue.migration_window_id, queue.placement
+SELECT queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, migration_windows.name AS migration_window_name, queue.placement
   FROM queue
   JOIN instances ON queue.instance_id = instances.id
   JOIN batches ON queue.batch_id = batches.id
+  LEFT JOIN migration_windows ON queue.migration_window_id = migration_windows.id
   WHERE ( batch_name = ? AND queue.migration_status = ? AND queue.import_stage = ? )
   ORDER BY instances.id
 `)
@@ -92,12 +100,12 @@ SELECT queue.id FROM queue
 
 var queueEntryCreate = RegisterStmt(`
 INSERT INTO queue (instance_id, batch_id, secret_token, import_stage, migration_status, migration_status_message, last_worker_status, last_background_sync, migration_window_id, placement)
-  VALUES ((SELECT instances.id FROM instances WHERE instances.uuid = ?), (SELECT batches.id FROM batches WHERE batches.name = ?), ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES ((SELECT instances.id FROM instances WHERE instances.uuid = ?), (SELECT batches.id FROM batches WHERE batches.name = ?), ?, ?, ?, ?, ?, ?, (SELECT migration_windows.id FROM migration_windows JOIN batches ON migration_windows.batch_id = batches.id WHERE migration_windows.name = ? AND batches.id = batch_id), ?)
 `)
 
 var queueEntryUpdate = RegisterStmt(`
 UPDATE queue
-  SET instance_id = (SELECT instances.id FROM instances WHERE instances.uuid = ?), batch_id = (SELECT batches.id FROM batches WHERE batches.name = ?), secret_token = ?, import_stage = ?, migration_status = ?, migration_status_message = ?, last_worker_status = ?, last_background_sync = ?, migration_window_id = ?, placement = ?
+  SET instance_id = (SELECT instances.id FROM instances WHERE instances.uuid = ?), batch_id = (SELECT batches.id FROM batches WHERE batches.name = ?), secret_token = ?, import_stage = ?, migration_status = ?, migration_status_message = ?, last_worker_status = ?, last_background_sync = ?, migration_window_id = (SELECT migration_windows.id FROM migration_windows JOIN batches ON migration_windows.batch_id = batches.id WHERE migration_windows.name = ? AND batches.id = batch_id), placement = ?
  WHERE id = ?
 `)
 
@@ -163,7 +171,7 @@ func GetQueueEntry(ctx context.Context, db dbtx, instanceUUID uuid.UUID) (_ *mig
 // queueEntryColumns returns a string of column names to be used with a SELECT statement for the entity.
 // Use this function when building statements to retrieve database entries matching the QueueEntry entity.
 func queueEntryColumns() string {
-	return "queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, queue.migration_window_id, queue.placement"
+	return "queue.id, instances.uuid AS instance_uuid, batches.name AS batch_name, queue.secret_token, queue.import_stage, queue.migration_status, queue.migration_status_message, queue.last_worker_status, queue.last_background_sync, migration_windows.name AS migration_window_name, queue.placement"
 }
 
 // getQueueEntries can be used to run handwritten sql.Stmts to return a slice of objects.
@@ -173,7 +181,7 @@ func getQueueEntries(ctx context.Context, stmt *sql.Stmt, args ...any) ([]migrat
 	dest := func(scan func(dest ...any) error) error {
 		q := migration.QueueEntry{}
 		var placementStr string
-		err := scan(&q.ID, &q.InstanceUUID, &q.BatchName, &q.SecretToken, &q.ImportStage, &q.MigrationStatus, &q.MigrationStatusMessage, &q.LastWorkerStatus, &q.LastBackgroundSync, &q.MigrationWindowID, &placementStr)
+		err := scan(&q.ID, &q.InstanceUUID, &q.BatchName, &q.SecretToken, &q.ImportStage, &q.MigrationStatus, &q.MigrationStatusMessage, &q.LastWorkerStatus, &q.LastBackgroundSync, &q.MigrationWindowName, &placementStr)
 		if err != nil {
 			return err
 		}
@@ -203,7 +211,7 @@ func getQueueEntriesRaw(ctx context.Context, db dbtx, sql string, args ...any) (
 	dest := func(scan func(dest ...any) error) error {
 		q := migration.QueueEntry{}
 		var placementStr string
-		err := scan(&q.ID, &q.InstanceUUID, &q.BatchName, &q.SecretToken, &q.ImportStage, &q.MigrationStatus, &q.MigrationStatusMessage, &q.LastWorkerStatus, &q.LastBackgroundSync, &q.MigrationWindowID, &placementStr)
+		err := scan(&q.ID, &q.InstanceUUID, &q.BatchName, &q.SecretToken, &q.ImportStage, &q.MigrationStatus, &q.MigrationStatusMessage, &q.LastWorkerStatus, &q.LastBackgroundSync, &q.MigrationWindowName, &placementStr)
 		if err != nil {
 			return err
 		}
@@ -459,7 +467,7 @@ func CreateQueueEntry(ctx context.Context, db dbtx, object migration.QueueEntry)
 	args[5] = object.MigrationStatusMessage
 	args[6] = object.LastWorkerStatus
 	args[7] = object.LastBackgroundSync
-	args[8] = object.MigrationWindowID
+	args[8] = object.MigrationWindowName
 	marshaledPlacement, err := marshalJSON(object.Placement)
 	if err != nil {
 		return -1, err
@@ -513,7 +521,7 @@ func UpdateQueueEntry(ctx context.Context, db tx, instanceUUID uuid.UUID, object
 		return err
 	}
 
-	result, err := stmt.Exec(object.InstanceUUID, object.BatchName, object.SecretToken, object.ImportStage, object.MigrationStatus, object.MigrationStatusMessage, object.LastWorkerStatus, object.LastBackgroundSync, object.MigrationWindowID, marshaledPlacement, id)
+	result, err := stmt.Exec(object.InstanceUUID, object.BatchName, object.SecretToken, object.ImportStage, object.MigrationStatus, object.MigrationStatusMessage, object.LastWorkerStatus, object.LastBackgroundSync, object.MigrationWindowName, marshaledPlacement, id)
 	if err != nil {
 		return fmt.Errorf("Update \"queue\" entry failed: %w", err)
 	}

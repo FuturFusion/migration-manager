@@ -2,11 +2,8 @@ package migration
 
 import (
 	"fmt"
-	"net/http"
-	"sort"
 	"time"
 
-	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/validate"
 
 	"github.com/FuturFusion/migration-manager/internal/scriptlet"
@@ -22,26 +19,9 @@ type Batch struct {
 
 	StartDate time.Time
 
-	Constraints []BatchConstraint `db:"marshal=json"`
-	Config      api.BatchConfig   `db:"marshal=json"`
-	Defaults    api.BatchDefaults `db:"marshal=json"`
-}
-
-type BatchConstraint struct {
-	// Name of the constraint.
-	Name string `json:"name" yaml:"name"`
-
-	// Description of the constraint.
-	Description string `json:"description" yaml:"description"`
-
-	// Expression used to select instances for the constraint.
-	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
-
-	// Maximum amount of matched instances that can concurrently migrate, before moving to the next migration window.
-	MaxConcurrentInstances int `json:"max_concurrent_instances" yaml:"max_concurrent_instances"`
-
-	// Minimum amount of time required for an instance to boot after initial disk import. Migration window duration must be at least this much.
-	MinInstanceBootTime time.Duration `json:"min_instance_boot_time" yaml:"min_instance_boot_time"`
+	Constraints []api.BatchConstraint `db:"marshal=json"`
+	Config      api.BatchConfig       `db:"marshal=json"`
+	Defaults    api.BatchDefaults     `db:"marshal=json"`
 }
 
 // GetIncusPlacement returns a TargetPlacement for the given instance and its networks.
@@ -107,15 +87,6 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 	return resp, nil
 }
 
-type MigrationWindows []MigrationWindow
-
-type MigrationWindow struct {
-	ID      int64
-	Start   time.Time `db:"primary=yes"`
-	End     time.Time `db:"primary=yes"`
-	Lockout time.Time `db:"primary=yes"`
-}
-
 func (b Batch) Validate() error {
 	if b.ID < 0 {
 		return NewValidationErrf("Invalid batch, id can not be negative")
@@ -179,14 +150,34 @@ func (b Batch) Validate() error {
 
 	exprs := map[string]bool{}
 	for _, c := range b.Constraints {
+		err := validate.IsAPIName(b.Name, false)
+		if err != nil {
+			return NewValidationErrf("Invalid constraint, %q is not a valid name: %v", b.Name, err)
+		}
+
 		if exprs[c.IncludeExpression] {
 			return NewValidationErrf("Invalid batch constraint, include expression %q cannot be used more than once", c.IncludeExpression)
 		}
 
 		exprs[c.IncludeExpression] = true
-		err := c.Validate()
+		_, err = InstanceFilterable{}.CompileIncludeExpression(b.IncludeExpression)
 		if err != nil {
-			return err
+			return NewValidationErrf("Invalid constraint %q is not a valid include expression: %v", b.IncludeExpression, err)
+		}
+
+		if c.MaxConcurrentInstances < 0 {
+			return NewValidationErrf("Invalid constraint max concurrent instances must not be negative")
+		}
+
+		if c.MinInstanceBootTime != "" {
+			bootTime, err := time.ParseDuration(c.MinInstanceBootTime)
+			if err != nil {
+				return NewValidationErrf("Invalid constraint minimum boot time %q: %v", c.MinInstanceBootTime, err)
+			}
+
+			if bootTime <= 0 {
+				return NewValidationErrf("Invalid constraint minimum boot time %q must be greater than 0", c.MinInstanceBootTime)
+			}
 		}
 	}
 
@@ -226,186 +217,13 @@ func (b Batch) Validate() error {
 	return nil
 }
 
-func (b BatchConstraint) Validate() error {
-	err := validate.IsAPIName(b.Name, false)
-	if err != nil {
-		return NewValidationErrf("Invalid constraint, %q is not a valid name: %v", b.Name, err)
-	}
-
-	_, err = InstanceFilterable{}.CompileIncludeExpression(b.IncludeExpression)
-	if err != nil {
-		return NewValidationErrf("Invalid constraint %q is not a valid include expression: %v", b.IncludeExpression, err)
-	}
-
-	if b.MaxConcurrentInstances < 0 {
-		return NewValidationErrf("Invalid constraint max concurrent instances must not be negative")
-	}
-
-	if b.MinInstanceBootTime < 0 {
-		return NewValidationErrf("Invalid constraint minimum migration time must not be negative")
-	}
-
-	return nil
-}
-
-// GetEarliest returns the earliest valid migration window, or an error if none are found.
-func (ws MigrationWindows) GetEarliest(minDuration time.Duration) (*MigrationWindow, error) {
-	var earliestWindow *MigrationWindow
-	if len(ws) == 0 {
-		return &MigrationWindow{}, nil
-	}
-
-	for _, w := range ws {
-		if earliestWindow == nil || w.Start.Before(earliestWindow.Start) {
-			if w.FitsDuration(minDuration) {
-				earliestWindow = &w
-			}
-		}
-	}
-
-	if earliestWindow == nil {
-		return nil, incusAPI.StatusErrorf(http.StatusNotFound, "No available migration windows")
-	}
-
-	return earliestWindow, nil
-}
-
-func (w MigrationWindow) IsEmpty() bool {
-	return w.Start.IsZero() && w.End.IsZero() && w.Lockout.IsZero()
-}
-
-// Begun returns whether the migration window has begun (whether its start time is in the past).
-func (w MigrationWindow) Begun() bool {
-	started := w.Start.IsZero() || w.Start.Before(time.Now().UTC())
-
-	return started
-}
-
-func (w MigrationWindow) Locked() bool {
-	locked := !w.Lockout.IsZero() && w.Lockout.Before(time.Now().UTC())
-
-	return w.Ended() || locked
-}
-
-func (w MigrationWindow) Ended() bool {
-	ended := !w.End.IsZero() && w.End.Before(time.Now().UTC())
-	return ended
-}
-
-func (w MigrationWindow) FitsDuration(duration time.Duration) bool {
-	if w.Validate() != nil {
-		return false
-	}
-
-	// If the window is locked, do not consider it to be available.
-	if w.Locked() {
-		return false
-	}
-
-	// If the end time is infinite, then the duration fits.
-	if w.End.IsZero() {
-		return true
-	}
-
-	// If the window has already started, make the comparison to now instead.
-	start := w.Start
-	if start.Before(time.Now().UTC()) {
-		start = time.Now().UTC()
-	}
-
-	// TODO: Make this configurable per instance, once we tie instances to a migration window.
-	// Set a buffer for the instance to revert migration.
-	return start.Add(duration + time.Minute).Before(w.End)
-}
-
-// Key returns an identifying key for the MigrationWindow, based on its timings.
-func (w MigrationWindow) Key() string {
-	return w.Start.String() + "_" + w.End.String() + "_" + w.Lockout.String()
-}
-
-func (ws MigrationWindows) Validate() error {
-	// Sort the windows by their start times.
-	sort.Slice(ws, func(i, j int) bool {
-		return ws[i].Start.Before(ws[j].Start)
-	})
-
-	for i, w := range ws {
-		// Perform individual window validation.
-		err := w.Validate()
-		if err != nil {
-			return err
-		}
-
-		// If the current window starts before the earlier window's end time, then they overlap.
-		if i > 0 {
-			if ws[i].Start.Before(ws[i-1].End) {
-				return fmt.Errorf("Window %d with start time %q overlaps with window %d with end time %q", i, ws[i].Start.String(), i-1, ws[i-1].End.String())
-			}
-		}
-	}
-
-	return nil
-}
-
-func (w MigrationWindow) Validate() error {
-	// If a migration window is defined, ensure sure it makes sense.
-	if !w.Start.IsZero() && !w.End.IsZero() && w.End.Before(w.Start) {
-		return fmt.Errorf("Batch migration window end time is before start time")
-	}
-
-	if !w.End.IsZero() && w.End.Before(time.Now().UTC()) {
-		return fmt.Errorf("Batch migration window has already passed")
-	}
-
-	if !w.Lockout.IsZero() && w.Start.After(w.Lockout) {
-		return fmt.Errorf("Batch migration window lockout time is before the start time")
-	}
-
-	if !w.Lockout.IsZero() && w.End.Before(w.Lockout) {
-		return fmt.Errorf("Batch migration window lockout time is after the end time")
-	}
-
-	return nil
-}
-
-func (b Batch) HasValidWindow(windows []MigrationWindow) error {
-	hasValidWindow := len(windows) == 0
-	for _, w := range windows {
-		// Skip any migration windows that have since passed.
-		if w.Validate() != nil {
-			continue
-		}
-
-		hasValidWindow = true
-		break
-	}
-
-	if !hasValidWindow {
-		return fmt.Errorf("No valid migration windows found for batch %q", b.Name)
-	}
-
-	return nil
-}
-
 type Batches []Batch
 
 // ToAPI returns the API representation of a batch.
-func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
+func (b Batch) ToAPI(windows Windows) api.Batch {
 	apiWindows := make([]api.MigrationWindow, len(windows))
 	for i, w := range windows {
-		apiWindows[i] = api.MigrationWindow{Start: w.Start, End: w.End, Lockout: w.Lockout}
-	}
-
-	constraints := make([]api.BatchConstraint, len(b.Constraints))
-
-	for i, c := range b.Constraints {
-		constraints[i] = api.BatchConstraint{
-			Name:                   c.Name,
-			Description:            c.Description,
-			IncludeExpression:      c.IncludeExpression,
-			MaxConcurrentInstances: c.MaxConcurrentInstances,
-			MinInstanceBootTime:    c.MinInstanceBootTime.String(),
-		}
+		apiWindows[i] = w.ToAPI()
 	}
 
 	return api.Batch{
@@ -413,7 +231,7 @@ func (b Batch) ToAPI(windows MigrationWindows) api.Batch {
 			Name:              b.Name,
 			IncludeExpression: b.IncludeExpression,
 			MigrationWindows:  apiWindows,
-			Constraints:       constraints,
+			Constraints:       b.Constraints,
 			Defaults:          b.Defaults,
 			Config:            b.Config,
 		},

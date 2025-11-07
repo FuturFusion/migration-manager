@@ -78,6 +78,7 @@ type Daemon struct {
 	queue        migration.QueueService
 	warning      migration.WarningService
 	artifact     migration.ArtifactService
+	window       migration.WindowService
 
 	errgroup *errgroup.Group
 
@@ -310,9 +311,10 @@ func (d *Daemon) Start() error {
 	d.source = migration.NewSourceService(sqlite.NewSource(dbWithTransaction))
 	d.instance = migration.NewInstanceService(sqlite.NewInstance(dbWithTransaction))
 	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance)
-	d.queue = migration.NewQueueService(sqlite.NewQueue(dbWithTransaction), d.batch, d.instance, d.source, d.target)
+	d.window = migration.NewWindowService(sqlite.NewMigrationWindow(dbWithTransaction))
+	d.queue = migration.NewQueueService(sqlite.NewQueue(dbWithTransaction), d.batch, d.instance, d.source, d.target, d.window)
 
-	d.queueHandler = queue.NewMigrationHandler(d.batch, d.instance, d.network, d.source, d.target, d.queue)
+	d.queueHandler = queue.NewMigrationHandler(d.batch, d.instance, d.network, d.source, d.target, d.queue, d.window)
 
 	err = d.syncActiveBatches(d.ShutdownCtx)
 	if err != nil {
