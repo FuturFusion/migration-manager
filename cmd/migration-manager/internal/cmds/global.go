@@ -215,16 +215,7 @@ func (c *CmdGlobal) CheckArgs(cmd *cobra.Command, args []string, minArgs int, ma
 	return false, nil
 }
 
-func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, reader io.Reader) (*http.Request, *http.Client, error) {
-	requestString, err := url.JoinPath("/1.0/", endpoint)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if query != "" {
-		requestString = fmt.Sprintf("%s?%s", requestString, query)
-	}
-
+func (c *CmdGlobal) buildClient(requestString string) (*http.Client, *url.URL, error) {
 	var client *http.Client
 	u, err := url.Parse(requestString)
 	if err != nil {
@@ -248,6 +239,24 @@ func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, r
 		client = internalUtil.UnixHTTPClient(c.os.GetUnixSocket())
 	}
 
+	return client, u, nil
+}
+
+func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, reader io.Reader) (*http.Request, *http.Client, error) {
+	requestString, err := url.JoinPath("/1.0/", endpoint)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if query != "" {
+		requestString = fmt.Sprintf("%s?%s", requestString, query)
+	}
+
+	client, u, err := c.buildClient(requestString)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	req, err := http.NewRequest(method, u.String(), reader)
 	if err != nil {
 		return nil, nil, err
@@ -256,7 +265,7 @@ func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, r
 	return req, client, nil
 }
 
-func (c *CmdGlobal) doRequest(client *http.Client) func(*http.Request) (*http.Response, error) {
+func (c *CmdGlobal) requestFunc(client *http.Client) func(*http.Request) (*http.Response, error) {
 	return func(req *http.Request) (*http.Response, error) {
 		var resp *http.Response
 		remote := c.GetDefaultRemote()
@@ -266,9 +275,9 @@ func (c *CmdGlobal) doRequest(client *http.Client) func(*http.Request) (*http.Re
 			localtls.TLSConfigWithTrustedCert(transport.TLSClientConfig, remote.ServerCert.Certificate)
 			oidcClient := oidc.NewClient(&http.Client{Transport: transport}, c.config.OIDCTokenPath(c.config.DefaultRemote))
 			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", oidcClient.GetAccessToken()))
-			resp, err = oidcClient.Do(req) // nolint: bodyclose
+			resp, err = oidcClient.Do(req)
 		} else {
-			resp, err = client.Do(req) // nolint: bodyclose
+			resp, err = client.Do(req)
 		}
 
 		if err != nil {
@@ -304,12 +313,11 @@ func (c *CmdGlobal) makeHTTPRequest(endpoint string, method string, query string
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	resp, err := c.doRequest(client)(req) // nolint:bodyclose
+	resp, err := c.requestFunc(client)(req) //nolint:bodyclose // bodyclose can't handle nested functions.
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Linter isn't smart enough to determine resp.Body will be closed...
 	defer func() { _ = resp.Body.Close() }()
 	response, err := c.parseResponse(resp)
 	if err != nil {
@@ -333,7 +341,7 @@ func (c *CmdGlobal) doHTTPRequestV1Writer(endpoint string, method string, writer
 		return nil, nil, err
 	}
 
-	resp, doneCh, err := cancel.CancelableDownload(nil, c.doRequest(client), req) //nolint:bodyclose
+	resp, doneCh, err := cancel.CancelableDownload(nil, c.requestFunc(client), req) //nolint:bodyclose // bodyclose can't handle nested functions.
 	if err != nil {
 		return nil, nil, err
 	}
