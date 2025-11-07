@@ -42,6 +42,10 @@ func main() {
 	app.SetVersionTemplate("{{.Version}}\n")
 	app.Version = version.Version
 
+	// admin sub-command
+	adminCmd := cmds.CmdAdmin{Global: &globalCmd}
+	app.AddCommand(adminCmd.Command())
+
 	// artifact sub-command
 	artifactCmd := cmds.CmdArtifact{Global: &globalCmd}
 	app.AddCommand(artifactCmd.Command())
