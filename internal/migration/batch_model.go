@@ -104,7 +104,7 @@ func (b Batch) Validate() error {
 
 	err = validate.IsAPIName(b.Defaults.Placement.TargetProject, false)
 	if err != nil {
-		return NewValidationErrf("Invalid batch placement, default target project %q is not a valid name: %v", b.Defaults.Placement.Target, err)
+		return NewValidationErrf("Invalid batch placement, default target project %q is not a valid name: %v", b.Defaults.Placement.TargetProject, err)
 	}
 
 	err = validate.IsAPIName(b.Defaults.Placement.StoragePool, false)
@@ -120,7 +120,7 @@ func (b Batch) Validate() error {
 
 		err = validate.IsAPIName(netCfg.TargetProject, false)
 		if err != nil {
-			return NewValidationErrf("Invalid batch placement, migration network target project %q is not a valid name: %v", netCfg.Target, err)
+			return NewValidationErrf("Invalid batch placement, migration network target project %q is not a valid name: %v", netCfg.TargetProject, err)
 		}
 
 		err = validate.IsAPIName(netCfg.Network, false)

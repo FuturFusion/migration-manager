@@ -1169,6 +1169,23 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 		return fmt.Errorf("Instance already exists with name %q on target %q in project %q", inst.GetName(), info.Name, placement.TargetProject)
 	}
 
+	for _, netCfg := range batch.Defaults.MigrationNetwork {
+		if placement.TargetName == netCfg.Target && placement.TargetProject == netCfg.TargetProject {
+			i := slices.IndexFunc(info.NetworksByProject[placement.TargetProject], func(n incusAPI.Network) bool {
+				return n.Name == netCfg.Network
+			})
+
+			if i == -1 {
+				return fmt.Errorf("Migration network %q not found in project %q of target %q", netCfg.Network, netCfg.TargetProject, netCfg.Target)
+			}
+
+			network := info.NetworksByProject[placement.TargetProject][i]
+			if !network.Managed && netCfg.NICType == api.INCUSNICTYPE_MANAGED {
+				return fmt.Errorf("Target migration network %q is not a managed network", network.Name)
+			}
+		}
+	}
+
 	for id, targetNet := range placement.Networks {
 		var instNIC api.InstancePropertiesNIC
 		for _, nic := range inst.Properties.NICs {
@@ -1178,20 +1195,8 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 			}
 		}
 
-		workerNetExists := len(batch.Defaults.MigrationNetwork) == 0
 		var exists bool
 		for _, n := range info.NetworksByProject[placement.TargetProject] {
-			if !workerNetExists {
-				for _, netCfg := range batch.Defaults.MigrationNetwork {
-					if netCfg.Target == placement.TargetName && netCfg.TargetProject == placement.TargetProject {
-						workerNetExists = n.Name == netCfg.Network
-						if workerNetExists && n.Managed && netCfg.NICType != api.INCUSNICTYPE_MANAGED {
-							return fmt.Errorf("Target migration network %q is not a managed network", n.Name)
-						}
-					}
-				}
-			}
-
 			exists = n.Name == targetNet.Network
 			if exists && targetNet.NICType == api.INCUSNICTYPE_MANAGED && slices.Contains([]string{"bridge", "ovn"}, n.Type) && instNIC.IPv4Address != "" && n.Config["ipv4.address"] != "" {
 				ip := net.ParseIP(instNIC.IPv4Address)
@@ -1218,7 +1223,7 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 			}
 		}
 
-		if !exists || !workerNetExists {
+		if !exists {
 			return fmt.Errorf("No network found with name %q on target %q in project %q", targetNet.Network, info.Name, placement.TargetProject)
 		}
 	}
