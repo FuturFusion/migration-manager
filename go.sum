@@ -277,6 +277,8 @@ github.com/gorilla/securecookie v1.1.2 h1:YCIWL56dvtr73r6715mJs5ZvhtnY73hBvEF8kX
 github.com/gorilla/securecookie v1.1.2/go.mod h1:NfCASbcHqRSY+3a8tlWJwsQap2VX5pwzwo4h3eOamfo=
 github.com/gorilla/websocket v1.5.3 h1:saDtZ6Pbx/0u+bgYQ3q96pZgCzfhKXGPqt7kZ72aNNg=
 github.com/gorilla/websocket v1.5.3/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
+github.com/gosexy/gettext v0.0.0-20160830220431-74466a0a0c4a h1:N2b2mb4Gki1SlF3WuhR9P1YHOpl7oy/b+xxX4A3iM2E=
+github.com/gosexy/gettext v0.0.0-20160830220431-74466a0a0c4a/go.mod h1:IEJaV4/6J0VpoQ33kFCUUP6umRjrcBVEbOva6XCub/Q=
 github.com/gosimple/slug v1.15.0 h1:wRZHsRrRcs6b0XnxMUBM6WK1U1Vg5B0R7VkIf1Xzobo=
 github.com/gosimple/slug v1.15.0/go.mod h1:UiRaFH+GEilHstLUmcBgWcI42viBN7mAb818JrYOeFQ=
 github.com/gosimple/unidecode v1.0.1 h1:hZzFTMMqSswvf0LBJZCZgThIZrpDHFXux9KeGmn6T/o=
@@ -381,6 +383,8 @@ github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 h1:P6pPBnrTSX3DEVR4fDembhR
 github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0/go.mod h1:vmVJ0l/dxyfGW6FmdpVm2joNMFikkuWg0EoCKLGUMNw=
 github.com/lxc/distrobuilder v0.0.0-20251008023811-a3072be2ef91 h1:D+AZYnOyj/k7FIPw1QoKrDJxYqXAK5Klhe7WQ5ZUs2w=
 github.com/lxc/distrobuilder v0.0.0-20251008023811-a3072be2ef91/go.mod h1:hFSg4p3PVXuOMGHEDGFWzPp74G55Ng/vJuZBkcIFX1w=
+github.com/lxc/incus-os/incus-osd v0.0.0-20251030171339-596f52cb0a22 h1:y5CLAp1Mdau6PZvxeEtb5osAzaOAb1dWczuILa4qyAM=
+github.com/lxc/incus-os/incus-osd v0.0.0-20251030171339-596f52cb0a22/go.mod h1:DMxrLBWxuU41+MrxEHNVDExbBqZCzTPdybBtKXUhzFk=
 github.com/lxc/incus/v6 v6.18.1-0.20251104232131-f02456389314 h1:L01uHkCF5Ouo2ZCn7T5jXQ4Vuzlq4BwlXIo8dPxKqiQ=
 github.com/lxc/incus/v6 v6.18.1-0.20251104232131-f02456389314/go.mod h1:aKXkGxqFVtLCQoAqA9MtvGW5TmD4oH+xDJehLQAu6KQ=
 github.com/magiconair/properties v1.8.5/go.mod h1:y3VJvCyxH9uVvJTWEGAELF3aiYNyPKd5NZ3oSwXrF60=

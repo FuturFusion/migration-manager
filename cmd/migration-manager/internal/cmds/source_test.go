@@ -464,6 +464,7 @@ func TestSourceUpdate(t *testing.T) {
 		name                       string
 		args                       []string
 		askStringReturns           []queue.Item[string]
+		askBoolReturns             []queue.Item[bool]
 		migrationManagerdResponses []queue.Item[httpResponse]
 
 		assertErr require.ErrorAssertionFunc
@@ -480,7 +481,7 @@ func TestSourceUpdate(t *testing.T) {
 			assertErr: require.Error,
 		},
 		{
-			name: "success",
+			name: "success - update auth",
 			args: []string{"source 1"},
 			askStringReturns: []queue.Item[string]{
 				{Value: "new name"},
@@ -490,6 +491,24 @@ func TestSourceUpdate(t *testing.T) {
 				{Value: strconv.Itoa(10)},
 				{Value: testcert.LocalhostCertFingerprint},
 			},
+			askBoolReturns: []queue.Item[bool]{{Value: true}},
+			migrationManagerdResponses: []queue.Item[httpResponse]{
+				{Value: httpResponse{http.StatusOK, existingSource}},
+				{Value: httpResponse{http.StatusOK, successfulPutResponse}},
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - skip auth",
+			args: []string{"source 1"},
+			askStringReturns: []queue.Item[string]{
+				{Value: "new name"},
+				{Value: vCenterSimulator.URL.String()},
+				{Value: strconv.Itoa(10)},
+				{Value: testcert.LocalhostCertFingerprint},
+			},
+			askBoolReturns: []queue.Item[bool]{{Value: false}},
 			migrationManagerdResponses: []queue.Item[httpResponse]{
 				{Value: httpResponse{http.StatusOK, existingSource}},
 				{Value: httpResponse{http.StatusOK, successfulPutResponse}},
@@ -557,6 +576,9 @@ func TestSourceUpdate(t *testing.T) {
 				AskIntFunc: func(question string, minValue, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error) {
 					ret, _ := queue.Pop(t, &tc.askStringReturns)
 					return strconv.ParseInt(ret, 0, 64)
+				},
+				AskBoolFunc: func(question, defaultAnswer string) (bool, error) {
+					return queue.Pop(t, &tc.askBoolReturns)
 				},
 			}
 

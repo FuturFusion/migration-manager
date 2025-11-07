@@ -350,12 +350,19 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		vmwareProperties.Username, err = c.global.Asker.AskString("Username: [default="+vmwareProperties.Username+"]: ", vmwareProperties.Username, nil)
+		updateAuth, err := c.global.Asker.AskBool("Update configured authentication? (yes/no) [default=no]: ", "no")
 		if err != nil {
 			return err
 		}
 
-		vmwareProperties.Password = c.global.Asker.AskPasswordOnce("Password: ")
+		if updateAuth {
+			vmwareProperties.Username, err = c.global.Asker.AskString("Username: [default="+vmwareProperties.Username+"]: ", vmwareProperties.Username, nil)
+			if err != nil {
+				return err
+			}
+
+			vmwareProperties.Password = c.global.Asker.AskPasswordOnce("Password: ")
+		}
 
 		importLimit := int64(vmwareProperties.ImportLimit)
 		importLimit, err = c.global.Asker.AskInt(fmt.Sprintf("How many instances can be concurrently imported? [default=%d]: ", importLimit), 0, 1024, strconv.Itoa(int(importLimit)), nil)

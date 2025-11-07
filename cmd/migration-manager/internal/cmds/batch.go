@@ -9,11 +9,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/termios"
-	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -51,6 +49,10 @@ func (c *CmdBatch) Command() *cobra.Command {
 	batchShowCmd := cmdBatchShow{global: c.Global}
 	cmd.AddCommand(batchShowCmd.Command())
 
+	// Info
+	batchInfoCmd := cmdBatchInfo{global: c.Global}
+	cmd.AddCommand(batchInfoCmd.Command())
+
 	// Start
 	batchStartCmd := cmdBatchStart{global: c.Global}
 	cmd.AddCommand(batchStartCmd.Command())
@@ -86,8 +88,7 @@ func (c *cmdBatchAdd) Command() *cobra.Command {
 	cmd.Long = `Description:
   Add a new batch
 
-  Adds a new batch for the migration manager to use. After defining the batch you can view the instances that would
-  be selected, but the batch won't actually run until enabled.
+  Adds a new empty batch for the migration manager to use. A batch will not run until it is explicitly started.
 `
 
 	cmd.RunE = c.Run
@@ -115,134 +116,16 @@ func (c *cmdBatchAdd) Run(cmd *cobra.Command, args []string) error {
 	// Add the batch.
 	b := api.Batch{
 		BatchPut: api.BatchPut{
-			Name:        args[0],
-			Constraints: []api.BatchConstraint{},
+			Name:              args[0],
+			Constraints:       []api.BatchConstraint{},
+			IncludeExpression: "false",
+			MigrationWindows:  []api.MigrationWindow{},
+			Defaults: api.BatchDefaults{
+				Placement:        api.BatchPlacement{Target: targets[0]},
+				MigrationNetwork: []api.MigrationNetworkPlacement{},
+			},
+			Config: api.BatchConfig{PostMigrationRetries: 5},
 		},
-	}
-
-	if len(targets) == 1 {
-		b.Defaults.Placement.Target = targets[0]
-		fmt.Printf("Using target %q\n", b.Defaults.Placement.Target)
-	} else {
-		defaultTargetHint := "(" + strings.Join(targets, ", ") + "): "
-		b.Defaults.Placement.Target, err = c.global.Asker.AskChoice("What target should this batch use? "+defaultTargetHint, targets, "")
-		if err != nil {
-			return err
-		}
-	}
-
-	b.Defaults.Placement.TargetProject, err = c.global.Asker.AskString("What Incus project should this batch use? ", "", validate.IsNotEmpty)
-	if err != nil {
-		return err
-	}
-
-	b.Defaults.Placement.StoragePool, err = c.global.Asker.AskString("What storage pool should be used for VMs and the migration ISO images? ", "", validate.IsNotEmpty)
-	if err != nil {
-		return err
-	}
-
-	b.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances: ", "", validate.IsAny)
-	if err != nil {
-		return err
-	}
-
-	retries, err := c.global.Asker.AskInt("Maximum retries if post-migration steps are not successful: ", 0, 1024, "5", nil)
-	if err != nil {
-		return err
-	}
-
-	b.Config.PostMigrationRetries = int(retries)
-
-	addWindows := true
-	for addWindows {
-		windowStart, err := c.global.Asker.AskString("Migration window start (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
-			if s != "" {
-				_, err := time.Parse(time.DateTime, s)
-				return err
-			}
-
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		windowEnd, err := c.global.Asker.AskString("Migration window end (YYYY-MM-DD HH:MM:SS) (empty to skip): ", "", func(s string) error {
-			if s != "" {
-				_, err := time.Parse(time.DateTime, s)
-				return err
-			}
-
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		if windowStart != "" || windowEnd != "" {
-			if b.MigrationWindows == nil {
-				b.MigrationWindows = []api.MigrationWindow{}
-			}
-
-			start, _ := time.Parse(time.DateTime, windowStart)
-			end, _ := time.Parse(time.DateTime, windowEnd)
-			b.MigrationWindows = append(b.MigrationWindows, api.MigrationWindow{Start: start, End: end})
-		}
-
-		addWindows, err = c.global.Asker.AskBool("Add more migration windows? (yes/no) [default=no]: ", "no")
-		if err != nil {
-			return err
-		}
-	}
-
-	addConstraints, err := c.global.Asker.AskBool("Add constraints? (yes/no) [default=no]: ", "no")
-	if err != nil {
-		return err
-	}
-
-	for addConstraints {
-		var constraint api.BatchConstraint
-		constraint.Name, err = c.global.Asker.AskString("Constraint name: ", "", nil)
-		if err != nil {
-			return err
-		}
-
-		constraint.Description, err = c.global.Asker.AskString("Constraint description (empty to skip): ", "", validate.IsAny)
-		if err != nil {
-			return err
-		}
-
-		constraint.IncludeExpression, err = c.global.Asker.AskString("Expression to include instances: ", "", validate.IsAny)
-		if err != nil {
-			return err
-		}
-
-		maxConcurrent, err := c.global.Asker.AskString("Maximum concurrent instance (empty to skip): ", "0", validate.IsInt64)
-		if err != nil {
-			return err
-		}
-
-		constraint.MaxConcurrentInstances, err = strconv.Atoi(maxConcurrent)
-		if err != nil {
-			return err
-		}
-
-		constraint.MinInstanceBootTime, err = c.global.Asker.AskString("Minimum instance boot time (empty to skip): ", "", func(s string) error {
-			if s != "" {
-				return validate.IsMinimumDuration(0)(s)
-			}
-
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		b.Constraints = append(b.Constraints, constraint)
-		addConstraints, err = c.global.Asker.AskBool("Add more constraints? (yes/no) [default=no]: ", "no")
-		if err != nil {
-			return err
-		}
 	}
 
 	// Insert into database.
@@ -362,9 +245,9 @@ type cmdBatchShow struct {
 func (c *cmdBatchShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <name>"
-	cmd.Short = "Show information about a batch"
+	cmd.Short = "Show batch configuration"
 	cmd.Long = `Description:
-  Show information about a batch, including all instances assigned to it.
+	Show batch configuration as YAML
 `
 
 	cmd.RunE = c.Run
@@ -387,15 +270,51 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	b := api.Batch{}
+	batch := api.Batch{}
 
-	err = responseToStruct(resp, &b)
+	err = responseToStruct(resp, &batch)
 	if err != nil {
 		return err
 	}
 
+	b, err := yaml.Marshal(batch)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(b))
+
+	return nil
+}
+
+// Info for the batch.
+type cmdBatchInfo struct {
+	global *CmdGlobal
+}
+
+func (c *cmdBatchInfo) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "info <name>"
+	cmd.Short = "Show information about a batch"
+	cmd.Long = `Description:
+  Info information about a batch, including all instances assigned to it.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdBatchInfo) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	name := args[0]
 	// Get all instances for this batch.
-	resp, _, err = c.global.doHTTPRequestV1("/batches/"+name+"/instances", http.MethodGet, "recursion=1", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/batches/"+name+"/instances", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -423,50 +342,17 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 		queueMap[q.InstanceUUID] = q
 	}
 
-	// Show the details
-	cmd.Printf("Batch: %s\n", b.Name)
-	cmd.Printf("  - Status:             %s\n", b.StatusMessage)
-	cmd.Printf("  - Target:             %s\n", b.Defaults.Placement.Target)
-	if b.Defaults.Placement.TargetProject != "" {
-		cmd.Printf("  - Project:            %s\n", b.Defaults.Placement.TargetProject)
-	}
-
-	if b.Defaults.Placement.StoragePool != "" {
-		cmd.Printf("  - Storage pool:       %s\n", b.Defaults.Placement.StoragePool)
-	}
-
-	if b.IncludeExpression != "" {
-		cmd.Printf("  - Include expression: %s\n", b.IncludeExpression)
-	}
-
-	for i, w := range b.MigrationWindows {
-		nonZero := false
-		if !w.Start.IsZero() {
-			nonZero = true
-			cmd.Printf("  - Window start:       %s\n", w.Start)
-		}
-
-		if !w.End.IsZero() {
-			nonZero = true
-			cmd.Printf("  - Window end:         %s\n", w.End)
-		}
-
-		if nonZero && i != len(b.MigrationWindows)-1 {
-			cmd.Println()
-		}
-	}
-
-	cmd.Printf("\n  - Matched Instances:\n")
+	cmd.Printf("Matched Instances:\n")
 	for _, i := range instances {
 		disabled := ""
 		if i.Overrides.DisableMigration {
 			disabled = " (Migration Disabled)"
 		}
 
-		cmd.Printf("    - %s%s\n", i.Properties.Location, disabled)
+		cmd.Printf("  - %s%s\n", i.Properties.Location, disabled)
 	}
 
-	cmd.Printf("\n  - Queued Instances:\n")
+	cmd.Printf("\nQueued Instances:\n")
 
 	for _, i := range instances {
 		q, ok := queueMap[i.Properties.UUID]
@@ -474,7 +360,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		cmd.Printf("    - %s (%s)\n", i.Properties.Location, q.MigrationStatus)
+		cmd.Printf("  - %s (%s)\n", i.Properties.Location, q.MigrationStatus)
 	}
 
 	return nil
