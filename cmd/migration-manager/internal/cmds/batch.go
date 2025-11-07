@@ -49,6 +49,10 @@ func (c *CmdBatch) Command() *cobra.Command {
 	batchShowCmd := cmdBatchShow{global: c.Global}
 	cmd.AddCommand(batchShowCmd.Command())
 
+	// Info
+	batchInfoCmd := cmdBatchInfo{global: c.Global}
+	cmd.AddCommand(batchInfoCmd.Command())
+
 	// Start
 	batchStartCmd := cmdBatchStart{global: c.Global}
 	cmd.AddCommand(batchStartCmd.Command())
@@ -241,9 +245,9 @@ type cmdBatchShow struct {
 func (c *cmdBatchShow) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "show <name>"
-	cmd.Short = "Show information about a batch"
+	cmd.Short = "Show batch configuration"
 	cmd.Long = `Description:
-  Show information about a batch, including all instances assigned to it.
+	Show batch configuration as YAML
 `
 
 	cmd.RunE = c.Run
@@ -266,15 +270,51 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	b := api.Batch{}
+	batch := api.Batch{}
 
-	err = responseToStruct(resp, &b)
+	err = responseToStruct(resp, &batch)
 	if err != nil {
 		return err
 	}
 
+	b, err := yaml.Marshal(batch)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(b))
+
+	return nil
+}
+
+// Info for the batch.
+type cmdBatchInfo struct {
+	global *CmdGlobal
+}
+
+func (c *cmdBatchInfo) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "info <name>"
+	cmd.Short = "Show information about a batch"
+	cmd.Long = `Description:
+  Info information about a batch, including all instances assigned to it.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdBatchInfo) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	name := args[0]
 	// Get all instances for this batch.
-	resp, _, err = c.global.doHTTPRequestV1("/batches/"+name+"/instances", http.MethodGet, "recursion=1", nil)
+	resp, _, err := c.global.doHTTPRequestV1("/batches/"+name+"/instances", http.MethodGet, "recursion=1", nil)
 	if err != nil {
 		return err
 	}
@@ -302,50 +342,17 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 		queueMap[q.InstanceUUID] = q
 	}
 
-	// Show the details
-	cmd.Printf("Batch: %s\n", b.Name)
-	cmd.Printf("  - Status:             %s\n", b.StatusMessage)
-	cmd.Printf("  - Target:             %s\n", b.Defaults.Placement.Target)
-	if b.Defaults.Placement.TargetProject != "" {
-		cmd.Printf("  - Project:            %s\n", b.Defaults.Placement.TargetProject)
-	}
-
-	if b.Defaults.Placement.StoragePool != "" {
-		cmd.Printf("  - Storage pool:       %s\n", b.Defaults.Placement.StoragePool)
-	}
-
-	if b.IncludeExpression != "" {
-		cmd.Printf("  - Include expression: %s\n", b.IncludeExpression)
-	}
-
-	for i, w := range b.MigrationWindows {
-		nonZero := false
-		if !w.Start.IsZero() {
-			nonZero = true
-			cmd.Printf("  - Window start:       %s\n", w.Start)
-		}
-
-		if !w.End.IsZero() {
-			nonZero = true
-			cmd.Printf("  - Window end:         %s\n", w.End)
-		}
-
-		if nonZero && i != len(b.MigrationWindows)-1 {
-			cmd.Println()
-		}
-	}
-
-	cmd.Printf("\n  - Matched Instances:\n")
+	cmd.Printf("Matched Instances:\n")
 	for _, i := range instances {
 		disabled := ""
 		if i.Overrides.DisableMigration {
 			disabled = " (Migration Disabled)"
 		}
 
-		cmd.Printf("    - %s%s\n", i.Properties.Location, disabled)
+		cmd.Printf("  - %s%s\n", i.Properties.Location, disabled)
 	}
 
-	cmd.Printf("\n  - Queued Instances:\n")
+	cmd.Printf("\nQueued Instances:\n")
 
 	for _, i := range instances {
 		q, ok := queueMap[i.Properties.UUID]
@@ -353,7 +360,7 @@ func (c *cmdBatchShow) Run(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		cmd.Printf("    - %s (%s)\n", i.Properties.Location, q.MigrationStatus)
+		cmd.Printf("  - %s (%s)\n", i.Properties.Location, q.MigrationStatus)
 	}
 
 	return nil
