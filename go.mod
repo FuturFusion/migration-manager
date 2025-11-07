@@ -15,6 +15,7 @@ require (
 	github.com/hexdigest/gowrap v1.4.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/lxc/distrobuilder v0.0.0-20251008023811-a3072be2ef91
+	github.com/lxc/incus-os/incus-osd v0.0.0-20251030171339-596f52cb0a22
 	github.com/lxc/incus/v6 v6.18.1-0.20251104232131-f02456389314
 	github.com/matryer/moq v0.4.0
 	github.com/mattn/go-sqlite3 v1.14.32
@@ -82,6 +83,7 @@ require (
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/gosexy/gettext v0.0.0-20160830220431-74466a0a0c4a // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0 // indirect
