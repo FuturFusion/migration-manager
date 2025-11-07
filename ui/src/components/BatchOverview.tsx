@@ -180,6 +180,33 @@ const BatchOverview = () => {
           </Table>
         </div>
       </div>
+      <div className="row">
+        <div className="col-2 detail-table-header">Migration network</div>
+        <div className="col-10 detail-table-cell">
+          <Table borderless size="sm">
+            <thead>
+              <tr className="overview-table-header">
+                <th>Target</th>
+                <th>Target project</th>
+                <th>Network</th>
+                <th>NIC type</th>
+                <th>VLAN ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              {batch?.defaults?.migration_network.map((item, index) => (
+                <tr key={index}>
+                  <td>{item.target}</td>
+                  <td>{item.target_project}</td>
+                  <td>{item.network}</td>
+                  <td>{item.nictype}</td>
+                  <td>{item.vlan_id}</td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </div>
+      </div>
     </div>
   );
 };

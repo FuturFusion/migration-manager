@@ -6,6 +6,7 @@ import { FormikErrors, useFormik } from "formik";
 import { fetchInstances } from "api/instances";
 import { fetchTargets } from "api/targets";
 import BatchConstraintsWidget from "components/BatchConstraintsWidget";
+import MigrationNetworkWidget from "components/MigrationNetworkWidget";
 import MigrationWindowsWidget from "components/MigrationWindowsWidget";
 import { Batch, BatchFormValues, MigrationWindow } from "types/batch";
 import { useDebounce } from "util/batch";
@@ -100,6 +101,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
         target: "",
         target_project: "default",
       },
+      migration_network: [],
     },
   };
 
@@ -139,6 +141,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
           target: batch.defaults.placement.target,
           target_project: batch.defaults.placement.target_project,
         },
+        migration_network: batch.defaults.migration_network,
       },
     };
   }
@@ -485,6 +488,24 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
             >
               {typeof formik.errors.constraints === "string" &&
                 formik.errors.constraints}
+            </Form.Control.Feedback>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="migration_network">
+            <Form.Label>Migration network</Form.Label>
+            <MigrationNetworkWidget
+              value={formik.values.defaults?.migration_network ?? []}
+              targets={targets}
+              onChange={(value) =>
+                formik.setFieldValue("defaults.migration_network", value)
+              }
+            />
+            <Form.Control.Feedback
+              type="invalid"
+              className="d-block"
+              style={{ whiteSpace: "pre-line" }}
+            >
+              {typeof formik.errors.defaults?.migration_network === "string" &&
+                formik.errors.defaults?.migration_network}
             </Form.Control.Feedback>
           </Form.Group>
         </Form>
