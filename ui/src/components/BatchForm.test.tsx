@@ -60,6 +60,7 @@ test("renders and submit BatchForm", async () => {
       },
     },
     defaults: {
+      migration_network: [],
       placement: {
         storage_pool: "default",
         target: "t1",

@@ -1,3 +1,5 @@
+import { NetworkPlacement } from "types/network";
+
 export interface InstanceRestrictionOverride {
   allow_unknown_os: bool;
   allow_no_ipv4: bool;
@@ -19,8 +21,14 @@ export interface BatchPlacement {
   target_project: string;
 }
 
+export interface MigrationNetworkPlacement extends NetworkPlacement {
+  target: string;
+  target_project: string;
+}
+
 export interface BatchDefaults {
   placement: BatchPlacement;
+  migration_network: MigrationNetworkPlacement[];
 }
 
 export interface BatchConstraint {
