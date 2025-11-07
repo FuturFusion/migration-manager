@@ -6,6 +6,7 @@ import { useAuth } from "context/authContext";
 import Artifact from "pages/Artifact";
 import ArtifactCreate from "pages/ArtifactCreate";
 import ArtifactDetail from "pages/ArtifactDetail";
+import ArtifactSetup from "pages/ArtifactSetup";
 import Batch from "pages/Batch";
 import BatchCreate from "pages/BatchCreate";
 import BatchDetail from "pages/BatchDetail";
@@ -101,6 +102,7 @@ function App() {
               path="/ui/artifacts/:uuid/:activeTab"
               element={<ArtifactDetail />}
             />
+            <Route path="/ui/artifacts/setup" element={<ArtifactSetup />} />
             <Route path="/ui/warnings" element={<Warning />} />
             <Route path="/ui/warnings/:uuid" element={<WarningDetail />} />
             <Route

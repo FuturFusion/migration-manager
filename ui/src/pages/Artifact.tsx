@@ -54,9 +54,18 @@ const Artifact = () => {
         <div className="mx-2 mx-md-4">
           <div className="row">
             <div className="col-12">
+              {artifacts.length == 0 && (
+                <Button
+                  variant="success"
+                  className="float-end mx-2"
+                  onClick={() => navigate("/ui/artifacts/setup")}
+                >
+                  Setup
+                </Button>
+              )}
               <Button
                 variant="success"
-                className="float-end"
+                className="float-end mx-2"
                 onClick={() => navigate("/ui/artifacts/create")}
               >
                 Create artifact

@@ -20,3 +20,8 @@ export interface ArtifactFormValues {
   versions: string;
   source_type: SourceType;
 }
+
+export interface ArtifactSetupFormValues {
+  vmwareSDK: File | null;
+  virtio: File | null;
+}
