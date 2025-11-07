@@ -39,10 +39,16 @@ export interface BatchConstraint {
   min_instance_boot_time: string;
 }
 
+export interface MigrationWindowConfig {
+  capacity: number;
+}
+
 export interface MigrationWindow {
+  name: string;
   start: string | null;
   end: string | null;
   lockout: string | null;
+  config: MigrationWindowConfig;
 }
 
 export interface Batch {
