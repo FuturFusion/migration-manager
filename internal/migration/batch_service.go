@@ -156,8 +156,9 @@ func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueS
 	if oldBatch.Defaults.Placement.StoragePool != newBatch.Defaults.Placement.StoragePool ||
 		oldBatch.Defaults.Placement.Target != newBatch.Defaults.Placement.Target ||
 		oldBatch.Defaults.Placement.TargetProject != newBatch.Defaults.Placement.TargetProject ||
-		oldBatch.Config.PlacementScriptlet != newBatch.Config.PlacementScriptlet {
-		return fmt.Errorf("Cannot placement of running batch %q: %w", oldBatch.Name, ErrOperationNotPermitted)
+		oldBatch.Config.PlacementScriptlet != newBatch.Config.PlacementScriptlet ||
+		!slices.Equal(oldBatch.Defaults.MigrationNetwork, newBatch.Defaults.MigrationNetwork) {
+		return fmt.Errorf("Cannot modify placement of running batch %q: %w", oldBatch.Name, ErrOperationNotPermitted)
 	}
 
 	if oldBatch.IncludeExpression != newBatch.IncludeExpression {

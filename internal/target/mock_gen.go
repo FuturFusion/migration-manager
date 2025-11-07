@@ -44,7 +44,7 @@ var _ Target = &TargetMock{}
 //			CreateStoragePoolVolumeFromISOFunc: func(pool string, isoFilePath string) ([]incus.Operation, error) {
 //				panic("mock out the CreateStoragePoolVolumeFromISO method")
 //			},
-//			CreateVMDefinitionFunc: func(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string) (incusAPI.InstancesPost, error) {
+//			CreateVMDefinitionFunc: func(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string, targetNetwork api.MigrationNetworkPlacement) (incusAPI.InstancesPost, error) {
 //				panic("mock out the CreateVMDefinition method")
 //			},
 //			DeleteVMFunc: func(ctx context.Context, name string) error {
@@ -136,7 +136,7 @@ type TargetMock struct {
 	CreateStoragePoolVolumeFromISOFunc func(pool string, isoFilePath string) ([]incus.Operation, error)
 
 	// CreateVMDefinitionFunc mocks the CreateVMDefinition method.
-	CreateVMDefinitionFunc func(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string) (incusAPI.InstancesPost, error)
+	CreateVMDefinitionFunc func(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string, targetNetwork api.MigrationNetworkPlacement) (incusAPI.InstancesPost, error)
 
 	// DeleteVMFunc mocks the DeleteVM method.
 	DeleteVMFunc func(ctx context.Context, name string) error
@@ -267,6 +267,8 @@ type TargetMock struct {
 			Fingerprint string
 			// Endpoint is the endpoint argument value.
 			Endpoint string
+			// TargetNetwork is the targetNetwork argument value.
+			TargetNetwork api.MigrationNetworkPlacement
 		}
 		// DeleteVM holds details about calls to the DeleteVM method.
 		DeleteVM []struct {
@@ -653,27 +655,29 @@ func (mock *TargetMock) CreateStoragePoolVolumeFromISOCalls() []struct {
 }
 
 // CreateVMDefinition calls CreateVMDefinitionFunc.
-func (mock *TargetMock) CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string) (incusAPI.InstancesPost, error) {
+func (mock *TargetMock) CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string, targetNetwork api.MigrationNetworkPlacement) (incusAPI.InstancesPost, error) {
 	if mock.CreateVMDefinitionFunc == nil {
 		panic("TargetMock.CreateVMDefinitionFunc: method is nil but Target.CreateVMDefinition was just called")
 	}
 	callInfo := struct {
-		InstanceDef  migration.Instance
-		UsedNetworks migration.Networks
-		Q            migration.QueueEntry
-		Fingerprint  string
-		Endpoint     string
+		InstanceDef   migration.Instance
+		UsedNetworks  migration.Networks
+		Q             migration.QueueEntry
+		Fingerprint   string
+		Endpoint      string
+		TargetNetwork api.MigrationNetworkPlacement
 	}{
-		InstanceDef:  instanceDef,
-		UsedNetworks: usedNetworks,
-		Q:            q,
-		Fingerprint:  fingerprint,
-		Endpoint:     endpoint,
+		InstanceDef:   instanceDef,
+		UsedNetworks:  usedNetworks,
+		Q:             q,
+		Fingerprint:   fingerprint,
+		Endpoint:      endpoint,
+		TargetNetwork: targetNetwork,
 	}
 	mock.lockCreateVMDefinition.Lock()
 	mock.calls.CreateVMDefinition = append(mock.calls.CreateVMDefinition, callInfo)
 	mock.lockCreateVMDefinition.Unlock()
-	return mock.CreateVMDefinitionFunc(instanceDef, usedNetworks, q, fingerprint, endpoint)
+	return mock.CreateVMDefinitionFunc(instanceDef, usedNetworks, q, fingerprint, endpoint, targetNetwork)
 }
 
 // CreateVMDefinitionCalls gets all the calls that were made to CreateVMDefinition.
@@ -681,18 +685,20 @@ func (mock *TargetMock) CreateVMDefinition(instanceDef migration.Instance, usedN
 //
 //	len(mockedTarget.CreateVMDefinitionCalls())
 func (mock *TargetMock) CreateVMDefinitionCalls() []struct {
-	InstanceDef  migration.Instance
-	UsedNetworks migration.Networks
-	Q            migration.QueueEntry
-	Fingerprint  string
-	Endpoint     string
+	InstanceDef   migration.Instance
+	UsedNetworks  migration.Networks
+	Q             migration.QueueEntry
+	Fingerprint   string
+	Endpoint      string
+	TargetNetwork api.MigrationNetworkPlacement
 } {
 	var calls []struct {
-		InstanceDef  migration.Instance
-		UsedNetworks migration.Networks
-		Q            migration.QueueEntry
-		Fingerprint  string
-		Endpoint     string
+		InstanceDef   migration.Instance
+		UsedNetworks  migration.Networks
+		Q             migration.QueueEntry
+		Fingerprint   string
+		Endpoint      string
+		TargetNetwork api.MigrationNetworkPlacement
 	}
 	mock.lockCreateVMDefinition.RLock()
 	calls = mock.calls.CreateVMDefinition

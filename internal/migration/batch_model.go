@@ -126,16 +126,41 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch, %q is not a valid name: %v", b.Name, err)
 	}
 
-	if b.Defaults.Placement.Target == "" {
-		return NewValidationErrf("Invalid batch placement, target can not be empty")
+	err = validate.IsAPIName(b.Defaults.Placement.Target, false)
+	if err != nil {
+		return NewValidationErrf("Invalid batch placement, default target %q is not a valid name: %v", b.Defaults.Placement.Target, err)
 	}
 
-	if b.Defaults.Placement.TargetProject == "" {
-		return NewValidationErrf("Invalid batch placement, default target project can not be empty")
+	err = validate.IsAPIName(b.Defaults.Placement.TargetProject, false)
+	if err != nil {
+		return NewValidationErrf("Invalid batch placement, default target project %q is not a valid name: %v", b.Defaults.Placement.Target, err)
 	}
 
-	if b.Defaults.Placement.StoragePool == "" {
-		return NewValidationErrf("Invalid batch placement, default target storage pool can not be empty")
+	err = validate.IsAPIName(b.Defaults.Placement.StoragePool, false)
+	if err != nil {
+		return NewValidationErrf("Invalid batch placement, default storage pool %q is not a valid name: %v", b.Defaults.Placement.StoragePool, err)
+	}
+
+	for _, netCfg := range b.Defaults.MigrationNetwork {
+		err := validate.IsAPIName(netCfg.Target, false)
+		if err != nil {
+			return NewValidationErrf("Invalid batch placement, migration network target %q is not a valid name: %v", netCfg.Target, err)
+		}
+
+		err = validate.IsAPIName(netCfg.TargetProject, false)
+		if err != nil {
+			return NewValidationErrf("Invalid batch placement, migration network target project %q is not a valid name: %v", netCfg.Target, err)
+		}
+
+		err = validate.IsAPIName(netCfg.Network, false)
+		if err != nil {
+			return NewValidationErrf("Invalid batch, target migration network name %q is not a valid name: %v", netCfg.Network, err)
+		}
+
+		err = api.ValidNICType(string(netCfg.NICType))
+		if err != nil {
+			return NewValidationErrf("Invalid batch, target migration network NIC type %q is invalid: %v", netCfg.NICType, err)
+		}
 	}
 
 	err = b.Status.Validate()

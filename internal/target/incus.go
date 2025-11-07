@@ -241,6 +241,9 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		}
 	}
 
+	// Delete any pre-existing eth0 device.
+	delete(apiDef.Devices, "eth0")
+
 	for idx, nic := range props.NICs {
 		nicDeviceName := fmt.Sprintf("eth%d", idx)
 		netCfg, ok := q.Placement.Networks[nic.ID]
@@ -469,7 +472,7 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 	return instance, nil
 }
 
-func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string) (incusAPI.InstancesPost, error) {
+func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string, targetNetwork api.MigrationNetworkPlacement) (incusAPI.InstancesPost, error) {
 	// Note -- We don't set any VM-specific NICs yet, and rely on the default profile to provide network connectivity during the migration process.
 	// Final network setup will be performed just prior to restarting into the freshly migrated VM.
 
@@ -523,6 +526,24 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	if ret.Config[info.Key] == "win-prepare" {
 		// Set some additional QEMU options.
 		ret.Config["raw.qemu"] = "-device intel-hda -device hda-duplex -audio spice"
+	}
+
+	if targetNetwork != (api.MigrationNetworkPlacement{}) {
+		ret.Devices["eth0"] = map[string]string{"name": "eth0"}
+		if targetNetwork.NICType == api.INCUSNICTYPE_MANAGED {
+			ret.Devices["eth0"]["network"] = targetNetwork.Network
+		} else {
+			ret.Devices["eth0"]["nictype"] = string(targetNetwork.NICType)
+			ret.Devices["eth0"]["parent"] = targetNetwork.Network
+		}
+
+		if targetNetwork.VlanID != "" {
+			if strings.Contains(targetNetwork.VlanID, ",") {
+				ret.Devices["eth0"]["vlan.tagged"] = targetNetwork.VlanID
+			} else {
+				ret.Devices["eth0"]["vlan"] = targetNetwork.VlanID
+			}
+		}
 	}
 
 	return ret, nil
@@ -1131,7 +1152,7 @@ func (t *InternalIncusTarget) GetDetails(ctx context.Context) (*IncusDetails, er
 	}, nil
 }
 
-func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Placement, inst api.Instance) error {
+func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Placement, inst api.Instance, batch api.Batch) error {
 	if info == nil {
 		return fmt.Errorf("Target %q does not exist", placement.TargetName)
 	}
@@ -1157,8 +1178,20 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 			}
 		}
 
+		workerNetExists := len(batch.Defaults.MigrationNetwork) == 0
 		var exists bool
 		for _, n := range info.NetworksByProject[placement.TargetProject] {
+			if !workerNetExists {
+				for _, netCfg := range batch.Defaults.MigrationNetwork {
+					if netCfg.Target == placement.TargetName && netCfg.TargetProject == placement.TargetProject {
+						workerNetExists = n.Name == netCfg.Network
+						if workerNetExists && n.Managed && netCfg.NICType != api.INCUSNICTYPE_MANAGED {
+							return fmt.Errorf("Target migration network %q is not a managed network", n.Name)
+						}
+					}
+				}
+			}
+
 			exists = n.Name == targetNet.Network
 			if exists && targetNet.NICType == api.INCUSNICTYPE_MANAGED && slices.Contains([]string{"bridge", "ovn"}, n.Type) && instNIC.IPv4Address != "" && n.Config["ipv4.address"] != "" {
 				ip := net.ParseIP(instNIC.IPv4Address)
@@ -1185,7 +1218,7 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 			}
 		}
 
-		if !exists {
+		if !exists || !workerNetExists {
 			return fmt.Errorf("No network found with name %q on target %q in project %q", targetNet.Network, info.Name, placement.TargetProject)
 		}
 	}
