@@ -465,7 +465,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 			// Update instances NICs with the network UUID too.
 			for _, inst := range instancesBySrc[srcName] {
 				for i, nic := range inst.Properties.NICs {
-					netUUID, ok := netUUIDsByID[nic.ID]
+					netUUID, ok := netUUIDsByID[nic.SourceSpecificID]
 					if ok {
 						inst.Properties.NICs[i].UUID = netUUID
 					}
@@ -751,13 +751,13 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 		if !slices.Equal(inst.Properties.NICs, srcInst.Properties.NICs) {
 			oldNics := map[string]api.InstancePropertiesNIC{}
 			for _, nic := range inst.Properties.NICs {
-				oldNics[nic.ID] = nic
+				oldNics[nic.SourceSpecificID] = nic
 			}
 
 			// Preserve IPs from the previous sync in case the VM has turned off.
 			newNics := make([]api.InstancePropertiesNIC, len(srcInst.Properties.NICs))
 			for i, nic := range srcInst.Properties.NICs {
-				oldNIC, ok := oldNics[nic.ID]
+				oldNIC, ok := oldNics[nic.SourceSpecificID]
 				if ok {
 					if nic.IPv4Address == "" && oldNIC.IPv4Address != "" {
 						nic.IPv4Address = oldNIC.IPv4Address

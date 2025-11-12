@@ -83,11 +83,11 @@ func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int
 
 	for i, ipv4 := range nics {
 		inst.Properties.NICs = append(inst.Properties.NICs, api.InstancePropertiesNIC{
-			UUID:            uuid.New(),
-			ID:              fmt.Sprintf("%s_%d", "net_id", i),
-			HardwareAddress: "00:00:00:00:00:00",
-			Network:         fmt.Sprintf("network_%d", i),
-			IPv4Address:     ipv4,
+			UUID:             uuid.New(),
+			SourceSpecificID: fmt.Sprintf("%s_%d", "net_id", i),
+			HardwareAddress:  "00:00:00:00:00:00",
+			Location:         fmt.Sprintf("network_%d", i),
+			IPv4Address:      ipv4,
 			// TODO: Add default when we support IPv6.
 			IPv6Address: "",
 		})
@@ -728,11 +728,11 @@ def placement(instance, batch):
 				require.NoError(t, err)
 
 				for _, nic := range i.Properties.NICs {
-					if !createdNetworks[nic.ID] {
-						_, err = d.network.Create(d.ShutdownCtx, migration.Network{UUID: nic.UUID, Type: api.NETWORKTYPE_VMWARE_STANDARD, SourceSpecificID: nic.ID, Location: "path/to/" + nic.Network, Source: i.Source})
+					if !createdNetworks[nic.SourceSpecificID] {
+						_, err = d.network.Create(d.ShutdownCtx, migration.Network{UUID: nic.UUID, Type: api.NETWORKTYPE_VMWARE_STANDARD, SourceSpecificID: nic.SourceSpecificID, Location: "path/to/" + nic.Location, Source: i.Source})
 						require.NoError(t, err)
 
-						createdNetworks[nic.ID] = true
+						createdNetworks[nic.SourceSpecificID] = true
 					}
 				}
 			}

@@ -331,7 +331,7 @@ func networkInstancesGet(d *Daemon, r *http.Request) response.Response {
 
 		for _, inst := range instances {
 			for _, nic := range inst.Properties.NICs {
-				if nic.ID == network.SourceSpecificID {
+				if nic.SourceSpecificID == network.SourceSpecificID {
 					result = append(result, inst.ToAPI())
 					break
 				}

@@ -246,9 +246,9 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 
 	for idx, nic := range props.NICs {
 		nicDeviceName := fmt.Sprintf("eth%d", idx)
-		netCfg, ok := q.Placement.Networks[nic.ID]
+		netCfg, ok := q.Placement.Networks[nic.SourceSpecificID]
 		if !ok {
-			return fmt.Errorf("No network placement found for NIC id %q for instance %q on target %q", nic.ID, i.GetName(), t.GetName())
+			return fmt.Errorf("No network placement found for NIC id %q for instance %q on target %q", nic.SourceSpecificID, i.GetName(), t.GetName())
 		}
 
 		if apiDef.Devices[nicDeviceName] == nil {
@@ -1189,7 +1189,7 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 	for id, targetNet := range placement.Networks {
 		var instNIC api.InstancePropertiesNIC
 		for _, nic := range inst.Properties.NICs {
-			if nic.ID == id {
+			if nic.SourceSpecificID == id {
 				instNIC = nic
 				break
 			}
@@ -1201,7 +1201,7 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 			if exists && targetNet.NICType == api.INCUSNICTYPE_MANAGED && slices.Contains([]string{"bridge", "ovn"}, n.Type) && instNIC.IPv4Address != "" && n.Config["ipv4.address"] != "" {
 				ip := net.ParseIP(instNIC.IPv4Address)
 				if ip == nil {
-					return fmt.Errorf("Failed to parse instance NIC %q IP %q", instNIC.Network, instNIC.IPv4Address)
+					return fmt.Errorf("Failed to parse instance NIC %q IP %q", instNIC.Location, instNIC.IPv4Address)
 				}
 
 				_, cidr, err := net.ParseCIDR(n.Config["ipv4.address"])

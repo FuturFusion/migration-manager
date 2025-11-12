@@ -95,7 +95,7 @@ func FilterUsedNetworks(nets Networks, vms Instances) Networks {
 	instanceNICsToSources := map[string]string{}
 	for _, vm := range vms {
 		for _, nic := range vm.Properties.NICs {
-			instanceNICsToSources[nic.ID] = vm.Source
+			instanceNICsToSources[nic.SourceSpecificID] = vm.Source
 		}
 	}
 

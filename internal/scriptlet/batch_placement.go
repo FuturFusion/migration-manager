@@ -134,7 +134,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 
 		var nicExists bool
 		for _, d := range instance.Properties.NICs {
-			if d.ID == nicID {
+			if d.SourceSpecificID == nicID {
 				nicExists = true
 				break
 			}

@@ -737,7 +737,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					return nil, fmt.Errorf("Failed to get %q properties: %w", defName.String(), err)
 				}
 
-				val, err := subProps.GetValue(properties.InstanceNICNetworkID)
+				val, err := subProps.GetValue(properties.InstanceNICSourceSpecificID)
 				if err != nil {
 					return nil, err
 				}
@@ -751,7 +751,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 				for id, location := range networkLocationsByID {
 					if id == str {
 						netLocation = location
-						err := subProps.Add(properties.InstanceNICNetwork, location)
+						err := subProps.Add(properties.InstanceNICLocation, location)
 						if err != nil {
 							return nil, err
 						}
@@ -947,7 +947,7 @@ func (s *InternalVMwareSource) getDeviceProperties(device any, props *properties
 
 	nicHasSubProperty := func(subProp properties.Name) bool {
 		// The network name and IPs will be applied later.
-		return !slices.Contains([]properties.Name{properties.InstanceNICNetwork, properties.InstanceNICIPv4Address, properties.InstanceNICIPv6Address}, subProp)
+		return !slices.Contains([]properties.Name{properties.InstanceNICLocation, properties.InstanceNICIPv4Address, properties.InstanceNICIPv6Address}, subProp)
 	}
 
 	b, err := json.Marshal(device)
@@ -1070,7 +1070,7 @@ func parseValue(propName properties.Name, value any) (any, error) {
 		}
 
 		return uuid.Parse(strVal)
-	case properties.InstanceNICNetworkID:
+	case properties.InstanceNICSourceSpecificID:
 		strVal, ok := value.(string)
 		if !ok {
 			return nil, fmt.Errorf("%q value %v must be a string", propName.String(), value)
