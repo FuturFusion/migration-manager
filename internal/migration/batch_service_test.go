@@ -1638,27 +1638,27 @@ func TestBatchService_DeterminePlacement(t *testing.T) {
 		},
 		{
 			name:     "success - no scriptlet, with supported disk and network",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "netname"}}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname"}}},
 			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname"}},
 
-			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: netMap{"srcnet1": api.NetworkPlacement{Network: "netname", NICType: api.INCUSNICTYPE_MANAGED}}},
+			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: netMap{"/path/to/netname": api.NetworkPlacement{Network: "netname", NICType: api.INCUSNICTYPE_MANAGED}}},
 			batchCreateAssertErr: require.NoError,
 			placementAssertErr:   require.NoError,
 		},
 		{
 			name:     "success - with scriptlet",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1"}}},
-			networks: migration.Networks{{SourceSpecificID: "srcnet1"}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
 def placement(instance, batch):
 			set_target("tgt1")
 			set_project("project1")
 			set_pool("disk1", "pool1")
-			set_network("srcnet1", "net1", "managed", "")
+			set_network("/path/to/netname1", "net1", "managed", "")
 			`,
 
-			placement:            api.Placement{TargetName: "tgt1", TargetProject: "project1", StoragePools: strMap{"disk1": "pool1"}, Networks: netMap{"srcnet1": api.NetworkPlacement{Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+			placement:            api.Placement{TargetName: "tgt1", TargetProject: "project1", StoragePools: strMap{"disk1": "pool1"}, Networks: netMap{"/path/to/netname1": api.NetworkPlacement{Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
 			batchCreateAssertErr: require.NoError,
 			placementAssertErr:   require.NoError,
 		},
@@ -1670,10 +1670,10 @@ def placement(instance, batch):
 					{Name: "disk2", Supported: true},
 				},
 				NICs: []api.InstancePropertiesNIC{
-					{SourceSpecificID: "srcnet1"},
-					{SourceSpecificID: "srcnet2"},
-					{SourceSpecificID: "srcnet3"},
-					{SourceSpecificID: "srcnet4"},
+					{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"},
+					{SourceSpecificID: "srcnet2", Location: "/path/to/netname2"},
+					{SourceSpecificID: "srcnet3", Location: "/path/to/netname3"},
+					{SourceSpecificID: "srcnet4", Location: "/path/to/netname4"},
 				},
 			},
 			networks: migration.Networks{
@@ -1688,9 +1688,9 @@ def placement(instance, batch):
 			set_target("tgt1")
 			set_project("project1")
 			set_pool("disk1", "pool1")
-			set_network("srcnet1", "net1",    "bridged", "3")
-			set_network("srcnet2", "br0",     "bridged", "3,2,1")
-			set_network("srcnet4", "br0",     "bridged", "1")
+			set_network("/path/to/netname1", "net1",    "bridged", "3")
+			set_network("/path/to/netname2", "br0",     "bridged", "3,2,1")
+			set_network("/path/to/netname4", "br0",     "bridged", "1")
 			`,
 
 			placement: api.Placement{
@@ -1698,10 +1698,10 @@ def placement(instance, batch):
 				TargetProject: "project1",
 				StoragePools:  strMap{"disk1": "pool1", "disk2": "default"},
 				Networks: netMap{
-					"srcnet1": api.NetworkPlacement{Network: "net1", NICType: api.INCUSNICTYPE_BRIDGED, VlanID: "3"},
-					"srcnet2": api.NetworkPlacement{Network: "br0", NICType: api.INCUSNICTYPE_BRIDGED, VlanID: "3,2,1"},
-					"srcnet3": api.NetworkPlacement{Network: "netname3", NICType: api.INCUSNICTYPE_MANAGED},
-					"srcnet4": api.NetworkPlacement{Network: "br0", NICType: api.INCUSNICTYPE_BRIDGED, VlanID: "1"},
+					"/path/to/netname1": api.NetworkPlacement{Network: "net1", NICType: api.INCUSNICTYPE_BRIDGED, VlanID: "3"},
+					"/path/to/netname2": api.NetworkPlacement{Network: "br0", NICType: api.INCUSNICTYPE_BRIDGED, VlanID: "3,2,1"},
+					"/path/to/netname3": api.NetworkPlacement{Network: "netname3", NICType: api.INCUSNICTYPE_MANAGED},
+					"/path/to/netname4": api.NetworkPlacement{Network: "br0", NICType: api.INCUSNICTYPE_BRIDGED, VlanID: "1"},
 				},
 			},
 			batchCreateAssertErr: require.NoError,
@@ -1715,8 +1715,8 @@ def placement(instance, batch):
 					{Name: "disk2", Supported: true},
 				},
 				NICs: []api.InstancePropertiesNIC{
-					{SourceSpecificID: "srcnet1"},
-					{SourceSpecificID: "srcnet2"},
+					{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"},
+					{SourceSpecificID: "srcnet2", Location: "/path/to/netname2"},
 				},
 			},
 			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}, {SourceSpecificID: "srcnet2", Location: "/path/to/netname2"}},
@@ -1728,7 +1728,7 @@ def placement(instance, batch):
 			for disk in instance.properties.disks:
 			  if disk.supported:
 			    set_pool(disk.name, "pool1")
-			set_network("srcnet1", "net1", "managed", "")
+			set_network("/path/to/netname1", "net1", "managed", "")
 			`,
 
 			placement: api.Placement{
@@ -1736,8 +1736,8 @@ def placement(instance, batch):
 				TargetProject: "project1",
 				StoragePools:  strMap{"disk1": "pool1", "disk2": "pool1"},
 				Networks: netMap{
-					"srcnet1": api.NetworkPlacement{Network: "net1", NICType: api.INCUSNICTYPE_MANAGED},
-					"srcnet2": api.NetworkPlacement{Network: "netname2", NICType: api.INCUSNICTYPE_MANAGED},
+					"/path/to/netname1": api.NetworkPlacement{Network: "net1", NICType: api.INCUSNICTYPE_MANAGED},
+					"/path/to/netname2": api.NetworkPlacement{Network: "netname2", NICType: api.INCUSNICTYPE_MANAGED},
 				},
 			},
 			batchCreateAssertErr: require.NoError,
@@ -1784,7 +1784,7 @@ def placement(instance, batch):
 		},
 		{
 			name:     "error - set target network for source instance network with no source",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1"}}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{Location: "srcnet1"}}},
 			networks: migration.Networks{}, // No associated network object for the instance's network.
 
 			scriptlet: `
@@ -1798,11 +1798,11 @@ def placement(instance, batch):
 		{
 			name:     "error - set target network for source network not assigned to instance",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{}},
-			networks: migration.Networks{{SourceSpecificID: "srcnet1"}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname2"}},
 
 			scriptlet: `
 def placement(instance, batch):
-			set_network("srcnet1", "net1")
+			set_network("/path/to/netname2", "net1")
 			`,
 
 			batchCreateAssertErr: require.NoError,
@@ -1810,12 +1810,12 @@ def placement(instance, batch):
 		},
 		{
 			name:     "error - set target vlan ID for unknown network",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1"}}},
-			networks: migration.Networks{{SourceSpecificID: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
 def placement(instance, batch):
-			set_vlan("srcnet2", "3")
+			set_network("/path/to/netname2", "netname2", "bridged", "3")
 			`,
 
 			batchCreateAssertErr: require.NoError,
@@ -1824,24 +1824,11 @@ def placement(instance, batch):
 		{
 			name:     "error - set target vlan ID for source network not assigned to instance",
 			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{}},
-			networks: migration.Networks{{SourceSpecificID: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
 def placement(instance, batch):
-			set_vlan("srcnet1", "3")
-			`,
-
-			batchCreateAssertErr: require.NoError,
-			placementAssertErr:   require.Error,
-		},
-		{
-			name:     "error - set target vlan ID for unsupported source network",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1"}}},
-			networks: migration.Networks{{SourceSpecificID: "srcnet1"}},
-
-			scriptlet: `
-def placement(instance, batch):
-			set_vlan("srcnet1", "3")
+			set_network("/path/to/netname1", "netname1", "bridged", "3")
 			`,
 
 			batchCreateAssertErr: require.NoError,
@@ -1849,12 +1836,12 @@ def placement(instance, batch):
 		},
 		{
 			name:     "error - set target vlan ID 0",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1"}}},
-			networks: migration.Networks{{SourceSpecificID: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
 def placement(instance, batch):
-			set_vlan("srcnet1", "0")
+			set_network("/path/to/netname1", "netname1", "bridged", "0")
 			`,
 
 			batchCreateAssertErr: require.NoError,
@@ -1862,12 +1849,12 @@ def placement(instance, batch):
 		},
 		{
 			name:     "error - set target vlan ID list with 0s",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1"}}},
-			networks: migration.Networks{{SourceSpecificID: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
 def placement(instance, batch):
-			set_vlan("srcnet1", "3,0,1")
+			set_network("/path/to/netname1", "netname1", "bridged", "3,0,1")
 			`,
 
 			batchCreateAssertErr: require.NoError,
@@ -1875,12 +1862,12 @@ def placement(instance, batch):
 		},
 		{
 			name:     "error - set target vlan ID invalid syntax",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1"}}},
-			networks: migration.Networks{{SourceSpecificID: "srcnet1", Type: api.NETWORKTYPE_VMWARE_DISTRIBUTED}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}}},
+			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
 def placement(instance, batch):
-			set_vlan("srcnet1", "3 0 1")
+			set_network("/path/to/netname1", "netname1", "bridged", "3 0 1")
 			`,
 
 			batchCreateAssertErr: require.NoError,
@@ -1889,46 +1876,48 @@ def placement(instance, batch):
 	}
 
 	for i, tc := range cases {
-		t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
-		ctx := context.Background()
-		repo := &mock.BatchRepoMock{
-			CreateFunc: func(ctx context.Context, batch migration.Batch) (int64, error) {
-				return 1, nil
-			},
-		}
-
-		instanceSvc := &InstanceServiceMock{
-			GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) { return nil, nil },
-			GetAllFunc:        func(ctx context.Context) (migration.Instances, error) { return nil, nil },
-		}
-
-		batchSvc := migration.NewBatchService(repo, instanceSvc)
-		batch, err := batchSvc.Create(ctx, migration.Batch{
-			Name:              "testbatch",
-			Status:            api.BATCHSTATUS_DEFINED,
-			IncludeExpression: "true",
-			Defaults: api.BatchDefaults{
-				Placement: api.BatchPlacement{
-					Target:        "default",
-					TargetProject: "default",
-					StoragePool:   "default",
+		t.Run(tc.name, func(t *testing.T) {
+			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
+			ctx := context.Background()
+			repo := &mock.BatchRepoMock{
+				CreateFunc: func(ctx context.Context, batch migration.Batch) (int64, error) {
+					return 1, nil
 				},
-			},
-			Config: api.BatchConfig{
-				BackgroundSyncInterval:   (10 * time.Minute).String(),
-				FinalBackgroundSyncLimit: (10 * time.Minute).String(),
-				PlacementScriptlet:       tc.scriptlet,
-			},
-		})
-		tc.batchCreateAssertErr(t, err)
+			}
 
-		if err == nil {
-			placement, err := batchSvc.DeterminePlacement(ctx, migration.Instance{Properties: tc.instance}, tc.networks, batch, migration.Windows{})
-			tc.placementAssertErr(t, err)
+			instanceSvc := &InstanceServiceMock{
+				GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) { return nil, nil },
+				GetAllFunc:        func(ctx context.Context) (migration.Instances, error) { return nil, nil },
+			}
+
+			batchSvc := migration.NewBatchService(repo, instanceSvc)
+			batch, err := batchSvc.Create(ctx, migration.Batch{
+				Name:              "testbatch",
+				Status:            api.BATCHSTATUS_DEFINED,
+				IncludeExpression: "true",
+				Defaults: api.BatchDefaults{
+					Placement: api.BatchPlacement{
+						Target:        "default",
+						TargetProject: "default",
+						StoragePool:   "default",
+					},
+				},
+				Config: api.BatchConfig{
+					BackgroundSyncInterval:   (10 * time.Minute).String(),
+					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					PlacementScriptlet:       tc.scriptlet,
+				},
+			})
+			tc.batchCreateAssertErr(t, err)
 
 			if err == nil {
-				require.Equal(t, tc.placement, *placement)
+				placement, err := batchSvc.DeterminePlacement(ctx, migration.Instance{Properties: tc.instance}, tc.networks, batch, migration.Windows{})
+				tc.placementAssertErr(t, err)
+
+				if err == nil {
+					require.Equal(t, tc.placement, *placement)
+				}
 			}
-		}
+		})
 	}
 }
