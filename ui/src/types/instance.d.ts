@@ -13,9 +13,9 @@ export interface InstancePropertiesDisk {
 
 export interface InstancePropertiesNIC {
   uuid: string;
-  id: string;
+  source_specific_id: string;
   hardware_address: string;
-  network: string;
+  location: string;
 }
 
 export interface InstancePropertiesSnapshot {
