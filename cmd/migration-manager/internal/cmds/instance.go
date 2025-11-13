@@ -116,7 +116,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 
 			nics := []string{}
 			for _, nic := range props.NICs {
-				nics = append(nics, nic.HardwareAddress+" ("+nic.Network+", "+nic.ID+")")
+				nics = append(nics, nic.HardwareAddress+" ("+nic.Location+", "+nic.SourceSpecificID+")")
 			}
 
 			snapshots := []string{}

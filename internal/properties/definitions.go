@@ -266,9 +266,9 @@ func (p *RawPropertySet[T]) Add(key Name, val any) error {
 			fallthrough
 		case InstanceNICHardwareAddress:
 			fallthrough
-		case InstanceNICNetwork:
+		case InstanceNICLocation:
 			fallthrough
-		case InstanceNICNetworkID:
+		case InstanceNICSourceSpecificID:
 			fallthrough
 		case InstanceSnapshotName:
 			str, ok := val.(string)

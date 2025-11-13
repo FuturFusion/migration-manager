@@ -93,11 +93,11 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 	}
 
 	setNetworkFunc := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-		var nicID string
+		var nicLocation string
 		var netName string
 		var nicType string
 		var vlanID string
-		err := starlark.UnpackArgs(b.Name(), args, kwargs, "nic_id", &nicID, "network_name", &netName, "nic_type", &nicType, "vlan_id", &vlanID)
+		err := starlark.UnpackArgs(b.Name(), args, kwargs, "nic_location", &nicLocation, "network_name", &netName, "nic_type", &nicType, "vlan_id", &vlanID)
 		if err != nil {
 			return nil, err
 		}
@@ -134,27 +134,27 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 
 		var nicExists bool
 		for _, d := range instance.Properties.NICs {
-			if d.ID == nicID {
+			if d.Location == nicLocation {
 				nicExists = true
 				break
 			}
 		}
 
 		if !nicExists {
-			return nil, fmt.Errorf("No NIC found with ID %q on instance %q", nicID, instance.Properties.Location)
+			return nil, fmt.Errorf("No NIC found with location %q on instance %q", nicLocation, instance.Properties.Location)
 		}
 
 		if resp.Networks == nil {
 			resp.Networks = map[string]api.NetworkPlacement{}
 		}
 
-		resp.Networks[nicID] = api.NetworkPlacement{
+		resp.Networks[nicLocation] = api.NetworkPlacement{
 			Network: netName,
 			NICType: api.IncusNICType(nicType),
 			VlanID:  vlanID,
 		}
 
-		slog.Info("Batch placement assigned network for instance", slog.String("location", instance.Properties.Location), slog.String("nic", nicID), slog.String("network", netName), slog.String("nic_type", nicType), slog.String("vlan_id", vlanID))
+		slog.Info("Batch placement assigned network for instance", slog.String("location", instance.Properties.Location), slog.String("nic", nicLocation), slog.String("network", netName), slog.String("nic_type", nicType), slog.String("vlan_id", vlanID))
 
 		return starlark.None, nil
 	}

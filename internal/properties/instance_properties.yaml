@@ -224,13 +224,13 @@
               incus:
                   6.0:
                     key: hwaddr
-      network:
+      location:
           source:
               vmware:
                   8.0:
                     # InventoryPath is a special field from the global network properties client.
                     key: InventoryPath
-      id:
+      source_specific_id:
           source:
               vmware:
                   8.0:

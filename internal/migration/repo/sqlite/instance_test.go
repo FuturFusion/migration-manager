@@ -99,9 +99,9 @@ var (
 			},
 			NICs: []api.InstancePropertiesNIC{
 				{
-					ID:              "network-123",
-					Network:         "net",
-					HardwareAddress: "mac",
+					SourceSpecificID: "network-123",
+					Location:         "net",
+					HardwareAddress:  "mac",
 				},
 			},
 			Snapshots:  nil,
@@ -136,14 +136,14 @@ var (
 			},
 			NICs: []api.InstancePropertiesNIC{
 				{
-					ID:              "network-123",
-					Network:         "net1",
-					HardwareAddress: "mac1",
+					SourceSpecificID: "network-123",
+					Location:         "net1",
+					HardwareAddress:  "mac1",
 				},
 				{
-					ID:              "network-456",
-					Network:         "net2",
-					HardwareAddress: "mac2",
+					SourceSpecificID: "network-456",
+					Location:         "net2",
+					HardwareAddress:  "mac2",
 				},
 			},
 			Snapshots:  nil,

@@ -555,9 +555,9 @@ func TestGetProperties(t *testing.T) {
 			}
 
 			for _, d := range props.NICs {
-				require.Equal(t, c.expectedNetworkID, d.ID)
+				require.Equal(t, c.expectedNetworkID, d.SourceSpecificID)
 				require.Equal(t, c.expectedMac, d.HardwareAddress)
-				require.Equal(t, c.expectedNetwork, d.Network)
+				require.Equal(t, c.expectedNetwork, d.Location)
 			}
 
 			for _, d := range props.Snapshots {

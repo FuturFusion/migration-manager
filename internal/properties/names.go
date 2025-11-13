@@ -44,10 +44,10 @@ const (
 	InstanceConfig
 	// InstanceNICHardwareAddress is the property name for an instance nic's hardware address.
 	InstanceNICHardwareAddress
-	// InstanceNICNetwork is the property name for the name of the network entity used by the instance.
-	InstanceNICNetwork
-	// InstanceNICNetworkID is the property name for the unique identifier of the network entity used by the instance.
-	InstanceNICNetworkID
+	// InstanceNICLocation is the property name for the name of the network entity used by the instance.
+	InstanceNICLocation
+	// InstanceNICSourceSpecificID is the property name for the unique identifier of the network entity used by the instance.
+	InstanceNICSourceSpecificID
 	// InstanceNICNetworkID is the property name for ipv4 address of the nic.
 	InstanceNICIPv4Address
 	// InstanceNICNetworkID is the property name for ipv6 address of the nic.
@@ -97,10 +97,10 @@ func (n Name) String() string {
 		return "nics"
 	case InstanceNICHardwareAddress:
 		return "hardware_address"
-	case InstanceNICNetwork:
-		return "network"
-	case InstanceNICNetworkID:
-		return "id"
+	case InstanceNICLocation:
+		return "location"
+	case InstanceNICSourceSpecificID:
+		return "source_specific_id"
 	case InstanceNICIPv4Address:
 		return "ipv4_address"
 	case InstanceNICIPv6Address:
@@ -173,10 +173,10 @@ func ParseInstanceNICProperty(s string) (Name, error) {
 	switch s {
 	case InstanceNICHardwareAddress.String():
 		return InstanceNICHardwareAddress, nil
-	case InstanceNICNetwork.String():
-		return InstanceNICNetwork, nil
-	case InstanceNICNetworkID.String():
-		return InstanceNICNetworkID, nil
+	case InstanceNICLocation.String():
+		return InstanceNICLocation, nil
+	case InstanceNICSourceSpecificID.String():
+		return InstanceNICSourceSpecificID, nil
 	case InstanceNICIPv4Address.String():
 		return InstanceNICIPv4Address, nil
 	case InstanceNICIPv6Address.String():
@@ -234,7 +234,7 @@ func allInstanceProperties() []Name {
 }
 
 func allInstanceNICProperties() []Name {
-	return []Name{InstanceNICHardwareAddress, InstanceNICNetwork, InstanceNICNetworkID, InstanceNICIPv4Address, InstanceNICIPv6Address}
+	return []Name{InstanceNICHardwareAddress, InstanceNICLocation, InstanceNICSourceSpecificID, InstanceNICIPv4Address, InstanceNICIPv6Address}
 }
 
 func allInstanceDiskProperties() []Name {
