@@ -148,14 +148,14 @@ const InstanceOverview = () => {
                 <tbody>
                   {instance.properties.nics.map((item, index) => (
                     <tr key={index}>
-                      <td>{item.id}</td>
+                      <td>{item.source_specific_id}</td>
                       <td>{item.hardware_address}</td>
                       <td>
                         <Link
                           to={`/ui/networks/${item.uuid}`}
                           className="data-table-link"
                         >
-                          {item.network}
+                          {item.location}
                         </Link>
                       </td>
                     </tr>
