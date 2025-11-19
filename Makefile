@@ -1,5 +1,7 @@
 GO ?= go
 DETECTED_LIBNBD_VERSION = $(shell dpkg-query --showformat='$${Version}' -W libnbd-dev || echo "0.0.0-libnbd-not-found")
+SPHINXENV=doc/.sphinx/venv/bin/activate
+SPHINXPIPPATH=doc/.sphinx/venv/bin/pip
 
 default: build
 
@@ -45,9 +47,14 @@ test: build-dependencies
 
 .PHONY: install
 install: build build-ui
+	@if ! test -e ./worker/mkosi.output/migration-manager-worker.raw ; then \
+		$(MAKE) -C worker; \
+	fi
+
 	sudo install -D -m755 ./bin/migration-managerd /usr/bin/migration-managerd
 	sudo install -D -m755 ./bin/migration-manager.linux.amd64 /usr/bin/migration-manager
 	sudo install -D -m755 ./bin/migration-manager-worker /usr/lib/migration-manager/migration-manager-worker
+	sudo install -D -m755 ./worker/mkosi.output/migration-manager-worker.raw /var/cache/migration-manager/worker-x86_64-v$(shell /usr/bin/migration-manager --version).img
 	sudo install -d -m755 /usr/share/migration-manager/ui/
 	sudo cp -r ./ui/dist/* /usr/share/migration-manager/ui/
 
@@ -132,3 +139,44 @@ update-gomod:
 	$(GO) get github.com/go-jose/go-jose/v4@v4.0.5
 	$(GO) mod tidy --go=1.24.7
 	$(GO) get toolchain@none
+
+.PHONY: update-api
+update-api:
+	$(GO) install -v -x github.com/go-swagger/go-swagger/cmd/swagger@master
+	swagger generate spec -o doc/rest-api.yaml -w ./cmd/migration-managerd/internal/api -m -x github.com/lxc/incus/v6/shared/api
+
+.PHONY: doc-setup
+doc-setup:
+	@echo "Setting up documentation build environment"
+	python3 -m venv doc/.sphinx/venv
+	. $(SPHINXENV) ; pip install --require-virtualenv --upgrade -r doc/.sphinx/requirements.txt --log doc/.sphinx/venv/pip_install.log
+	@test ! -f doc/.sphinx/venv/pip_list.txt || \
+        mv doc/.sphinx/venv/pip_list.txt doc/.sphinx/venv/pip_list.txt.bak
+	$(SPHINXPIPPATH) list --local --format=freeze > doc/.sphinx/venv/pip_list.txt
+	rm -Rf doc/html
+	rm -Rf doc/.sphinx/.doctrees
+
+.PHONY: doc
+doc: doc-setup doc-incremental
+
+.PHONY: doc-incremental
+doc-incremental:
+	@echo "Build the documentation"
+	. $(SPHINXENV) ; sphinx-build -c doc/ -b dirhtml doc/ doc/html/ -d doc/.sphinx/.doctrees -w doc/.sphinx/warnings.txt
+	cp doc/rest-api.yaml doc/html/
+
+.PHONY: doc-serve
+doc-serve:
+	cd doc/html; python3 -m http.server 8001
+
+.PHONY: doc-spellcheck
+doc-spellcheck: doc
+	. $(SPHINXENV) ; python3 -m pyspelling -c doc/.sphinx/spellingcheck.yaml
+
+.PHONY: doc-linkcheck
+doc-linkcheck: doc-setup
+	. $(SPHINXENV) ; LOCAL_SPHINX_BUILD=True sphinx-build -c doc/ -b linkcheck doc/ doc/html/ -d doc/.sphinx/.doctrees
+
+.PHONY: doc-lint
+doc-lint:
+	doc/.sphinx/.markdownlint/doc-lint.sh
