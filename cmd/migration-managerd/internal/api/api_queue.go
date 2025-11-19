@@ -72,13 +72,13 @@ var queueRetryCmd = APIEndpoint{
 //	        metadata:
 //	          type: array
 //	          description: List of migration items in the queue
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/queue/26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad",
-//                    "/1.0/queue/9aad7f16-0d2e-440e-872f-4e9df2d53367"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/queue/26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad",
+//	              "/1.0/queue/9aad7f16-0d2e-440e-872f-4e9df2d53367"
+// 	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

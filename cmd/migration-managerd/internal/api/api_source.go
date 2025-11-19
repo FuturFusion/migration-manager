@@ -69,13 +69,13 @@ var sourceSyncCmd = APIEndpoint{
 //	        metadata:
 //	          type: array
 //	          description: List of sources
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/sources/foo",
-//                    "/1.0/sources/bar"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/sources/foo",
+//	              "/1.0/sources/bar"
+// 	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

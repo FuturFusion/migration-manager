@@ -69,13 +69,13 @@ var targetCmd = APIEndpoint{
 //	        metadata:
 //	          type: array
 //	          description: List of targets
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/targets/foo",
-//                    "/1.0/targets/bar"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/targets/foo",
+//	              "/1.0/targets/bar"
+// 	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":

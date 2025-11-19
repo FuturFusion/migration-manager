@@ -93,13 +93,13 @@ var batchResetCmd = APIEndpoint{
 //	        metadata:
 //	          type: array
 //	          description: List of batches
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/batches/foo",
-//                    "/1.0/batches/bar"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/batches/foo",
+//	              "/1.0/batches/bar"
+// 	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -405,7 +405,7 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 //	    description: Batch definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/Batch"
+//	      $ref: "#/definitions/BatchPut"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -519,13 +519,13 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 //	        metadata:
 //	          type: array
 //	          description: List of instances
-//                items:
-//                  type: string
-//                example: |-
-//                  [
-//                    "/1.0/instances/foo",
-//                    "/1.0/instances/bar"
-//                  ]
+//	          items:
+//	            type: string
+//	          example: |-
+//	            [
+//	              "/1.0/instances/foo",
+//	              "/1.0/instances/bar"
+// 	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
