@@ -1,0 +1,3039 @@
+definitions:
+    Artifact:
+        properties:
+            architectures:
+                description: Architectures used to match VMs to an artifact.
+                example: x86_64
+                items:
+                    type: string
+                type: array
+                x-go-name: Architectures
+            description:
+                description: Description of the artifact.
+                example: VMware disklib tarball
+                type: string
+                x-go-name: Description
+            files:
+                description: List of filenames uploaded as resources.
+                example: vmware-sdk.tar.gz
+                items:
+                    type: string
+                type: array
+                x-go-name: Files
+            last_updated:
+                description: Record of the last change to an artifact's properties or resources.
+                example: "2025-01-01 01:00:00"
+                format: date-time
+                type: string
+                x-go-name: LastUpdated
+            os:
+                $ref: '#/definitions/OSType'
+            source_type:
+                $ref: '#/definitions/SourceType'
+            type:
+                $ref: '#/definitions/ArtifactType'
+            uuid:
+                description: Unique identifier of an artifact.
+                example: 400f6ceb-659a-4b3c-8598-0bc9d20eafe3
+                format: uuid
+                type: string
+                x-go-name: UUID
+            versions:
+                description: Versions used to match VMs to an artifact.
+                example: "1.0"
+                items:
+                    type: string
+                type: array
+                x-go-name: Versions
+        title: Artifact represents external resources uploaded to Migration Manager.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    ArtifactPost:
+        properties:
+            architectures:
+                description: Architectures used to match VMs to an artifact.
+                example: x86_64
+                items:
+                    type: string
+                type: array
+                x-go-name: Architectures
+            description:
+                description: Description of the artifact.
+                example: VMware disklib tarball
+                type: string
+                x-go-name: Description
+            os:
+                $ref: '#/definitions/OSType'
+            source_type:
+                $ref: '#/definitions/SourceType'
+            type:
+                $ref: '#/definitions/ArtifactType'
+            versions:
+                description: Versions used to match VMs to an artifact.
+                example: "1.0"
+                items:
+                    type: string
+                type: array
+                x-go-name: Versions
+        title: ArtifactPost represents the properties of an artifact to be registered in Migration Manager.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    ArtifactPut:
+        properties:
+            architectures:
+                description: Architectures used to match VMs to an artifact.
+                example: x86_64
+                items:
+                    type: string
+                type: array
+                x-go-name: Architectures
+            description:
+                description: Description of the artifact.
+                example: VMware disklib tarball
+                type: string
+                x-go-name: Description
+            os:
+                $ref: '#/definitions/OSType'
+            source_type:
+                $ref: '#/definitions/SourceType'
+            versions:
+                description: Versions used to match VMs to an artifact.
+                example: "1.0"
+                items:
+                    type: string
+                type: array
+                x-go-name: Versions
+        title: ArtifactPut represents the configurable properties of an artifact record.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    ArtifactType:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    Batch:
+        properties:
+            config:
+                $ref: '#/definitions/BatchConfig'
+            constraints:
+                description: Set of constraints to apply to the batch. For each instance, the last constraint in the list that matches will be applied.
+                items:
+                    $ref: '#/definitions/BatchConstraint'
+                type: array
+                x-go-name: Constraints
+            defaults:
+                $ref: '#/definitions/BatchDefaults'
+            include_expression:
+                description: |-
+                    A Expression used to select instances to add to this batch
+                    Language reference: https://expr-lang.org/docs/language-definition
+                example: location matches "^foobar/.*"
+                type: string
+                x-go-name: IncludeExpression
+            migration_windows:
+                description: Set of migration window timings.
+                items:
+                    $ref: '#/definitions/MigrationWindow'
+                type: array
+                x-go-name: MigrationWindows
+            name:
+                description: A human-friendly name for this batch
+                example: MyBatch
+                type: string
+                x-go-name: Name
+            start_date:
+                description: Time in UTC when the batch was started.
+                example: "2025-01-01 01:00:00"
+                format: date-time
+                type: string
+                x-go-name: StartDate
+            status:
+                $ref: '#/definitions/BatchStatusType'
+            status_message:
+                description: A free-form string to provide additional information about the status
+                example: '"4 of 5 instances migrated"'
+                type: string
+                x-go-name: StatusMessage
+        title: Batch defines a collection of Instances to be migrated, possibly during a specific window of time.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    BatchConfig:
+        properties:
+            background_sync_interval:
+                description: Interval over which background sync will be rerun until the migration window has begun.
+                type: string
+                x-go-name: BackgroundSyncInterval
+            final_background_sync_limit:
+                description: The minimum amount of time before the migration window begins that background sync can be re-attempted.
+                type: string
+                x-go-name: FinalBackgroundSyncLimit
+            instance_restriction_overrides:
+                $ref: '#/definitions/InstanceRestrictionOverride'
+            placement_scriptlet:
+                description: The placement scriptlet used to determine the target for queued instances.
+                example: starlark scriptlet
+                type: string
+                x-go-name: PlacementScriptlet
+            post_migration_retries:
+                description: PostMigrationRetries is the maximum number of times post-migration steps will be retried upon errors.
+                example: 5
+                format: int64
+                type: integer
+                x-go-name: PostMigrationRetries
+            rerun_scriptlets:
+                description: Whether to re-run scriptlets if a migration restarts
+                type: boolean
+                x-go-name: RerunScriptlets
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    BatchConstraint:
+        properties:
+            description:
+                description: Description of the constraint.
+                type: string
+                x-go-name: Description
+            include_expression:
+                description: Expression used to select instances for the constraint.
+                type: string
+                x-go-name: IncludeExpression
+            max_concurrent_instances:
+                description: Maximum amount of matched instances that can concurrently migrate, before moving to the next migration window.
+                format: int64
+                type: integer
+                x-go-name: MaxConcurrentInstances
+            min_instance_boot_time:
+                description: Minimum amount of time required for an instance to boot after initial disk import. Migration window duration must be at least this much.
+                type: string
+                x-go-name: MinInstanceBootTime
+            name:
+                description: Name of the constraint.
+                type: string
+                x-go-name: Name
+        title: BatchConstraint is a constraint to be applied to a batch to determine which instances can be migrated.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    BatchDefaults:
+        properties:
+            migration_network:
+                description: Network configuration to use during migration of the instance. If unspecified, the default network configuration in the default profile will be used.
+                items:
+                    $ref: '#/definitions/MigrationNetworkPlacement'
+                type: array
+                x-go-name: MigrationNetwork
+            placement:
+                $ref: '#/definitions/BatchPlacement'
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    BatchPlacement:
+        properties:
+            storage_pool:
+                description: The Incus storage pool that this batch should use for creating VMs and mounting ISO images
+                example: local
+                type: string
+                x-go-name: StoragePool
+            target:
+                description: The destination target name to be used by all instances in this batch
+                example: Mytarget
+                type: string
+                x-go-name: Target
+            target_project:
+                description: The target project to use
+                example: default
+                type: string
+                x-go-name: TargetProject
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    BatchPut:
+        properties:
+            config:
+                $ref: '#/definitions/BatchConfig'
+            constraints:
+                description: Set of constraints to apply to the batch. For each instance, the last constraint in the list that matches will be applied.
+                items:
+                    $ref: '#/definitions/BatchConstraint'
+                type: array
+                x-go-name: Constraints
+            defaults:
+                $ref: '#/definitions/BatchDefaults'
+            include_expression:
+                description: |-
+                    A Expression used to select instances to add to this batch
+                    Language reference: https://expr-lang.org/docs/language-definition
+                example: location matches "^foobar/.*"
+                type: string
+                x-go-name: IncludeExpression
+            migration_windows:
+                description: Set of migration window timings.
+                items:
+                    $ref: '#/definitions/MigrationWindow'
+                type: array
+                x-go-name: MigrationWindows
+            name:
+                description: A human-friendly name for this batch
+                example: MyBatch
+                type: string
+                x-go-name: Name
+        title: BatchPut defines the configurable fields of Batch.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    BatchStatusType:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    IncusNICType:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    Instance:
+        properties:
+            last_update_from_source:
+                description: Last synced update from the source.
+                example: "2025-01-01 01:00:00"
+                format: date-time
+                type: string
+                x-go-name: LastUpdateFromSource
+            overrides:
+                $ref: '#/definitions/InstanceOverride'
+            properties:
+                $ref: '#/definitions/InstanceProperties'
+            source:
+                description: The originating source name for this instance
+                example: MySource
+                type: string
+                x-go-name: Source
+            source_type:
+                $ref: '#/definitions/SourceType'
+        title: Instance defines a VM instance to be migrated.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstanceOverride:
+        properties:
+            comment:
+                description: An optional comment about the override
+                example: '"Manually tweak number of CPUs"'
+                type: string
+                x-go-name: Comment
+            disable_migration:
+                description: If true, migration of this instance will be disabled.
+                example: true
+                type: boolean
+                x-go-name: DisableMigration
+            ignore_restrictions:
+                description: If true, restrictions that put the VM in a blocked state, preventing migration, will be ignored.
+                example: true
+                type: boolean
+                x-go-name: IgnoreRestrictions
+            last_update:
+                description: The last time this instance override was updated
+                example: 2024-11-12 16:15:00 +0000 UTC
+                format: date-time
+                type: string
+                x-go-name: LastUpdate
+            properties:
+                $ref: '#/definitions/InstancePropertiesConfigurable'
+        title: InstanceOverride defines a limited set of instance values that can be overridden as part of the migration process.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstanceProperties:
+        properties:
+            architecture:
+                description: Architecture of the Instance.
+                example: x86_64
+                type: string
+                x-go-name: Architecture
+            background_import:
+                description: Whether the Instance supports background-import migrations.
+                example: true
+                type: boolean
+                x-go-name: BackgroundImport
+            config:
+                additionalProperties:
+                    type: string
+                description: Additional configuration of the Instance.
+                type: object
+                x-go-name: Config
+            cpus:
+                description: Number of CPUs assigned to the Instance.
+                example: 4
+                format: int64
+                type: integer
+                x-go-name: CPUs
+            description:
+                description: Description of the Instance.
+                example: Windows Server 2025
+                type: string
+                x-go-name: Description
+            disks:
+                description: List of disks assigned to the Instance.
+                items:
+                    $ref: '#/definitions/InstancePropertiesDisk'
+                type: array
+                x-go-name: Disks
+            legacy_boot:
+                description: Whether the Instance uses legacy (CSM) boot.
+                example: true
+                type: boolean
+                x-go-name: LegacyBoot
+            location:
+                description: Location path of the Instance.
+                example: /path/to/instance_name
+                type: string
+                x-go-name: Location
+            memory:
+                description: Memory in bytes assigned to the Instance.
+                example: 1073741824
+                format: int64
+                type: integer
+                x-go-name: Memory
+            name:
+                description: Name of the Instance.
+                example: myVM
+                type: string
+                x-go-name: Name
+            nics:
+                description: List of network interface cards assigned to the Instance.
+                items:
+                    $ref: '#/definitions/InstancePropertiesNIC'
+                type: array
+                x-go-name: NICs
+            os:
+                description: OS name of the Instance.
+                example: Ubuntu
+                type: string
+                x-go-name: OS
+            os_version:
+                description: OS version of the Instance.
+                example: "24.04"
+                type: string
+                x-go-name: OSVersion
+            running:
+                description: Whether the Instance was running when the sync was performed.
+                example: true
+                type: boolean
+                x-go-name: Running
+            secure_boot:
+                description: Whether the Instance has secure-boot enabled.
+                example: true
+                type: boolean
+                x-go-name: SecureBoot
+            snapshots:
+                description: List of snapshots for the Instance.
+                items:
+                    $ref: '#/definitions/InstancePropertiesSnapshot'
+                type: array
+                x-go-name: Snapshots
+            tpm:
+                description: Whether the Instance has a TPM.
+                example: true
+                type: boolean
+                x-go-name: TPM
+            uuid:
+                description: Unique identifier of the Instance.
+                example: a2095069-a527-4b2a-ab23-1739325dcac7
+                format: uuid
+                type: string
+                x-go-name: UUID
+        title: InstanceProperties are all properties supported by instances.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstancePropertiesConfigurable:
+        properties:
+            architecture:
+                description: Architecture of the Instance.
+                example: x86_64
+                type: string
+                x-go-name: Architecture
+            config:
+                additionalProperties:
+                    type: string
+                description: Additional configuration of the Instance.
+                type: object
+                x-go-name: Config
+            cpus:
+                description: Number of CPUs assigned to the Instance.
+                example: 4
+                format: int64
+                type: integer
+                x-go-name: CPUs
+            description:
+                description: Description of the Instance.
+                example: Windows Server 2025
+                type: string
+                x-go-name: Description
+            memory:
+                description: Memory in bytes assigned to the Instance.
+                example: 1073741824
+                format: int64
+                type: integer
+                x-go-name: Memory
+            name:
+                description: Name of the Instance.
+                example: myVM
+                type: string
+                x-go-name: Name
+            os:
+                description: OS name of the Instance.
+                example: Ubuntu
+                type: string
+                x-go-name: OS
+            os_version:
+                description: OS version of the Instance.
+                example: "24.04"
+                type: string
+                x-go-name: OSVersion
+        title: InstancePropertiesConfigurable are the configurable properties of an instance.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstancePropertiesDisk:
+        properties:
+            capacity:
+                description: Capacity of the disk in bytes.
+                example: 1073741824
+                format: int64
+                type: integer
+                x-go-name: Capacity
+            name:
+                description: Name of the disk and associated datastore.
+                example: '[mydatastore] disk_1.vmdk'
+                type: string
+                x-go-name: Name
+            shared:
+                description: Whether the disk has sharing enabled.
+                example: true
+                type: boolean
+                x-go-name: Shared
+            supported:
+                description: Whether the disk supports migration.
+                example: true
+                type: boolean
+                x-go-name: Supported
+        title: InstancePropertiesDisk are all properties supported by instance disks.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstancePropertiesNIC:
+        properties:
+            hardware_address:
+                description: MAC address of the NIC.
+                example: 00:0c:29:a1:76:30
+                type: string
+                x-go-name: HardwareAddress
+            ipv4_address:
+                description: IPv4 address of the NIC.
+                example: 10.0.0.10
+                type: string
+                x-go-name: IPv4Address
+            ipv6_address:
+                description: IPv6 address of the NIC.
+                example: fd42::1
+                type: string
+                x-go-name: IPv6Address
+            location:
+                description: Location path of the network associated with the NIC.
+                example: /path/to/my_network
+                type: string
+                x-go-name: Location
+            source_specific_id:
+                description: Unique identifier of the network associated with the NIC on the source.
+                example: network-123
+                type: string
+                x-go-name: SourceSpecificID
+            uuid:
+                description: Unique ID identifying the NIC to a network registered in Migration Manager.
+                example: a2095069-a527-4b2a-ab23-1739325dcac7
+                format: uuid
+                type: string
+                x-go-name: UUID
+        title: InstancePropertiesNIC are all properties supported by instance NICs.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstancePropertiesSnapshot:
+        properties:
+            name:
+                description: Name of the snapshot.
+                example: snapshot1
+                type: string
+                x-go-name: Name
+        title: InstancePropertiesSnapshot are all properties supported by snapshots.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstanceRestrictionOverride:
+        properties:
+            allow_no_background_import:
+                description: Allow migration of instances with no background import support.
+                type: boolean
+                x-go-name: AllowNoBackgroundImport
+            allow_no_ipv4:
+                description: Allow migration of instances with no IPv4 addresses.
+                type: boolean
+                x-go-name: AllowNoIPv4
+            allow_unknown_os:
+                description: Allow migration of instances with unknown OSes.
+                type: boolean
+                x-go-name: AllowUnknownOS
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    MigrationNetworkPlacement:
+        properties:
+            network:
+                description: Name of the network on the target.
+                example: '"vmware"'
+                type: string
+                x-go-name: Network
+            nictype:
+                $ref: '#/definitions/IncusNICType'
+            target:
+                description: Target that the network is available in.
+                type: string
+                x-go-name: Target
+            target_project:
+                description: Target project that the network is available in.
+                type: string
+                x-go-name: TargetProject
+            vlan_id:
+                description: Name of the VLAN ID to use with a VLAN network.
+                example: "1"
+                type: string
+                x-go-name: VlanID
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    MigrationStatusType:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    MigrationWindow:
+        properties:
+            config:
+                $ref: '#/definitions/MigrationWindowConfig'
+            end:
+                description: End time for finalizing migrations after background import.
+                format: date-time
+                type: string
+                x-go-name: End
+            lockout:
+                description: Lockout time after which the batch can no longer modify the target instance.
+                format: date-time
+                type: string
+                x-go-name: Lockout
+            name:
+                description: Name of the migration window.
+                type: string
+                x-go-name: Name
+            start:
+                description: Start time for finalizing migrations after background import.
+                format: date-time
+                type: string
+                x-go-name: Start
+        title: MigrationWindow defines the scheduling of a batch migration.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    MigrationWindowConfig:
+        properties:
+            capacity:
+                description: Number of instances that can be assigned to the window.
+                format: int64
+                type: integer
+                x-go-name: Capacity
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    Network:
+        properties:
+            location:
+                description: Full inventory location path of the network
+                example: /vcenter01/network/net0
+                type: string
+                x-go-name: Location
+            overrides:
+                $ref: '#/definitions/NetworkPlacement'
+            placement:
+                $ref: '#/definitions/NetworkPlacement'
+            properties:
+                description: Additional properties of the network.
+                type: object
+                x-go-name: Properties
+            source:
+                description: vCenter source for the network
+                example: vcenter01
+                type: string
+                x-go-name: Source
+            source_specific_id:
+                description: The source-specific identifier of the network
+                example: network-23
+                type: string
+                x-go-name: SourceSpecificID
+            type:
+                $ref: '#/definitions/NetworkType'
+            uuid:
+                description: UUID of the network.
+                format: uuid
+                type: string
+                x-go-name: UUID
+        title: Network defines the network config for use by the migration manager.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    NetworkPlacement:
+        properties:
+            network:
+                description: Name of the network on the target.
+                example: '"vmware"'
+                type: string
+                x-go-name: Network
+            nictype:
+                $ref: '#/definitions/IncusNICType'
+            vlan_id:
+                description: Name of the VLAN ID to use with a VLAN network.
+                example: "1"
+                type: string
+                x-go-name: VlanID
+        title: NetworkPlacement defines the configurable properties of Network.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    NetworkType:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    OSType:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    Placement:
+        properties:
+            networks:
+                additionalProperties:
+                    $ref: '#/definitions/NetworkPlacement'
+                description: Network placement configuration keyed by attached network identifier.
+                example:
+                    "00:00:00:00:00:01": incusbr0
+                type: object
+                x-go-name: Networks
+            storage_pools:
+                additionalProperties:
+                    type: string
+                description: Storage pools keyed by attached disk name.
+                example:
+                    '[my-datastore] vmname.vmdk': default
+                type: object
+                x-go-name: StoragePools
+            target_name:
+                description: Name of the target this queue entry is migrating to
+                example: incus01
+                type: string
+                x-go-name: TargetName
+            target_project:
+                description: Name of the target project this queue entry is migrating to
+                example: default
+                type: string
+                x-go-name: TargetProject
+        title: Placement indicates the destination for a queue entry's instance.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    QueueEntry:
+        properties:
+            LastWorkerResponse:
+                description: Time in UTC that the queue entry received a response from the migration worker
+                format: date-time
+                type: string
+            batch_name:
+                description: A human-friendly name for the batch
+                example: MyBatch
+                type: string
+                x-go-name: BatchName
+            instance_name:
+                description: The name of the instance
+                example: UbuntuServer
+                type: string
+                x-go-name: InstanceName
+            instance_uuid:
+                description: UUID for the instance; populated from the source and used across all migration manager operations
+                example: 26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad
+                format: uuid
+                type: string
+                x-go-name: InstanceUUID
+            migration_status:
+                $ref: '#/definitions/MigrationStatusType'
+            migration_status_message:
+                description: A free-form string to provide additional information about the migration status
+                example: '"Migration 25% complete"'
+                type: string
+                x-go-name: MigrationStatusMessage
+            migration_window:
+                $ref: '#/definitions/MigrationWindow'
+            placement:
+                $ref: '#/definitions/Placement'
+        title: QueueEntry provides a high-level status for an instance that is in a migration stage.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    ServerPut:
+        description: ServerPut represents the modifiable fields of a server configuration
+        properties:
+            config:
+                additionalProperties:
+                    type: string
+                description: Server configuration map (refer to doc/server.md)
+                example:
+                    core.https_address: :6443
+                type: object
+                x-go-name: Config
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    ServerUntrusted:
+        description: ServerUntrusted represents a server configuration for an untrusted client
+        properties:
+            api_status:
+                description: Support status of the current API (one of "devel", "stable" or "deprecated")
+                example: stable
+                readOnly: true
+                type: string
+                x-go-name: APIStatus
+            api_version:
+                description: API version number
+                example: "1.0"
+                readOnly: true
+                type: string
+                x-go-name: APIVersion
+            auth:
+                description: Whether the client is trusted (one of "trusted" or "untrusted")
+                example: untrusted
+                readOnly: true
+                type: string
+                x-go-name: Auth
+            auth_methods:
+                description: List of supported authentication methods
+                example:
+                    - tls
+                items:
+                    type: string
+                readOnly: true
+                type: array
+                x-go-name: AuthMethods
+            config:
+                additionalProperties:
+                    type: string
+                description: Server configuration map (refer to doc/server.md)
+                example:
+                    core.https_address: :6443
+                type: object
+                x-go-name: Config
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    Source:
+        properties:
+            name:
+                description: A human-friendly name for this source
+                example: MySource
+                type: string
+                x-go-name: Name
+            properties:
+                description: Properties contains source type specific properties
+                type: object
+                x-go-name: Properties
+            source_type:
+                $ref: '#/definitions/SourceType'
+        title: Source defines properties common to all sources.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SourcePut:
+        properties:
+            name:
+                description: A human-friendly name for this source
+                example: MySource
+                type: string
+                x-go-name: Name
+            properties:
+                description: Properties contains source type specific properties
+                type: object
+                x-go-name: Properties
+        title: SourcePut defines the configurable properties of Source.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SourceType:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemCertificatePost:
+        description: |-
+            SystemCertificatePost represents the fields available for an update of the
+            system certificate (server certificate), key, and CA.
+        properties:
+            ca:
+                description: The new certificate CA (X509 PEM encoded) for the system (server CA).
+                example: X509 PEM certificate CA
+                type: string
+                x-go-name: CA
+            certificate:
+                description: The new certificate (X509 PEM encoded) for the system (server certificate).
+                example: X509 PEM certificate
+                type: string
+                x-go-name: Cert
+            key:
+                description: The new certificate key (X509 PEM encoded) for the system (server key).
+                example: X509 PEM certificate key
+                type: string
+                x-go-name: Key
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemNetwork:
+        properties:
+            rest_server_address:
+                description: Address and port to bind the REST API to.
+                type: string
+                x-go-name: Address
+            worker_endpoint:
+                description: URL used by Migration Manager workers to connect to the Migration Manager daemon.
+                type: string
+                x-go-name: WorkerEndpoint
+        title: SystemNetwork represents the system's network configuration.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemSecurity:
+        properties:
+            oidc:
+                $ref: '#/definitions/SystemSecurityOIDC'
+            openfga:
+                $ref: '#/definitions/SystemSecurityOpenFGA'
+            trusted_tls_client_cert_fingerprints:
+                description: An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedTLSClientCertFingerprints
+        title: SystemSecurity represents the system's security configuration.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemSecurityOIDC:
+        properties:
+            audience:
+                description: Audience the OIDC tokens should be verified against.
+                type: string
+                x-go-name: Audience
+            claim:
+                description: Claim which should be used to identify the user or subject.
+                type: string
+                x-go-name: Claim
+            client_id:
+                description: Client ID used for communication with the OIDC issuer.
+                type: string
+                x-go-name: ClientID
+            issuer:
+                description: OIDC Issuer.
+                type: string
+                x-go-name: Issuer
+            scopes:
+                description: Scopes to be requested.
+                type: string
+                x-go-name: Scope
+        title: SystemSecurityOIDC is the OIDC related part of the system's security configuration.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemSecurityOpenFGA:
+        properties:
+            api_token:
+                description: API token used for communication with the OpenFGA system.
+                type: string
+                x-go-name: APIToken
+            api_url:
+                description: URL of the OpenFGA API.
+                type: string
+                x-go-name: APIURL
+            store_id:
+                description: ID of the OpenFGA store.
+                type: string
+                x-go-name: StoreID
+        title: SystemSecurityOpenFGA is the OpenFGA related part of the system's security configuration.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemSettings:
+        properties:
+            disable_auto_sync:
+                description: Whether automatic periodic sync of all sources should be disabled.
+                type: boolean
+                x-go-name: DisableAutoSync
+            log_level:
+                description: Daemon log level.
+                type: string
+                x-go-name: LogLevel
+            sync_interval:
+                description: Interval over which data from all sources will be periodically resynced.
+                type: string
+                x-go-name: SyncInterval
+        title: SystemSettings represents global system settings.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    Target:
+        properties:
+            name:
+                description: A human-friendly name for this target
+                example: MyTarget
+                type: string
+                x-go-name: Name
+            properties:
+                description: Properties contains target type specific properties
+                type: object
+                x-go-name: Properties
+            target_type:
+                $ref: '#/definitions/TargetType'
+        title: Target defines properties common to all targets.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    TargetPut:
+        properties:
+            name:
+                description: A human-friendly name for this target
+                example: MyTarget
+                type: string
+                x-go-name: Name
+            properties:
+                description: Properties contains target type specific properties
+                type: object
+                x-go-name: Properties
+        title: TargetPut defines the configurable properties of Target.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    TargetType:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    Warning:
+        properties:
+            count:
+                description: Number of times the warning has been seen.
+                example: 10
+                format: int64
+                type: integer
+                x-go-name: Count
+            first_seen_date:
+                description: First time the warning was seen.
+                example: "2025-01-01 01:00:00"
+                format: date-time
+                type: string
+                x-go-name: FirstSeenDate
+            last_seen_date:
+                description: Most recent time the warning was seen.
+                example: "2025-01-01 01:00:00"
+                format: date-time
+                type: string
+                x-go-name: LastSeenDate
+            messages:
+                description: Messages associated with the warning type.
+                example: list of messages
+                items:
+                    type: string
+                type: array
+                x-go-name: Messages
+            scope:
+                $ref: '#/definitions/WarningScope'
+            status:
+                $ref: '#/definitions/WarningStatus'
+            type:
+                $ref: '#/definitions/WarningType'
+            updated_date:
+                description: Last time the warning was changed.
+                example: "2025-01-01 01:00:00"
+                format: date-time
+                type: string
+                x-go-name: UpdatedDate
+            uuid:
+                description: Unique identifier of the warning.
+                example: a2095069-a527-4b2a-ab23-1739325dcac7
+                format: uuid
+                type: string
+                x-go-name: UUID
+        title: Warning represents a record of a warning.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    WarningPut:
+        properties:
+            status:
+                $ref: '#/definitions/WarningStatus'
+        title: WarningPut represents configurable properties of a warning.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    WarningScope:
+        properties:
+            entity:
+                description: Name of the entity.
+                example: mySource
+                type: string
+                x-go-name: Entity
+            entity_type:
+                description: Entity the warning relates to.
+                example: source
+                type: string
+                x-go-name: EntityType
+            scope:
+                description: Action scope of the warning.
+                example: sync
+                type: string
+                x-go-name: Scope
+        title: WarningScope represents a scope for a warning.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    WarningStatus:
+        title: WarningStatus is the acknowledgement status of a warning.
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    WarningType:
+        title: WarningType represents a warning message group.
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+paths:
+    /:
+        get:
+            description: Returns a list of supported API versions (URLs).
+            operationId: api_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API endpoints
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of endpoints
+                                example:
+                                    - /1.0
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+            summary: Get the supported API endpoints
+            tags:
+                - server
+    /1.0:
+        get:
+            description: |-
+                Shows a small subset of the server environment and configuration
+                which is required by untrusted clients to reach a server.
+            operationId: server_get_untrusted
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Server environment and configuration
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/ServerUntrusted'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the server environment
+            tags:
+                - server
+    /1.0/artifacts:
+        get:
+            description: Returns a list of artifacts (structs).
+            operationId: artifacts_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API artifacts
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of artifacts
+                                items:
+                                    $ref: '#/definitions/Artifact'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get all artifacts
+            tags:
+                - artifacts
+        post:
+            consumes:
+                - application/json
+            description: Creates a new artifact record.
+            operationId: artifacts_post
+            parameters:
+                - description: Artifact configuration
+                  in: body
+                  name: artifact
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ArtifactPost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add an artifact
+            tags:
+                - artifacts
+    /1.0/artifacts/{uuid}:
+        get:
+            description: Gets a specific artifact.
+            operationId: artifact_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Artifact
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/Artifact'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get an artifact.
+            tags:
+                - artifacts
+        put:
+            consumes:
+                - application/json
+            description: Updates the artifact definition.
+            operationId: artifact_put
+            parameters:
+                - description: Artifact definition
+                  in: body
+                  name: artifact
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ArtifactPut'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update an artifact
+            tags:
+                - artifacts
+    /1.0/artifacts/{uuid}/files:
+        post:
+            consumes:
+                - application/octet-stream
+            description: Upload a file to an artifact record.
+            operationId: artifacts_file_post
+            parameters:
+                - description: Raw file content
+                  in: body
+                  name: raw_file
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add a file to an artifact
+            tags:
+                - artifacts
+    /1.0/artifacts/{uuid}/files/{name}:
+        delete:
+            description: Removes the file from the artifact.
+            operationId: artifact_file_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete an artifact file
+            tags:
+                - artifacts
+        get:
+            description: Download a file from an artifact.
+            operationId: artifacts_file_get
+            produces:
+                - application/octet-stream
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get an artifact file
+            tags:
+                - artifacts
+    /1.0/batches:
+        get:
+            description: Returns a list of batches (URLs).
+            operationId: batches_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API batches
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of batches
+                                example: |-
+                                    [
+                                      "/1.0/batches/foo",
+                                      "/1.0/batches/bar"
+                                      ]
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the batches
+            tags:
+                - batches
+        post:
+            consumes:
+                - application/json
+            description: Creates a new batch.
+            operationId: batches_post
+            parameters:
+                - description: Batch configuration
+                  in: body
+                  name: batch
+                  required: true
+                  schema:
+                    $ref: '#/definitions/Batch'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add a batch
+            tags:
+                - batches
+    /1.0/batches/{name}:
+        delete:
+            description: Removes the batch.
+            operationId: batch_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the batch
+            tags:
+                - batches
+        get:
+            description: Gets a specific batch.
+            operationId: batch_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Batch
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/Batch'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the batch
+            tags:
+                - batches
+        put:
+            consumes:
+                - application/json
+            description: Updates the batch definition.
+            operationId: batch_put
+            parameters:
+                - description: Batch definition
+                  in: body
+                  name: batch
+                  required: true
+                  schema:
+                    $ref: '#/definitions/BatchPut'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the batch
+            tags:
+                - batches
+    /1.0/batches/{name}/instances:
+        get:
+            description: Returns a list of instances assigned to this batch (URLs).
+            operationId: batches_instances_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API instances
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of instances
+                                example: |-
+                                    [
+                                      "/1.0/instances/foo",
+                                      "/1.0/instances/bar"
+                                      ]
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get instances for the batch
+            tags:
+                - batches
+    /1.0/batches/{name}/instances?recursion=1:
+        get:
+            description: Returns a list of instances assigned to this batch (structs).
+            operationId: batches_instances_get_recursion
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API instances
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of instances
+                                items:
+                                    $ref: '#/definitions/Instance'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get instances for the batch
+            tags:
+                - batches
+    /1.0/batches/{name}/reset:
+        post:
+            description: Resets a batch, removes all queue entries, and cleans up incomplete target VMs and volumes.
+            operationId: batches_reset_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Reset a batch
+            tags:
+                - batches
+    /1.0/batches/{name}/start:
+        post:
+            description: Starts a batch and begins the migration process for its instances.
+            operationId: batches_start_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Start a batch
+            tags:
+                - batches
+    /1.0/batches/{name}/stop:
+        post:
+            description: Stops a batch and suspends the migration process for its instances.
+            operationId: batches_stop_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Stop a batch
+            tags:
+                - batches
+    /1.0/batches?recursion=1:
+        get:
+            description: Returns a list of batches (structs).
+            operationId: batches_get_recursion
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API batches
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of batches
+                                items:
+                                    $ref: '#/definitions/Batch'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the batches
+            tags:
+                - batches
+    /1.0/instances:
+        get:
+            description: Returns a list of instances (URLs).
+            operationId: instances_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API instances
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of instances
+                                example: |-
+                                    [
+                                      "/1.0/instances/26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad",
+                                      "/1.0/instances/9aad7f16-0d2e-440e-872f-4e9df2d53367"
+                                      ]
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the instances
+            tags:
+                - instances
+    /1.0/instances/{uuid}:
+        get:
+            description: Gets a specific instance.
+            operationId: instance_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Instance
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/Instance'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the instance
+            tags:
+                - instances
+    /1.0/instances/{uuid}/override:
+        delete:
+            description: Removes the instance override.
+            operationId: instance_override_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete an instance override
+            tags:
+                - instances
+        get:
+            description: Gets a specific instance override.
+            operationId: instance_override_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: InstanceOverride
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/InstanceOverride'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the instance override
+            tags:
+                - instances
+        put:
+            consumes:
+                - application/json
+            description: Updates the instance override definition.
+            operationId: instance_override_put
+            parameters:
+                - description: Instance override definition
+                  in: body
+                  name: instance
+                  required: true
+                  schema:
+                    $ref: '#/definitions/InstanceOverride'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the instance override
+            tags:
+                - instances
+    /1.0/instances?recursion=1:
+        get:
+            description: Returns a list of instances (structs).
+            operationId: instances_get_recursion
+            parameters:
+                - description: An expression used to select instances to add to the result
+                  example: name matches 'centos'
+                  in: query
+                  name: include_expression
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API instances
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of sources
+                                items:
+                                    $ref: '#/definitions/Instance'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the instances
+            tags:
+                - instances
+    /1.0/networks:
+        get:
+            description: Returns a list of networks (structs).
+            operationId: networks_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API networks
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of networks
+                                items:
+                                    $ref: '#/definitions/Network'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the networks
+            tags:
+                - networks
+    /1.0/networks/{uuid}:
+        delete:
+            description: Removes the network.
+            operationId: network_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the network
+            tags:
+                - networks
+        get:
+            description: Gets a specific network.
+            operationId: network_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Network
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/Network'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the network
+            tags:
+                - networks
+    /1.0/networks/{uuid}/instances:
+        get:
+            description: Returns a list of instances assigned to this network (structs).
+            operationId: networks_instances_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API instances
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of instances
+                                items:
+                                    $ref: '#/definitions/Instance'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get instances for the network
+            tags:
+                - networks
+    /1.0/networks/{uuid}/override:
+        put:
+            consumes:
+                - application/json
+            description: Updates the network override definition.
+            operationId: network_override_put
+            parameters:
+                - description: Network definition
+                  in: body
+                  name: network
+                  required: true
+                  schema:
+                    $ref: '#/definitions/Network'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the network overrides
+            tags:
+                - networks
+    /1.0/queue:
+        get:
+            description: Returns a list of all migrations underway (URLs).
+            operationId: queueRoot_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Migration queue instances
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of migration items in the queue
+                                example: |-
+                                    [
+                                      "/1.0/queue/26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad",
+                                      "/1.0/queue/9aad7f16-0d2e-440e-872f-4e9df2d53367"
+                                      ]
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the current migration queue
+            tags:
+                - queue
+    /1.0/queue/{uuid}:
+        delete:
+            description: Removes the queue.
+            operationId: queue_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the queue
+            tags:
+                - queue
+        get:
+            description: Returns details about the specified queue entry.
+            operationId: queue_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Queue entry
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/QueueEntry'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get migration entry from queue
+            tags:
+                - queue
+    /1.0/queue/{uuid}/:cancel:
+        post:
+            description: Cancels migration for the queue entry.
+            operationId: queue_cancel
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Cancels the queue entry
+            tags:
+                - queue
+    /1.0/queue/{uuid}/:retry:
+        post:
+            description: Retries migration for the queue entry.
+            operationId: queue_retry
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Retries the queue entry
+            tags:
+                - queue
+    /1.0/queue?recursion=1:
+        get:
+            description: Returns a list of all migrations underway (structs).
+            operationId: queueRoot_get_recursion
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Migration queue instances
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of sources
+                                items:
+                                    $ref: '#/definitions/QueueEntry'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the current migration queue
+            tags:
+                - queue
+    /1.0/sources:
+        get:
+            description: Returns a list of sources (URLs).
+            operationId: sources_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API sources
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of sources
+                                example: |-
+                                    [
+                                      "/1.0/sources/foo",
+                                      "/1.0/sources/bar"
+                                      ]
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the sources
+            tags:
+                - sources
+        post:
+            consumes:
+                - application/json
+            description: Creates a new source.
+            operationId: sources_post
+            parameters:
+                - description: Source configuration
+                  in: body
+                  name: source
+                  required: true
+                  schema:
+                    $ref: '#/definitions/Source'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add a source
+            tags:
+                - sources
+    /1.0/sources/{name}:
+        delete:
+            description: Removes the source.
+            operationId: source_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the source
+            tags:
+                - sources
+        get:
+            description: Gets a specific source.
+            operationId: source_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Source
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/Source'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the source
+            tags:
+                - sources
+        put:
+            consumes:
+                - application/json
+            description: Updates the source definition.
+            operationId: source_put
+            parameters:
+                - description: Source definition
+                  in: body
+                  name: source
+                  required: true
+                  schema:
+                    $ref: '#/definitions/Source'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the source
+            tags:
+                - sources
+    /1.0/sources/{name}/:sync:
+        post:
+            description: Perform a sync to fetch new source data from a specified source.
+            operationId: source_sync
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Sync source data
+            tags:
+                - sources
+    /1.0/sources?recursion=1:
+        get:
+            description: Returns a list of sources (structs).
+            operationId: sources_get_recursion
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API sources
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of sources
+                                items:
+                                    $ref: '#/definitions/Source'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the sources
+            tags:
+                - sources
+    /1.0/system/certificate:
+        post:
+            consumes:
+                - application/json
+            description: Updates the system certificate.
+            operationId: system_certificate_post
+            parameters:
+                - description: Certificate configuration
+                  in: body
+                  name: system_certificate
+                  required: true
+                  schema:
+                    $ref: '#/definitions/CertificatePost'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update system certificate
+            tags:
+                - system_certificate
+    /1.0/system/network:
+        get:
+            description: Returns the system network configuration.
+            operationId: system_network_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API system network
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: System network configuration
+                                items:
+                                    $ref: '#/definitions/ConfigNetwork'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the system network configuration
+            tags:
+                - system_network
+        put:
+            consumes:
+                - application/json
+            description: Updates the system network configuration.
+            operationId: system_network_put
+            parameters:
+                - description: System network configuration
+                  in: body
+                  name: system_network
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ConfigNetwork'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the system network configuration
+            tags:
+                - system_network
+    /1.0/system/security:
+        get:
+            description: Returns the system security configuration
+            operationId: system_security_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API system security
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: System security configuration
+                                items:
+                                    $ref: '#/definitions/ConfigSecurity'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the system security configuration
+            tags:
+                - system_security
+        put:
+            consumes:
+                - application/json
+            description: Updates the system security configuration.
+            operationId: system_security_put
+            parameters:
+                - description: System security configuration
+                  in: body
+                  name: system_security
+                  required: true
+                  schema:
+                    $ref: '#/definitions/ConfigSecurity'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the system security configuration
+            tags:
+                - system_security
+    /1.0/system/settings:
+        get:
+            description: Returns the system settings configuration.
+            operationId: system_settings_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API system settings
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: System settings configuration
+                                items:
+                                    $ref: '#/definitions/SystemSettings'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the system settings configuration
+            tags:
+                - system_settings
+        put:
+            consumes:
+                - application/json
+            description: Updates the system settings configuration.
+            operationId: system_settings_put
+            parameters:
+                - description: System settings configuration
+                  in: body
+                  name: system_settings
+                  required: true
+                  schema:
+                    $ref: '#/definitions/SystemSettings'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the system settings configuration
+            tags:
+                - system_settings
+    /1.0/targets:
+        get:
+            description: Returns a list of targets (URLs).
+            operationId: targets_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API targets
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of targets
+                                example: |-
+                                    [
+                                      "/1.0/targets/foo",
+                                      "/1.0/targets/bar"
+                                      ]
+                                items:
+                                    type: string
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the targets
+            tags:
+                - targets
+        post:
+            consumes:
+                - application/json
+            description: Creates a new target.
+            operationId: targets_post
+            parameters:
+                - description: Target configuration
+                  in: body
+                  name: target
+                  required: true
+                  schema:
+                    $ref: '#/definitions/IncusTarget'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Add a target
+            tags:
+                - targets
+    /1.0/targets/{name}:
+        delete:
+            description: Removes the target.
+            operationId: target_delete
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete the target
+            tags:
+                - targets
+        get:
+            description: Gets a specific target.
+            operationId: target_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Target
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/IncusTarget'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the target
+            tags:
+                - targets
+        put:
+            consumes:
+                - application/json
+            description: Updates the target definition.
+            operationId: target_put
+            parameters:
+                - description: Target definition
+                  in: body
+                  name: target
+                  required: true
+                  schema:
+                    $ref: '#/definitions/IncusTarget'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the target
+            tags:
+                - targets
+    /1.0/targets?recursion=1:
+        get:
+            description: Returns a list of targets (structs).
+            operationId: targets_get_recursion
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API targets
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of targets
+                                items:
+                                    $ref: '#/definitions/IncusTarget'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the targets
+            tags:
+                - targets
+    /1.0/warnings:
+        get:
+            description: Returns a list of warnings (structs).
+            operationId: warnings_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: API warnings
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: List of warnings
+                                items:
+                                    $ref: '#/definitions/Warning'
+                                type: array
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the warnings
+            tags:
+                - warnings
+    /1.0/warnings/{uuid}:
+        get:
+            description: Gets a specific warning.
+            operationId: warning_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Warning
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/Warning'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get the warning
+            tags:
+                - warnings
+        put:
+            consumes:
+                - application/json
+            description: Updates the warning definition.
+            operationId: warning_put
+            parameters:
+                - description: Warning definition
+                  in: body
+                  name: warning
+                  required: true
+                  schema:
+                    $ref: '#/definitions/Warning'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Update the warning
+            tags:
+                - warnings
+    /internal/worker/{uuid}/:command:
+        post:
+            description: Generates the next worker command, if any, for this queued instance.
+            operationId: worker_command_post
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: WorkerCommand
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/WorkerCommand'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Generate next worker command for instance
+            tags:
+                - worker
+    /internal/worker/{uuid}/:update:
+        post:
+            consumes:
+                - application/json
+            description: Sets the response from the worker for this queued instance.
+            operationId: worker_update_post
+            parameters:
+                - description: WorkerResponse definition
+                  in: body
+                  name: response
+                  required: true
+                  schema:
+                    $ref: '#/definitions/WorkerResponse'
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Sets worker response for instance
+            tags:
+                - worker
+responses:
+    BadRequest:
+        description: Bad Request
+        schema:
+            properties:
+                error:
+                    example: bad request
+                    type: string
+                    x-go-name: Error
+                error_code:
+                    example: 400
+                    format: int64
+                    type: integer
+                    x-go-name: ErrorCode
+                type:
+                    example: error
+                    type: string
+                    x-go-name: Type
+            type: object
+    EmptySyncResponse:
+        description: Empty sync response
+        schema:
+            properties:
+                status:
+                    example: Success
+                    type: string
+                    x-go-name: Status
+                status_code:
+                    example: 200
+                    format: int64
+                    type: integer
+                    x-go-name: StatusCode
+                type:
+                    example: sync
+                    type: string
+                    x-go-name: Type
+            type: object
+    Forbidden:
+        description: Forbidden
+        schema:
+            properties:
+                error:
+                    example: not authorized
+                    type: string
+                    x-go-name: Error
+                error_code:
+                    example: 403
+                    format: int64
+                    type: integer
+                    x-go-name: ErrorCode
+                type:
+                    example: error
+                    type: string
+                    x-go-name: Type
+            type: object
+    InternalServerError:
+        description: Internal Server Error
+        schema:
+            properties:
+                error:
+                    example: internal server error
+                    type: string
+                    x-go-name: Error
+                error_code:
+                    example: 500
+                    format: int64
+                    type: integer
+                    x-go-name: ErrorCode
+                type:
+                    example: error
+                    type: string
+                    x-go-name: Type
+            type: object
+    NotFound:
+        description: Not found
+        schema:
+            properties:
+                error:
+                    example: not found
+                    type: string
+                    x-go-name: Error
+                error_code:
+                    example: 404
+                    format: int64
+                    type: integer
+                    x-go-name: ErrorCode
+                type:
+                    example: error
+                    type: string
+                    x-go-name: Type
+            type: object
+    PreconditionFailed:
+        description: Precondition Failed
+        schema:
+            properties:
+                error:
+                    example: precondition failed
+                    type: string
+                    x-go-name: Error
+                error_code:
+                    example: 412
+                    format: int64
+                    type: integer
+                    x-go-name: ErrorCode
+                type:
+                    example: error
+                    type: string
+                    x-go-name: Type
+            type: object
+swagger: "2.0"
