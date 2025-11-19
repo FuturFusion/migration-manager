@@ -95,6 +95,9 @@ func workerCommandPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	// Share this lock with running worker tasks.
+	workerLock.RLock()
+	defer workerLock.RUnlock()
 	uuidString := r.PathValue("uuid")
 
 	instanceUUID, err := uuid.Parse(uuidString)
@@ -160,6 +163,9 @@ func workerUpdatePost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	// Share this lock with running worker tasks.
+	workerLock.RLock()
+	defer workerLock.RUnlock()
 	uuidString := r.PathValue("uuid")
 
 	instanceUUID, err := uuid.Parse(uuidString)
