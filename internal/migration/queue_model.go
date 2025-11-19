@@ -72,7 +72,7 @@ func (q QueueEntry) StatusBeforeMigrationWindow() bool {
 func (q QueueEntry) IsCommitted() bool {
 	switch q.MigrationStatus {
 	case api.MIGRATIONSTATUS_BLOCKED,
-		api.MIGRATIONSTATUS_CANCELLED,
+		api.MIGRATIONSTATUS_CANCELED,
 		api.MIGRATIONSTATUS_CREATING,
 		api.MIGRATIONSTATUS_ERROR,
 		api.MIGRATIONSTATUS_FINISHED,

@@ -20,13 +20,13 @@ const (
 	MIGRATIONSTATUS_WORKER_DONE       MigrationStatusType = "Worker tasks complete"
 	MIGRATIONSTATUS_FINISHED          MigrationStatusType = "Finished"
 	MIGRATIONSTATUS_ERROR             MigrationStatusType = "Error"
-	MIGRATIONSTATUS_CANCELLED         MigrationStatusType = "Cancelled"
+	MIGRATIONSTATUS_CANCELED          MigrationStatusType = "Canceled"
 )
 
 // Validate ensures the MigrationStatusType is valid.
 func (m MigrationStatusType) Validate() error {
 	switch m {
-	case MIGRATIONSTATUS_CANCELLED:
+	case MIGRATIONSTATUS_CANCELED:
 	case MIGRATIONSTATUS_BACKGROUND_IMPORT:
 	case MIGRATIONSTATUS_BLOCKED:
 	case MIGRATIONSTATUS_WAITING:
