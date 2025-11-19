@@ -39,7 +39,10 @@ type SystemSecurity struct {
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `json:"trusted_tls_client_cert_fingerprints" yaml:"trusted_tls_client_cert_fingerprints"`
 
-	OIDC    SystemSecurityOIDC    `json:"oidc"    yaml:"oidc"`
+	// OIDC configuration.
+	OIDC SystemSecurityOIDC `json:"oidc"    yaml:"oidc"`
+
+	// OpenFGA configuration.
 	OpenFGA SystemSecurityOpenFGA `json:"openfga" yaml:"openfga"`
 }
 

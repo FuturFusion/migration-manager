@@ -51,6 +51,7 @@ type Batch struct {
 	StatusMessage string `json:"status_message" yaml:"status_message"`
 
 	// Time in UTC when the batch was started.
+	// Example: 2025-01-01 01:00:00
 	StartDate time.Time `json:"start_date" yaml:"start_date"`
 }
 
@@ -64,16 +65,16 @@ type BatchPut struct {
 
 	// A Expression used to select instances to add to this batch
 	// Language reference: https://expr-lang.org/docs/language-definition
-	// Example: GetInventoryPath() matches "^foobar/.*"
+	// Example: location matches "^foobar/.*"
 	IncludeExpression string `json:"include_expression" yaml:"include_expression"`
 
 	// Set of migration window timings.
 	MigrationWindows []MigrationWindow `json:"migration_windows" yaml:"migration_windows"`
 
-	// Set of constraints to apply to the batch.
+	// Set of constraints to apply to the batch. For each instance, the last constraint in the list that matches will be applied.
 	Constraints []BatchConstraint `json:"constraints" yaml:"constraints"`
 
-	// Target placement configuration for the batch.
+	// Default configurations for the batch.
 	Defaults BatchDefaults `json:"defaults" yaml:"defaults"`
 
 	// Additional configuration for the batch.
@@ -153,7 +154,12 @@ type BatchConstraint struct {
 }
 
 type InstanceRestrictionOverride struct {
-	AllowUnknownOS          bool `json:"allow_unknown_os" yaml:"allow_unknown_os"`
-	AllowNoIPv4             bool `json:"allow_no_ipv4" yaml:"allow_no_ipv4"`
+	// Allow migration of instances with unknown OSes.
+	AllowUnknownOS bool `json:"allow_unknown_os" yaml:"allow_unknown_os"`
+
+	// Allow migration of instances with no IPv4 addresses.
+	AllowNoIPv4 bool `json:"allow_no_ipv4" yaml:"allow_no_ipv4"`
+
+	// Allow migration of instances with no background import support.
 	AllowNoBackgroundImport bool `json:"allow_no_background_import" yaml:"allow_no_background_import"`
 }

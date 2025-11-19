@@ -24,8 +24,6 @@ const (
 )
 
 // WorkerCommand defines a command sent from the migration manager to a worker.
-//
-// swagger:model
 type WorkerCommand struct {
 	// The command for the worker to execute
 	// Example: WORKERCOMMAND_IMPORT_DISKS
@@ -60,8 +58,6 @@ type WorkerCommand struct {
 }
 
 // WorkerResponse defines a response received from a worker.
-//
-// swagger:model
 type WorkerResponse struct {
 	// The status of the command the work is/was executing.
 	// Example: WORKERRESPONSE_RUNNING

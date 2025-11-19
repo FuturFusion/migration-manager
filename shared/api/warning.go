@@ -34,9 +34,17 @@ const (
 
 // WarningScope represents a scope for a warning.
 type WarningScope struct {
-	Scope      string `json:"scope"        yaml:"scope"`
-	EntityType string `json:"entity_type"  yaml:"entity_type"`
-	Entity     string `json:"entity"       yaml:"entity"`
+	// Action scope of the warning.
+	// Example: sync
+	Scope string `json:"scope" yaml:"scope"`
+
+	// Entity the warning relates to.
+	// Example: source
+	EntityType string `json:"entity_type" yaml:"entity_type"`
+
+	// Name of the entity.
+	// Example: mySource
+	Entity string `json:"entity" yaml:"entity"`
 }
 
 // WarningScopeSync represents a warning scope for syncing a source.
@@ -55,18 +63,49 @@ func (s WarningScope) Match(w Warning) bool {
 	return entityMatches && entityTypeMatches && scopeMatches
 }
 
+// WarningPut represents configurable properties of a warning.
+//
+// swagger:model
 type WarningPut struct {
+	// Current acknowledgement status of the warning.
+	// Example: new
 	Status WarningStatus `json:"status" yaml:"status"`
 }
 
+// Warning represents a record of a warning.
+//
+// swagger:model
 type Warning struct {
-	WarningPut
-	UUID          uuid.UUID    `json:"uuid"             yaml:"uuid"`
-	Scope         WarningScope `json:"scope"            yaml:"scope"`
-	Type          WarningType  `json:"type"             yaml:"type"`
-	FirstSeenDate time.Time    `json:"first_seen_date"  yaml:"first_seen_date"`
-	LastSeenDate  time.Time    `json:"last_seen_date"   yaml:"last_seen_date"`
-	UpdatedDate   time.Time    `json:"updated_date"     yaml:"updated_date"`
-	Messages      []string     `json:"messages"         yaml:"messages"`
-	Count         int          `json:"count"            yaml:"count"`
+	WarningPut `yaml:",inline"`
+
+	// Unique identifier of the warning.
+	// Example: a2095069-a527-4b2a-ab23-1739325dcac7
+	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
+
+	// Scope of the warning.
+	Scope WarningScope `json:"scope" yaml:"scope"`
+
+	// Type of the warning.
+	// Example: Networks not imported
+	Type WarningType `json:"type" yaml:"type"`
+
+	// First time the warning was seen.
+	// Example: 2025-01-01 01:00:00
+	FirstSeenDate time.Time `json:"first_seen_date" yaml:"first_seen_date"`
+
+	// Most recent time the warning was seen.
+	// Example: 2025-01-01 01:00:00
+	LastSeenDate time.Time `json:"last_seen_date" yaml:"last_seen_date"`
+
+	// Last time the warning was changed.
+	// Example: 2025-01-01 01:00:00
+	UpdatedDate time.Time `json:"updated_date" yaml:"updated_date"`
+
+	// Messages associated with the warning type.
+	// Example: list of messages
+	Messages []string `json:"messages" yaml:"messages"`
+
+	// Number of times the warning has been seen.
+	// Example: 10
+	Count int `json:"count" yaml:"count"`
 }

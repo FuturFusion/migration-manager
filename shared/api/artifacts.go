@@ -15,35 +15,58 @@ const (
 	ARTIFACTTYPE_DRIVER  ArtifactType = "driver"
 )
 
+// Artifact represents external resources uploaded to Migration Manager.
+//
+// swagger:model
 type Artifact struct {
 	ArtifactPost `yaml:",inline"`
 
-	UUID        uuid.UUID `json:"uuid" yaml:"uuid"`
+	// Unique identifier of an artifact.
+	// Example: 400f6ceb-659a-4b3c-8598-0bc9d20eafe3
+	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
+
+	// Record of the last change to an artifact's properties or resources.
+	// Example: 2025-01-01 01:00:00
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
 
+	// List of filenames uploaded as resources.
+	// Example: vmware-sdk.tar.gz
 	Files []string `json:"files" yaml:"files"`
 }
 
+// ArtifactPost represents the properties of an artifact to be registered in Migration Manager.
+//
+// swagger:model
 type ArtifactPost struct {
 	ArtifactPut `yaml:",inline"`
 
+	// Type of the artifact.
+	// Example: sdk
 	Type ArtifactType `json:"type" yaml:"type"`
 }
 
+// ArtifactPut represents the configurable properties of an artifact record.
+//
+// swagger:model
 type ArtifactPut struct {
 	// Description of the artifact.
+	// Example: VMware disklib tarball
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 
 	// OS name that the artifact relates to.
+	// Example: windows
 	OS OSType `json:"os,omitempty" yaml:"os,omitempty"`
 
 	// Architectures used to match VMs to an artifact.
+	// Example: x86_64
 	Architectures []string `json:"architectures,omitempty" yaml:"architectures,omitempty"`
 
 	// Versions used to match VMs to an artifact.
+	// Example: 1.0
 	Versions []string `json:"versions,omitempty" yaml:"versions,omitempty"`
 
 	// Source type that the artifact relates to.
+	// Example: vmware
 	SourceType SourceType `json:"source_type,omitempty" yaml:"source_type,omitempty"`
 }
 

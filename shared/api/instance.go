@@ -20,14 +20,18 @@ type Instance struct {
 	// Example: MySource
 	Source string `json:"source" yaml:"source"`
 
+	// The source type of the Instance's source.
+	// Example: vmware
 	SourceType SourceType `json:"source_type" yaml:"source_type"`
 
+	// Properties of the Instance imported from the source.
 	Properties InstanceProperties `json:"properties" yaml:"properties"`
 
+	// Last synced update from the source.
+	// Example: 2025-01-01 01:00:00
 	LastUpdateFromSource time.Time `json:"last_update_from_source" yaml:"last_update_from_source"`
 
 	// Overrides, if any, for this instance
-	// Example: {..., NumberCPUs: 16, ...}
 	Overrides InstanceOverride `json:"overrides" yaml:"overrides"`
 }
 

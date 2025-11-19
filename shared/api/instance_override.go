@@ -24,5 +24,6 @@ type InstanceOverride struct {
 	// Example: true
 	IgnoreRestrictions bool `json:"ignore_restrictions" yaml:"ignore_restrictions"`
 
+	// Overrides to properties imported from the source.
 	Properties InstancePropertiesConfigurable `json:"properties" yaml:"properties"`
 }
