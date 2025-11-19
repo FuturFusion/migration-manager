@@ -3,6 +3,7 @@ package migration
 import (
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -162,6 +163,53 @@ func (i Instance) MatchesCriteria(expression string) (bool, error) {
 }
 
 func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Program, error) {
+	matchTag := func(exact bool, params ...any) (any, error) {
+		if len(params) != 2 {
+			return nil, fmt.Errorf("invalid number of arguments, expected <category> <tag>, got %d arguments", len(params))
+		}
+
+		category, ok := params[0].(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid category argument type, expected string, got: %T", params[0])
+		}
+
+		tag, ok := params[1].(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid tag argument type, expected string, got: %T", params[0])
+		}
+
+		containsFunc := func(s string) bool {
+			return s == tag
+		}
+
+		if exact {
+			containsFunc = func(s string) bool {
+				return strings.Contains(s, tag)
+			}
+		}
+
+		if category == "*" {
+			for k, v := range i.Config {
+				if strings.HasPrefix(k, "tag.") && containsFunc(v) {
+					return true, nil
+				}
+			}
+
+			return false, nil
+		}
+
+		tagList, ok := i.Config["tag."+category]
+		if !ok {
+			return false, nil
+		}
+
+		if slices.ContainsFunc(strings.Split(tagList, ","), containsFunc) {
+			return true, nil
+		}
+
+		return false, nil
+	}
+
 	customFunctions := []expr.Option{
 		expr.Function("path_base", func(params ...any) (any, error) {
 			if len(params) != 1 {
@@ -187,6 +235,14 @@ func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Pro
 			}
 
 			return filepath.Dir(path), nil
+		}),
+
+		expr.Function("has_tag", func(params ...any) (any, error) {
+			return matchTag(true, params...)
+		}),
+
+		expr.Function("matches_tag", func(params ...any) (any, error) {
+			return matchTag(false, params...)
 		}),
 	}
 
