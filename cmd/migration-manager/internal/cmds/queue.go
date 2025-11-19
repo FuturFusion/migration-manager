@@ -34,6 +34,14 @@ func (c *CmdQueue) Command() *cobra.Command {
 	queueRemoveCmd := cmdQueueRemove{global: c.Global}
 	cmd.AddCommand(queueRemoveCmd.Command())
 
+	// Cancel
+	queueCancelCmd := cmdQueueCancel{global: c.Global}
+	cmd.AddCommand(queueCancelCmd.Command())
+
+	// Retry
+	queueRetryCmd := cmdQueueRetry{global: c.Global}
+	cmd.AddCommand(queueRetryCmd.Command())
+
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
@@ -152,9 +160,10 @@ type cmdQueueRemove struct {
 func (c *cmdQueueRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
 	cmd.Use = "remove <instance UUID>"
-	cmd.Short = "Remove queue entry"
+	cmd.Aliases = []string{"rm"}
+	cmd.Short = "Remove the queue entry"
 	cmd.Long = `Description:
-  Remove queue entry
+  Remove the queue entry
 `
 
 	cmd.RunE = c.Run
@@ -172,11 +181,85 @@ func (c *cmdQueueRemove) Run(cmd *cobra.Command, args []string) error {
 	instanceUUID := args[0]
 
 	// Remove the queue.
-	_, _, err = c.global.doHTTPRequestV1("/queues/"+instanceUUID, http.MethodDelete, "", nil)
+	_, _, err = c.global.doHTTPRequestV1("/queue/"+instanceUUID, http.MethodDelete, "", nil)
 	if err != nil {
 		return err
 	}
 
 	cmd.Printf("Successfully removed queue entry %q.\n", instanceUUID)
+	return nil
+}
+
+// Cancel the queue entry.
+type cmdQueueCancel struct {
+	global *CmdGlobal
+}
+
+func (c *cmdQueueCancel) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "cancel <instance UUID>"
+	cmd.Short = "Cancel the queue entry"
+	cmd.Long = `Description:
+  Cancel migration for the queue entry.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdQueueCancel) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	instanceUUID := args[0]
+
+	// Cancel the queue entry.
+	_, _, err = c.global.doHTTPRequestV1("/queue/"+instanceUUID+"/:cancel", http.MethodPost, "", nil)
+	if err != nil {
+		return err
+	}
+
+	cmd.Printf("Successfully cancelled queue entry %q.\n", instanceUUID)
+	return nil
+}
+
+// Retry the queue entry.
+type cmdQueueRetry struct {
+	global *CmdGlobal
+}
+
+func (c *cmdQueueRetry) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "retry <instance UUID>"
+	cmd.Short = "Retry the queue entry"
+	cmd.Long = `Description:
+  Retry migration for the queue entry.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdQueueRetry) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	instanceUUID := args[0]
+
+	// Retry the queue entry.
+	_, _, err = c.global.doHTTPRequestV1("/queue/"+instanceUUID+"/:retry", http.MethodPost, "", nil)
+	if err != nil {
+		return err
+	}
+
+	cmd.Printf("Successfully restarted queue entry %q.\n", instanceUUID)
 	return nil
 }
