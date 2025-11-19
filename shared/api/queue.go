@@ -93,6 +93,6 @@ type Placement struct {
 	StoragePools map[string]string `json:"storage_pools" yaml:"storage_pools"`
 
 	// Network placement configuration keyed by attached network identifier.
-	// Example: {"/my/datastore/network/vmnet1": "incusbr0"}
+	// Example: {"00:00:00:00:00:01": "incusbr0"}
 	Networks map[string]NetworkPlacement `json:"networks" yaml:"networks"`
 }

@@ -1638,7 +1638,7 @@ func TestBatchService_DeterminePlacement(t *testing.T) {
 		},
 		{
 			name:     "success - no scriptlet, with supported disk and network",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname"}}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", HardwareAddress: "/path/to/netname"}}},
 			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname"}},
 
 			placement:            api.Placement{TargetName: "default", TargetProject: "default", StoragePools: strMap{"disk1": "default"}, Networks: netMap{"/path/to/netname": api.NetworkPlacement{Network: "netname", NICType: api.INCUSNICTYPE_MANAGED}}},
@@ -1647,7 +1647,7 @@ func TestBatchService_DeterminePlacement(t *testing.T) {
 		},
 		{
 			name:     "success - with scriptlet",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", HardwareAddress: "/path/to/netname1"}}},
 			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
@@ -1670,10 +1670,10 @@ def placement(instance, batch):
 					{Name: "disk2", Supported: true},
 				},
 				NICs: []api.InstancePropertiesNIC{
-					{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"},
-					{SourceSpecificID: "srcnet2", Location: "/path/to/netname2"},
-					{SourceSpecificID: "srcnet3", Location: "/path/to/netname3"},
-					{SourceSpecificID: "srcnet4", Location: "/path/to/netname4"},
+					{SourceSpecificID: "srcnet1", HardwareAddress: "/path/to/netname1"},
+					{SourceSpecificID: "srcnet2", HardwareAddress: "/path/to/netname2"},
+					{SourceSpecificID: "srcnet3", HardwareAddress: "/path/to/netname3"},
+					{SourceSpecificID: "srcnet4", HardwareAddress: "/path/to/netname4"},
 				},
 			},
 			networks: migration.Networks{
@@ -1715,8 +1715,8 @@ def placement(instance, batch):
 					{Name: "disk2", Supported: true},
 				},
 				NICs: []api.InstancePropertiesNIC{
-					{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"},
-					{SourceSpecificID: "srcnet2", Location: "/path/to/netname2"},
+					{SourceSpecificID: "srcnet1", HardwareAddress: "/path/to/netname1"},
+					{SourceSpecificID: "srcnet2", HardwareAddress: "/path/to/netname2"},
 				},
 			},
 			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}, {SourceSpecificID: "srcnet2", Location: "/path/to/netname2"}},
@@ -1784,7 +1784,7 @@ def placement(instance, batch):
 		},
 		{
 			name:     "error - set target network for source instance network with no source",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{Location: "srcnet1"}}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{HardwareAddress: "srcnet1"}}},
 			networks: migration.Networks{}, // No associated network object for the instance's network.
 
 			scriptlet: `
@@ -1810,7 +1810,7 @@ def placement(instance, batch):
 		},
 		{
 			name:     "error - set target vlan ID for unknown network",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", HardwareAddress: "/path/to/netname1"}}},
 			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
@@ -1836,7 +1836,7 @@ def placement(instance, batch):
 		},
 		{
 			name:     "error - set target vlan ID 0",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", HardwareAddress: "/path/to/netname1"}}},
 			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
@@ -1849,7 +1849,7 @@ def placement(instance, batch):
 		},
 		{
 			name:     "error - set target vlan ID list with 0s",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", HardwareAddress: "/path/to/netname1"}}},
 			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
@@ -1862,7 +1862,7 @@ def placement(instance, batch):
 		},
 		{
 			name:     "error - set target vlan ID invalid syntax",
-			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}}},
+			instance: api.InstanceProperties{Disks: []api.InstancePropertiesDisk{{Name: "disk1", Supported: true}, {Name: "disk2"}}, NICs: []api.InstancePropertiesNIC{{SourceSpecificID: "srcnet1", HardwareAddress: "/path/to/netname1"}}},
 			networks: migration.Networks{{SourceSpecificID: "srcnet1", Location: "/path/to/netname1"}},
 
 			scriptlet: `
