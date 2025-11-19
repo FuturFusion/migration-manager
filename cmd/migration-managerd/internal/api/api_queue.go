@@ -13,6 +13,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -27,7 +28,17 @@ var queueCmd = APIEndpoint{
 	Path: "queue/{uuid}",
 
 	Get:    APIEndpointAction{Handler: queueGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
-	Delete: APIEndpointAction{Handler: queueDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Delete: APIEndpointAction{Handler: queueDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
+}
+
+var queueCancelCmd = APIEndpoint{
+	Path: "queue/{uuid}/:cancel",
+	Post: APIEndpointAction{Handler: queueCancel, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
+}
+
+var queueRetryCmd = APIEndpoint{
+	Path: "queue/{uuid}/:retry",
+	Post: APIEndpointAction{Handler: queueRetry, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 // swagger:operation GET /1.0/queue queue queueRoot_get
@@ -270,7 +281,7 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseETag(true, queueItem.ToAPI(instanceName, d.queueHandler.LastWorkerUpdate(queueItem.InstanceUUID), *migrationWindow), queueItem)
 }
 
-// swagger:operation DELETE /1.0/queues/{name} queues queue_delete
+// swagger:operation DELETE /1.0/queue/{uuid} queue queue_delete
 //
 //	Delete the queue
 //
@@ -296,6 +307,124 @@ func queueDelete(d *Daemon, r *http.Request) response.Response {
 	}
 
 	err = d.queue.DeleteByUUID(r.Context(), queueUUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/queue/{uuid}/:cancel queue queue_cancel
+//
+//	Cancels the queue entry
+//
+//	Cancels migration for the queue entry.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func queueCancel(d *Daemon, r *http.Request) response.Response {
+	// Exclusively grab the worker lock so migration actions don't interfere.
+	workerLock.Lock()
+	defer workerLock.Unlock()
+
+	uuidStr := r.PathValue("uuid")
+	queueUUID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	var src *migration.Source
+	var location string
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		begunFinalSteps, err := d.queue.CancelByUUID(ctx, queueUUID)
+		if err != nil {
+			return err
+		}
+
+		if !begunFinalSteps {
+			return nil
+		}
+
+		inst, err := d.instance.GetByUUID(ctx, queueUUID)
+		if err != nil {
+			return err
+		}
+
+		if inst.Properties.Running {
+			location = inst.Properties.Location
+			src, err = d.source.GetByName(ctx, inst.Source)
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	if src != nil {
+		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		err = is.Connect(r.Context())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		// Try to power on the VM in case it was powered off during migration.
+		err = is.PowerOnVM(r.Context(), location)
+		if err != nil {
+			return response.SmartError(err)
+		}
+	}
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/queue/{uuid}/:retry queue queue_retry
+//
+//	Retries the queue entry
+//
+//	Retries migration for the queue entry.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func queueRetry(d *Daemon, r *http.Request) response.Response {
+	// Exclusively grab the worker lock so migration actions don't interfere.
+	workerLock.Lock()
+	defer workerLock.Unlock()
+
+	uuidStr := r.PathValue("uuid")
+	queueUUID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	err = d.queue.RetryByUUID(r.Context(), queueUUID)
 	if err != nil {
 		return response.SmartError(err)
 	}

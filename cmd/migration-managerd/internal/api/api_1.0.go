@@ -31,6 +31,8 @@ var api10 = []APIEndpoint{
 	networkInstancesCmd,
 	networkOverrideCmd,
 	networksCmd,
+	queueCancelCmd,
+	queueRetryCmd,
 	queueRootCmd,
 	queueCmd,
 	sourceCmd,
