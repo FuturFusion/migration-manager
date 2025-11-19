@@ -15,6 +15,7 @@ fi
 hwaddrs="${1}"
 
 process_devs () {
+    set -e
     _device_num=1
     for mac in ${hwaddrs} ; do
         name="$(echo "${1}" | sed -n "${_device_num}p")"

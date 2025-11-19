@@ -122,7 +122,7 @@ func (s windowService) ReplaceByBatch(ctx context.Context, queueSvc QueueService
 			}
 
 			if newWindow.Config.Capacity != 0 && (newWindow.Config.Capacity < oldWindow.Config.Capacity || oldWindow.Config.Capacity == 0) {
-				return fmt.Errorf("Window %q capacity must be cannot be reduced after assignment to queue entry %q", oldWindow.Name, q.InstanceUUID)
+				return fmt.Errorf("Window %q capacity cannot be reduced after assignment to queue entry %q", oldWindow.Name, q.InstanceUUID)
 			}
 		}
 

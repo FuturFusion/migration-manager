@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 # Add virtio drivers to the initrd.
 line='add_drivers+=" virtio virtio_blk virtio_net virtio_pci "'
 conf_file="/etc/dracut.conf.d/virtio.conf"

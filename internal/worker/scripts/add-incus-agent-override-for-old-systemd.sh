@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 # Older versions of systemd, such as seen in CentOS7, have a problem with the "-" in the
 # incus-agent service defintion's WorkingDirectory. Place an override to work around that.
 

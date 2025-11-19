@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 conf_gz="/run/mount/target/config/sys_global.conf.gz"
 if ! test -L "${conf_gz}" ; then
   exit 1

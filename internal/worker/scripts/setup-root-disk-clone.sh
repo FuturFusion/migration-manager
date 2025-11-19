@@ -1,7 +1,9 @@
 #!/bin/sh
 
+set -e
 
 cleanup() {
+  set +e
   if [ "${1}" = "lvm" ]; then
     vgchange -a n
   fi
@@ -25,6 +27,7 @@ fi
 
 # Pre-empt cleanup in case of an unclean stop.
 cleanup "${1}" > /dev/null 2>&1 || true
+set -e
 
 mount -t tmpfs tmpfs /tmp/dryrun --mkdir
 fallocate -l 1G /tmp/dryrun/meta.img
