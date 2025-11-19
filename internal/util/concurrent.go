@@ -128,14 +128,19 @@ func RunConcurrentMap[K comparable, V any](entities map[K]V, f func(K, V) error)
 	return nil
 }
 
+type refMutex struct {
+	sync.Mutex
+	uses int
+}
+
 type IDLock[T comparable] struct {
 	accessLock sync.Mutex
-	lockMap    map[T]*sync.Mutex
+	lockMap    map[T]*refMutex
 }
 
 // NewIDLock creates a thread-safe map of sync.Mutexes keyed by ID.
 func NewIDLock[T comparable]() IDLock[T] {
-	return IDLock[T]{lockMap: make(map[T]*sync.Mutex)}
+	return IDLock[T]{lockMap: make(map[T]*refMutex)}
 }
 
 // Lock fetches the existing lock, or creates a new lock for the given ID, and locks it.
@@ -144,10 +149,11 @@ func (l *IDLock[T]) Lock(key T) {
 
 	lock, ok := l.lockMap[key]
 	if !ok {
-		lock = &sync.Mutex{}
+		lock = &refMutex{}
 		l.lockMap[key] = lock
 	}
 
+	lock.uses++
 	l.accessLock.Unlock()
 
 	lock.Lock()
@@ -164,5 +170,8 @@ func (l *IDLock[T]) Unlock(key T) {
 	}
 
 	lock.Unlock()
-	delete(l.lockMap, key)
+	lock.uses--
+	if lock.uses == 0 {
+		delete(l.lockMap, key)
+	}
 }
