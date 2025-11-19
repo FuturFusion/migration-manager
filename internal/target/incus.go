@@ -665,13 +665,6 @@ func (t *InternalIncusTarget) CleanupVM(ctx context.Context, name string, requir
 		return fmt.Errorf("Failed to get target instance %q config: %w", name, err)
 	}
 
-	if instInfo.Status == "Running" {
-		err := t.StopVM(ctx, name, true)
-		if err != nil {
-			return fmt.Errorf("Failed to stop target instance %q: %w", name, err)
-		}
-	}
-
 	// If the VM doesn't have the config key `user.migration_source` then assume it is not managed by Migration Manager.
 	if instInfo.Config["user.migration_source"] == "" {
 		return nil
@@ -680,6 +673,13 @@ func (t *InternalIncusTarget) CleanupVM(ctx context.Context, name string, requir
 	// If requireWorkerVolume is set, ensure the worker volume is attached to the VM before attempting to delete it.
 	if requireWorkerVolume && instInfo.Devices[util.WorkerVolume(instInfo.Architecture)] == nil {
 		return nil
+	}
+
+	if instInfo.Status == "Running" {
+		err := t.StopVM(ctx, name, true)
+		if err != nil {
+			return fmt.Errorf("Failed to stop target instance %q: %w", name, err)
+		}
 	}
 
 	op, err := t.incusClient.DeleteInstance(name)
