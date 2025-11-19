@@ -162,6 +162,11 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 	return nil
 }
 
+// workerLock synchronizes worker tasks with other API actions.
+// Worker tasks should grab the read lock since they can be concurrent with each other,
+// but user API actions should grab the write lock, making them exclusive with the full set of periodic tasks.
+var workerLock sync.RWMutex
+
 // beginImports creates the target VMs for started batches.
 // It fetches all RUNNING batches with WAITING or BLOCKED instances, and moves the instances to CREATING state.
 // Errors encountered in one batch do not affect the processing of other batches.
@@ -169,6 +174,9 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 //     If true, errors will not result in the instance state being set to ERROR, to enable retrying this task.
 //     If any errors occur after the VM has started, the VM will no longer be cleaned up, and its state will be set to ERROR, preventing retries.
 func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error {
+	workerLock.RLock()
+	defer workerLock.RUnlock()
+
 	log := slog.With(slog.String("method", "beginImports"))
 	var migrationState map[string]queue.MigrationState
 	var allNetworks migration.Networks
@@ -724,6 +732,9 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 
 // finalizeCompleteInstances fetches all instances in RUNNING batches whose status is WORKER DONE, and for each batch, runs configureMigratedInstances.
 func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
+	workerLock.RLock()
+	defer workerLock.RUnlock()
+
 	log := slog.With(slog.String("method", "finalizeCompleteInstances"))
 	var migrationState map[string]queue.MigrationState
 

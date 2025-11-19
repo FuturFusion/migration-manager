@@ -792,6 +792,10 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func batchStopPost(d *Daemon, r *http.Request) response.Response {
+	// Exclusively grab the worker lock so migration actions don't interfere.
+	workerLock.Lock()
+	defer workerLock.Unlock()
+
 	name := r.PathValue("name")
 
 	err := d.batch.StopBatchByName(r.Context(), name)

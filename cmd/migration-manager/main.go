@@ -87,6 +87,10 @@ func main() {
 	targetCmd := cmds.CmdTarget{Global: &globalCmd}
 	app.AddCommand(targetCmd.Command())
 
+	// warning sub-command
+	warningCmd := cmds.CmdWarning{Global: &globalCmd}
+	app.AddCommand(warningCmd.Command())
+
 	// Run the main command and handle errors
 	err := app.Execute()
 	if err != nil {

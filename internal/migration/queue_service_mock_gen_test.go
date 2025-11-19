@@ -22,6 +22,9 @@ var _ migration.QueueService = &QueueServiceMock{}
 //
 //		// make and configure a mocked migration.QueueService
 //		mockedQueueService := &QueueServiceMock{
+//			CancelByUUIDFunc: func(ctx context.Context, id uuid.UUID) (bool, error) {
+//				panic("mock out the CancelByUUID method")
+//			},
 //			CreateEntryFunc: func(ctx context.Context, queue migration.QueueEntry) (migration.QueueEntry, error) {
 //				panic("mock out the CreateEntry method")
 //			},
@@ -58,6 +61,9 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			ProcessWorkerUpdateFunc: func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.QueueEntry, error) {
 //				panic("mock out the ProcessWorkerUpdate method")
 //			},
+//			RetryByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+//				panic("mock out the RetryByUUID method")
+//			},
 //			UpdateFunc: func(ctx context.Context, entry *migration.QueueEntry) error {
 //				panic("mock out the Update method")
 //			},
@@ -74,6 +80,9 @@ var _ migration.QueueService = &QueueServiceMock{}
 //
 //	}
 type QueueServiceMock struct {
+	// CancelByUUIDFunc mocks the CancelByUUID method.
+	CancelByUUIDFunc func(ctx context.Context, id uuid.UUID) (bool, error)
+
 	// CreateEntryFunc mocks the CreateEntry method.
 	CreateEntryFunc func(ctx context.Context, queue migration.QueueEntry) (migration.QueueEntry, error)
 
@@ -110,6 +119,9 @@ type QueueServiceMock struct {
 	// ProcessWorkerUpdateFunc mocks the ProcessWorkerUpdate method.
 	ProcessWorkerUpdateFunc func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.QueueEntry, error)
 
+	// RetryByUUIDFunc mocks the RetryByUUID method.
+	RetryByUUIDFunc func(ctx context.Context, id uuid.UUID) error
+
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, entry *migration.QueueEntry) error
 
@@ -121,6 +133,13 @@ type QueueServiceMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// CancelByUUID holds details about calls to the CancelByUUID method.
+		CancelByUUID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// CreateEntry holds details about calls to the CreateEntry method.
 		CreateEntry []struct {
 			// Ctx is the ctx argument value.
@@ -211,6 +230,13 @@ type QueueServiceMock struct {
 			// StatusMessage is the statusMessage argument value.
 			StatusMessage string
 		}
+		// RetryByUUID holds details about calls to the RetryByUUID method.
+		RetryByUUID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -243,6 +269,7 @@ type QueueServiceMock struct {
 			WindowID *string
 		}
 	}
+	lockCancelByUUID                   sync.RWMutex
 	lockCreateEntry                    sync.RWMutex
 	lockDeleteAllByBatch               sync.RWMutex
 	lockDeleteByUUID                   sync.RWMutex
@@ -255,9 +282,46 @@ type QueueServiceMock struct {
 	lockGetNextWindow                  sync.RWMutex
 	lockNewWorkerCommandByInstanceUUID sync.RWMutex
 	lockProcessWorkerUpdate            sync.RWMutex
+	lockRetryByUUID                    sync.RWMutex
 	lockUpdate                         sync.RWMutex
 	lockUpdatePlacementByUUID          sync.RWMutex
 	lockUpdateStatusByUUID             sync.RWMutex
+}
+
+// CancelByUUID calls CancelByUUIDFunc.
+func (mock *QueueServiceMock) CancelByUUID(ctx context.Context, id uuid.UUID) (bool, error) {
+	if mock.CancelByUUIDFunc == nil {
+		panic("QueueServiceMock.CancelByUUIDFunc: method is nil but QueueService.CancelByUUID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockCancelByUUID.Lock()
+	mock.calls.CancelByUUID = append(mock.calls.CancelByUUID, callInfo)
+	mock.lockCancelByUUID.Unlock()
+	return mock.CancelByUUIDFunc(ctx, id)
+}
+
+// CancelByUUIDCalls gets all the calls that were made to CancelByUUID.
+// Check the length with:
+//
+//	len(mockedQueueService.CancelByUUIDCalls())
+func (mock *QueueServiceMock) CancelByUUIDCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockCancelByUUID.RLock()
+	calls = mock.calls.CancelByUUID
+	mock.lockCancelByUUID.RUnlock()
+	return calls
 }
 
 // CreateEntry calls CreateEntryFunc.
@@ -701,6 +765,42 @@ func (mock *QueueServiceMock) ProcessWorkerUpdateCalls() []struct {
 	mock.lockProcessWorkerUpdate.RLock()
 	calls = mock.calls.ProcessWorkerUpdate
 	mock.lockProcessWorkerUpdate.RUnlock()
+	return calls
+}
+
+// RetryByUUID calls RetryByUUIDFunc.
+func (mock *QueueServiceMock) RetryByUUID(ctx context.Context, id uuid.UUID) error {
+	if mock.RetryByUUIDFunc == nil {
+		panic("QueueServiceMock.RetryByUUIDFunc: method is nil but QueueService.RetryByUUID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockRetryByUUID.Lock()
+	mock.calls.RetryByUUID = append(mock.calls.RetryByUUID, callInfo)
+	mock.lockRetryByUUID.Unlock()
+	return mock.RetryByUUIDFunc(ctx, id)
+}
+
+// RetryByUUIDCalls gets all the calls that were made to RetryByUUID.
+// Check the length with:
+//
+//	len(mockedQueueService.RetryByUUIDCalls())
+func (mock *QueueServiceMock) RetryByUUIDCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockRetryByUUID.RLock()
+	calls = mock.calls.RetryByUUID
+	mock.lockRetryByUUID.RUnlock()
 	return calls
 }
 

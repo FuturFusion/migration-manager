@@ -584,3 +584,68 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 
 	return *entry, nil
 }
+
+// CancelByUUID cancels the queue entry if it has not yet finished.
+func (s queueService) CancelByUUID(ctx context.Context, id uuid.UUID) (bool, error) {
+	s.workerLock.Lock()
+	defer s.workerLock.Unlock()
+
+	var isCommitted bool
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		q, err := s.repo.GetByInstanceUUID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		isCommitted = q.IsCommitted()
+		if q.MigrationStatus == api.MIGRATIONSTATUS_FINISHED {
+			return fmt.Errorf("Queue entry %q is already finished", q.InstanceUUID)
+		}
+
+		_, err = s.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_CANCELLED, q.MigrationStatusMessage, IMPORTSTAGE_BACKGROUND, nil)
+		return err
+	})
+	if err != nil {
+		return false, err
+	}
+
+	return isCommitted, nil
+}
+
+// RetryByUUID restarts the queue entry if it has been cancelled.
+func (s queueService) RetryByUUID(ctx context.Context, id uuid.UUID) error {
+	s.workerLock.Lock()
+	defer s.workerLock.Unlock()
+
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		q, err := s.repo.GetByInstanceUUID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		if q.MigrationStatus != api.MIGRATIONSTATUS_CANCELLED {
+			return fmt.Errorf("Queue entry %q has not been cancelled and cleaned up", q.InstanceUUID)
+		}
+
+		batch, err := s.batch.GetByName(ctx, q.BatchName)
+		if err != nil {
+			return err
+		}
+
+		inst, err := s.instance.GetByUUID(ctx, q.InstanceUUID)
+		if err != nil {
+			return err
+		}
+
+		status := api.MIGRATIONSTATUS_WAITING
+		message := "Preparing for migration"
+		err = inst.DisabledReason(batch.Config.RestrictionOverrides)
+		if err != nil {
+			status = api.MIGRATIONSTATUS_BLOCKED
+			message = err.Error()
+		}
+
+		_, err = s.UpdateStatusByUUID(ctx, q.InstanceUUID, status, message, IMPORTSTAGE_BACKGROUND, nil)
+		return err
+	})
+}
