@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 mount_dir="/run/mount/win_main"
 hive_dir="${mount_dir}/Windows/System32/config"
 
@@ -27,6 +29,11 @@ fi
 
 # Remove the system service records.
 control_set_num="$(hivexregedit --export --prefix='HKLM\SYSTEM' "${hive_dir}/SYSTEM" 'Select' | grep -io '^"Current"=dword:[0-9a-f]*' | cut -d':' -f2 | sed -e 's/^0*//')"
+
+if ! echo "${control_set_num}" | grep -qE "^[0-9]+$" ; then
+  exit 1
+fi
+
 control_set="$(printf "ControlSet%03d" "${control_set_num}")"
 cat << EOF | hivexregedit --merge --prefix "HKLM\SYSTEM" "${hive_dir}/SYSTEM"
 [-${control_set}\Services\VMTools]

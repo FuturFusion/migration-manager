@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 mount_dir="/run/mount/win_main"
 hive_dir="${mount_dir}/Windows/System32/config/SYSTEM"
 
@@ -10,6 +12,11 @@ fi
 
 # Get the current control set before it's loaded.
 control_set_num="$(hivexregedit --export --prefix='HKEY_LOCAL_MACHINE\SYSTEM' "${hive_dir}" 'Select' | grep -io '^"Current"=dword:[0-9a-f]*' | cut -d':' -f2 | sed -e 's/^0*//')"
+
+if ! echo "${control_set_num}" | grep -qE "^[0-9]+$" ; then
+  exit 1
+fi
+
 control_set="$(printf "ControlSet%03d" "${control_set_num}")"
 
 # Record each mapping of MAC to InstanceGUID because we can't tell which NIC is which after booting. (And also reading networksetup2 requires elevated privileges).
@@ -37,10 +44,14 @@ for mac in "${@}" ; do
   fi
 
   # Record the entry as '{guid} {mac}'
-  echo "${mapping}" | tr '[:lower:]' '[:upper:]' | sed -e 's/:/-/g' | tr "\n" " " >> "${mount_dir}/migration_manager_old_guids"
-
-  # Transform the supplied MACs to the format Windows expects.
+  old_guid="$(echo "${mapping}" | tr '[:lower:]' '[:upper:]' | sed -e 's/:/-/g' | tr "\n" " ")"
   mac="$(printf "%s" "${mac}" | tr '[:lower:]' '[:upper:]' | sed -e 's/:/-/g')"
+
+  if [ -z "${old_guid}" ] || [ -z "${mac}" ]; then
+    exit 1
+  fi
+
+  echo "${old_guid}" >> "${mount_dir}/migration_manager_old_guids"
   macs="${macs} ${mac}"
 done
 

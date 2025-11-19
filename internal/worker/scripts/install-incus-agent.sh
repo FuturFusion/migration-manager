@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 # Mask the lxd-agent service.
 if systemctl list-unit-files --type=service | grep -q "lxd-agent.service" ; then
   systemctl mask lxd-agent.service
@@ -30,8 +32,8 @@ if getenforce >/dev/null 2>&1 ; then
     chcon system_u:object_r:file_context_t:s0 /etc/selinux/targeted/contexts/files/file_contexts.local.bin
   else
     # Add labels for the binaries and scripts executed by the incus-agent service.
-    semanage fcontext -N -a -t bin_t /var/run/incus_agent/incus-agent
-    semanage fcontext -N -a -t init_exec_t /usr/lib/systemd/incus-agent-setup
+    semanage fcontext -N -a -t bin_t /var/run/incus_agent/incus-agent || true
+    semanage fcontext -N -a -t init_exec_t /usr/lib/systemd/incus-agent-setup || true
   fi
 
   # Manually set the label for the file we already created because restorecon doesn't work in chroot.

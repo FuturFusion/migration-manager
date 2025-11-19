@@ -1,5 +1,7 @@
 #!/bin/sh
 
+set -e
+
 kvm_file="${1}"
 if [ -z "${kvm_file}" ]; then
   exit 1
