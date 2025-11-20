@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchQueue } from "api/queue";
 import DataTable from "components/DataTable";
+import QueueActions from "components/QueueActions";
 
 const Queue = () => {
   const refetchInterval = 10000; // 10 seconds
@@ -22,6 +23,7 @@ const Queue = () => {
     "Detailed status",
     "Target",
     "Target project",
+    "Actions",
   ];
   const rows = queue.map((item) => {
     return {
@@ -56,6 +58,9 @@ const Queue = () => {
         {
           content: item.placement.target_project,
           sortKey: item.placement.target_project,
+        },
+        {
+          content: <QueueActions queueEntry={item} />,
         },
       ],
     };
