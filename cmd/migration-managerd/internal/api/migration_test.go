@@ -227,13 +227,40 @@ func TestMigration_beginImports(t *testing.T) {
 			},
 
 			hasVMwareSDK:    true, // We still validate that the VIX tarball must exist.
-			hasWorker:       false,
+			hasWorker:       true,
 			hasWorkerVolume: true,
 			rerunScriptlet:  false,
 
 			backupCreateErr: boom.Error, // This shouldn't trigger since the whole block is skipped.
 
 			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_IDLE, uuids["vm2"]: api.MIGRATIONSTATUS_IDLE},
+			resultBatchState:     api.BATCHSTATUS_RUNNING,
+			assertErr:            require.NoError,
+		},
+		{
+			name: "2 vms (1 disk, 1 nic), initial placement, with pre-existing worker, but no worker files",
+			instances: migration.Instances{
+				uuids.newTestInstance("vm1", map[int]bool{1: true}, map[int]string{1: "10.0.0.10"}, api.OSTYPE_LINUX, false),
+				uuids.newTestInstance("vm2", map[int]bool{1: true}, map[int]string{1: "10.0.0.11"}, api.OSTYPE_LINUX, false),
+			},
+
+			initialPlacements: map[uuid.UUID]api.Placement{
+				uuids["vm1"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm1_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"00:00:00:00:00:01": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+				uuids["vm2"]: {TargetName: "tgt", TargetProject: "project1", StoragePools: map[string]string{"vm2_disk_1": "pool1"}, Networks: map[string]api.NetworkPlacement{"00:00:00:00:00:01": {Network: "net1", NICType: api.INCUSNICTYPE_MANAGED}}},
+			},
+
+			targetDetails: []target.IncusDetails{
+				{Name: "tgt", Projects: []string{"project1"}, StoragePools: []string{"pool1"}, NetworksByProject: netMap(setMap{"project1": {"net1"}}), InstancesByProject: setMap{"project1": {}}},
+			},
+
+			hasVMwareSDK:    true, // We still validate that the VIX tarball must exist.
+			hasWorker:       false,
+			hasWorkerVolume: true,
+			rerunScriptlet:  false,
+
+			backupCreateErr: boom.Error, // This shouldn't trigger since the whole block is skipped.
+
+			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_BLOCKED, uuids["vm2"]: api.MIGRATIONSTATUS_BLOCKED},
 			resultBatchState:     api.BATCHSTATUS_RUNNING,
 			assertErr:            require.NoError,
 		},
@@ -469,8 +496,8 @@ def placement(instance, batch):
 			hasWorkerVolume: false,
 			rerunScriptlet:  false,
 
-			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_WAITING, uuids["vm2"]: api.MIGRATIONSTATUS_WAITING},
-			resultBatchState:     api.BATCHSTATUS_ERROR,
+			resultMigrationState: map[uuid.UUID]api.MigrationStatusType{uuids["vm1"]: api.MIGRATIONSTATUS_BLOCKED, uuids["vm2"]: api.MIGRATIONSTATUS_BLOCKED},
+			resultBatchState:     api.BATCHSTATUS_RUNNING,
 			assertErr:            require.NoError,
 		},
 		{
@@ -668,6 +695,7 @@ def placement(instance, batch):
 
 			if tc.hasWorker {
 				require.NoError(t, os.WriteFile(filepath.Join(d.os.UsrDir, "migration-manager-worker"), nil, 0o660))
+				require.NoError(t, os.WriteFile(filepath.Join(d.os.CacheDir, util.RawWorkerImage("x86_64")), nil, 0o660))
 			}
 
 			// Prepare state for test.
