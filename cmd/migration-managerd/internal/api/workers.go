@@ -117,6 +117,15 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 		if err != nil {
 			slog.Error("Blocking queue entries due to artifact error", slog.Any("error", err))
 			blockedInstances[inst.UUID] = fmt.Sprintf("Artifact error: %v", err.Error())
+			continue
+		}
+
+		if inst.Properties.Architecture != "" {
+			_, err := d.os.WorkerImageExists(inst.Properties.Architecture)
+			if err != nil {
+				slog.Error("Blocking queue entries due to filesystem error", slog.Any("error", err))
+				blockedInstances[inst.UUID] = fmt.Sprintf("Filesystem error: %v", err.Error())
+			}
 		}
 	}
 

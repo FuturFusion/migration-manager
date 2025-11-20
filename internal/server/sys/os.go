@@ -62,15 +62,50 @@ func (s *OS) LocalDatabaseDir() string {
 	return filepath.Join(s.VarDir, "database")
 }
 
+// WorkerImageExists checks if the worker image and binary exist on the filesystem.
+func (s *OS) WorkerImageExists(arch string) (string, error) {
+	rawWorkerPath := filepath.Join(s.CacheDir, util.RawWorkerImage(arch))
+	if util.IsIncusOS() {
+		rawWorkerPath = filepath.Join(s.ImageDir, util.RawWorkerImage(arch))
+	}
+
+	_, err := os.Stat(rawWorkerPath)
+	if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+
+	// If the image doesn't exist yet, then fail.
+	if err != nil {
+		return "", fmt.Errorf("Missing raw worker image %q: %w", rawWorkerPath, err)
+	}
+
+	binaryPath := filepath.Join(s.UsrDir, "migration-manager-worker")
+	_, err = os.Stat(binaryPath)
+	if err != nil && !os.IsNotExist(err) {
+		return "", err
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("Missing worker binary %q: %w", binaryPath, err)
+	}
+
+	return rawWorkerPath, nil
+}
+
 // LoadWorkerImage writes the VMWare vix tarball to the worker image.
 // If the worker image does not exist, it is fetched from the current project version's corresponding GitHub release.
 func (s *OS) LoadWorkerImage(ctx context.Context, arch string) (string, error) {
 	s.writeLock.Lock()
 	defer s.writeLock.Unlock()
 
+	rawWorkerPath, err := s.WorkerImageExists(arch)
+	if err != nil {
+		return "", err
+	}
+
 	// Create a tarball for the worker binary.
 	binaryPath := filepath.Join(s.CacheDir, "migration-manager-worker.tar.gz")
-	err := util.CreateTarball(binaryPath, filepath.Join(s.UsrDir, "migration-manager-worker"))
+	err = util.CreateTarball(binaryPath, filepath.Join(s.UsrDir, "migration-manager-worker"))
 	if err != nil {
 		return "", err
 	}
@@ -80,33 +115,6 @@ func (s *OS) LoadWorkerImage(ctx context.Context, arch string) (string, error) {
 	binaryFile, err := os.Open(binaryPath)
 	if err != nil {
 		return "", err
-	}
-
-	rawWorkerPath := filepath.Join(s.CacheDir, util.RawWorkerImage(arch))
-	if util.IsIncusOS() {
-		rawWorkerPath = filepath.Join(s.ImageDir, util.RawWorkerImage(arch))
-	}
-
-	_, err = os.Stat(rawWorkerPath)
-	if err != nil && !os.IsNotExist(err) {
-		return "", err
-	}
-
-	// If the image doesn't exist yet, then download it from GitHub.
-	if err != nil {
-		if util.IsIncusOS() {
-			return "", fmt.Errorf("Missing raw worker image %q: %w", rawWorkerPath, err)
-		}
-
-		g, err := util.GetProjectRepo(ctx, false)
-		if err != nil {
-			return "", err
-		}
-
-		err = g.DownloadAsset(ctx, rawWorkerPath, "migration-manager-worker.img.gz")
-		if err != nil {
-			return "", err
-		}
 	}
 
 	rawImgFile, err := os.OpenFile(rawWorkerPath, os.O_RDONLY, 0o600)
