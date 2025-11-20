@@ -1,4 +1,5 @@
 acked
+bugfixes
 config
 CLI
 CPUs
@@ -8,6 +9,7 @@ expr
 ESXi
 Expr
 futurfusion
+FuturFusion
 Furo
 github
 GitHub
