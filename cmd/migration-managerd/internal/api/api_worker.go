@@ -55,40 +55,6 @@ func instanceUUIDFromRequestURL(r *http.Request) (uuid.UUID, error) {
 	return queueUUID, nil
 }
 
-// swagger:operation POST /internal/worker/{uuid}/:command worker worker_command_post
-//
-//	Generate next worker command for instance
-//
-//	Generates the next worker command, if any, for this queued instance.
-//
-//	---
-//	produces:
-//	  - application/json
-//	responses:
-//	  "200":
-//	    description: WorkerCommand
-//	    schema:
-//	      type: object
-//	      description: Sync response
-//	      properties:
-//	        type:
-//	          type: string
-//	          description: Response type
-//	          example: sync
-//	        status:
-//	          type: string
-//	          description: Status description
-//	          example: Success
-//	        status_code:
-//	          type: integer
-//	          description: Status code
-//	          example: 200
-//	        metadata:
-//	          $ref: "#/definitions/WorkerCommand"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
 func workerCommandPost(d *Daemon, r *http.Request) response.Response {
 	err := d.WaitForSchemaUpdate(r.Context())
 	if err != nil {
@@ -128,35 +94,6 @@ func workerCommandPost(d *Daemon, r *http.Request) response.Response {
 	}, workerCommand)
 }
 
-// swagger:operation POST /internal/worker/{uuid}/:update worker worker_update_post
-//
-//	Sets worker response for instance
-//
-//	Sets the response from the worker for this queued instance.
-//
-//	---
-//	consumes:
-//	  - application/json
-//	produces:
-//	  - application/json
-//	parameters:
-//	  - in: body
-//	    name: response
-//	    description: WorkerResponse definition
-//	    required: true
-//	    schema:
-//	      $ref: "#/definitions/WorkerResponse"
-//	responses:
-//	  "200":
-//	    $ref: "#/responses/EmptySyncResponse"
-//	  "400":
-//	    $ref: "#/responses/BadRequest"
-//	  "403":
-//	    $ref: "#/responses/Forbidden"
-//	  "412":
-//	    $ref: "#/responses/PreconditionFailed"
-//	  "500":
-//	    $ref: "#/responses/InternalServerError"
 func workerUpdatePost(d *Daemon, r *http.Request) response.Response {
 	err := d.WaitForSchemaUpdate(r.Context())
 	if err != nil {
