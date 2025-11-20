@@ -1,4 +1,5 @@
-# Pull requests:
+# Contributing
+## Pull requests:
 
 Changes to this project should be proposed as pull requests on Github
 at: https://github.com/futurfusion/migration-manager
@@ -8,7 +9,7 @@ be merged in the main branch.
 
 
 
-# Developer Certificate of Origin:
+## Developer Certificate of Origin:
 
 To improve tracking of contributions to this project we use the DCO 1.1
 and use a "sign-off" procedure for all changes going into the branch.

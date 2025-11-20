@@ -602,7 +602,7 @@ func (s queueService) CancelByUUID(ctx context.Context, id uuid.UUID) (bool, err
 			return fmt.Errorf("Queue entry %q is already finished", q.InstanceUUID)
 		}
 
-		_, err = s.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_CANCELLED, q.MigrationStatusMessage, IMPORTSTAGE_BACKGROUND, nil)
+		_, err = s.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_CANCELED, q.MigrationStatusMessage, IMPORTSTAGE_BACKGROUND, nil)
 		return err
 	})
 	if err != nil {
@@ -623,7 +623,7 @@ func (s queueService) RetryByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
-		if q.MigrationStatus != api.MIGRATIONSTATUS_CANCELLED {
+		if q.MigrationStatus != api.MIGRATIONSTATUS_CANCELED {
 			return fmt.Errorf("Queue entry %q has not been cancelled and cleaned up", q.InstanceUUID)
 		}
 

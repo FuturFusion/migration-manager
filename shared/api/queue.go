@@ -20,13 +20,13 @@ const (
 	MIGRATIONSTATUS_WORKER_DONE       MigrationStatusType = "Worker tasks complete"
 	MIGRATIONSTATUS_FINISHED          MigrationStatusType = "Finished"
 	MIGRATIONSTATUS_ERROR             MigrationStatusType = "Error"
-	MIGRATIONSTATUS_CANCELLED         MigrationStatusType = "Cancelled"
+	MIGRATIONSTATUS_CANCELED          MigrationStatusType = "Canceled"
 )
 
 // Validate ensures the MigrationStatusType is valid.
 func (m MigrationStatusType) Validate() error {
 	switch m {
-	case MIGRATIONSTATUS_CANCELLED:
+	case MIGRATIONSTATUS_CANCELED:
 	case MIGRATIONSTATUS_BACKGROUND_IMPORT:
 	case MIGRATIONSTATUS_BLOCKED:
 	case MIGRATIONSTATUS_WAITING:
@@ -57,7 +57,7 @@ type QueueEntry struct {
 	InstanceName string `json:"instance_name" yaml:"instance_name"`
 
 	// The migration status of the instance
-	// Example: MIGRATIONSTATUS_RUNNING
+	// Example: Running
 	MigrationStatus MigrationStatusType `json:"migration_status" yaml:"migration_status"`
 
 	// A free-form string to provide additional information about the migration status
@@ -79,18 +79,20 @@ type QueueEntry struct {
 }
 
 // Placement indicates the destination for a queue entry's instance.
-//
-// swagger:model
 type Placement struct {
 	// Name of the target this queue entry is migrating to
+	// Example: incus01
 	TargetName string `json:"target_name,omitempty" yaml:"target_name,omitempty"`
 
 	// Name of the target project this queue entry is migrating to
+	// Example: default
 	TargetProject string `json:"target_project,omitempty" yaml:"target_project,omitempty"`
 
 	// Storage pools keyed by attached disk name.
+	// Example: {"[my-datastore] vmname.vmdk": "default"}
 	StoragePools map[string]string `json:"storage_pools" yaml:"storage_pools"`
 
 	// Network placement configuration keyed by attached network identifier.
+	// Example: {"00:00:00:00:00:01": "incusbr0"}
 	Networks map[string]NetworkPlacement `json:"networks" yaml:"networks"`
 }

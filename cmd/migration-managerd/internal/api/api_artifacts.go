@@ -47,6 +47,43 @@ var artifactFileCmd = APIEndpoint{
 // Many reads can occur, but a write should wait on existing reads, and once acquired block future reads.
 var artifactLock sync.RWMutex
 
+// swagger:operation GET /1.0/artifacts artifacts artifacts_get
+//
+//	Get all artifacts
+//
+//	Returns a list of artifacts (structs).
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: API artifacts
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: array
+//	          description: List of artifacts
+//	          items:
+//	            $ref: "#/definitions/Artifact"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func artifactsGet(d *Daemon, r *http.Request) response.Response {
 	dbArts, err := d.artifact.GetAll(r.Context())
 	if err != nil {
@@ -61,6 +98,33 @@ func artifactsGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponse(true, artifacts)
 }
 
+// swagger:operation POST /1.0/artifacts artifacts artifacts_post
+//
+//	Add an artifact
+//
+//	Creates a new artifact record.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: artifact
+//	    description: Artifact configuration
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ArtifactPost"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func artifactsPost(d *Daemon, r *http.Request) response.Response {
 	var apiArtifact api.ArtifactPost
 	err := json.NewDecoder(r.Body).Decode(&apiArtifact)
@@ -82,6 +146,40 @@ func artifactsPost(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/artifacts/"+art.UUID.String())
 }
 
+// swagger:operation GET /1.0/artifacts/{uuid} artifacts artifact_get
+//
+//	Get an artifact.
+//
+//	Gets a specific artifact.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Artifact
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          $ref: "#/definitions/Artifact"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func artifactGet(d *Daemon, r *http.Request) response.Response {
 	artUUIDStr := r.PathValue("uuid")
 	artUUID, err := uuid.Parse(artUUIDStr)
@@ -97,6 +195,35 @@ func artifactGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponse(true, art.ToAPI())
 }
 
+// swagger:operation PUT /1.0/artifacts/{uuid} artifacts artifact_put
+//
+//	Update an artifact
+//
+//	Updates the artifact definition.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: artifact
+//	    description: Artifact definition
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/ArtifactPut"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func artifactPut(d *Daemon, r *http.Request) response.Response {
 	artUUIDStr := r.PathValue("uuid")
 	artUUID, err := uuid.Parse(artUUIDStr)
@@ -128,6 +255,30 @@ func artifactPut(d *Daemon, r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
+// swagger:operation POST /1.0/artifacts/{uuid}/files artifacts artifacts_file_post
+//
+//	Add a file to an artifact
+//
+//	Upload a file to an artifact record.
+//
+//	---
+//	consumes:
+//	  - application/octet-stream
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: raw_file
+//	    description: Raw file content
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func artifactFilesPost(d *Daemon, r *http.Request) response.Response {
 	artUUIDStr := r.PathValue("uuid")
 	artUUID, err := uuid.Parse(artUUIDStr)
@@ -157,6 +308,24 @@ func artifactFilesPost(d *Daemon, r *http.Request) response.Response {
 	return response.EmptySyncResponse
 }
 
+// swagger:operation GET /1.0/artifacts/{uuid}/files/{name} artifacts artifacts_file_get
+//
+//	Get an artifact file
+//
+//	Download a file from an artifact.
+//
+//	---
+//	produces:
+//	  - application/octet-stream
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func artifactFileGet(d *Daemon, r *http.Request) response.Response {
 	artUUIDStr := r.PathValue("uuid")
 	artUUID, err := uuid.Parse(artUUIDStr)
@@ -186,6 +355,24 @@ func artifactFileGet(d *Daemon, r *http.Request) response.Response {
 	return response.FileResponse(r, []response.FileResponseEntry{{Path: filePath}}, nil)
 }
 
+// swagger:operation DELETE /1.0/artifacts/{uuid}/files/{name} artifacts artifact_file_delete
+//
+//	Delete an artifact file
+//
+//	Removes the file from the artifact.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
 func artifactFileDelete(d *Daemon, r *http.Request) response.Response {
 	artUUIDStr := r.PathValue("uuid")
 	artUUID, err := uuid.Parse(artUUIDStr)

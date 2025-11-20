@@ -27,7 +27,9 @@ func NetworkSourceTypes() []SourceType {
 // swagger:model
 type Source struct {
 	SourcePut
+
 	// SourceType defines the type of the source
+	// Example: vmware
 	SourceType SourceType `json:"source_type" yaml:"source_type"`
 }
 
@@ -44,8 +46,6 @@ type SourcePut struct {
 }
 
 // VMwareProperties defines the set of VMware specific properties of an endpoint that the migration manager can connect to.
-//
-// swagger:model
 type VMwareProperties struct {
 	// Hostname or IP address of the source endpoint
 	// Example: vsphere.local

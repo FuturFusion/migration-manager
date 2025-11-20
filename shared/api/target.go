@@ -35,8 +35,6 @@ type TargetPut struct {
 }
 
 // IncusProperties defines the set of Incus specific properties of a target that the migration manager can connect to.
-//
-// swagger:model
 type IncusProperties struct {
 	// Hostname or IP address of the target endpoint
 	// Example: https://incus.local:6443

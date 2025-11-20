@@ -246,9 +246,9 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 
 	for idx, nic := range props.NICs {
 		nicDeviceName := fmt.Sprintf("eth%d", idx)
-		netCfg, ok := q.Placement.Networks[nic.Location]
+		netCfg, ok := q.Placement.Networks[nic.HardwareAddress]
 		if !ok {
-			return fmt.Errorf("No network placement found for NIC %q for instance %q on target %q", nic.Location, i.GetName(), t.GetName())
+			return fmt.Errorf("No network placement found for NIC %q for instance %q on target %q", nic.HardwareAddress, i.GetName(), t.GetName())
 		}
 
 		if apiDef.Devices[nicDeviceName] == nil {
@@ -1186,10 +1186,10 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 		}
 	}
 
-	for location, targetNet := range placement.Networks {
+	for hwaddr, targetNet := range placement.Networks {
 		var instNIC api.InstancePropertiesNIC
 		for _, nic := range inst.Properties.NICs {
-			if nic.Location == location {
+			if nic.HardwareAddress == hwaddr {
 				instNIC = nic
 				break
 			}

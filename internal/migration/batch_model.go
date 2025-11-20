@@ -64,7 +64,7 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 
 		netCfg := baseNetwork.Placement
 		netCfg.Apply(baseNetwork.Overrides)
-		resp.Networks[n.Location] = netCfg
+		resp.Networks[n.HardwareAddress] = netCfg
 	}
 
 	// Override with placement values if set.
