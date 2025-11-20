@@ -18,4 +18,5 @@ Getting started </getting-started>
 Tutorials </tutorials>
 Reference </reference>
 Contributing </contributing>
+Support </support>
 ```
