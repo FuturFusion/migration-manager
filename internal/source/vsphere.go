@@ -12,6 +12,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net/url"
 	"time"
 
@@ -34,7 +35,7 @@ func soapWithKeepalive(ctx context.Context, clientURL *url.URL, additionalRootCe
 
 	vimClient, err := vim25.NewClient(ctx, soapClient)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to get VMware client: %w", err)
 	}
 
 	vimClient.RoundTripper = keepalive.NewHandlerSOAP(vimClient.RoundTripper, keepaliveInterval, soapKeepAliveHandler(ctx, vimClient))
@@ -43,7 +44,7 @@ func soapWithKeepalive(ctx context.Context, clientURL *url.URL, additionalRootCe
 	m := session.NewManager(vimClient)
 	err = m.Login(ctx, clientURL.User)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to login to VMware: %w", err)
 	}
 
 	c := govmomi.Client{
