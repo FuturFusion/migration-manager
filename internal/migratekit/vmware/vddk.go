@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"strings"
 )
@@ -19,7 +20,7 @@ func GetEndpointThumbprint(url *url.URL) (string, error) {
 		port = "443"
 	}
 
-	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%s", url.Hostname(), port), &config)
+	conn, err := tls.Dial("tcp", net.JoinHostPort(url.Hostname(), port), &config)
 	if err != nil {
 		return "", err
 	}
