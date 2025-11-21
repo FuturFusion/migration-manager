@@ -8,6 +8,7 @@ import {
   BsFillDatabaseFill,
 } from "react-icons/bs";
 import {
+  MdDescription,
   MdLogin,
   MdLogout,
   MdOutlineSettings,
@@ -92,6 +93,16 @@ const Sidebar = () => {
         <Nav className="flex-column w-100 flex-shrink-0 border-top border-secondary pt-2">
           {isAuthenticated && (
             <>
+              <li>
+                <Nav.Link
+                  as={Link}
+                  to="https://docs.futurfusion.io/migration-manager/main/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <MdDescription /> Documentation
+                </Nav.Link>
+              </li>
               <li>
                 <Nav.Link as={Link} to="/ui/settings">
                   <MdOutlineSettings /> Settings
