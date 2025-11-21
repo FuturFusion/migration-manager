@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/tls"
 	"errors"
+	"log/slog"
 	"net"
 	"net/url"
 	"strings"
@@ -35,6 +36,7 @@ func MapExternalConnectivityStatusToStatus(err error) ExternalConnectivityStatus
 	var urlError *url.Error
 	var tlsError *tls.CertificateVerificationError
 
+	slog.Error("External connection error", slog.Any("error", err))
 	if errors.As(err, &tlsError) {
 		return EXTERNALCONNECTIVITYSTATUS_TLS_ERROR
 	} else if errors.As(err, &dnsError) || errors.As(err, &opError) || errors.As(err, &urlError) {
