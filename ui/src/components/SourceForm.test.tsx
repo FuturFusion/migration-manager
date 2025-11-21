@@ -14,9 +14,9 @@ test("renders and submit SourceForm", async () => {
     </MemoryRouter>,
   );
 
-  const nameInput = screen.getByLabelText("Name");
-  const endpointInput = screen.getByLabelText("Endpoint");
-  const usernameInput = screen.getByLabelText("Username");
+  const nameInput = screen.getByLabelText("Name *");
+  const endpointInput = screen.getByLabelText("Endpoint *");
+  const usernameInput = screen.getByLabelText("Username *");
   const passwordInput = screen.getByLabelText("Password");
   const submitButton = screen.getByText("Submit");
 

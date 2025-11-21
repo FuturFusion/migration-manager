@@ -25,9 +25,9 @@ test("renders and submit BatchForm", async () => {
     </MemoryRouter>,
   );
 
-  const nameInput = screen.getByLabelText("Name");
-  const targetSelect = screen.getByLabelText("Default target");
-  const expressionInput = screen.getByLabelText("Expression");
+  const nameInput = screen.getByLabelText("Name *");
+  const targetSelect = screen.getByLabelText("Default target *");
+  const expressionInput = screen.getByLabelText("Expression *");
   const submitButton = screen.getByText("Submit");
 
   await userEvent.type(nameInput, "Batch1");

@@ -115,7 +115,7 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
       <div>
         <Form noValidate>
           <Form.Group className="mb-3" controlId="name">
-            <Form.Label>Name</Form.Label>
+            <Form.Label>Name *</Form.Label>
             <Form.Control
               type="text"
               name="name"
@@ -129,7 +129,7 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
               {formik.errors.name}
             </Form.Control.Feedback>
           </Form.Group>
-          <Form.Group controlId="targetType">
+          <Form.Group className="mb-3" controlId="targetType">
             <Form.Label>Target type</Form.Label>
             <Form.Select
               name="targetType"
@@ -151,7 +151,7 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
               {formik.errors.targetType}
             </Form.Control.Feedback>
           </Form.Group>
-          <Form.Group controlId="authType">
+          <Form.Group className="mb-3" controlId="authType">
             <Form.Label>Auth type</Form.Label>
             <Form.Select
               name="authType"
@@ -214,7 +214,7 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
             </>
           )}
           <Form.Group className="mb-3" controlId="endpoint">
-            <Form.Label>Endpoint</Form.Label>
+            <Form.Label>Endpoint *</Form.Label>
             <Form.Control
               type="text"
               name="endpoint"

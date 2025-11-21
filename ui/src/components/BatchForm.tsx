@@ -235,7 +235,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
       <div>
         <Form noValidate>
           <Form.Group className="mb-3" controlId="name">
-            <Form.Label>Name</Form.Label>
+            <Form.Label>Name *</Form.Label>
             <Form.Control
               type="text"
               name="name"
@@ -248,8 +248,8 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
               {formik.errors.name}
             </Form.Control.Feedback>
           </Form.Group>
-          <Form.Group controlId="defaultTarget">
-            <Form.Label>Default target</Form.Label>
+          <Form.Group className="mb-3" controlId="defaultTarget">
+            <Form.Label>Default target *</Form.Label>
             {!isLoadingTargets && !targetsError && (
               <Form.Select
                 name="defaults.placement.target"
@@ -311,7 +311,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
             </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3" controlId="include_expression">
-            <Form.Label>Expression</Form.Label>
+            <Form.Label>Expression *</Form.Label>
             <InputGroup>
               <Form.Control
                 type="text"

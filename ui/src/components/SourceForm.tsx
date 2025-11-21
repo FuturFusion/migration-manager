@@ -108,7 +108,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
       <div>
         <Form noValidate>
           <Form.Group className="mb-3" controlId="name">
-            <Form.Label>Name</Form.Label>
+            <Form.Label>Name *</Form.Label>
             <Form.Control
               type="text"
               name="name"
@@ -122,7 +122,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
               {formik.errors.name}
             </Form.Control.Feedback>
           </Form.Group>
-          <Form.Group controlId="sourceType">
+          <Form.Group className="mb-3" controlId="sourceType">
             <Form.Label>Source type</Form.Label>
             <Form.Select
               name="sourceType"
@@ -145,7 +145,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
             </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3" controlId="endpoint">
-            <Form.Label>Endpoint</Form.Label>
+            <Form.Label>Endpoint *</Form.Label>
             <Form.Control
               type="text"
               name="endpoint"
@@ -160,7 +160,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
             </Form.Control.Feedback>
           </Form.Group>
           <Form.Group className="mb-3" controlId="username">
-            <Form.Label>Username</Form.Label>
+            <Form.Label>Username *</Form.Label>
             <Form.Control
               type="text"
               name="username"
