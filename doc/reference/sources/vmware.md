@@ -29,17 +29,28 @@ Some disks do not support snapshots. Instances with these disks will be disabled
 This can be viewed by inspecting a disk's `supported` field in Migration Manager.
 ```
 
-#### Background import
+#### Change tracking
 
-To enable background import, ensure the following config keys are set on the VM for each SCSI controller. A reboot is required to fully enable change tracking:
+To enable background import, ensure the following config keys are set on the VM for each SCSI controller and volume. A reboot is required to fully enable change tracking:
 
-    `ctkEnabled`
-    `scsi0:0.ctkEnabled`
+    ctkEnabled
+    scsi0:0.ctkEnabled
 
 ```{note}
 Instances without change tracking will be restricted from migration without overridden.
-Without background import, the source instance will be powered off for the entire migration.
+Without background import, the source instance will be powered off for the entire migration, extending downtime.
 ```
+
+`````{tabs}
+````{group-tab} ESXi
+![Example CTK configuration](/images/esxi-ctk.png)
+
+````
+````{group-tab} vCenter
+![Example CTK configuration](/images/vcenter-ctk.png)
+
+````
+`````
 
 #### Guest agent data
 
@@ -84,6 +95,12 @@ All of the properties available for ESXi sources are also available for vCenter 
 * Tags (Imported as key-value config with the prefix `tag.`)
 * Resource pools (Imported as key-value config with the prefix `vmware.resource_pool.`)
 * NSX manager sources will be auto-imported by their IP addresses. Credentials will not be assigned by default.
+
+### Required permissions
+
+Migration Manager requires certain permissions in order to perform migrations:
+
+![Example 'Migrations' role](/images/vcenter-permissions.png)
 
 ## NSX
 
