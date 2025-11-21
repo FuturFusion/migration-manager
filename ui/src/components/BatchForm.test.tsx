@@ -25,9 +25,15 @@ test("renders and submit BatchForm", async () => {
     </MemoryRouter>,
   );
 
-  const nameInput = screen.getByLabelText("Name");
-  const targetSelect = screen.getByLabelText("Default target");
-  const expressionInput = screen.getByLabelText("Expression");
+  // Find the legend by its text
+  const placementLegend = screen.getByText(/Placement/i);
+
+  // Simulate a user clicking the legend
+  await userEvent.click(placementLegend);
+
+  const nameInput = screen.getByLabelText("Name *");
+  const targetSelect = screen.getByLabelText("Default target *");
+  const expressionInput = screen.getByLabelText("Filter expression *");
   const submitButton = screen.getByText("Submit");
 
   await userEvent.type(nameInput, "Batch1");

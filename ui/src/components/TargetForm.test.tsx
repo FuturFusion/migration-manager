@@ -14,8 +14,8 @@ test("renders and submit TargetForm with OIDC auth", async () => {
     </MemoryRouter>,
   );
 
-  const nameInput = screen.getByLabelText("Name");
-  const endpointInput = screen.getByLabelText("Endpoint");
+  const nameInput = screen.getByLabelText("Name *");
+  const endpointInput = screen.getByLabelText("Endpoint *");
   const submitButton = screen.getByText("Submit");
 
   await userEvent.type(nameInput, "Target1");
@@ -56,8 +56,8 @@ test("renders and submit TargetForm with TLS auth", async () => {
   const authTypeInput = screen.getByLabelText("Auth type");
   await userEvent.selectOptions(authTypeInput, "tls");
 
-  const nameInput = screen.getByLabelText("Name");
-  const endpointInput = screen.getByLabelText("Endpoint");
+  const nameInput = screen.getByLabelText("Name *");
+  const endpointInput = screen.getByLabelText("Endpoint *");
   const tlsClientCertInput = screen.getByLabelText("TLS Client cert");
   const tlsClientKeyInput = screen.getByLabelText("TLS Client key");
   const fingerprintInput = screen.getByLabelText(
