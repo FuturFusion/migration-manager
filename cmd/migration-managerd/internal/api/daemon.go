@@ -273,7 +273,7 @@ func (d *Daemon) Start() error {
 		return err
 	}
 
-	d.setLogLevel(cfg.Settings.LogLevel)
+	d.setLogLevel(true, cfg.Settings.LogLevel)
 
 	err = d.cleanupCacheDir()
 	if err != nil {
@@ -603,8 +603,14 @@ func (d *Daemon) Stop(ctx context.Context) error {
 	return err
 }
 
-func (d *Daemon) setLogLevel(levelStr string) {
+func (d *Daemon) setLogLevel(init bool, levelStr string) {
 	level := d.logHandler.Level()
+
+	// If the log level was set to DEBUG or INFO with a flag, then don't override it during initialization.
+	if init && (level == slog.LevelDebug || level == slog.LevelInfo) {
+		return
+	}
+
 	switch levelStr {
 	case slog.LevelDebug.String():
 		level = slog.LevelDebug
@@ -642,7 +648,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 			return err
 		}
 
-		d.setLogLevel(applyCfg.Settings.LogLevel)
+		d.setLogLevel(init, applyCfg.Settings.LogLevel)
 
 		if changedNetwork {
 			errCh := d.updateHTTPListener(applyCfg.Network.Address)
