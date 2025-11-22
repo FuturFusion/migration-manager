@@ -15,3 +15,5 @@ Source and target permissions:
 - Requires VM, network, and storage read access for each source and target
 - Requires snapshot creation privileges for each source
 - Requires instance and storage volume creation privileges for each target
+
+See [vCenter permissions](../reference/sources/vmware.md#required-permissions) for specific vCenter permissions.

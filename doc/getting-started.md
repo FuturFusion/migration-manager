@@ -9,5 +9,6 @@ See the [Contributing](contributing.md) page for more information on building Mi
 :maxdepth: 1
 
 Requirements  </getting-started/requirements>
-Accessing Migration Manager </getting-started/access>
+Accessing Migration Manager (UI) </getting-started/access_ui>
+Accessing Migration Manager (Command line) </getting-started/access_cli>
 ```

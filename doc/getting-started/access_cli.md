@@ -1,10 +1,10 @@
-# Accessing the system
+# Accessing the system (Command line)
 
-## Local access (command line)
+## Local access
 
 By default, the `migration-manager` CLI tool can be used to manage a Migration Manager service running on the same system.
 
-## Network settings (command line)
+## Network settings
 
 To enable `migration-manager` to communicate over the network, you can assign a network address and port. If no port is specified, Migration Manager will use `6443`
 
@@ -22,7 +22,7 @@ worker_endpoint: https://example.com
 
 The `worker_endpoint` is used for connections from migrating instances back to the Migration Manager service. If unset, it will use the value of `rest_server_address`.
 
-## Security settings (command line)
+## Security settings
 
 Authentication and authorization settings can be configured from the command line as well. Migration Manager will only accept trusted connections.
 
@@ -49,7 +49,7 @@ openfga:
 
 ```
 
-## Remote access (command line)
+## Remote access
 
 The CLI tool can connect to a Migration Manager service over the network by registering a remote.
 Here is a sample registration of a remote named `m1` at address `https://192.0.2.100:443`:
@@ -70,16 +70,3 @@ Received authentication mismatch: got "untrusted", expected "tls". Ensure the se
 ```
 
 This certificate should be added to the `trusted_tls_client_cert_fingerprints` list with the local CLI tool using `migration-manager system security edit` for the remote CLI to properly function.
-
-## From the web
-The Migration Manager  UI is also available for web access.
-
-For this to work, a client certificate trusted by Migration Manager must be imported as a user certificate in your web browser. The remote CLI keypair generated in `~/.config/migration-manager` can be used for this purpose.
-The exact process to do this varies between browsers and operating
-systems, but generally involves generating a PKCS#12 certificate from
-the separate `client.crt` and `client.key`, then importing that in the
-web browser's certificate store.
-
-Alternatively, the UI can be accessed with OIDC login if configured on the Migration Manager service.
-
-Once this is done, you can access the UI at `https://192.0.2.100:8443`

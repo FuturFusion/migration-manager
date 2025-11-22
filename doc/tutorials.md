@@ -3,5 +3,7 @@ The following tutorials demonstrate various features and guides for using Migrat
 
 ```{toctree}
 :maxdepth: 1
-Migrate a batch of instances </tutorials/migrate-a-batch-of-instances>
+Migrate from ESXi </tutorials/migrate_esxi>
+Migrate from vCenter </tutorials/migrate_vcenter>
+Complex Migrations </tutorials/migrate_complex>
 ```

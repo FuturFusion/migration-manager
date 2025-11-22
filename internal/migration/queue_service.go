@@ -443,6 +443,13 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			} else {
 				// Only perform background resync if it's supported and we haven't entered final migration anyway.
 				if queueEntry.ImportStage != IMPORTSTAGE_FINAL || !instance.Properties.BackgroundImport || queueEntry.LastBackgroundSync.IsZero() {
+					if newStatusMessage == "Waiting for worker to connect" {
+						_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, "Waiting for migration window", newImportStage, windowName)
+						if err != nil {
+							return fmt.Errorf("Failed updating queue entry %q message: %w", instance.UUID.String(), err)
+						}
+					}
+
 					return nil
 				}
 
