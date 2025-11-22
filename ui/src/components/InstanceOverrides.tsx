@@ -48,6 +48,7 @@ const InstanceOverrides: FC = () => {
     memory: "",
     config: {},
     os: "",
+    os_version: "",
   };
 
   if (instance && overrideExists) {
@@ -61,6 +62,7 @@ const InstanceOverrides: FC = () => {
       memory: bytesToHumanReadable(overrides.properties.memory),
       config: overrides.properties.config,
       os: overrides.properties.os,
+      os_version: overrides.properties.os_version,
     };
   }
 
@@ -120,6 +122,7 @@ const InstanceOverrides: FC = () => {
           cpus: values.cpus,
           config: values.config,
           os: values.os,
+          os_version: values.os_version,
         },
       };
 
@@ -273,6 +276,20 @@ const InstanceOverrides: FC = () => {
           />
           <Form.Control.Feedback type="invalid">
             {formik.errors.os}
+          </Form.Control.Feedback>
+        </Form.Group>
+        <Form.Group className="mb-3" controlId="os_version">
+          <Form.Label>OS Version</Form.Label>
+          <Form.Control
+            type="text"
+            name="os_version"
+            value={formik.values.os_version}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            isInvalid={!!formik.errors.os_version && formik.touched.os_version}
+          />
+          <Form.Control.Feedback type="invalid">
+            {formik.errors.os_version}
           </Form.Control.Feedback>
         </Form.Group>
         <Form.Group className="mb-3" controlId="config">
