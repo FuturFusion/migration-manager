@@ -29,6 +29,7 @@ export interface InstanceProperties {
   cpus: number;
   memory: number;
   location: string;
+  os: string;
   os_version: string;
   secure_boot: boolean;
   legacy_boot: boolean;
@@ -47,7 +48,8 @@ export interface InstancePropertiesConfigurable {
   cpus: number;
   memory: number;
   config: Record<string, string>;
-  os: strring;
+  os: string;
+  os_version: string;
 }
 
 export interface InstanceOverride {
