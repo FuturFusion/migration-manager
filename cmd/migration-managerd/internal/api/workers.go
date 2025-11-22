@@ -159,6 +159,13 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 		err := inst.DisabledReason(batchMap[q.BatchName].Config.RestrictionOverrides)
 		if err != nil {
 			slog.Warn("Instance is blocked from migration", slog.String("location", inst.Properties.Location), slog.String("reason", err.Error()))
+			if err.Error() != q.MigrationStatusMessage {
+				_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, q.MigrationStatus, err.Error(), q.ImportStage, q.GetWindowName())
+				if err != nil {
+					return fmt.Errorf("Failed to update queue entry block message for %q: %w", inst.Properties.Location, err)
+				}
+			}
+
 			continue
 		}
 
