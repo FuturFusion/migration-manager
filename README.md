@@ -11,7 +11,7 @@ those migrations happen in the background.
 
 # Documentation
 
-Some more detailed information about various aspects of migration manager can be found in the `doc` directory.
+Some more detailed information about various aspects of migration manager can be found at [`https://docs.futurfusion.io/migration-manager`](https://docs.futurfusion.io/migration-manager).
 
 # Bug reports
 
@@ -19,4 +19,4 @@ You can file bug reports and feature requests at: [`https://github.com/futurfusi
 
 # Contributing
 
-Fixes and new features are greatly appreciated. Make sure to read our [contributing guidelines](CONTRIBUTING.md) first!
+Fixes and new features are greatly appreciated. Make sure to read our [contributing guidelines](https://docs.futurfusion.io/migration-manager/main/contributing) first!
