@@ -189,7 +189,7 @@ func (s batchService) Update(ctx context.Context, queueSvc QueueService, name st
 			return err
 		}
 
-		if oldBatch.Status == api.BATCHSTATUS_RUNNING && !util.InTestingMode() {
+		if oldBatch.Status != api.BATCHSTATUS_DEFINED && !util.InTestingMode() {
 			err := s.canUpdateRunningBatch(ctx, queueSvc, *batch, *oldBatch)
 			if err != nil {
 				return err
@@ -201,8 +201,8 @@ func (s batchService) Update(ctx context.Context, queueSvc QueueService, name st
 			return err
 		}
 
-		// Only modify instances and placement if the batch is not running.
-		if oldBatch.Status != api.BATCHSTATUS_RUNNING || util.InTestingMode() {
+		// Only modify instances and placement if the batch is defined.
+		if oldBatch.Status == api.BATCHSTATUS_DEFINED || util.InTestingMode() {
 			if oldBatch.Config.PlacementScriptlet != batch.Config.PlacementScriptlet && batch.Config.PlacementScriptlet != "" {
 				updateScriptlet = true
 			}
@@ -248,7 +248,7 @@ func (s batchService) UpdateStatusByName(ctx context.Context, name string, statu
 }
 
 func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch Batch) error {
-	if batch.Status == api.BATCHSTATUS_RUNNING {
+	if batch.Status != api.BATCHSTATUS_DEFINED {
 		return fmt.Errorf("Cannot update batch %q: Currently in a migration phase: %w", batch.Name, ErrOperationNotPermitted)
 	}
 
