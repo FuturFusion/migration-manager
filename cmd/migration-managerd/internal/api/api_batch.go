@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -654,118 +653,7 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Worker endpoint cannot use a wildcard address: %q", d.getWorkerEndpoint()))
 	}
 
-	instances := map[uuid.UUID]migration.Instance{}
-	var batch *migration.Batch
-	var windows migration.Windows
-	var networks migration.Networks
-	err = transaction.Do(r.Context(), func(ctx context.Context) error {
-		var err error
-		batch, err = d.batch.GetByName(ctx, batchName)
-		if err != nil {
-			return fmt.Errorf("Failed to get batch %q: %w", batchName, err)
-		}
-
-		windows, err = d.window.GetAllByBatch(ctx, batchName)
-		if err != nil {
-			return fmt.Errorf("Failed to get migration windows for batch %q: %w", batchName, err)
-		}
-
-		networks, err = d.network.GetAll(ctx)
-		if err != nil {
-			return fmt.Errorf("Failed to get networks for batch %q: %w", batch.Name, err)
-		}
-
-		queueEntries, err := d.queue.GetAll(ctx)
-		if err != nil {
-			return fmt.Errorf("Failed to get queue entries: %w", err)
-		}
-
-		queueMap := make(map[uuid.UUID]bool, len(queueEntries))
-		for _, entry := range queueEntries {
-			queueMap[entry.InstanceUUID] = true
-		}
-
-		batchInstances, err := d.instance.GetAllByBatch(ctx, batch.Name)
-		if err != nil {
-			return fmt.Errorf("Failed to get instances for batch %q: %w", batch.Name, err)
-		}
-
-		for _, inst := range batchInstances {
-			if queueMap[inst.UUID] {
-				slog.Warn("Instance is already queued in a different batch, ignoring", slog.String("batch", batchName), slog.String("instance", inst.Properties.Location))
-				continue
-			}
-
-			instances[inst.UUID] = inst
-		}
-
-		return nil
-	})
-	if err != nil {
-		return response.SmartError(err)
-	}
-
-	// Validate that the batch can even start before doing more work.
-	if batch.Status != api.BATCHSTATUS_DEFINED {
-		return response.SmartError(fmt.Errorf("Batch %q in state %q cannot be started", batch.Name, string(batch.Status)))
-	}
-
-	if len(instances) == 0 {
-		return response.SmartError(fmt.Errorf("Cannot start batch %q with no instances", batch.Name))
-	}
-
-	err = windows.HasValidWindow()
-	if err != nil {
-		return response.SmartError(fmt.Errorf("Cannot start batch %q with invalid migration windows: %w", batch.Name, err))
-	}
-
-	placementsByUUID := map[uuid.UUID]api.Placement{}
-	for _, inst := range instances {
-		usedNetworks := migration.FilterUsedNetworks(networks, migration.Instances{inst})
-		placement, err := d.batch.DeterminePlacement(r.Context(), inst, usedNetworks, *batch, windows)
-		if err != nil {
-			return response.SmartError(fmt.Errorf("Failed to run scriptlet for instance %q: %w", inst.Properties.Location, err))
-		}
-
-		placementsByUUID[inst.UUID] = *placement
-	}
-
-	err = transaction.Do(r.Context(), func(ctx context.Context) error {
-		err := d.batch.StartBatchByName(ctx, batchName)
-		if err != nil {
-			return err
-		}
-
-		for _, inst := range instances {
-			secret, err := uuid.NewRandom()
-			if err != nil {
-				return err
-			}
-
-			status := api.MIGRATIONSTATUS_WAITING
-			message := "Preparing for migration"
-			err = inst.DisabledReason(batch.Config.RestrictionOverrides)
-			if err != nil {
-				status = api.MIGRATIONSTATUS_BLOCKED
-				message = err.Error()
-			}
-
-			_, err = d.queue.CreateEntry(ctx, migration.QueueEntry{
-				InstanceUUID:           inst.UUID,
-				BatchName:              batchName,
-				ImportStage:            migration.IMPORTSTAGE_BACKGROUND,
-				SecretToken:            secret,
-				MigrationStatus:        status,
-				MigrationStatusMessage: message,
-				Placement:              placementsByUUID[inst.UUID],
-			})
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
+	err = d.batch.StartBatchByName(r.Context(), batchName, d.window, d.network, d.queue)
 	if err != nil {
 		return response.SmartError(err)
 	}
