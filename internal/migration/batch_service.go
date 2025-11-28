@@ -93,7 +93,7 @@ func (s batchService) GetByName(ctx context.Context, name string) (*Batch, error
 // - Placement and instance filtering cannot be modified for a running batch.
 // - Constraints that match to queue entries that have already entered final import cannot be added or removed.
 func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueService, newBatch Batch, oldBatch Batch) error {
-	if oldBatch.Status != api.BATCHSTATUS_RUNNING {
+	if oldBatch.Status == api.BATCHSTATUS_DEFINED {
 		return nil
 	}
 
