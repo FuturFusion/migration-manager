@@ -246,7 +246,19 @@ func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Pro
 		}),
 	}
 
-	options := append([]expr.Option{expr.Env(i)}, customFunctions...)
+	// Instantiate all nil fields when compiling the expression for consistency.
+	baseEnv := InstanceFilterable{
+		InstanceProperties: api.InstanceProperties{
+			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
+				Config: map[string]string{},
+			},
+			NICs:      []api.InstancePropertiesNIC{},
+			Disks:     []api.InstancePropertiesDisk{},
+			Snapshots: []api.InstancePropertiesSnapshot{},
+		},
+	}
+
+	options := append([]expr.Option{expr.Env(baseEnv)}, customFunctions...)
 
 	return expr.Compile(expression, options...)
 }
