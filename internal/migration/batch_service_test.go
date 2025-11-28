@@ -2,6 +2,8 @@ package migration_test
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -1259,31 +1261,89 @@ func TestBatchService_DeleteByName(t *testing.T) {
 }
 
 func TestBatchService_StartBatchByName(t *testing.T) {
+	asUUID := func(i int) string {
+		return fmt.Sprintf("00000000-0000-0000-0000-%012d", i)
+	}
+
 	tests := []struct {
-		name                    string
-		nameArg                 string
-		repoGetByNameBatch      migration.Batch
-		repoGetByNameErr        error
-		repoUpdateStatusByIDErr error
+		name                 string
+		batchName            string
+		initBatchState       api.BatchStatusType
+		queueEntriesByBatch  map[string][]string
+		numMatchingInstances map[bool][]string
+
+		addedQueueEntries []string
+
+		repoGetByNameErr error
+		repoUpdateErr    error
+
+		noValidWindows              bool
+		instanceSvcGetAllByBatchErr error
+		networkSvcGetAllErr         error
+		windowSvcGetAllByBatchErr   error
+		queueSvcGetAllErr           error
+		queueSvcCreateErr           error
 
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name:    "success",
-			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
-				ID:                1,
-				Name:              "one",
-				Defaults:          defaultPlacement,
-				Status:            api.BATCHSTATUS_DEFINED,
-				IncludeExpression: "true",
-			},
+			name:                 "success - all instances match, no existing queue entries",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_DEFINED,
+			queueEntriesByBatch:  map[string][]string{},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}},
+
+			addedQueueEntries: []string{asUUID(1), asUUID(2), asUUID(3)},
 
 			assertErr: require.NoError,
 		},
 		{
-			name:    "error - empty name",
-			nameArg: "",
+			name:                 "success - all instances match, with existing entries from another batch",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_DEFINED,
+			queueEntriesByBatch:  map[string][]string{"two": {asUUID(3)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}},
+
+			addedQueueEntries: []string{asUUID(1), asUUID(2)},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                 "success - some instances match, with existing entries from another batch",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_DEFINED,
+			queueEntriesByBatch:  map[string][]string{"two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			addedQueueEntries: []string{asUUID(1), asUUID(3)},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                 "success - batch stopped, some instances match, with existing entries from another batch, and existing entries in the same batch",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_STOPPED,
+			queueEntriesByBatch:  map[string][]string{"one": {asUUID(1)}, "two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			addedQueueEntries: []string{asUUID(3)},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:                 "success - batch errored, some instances match, with existing entries from another batch, and existing entries in the same batch",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_ERROR,
+			queueEntriesByBatch:  map[string][]string{"one": {asUUID(1)}, "two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			addedQueueEntries: []string{asUUID(3)},
+
+			assertErr: require.NoError,
+		},
+		{
+			name:      "error - empty name",
+			batchName: "",
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
@@ -1291,61 +1351,204 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 		},
 		{
 			name:             "error - repo.GetByName",
-			nameArg:          "one",
+			batchName:        "one",
 			repoGetByNameErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
 		{
-			name:    "error - batch state is not ready to be started",
-			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
-				ID:                1,
-				Name:              "one",
-				Defaults:          defaultPlacement,
-				Status:            api.BATCHSTATUS_RUNNING,
-				IncludeExpression: "true",
-			},
+			name:           "error - batch state is not ready to be started",
+			batchName:      "one",
+			initBatchState: api.BATCHSTATUS_RUNNING,
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
 				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
 			},
 		},
 		{
-			name:    "error - batch state is not ready to be started",
-			nameArg: "one",
-			repoGetByNameBatch: migration.Batch{
-				ID:                1,
-				Name:              "one",
-				Status:            api.BATCHSTATUS_DEFINED,
-				Defaults:          defaultPlacement,
-				IncludeExpression: "true",
+			name:           "error - batch state is already finished",
+			batchName:      "one",
+			initBatchState: api.BATCHSTATUS_FINISHED,
+
+			assertErr: func(tt require.TestingT, err error, a ...any) {
+				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
 			},
-			repoUpdateStatusByIDErr: boom.Error,
+		},
+		{
+			name:                 "error - no instances available to queue",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_ERROR,
+			queueEntriesByBatch:  map[string][]string{"one": {asUUID(1), asUUID(3)}, "two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			assertErr: require.Error,
+		},
+		{
+			name:                 "error - repo.Update",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_ERROR,
+			queueEntriesByBatch:  map[string][]string{"one": {asUUID(1)}, "two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			repoUpdateErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 		},
+		{
+			name:                 "error - instanceSvc.GetAllByBatch",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_ERROR,
+			queueEntriesByBatch:  map[string][]string{"one": {asUUID(1)}, "two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			instanceSvcGetAllByBatchErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                 "error - networkSvc.GetAll",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_ERROR,
+			queueEntriesByBatch:  map[string][]string{"one": {asUUID(1)}, "two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			networkSvcGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                 "error - queueSvc.GetAll",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_ERROR,
+			queueEntriesByBatch:  map[string][]string{"one": {asUUID(1)}, "two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			queueSvcGetAllErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                 "error - queueSvc.Create",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_ERROR,
+			queueEntriesByBatch:  map[string][]string{"one": {asUUID(1)}, "two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			queueSvcCreateErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                 "error - windowSvc.GetAllByBatch",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_ERROR,
+			queueEntriesByBatch:  map[string][]string{"one": {asUUID(1)}, "two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			windowSvcGetAllByBatchErr: boom.Error,
+
+			assertErr: boom.ErrorIs,
+		},
+		{
+			name:                 "error - no valid windows",
+			batchName:            "one",
+			initBatchState:       api.BATCHSTATUS_ERROR,
+			queueEntriesByBatch:  map[string][]string{"one": {asUUID(1)}, "two": {asUUID(2), asUUID(4)}},
+			numMatchingInstances: map[bool][]string{true: {asUUID(1), asUUID(2), asUUID(3)}, false: {asUUID(4), asUUID(5)}},
+
+			noValidWindows: true,
+
+			assertErr: require.Error,
+		},
 	}
 
-	for _, tc := range tests {
+	for i, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			// Setup
+			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
+
+			newQueueEntries := []string{}
 			repo := &mock.BatchRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
-					return &tc.repoGetByNameBatch, tc.repoGetByNameErr
+					includeExpr := []string{}
+					for _, id := range tc.numMatchingInstances[true] {
+						includeExpr = append(includeExpr, "uuid == '"+id+"'")
+					}
+
+					return &migration.Batch{
+						ID:                1,
+						Name:              tc.batchName,
+						Status:            tc.initBatchState,
+						IncludeExpression: strings.Join(includeExpr, " or "),
+						StatusMessage:     string(tc.initBatchState),
+						Defaults:          defaultPlacement,
+					}, tc.repoGetByNameErr
 				},
 				UpdateFunc: func(ctx context.Context, name string, b migration.Batch) error {
-					return tc.repoUpdateStatusByIDErr
+					if tc.repoUpdateErr != nil {
+						newQueueEntries = nil
+					}
+
+					return tc.repoUpdateErr
 				},
 			}
 
-			batchSvc := migration.NewBatchService(repo, nil)
+			queueSvc := &QueueServiceMock{
+				GetAllFunc: func(ctx context.Context) (migration.QueueEntries, error) {
+					entries := migration.QueueEntries{}
+					for batch, ids := range tc.queueEntriesByBatch {
+						for _, id := range ids {
+							entries = append(entries, migration.QueueEntry{BatchName: batch, InstanceUUID: uuid.MustParse(id)})
+						}
+					}
+
+					return entries, tc.queueSvcGetAllErr
+				},
+				CreateEntryFunc: func(ctx context.Context, queue migration.QueueEntry) (migration.QueueEntry, error) {
+					if tc.queueSvcCreateErr == nil {
+						newQueueEntries = append(newQueueEntries, queue.InstanceUUID.String())
+					}
+
+					return migration.QueueEntry{}, tc.queueSvcCreateErr
+				},
+			}
+
+			instanceSvc := &InstanceServiceMock{
+				GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
+					instances := migration.Instances{}
+					for _, id := range tc.numMatchingInstances[true] {
+						instances = append(instances, migration.Instance{UUID: uuid.MustParse(id)})
+					}
+
+					return instances, tc.instanceSvcGetAllByBatchErr
+				},
+			}
+
+			networkSvc := &NetworkServiceMock{
+				GetAllFunc: func(ctx context.Context) (migration.Networks, error) {
+					return nil, tc.networkSvcGetAllErr
+				},
+			}
+
+			windowSvc := &WindowServiceMock{
+				GetAllByBatchFunc: func(ctx context.Context, batchName string) (migration.Windows, error) {
+					if tc.noValidWindows {
+						now := time.Now().UTC()
+						return migration.Windows{{Start: now.Add(-10 * time.Second)}}, tc.windowSvcGetAllByBatchErr
+					}
+
+					return nil, tc.windowSvcGetAllByBatchErr
+				},
+			}
+
+			batchSvc := migration.NewBatchService(repo, instanceSvc)
 
 			// Run test
-			err := batchSvc.StartBatchByName(context.Background(), tc.nameArg)
+			err := batchSvc.StartBatchByName(context.Background(), tc.batchName, windowSvc, networkSvc, queueSvc)
 
 			// Assert
 			tc.assertErr(t, err)
+
+			require.Len(t, newQueueEntries, len(tc.addedQueueEntries))
 		})
 	}
 }

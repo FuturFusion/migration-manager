@@ -21,7 +21,7 @@ type QueueService interface {
 	Update(ctx context.Context, entry *QueueEntry) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 	CancelByUUID(ctx context.Context, id uuid.UUID) (bool, error)
-	RetryByUUID(ctx context.Context, id uuid.UUID) error
+	RetryByUUID(ctx context.Context, id uuid.UUID, networkSvc NetworkService) error
 	DeleteAllByBatch(ctx context.Context, batch string) error
 
 	UpdateStatusByUUID(ctx context.Context, id uuid.UUID, status api.MigrationStatusType, statusMessage string, importStage ImportStage, windowID *string) (*QueueEntry, error)

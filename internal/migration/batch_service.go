@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"time"
 
@@ -92,7 +93,7 @@ func (s batchService) GetByName(ctx context.Context, name string) (*Batch, error
 // - Placement and instance filtering cannot be modified for a running batch.
 // - Constraints that match to queue entries that have already entered final import cannot be added or removed.
 func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueService, newBatch Batch, oldBatch Batch) error {
-	if oldBatch.Status != api.BATCHSTATUS_RUNNING {
+	if oldBatch.Status == api.BATCHSTATUS_DEFINED {
 		return nil
 	}
 
@@ -347,27 +348,99 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 	})
 }
 
-func (s batchService) StartBatchByName(ctx context.Context, name string) (err error) {
-	if name == "" {
+func (s batchService) StartBatchByName(ctx context.Context, batchName string, windowSvc WindowService, networkSvc NetworkService, queueSvc QueueService) (err error) {
+	if batchName == "" {
 		return fmt.Errorf("Batch name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the batch to start.
-		batch, err := s.GetByName(ctx, name)
+		batch, err := s.GetByName(ctx, batchName)
 		if err != nil {
 			return err
 		}
 
 		// Ensure batch is in a state that is ready to start.
-		switch batch.Status {
-		case
-			api.BATCHSTATUS_DEFINED,
-			api.BATCHSTATUS_STOPPED,
-			api.BATCHSTATUS_ERROR:
-			// States, where starting a batch is allowed.
-		default:
+		if !batch.CanStart() {
 			return fmt.Errorf("Cannot start batch %q in its current state '%s': %w", batch.Name, batch.Status, ErrOperationNotPermitted)
+		}
+
+		windows, err := windowSvc.GetAllByBatch(ctx, batchName)
+		if err != nil {
+			return fmt.Errorf("Failed to get migration windows for batch %q: %w", batchName, err)
+		}
+
+		err = windows.HasValidWindow()
+		if err != nil {
+			return fmt.Errorf("Cannot start batch %q with invalid migration windows: %w", batch.Name, err)
+		}
+
+		networks, err := networkSvc.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get networks for batch %q: %w", batch.Name, err)
+		}
+
+		queueEntries, err := queueSvc.GetAll(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to get queue entries: %w", err)
+		}
+
+		queueMap := make(map[uuid.UUID]bool, len(queueEntries))
+		for _, entry := range queueEntries {
+			queueMap[entry.InstanceUUID] = true
+		}
+
+		batchInstances, err := s.instance.GetAllByBatch(ctx, batch.Name)
+		if err != nil {
+			return fmt.Errorf("Failed to get instances for batch %q: %w", batch.Name, err)
+		}
+
+		instances := map[uuid.UUID]Instance{}
+		for _, inst := range batchInstances {
+			if queueMap[inst.UUID] {
+				slog.Warn("Instance is already queued, ignoring", slog.String("batch", batchName), slog.String("instance", inst.Properties.Location))
+				continue
+			}
+
+			instances[inst.UUID] = inst
+		}
+
+		if len(instances) == 0 {
+			return fmt.Errorf("Cannot start batch %q with no instances", batch.Name)
+		}
+
+		for _, inst := range instances {
+			usedNetworks := FilterUsedNetworks(networks, Instances{inst})
+			placement, err := s.DeterminePlacement(ctx, inst, usedNetworks, *batch, windows)
+			if err != nil {
+				return fmt.Errorf("Failed to run scriptlet for instance %q: %w", inst.Properties.Location, err)
+			}
+
+			secret, err := uuid.NewRandom()
+			if err != nil {
+				return err
+			}
+
+			status := api.MIGRATIONSTATUS_WAITING
+			message := "Preparing for migration"
+			err = inst.DisabledReason(batch.Config.RestrictionOverrides)
+			if err != nil {
+				status = api.MIGRATIONSTATUS_BLOCKED
+				message = err.Error()
+			}
+
+			_, err = queueSvc.CreateEntry(ctx, QueueEntry{
+				InstanceUUID:           inst.UUID,
+				BatchName:              batchName,
+				ImportStage:            IMPORTSTAGE_BACKGROUND,
+				SecretToken:            secret,
+				MigrationStatus:        status,
+				MigrationStatusMessage: message,
+				Placement:              *placement,
+			})
+			if err != nil {
+				return err
+			}
 		}
 
 		batch.StartDate = time.Now().UTC()

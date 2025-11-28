@@ -61,7 +61,7 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			ProcessWorkerUpdateFunc: func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.QueueEntry, error) {
 //				panic("mock out the ProcessWorkerUpdate method")
 //			},
-//			RetryByUUIDFunc: func(ctx context.Context, id uuid.UUID) error {
+//			RetryByUUIDFunc: func(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) error {
 //				panic("mock out the RetryByUUID method")
 //			},
 //			UpdateFunc: func(ctx context.Context, entry *migration.QueueEntry) error {
@@ -120,7 +120,7 @@ type QueueServiceMock struct {
 	ProcessWorkerUpdateFunc func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.QueueEntry, error)
 
 	// RetryByUUIDFunc mocks the RetryByUUID method.
-	RetryByUUIDFunc func(ctx context.Context, id uuid.UUID) error
+	RetryByUUIDFunc func(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, entry *migration.QueueEntry) error
@@ -236,6 +236,8 @@ type QueueServiceMock struct {
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
+			// NetworkSvc is the networkSvc argument value.
+			NetworkSvc migration.NetworkService
 		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
@@ -769,21 +771,23 @@ func (mock *QueueServiceMock) ProcessWorkerUpdateCalls() []struct {
 }
 
 // RetryByUUID calls RetryByUUIDFunc.
-func (mock *QueueServiceMock) RetryByUUID(ctx context.Context, id uuid.UUID) error {
+func (mock *QueueServiceMock) RetryByUUID(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) error {
 	if mock.RetryByUUIDFunc == nil {
 		panic("QueueServiceMock.RetryByUUIDFunc: method is nil but QueueService.RetryByUUID was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
-		ID  uuid.UUID
+		Ctx        context.Context
+		ID         uuid.UUID
+		NetworkSvc migration.NetworkService
 	}{
-		Ctx: ctx,
-		ID:  id,
+		Ctx:        ctx,
+		ID:         id,
+		NetworkSvc: networkSvc,
 	}
 	mock.lockRetryByUUID.Lock()
 	mock.calls.RetryByUUID = append(mock.calls.RetryByUUID, callInfo)
 	mock.lockRetryByUUID.Unlock()
-	return mock.RetryByUUIDFunc(ctx, id)
+	return mock.RetryByUUIDFunc(ctx, id, networkSvc)
 }
 
 // RetryByUUIDCalls gets all the calls that were made to RetryByUUID.
@@ -791,12 +795,14 @@ func (mock *QueueServiceMock) RetryByUUID(ctx context.Context, id uuid.UUID) err
 //
 //	len(mockedQueueService.RetryByUUIDCalls())
 func (mock *QueueServiceMock) RetryByUUIDCalls() []struct {
-	Ctx context.Context
-	ID  uuid.UUID
+	Ctx        context.Context
+	ID         uuid.UUID
+	NetworkSvc migration.NetworkService
 } {
 	var calls []struct {
-		Ctx context.Context
-		ID  uuid.UUID
+		Ctx        context.Context
+		ID         uuid.UUID
+		NetworkSvc migration.NetworkService
 	}
 	mock.lockRetryByUUID.RLock()
 	calls = mock.calls.RetryByUUID

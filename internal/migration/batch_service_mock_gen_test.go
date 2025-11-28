@@ -51,7 +51,7 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			ResetBatchByNameFunc: func(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) error {
 //				panic("mock out the ResetBatchByName method")
 //			},
-//			StartBatchByNameFunc: func(ctx context.Context, name string) error {
+//			StartBatchByNameFunc: func(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) error {
 //				panic("mock out the StartBatchByName method")
 //			},
 //			StopBatchByNameFunc: func(ctx context.Context, name string) error {
@@ -101,7 +101,7 @@ type BatchServiceMock struct {
 	ResetBatchByNameFunc func(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) error
 
 	// StartBatchByNameFunc mocks the StartBatchByName method.
-	StartBatchByNameFunc func(ctx context.Context, name string) error
+	StartBatchByNameFunc func(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) error
 
 	// StopBatchByNameFunc mocks the StopBatchByName method.
 	StopBatchByNameFunc func(ctx context.Context, name string) error
@@ -200,6 +200,12 @@ type BatchServiceMock struct {
 			Ctx context.Context
 			// Name is the name argument value.
 			Name string
+			// WindowSvc is the windowSvc argument value.
+			WindowSvc migration.WindowService
+			// NetworkSvc is the networkSvc argument value.
+			NetworkSvc migration.NetworkService
+			// QueueSvc is the queueSvc argument value.
+			QueueSvc migration.QueueService
 		}
 		// StopBatchByName holds details about calls to the StopBatchByName method.
 		StopBatchByName []struct {
@@ -628,21 +634,27 @@ func (mock *BatchServiceMock) ResetBatchByNameCalls() []struct {
 }
 
 // StartBatchByName calls StartBatchByNameFunc.
-func (mock *BatchServiceMock) StartBatchByName(ctx context.Context, name string) error {
+func (mock *BatchServiceMock) StartBatchByName(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) error {
 	if mock.StartBatchByNameFunc == nil {
 		panic("BatchServiceMock.StartBatchByNameFunc: method is nil but BatchService.StartBatchByName was just called")
 	}
 	callInfo := struct {
-		Ctx  context.Context
-		Name string
+		Ctx        context.Context
+		Name       string
+		WindowSvc  migration.WindowService
+		NetworkSvc migration.NetworkService
+		QueueSvc   migration.QueueService
 	}{
-		Ctx:  ctx,
-		Name: name,
+		Ctx:        ctx,
+		Name:       name,
+		WindowSvc:  windowSvc,
+		NetworkSvc: networkSvc,
+		QueueSvc:   queueSvc,
 	}
 	mock.lockStartBatchByName.Lock()
 	mock.calls.StartBatchByName = append(mock.calls.StartBatchByName, callInfo)
 	mock.lockStartBatchByName.Unlock()
-	return mock.StartBatchByNameFunc(ctx, name)
+	return mock.StartBatchByNameFunc(ctx, name, windowSvc, networkSvc, queueSvc)
 }
 
 // StartBatchByNameCalls gets all the calls that were made to StartBatchByName.
@@ -650,12 +662,18 @@ func (mock *BatchServiceMock) StartBatchByName(ctx context.Context, name string)
 //
 //	len(mockedBatchService.StartBatchByNameCalls())
 func (mock *BatchServiceMock) StartBatchByNameCalls() []struct {
-	Ctx  context.Context
-	Name string
+	Ctx        context.Context
+	Name       string
+	WindowSvc  migration.WindowService
+	NetworkSvc migration.NetworkService
+	QueueSvc   migration.QueueService
 } {
 	var calls []struct {
-		Ctx  context.Context
-		Name string
+		Ctx        context.Context
+		Name       string
+		WindowSvc  migration.WindowService
+		NetworkSvc migration.NetworkService
+		QueueSvc   migration.QueueService
 	}
 	mock.lockStartBatchByName.RLock()
 	calls = mock.calls.StartBatchByName
