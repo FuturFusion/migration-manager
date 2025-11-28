@@ -360,13 +360,7 @@ func (s batchService) StartBatchByName(ctx context.Context, name string) (err er
 		}
 
 		// Ensure batch is in a state that is ready to start.
-		switch batch.Status {
-		case
-			api.BATCHSTATUS_DEFINED,
-			api.BATCHSTATUS_STOPPED,
-			api.BATCHSTATUS_ERROR:
-			// States, where starting a batch is allowed.
-		default:
+		if !batch.CanStart() {
 			return fmt.Errorf("Cannot start batch %q in its current state '%s': %w", batch.Name, batch.Status, ErrOperationNotPermitted)
 		}
 

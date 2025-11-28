@@ -87,6 +87,17 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 	return resp, nil
 }
 
+func (b Batch) CanStart() bool {
+	switch b.Status {
+	case api.BATCHSTATUS_DEFINED,
+		api.BATCHSTATUS_ERROR,
+		api.BATCHSTATUS_STOPPED:
+		return true
+	default:
+		return false
+	}
+}
+
 func (b Batch) Validate() error {
 	if b.ID < 0 {
 		return NewValidationErrf("Invalid batch, id can not be negative")
