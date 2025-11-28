@@ -383,10 +383,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			return fmt.Errorf("Failed to get target %q properties: %w", target.Name, err)
 		}
 
-		// Determine what action, if any, the worker should start.
-		// The linter tries to be extra-smart here and inspects all the if-conditions below,
-		// but leaving this variable unset would make this whole block brittle to changes.
-		newStatusMessage := queueEntry.MigrationStatusMessage //nolint:ineffassign,staticcheck
+		newStatusMessage := queueEntry.MigrationStatusMessage
 		newStatus := queueEntry.MigrationStatus
 		newImportStage := queueEntry.ImportStage
 
@@ -620,7 +617,7 @@ func (s queueService) CancelByUUID(ctx context.Context, id uuid.UUID) (bool, err
 }
 
 // RetryByUUID restarts the queue entry if it has been cancelled.
-func (s queueService) RetryByUUID(ctx context.Context, id uuid.UUID) error {
+func (s queueService) RetryByUUID(ctx context.Context, id uuid.UUID, networkSvc NetworkService) error {
 	s.workerLock.Lock()
 	defer s.workerLock.Unlock()
 
@@ -639,7 +636,22 @@ func (s queueService) RetryByUUID(ctx context.Context, id uuid.UUID) error {
 			return err
 		}
 
+		windows, err := s.window.GetAllByBatch(ctx, q.BatchName)
+		if err != nil {
+			return err
+		}
+
 		inst, err := s.instance.GetByUUID(ctx, q.InstanceUUID)
+		if err != nil {
+			return err
+		}
+
+		networks, err := networkSvc.GetAllBySource(ctx, inst.Source)
+		if err != nil {
+			return err
+		}
+
+		placement, err := s.batch.DeterminePlacement(ctx, *inst, FilterUsedNetworks(networks, Instances{*inst}), *batch, windows)
 		if err != nil {
 			return err
 		}
@@ -652,7 +664,12 @@ func (s queueService) RetryByUUID(ctx context.Context, id uuid.UUID) error {
 			message = err.Error()
 		}
 
-		_, err = s.UpdateStatusByUUID(ctx, q.InstanceUUID, status, message, IMPORTSTAGE_BACKGROUND, nil)
-		return err
+		q.MigrationStatus = status
+		q.MigrationStatusMessage = message
+		q.ImportStage = IMPORTSTAGE_BACKGROUND
+		q.MigrationWindowName = sql.NullString{}
+		q.Placement = *placement
+
+		return s.Update(ctx, q)
 	})
 }

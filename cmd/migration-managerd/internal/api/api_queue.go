@@ -424,7 +424,7 @@ func queueRetry(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	err = d.queue.RetryByUUID(r.Context(), queueUUID)
+	err = d.queue.RetryByUUID(r.Context(), queueUUID, d.network)
 	if err != nil {
 		return response.SmartError(err)
 	}
