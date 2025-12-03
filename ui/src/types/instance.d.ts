@@ -29,6 +29,7 @@ export interface InstanceProperties {
   cpus: number;
   memory: number;
   location: string;
+  config: Record<string, string>;
   os: string;
   os_version: string;
   secure_boot: boolean;
