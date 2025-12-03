@@ -149,8 +149,8 @@ linters:
         text: comment-spacing
       - linters:
           - revive
-        # It's useful to have a util package but revive disagrees.
-        source: '^package util$'
+        # It's useful to have a util and API package but revive disagrees.
+        source: '^package (util|api)$'
         text: var-naming
       - linters:
           - sqlclosecheck
