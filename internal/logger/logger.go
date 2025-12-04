@@ -8,6 +8,10 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type Logger interface {
@@ -20,6 +24,26 @@ type Logger interface {
 	Warn(msg string, args ...any)
 	WarnContext(ctx context.Context, msg string, args ...any)
 	With(args ...any) *slog.Logger
+}
+
+func (h *Handler) SendLifecycle(ctx context.Context, event api.EventLifecycle) {
+	r := slog.NewRecord(time.Now(), slog.LevelInfo, string(api.LogScopeLifecycle), 0)
+	r.Add(slog.Any("event", event))
+	wg := sync.WaitGroup{}
+	for _, h := range h.handlers {
+		switch h.(type) {
+		case *slog.JSONHandler:
+		case *slog.TextHandler:
+		default:
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_ = h.Handle(ctx, r.Clone())
+			}()
+		}
+	}
+
+	wg.Wait()
 }
 
 func InitLogger(filepath string, verbose bool, debug bool) (*Handler, error) {
