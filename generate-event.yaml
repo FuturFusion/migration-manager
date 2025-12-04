@@ -1,0 +1,95 @@
+- name: instance
+  uri: /1.0/instances/%s
+  events:
+    - instance-imported
+    - instance-modified
+    - instance-removed
+    - instance-override-modified
+  path_args:
+    - name: id
+      type: uuid.UUID
+
+- name: network
+  uri: /1.0/networks/%s
+  events:
+    - network-imported
+    - network-modified
+    - network-removed
+    - network-override-modified
+  path_args:
+    - name: id
+      type: uuid.UUID
+
+- name: queue_entry
+  uri: /1.0/queue/%s
+  events:
+    - queue-entry-canceled
+    - queue-entry-retried
+    - queue-entry-removed
+  path_args:
+    - name: id
+      type: uuid.UUID
+
+- name: artifact
+  uri: /1.0/artifacts/%s
+  events:
+    - artifact-created
+    - artifact-modified
+    - artifact-removed
+  path_args:
+    - name: id
+      type: uuid.UUID
+
+- name: batch
+  uri: /1.0/batches/%s
+  events:
+    - batch-started
+    - batch-stopped
+    - batch-reset
+    - batch-created
+    - batch-modified
+    - batch-removed
+  path_args:
+    - name: id
+      type: string
+
+- name: source
+  uri: /1.0/sources/%s
+  events:
+    - source-created
+    - source-modified
+    - source-removed
+    - source-synced
+  path_args:
+    - name: id
+      type: string
+
+- name: target
+  uri: /1.0/targets/%s
+  events:
+    - target-created
+    - target-modified
+    - target-removed
+  path_args:
+    - name: id
+      type: string
+
+- name: system_settings
+  uri: /1.0/system/settings
+  events:
+    - system-settings-modified
+
+- name: system_network
+  uri: /1.0/system/network
+  events:
+    - system-network-modified
+
+- name: system_security
+  uri: /1.0/system/security
+  events:
+    - system-security-modified
+
+- name: system_certificate_post
+  uri: /1.0/system/certificate
+  events:
+    - system-certificate-modified
