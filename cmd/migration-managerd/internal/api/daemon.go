@@ -611,17 +611,7 @@ func (d *Daemon) setLogLevel(init bool, levelStr string) {
 		return
 	}
 
-	switch levelStr {
-	case slog.LevelDebug.String():
-		level = slog.LevelDebug
-	case slog.LevelInfo.String():
-		level = slog.LevelInfo
-	case slog.LevelWarn.String():
-		level = slog.LevelWarn
-	case slog.LevelError.String():
-		level = slog.LevelError
-	}
-
+	level = logger.ParseLevel(levelStr)
 	if level != d.logHandler.Level() {
 		d.logHandler.Set(level)
 	}

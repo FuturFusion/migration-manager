@@ -2,9 +2,12 @@ package logger
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"slices"
+	"strings"
 )
 
 type Logger interface {
@@ -60,4 +63,29 @@ func InitLogger(filepath string, verbose bool, debug bool) (*slog.LevelVar, erro
 // or to add stack trace information in debug mode.
 func Err(err error) slog.Attr {
 	return slog.Any("err", err)
+}
+
+func ValidateLevel(levelStr string) error {
+	validLogLevels := []string{slog.LevelDebug.String(), slog.LevelInfo.String(), slog.LevelWarn.String(), slog.LevelError.String()}
+	if !slices.Contains(validLogLevels, levelStr) {
+		return fmt.Errorf("Log level %q is invalid, must be one of %q", levelStr, strings.Join(validLogLevels, ","))
+	}
+
+	return nil
+}
+
+func ParseLevel(levelStr string) slog.Level {
+	level := slog.LevelWarn
+	switch levelStr {
+	case slog.LevelDebug.String():
+		level = slog.LevelDebug
+	case slog.LevelInfo.String():
+		level = slog.LevelInfo
+	case slog.LevelWarn.String():
+		level = slog.LevelWarn
+	case slog.LevelError.String():
+		level = slog.LevelError
+	}
+
+	return level
 }
