@@ -20,6 +20,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 var batchesCmd = APIEndpoint{
@@ -270,8 +271,9 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	for _, w := range apiBatch.MigrationWindows {
-		window := migration.Window{
+	windows := make(migration.Windows, len(apiBatch.MigrationWindows))
+	for i, w := range apiBatch.MigrationWindows {
+		windows[i] = migration.Window{
 			Name:    w.Name,
 			Start:   w.Start,
 			End:     w.End,
@@ -280,7 +282,7 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 			Config:  w.Config,
 		}
 
-		_, err = d.window.Create(ctx, window)
+		_, err = d.window.Create(ctx, windows[i])
 		if err != nil {
 			return response.SmartError(err)
 		}
@@ -290,6 +292,8 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewBatchEvent(event.BatchCreated, r, batch.ToAPI(windows), batch.Name))
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+batch.Name)
 }
@@ -315,11 +319,27 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 func batchDelete(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := d.batch.DeleteByName(r.Context(), name)
+	var batch api.Batch
+	err := transaction.Do(r.Context(), func(ctx context.Context) error {
+		b, err := d.batch.GetByName(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		windows, err := d.window.GetAllByBatch(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		batch = b.ToAPI(windows)
+
+		return d.batch.DeleteByName(ctx, name)
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
 
+	d.logHandler.SendLifecycle(r.Context(), event.NewBatchEvent(event.BatchRemoved, r, batch, batch.Name))
 	return response.EmptySyncResponse
 }
 
@@ -447,7 +467,7 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	err = d.batch.Update(ctx, d.queue, name, &migration.Batch{
+	newBatch := &migration.Batch{
 		ID:                currentBatch.ID,
 		Name:              batch.Name,
 		Status:            currentBatch.Status,
@@ -457,7 +477,9 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		Constraints:       batch.Constraints,
 		Config:            batch.Config,
 		Defaults:          batch.Defaults,
-	})
+	}
+
+	err = d.batch.Update(ctx, d.queue, name, newBatch)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating batch %q: %w", batch.Name, err))
 	}
@@ -483,6 +505,8 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewBatchEvent(event.BatchModified, r, newBatch.ToAPI(windows), newBatch.Name))
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/batches/"+batch.Name)
 }
@@ -653,10 +677,27 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Worker endpoint cannot use a wildcard address: %q", d.getWorkerEndpoint()))
 	}
 
-	err = d.batch.StartBatchByName(r.Context(), batchName, d.window, d.network, d.queue)
+	var batch api.Batch
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		b, err := d.batch.StartBatchByName(ctx, batchName, d.window, d.network, d.queue)
+		if err != nil {
+			return err
+		}
+
+		windows, err := d.window.GetAllByBatch(ctx, batchName)
+		if err != nil {
+			return err
+		}
+
+		batch = b.ToAPI(windows)
+
+		return nil
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewBatchEvent(event.BatchStarted, r, batch, batch.Name))
 
 	return response.SyncResponse(true, nil)
 }
@@ -686,10 +727,27 @@ func batchStopPost(d *Daemon, r *http.Request) response.Response {
 
 	name := r.PathValue("name")
 
-	err := d.batch.StopBatchByName(r.Context(), name)
+	var batch api.Batch
+	err := transaction.Do(r.Context(), func(ctx context.Context) error {
+		b, err := d.batch.StopBatchByName(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		windows, err := d.window.GetAllByBatch(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		batch = b.ToAPI(windows)
+
+		return nil
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewBatchEvent(event.BatchStopped, r, batch, batch.Name))
 
 	return response.SyncResponse(true, nil)
 }
@@ -714,6 +772,7 @@ func batchStopPost(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func batchResetPost(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
+	var apiBatch api.Batch
 	err := transaction.Do(r.Context(), func(ctx context.Context) error {
 		// Get a record of all queue entries before we wipe the records.
 		entries, err := d.queue.GetAllByBatch(ctx, name)
@@ -721,10 +780,17 @@ func batchResetPost(d *Daemon, r *http.Request) response.Response {
 			return err
 		}
 
-		err = d.batch.ResetBatchByName(ctx, name, d.queue, d.source, d.target)
+		batch, err := d.batch.ResetBatchByName(ctx, name, d.queue, d.source, d.target)
 		if err != nil {
 			return err
 		}
+
+		windows, err := d.window.GetAllByBatch(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		apiBatch = batch.ToAPI(windows)
 
 		// Get the list of VMs to to clean up.
 		instances, err := d.instance.GetAllQueued(ctx, entries)
@@ -783,6 +849,8 @@ func batchResetPost(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewBatchEvent(event.BatchReset, r, apiBatch, apiBatch.Name))
 
 	return response.SyncResponse(true, nil)
 }

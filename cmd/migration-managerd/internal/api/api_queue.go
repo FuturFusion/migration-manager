@@ -16,6 +16,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 var queueRootCmd = APIEndpoint{
@@ -306,10 +307,36 @@ func queueDelete(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	err = d.queue.DeleteByUUID(r.Context(), queueUUID)
+	var apiQueue api.QueueEntry
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		q, err := d.queue.GetByInstanceUUID(ctx, queueUUID)
+		if err != nil {
+			return err
+		}
+
+		window, err := d.queue.GetNextWindow(ctx, *q)
+		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return err
+		}
+
+		if window == nil {
+			window = &migration.Window{}
+		}
+
+		instance, err := d.instance.GetByUUID(ctx, q.InstanceUUID)
+		if err != nil {
+			return err
+		}
+
+		apiQueue = q.ToAPI(instance.GetName(), d.queueHandler.LastWorkerUpdate(q.InstanceUUID), *window)
+
+		return d.queue.DeleteByUUID(ctx, queueUUID)
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewQueueEntryEvent(event.QueueEntryRemoved, r, apiQueue, apiQueue.InstanceUUID))
 
 	return response.EmptySyncResponse
 }
@@ -345,8 +372,9 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 
 	var src *migration.Source
 	var location string
+	var apiQueue api.QueueEntry
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
-		begunFinalSteps, err := d.queue.CancelByUUID(ctx, queueUUID)
+		q, begunFinalSteps, err := d.queue.CancelByUUID(ctx, queueUUID)
 		if err != nil {
 			return err
 		}
@@ -367,6 +395,9 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 				return err
 			}
 		}
+
+		// Use an empty window since the queue entry is cancelled.
+		apiQueue = q.ToAPI(inst.GetName(), d.queueHandler.LastWorkerUpdate(q.InstanceUUID), migration.Window{})
 
 		return nil
 	})
@@ -391,6 +422,8 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 			return response.SmartError(err)
 		}
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewQueueEntryEvent(event.QueueEntryCanceled, r, apiQueue, apiQueue.InstanceUUID))
 
 	return response.EmptySyncResponse
 }
@@ -424,10 +457,36 @@ func queueRetry(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	err = d.queue.RetryByUUID(r.Context(), queueUUID, d.network)
+	var apiQueue api.QueueEntry
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		q, err := d.queue.RetryByUUID(ctx, queueUUID, d.network)
+		if err != nil {
+			return err
+		}
+
+		inst, err := d.instance.GetByUUID(ctx, queueUUID)
+		if err != nil {
+			return err
+		}
+
+		window, err := d.queue.GetNextWindow(ctx, *q)
+		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return err
+		}
+
+		if window == nil {
+			window = &migration.Window{}
+		}
+
+		apiQueue = q.ToAPI(inst.GetName(), d.queueHandler.LastWorkerUpdate(q.InstanceUUID), *window)
+
+		return nil
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewQueueEntryEvent(event.QueueEntryRetried, r, apiQueue, apiQueue.InstanceUUID))
 
 	return response.EmptySyncResponse
 }

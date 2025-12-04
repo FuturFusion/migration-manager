@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -15,6 +16,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 var sourcesCmd = APIEndpoint{
@@ -246,6 +248,8 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		metadata["certFingerprint"] = incusTLS.CertFingerprint(src.GetServerCertificate())
 	}
 
+	d.logHandler.SendLifecycle(r.Context(), event.NewSourceEvent(event.SourceCreated, r, src.ToAPI(), src.Name))
+
 	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+apiSrc.Name)
 }
 
@@ -270,10 +274,22 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 func sourceDelete(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := d.source.DeleteByName(r.Context(), name, d.instance)
+	var apiSrc api.Source
+	err := transaction.Do(r.Context(), func(ctx context.Context) error {
+		src, err := d.source.GetByName(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		apiSrc = src.ToAPI()
+
+		return d.source.DeleteByName(ctx, name, d.instance)
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewSourceEvent(event.SourceRemoved, r, apiSrc, apiSrc.Name))
 
 	return response.EmptySyncResponse
 }
@@ -456,6 +472,8 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		metadata["certFingerprint"] = incusTLS.CertFingerprint(src.GetServerCertificate())
 	}
 
+	d.logHandler.SendLifecycle(r.Context(), event.NewSourceEvent(event.SourceModified, r, src.ToAPI(), src.Name))
+
 	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/sources/"+apiSrc.Name)
 }
 
@@ -489,6 +507,8 @@ func sourceSyncPost(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewSourceEvent(event.SourceSynced, r, src.ToAPI(), src.Name))
 
 	return response.EmptySyncResponse
 }

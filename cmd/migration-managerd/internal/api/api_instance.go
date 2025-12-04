@@ -16,6 +16,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 var instancesCmd = APIEndpoint{
@@ -387,6 +388,9 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
 
+	apiInstance := currentInstance.ToAPI()
+	d.logHandler.SendLifecycle(r.Context(), event.NewInstanceEvent(event.InstanceOverrideModified, r, apiInstance, apiInstance.Properties.UUID))
+
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+UUIDString+"/override")
 }
 
@@ -416,6 +420,7 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
+	var apiInstance api.Instance
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
 		inst, err := d.instance.GetByUUID(ctx, instanceUUID)
 		if err != nil {
@@ -424,11 +429,15 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 
 		inst.Overrides = api.InstanceOverride{}
 
+		apiInstance = inst.ToAPI()
+
 		return d.instance.Update(ctx, inst)
 	})
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewInstanceEvent(event.InstanceOverrideModified, r, apiInstance, apiInstance.Properties.UUID))
 
 	return response.EmptySyncResponse
 }

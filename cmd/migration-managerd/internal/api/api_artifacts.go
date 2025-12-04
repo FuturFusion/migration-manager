@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 var artifactsCmd = APIEndpoint{
@@ -143,6 +144,8 @@ func artifactsPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	d.logHandler.SendLifecycle(r.Context(), event.NewArtifactEvent(event.ArtifactCreated, r, art.ToAPI(), art.UUID))
+
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/artifacts/"+art.UUID.String())
 }
 
@@ -252,6 +255,8 @@ func artifactPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	d.logHandler.SendLifecycle(r.Context(), event.NewArtifactEvent(event.ArtifactModified, r, art.ToAPI(), art.UUID))
+
 	return response.EmptySyncResponse
 }
 
@@ -304,6 +309,13 @@ func artifactFilesPost(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	art.Files, err = d.artifact.GetFiles(art.UUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewArtifactEvent(event.ArtifactModified, r, art.ToAPI(), art.UUID))
 
 	return response.EmptySyncResponse
 }
@@ -398,6 +410,8 @@ func artifactFileDelete(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewArtifactEvent(event.ArtifactRemoved, r, art.ToAPI(), art.UUID))
 
 	return response.EmptySyncResponse
 }

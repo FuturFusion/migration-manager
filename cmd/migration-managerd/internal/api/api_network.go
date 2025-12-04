@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 var networksCmd = APIEndpoint{
@@ -123,10 +124,25 @@ func networkDelete(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(fmt.Errorf("Invalid network UUID %q: %w", uuidStr, err))
 	}
 
-	err = d.network.DeleteByUUID(r.Context(), netUUID)
+	var apiNetwork *api.Network
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		network, err := d.network.GetByUUID(ctx, netUUID)
+		if err != nil {
+			return err
+		}
+
+		apiNetwork, err = network.ToAPI()
+		if err != nil {
+			return err
+		}
+
+		return d.network.DeleteByUUID(ctx, netUUID)
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewNetworkEvent(event.NetworkRemoved, r, *apiNetwork, apiNetwork.UUID))
 
 	return response.EmptySyncResponse
 }
@@ -251,7 +267,7 @@ func networkOverridePut(d *Daemon, r *http.Request) response.Response {
 		return response.PreconditionFailed(err)
 	}
 
-	err = d.network.Update(ctx, &migration.Network{
+	network := &migration.Network{
 		ID:               currentNetwork.ID,
 		UUID:             currentNetwork.UUID,
 		SourceSpecificID: currentNetwork.SourceSpecificID,
@@ -260,15 +276,24 @@ func networkOverridePut(d *Daemon, r *http.Request) response.Response {
 		Properties:       currentNetwork.Properties,
 		Source:           currentNetwork.Source,
 		Overrides:        overrides,
-	})
+	}
+
+	err = d.network.Update(ctx, network)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating network %q: %w", currentNetwork.UUID, err))
+	}
+
+	apiNetwork, err := network.ToAPI()
+	if err != nil {
+		return response.SmartError(err)
 	}
 
 	err = trans.Commit()
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed commit transaction: %w", err))
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewNetworkEvent(event.NetworkOverrideModified, r, *apiNetwork, apiNetwork.UUID))
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/networks/"+currentNetwork.UUID.String()+"/override")
 }
