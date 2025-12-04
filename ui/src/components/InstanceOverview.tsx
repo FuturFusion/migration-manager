@@ -27,6 +27,12 @@ const InstanceOverview = () => {
     return <div>Error while loading instances</div>;
   }
 
+  const configDiff = Object.fromEntries(
+    Object.entries(instance.overrides?.properties.config ?? []).filter(
+      ([key]) => !(key in instance.properties.config),
+    ),
+  );
+
   return (
     <>
       <h6 className="mb-3">General</h6>
@@ -57,13 +63,28 @@ const InstanceOverview = () => {
         <div className="row">
           <div className="col-2 detail-table-header">OS</div>
           <div className="col-10 detail-table-cell">
-            {instance.properties.os}
+            <ItemOverride
+              original={instance.properties.os}
+              override={instance.overrides && instance.overrides.properties.os}
+              showOverride={
+                hasOverride(instance) && instance.overrides.properties.os !== ""
+              }
+            />
           </div>
         </div>
         <div className="row">
           <div className="col-2 detail-table-header">OS version</div>
           <div className="col-10 detail-table-cell">
-            {instance.properties.os_version}
+            <ItemOverride
+              original={instance.properties.os_version}
+              override={
+                instance.overrides && instance.overrides.properties.os_version
+              }
+              showOverride={
+                hasOverride(instance) &&
+                instance.overrides.properties.os_version !== ""
+              }
+            />
           </div>
         </div>
         <div className="row">
@@ -136,6 +157,43 @@ const InstanceOverview = () => {
             {instance.properties.background_import ? "Yes" : "No"}
           </div>
         </div>
+        {Object.entries(instance.overrides?.properties.config ?? []).length >
+          0 && (
+          <div className="row">
+            <div className="col-2 detail-table-header">Config</div>
+            <div className="col-10 detail-table-cell">
+              <Table borderless size="sm" style={{ width: "auto" }}>
+                <tbody>
+                  {Object.entries(instance.properties.config).map(
+                    ([key, value]) => (
+                      <tr key={key}>
+                        <td>{key}</td>
+                        <td>
+                          <ItemOverride
+                            original={value}
+                            override={
+                              instance.overrides?.properties.config[key]
+                            }
+                            showOverride={
+                              (instance.overrides?.properties.config[key] ??
+                                "") !== ""
+                            }
+                          />
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                  {Object.entries(configDiff).map(([key, value]) => (
+                    <tr key={key}>
+                      <td>{key}</td>
+                      <td>{value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </div>
+          </div>
+        )}
       </div>
       {instance.properties.nics?.length > 0 && (
         <>
