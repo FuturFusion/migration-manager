@@ -21,9 +21,9 @@ type BatchService interface {
 	UpdateStatusByName(ctx context.Context, name string, status api.BatchStatusType, statusMessage string) (*Batch, error)
 	Rename(ctx context.Context, oldName string, newName string) error
 	DeleteByName(ctx context.Context, name string) error
-	StartBatchByName(ctx context.Context, name string, windowSvc WindowService, networkSvc NetworkService, queueSvc QueueService) error
-	StopBatchByName(ctx context.Context, name string) error
-	ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService) error
+	StartBatchByName(ctx context.Context, name string, windowSvc WindowService, networkSvc NetworkService, queueSvc QueueService) (*Batch, error)
+	StopBatchByName(ctx context.Context, name string) (*Batch, error)
+	ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService) (*Batch, error)
 
 	DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, windows Windows) (*api.Placement, error)
 }
