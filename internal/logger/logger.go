@@ -22,7 +22,7 @@ type Logger interface {
 	With(args ...any) *slog.Logger
 }
 
-func InitLogger(filepath string, verbose bool, debug bool) (*slog.LevelVar, error) {
+func InitLogger(filepath string, verbose bool, debug bool) (*Handler, error) {
 	level := slog.LevelWarn
 	if verbose {
 		level = slog.LevelInfo
@@ -43,18 +43,16 @@ func InitLogger(filepath string, verbose bool, debug bool) (*slog.LevelVar, erro
 		writer = io.MultiWriter(writer, f)
 	}
 
-	var handler slog.LevelVar
-	handler.Set(level)
-
-	logger := slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{
-		Level: &handler,
+	defaultOptions := slog.HandlerOptions{
 		// Add source information, if debug level is enabled.
 		AddSource: debug,
-	}))
+	}
 
+	handler := NewLogHandler(level, defaultOptions, slog.NewTextHandler(writer, &defaultOptions))
+	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
-	return &handler, nil
+	return handler, nil
 }
 
 // Err is a helper function to ensure errors are always logged with the key

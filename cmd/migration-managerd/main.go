@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 
@@ -24,7 +23,7 @@ type cmdGlobal struct {
 	flagLogDebug   bool
 	flagLogVerbose bool
 
-	logHandler *slog.LevelVar
+	logHandler *logger.Handler
 }
 
 func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {

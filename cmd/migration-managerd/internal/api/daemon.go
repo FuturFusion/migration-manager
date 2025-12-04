@@ -66,7 +66,7 @@ type APIEndpointAction struct {
 type Daemon struct {
 	db          *db.Node
 	os          *sys.OS
-	logHandler  *slog.LevelVar
+	logHandler  *logger.Handler
 	migrationCh chan struct{}
 
 	queueHandler *queue.Handler
@@ -97,7 +97,7 @@ type Daemon struct {
 	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
 }
 
-func NewDaemon(logHandler *slog.LevelVar) *Daemon {
+func NewDaemon(logHandler *logger.Handler) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	d := &Daemon{
