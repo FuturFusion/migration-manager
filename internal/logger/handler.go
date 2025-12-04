@@ -5,6 +5,8 @@ import (
 	"errors"
 	"log/slog"
 	"sync"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type Handler struct {
@@ -27,6 +29,37 @@ func NewLogHandler(level slog.Level, options slog.HandlerOptions, handlers ...sl
 		options:  options,
 		handlers: handlers,
 	}
+}
+
+// SetHandlers replaces the log handler set with additional config-based handlers, keeping any default handlers.
+func (h *Handler) SetHandlers(cfgs []api.SystemSettingsLog) error {
+	newHandlers := []slog.Handler{}
+	for _, h := range h.handlers {
+		switch h.(type) {
+		case *slog.JSONHandler:
+			newHandlers = append(newHandlers, h)
+		case *slog.TextHandler:
+			newHandlers = append(newHandlers, h)
+		}
+	}
+
+	for _, cfg := range cfgs {
+		var handler slog.Handler
+		var err error
+		switch cfg.Type {
+		case api.LogTypeWebhook:
+			handler, err = NewWebhookLogger(cfg)
+			if err != nil {
+				return err
+			}
+		}
+
+		newHandlers = append(newHandlers, handler)
+	}
+
+	h.handlers = newHandlers
+
+	return nil
 }
 
 // Enabled returns true if any logger is enabled for the level.

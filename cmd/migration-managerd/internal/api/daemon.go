@@ -639,6 +639,10 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 		}
 
 		d.setLogLevel(init, applyCfg.Settings.LogLevel)
+		err = d.logHandler.SetHandlers(applyCfg.Settings.LogTargets)
+		if err != nil {
+			return err
+		}
 
 		if changedNetwork {
 			errCh := d.updateHTTPListener(applyCfg.Network.Address)
