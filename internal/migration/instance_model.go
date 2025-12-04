@@ -27,14 +27,6 @@ type Instance struct {
 	Properties api.InstanceProperties `db:"marshal=json"`
 }
 
-type InstanceFilterable struct {
-	api.InstanceProperties
-
-	Source               string         `expr:"source"`
-	SourceType           api.SourceType `expr:"source_type"`
-	LastUpdateFromSource time.Time      `expr:"last_update_from_source"`
-}
-
 func (i Instance) Validate() error {
 	if i.UUID == uuid.Nil {
 		return NewValidationErrf("Invalid instance, UUID can not be empty")
@@ -143,8 +135,7 @@ func (i *Instance) GetOSType() api.OSType {
 }
 
 func (i Instance) MatchesCriteria(expression string) (bool, error) {
-	filterable := i.ToFilterable()
-	includeExpr, err := filterable.CompileIncludeExpression(expression)
+	filterable, includeExpr, err := i.CompileIncludeExpression(expression)
 	if err != nil {
 		return false, fmt.Errorf("Failed to compile include expression %q: %v", expression, err)
 	}
@@ -162,7 +153,8 @@ func (i Instance) MatchesCriteria(expression string) (bool, error) {
 	return result, nil
 }
 
-func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Program, error) {
+func (i Instance) CompileIncludeExpression(expression string) (*api.InstanceFilterable, *vm.Program, error) {
+	filterable := i.ToAPI().ToFilterable()
 	matchTag := func(exact bool, params ...any) (any, error) {
 		if len(params) != 2 {
 			return nil, fmt.Errorf("invalid number of arguments, expected <category> <tag>, got %d arguments", len(params))
@@ -189,7 +181,7 @@ func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Pro
 		}
 
 		if category == "*" {
-			for k, v := range i.Config {
+			for k, v := range filterable.Config {
 				if strings.HasPrefix(k, "tag.") && containsFunc(v) {
 					return true, nil
 				}
@@ -198,7 +190,7 @@ func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Pro
 			return false, nil
 		}
 
-		tagList, ok := i.Config["tag."+category]
+		tagList, ok := filterable.Config["tag."+category]
 		if !ok {
 			return false, nil
 		}
@@ -247,7 +239,7 @@ func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Pro
 	}
 
 	// Instantiate all nil fields when compiling the expression for consistency.
-	baseEnv := InstanceFilterable{
+	baseEnv := api.InstanceFilterable{
 		InstanceProperties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
 				Config: map[string]string{},
@@ -260,22 +252,15 @@ func (i InstanceFilterable) CompileIncludeExpression(expression string) (*vm.Pro
 
 	options := append([]expr.Option{expr.Env(baseEnv)}, customFunctions...)
 
-	return expr.Compile(expression, options...)
+	program, err := expr.Compile(expression, options...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &filterable, program, nil
 }
 
 type Instances []Instance
-
-func (i Instance) ToFilterable() InstanceFilterable {
-	props := i.Properties
-	props.Apply(i.Overrides.Properties)
-
-	return InstanceFilterable{
-		InstanceProperties:   props,
-		Source:               i.Source,
-		SourceType:           i.SourceType,
-		LastUpdateFromSource: i.LastUpdateFromSource,
-	}
-}
 
 func (i Instance) ToAPI() api.Instance {
 	apiInst := api.Instance{
