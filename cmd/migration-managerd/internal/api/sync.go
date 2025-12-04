@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 // syncLock ensures source syncing is sequential.
@@ -107,9 +108,11 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 	log := slog.With(slog.String("method", "syncAllSources"))
 	vmSourcesByName := map[string]migration.Source{}
 	networkSourcesByName := map[string]migration.Source{}
+	var sources migration.Sources
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the list of configured sources.
-		sources, err := d.source.GetAll(ctx)
+		var err error
+		sources, err = d.source.GetAll(ctx)
 		if err != nil {
 			return fmt.Errorf("Failed to get all sources: %w", err)
 		}
@@ -494,7 +497,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 				existingInstances[inst.UUID] = inst
 			}
 
-			srcWarnings, err := syncInstancesFromSource(ctx, srcName, d.instance, existingInstances, srcInstances)
+			srcWarnings, err := d.syncInstancesFromSource(ctx, srcName, d.instance, existingInstances, srcInstances)
 			if err != nil {
 				return fmt.Errorf("Failed to sync instances from %q: %w", srcName, err)
 			}
@@ -598,6 +601,13 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 				return err
 			}
 
+			apiNet, err := network.ToAPI()
+			if err != nil {
+				return err
+			}
+
+			d.logHandler.SendLifecycle(ctx, event.NewNetworkEvent(event.NetworkRemoved, nil, *apiNet, apiNet.UUID))
+
 			continue
 		}
 
@@ -623,6 +633,13 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 			if err != nil {
 				return fmt.Errorf("Failed to update network: %w", err)
 			}
+
+			apiNet, err := network.ToAPI()
+			if err != nil {
+				return err
+			}
+
+			d.logHandler.SendLifecycle(ctx, event.NewNetworkEvent(event.NetworkModified, nil, *apiNet, apiNet.UUID))
 		}
 	}
 
@@ -632,10 +649,17 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 		if !ok {
 			log := log.With(slog.String("network_id", network.SourceSpecificID), slog.String("network", network.Location))
 			log.Info("Recording new network detected on source")
-			_, err := n.Create(ctx, network)
+			newNet, err := n.Create(ctx, network)
 			if err != nil {
 				return fmt.Errorf("Failed to create network %q (%q): %w", network.SourceSpecificID, network.Location, err)
 			}
+
+			apiNet, err := newNet.ToAPI()
+			if err != nil {
+				return err
+			}
+
+			d.logHandler.SendLifecycle(ctx, event.NewNetworkEvent(event.NetworkImported, nil, *apiNet, apiNet.UUID))
 		}
 	}
 
@@ -643,7 +667,7 @@ func (d *Daemon) syncNetworksFromSource(ctx context.Context, sourceName string, 
 }
 
 // syncInstancesFromSource updates migration manager's internal record of instances from the source.
-func syncInstancesFromSource(ctx context.Context, sourceName string, i migration.InstanceService, existingInstances map[uuid.UUID]migration.Instance, srcInstances map[uuid.UUID]migration.Instance) (migration.Warnings, error) {
+func (d *Daemon) syncInstancesFromSource(ctx context.Context, sourceName string, i migration.InstanceService, existingInstances map[uuid.UUID]migration.Instance, srcInstances map[uuid.UUID]migration.Instance) (migration.Warnings, error) {
 	log := slog.With(
 		slog.String("method", "syncInstancesFromSource"),
 		slog.String("source", sourceName),
@@ -664,6 +688,8 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 
 			if err != nil {
 				log.Error("Failed to delete instance", slog.Any("error", err))
+			} else {
+				d.logHandler.SendLifecycle(ctx, event.NewInstanceEvent(event.InstanceRemoved, nil, inst.ToAPI(), inst.UUID))
 			}
 
 			continue
@@ -830,6 +856,8 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 
 			if err != nil {
 				log.Error("Failed to update instance", slog.Any("error", err))
+			} else {
+				d.logHandler.SendLifecycle(ctx, event.NewInstanceEvent(event.InstanceModified, nil, inst.ToAPI(), inst.UUID))
 			}
 		}
 	}
@@ -844,10 +872,12 @@ func syncInstancesFromSource(ctx context.Context, sourceName string, i migration
 			)
 
 			log.Info("Recording new instance detected on source")
-			_, err := i.Create(ctx, inst)
+			newInst, err := i.Create(ctx, inst)
 			if err != nil {
 				return nil, fmt.Errorf("Failed to create instance %q (%q): %w", inst.UUID.String(), inst.Properties.Location, err)
 			}
+
+			d.logHandler.SendLifecycle(ctx, event.NewInstanceEvent(event.InstanceImported, nil, newInst.ToAPI(), newInst.UUID))
 		}
 	}
 
