@@ -100,6 +100,10 @@ func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
 		newCfg.Settings.LogLevel = strings.ToUpper(s.Settings.LogLevel)
 	}
 
+	for i := range newCfg.Settings.LogTargets {
+		newCfg.Settings.LogTargets[i] = logger.WebhookDefaultConfig(newCfg.Settings.LogTargets[i])
+	}
+
 	return &newCfg, nil
 }
 
@@ -179,6 +183,20 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 	err = logger.ValidateLevel(newCfg.Settings.LogLevel)
 	if err != nil {
 		return err
+	}
+
+	loggerNames := map[string]bool{}
+	for _, cfg := range newCfg.Settings.LogTargets {
+		err := logger.WebhookValidateConfig(cfg)
+		if err != nil {
+			return err
+		}
+
+		if loggerNames[cfg.Name] {
+			return fmt.Errorf("Log target %q is defined more than once", cfg.Name)
+		}
+
+		loggerNames[cfg.Name] = true
 	}
 
 	return nil
