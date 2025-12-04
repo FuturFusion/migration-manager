@@ -1543,7 +1543,7 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 			batchSvc := migration.NewBatchService(repo, instanceSvc)
 
 			// Run test
-			err := batchSvc.StartBatchByName(context.Background(), tc.batchName, windowSvc, networkSvc, queueSvc)
+			_, err := batchSvc.StartBatchByName(context.Background(), tc.batchName, windowSvc, networkSvc, queueSvc)
 
 			// Assert
 			tc.assertErr(t, err)
@@ -1637,7 +1637,7 @@ func TestBatchService_StopBatchByName(t *testing.T) {
 			batchSvc := migration.NewBatchService(repo, nil)
 
 			// Run test
-			err := batchSvc.StopBatchByName(context.Background(), tc.nameArg)
+			_, err := batchSvc.StopBatchByName(context.Background(), tc.nameArg)
 
 			// Assert
 			tc.assertErr(t, err)

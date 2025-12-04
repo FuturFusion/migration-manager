@@ -22,6 +22,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/migration-manager/internal/db"
+	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite"
 	"github.com/FuturFusion/migration-manager/internal/migration/repo/sqlite/entities"
@@ -365,13 +366,14 @@ func daemonSetup(t *testing.T) *Daemon {
 
 	var err error
 
-	logger := slog.New(slog.DiscardHandler)
-
 	tmpDir := t.TempDir()
 	require.NoError(t, os.Setenv("MIGRATION_MANAGER_DIR", tmpDir))
 	require.NoError(t, os.Unsetenv("MIGRATION_MANAGER_TESTING"))
 
-	daemon := NewDaemon(&slog.LevelVar{})
+	handler := logger.NewLogHandler(slog.LevelWarn, slog.HandlerOptions{}, slog.DiscardHandler)
+	log := slog.New(handler)
+
+	daemon := NewDaemon(handler)
 	daemon.config = api.SystemConfig{
 		Settings: api.SystemSettings{
 			SyncInterval: "10m",
@@ -406,7 +408,7 @@ func daemonSetup(t *testing.T) *Daemon {
 	require.NoError(t, err)
 	daemon.config.Security.TrustedTLSClientCertFingerprints = append(daemon.config.Security.TrustedTLSClientCertFingerprints, fp)
 
-	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, logger, daemon.config.Security.TrustedTLSClientCertFingerprints)
+	daemon.authorizer, err = auth.LoadAuthorizer(context.TODO(), auth.DriverTLS, log, daemon.config.Security.TrustedTLSClientCertFingerprints)
 	require.NoError(t, err)
 
 	daemon.oidcVerifier, err = oidc.NewVerifier(daemon.config.Security.OIDC.Issuer, daemon.config.Security.OIDC.ClientID, daemon.config.Security.OIDC.Scope, daemon.config.Security.OIDC.Audience, daemon.config.Security.OIDC.Claim)
