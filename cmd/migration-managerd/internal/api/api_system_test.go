@@ -375,3 +375,281 @@ func TestNetworkUpdate(t *testing.T) {
 		})
 	}
 }
+
+func TestSystemLogTargets(t *testing.T) {
+	certPEM, _, err := incusTLS.GenerateMemCert(false, false)
+	require.NoError(t, err)
+
+	cases := []struct {
+		name       string
+		config     []api.SystemSettingsLog
+		wantConfig []api.SystemSettingsLog
+
+		wantHTTPStatus int
+	}{
+		{
+			name: "success - with defaults",
+			config: []api.SystemSettingsLog{
+				{
+					Name:    "test",
+					Type:    api.LogTypeWebhook,
+					Address: "https://example.com",
+					Scopes:  []api.LogScope{api.LogScopeLifecycle},
+				},
+			},
+			wantConfig: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "WARN",
+					Address:    "https://example.com",
+					Username:   "",
+					Password:   "",
+					CACert:     "",
+					RetryCount: 3,
+					Scopes:     []api.LogScope{api.LogScopeLifecycle},
+				},
+			},
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name: "success - full",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "https://example.com",
+					Username:   "user",
+					Password:   "password",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantConfig: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "ERROR",
+					Address:    "https://example.com",
+					Username:   "user",
+					Password:   "password",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name: "error - duplicate names",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "https://example.com",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "https://example.com",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - empty name",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "https://example.com",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - invalid name",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "fake name",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "https://example.com",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - empty type",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       "",
+					Level:      "error",
+					Address:    "https://example.com",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - invalid type",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogType("fake"),
+					Level:      "error",
+					Address:    "https://example.com",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - invalid log level",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "bad",
+					Address:    "https://example.com",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - empty address",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - invalid address",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "fake",
+					CACert:     string(certPEM),
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - invalid cert",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "https://example.com",
+					CACert:     "fake",
+					RetryCount: 1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - negative retries",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "https://example.com",
+					RetryCount: -1,
+					Scopes:     []api.LogScope{api.LogScopeLogging},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - empty scopes",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "https://example.com",
+					RetryCount: 1,
+					Scopes:     []api.LogScope{},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name: "error - invalid scopes",
+			config: []api.SystemSettingsLog{
+				{
+					Name:       "test",
+					Type:       api.LogTypeWebhook,
+					Level:      "error",
+					Address:    "https://example.com",
+					RetryCount: 1,
+					Scopes:     []api.LogScope{"fake"},
+				},
+			},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
+			// Setup
+			daemon := daemonSetup(t)
+
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemSettingsCmd}, nil)
+			daemon.config.Settings.LogLevel = "WARN"
+
+			b, err := json.Marshal(api.SystemSettings{LogTargets: tc.config})
+			require.NoError(t, err)
+
+			oldCfg := daemon.config
+			statusCode, _ := probeAPI(t, client, http.MethodPut, srvURL+"/1.0/system/settings", bytes.NewBuffer(b), nil)
+
+			require.Equal(t, tc.wantHTTPStatus, statusCode)
+			require.Equal(t, tc.wantConfig, daemon.config.Settings.LogTargets)
+			if tc.wantHTTPStatus != http.StatusOK {
+				require.Equal(t, oldCfg.Settings.LogTargets, daemon.config.Settings.LogTargets)
+			}
+		})
+	}
+}
