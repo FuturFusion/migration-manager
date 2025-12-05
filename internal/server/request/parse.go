@@ -6,8 +6,6 @@ import (
 	"net/url"
 
 	"github.com/lxc/incus/v6/shared/api"
-
-	"github.com/FuturFusion/migration-manager/internal/logger"
 )
 
 // ProjectParam returns the project query parameter from the given request or "default" if parameter is not set.
@@ -29,7 +27,7 @@ func QueryParam(request *http.Request, key string) string {
 	if request.URL != nil {
 		values, err = url.ParseQuery(request.URL.RawQuery)
 		if err != nil {
-			slog.Warn("Failed to parse query string", slog.String("query", request.URL.RawQuery), logger.Err(err))
+			slog.Warn("Failed to parse query string", slog.String("query", request.URL.RawQuery), slog.Any("error", err))
 			return ""
 		}
 	}
