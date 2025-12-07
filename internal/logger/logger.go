@@ -2,9 +2,16 @@ package logger
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"slices"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type Logger interface {
@@ -19,7 +26,27 @@ type Logger interface {
 	With(args ...any) *slog.Logger
 }
 
-func InitLogger(filepath string, verbose bool, debug bool) (*slog.LevelVar, error) {
+func (h *Handler) SendLifecycle(ctx context.Context, event api.EventLifecycle) {
+	r := slog.NewRecord(time.Now(), slog.LevelInfo, string(api.LogScopeLifecycle), 0)
+	r.Add(slog.Any("event", event))
+	wg := sync.WaitGroup{}
+	for _, h := range h.handlers {
+		switch h.(type) {
+		case *slog.JSONHandler:
+		case *slog.TextHandler:
+		default:
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_ = h.Handle(ctx, r.Clone())
+			}()
+		}
+	}
+
+	wg.Wait()
+}
+
+func InitLogger(filepath string, verbose bool, debug bool) (*Handler, error) {
 	level := slog.LevelWarn
 	if verbose {
 		level = slog.LevelInfo
@@ -40,18 +67,16 @@ func InitLogger(filepath string, verbose bool, debug bool) (*slog.LevelVar, erro
 		writer = io.MultiWriter(writer, f)
 	}
 
-	var handler slog.LevelVar
-	handler.Set(level)
-
-	logger := slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{
-		Level: &handler,
+	defaultOptions := slog.HandlerOptions{
 		// Add source information, if debug level is enabled.
 		AddSource: debug,
-	}))
+	}
 
+	handler := NewLogHandler(level, defaultOptions, slog.NewTextHandler(writer, &defaultOptions))
+	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
-	return &handler, nil
+	return handler, nil
 }
 
 // Err is a helper function to ensure errors are always logged with the key
@@ -60,4 +85,29 @@ func InitLogger(filepath string, verbose bool, debug bool) (*slog.LevelVar, erro
 // or to add stack trace information in debug mode.
 func Err(err error) slog.Attr {
 	return slog.Any("err", err)
+}
+
+func ValidateLevel(levelStr string) error {
+	validLogLevels := []string{slog.LevelDebug.String(), slog.LevelInfo.String(), slog.LevelWarn.String(), slog.LevelError.String()}
+	if !slices.Contains(validLogLevels, levelStr) {
+		return fmt.Errorf("Log level %q is invalid, must be one of %q", levelStr, strings.Join(validLogLevels, ","))
+	}
+
+	return nil
+}
+
+func ParseLevel(levelStr string) slog.Level {
+	level := slog.LevelWarn
+	switch levelStr {
+	case slog.LevelDebug.String():
+		level = slog.LevelDebug
+	case slog.LevelInfo.String():
+		level = slog.LevelInfo
+	case slog.LevelWarn.String():
+		level = slog.LevelWarn
+	case slog.LevelError.String():
+		level = slog.LevelError
+	}
+
+	return level
 }

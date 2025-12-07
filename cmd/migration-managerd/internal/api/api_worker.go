@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
@@ -16,6 +17,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 var workerUpdateCmd = APIEndpoint{
@@ -81,6 +83,56 @@ func workerCommandPost(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	getLifecycleData := func(action api.LifecycleAction) (*api.EventLifecycle, error) {
+		var eventResp api.EventLifecycle
+		err := transaction.Do(r.Context(), func(ctx context.Context) error {
+			q, err := d.queue.GetByInstanceUUID(ctx, instanceUUID)
+			if err != nil {
+				return err
+			}
+
+			inst, err := d.instance.GetByUUID(ctx, instanceUUID)
+			if err != nil {
+				return err
+			}
+
+			window, err := d.queue.GetNextWindow(ctx, *q)
+			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+				return err
+			}
+
+			if window == nil {
+				window = &migration.Window{}
+			}
+
+			eventResp = event.NewMigrationEvent(action, inst.ToAPI(), q.ToAPI(inst.GetName(), d.queueHandler.LastWorkerUpdate(inst.UUID), *window))
+
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return &eventResp, nil
+	}
+
+	switch workerCommand.Command {
+	case api.WORKERCOMMAND_IMPORT_DISKS:
+		msg, err := getLifecycleData(event.MigrationSyncStarted)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		d.logHandler.SendLifecycle(r.Context(), *msg)
+	case api.WORKERCOMMAND_FINALIZE_IMPORT:
+		msg, err := getLifecycleData(event.MigrationFinalStarted)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		d.logHandler.SendLifecycle(r.Context(), *msg)
+	}
+
 	d.queueHandler.RecordWorkerUpdate(instanceUUID)
 	return response.SyncResponseETag(true, api.WorkerCommand{
 		Command:      workerCommand.Command,
@@ -120,6 +172,50 @@ func workerUpdatePost(d *Daemon, r *http.Request) response.Response {
 	updatedEntry, err := d.queue.ProcessWorkerUpdate(r.Context(), instanceUUID, resp.Status, resp.StatusMessage)
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	getLifecycleData := func(action api.LifecycleAction) (*api.EventLifecycle, error) {
+		var eventResp api.EventLifecycle
+		err := transaction.Do(r.Context(), func(ctx context.Context) error {
+			inst, err := d.instance.GetByUUID(ctx, instanceUUID)
+			if err != nil {
+				return err
+			}
+
+			window, err := d.queue.GetNextWindow(ctx, updatedEntry)
+			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+				return err
+			}
+
+			if window == nil {
+				window = &migration.Window{}
+			}
+
+			eventResp = event.NewMigrationEvent(action, inst.ToAPI(), updatedEntry.ToAPI(inst.GetName(), d.queueHandler.LastWorkerUpdate(inst.UUID), *window))
+
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		return &eventResp, nil
+	}
+
+	if updatedEntry.MigrationStatus == api.MIGRATIONSTATUS_IDLE && updatedEntry.ImportStage == migration.IMPORTSTAGE_FINAL {
+		msg, err := getLifecycleData(event.MigrationSyncCompleted)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		d.logHandler.SendLifecycle(r.Context(), *msg)
+	} else if updatedEntry.MigrationStatus == api.MIGRATIONSTATUS_WORKER_DONE {
+		msg, err := getLifecycleData(event.MigrationFinalCompleted)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		d.logHandler.SendLifecycle(r.Context(), *msg)
 	}
 
 	if updatedEntry.MigrationStatus == api.MIGRATIONSTATUS_ERROR {

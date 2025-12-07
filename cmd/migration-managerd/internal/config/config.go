@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -14,6 +13,7 @@ import (
 	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
 
+	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/ports"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -100,6 +100,10 @@ func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
 		newCfg.Settings.LogLevel = strings.ToUpper(s.Settings.LogLevel)
 	}
 
+	for i := range newCfg.Settings.LogTargets {
+		newCfg.Settings.LogTargets[i] = logger.WebhookDefaultConfig(newCfg.Settings.LogTargets[i])
+	}
+
 	return &newCfg, nil
 }
 
@@ -176,9 +180,23 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 		return fmt.Errorf("Sync interval %q is too frequent, must be at least 1s", newCfg.Settings.SyncInterval)
 	}
 
-	validLogLevels := []string{slog.LevelDebug.String(), slog.LevelInfo.String(), slog.LevelWarn.String(), slog.LevelError.String()}
-	if !slices.Contains(validLogLevels, newCfg.Settings.LogLevel) {
-		return fmt.Errorf("Log level %q is invalid, must be one of %q", newCfg.Settings.LogLevel, strings.Join(validLogLevels, ","))
+	err = logger.ValidateLevel(newCfg.Settings.LogLevel)
+	if err != nil {
+		return err
+	}
+
+	loggerNames := map[string]bool{}
+	for _, cfg := range newCfg.Settings.LogTargets {
+		err := logger.WebhookValidateConfig(cfg)
+		if err != nil {
+			return err
+		}
+
+		if loggerNames[cfg.Name] {
+			return fmt.Errorf("Log target %q is defined more than once", cfg.Name)
+		}
+
+		loggerNames[cfg.Name] = true
 	}
 
 	return nil

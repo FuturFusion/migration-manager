@@ -590,11 +590,12 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 }
 
 // CancelByUUID cancels the queue entry if it has not yet finished.
-func (s queueService) CancelByUUID(ctx context.Context, id uuid.UUID) (bool, error) {
+func (s queueService) CancelByUUID(ctx context.Context, id uuid.UUID) (*QueueEntry, bool, error) {
 	s.workerLock.Lock()
 	defer s.workerLock.Unlock()
 
 	var isCommitted bool
+	var newQueue *QueueEntry
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		q, err := s.repo.GetByInstanceUUID(ctx, id)
 		if err != nil {
@@ -606,23 +607,29 @@ func (s queueService) CancelByUUID(ctx context.Context, id uuid.UUID) (bool, err
 			return fmt.Errorf("Queue entry %q is already finished", q.InstanceUUID)
 		}
 
-		_, err = s.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_CANCELED, q.MigrationStatusMessage, IMPORTSTAGE_BACKGROUND, nil)
-		return err
+		newQueue, err = s.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_CANCELED, q.MigrationStatusMessage, IMPORTSTAGE_BACKGROUND, nil)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	})
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
 
-	return isCommitted, nil
+	return newQueue, isCommitted, nil
 }
 
 // RetryByUUID restarts the queue entry if it has been cancelled.
-func (s queueService) RetryByUUID(ctx context.Context, id uuid.UUID, networkSvc NetworkService) error {
+func (s queueService) RetryByUUID(ctx context.Context, id uuid.UUID, networkSvc NetworkService) (*QueueEntry, error) {
 	s.workerLock.Lock()
 	defer s.workerLock.Unlock()
 
-	return transaction.Do(ctx, func(ctx context.Context) error {
-		q, err := s.repo.GetByInstanceUUID(ctx, id)
+	var q *QueueEntry
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		q, err = s.repo.GetByInstanceUUID(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -672,4 +679,9 @@ func (s queueService) RetryByUUID(ctx context.Context, id uuid.UUID, networkSvc 
 
 		return s.Update(ctx, q)
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return q, nil
 }

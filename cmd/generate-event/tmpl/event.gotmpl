@@ -1,0 +1,82 @@
+package event
+
+import (
+  "encoding/json"
+	"fmt"
+	"net/url"
+	"net/http"
+
+  "github.com/google/uuid"
+
+	"github.com/FuturFusion/migration-manager/internal/ptr"
+	"github.com/FuturFusion/migration-manager/internal/server/request"
+	"github.com/FuturFusion/migration-manager/shared/api"
+)
+
+const (
+{{- range .Events }}
+ {{ . | pascalcase }} api.LifecycleAction = "{{ . }}"
+{{- end }}
+)
+
+
+func {{.Name | pascalcase }}URI(
+{{- range .PathArgs -}}
+{{ .Name | camelcase }} {{ .Type }},
+{{- end -}}
+{{- range .QueryArgs -}}
+{{ .Name | camelcase }} *{{ .Type }},
+{{- end -}}
+) string {
+{{ if eq (len .PathArgs) 0 -}}
+  return "{{ .URI }}"
+{{- else -}}
+  uri := fmt.Sprintf("{{ .URI}}", {{- range .PathArgs}} {{ if ne .ToString "" }} {{ .ToString }} {{ else }} {{ .Name | camelcase }} {{ end }}, {{- end }})
+  {{- if gt (len .QueryArgs) 0 -}}
+    params := url.Values{}
+    {{- range .QueryArgs }}
+      {{ if ne .Default "" }}
+        if {{ .Name }} == nil  {
+          {{ .Name }} = ptr.To({{ .Default }})
+        }
+      {{ end }}
+
+      if {{ .Name }} != nil {
+        params.Set("{{ .Name }}", {{ if ne .ToString "" }} {{ .ToString }}  {{ else }} *{{ .Name }}  {{ end }})
+      }
+
+    {{- end }}
+
+    paramsStr := params.Encode()
+    if paramsStr != "" {
+      uri = uri + "?" + paramsStr
+    }
+  {{- end }}
+
+return uri
+{{- end -}}
+}
+
+func New{{ .Name | pascalcase }}Event(action api.LifecycleAction, r *http.Request, entity api.{{ .Name | pascalcase }},
+{{- range .PathArgs -}}
+{{ .Name | camelcase }} {{ .Type }},
+{{- end -}}
+{{- range .QueryArgs -}} {{ .Name | camelcase }} *{{ .Type }},
+{{- end -}}
+) api.EventLifecycle {
+b, _ := json.Marshal(entity)
+
+return api.EventLifecycle{
+  Action: string(action),
+  Requestor: request.CreateRequestor(r),
+  Entities: []string{ {{ .Name | pascalcase }}URI(
+  {{- range .PathArgs -}}
+  {{ .Name | camelcase }},
+  {{- end -}}
+  {{- range .QueryArgs -}}
+  {{ .Name | camelcase }},
+  {{- end -}}
+  )},
+  Metadata: b,
+}
+}

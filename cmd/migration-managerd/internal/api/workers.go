@@ -22,6 +22,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 type Task string
@@ -442,7 +443,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 
 		instanceNetworks := migration.FilterUsedNetworks(allNetworks, instanceList)
 		return util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, inst migration.Instance) error {
-			return d.createTargetVM(ctx, state.Batch, inst, state.Targets[inst.UUID], state.Sources[instUUID], state.QueueEntries[instUUID], instanceNetworks, cleanupInstances)
+			return d.createTargetVM(ctx, state.Batch, inst, state.Targets[inst.UUID], state.Sources[instUUID], state.QueueEntries[instUUID], instanceNetworks, state.Windows, cleanupInstances)
 		})
 	})
 	if err != nil {
@@ -541,7 +542,7 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 // Concurrently create target VMs for each instance record.
 // Any instance that fails the migration has its state set to ERROR.
 // - cleanupInstances determines whether a target VM should be deleted if it encounters an error.
-func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst migration.Instance, t migration.Target, s migration.Source, q migration.QueueEntry, networks migration.Networks, cleanupInstances bool) (_err error) {
+func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst migration.Instance, t migration.Target, s migration.Source, q migration.QueueEntry, networks migration.Networks, windows map[string]migration.Window, cleanupInstances bool) (_err error) {
 	log := slog.With(
 		slog.String("method", "createTargetVM"),
 		slog.String("instance", inst.Properties.Location),
@@ -636,6 +637,22 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	if err != nil {
 		return fmt.Errorf("Failed to start instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
 	}
+
+	var window migration.Window
+	if q.GetWindowName() != nil {
+		window = windows[*q.GetWindowName()]
+	} else {
+		w, err := d.queue.GetNextWindow(ctx, q)
+		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return err
+		}
+
+		if w != nil {
+			window = *w
+		}
+	}
+
+	d.logHandler.SendLifecycle(ctx, event.NewMigrationEvent(event.MigrationCreated, inst.ToAPI(), q.ToAPI(inst.GetName(), d.queueHandler.LastWorkerUpdate(inst.UUID), window)))
 
 	// Unblock the concurrency limits for the target so that the Incus agent doesn't block other creations.
 	d.target.RemoveCreation(t.Name)

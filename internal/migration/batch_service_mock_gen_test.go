@@ -48,13 +48,13 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
-//			ResetBatchByNameFunc: func(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) error {
+//			ResetBatchByNameFunc: func(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) (*migration.Batch, error) {
 //				panic("mock out the ResetBatchByName method")
 //			},
-//			StartBatchByNameFunc: func(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) error {
+//			StartBatchByNameFunc: func(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) (*migration.Batch, error) {
 //				panic("mock out the StartBatchByName method")
 //			},
-//			StopBatchByNameFunc: func(ctx context.Context, name string) error {
+//			StopBatchByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 //				panic("mock out the StopBatchByName method")
 //			},
 //			UpdateFunc: func(ctx context.Context, queueSvc migration.QueueService, name string, batch *migration.Batch) error {
@@ -98,13 +98,13 @@ type BatchServiceMock struct {
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
 
 	// ResetBatchByNameFunc mocks the ResetBatchByName method.
-	ResetBatchByNameFunc func(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) error
+	ResetBatchByNameFunc func(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) (*migration.Batch, error)
 
 	// StartBatchByNameFunc mocks the StartBatchByName method.
-	StartBatchByNameFunc func(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) error
+	StartBatchByNameFunc func(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) (*migration.Batch, error)
 
 	// StopBatchByNameFunc mocks the StopBatchByName method.
-	StopBatchByNameFunc func(ctx context.Context, name string) error
+	StopBatchByNameFunc func(ctx context.Context, name string) (*migration.Batch, error)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, queueSvc migration.QueueService, name string, batch *migration.Batch) error
@@ -586,7 +586,7 @@ func (mock *BatchServiceMock) RenameCalls() []struct {
 }
 
 // ResetBatchByName calls ResetBatchByNameFunc.
-func (mock *BatchServiceMock) ResetBatchByName(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) error {
+func (mock *BatchServiceMock) ResetBatchByName(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) (*migration.Batch, error) {
 	if mock.ResetBatchByNameFunc == nil {
 		panic("BatchServiceMock.ResetBatchByNameFunc: method is nil but BatchService.ResetBatchByName was just called")
 	}
@@ -634,7 +634,7 @@ func (mock *BatchServiceMock) ResetBatchByNameCalls() []struct {
 }
 
 // StartBatchByName calls StartBatchByNameFunc.
-func (mock *BatchServiceMock) StartBatchByName(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) error {
+func (mock *BatchServiceMock) StartBatchByName(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) (*migration.Batch, error) {
 	if mock.StartBatchByNameFunc == nil {
 		panic("BatchServiceMock.StartBatchByNameFunc: method is nil but BatchService.StartBatchByName was just called")
 	}
@@ -682,7 +682,7 @@ func (mock *BatchServiceMock) StartBatchByNameCalls() []struct {
 }
 
 // StopBatchByName calls StopBatchByNameFunc.
-func (mock *BatchServiceMock) StopBatchByName(ctx context.Context, name string) error {
+func (mock *BatchServiceMock) StopBatchByName(ctx context.Context, name string) (*migration.Batch, error) {
 	if mock.StopBatchByNameFunc == nil {
 		panic("BatchServiceMock.StopBatchByNameFunc: method is nil but BatchService.StopBatchByName was just called")
 	}

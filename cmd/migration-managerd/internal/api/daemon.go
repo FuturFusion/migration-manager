@@ -66,7 +66,7 @@ type APIEndpointAction struct {
 type Daemon struct {
 	db          *db.Node
 	os          *sys.OS
-	logHandler  *slog.LevelVar
+	logHandler  *logger.Handler
 	migrationCh chan struct{}
 
 	queueHandler *queue.Handler
@@ -97,7 +97,7 @@ type Daemon struct {
 	ShutdownDoneCh chan error         // Receives the result of the d.Stop() function and tells the daemon to end.
 }
 
-func NewDaemon(logHandler *slog.LevelVar) *Daemon {
+func NewDaemon(logHandler *logger.Handler) *Daemon {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	d := &Daemon{
@@ -611,17 +611,7 @@ func (d *Daemon) setLogLevel(init bool, levelStr string) {
 		return
 	}
 
-	switch levelStr {
-	case slog.LevelDebug.String():
-		level = slog.LevelDebug
-	case slog.LevelInfo.String():
-		level = slog.LevelInfo
-	case slog.LevelWarn.String():
-		level = slog.LevelWarn
-	case slog.LevelError.String():
-		level = slog.LevelError
-	}
-
+	level = logger.ParseLevel(levelStr)
 	if level != d.logHandler.Level() {
 		d.logHandler.Set(level)
 	}
@@ -649,6 +639,10 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 		}
 
 		d.setLogLevel(init, applyCfg.Settings.LogLevel)
+		err = d.logHandler.SetHandlers(applyCfg.Settings.LogTargets)
+		if err != nil {
+			return err
+		}
 
 		if changedNetwork {
 			errCh := d.updateHTTPListener(applyCfg.Network.Address)

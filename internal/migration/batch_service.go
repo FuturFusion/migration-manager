@@ -348,14 +348,16 @@ func (s batchService) DeleteByName(ctx context.Context, name string) error {
 	})
 }
 
-func (s batchService) StartBatchByName(ctx context.Context, batchName string, windowSvc WindowService, networkSvc NetworkService, queueSvc QueueService) (err error) {
+func (s batchService) StartBatchByName(ctx context.Context, batchName string, windowSvc WindowService, networkSvc NetworkService, queueSvc QueueService) (*Batch, error) {
 	if batchName == "" {
-		return fmt.Errorf("Batch name cannot be empty: %w", ErrOperationNotPermitted)
+		return nil, fmt.Errorf("Batch name cannot be empty: %w", ErrOperationNotPermitted)
 	}
 
-	return transaction.Do(ctx, func(ctx context.Context) error {
+	var batch *Batch
+	err := transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the batch to start.
-		batch, err := s.GetByName(ctx, batchName)
+		var err error
+		batch, err = s.GetByName(ctx, batchName)
 		if err != nil {
 			return err
 		}
@@ -448,16 +450,23 @@ func (s batchService) StartBatchByName(ctx context.Context, batchName string, wi
 		batch.StatusMessage = string(batch.Status)
 		return s.repo.Update(ctx, batch.Name, *batch)
 	})
-}
-
-func (s batchService) StopBatchByName(ctx context.Context, name string) (err error) {
-	if name == "" {
-		return fmt.Errorf("Batch name cannot be empty: %w", ErrOperationNotPermitted)
+	if err != nil {
+		return nil, err
 	}
 
-	return transaction.Do(ctx, func(ctx context.Context) error {
+	return batch, err
+}
+
+func (s batchService) StopBatchByName(ctx context.Context, name string) (*Batch, error) {
+	if name == "" {
+		return nil, fmt.Errorf("Batch name cannot be empty: %w", ErrOperationNotPermitted)
+	}
+
+	var batch *Batch
+	err := transaction.Do(ctx, func(ctx context.Context) error {
 		// Get the batch to stop.
-		batch, err := s.GetByName(ctx, name)
+		var err error
+		batch, err = s.GetByName(ctx, name)
 		if err != nil {
 			return err
 		}
@@ -471,6 +480,11 @@ func (s batchService) StopBatchByName(ctx context.Context, name string) (err err
 		batch.StatusMessage = string(batch.Status)
 		return s.repo.Update(ctx, batch.Name, *batch)
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return batch, err
 }
 
 func (s batchService) DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, windows Windows) (*api.Placement, error) {
@@ -502,9 +516,11 @@ func (s batchService) DeterminePlacement(ctx context.Context, instance Instance,
 }
 
 // ResetBatchByName returns the batch to Defined state, and removes all associated queue entries. Also cleans up target and source concurrency limits.
-func (s batchService) ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService) error {
-	return transaction.Do(ctx, func(ctx context.Context) error {
-		batch, err := s.repo.GetByName(ctx, name)
+func (s batchService) ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService) (*Batch, error) {
+	var batch *Batch
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		batch, err = s.repo.GetByName(ctx, name)
 		if err != nil {
 			return err
 		}
@@ -564,4 +580,9 @@ func (s batchService) ResetBatchByName(ctx context.Context, name string, queueSv
 
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	return batch, err
 }

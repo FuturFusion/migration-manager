@@ -5,11 +5,15 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // CreateRequestor extracts the lifecycle event requestor data from an http.Request context.
 func CreateRequestor(r *http.Request) *api.EventLifecycleRequestor {
+	if r == nil {
+		return nil
+	}
+
 	ctx := r.Context()
 	requestor := &api.EventLifecycleRequestor{}
 

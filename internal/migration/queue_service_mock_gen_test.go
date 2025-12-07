@@ -22,7 +22,7 @@ var _ migration.QueueService = &QueueServiceMock{}
 //
 //		// make and configure a mocked migration.QueueService
 //		mockedQueueService := &QueueServiceMock{
-//			CancelByUUIDFunc: func(ctx context.Context, id uuid.UUID) (bool, error) {
+//			CancelByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, bool, error) {
 //				panic("mock out the CancelByUUID method")
 //			},
 //			CreateEntryFunc: func(ctx context.Context, queue migration.QueueEntry) (migration.QueueEntry, error) {
@@ -61,7 +61,7 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			ProcessWorkerUpdateFunc: func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.QueueEntry, error) {
 //				panic("mock out the ProcessWorkerUpdate method")
 //			},
-//			RetryByUUIDFunc: func(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) error {
+//			RetryByUUIDFunc: func(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) (*migration.QueueEntry, error) {
 //				panic("mock out the RetryByUUID method")
 //			},
 //			UpdateFunc: func(ctx context.Context, entry *migration.QueueEntry) error {
@@ -81,7 +81,7 @@ var _ migration.QueueService = &QueueServiceMock{}
 //	}
 type QueueServiceMock struct {
 	// CancelByUUIDFunc mocks the CancelByUUID method.
-	CancelByUUIDFunc func(ctx context.Context, id uuid.UUID) (bool, error)
+	CancelByUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, bool, error)
 
 	// CreateEntryFunc mocks the CreateEntry method.
 	CreateEntryFunc func(ctx context.Context, queue migration.QueueEntry) (migration.QueueEntry, error)
@@ -120,7 +120,7 @@ type QueueServiceMock struct {
 	ProcessWorkerUpdateFunc func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.QueueEntry, error)
 
 	// RetryByUUIDFunc mocks the RetryByUUID method.
-	RetryByUUIDFunc func(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) error
+	RetryByUUIDFunc func(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) (*migration.QueueEntry, error)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, entry *migration.QueueEntry) error
@@ -291,7 +291,7 @@ type QueueServiceMock struct {
 }
 
 // CancelByUUID calls CancelByUUIDFunc.
-func (mock *QueueServiceMock) CancelByUUID(ctx context.Context, id uuid.UUID) (bool, error) {
+func (mock *QueueServiceMock) CancelByUUID(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, bool, error) {
 	if mock.CancelByUUIDFunc == nil {
 		panic("QueueServiceMock.CancelByUUIDFunc: method is nil but QueueService.CancelByUUID was just called")
 	}
@@ -771,7 +771,7 @@ func (mock *QueueServiceMock) ProcessWorkerUpdateCalls() []struct {
 }
 
 // RetryByUUID calls RetryByUUIDFunc.
-func (mock *QueueServiceMock) RetryByUUID(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) error {
+func (mock *QueueServiceMock) RetryByUUID(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) (*migration.QueueEntry, error) {
 	if mock.RetryByUUIDFunc == nil {
 		panic("QueueServiceMock.RetryByUUIDFunc: method is nil but QueueService.RetryByUUID was just called")
 	}

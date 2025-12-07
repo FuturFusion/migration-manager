@@ -9,6 +9,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 var systemNetworkCmd = APIEndpoint{
@@ -123,6 +124,8 @@ func systemSettingsPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	d.logHandler.SendLifecycle(r.Context(), event.NewSystemSettingsEvent(event.SystemSettingsModified, r, d.config.Settings))
+
 	return response.EmptySyncResponse
 }
 
@@ -226,6 +229,8 @@ func systemNetworkPut(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewSystemNetworkEvent(event.SystemNetworkModified, r, d.config.Network))
 
 	return response.EmptySyncResponse
 }
@@ -331,6 +336,8 @@ func systemSecurityPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
+	d.logHandler.SendLifecycle(r.Context(), event.NewSystemSecurityEvent(event.SystemSecurityModified, r, d.config.Security))
+
 	return response.EmptySyncResponse
 }
 
@@ -390,6 +397,8 @@ func systemCertificateUpdate(d *Daemon, r *http.Request) response.Response {
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewSystemCertificatePostEvent(event.SystemCertificateModified, r, api.SystemCertificatePost{}))
 
 	return response.EmptySyncResponse
 }

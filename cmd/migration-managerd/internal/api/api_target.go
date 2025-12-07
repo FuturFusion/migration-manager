@@ -18,9 +18,10 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
-	apiTarget "github.com/FuturFusion/migration-manager/internal/target"
+	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
 
 var targetsCmd = APIEndpoint{
@@ -132,8 +133,8 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 		}
 
 		result := make([]api.Target, 0, len(targets))
-		for _, target := range targets {
-			result = append(result, target.ToAPI())
+		for _, tgt := range targets {
+			result = append(result, tgt.ToAPI())
 		}
 
 		return response.SyncResponse(true, result)
@@ -180,24 +181,24 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func targetsPost(d *Daemon, r *http.Request) response.Response {
-	var target api.Target
+	var apiTarget api.Target
 
 	// Decode into the new target.
-	err := json.NewDecoder(r.Body).Decode(&target)
+	err := json.NewDecoder(r.Body).Decode(&apiTarget)
 	if err != nil {
 		return response.BadRequest(err)
 	}
 
 	tgt, err := d.target.Create(r.Context(), migration.Target{
-		Name:       target.Name,
-		TargetType: target.TargetType,
-		Properties: target.Properties,
+		Name:       apiTarget.Name,
+		TargetType: apiTarget.TargetType,
+		Properties: apiTarget.Properties,
 		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
-			return apiTarget.NewTarget(t)
+			return target.NewTarget(t)
 		},
 	})
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", target.Name, err))
+		return response.SmartError(fmt.Errorf("Failed creating target %q: %w", apiTarget.Name, err))
 	}
 
 	metadata := make(map[string]string)
@@ -223,7 +224,9 @@ func targetsPost(d *Daemon, r *http.Request) response.Response {
 		metadata["OIDCURL"] = u
 	}
 
-	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/targets/"+target.Name)
+	d.logHandler.SendLifecycle(r.Context(), event.NewTargetEvent(event.TargetCreated, r, tgt.ToAPI(), tgt.Name))
+
+	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/targets/"+apiTarget.Name)
 }
 
 func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCert *x509.Certificate) (string, error) {
@@ -256,7 +259,7 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 		tgt.SetExternalConnectivityStatus(connectivityStatus)
 		tgt.SetOIDCTokens(&tokens)
 		tgt.EndpointFunc = func(t api.Target) (migration.TargetEndpoint, error) {
-			return apiTarget.NewTarget(t)
+			return target.NewTarget(t)
 		}
 
 		_ = d.target.Update(context.TODO(), targetName, tgt)
@@ -286,10 +289,22 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 func targetDelete(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	err := d.target.DeleteByName(r.Context(), name)
+	var apiTarget api.Target
+	err := transaction.Do(r.Context(), func(ctx context.Context) error {
+		t, err := d.target.GetByName(ctx, name)
+		if err != nil {
+			return err
+		}
+
+		apiTarget = t.ToAPI()
+
+		return d.target.DeleteByName(ctx, name)
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewTargetEvent(event.TargetRemoved, r, apiTarget, apiTarget.Name))
 
 	return response.EmptySyncResponse
 }
@@ -331,15 +346,15 @@ func targetDelete(d *Daemon, r *http.Request) response.Response {
 func targetGet(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	target, err := d.target.GetByName(r.Context(), name)
+	tgt, err := d.target.GetByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
 	}
 
 	return response.SyncResponseETag(
 		true,
-		target.ToAPI(),
-		target,
+		tgt.ToAPI(),
+		tgt,
 	)
 }
 
@@ -375,9 +390,9 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 func targetPut(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
 
-	var target api.TargetPut
+	var apiTarget api.TargetPut
 
-	err := json.NewDecoder(r.Body).Decode(&target)
+	err := json.NewDecoder(r.Body).Decode(&apiTarget)
 	if err != nil {
 		return response.BadRequest(err)
 	}
@@ -403,17 +418,17 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 
 	tgt := &migration.Target{
 		ID:         currentTarget.ID,
-		Name:       target.Name,
+		Name:       apiTarget.Name,
 		TargetType: currentTarget.TargetType,
-		Properties: target.Properties,
+		Properties: apiTarget.Properties,
 		EndpointFunc: func(t api.Target) (migration.TargetEndpoint, error) {
-			return apiTarget.NewTarget(t)
+			return target.NewTarget(t)
 		},
 	}
 
 	err = d.target.Update(ctx, name, tgt)
 	if err != nil {
-		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", target.Name, err))
+		return response.SmartError(fmt.Errorf("Failed updating target %q: %w", apiTarget.Name, err))
 	}
 
 	err = trans.Commit()
@@ -444,5 +459,7 @@ func targetPut(d *Daemon, r *http.Request) response.Response {
 		metadata["OIDCURL"] = u
 	}
 
-	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/targets/"+target.Name)
+	d.logHandler.SendLifecycle(r.Context(), event.NewTargetEvent(event.TargetModified, r, tgt.ToAPI(), tgt.Name))
+
+	return response.SyncResponseLocation(true, metadata, "/"+api.APIVersion+"/targets/"+apiTarget.Name)
 }

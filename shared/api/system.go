@@ -19,6 +19,63 @@ type SystemSettings struct {
 
 	// Daemon log level.
 	LogLevel string `json:"log_level" yaml:"log_level"`
+
+	// Additional logging targets.
+	LogTargets []SystemSettingsLog `json:"log_targets" yaml:"log_targets"`
+}
+
+type (
+	// LogType is a type of logging target.
+	LogType string
+
+	// LogScope is a type of log that a logging target will receive.
+	LogScope string
+)
+
+const (
+	// LogTypeWebhook is a webhook logging target.
+	LogTypeWebhook LogType = "webhook"
+
+	// LogScopeLogging is a log scope for regular logs.
+	LogScopeLogging LogScope = "logging"
+
+	// LogScopeLifecycle is a log scope for lifecycle events.
+	LogScopeLifecycle LogScope = "lifecycle"
+)
+
+// SystemSettingsLog represents configuration for a logging target.
+type SystemSettingsLog struct {
+	// Name identifying the logging target.
+	// Example: foo
+	Name string `json:"name" yaml:"name"`
+
+	// Type of the logging target.
+	// Example: webhook
+	Type LogType `json:"type" yaml:"type"`
+
+	// Log level to display.
+	// Example: WARN
+	Level string `json:"level" yaml:"level"`
+
+	// Address of the logging target.
+	// Example: https://example.com:443
+	Address string `json:"address" yaml:"address"`
+
+	// Username of the logging target.
+	Username string `json:"username" yaml:"username"`
+
+	// Password of the logging target.
+	Password string `json:"password" yaml:"password"`
+
+	// CA Certificate used to authenticate with the logging target.
+	CACert string `json:"ca_cert" yaml:"ca_cert"`
+
+	// Number of attempts to make against the logging target.
+	RetryCount int `json:"retry_count" yaml:"retry_count"`
+
+	// Logging scopes to send to the logging target.
+	// Example: [logging, lifecycle]
+	Scopes []LogScope `json:"scopes" yaml:"scopes"`
 }
 
 // SystemNetwork represents the system's network configuration.
