@@ -653,3 +653,98 @@ func TestSystemLogTargets(t *testing.T) {
 		})
 	}
 }
+
+func TestSecurityACMEUpdate(t *testing.T) {
+	cases := []struct {
+		name       string
+		config     api.SystemSecurityACME
+		wantConfig api.SystemSecurityACME
+
+		wantHTTPStatus int
+	}{
+		{
+			name:   "success - minimal",
+			config: api.SystemSecurityACME{},
+			wantConfig: api.SystemSecurityACME{
+				CAURL:     "https://acme-v02.api.letsencrypt.org/directory",
+				Challenge: api.ACMEChallengeHTTP,
+				Address:   ":80",
+			},
+
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name: "success - full",
+			config: api.SystemSecurityACME{
+				CAURL:               "https://example.com",
+				Challenge:           api.ACMEChallengeDNS,
+				Domain:              "example.com",
+				Email:               "me@example.com",
+				Address:             "127.0.0.1:80",
+				Provider:            "example.com",
+				ProviderEnvironment: []string{"a=b", "c=d"},
+				ProviderResolvers:   []string{"example1.com", "example2.com"},
+			},
+			wantConfig: api.SystemSecurityACME{
+				CAURL:               "https://example.com",
+				Challenge:           api.ACMEChallengeDNS,
+				Domain:              "example.com",
+				Email:               "me@example.com",
+				Address:             "127.0.0.1:80",
+				Provider:            "example.com",
+				ProviderEnvironment: []string{"a=b", "c=d"},
+				ProviderResolvers:   []string{"example1.com", "example2.com"},
+			},
+
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name:           "error - invalid challenge",
+			config:         api.SystemSecurityACME{Challenge: "abcd"},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "error - invalid ca url",
+			config:         api.SystemSecurityACME{Challenge: api.ACMEChallengeHTTP, CAURL: "abcd"},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "error - invalid challenge address",
+			config:         api.SystemSecurityACME{Challenge: api.ACMEChallengeHTTP, Address: "!!"},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "error - provider environment (no =)",
+			config:         api.SystemSecurityACME{Challenge: api.ACMEChallengeHTTP, ProviderEnvironment: []string{"a"}},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name:           "error - provider environment (no key",
+			config:         api.SystemSecurityACME{Challenge: api.ACMEChallengeHTTP, ProviderEnvironment: []string{"=a"}},
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+	}
+
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
+			// Setup
+			daemon := daemonSetup(t)
+
+			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemSecurityCmd}, nil)
+			b, err := json.Marshal(api.SystemSecurity{ACME: tc.config, TrustedTLSClientCertFingerprints: []string{"a"}})
+			require.NoError(t, err)
+
+			oldCfg := daemon.config
+			oldCfg.Security.ACME = acme.SetACMEDefaults(api.SystemSecurityACME{})
+			statusCode, _ := probeAPI(t, client, http.MethodPut, srvURL+"/1.0/system/security", bytes.NewBuffer(b), nil)
+
+			require.Equal(t, tc.wantHTTPStatus, statusCode)
+			if tc.wantHTTPStatus != http.StatusOK {
+				require.Equal(t, oldCfg.Security.ACME, daemon.config.Security.ACME)
+			} else {
+				require.Equal(t, tc.wantConfig, daemon.config.Security.ACME)
+			}
+		})
+	}
+}
