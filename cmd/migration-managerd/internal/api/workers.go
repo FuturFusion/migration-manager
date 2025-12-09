@@ -31,6 +31,7 @@ const (
 	SyncTask       Task = "sync"
 	ImportTask     Task = "import"
 	PostImportTask Task = "post-import"
+	ACMEUpdateTask Task = "acme-update"
 )
 
 func (d *Daemon) runPeriodicTask(ctx context.Context, task Task, f func(context.Context) error, interval time.Duration) {

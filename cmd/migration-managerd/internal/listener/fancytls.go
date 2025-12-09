@@ -3,6 +3,7 @@ package listener
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"net"
 	"sync"
 
@@ -63,4 +64,16 @@ func (l *FancyTLSListener) Config(cert *incusTLS.CertInfo) {
 	defer l.mu.Unlock()
 
 	l.config = config
+}
+
+func (l *FancyTLSListener) Close() error {
+	err := l.Listener.Close()
+	if err != nil {
+		opErr, ok := err.(*net.OpError)
+		if !ok || !errors.Is(opErr.Err, net.ErrClosed) {
+			return err
+		}
+	}
+
+	return nil
 }

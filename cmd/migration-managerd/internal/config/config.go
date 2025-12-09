@@ -13,6 +13,7 @@ import (
 	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
 
+	"github.com/FuturFusion/migration-manager/internal/acme"
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/ports"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -90,6 +91,8 @@ func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
 		}
 	}
 
+	newCfg.Security.ACME = acme.SetACMEDefaults(newCfg.Security.ACME)
+
 	if newCfg.Settings.SyncInterval == "" {
 		newCfg.Settings.SyncInterval = (10 * time.Minute).Truncate(time.Minute).String()
 	}
@@ -114,6 +117,11 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 
 	if len(oldCfg.Security.TrustedTLSClientCertFingerprints) > 0 && len(newCfg.Security.TrustedTLSClientCertFingerprints) == 0 {
 		return fmt.Errorf("Last trusted TLS client certificate fingerprint cannot be removed")
+	}
+
+	err := acme.ValidateACMEConfig(newCfg.Security.ACME)
+	if err != nil {
+		return err
 	}
 
 	if newCfg.Network.Address != "" {

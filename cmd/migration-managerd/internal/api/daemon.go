@@ -14,8 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
@@ -23,6 +21,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/listener"
+	"github.com/FuturFusion/migration-manager/internal/acme"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
@@ -35,7 +34,6 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/sys"
-	tlsutil "github.com/FuturFusion/migration-manager/internal/server/util"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
@@ -52,8 +50,6 @@ type APIEndpoint struct {
 	Delete APIEndpointAction
 	Patch  APIEndpointAction
 }
-
-type Authenticator func(d *Daemon, w http.ResponseWriter, r *http.Request) (bool, string, string, error)
 
 // APIEndpointAction represents an action on an API endpoint.
 type APIEndpointAction struct {
@@ -130,124 +126,6 @@ func allowPermission(objectType auth.ObjectType, entitlement auth.Entitlement) f
 
 		return response.EmptySyncResponse
 	}
-}
-
-// Convenience function around Authenticate.
-func (d *Daemon) checkTrustedClient(r *http.Request) error {
-	trusted, _, _, err := DefaultAuthenticate(d, nil, r)
-	if err != nil {
-		return err
-	}
-
-	if !trusted {
-		return fmt.Errorf("Not authorized")
-	}
-
-	return nil
-}
-
-// checkQueueToken first checks TLS trusted clients, and if none are found, checks for the 'secret' and 'instance' query parameters to find a token matching an existing queue entry.
-// If no 'instance' parameter is given, an attempt is made to parse the URL for the instance UUID.
-func (d *Daemon) checkQueueToken(r *http.Request) error {
-	err := d.checkTrustedClient(r)
-	if err == nil {
-		return nil
-	}
-
-	// Get the secret token.
-	err = r.ParseForm()
-	if err != nil {
-		return fmt.Errorf("Failed to parse required query parameters: %w", err)
-	}
-
-	secretUUID, err := uuid.Parse(r.Form.Get("secret"))
-	if err != nil {
-		return fmt.Errorf("Failed to parse required 'secret' query paremeter: %w", err)
-	}
-
-	var instanceUUID uuid.UUID
-	instKey := r.Form.Get("instance")
-	if instKey != "" {
-		instanceUUID, err = uuid.Parse(instKey)
-		if err != nil {
-			return fmt.Errorf("Failed to parse instance UUID from query parameter %q: %w", instKey, err)
-		}
-	} else {
-		instanceUUID, err = instanceUUIDFromRequestURL(r)
-		if err != nil {
-			return fmt.Errorf("Missing required 'instance' query parameter: %w", err)
-		}
-	}
-
-	// Get the instance.
-	i, err := d.queue.GetByInstanceUUID(r.Context(), instanceUUID)
-	if err != nil {
-		return fmt.Errorf("Failed to find queue entry for instance UUID %q: %w", instKey, err)
-	}
-
-	if secretUUID != i.SecretToken {
-		return fmt.Errorf("Unknown access token %q", secretUUID)
-	}
-
-	return nil
-}
-
-// TokenAuthenticate attempts normal authentication, and falls back to token-based authentication.
-// If using token-based authentication, the request will be assumed to be coming from the migration worker.
-func TokenAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
-	trusted, username, protocol, err := DefaultAuthenticate(d, w, r)
-	if err == nil && !trusted {
-		err := d.checkQueueToken(r)
-		if err != nil {
-			slog.Error("Failed to validate request with token", slog.Any("error", err))
-			return false, "", "", err
-		}
-
-		return true, "migration-manager-worker", incusAPI.AuthenticationMethodTLS, nil
-	}
-
-	return trusted, username, protocol, err
-}
-
-// DefaultAuthenticate validates an incoming http Request
-// It will check over what protocol it came, what type of request it is and
-// will validate the TLS certificate.
-//
-// This does not perform authorization, only validates authentication.
-// Returns whether trusted or not, the username (or certificate fingerprint) of the trusted client, and the type of
-// client that has been authenticated (unix or tls).
-func DefaultAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
-	// Local unix socket queries.
-	if r.RemoteAddr == "@" && r.TLS == nil {
-		return true, "", "unix", nil
-	}
-
-	// Bad query, no TLS found.
-	if r.TLS == nil {
-		return false, "", "", fmt.Errorf("Bad/missing TLS on network query")
-	}
-
-	verifier := d.OIDCVerifier()
-	trustedFingerprints := d.TrustedFingerprints()
-	// Check for JWT token signed by an OpenID Connect provider.
-	if verifier != nil && verifier.IsRequest(r) {
-		userName, err := verifier.Auth(d.ShutdownCtx, w, r)
-		if err != nil {
-			return false, "", "", err
-		}
-
-		return true, userName, incusAPI.AuthenticationMethodOIDC, nil
-	}
-
-	for _, cert := range r.TLS.PeerCertificates {
-		trusted, username := tlsutil.CheckTrustState(*cert, trustedFingerprints)
-		if trusted {
-			return true, username, incusAPI.AuthenticationMethodTLS, nil
-		}
-	}
-
-	// Reject unauthorized.
-	return false, "", "", nil
 }
 
 // cleanupCacheDir removes extraneous files from the Migration Manager cache directory.
@@ -377,6 +255,13 @@ func (d *Daemon) Start() error {
 	close(d.migrationCh)
 
 	// Start background workers
+	d.runPeriodicTask(d.ShutdownCtx, ACMEUpdateTask, func(ctx context.Context) error {
+		d.configLock.Lock()
+		defer d.configLock.Unlock()
+
+		return d.renewServerCertificate(ctx, d.config.Security.ACME, false)
+	}, 24*time.Hour)
+
 	d.runPeriodicTask(d.ShutdownCtx, SyncTask, d.trySyncAllSources, time.Minute*10)
 
 	d.runPeriodicTask(d.ShutdownCtx, ImportTask, func(ctx context.Context) error {
@@ -500,10 +385,36 @@ func (d *Daemon) updateHTTPListener(address string) <-chan error {
 	return ch
 }
 
-func (d *Daemon) updateServerCert(cfg api.SystemCertificatePost) (_err error) {
+// renewServerCertificate renews the server certificate via the ACME config.
+func (d *Daemon) renewServerCertificate(ctx context.Context, acmeCfg api.SystemSecurityACME, force bool) error {
+	newCert, err := acme.UpdateCertificate(ctx, d.os, acmeCfg, force)
+	if err != nil {
+		return err
+	}
+
+	if newCert != nil {
+		slog.Info("Renewing server certificate")
+		err = d.replaceServerCert(*newCert)
+		if err != nil {
+			return err
+		}
+	}
+
+	slog.Info("Completed server certificate renewal check")
+
+	return nil
+}
+
+// updateServerCert updates the server certificate via the API.
+func (d *Daemon) updateServerCert(cfg api.SystemCertificatePost) error {
 	d.configLock.Lock()
 	defer d.configLock.Unlock()
 
+	return d.replaceServerCert(cfg)
+}
+
+// replaceServerCert is a helper to replace the server certificate and update associated listeners (and revert on errors).
+func (d *Daemon) replaceServerCert(cfg api.SystemCertificatePost) (_err error) {
 	certBlock, _ := pem.Decode([]byte(cfg.Cert))
 	if certBlock == nil {
 		return fmt.Errorf("Certificate must be base64 encoded PEM certificate")
@@ -626,22 +537,34 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 		return err
 	}
 
+	oldCfg, err := config.SetDefaults(d.config)
+	if err != nil {
+		return err
+	}
+
 	newCfg = *fullCfg
-	oldCfg := d.config
 	changedNetwork := init || newCfg.Network != oldCfg.Network
 	changedOIDC := init || newCfg.Security.OIDC != oldCfg.Security.OIDC
 	changedOpenFGA := init || newCfg.Security.OpenFGA != oldCfg.Security.OpenFGA || !slices.Equal(newCfg.Security.TrustedTLSClientCertFingerprints, oldCfg.Security.TrustedTLSClientCertFingerprints)
+	logTargetsChanged := init || logger.WebhookConfigChanged(oldCfg.Settings.LogTargets, newCfg.Settings.LogTargets)
+	acmeChanged := !init && acme.ACMEConfigChanged(oldCfg.Security.ACME, newCfg.Security.ACME)
 
 	updateHandlers := func(applyCfg api.SystemConfig) error {
-		err := config.Validate(applyCfg, oldCfg)
+		// Since this block is repeated on revert, always update the daemon's in-memory config.
+		defer func() { d.config = applyCfg }()
+
+		err := config.Validate(applyCfg, *oldCfg)
 		if err != nil {
 			return err
 		}
 
 		d.setLogLevel(init, applyCfg.Settings.LogLevel)
-		err = d.logHandler.SetHandlers(applyCfg.Settings.LogTargets)
-		if err != nil {
-			return err
+
+		if logTargetsChanged {
+			err = d.logHandler.SetHandlers(applyCfg.Settings.LogTargets)
+			if err != nil {
+				return err
+			}
 		}
 
 		if changedNetwork {
@@ -667,12 +590,19 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 			}
 		}
 
+		if acmeChanged {
+			// Set the daemon's ACME config early for the callback endpoint.
+			d.config.Security.ACME = applyCfg.Security.ACME
+			err := d.renewServerCertificate(d.ShutdownCtx, applyCfg.Security.ACME, true)
+			if err != nil {
+				return err
+			}
+		}
+
 		err = config.SaveConfig(applyCfg)
 		if err != nil {
 			return err
 		}
-
-		d.config = applyCfg
 
 		return nil
 	}
@@ -682,7 +612,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 	reverter.Add(func() {
 		if !init {
 			slog.Error("Reverting daemon config change due to error", slog.Any("error", _err))
-			err := updateHandlers(oldCfg)
+			err := updateHandlers(*oldCfg)
 			if err != nil {
 				slog.Error("Failed to revert daemon config changes", slog.Any("error", err))
 			}
@@ -779,14 +709,13 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 		}
 
 		// Authentication
-		verifier := d.OIDCVerifier()
-		trusted, username, protocol, err := authenticator(d, w, r)
+		authResp, err := authenticator(d, w, r)
 		if err != nil {
 			_, ok := err.(*oidc.AuthError)
 			if ok {
 				// Ensure the OIDC headers are set if needed.
-				if verifier != nil {
-					_ = verifier.WriteHeaders(w)
+				if authResp.verifier != nil {
+					_ = authResp.verifier.WriteHeaders(w)
 				}
 
 				_ = response.Unauthorized(err).Render(w)
@@ -795,19 +724,19 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 		}
 
 		untrustedOk := (r.Method == "GET" && c.Get.AllowUntrusted) || (r.Method == "POST" && c.Post.AllowUntrusted)
-		if trusted {
+		if authResp.trusted {
 			slog.Debug("Handling API request", slog.String("method", r.Method), slog.String("url", r.URL.RequestURI()), slog.String("ip", r.RemoteAddr))
 
 			// Add authentication/authorization context data.
-			ctx := context.WithValue(r.Context(), request.CtxUsername, username)
-			ctx = context.WithValue(ctx, request.CtxProtocol, protocol)
+			ctx := context.WithValue(r.Context(), request.CtxUsername, authResp.username)
+			ctx = context.WithValue(ctx, request.CtxProtocol, authResp.protocol)
 
 			r = r.WithContext(ctx)
 		} else if untrustedOk && r.Header.Get("X-MigrationManager-authenticated") == "" {
 			slog.Debug("Allowing untrusted", slog.String("method", r.Method), slog.Any("url", r.URL), slog.String("ip", r.RemoteAddr))
 		} else {
-			if verifier != nil {
-				_ = verifier.WriteHeaders(w)
+			if authResp.verifier != nil {
+				_ = authResp.verifier.WriteHeaders(w)
 			}
 
 			slog.Warn("Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
@@ -854,7 +783,7 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 			}
 
 			// If the request is not trusted, only call the handler if the action allows it.
-			if !trusted && !action.AllowUntrusted {
+			if !authResp.trusted && !action.AllowUntrusted {
 				return response.Forbidden(fmt.Errorf("You must be authenticated"))
 			}
 
@@ -887,8 +816,8 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 		}
 
 		// If sending out Forbidden, make sure we have OIDC headers.
-		if resp.Code() == http.StatusForbidden && verifier != nil {
-			_ = verifier.WriteHeaders(w)
+		if resp.Code() == http.StatusForbidden && authResp.verifier != nil {
+			_ = authResp.verifier.WriteHeaders(w)
 		}
 
 		// Handle errors

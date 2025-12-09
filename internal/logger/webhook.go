@@ -114,6 +114,28 @@ func WebhookValidateConfig(cfg api.SystemSettingsLog) error {
 	return nil
 }
 
+func WebhookConfigChanged(oldCfgs, newCfgs []api.SystemSettingsLog) bool {
+	if len(oldCfgs) != len(newCfgs) {
+		return true
+	}
+
+	for i := range oldCfgs {
+		if oldCfgs[i].Name != newCfgs[i].Name ||
+			oldCfgs[i].Type != newCfgs[i].Type ||
+			oldCfgs[i].Level != newCfgs[i].Level ||
+			oldCfgs[i].Address != newCfgs[i].Address ||
+			oldCfgs[i].Username != newCfgs[i].Username ||
+			oldCfgs[i].Password != newCfgs[i].Password ||
+			oldCfgs[i].CACert != newCfgs[i].CACert ||
+			oldCfgs[i].RetryCount != newCfgs[i].RetryCount ||
+			!slices.Equal(oldCfgs[i].Scopes, newCfgs[i].Scopes) {
+			return true
+		}
+	}
+
+	return false
+}
+
 func NewWebhookLogger(cfg api.SystemSettingsLog) (slog.Handler, error) {
 	w := &webhookLog{
 		name:  cfg.Name,
