@@ -253,24 +253,28 @@ func (w *webhookLog) Handle(ctx context.Context, r slog.Record) error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.address, bytes.NewReader(b))
+	req, err := http.NewRequest(http.MethodPost, w.address, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	for range w.retry {
-		resp, err := w.client.Do(req)
-		if err != nil {
-			// Wait 10s and try again.
-			time.Sleep(10 * time.Second)
+	go func() {
+		for i := range w.retry {
+			resp, err := w.client.Do(req)
+			if err != nil {
+				if i < w.retry-1 {
+					// Wait 10s and try again.
+					time.Sleep(w.retryTimeout)
+				}
 
-			continue
+				continue
+			}
+
+			_ = resp.Body.Close()
+			return
 		}
-
-		_ = resp.Body.Close()
-		return nil
-	}
+	}()
 
 	return nil
 }
