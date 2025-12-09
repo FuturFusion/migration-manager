@@ -21,6 +21,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/listener"
+	"github.com/FuturFusion/migration-manager/internal/acme"
 	"github.com/FuturFusion/migration-manager/internal/db"
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"
@@ -254,6 +255,13 @@ func (d *Daemon) Start() error {
 	close(d.migrationCh)
 
 	// Start background workers
+	d.runPeriodicTask(d.ShutdownCtx, ACMEUpdateTask, func(ctx context.Context) error {
+		d.configLock.Lock()
+		defer d.configLock.Unlock()
+
+		return d.renewServerCertificate(ctx, d.config.Security.ACME, false)
+	}, 24*time.Hour)
+
 	d.runPeriodicTask(d.ShutdownCtx, SyncTask, d.trySyncAllSources, time.Minute*10)
 
 	d.runPeriodicTask(d.ShutdownCtx, ImportTask, func(ctx context.Context) error {
@@ -377,10 +385,36 @@ func (d *Daemon) updateHTTPListener(address string) <-chan error {
 	return ch
 }
 
-func (d *Daemon) updateServerCert(cfg api.SystemCertificatePost) (_err error) {
+// renewServerCertificate renews the server certificate via the ACME config.
+func (d *Daemon) renewServerCertificate(ctx context.Context, acmeCfg api.SystemSecurityACME, force bool) error {
+	newCert, err := acme.UpdateCertificate(ctx, d.os, acmeCfg, force)
+	if err != nil {
+		return err
+	}
+
+	if newCert != nil {
+		slog.Info("Renewing server certificate")
+		err = d.replaceServerCert(*newCert)
+		if err != nil {
+			return err
+		}
+	}
+
+	slog.Info("Completed server certificate renewal check")
+
+	return nil
+}
+
+// updateServerCert updates the server certificate via the API.
+func (d *Daemon) updateServerCert(cfg api.SystemCertificatePost) error {
 	d.configLock.Lock()
 	defer d.configLock.Unlock()
 
+	return d.replaceServerCert(cfg)
+}
+
+// replaceServerCert is a helper to replace the server certificate and update associated listeners (and revert on errors).
+func (d *Daemon) replaceServerCert(cfg api.SystemCertificatePost) (_err error) {
 	certBlock, _ := pem.Decode([]byte(cfg.Cert))
 	if certBlock == nil {
 		return fmt.Errorf("Certificate must be base64 encoded PEM certificate")
@@ -503,15 +537,23 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 		return err
 	}
 
+	oldCfg, err := config.SetDefaults(d.config)
+	if err != nil {
+		return err
+	}
+
 	newCfg = *fullCfg
-	oldCfg := d.config
 	changedNetwork := init || newCfg.Network != oldCfg.Network
 	changedOIDC := init || newCfg.Security.OIDC != oldCfg.Security.OIDC
 	changedOpenFGA := init || newCfg.Security.OpenFGA != oldCfg.Security.OpenFGA || !slices.Equal(newCfg.Security.TrustedTLSClientCertFingerprints, oldCfg.Security.TrustedTLSClientCertFingerprints)
 	logTargetsChanged := init || logger.WebhookConfigChanged(oldCfg.Settings.LogTargets, newCfg.Settings.LogTargets)
+	acmeChanged := !init && acme.ACMEConfigChanged(oldCfg.Security.ACME, newCfg.Security.ACME)
 
 	updateHandlers := func(applyCfg api.SystemConfig) error {
-		err := config.Validate(applyCfg, oldCfg)
+		// Since this block is repeated on revert, always update the daemon's in-memory config.
+		defer func() { d.config = applyCfg }()
+
+		err := config.Validate(applyCfg, *oldCfg)
 		if err != nil {
 			return err
 		}
@@ -548,12 +590,19 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 			}
 		}
 
+		if acmeChanged {
+			// Set the daemon's ACME config early for the callback endpoint.
+			d.config.Security.ACME = applyCfg.Security.ACME
+			err := d.renewServerCertificate(d.ShutdownCtx, applyCfg.Security.ACME, true)
+			if err != nil {
+				return err
+			}
+		}
+
 		err = config.SaveConfig(applyCfg)
 		if err != nil {
 			return err
 		}
-
-		d.config = applyCfg
 
 		return nil
 	}
@@ -563,7 +612,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 	reverter.Add(func() {
 		if !init {
 			slog.Error("Reverting daemon config change due to error", slog.Any("error", _err))
-			err := updateHandlers(oldCfg)
+			err := updateHandlers(*oldCfg)
 			if err != nil {
 				slog.Error("Failed to revert daemon config changes", slog.Any("error", err))
 			}
