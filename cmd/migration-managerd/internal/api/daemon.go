@@ -52,8 +52,30 @@ type APIEndpoint struct {
 	Delete APIEndpointAction
 	Patch  APIEndpointAction
 }
+type authenticatorResponse struct {
+	trusted  bool
+	username string
+	protocol string
+	verifier *oidc.Verifier
+}
 
-type Authenticator func(d *Daemon, w http.ResponseWriter, r *http.Request) (bool, string, string, error)
+func unixAuthResponse() authenticatorResponse {
+	return authenticatorResponse{trusted: true, protocol: "unix"}
+}
+
+func workerAuthResponse() authenticatorResponse {
+	return authenticatorResponse{trusted: true, protocol: incusAPI.AuthenticationMethodTLS, username: "migration-manager-worker"}
+}
+
+func oidcAuthResponse(verifier *oidc.Verifier, username string) authenticatorResponse {
+	return authenticatorResponse{username: username, verifier: verifier, protocol: incusAPI.AuthenticationMethodOIDC}
+}
+
+func tlsAuthResponse(trusted bool, username string) authenticatorResponse {
+	return authenticatorResponse{trusted: trusted, username: username, protocol: incusAPI.AuthenticationMethodTLS}
+}
+
+type Authenticator func(d *Daemon, w http.ResponseWriter, r *http.Request) (authenticatorResponse, error)
 
 // APIEndpointAction represents an action on an API endpoint.
 type APIEndpointAction struct {
@@ -134,12 +156,12 @@ func allowPermission(objectType auth.ObjectType, entitlement auth.Entitlement) f
 
 // Convenience function around Authenticate.
 func (d *Daemon) checkTrustedClient(r *http.Request) error {
-	trusted, _, _, err := DefaultAuthenticate(d, nil, r)
+	resp, err := DefaultAuthenticate(d, nil, r)
 	if err != nil {
 		return err
 	}
 
-	if !trusted {
+	if !resp.trusted {
 		return fmt.Errorf("Not authorized")
 	}
 
@@ -194,19 +216,23 @@ func (d *Daemon) checkQueueToken(r *http.Request) error {
 
 // TokenAuthenticate attempts normal authentication, and falls back to token-based authentication.
 // If using token-based authentication, the request will be assumed to be coming from the migration worker.
-func TokenAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
-	trusted, username, protocol, err := DefaultAuthenticate(d, w, r)
-	if err == nil && !trusted {
+func TokenAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (authenticatorResponse, error) {
+	resp, err := DefaultAuthenticate(d, w, r)
+	if err != nil {
+		return resp, err
+	}
+
+	if !resp.trusted {
 		err := d.checkQueueToken(r)
 		if err != nil {
 			slog.Error("Failed to validate request with token", slog.Any("error", err))
-			return false, "", "", err
+			return resp, err
 		}
 
-		return true, "migration-manager-worker", incusAPI.AuthenticationMethodTLS, nil
+		return workerAuthResponse(), nil
 	}
 
-	return trusted, username, protocol, err
+	return resp, nil
 }
 
 // DefaultAuthenticate validates an incoming http Request
@@ -216,38 +242,48 @@ func TokenAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (bool,
 // This does not perform authorization, only validates authentication.
 // Returns whether trusted or not, the username (or certificate fingerprint) of the trusted client, and the type of
 // client that has been authenticated (unix or tls).
-func DefaultAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (bool, string, string, error) {
-	// Local unix socket queries.
-	if r.RemoteAddr == "@" && r.TLS == nil {
-		return true, "", "unix", nil
+func DefaultAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (authenticatorResponse, error) {
+	resp, err := UnixAuthenticate(d, w, r)
+	if err != nil {
+		return resp, err
 	}
 
-	// Bad query, no TLS found.
-	if r.TLS == nil {
-		return false, "", "", fmt.Errorf("Bad/missing TLS on network query")
+	if resp.trusted {
+		return resp, nil
 	}
 
 	verifier := d.OIDCVerifier()
-	trustedFingerprints := d.TrustedFingerprints()
 	// Check for JWT token signed by an OpenID Connect provider.
 	if verifier != nil && verifier.IsRequest(r) {
-		userName, err := verifier.Auth(d.ShutdownCtx, w, r)
-		if err != nil {
-			return false, "", "", err
-		}
-
-		return true, userName, incusAPI.AuthenticationMethodOIDC, nil
+		username, err := verifier.Auth(d.ShutdownCtx, w, r)
+		return oidcAuthResponse(verifier, username), err
 	}
 
+	trustedFingerprints := d.TrustedFingerprints()
 	for _, cert := range r.TLS.PeerCertificates {
 		trusted, username := tlsutil.CheckTrustState(*cert, trustedFingerprints)
 		if trusted {
-			return true, username, incusAPI.AuthenticationMethodTLS, nil
+			return tlsAuthResponse(trusted, username), nil
 		}
 	}
 
 	// Reject unauthorized.
-	return false, "", "", nil
+	return authenticatorResponse{}, nil
+}
+
+// UnixAuthenticate only trusts unix connections, and errors if it receives a non TLS network connection.
+func UnixAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (authenticatorResponse, error) {
+	// Local unix socket queries.
+	if r.RemoteAddr == "@" && r.TLS == nil {
+		return unixAuthResponse(), nil
+	}
+
+	// Bad query, no TLS found.
+	if r.TLS == nil {
+		return authenticatorResponse{}, fmt.Errorf("Bad/missing TLS on network query")
+	}
+
+	return authenticatorResponse{}, nil
 }
 
 // cleanupCacheDir removes extraneous files from the Migration Manager cache directory.
@@ -783,14 +819,13 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 		}
 
 		// Authentication
-		verifier := d.OIDCVerifier()
-		trusted, username, protocol, err := authenticator(d, w, r)
+		authResp, err := authenticator(d, w, r)
 		if err != nil {
 			_, ok := err.(*oidc.AuthError)
 			if ok {
 				// Ensure the OIDC headers are set if needed.
-				if verifier != nil {
-					_ = verifier.WriteHeaders(w)
+				if authResp.verifier != nil {
+					_ = authResp.verifier.WriteHeaders(w)
 				}
 
 				_ = response.Unauthorized(err).Render(w)
@@ -799,19 +834,19 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 		}
 
 		untrustedOk := (r.Method == "GET" && c.Get.AllowUntrusted) || (r.Method == "POST" && c.Post.AllowUntrusted)
-		if trusted {
+		if authResp.trusted {
 			slog.Debug("Handling API request", slog.String("method", r.Method), slog.String("url", r.URL.RequestURI()), slog.String("ip", r.RemoteAddr))
 
 			// Add authentication/authorization context data.
-			ctx := context.WithValue(r.Context(), request.CtxUsername, username)
-			ctx = context.WithValue(ctx, request.CtxProtocol, protocol)
+			ctx := context.WithValue(r.Context(), request.CtxUsername, authResp.username)
+			ctx = context.WithValue(ctx, request.CtxProtocol, authResp.protocol)
 
 			r = r.WithContext(ctx)
 		} else if untrustedOk && r.Header.Get("X-MigrationManager-authenticated") == "" {
 			slog.Debug("Allowing untrusted", slog.String("method", r.Method), slog.Any("url", r.URL), slog.String("ip", r.RemoteAddr))
 		} else {
-			if verifier != nil {
-				_ = verifier.WriteHeaders(w)
+			if authResp.verifier != nil {
+				_ = authResp.verifier.WriteHeaders(w)
 			}
 
 			slog.Warn("Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
@@ -858,7 +893,7 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 			}
 
 			// If the request is not trusted, only call the handler if the action allows it.
-			if !trusted && !action.AllowUntrusted {
+			if !authResp.trusted && !action.AllowUntrusted {
 				return response.Forbidden(fmt.Errorf("You must be authenticated"))
 			}
 
@@ -891,8 +926,8 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 		}
 
 		// If sending out Forbidden, make sure we have OIDC headers.
-		if resp.Code() == http.StatusForbidden && verifier != nil {
-			_ = verifier.WriteHeaders(w)
+		if resp.Code() == http.StatusForbidden && authResp.verifier != nil {
+			_ = authResp.verifier.WriteHeaders(w)
 		}
 
 		// Handle errors
