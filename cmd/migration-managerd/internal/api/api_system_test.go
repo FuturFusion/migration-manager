@@ -12,6 +12,7 @@ import (
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/migration-manager/internal/acme"
 	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -95,6 +96,7 @@ func TestSecurityUpdate(t *testing.T) {
 			},
 			wantConfig: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b", "c"},
+				ACME:                             acme.SetACMEDefaults(api.SystemSecurityACME{}),
 			},
 
 			changedOpenFGA: true,
@@ -111,6 +113,7 @@ func TestSecurityUpdate(t *testing.T) {
 				TrustedTLSClientCertFingerprints: []string{"a", "b", "c"},
 				OIDC:                             api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
 				OpenFGA:                          api.SystemSecurityOpenFGA{APIURL: "https://example.com", APIToken: "token", StoreID: "7ZZZZZZZZZZZZZZZZZZZZZZZZZ"},
+				ACME:                             acme.SetACMEDefaults(api.SystemSecurityACME{}),
 			},
 			changedOIDC:    true,
 			changedOpenFGA: true,
@@ -120,7 +123,7 @@ func TestSecurityUpdate(t *testing.T) {
 			name:           "success - add first trusted fingerprint",
 			initConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{}},
 			config:         api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}},
-			wantConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}},
+			wantConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}, ACME: acme.SetACMEDefaults(api.SystemSecurityACME{})},
 			changedOpenFGA: true,
 			wantHTTPStatus: http.StatusOK,
 		},
@@ -128,7 +131,7 @@ func TestSecurityUpdate(t *testing.T) {
 			name:           "success - remove trusted fingerprint",
 			initConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a", "b"}},
 			config:         api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}},
-			wantConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}},
+			wantConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}, ACME: acme.SetACMEDefaults(api.SystemSecurityACME{})},
 			changedOpenFGA: true,
 			wantHTTPStatus: http.StatusOK,
 		},
@@ -136,7 +139,7 @@ func TestSecurityUpdate(t *testing.T) {
 			name:           "error - cannot remove last trusted fingerprint",
 			initConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}},
 			config:         api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{}},
-			wantConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}},
+			wantConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}, ACME: acme.SetACMEDefaults(api.SystemSecurityACME{})},
 			wantHTTPStatus: http.StatusInternalServerError,
 		},
 		{
@@ -150,6 +153,7 @@ func TestSecurityUpdate(t *testing.T) {
 			},
 			wantConfig: api.SystemSecurity{
 				OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
+				ACME: acme.SetACMEDefaults(api.SystemSecurityACME{}),
 			},
 
 			wantHTTPStatus: http.StatusInternalServerError,
@@ -160,6 +164,7 @@ func TestSecurityUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
 			daemon := daemonSetup(t)
+			daemon.config.Security.ACME = acme.SetACMEDefaults(tc.initConfig.ACME)
 			daemon.config.Security.OIDC = tc.initConfig.OIDC
 			if daemon.config.Security.OIDC != (api.SystemSecurityOIDC{}) {
 				var err error
