@@ -117,6 +117,7 @@ func restServer(d *Daemon) *http.Server {
 	}
 
 	d.createCmd(router, "os/", incusOSProxyCmd)
+	d.createCmd(router, "", acmeChallengeCmd)
 
 	return &http.Server{
 		Handler:     router,
