@@ -370,7 +370,8 @@ func daemonSetup(t *testing.T) *Daemon {
 	require.NoError(t, os.Setenv("MIGRATION_MANAGER_DIR", tmpDir))
 	require.NoError(t, os.Unsetenv("MIGRATION_MANAGER_TESTING"))
 
-	handler := logger.NewLogHandler(slog.LevelWarn, slog.HandlerOptions{}, slog.DiscardHandler)
+	handler := logger.NewLogHandler(slog.LevelWarn, slog.HandlerOptions{})
+	handler.AddHandler(slog.DiscardHandler)
 	log := slog.New(handler)
 
 	daemon := NewDaemon(handler)

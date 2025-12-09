@@ -247,7 +247,8 @@ func TestLogWebhook(t *testing.T) {
 
 			webhook, err := NewWebhookLogger(tc.cfg)
 			require.NoError(t, err)
-			handler := NewLogHandler(slog.LevelWarn, slog.HandlerOptions{}, webhook)
+			handler := NewLogHandler(slog.LevelWarn, slog.HandlerOptions{})
+			handler.AddHandler(webhook)
 			log := slog.New(handler)
 
 			handler.SendLifecycle(context.Background(), event.NewMigrationEvent(event.MigrationCreated, tc.instanceData, tc.queueData))
