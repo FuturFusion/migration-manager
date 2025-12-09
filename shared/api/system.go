@@ -77,6 +77,9 @@ type SystemSettingsLog struct {
 	// Number of attempts to make against the logging target.
 	RetryCount int `json:"retry_count" yaml:"retry_count"`
 
+	// How long to wait between retrying a log.
+	RetryTimeout string `json:"retry_timeout" yaml:"retry_timeout"`
+
 	// Logging scopes to send to the logging target.
 	// Example: [logging, lifecycle]
 	Scopes []LogScope `json:"scopes" yaml:"scopes"`
