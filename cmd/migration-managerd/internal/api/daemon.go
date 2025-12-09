@@ -631,6 +631,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 	changedNetwork := init || newCfg.Network != oldCfg.Network
 	changedOIDC := init || newCfg.Security.OIDC != oldCfg.Security.OIDC
 	changedOpenFGA := init || newCfg.Security.OpenFGA != oldCfg.Security.OpenFGA || !slices.Equal(newCfg.Security.TrustedTLSClientCertFingerprints, oldCfg.Security.TrustedTLSClientCertFingerprints)
+	logTargetsChanged := init || logger.WebhookConfigChanged(oldCfg.Settings.LogTargets, newCfg.Settings.LogTargets)
 
 	updateHandlers := func(applyCfg api.SystemConfig) error {
 		err := config.Validate(applyCfg, oldCfg)
@@ -639,9 +640,12 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 		}
 
 		d.setLogLevel(init, applyCfg.Settings.LogLevel)
-		err = d.logHandler.SetHandlers(applyCfg.Settings.LogTargets)
-		if err != nil {
-			return err
+
+		if logTargetsChanged {
+			err = d.logHandler.SetHandlers(applyCfg.Settings.LogTargets)
+			if err != nil {
+				return err
+			}
 		}
 
 		if changedNetwork {
