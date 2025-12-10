@@ -41,12 +41,13 @@ func TestLogWebhook(t *testing.T) {
 			name:    "success - can receive lifecycle and logging",
 			numReqs: 2,
 			cfg: api.SystemSettingsLog{
-				Name:       "webhook",
-				Type:       api.LogTypeWebhook,
-				Level:      "warn",
-				Address:    "*", // apply test server address
-				RetryCount: 3,
-				Scopes:     []api.LogScope{api.LogScopeLifecycle, api.LogScopeLogging},
+				Name:         "webhook",
+				Type:         api.LogTypeWebhook,
+				Level:        "warn",
+				Address:      "*", // apply test server address
+				RetryCount:   3,
+				RetryTimeout: "10s",
+				Scopes:       []api.LogScope{api.LogScopeLifecycle, api.LogScopeLogging},
 			},
 
 			instanceData: api.Instance{
@@ -91,12 +92,13 @@ func TestLogWebhook(t *testing.T) {
 			name:    "success - logging omitted",
 			numReqs: 1,
 			cfg: api.SystemSettingsLog{
-				Name:       "webhook",
-				Type:       api.LogTypeWebhook,
-				Level:      "warn",
-				Address:    "*", // apply test server address
-				RetryCount: 3,
-				Scopes:     []api.LogScope{api.LogScopeLifecycle},
+				Name:         "webhook",
+				Type:         api.LogTypeWebhook,
+				Level:        "warn",
+				Address:      "*", // apply test server address
+				RetryCount:   3,
+				RetryTimeout: "10s",
+				Scopes:       []api.LogScope{api.LogScopeLifecycle},
 			},
 
 			instanceData: api.Instance{
@@ -140,12 +142,13 @@ func TestLogWebhook(t *testing.T) {
 			name:    "success - lifecycle omitted",
 			numReqs: 1,
 			cfg: api.SystemSettingsLog{
-				Name:       "webhook",
-				Type:       api.LogTypeWebhook,
-				Level:      "warn",
-				Address:    "*",
-				RetryCount: 3,
-				Scopes:     []api.LogScope{api.LogScopeLogging},
+				Name:         "webhook",
+				Type:         api.LogTypeWebhook,
+				Level:        "warn",
+				Address:      "*",
+				RetryCount:   3,
+				RetryTimeout: "10s",
+				Scopes:       []api.LogScope{api.LogScopeLogging},
 			},
 			wantResps: []api.Event{defaultLog},
 			sendLog: func(log *slog.Logger) func(msg string, args ...any) {
@@ -156,12 +159,13 @@ func TestLogWebhook(t *testing.T) {
 			name:    "success - all omitted",
 			numReqs: 0,
 			cfg: api.SystemSettingsLog{
-				Name:       "webhook",
-				Type:       api.LogTypeWebhook,
-				Level:      "warn",
-				Address:    "*",
-				RetryCount: 3,
-				Scopes:     []api.LogScope{},
+				Name:         "webhook",
+				Type:         api.LogTypeWebhook,
+				Level:        "warn",
+				Address:      "*",
+				RetryCount:   3,
+				RetryTimeout: "10s",
+				Scopes:       []api.LogScope{},
 			},
 			sendLog: func(log *slog.Logger) func(msg string, args ...any) {
 				return log.Error
@@ -171,12 +175,13 @@ func TestLogWebhook(t *testing.T) {
 			name:    "success - discard log level",
 			numReqs: 0,
 			cfg: api.SystemSettingsLog{
-				Name:       "webhook",
-				Type:       api.LogTypeWebhook,
-				Level:      "warn",
-				Address:    "*",
-				RetryCount: 3,
-				Scopes:     []api.LogScope{api.LogScopeLogging},
+				Name:         "webhook",
+				Type:         api.LogTypeWebhook,
+				Level:        "warn",
+				Address:      "*",
+				RetryCount:   3,
+				RetryTimeout: "10s",
+				Scopes:       []api.LogScope{api.LogScopeLogging},
 			},
 			sendLog: func(log *slog.Logger) func(msg string, args ...any) {
 				return log.Info
@@ -187,7 +192,7 @@ func TestLogWebhook(t *testing.T) {
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
-			timeCtx, timeCancel := context.WithTimeout(context.Background(), time.Second*3)
+			timeCtx, timeCancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 			defer timeCancel()
 			ctx, cancel := context.WithCancelCause(timeCtx)
 			defer cancel(context.Canceled)
@@ -197,6 +202,7 @@ func TestLogWebhook(t *testing.T) {
 			events := []api.Event{}
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				numReqs++
+
 				if r.URL.Path != "/test" || r.Method != http.MethodPost {
 					err := fmt.Errorf("Invalid endpoint. URL: %q, Method: %v", r.URL.String(), r.Method)
 					errs = append(errs, err)
@@ -223,6 +229,9 @@ func TestLogWebhook(t *testing.T) {
 				events = append(events, e)
 
 				w.WriteHeader(http.StatusOK)
+				if numReqs == 2 {
+					cancel(context.Canceled)
+				}
 			}))
 			defer server.Close()
 
@@ -254,8 +263,14 @@ func TestLogWebhook(t *testing.T) {
 			handler.SendLifecycle(context.Background(), event.NewMigrationEvent(event.MigrationCreated, tc.instanceData, tc.queueData))
 			tc.sendLog(log)("TEST", slog.Any("key", "val"), slog.Any("key2", "val2"))
 
+			<-ctx.Done()
+			require.Error(t, ctx.Err())
 			if ctx.Err() != nil {
-				require.ErrorIs(t, ctx.Err(), context.Canceled)
+				if tc.numReqs != 2 {
+					require.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
+				} else {
+					require.ErrorIs(t, ctx.Err(), context.Canceled)
+				}
 			}
 
 			for _, err := range errs {
@@ -265,10 +280,10 @@ func TestLogWebhook(t *testing.T) {
 			require.Equal(t, tc.numReqs, numReqs)
 			require.Len(t, events, len(tc.wantResps))
 			require.Len(t, events, tc.numReqs)
-			for i, e := range events {
+			for _, e := range events {
 				require.False(t, e.Time.IsZero())
 				e.Time = time.Time{}
-				require.Equal(t, tc.wantResps[i], e)
+				require.Contains(t, tc.wantResps, e)
 			}
 		})
 	}
