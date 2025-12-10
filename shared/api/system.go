@@ -184,7 +184,7 @@ type SystemSecurityACME struct {
 	// Address and interface for HTTP server (used by HTTP-01).
 	Address string `json:"http_challenge_address" yaml:"http_challenge_address"`
 
-	// Backend provider for the challenge (used by DNS-01)>
+	// Backend provider for the challenge (used by DNS-01).
 	Provider string `json:"provider" yaml:"provider"`
 
 	// Environment variables to set during the challenge (used by DNS-01).
