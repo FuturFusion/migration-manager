@@ -8,6 +8,7 @@ API </reference/api>
 Sources </reference/sources>
 Targets </reference/targets>
 Settings </reference/settings>
+Events </reference/events>
 Artifacts </reference/artifacts>
 Batches </reference/batches>
 Queue </reference/queue>

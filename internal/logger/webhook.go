@@ -33,6 +33,8 @@ type webhookLog struct {
 	username string
 	password string
 	retry    int
+
+	retryTimeout time.Duration
 }
 
 func WebhookDefaultConfig(cfg api.SystemSettingsLog) api.SystemSettingsLog {
@@ -48,8 +50,12 @@ func WebhookDefaultConfig(cfg api.SystemSettingsLog) api.SystemSettingsLog {
 		newCfg.RetryCount = 3
 	}
 
+	if cfg.RetryTimeout == "" {
+		newCfg.RetryTimeout = (time.Second * 10).String()
+	}
+
 	if len(cfg.Scopes) == 0 {
-		cfg.Scopes = []api.LogScope{api.LogScopeLifecycle, api.LogScopeLogging}
+		newCfg.Scopes = []api.LogScope{api.LogScopeLifecycle, api.LogScopeLogging}
 	}
 
 	return newCfg
@@ -111,6 +117,11 @@ func WebhookValidateConfig(cfg api.SystemSettingsLog) error {
 		}
 	}
 
+	_, err = time.ParseDuration(cfg.RetryTimeout)
+	if err != nil {
+		return fmt.Errorf("Logger retry timeout %q is invalid: %w", cfg.RetryTimeout, err)
+	}
+
 	return nil
 }
 
@@ -128,6 +139,7 @@ func WebhookConfigChanged(oldCfgs, newCfgs []api.SystemSettingsLog) bool {
 			oldCfgs[i].Password != newCfgs[i].Password ||
 			oldCfgs[i].CACert != newCfgs[i].CACert ||
 			oldCfgs[i].RetryCount != newCfgs[i].RetryCount ||
+			oldCfgs[i].RetryTimeout != newCfgs[i].RetryTimeout ||
 			!slices.Equal(oldCfgs[i].Scopes, newCfgs[i].Scopes) {
 			return true
 		}
@@ -148,6 +160,12 @@ func NewWebhookLogger(cfg api.SystemSettingsLog) (slog.Handler, error) {
 		scopes:   cfg.Scopes,
 
 		client: &http.Client{},
+	}
+
+	var err error
+	w.retryTimeout, err = time.ParseDuration(cfg.RetryTimeout)
+	if err != nil {
+		return nil, err
 	}
 
 	if cfg.CACert != "" {
@@ -235,24 +253,28 @@ func (w *webhookLog) Handle(ctx context.Context, r slog.Record) error {
 		return err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.address, bytes.NewReader(b))
+	req, err := http.NewRequest(http.MethodPost, w.address, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	for range w.retry {
-		resp, err := w.client.Do(req)
-		if err != nil {
-			// Wait 10s and try again.
-			time.Sleep(10 * time.Second)
+	go func() {
+		for i := range w.retry {
+			resp, err := w.client.Do(req)
+			if err != nil {
+				if i < w.retry-1 {
+					// Wait 10s and try again.
+					time.Sleep(w.retryTimeout)
+				}
 
-			continue
+				continue
+			}
+
+			_ = resp.Body.Close()
+			return
 		}
-
-		_ = resp.Body.Close()
-		return nil
-	}
+	}()
 
 	return nil
 }

@@ -77,6 +77,9 @@ type SystemSettingsLog struct {
 	// Number of attempts to make against the logging target.
 	RetryCount int `json:"retry_count" yaml:"retry_count"`
 
+	// How long to wait between retrying a log.
+	RetryTimeout string `json:"retry_timeout" yaml:"retry_timeout"`
+
 	// Logging scopes to send to the logging target.
 	// Example: [logging, lifecycle]
 	Scopes []LogScope `json:"scopes" yaml:"scopes"`
@@ -181,7 +184,7 @@ type SystemSecurityACME struct {
 	// Address and interface for HTTP server (used by HTTP-01).
 	Address string `json:"http_challenge_address" yaml:"http_challenge_address"`
 
-	// Backend provider for the challenge (used by DNS-01)>
+	// Backend provider for the challenge (used by DNS-01).
 	Provider string `json:"provider" yaml:"provider"`
 
 	// Environment variables to set during the challenge (used by DNS-01).

@@ -17,7 +17,7 @@ type Handler struct {
 }
 
 // NewLogHandler creates a new log handler with the given default options, level, and sub-handlers.
-func NewLogHandler(level slog.Level, options slog.HandlerOptions, handlers ...slog.Handler) *Handler {
+func NewLogHandler(level slog.Level, options slog.HandlerOptions) *Handler {
 	var leveler slog.LevelVar
 	leveler.Set(level)
 	if options.Level == nil {
@@ -27,8 +27,12 @@ func NewLogHandler(level slog.Level, options slog.HandlerOptions, handlers ...sl
 	return &Handler{
 		LevelVar: &leveler,
 		options:  options,
-		handlers: handlers,
+		handlers: []slog.Handler{},
 	}
+}
+
+func (h *Handler) AddHandler(handler slog.Handler) {
+	h.handlers = append(h.handlers, handler)
 }
 
 // SetHandlers replaces the log handler set with additional config-based handlers, keeping any default handlers.

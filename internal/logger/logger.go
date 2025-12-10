@@ -67,12 +67,8 @@ func InitLogger(filepath string, verbose bool, debug bool) (*Handler, error) {
 		writer = io.MultiWriter(writer, f)
 	}
 
-	defaultOptions := slog.HandlerOptions{
-		// Add source information, if debug level is enabled.
-		AddSource: debug,
-	}
-
-	handler := NewLogHandler(level, defaultOptions, slog.NewTextHandler(writer, &defaultOptions))
+	handler := NewLogHandler(level, slog.HandlerOptions{AddSource: debug})
+	handler.AddHandler(slog.NewTextHandler(writer, &handler.options))
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
