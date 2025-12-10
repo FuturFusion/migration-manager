@@ -256,6 +256,10 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 		placementErrs := map[uuid.UUID]error{}
 		err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
 			return util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
+				placementLock.Lock()
+				entry := state.QueueEntries[instUUID]
+				placementLock.Unlock()
+
 				if state.Batch.Config.RerunScriptlets {
 					usedNetworks := migration.FilterUsedNetworks(allNetworks, migration.Instances{instance})
 					windows := make(migration.Windows, 0, len(state.Windows))
@@ -270,7 +274,6 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 
 					// Update the migration state with the queue entry's new placement.
 					placementLock.Lock()
-					entry := state.QueueEntries[instUUID]
 					entry.Placement = *placement
 					state.QueueEntries[instUUID] = entry
 					migrationState[batchName] = state
@@ -279,14 +282,14 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 
 				var info *target.IncusDetails
 				for _, t := range targetInfo {
-					if t.Name == state.QueueEntries[instUUID].Placement.TargetName {
+					if t.Name == entry.Placement.TargetName {
 						info = &t
 						break
 					}
 				}
 
 				// Verify that the target placement actually exists and the instance can be placed there.
-				err := target.CanPlaceInstance(ctx, info, state.QueueEntries[instUUID].Placement, instance.ToAPI(), state.Batch.ToAPI(nil))
+				err := target.CanPlaceInstance(ctx, info, entry.Placement, instance.ToAPI(), state.Batch.ToAPI(nil))
 				if err != nil {
 					placementLock.Lock()
 					placementErrs[instUUID] = err
