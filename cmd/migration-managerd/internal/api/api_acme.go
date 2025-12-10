@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 var acmeChallengeCmd = APIEndpoint{
@@ -19,6 +20,10 @@ var acmeChallengeCmd = APIEndpoint{
 
 func acmeProvideChallenge(d *Daemon, r *http.Request) response.Response {
 	acmeCfg := d.config.Security.ACME
+	if acmeCfg.Challenge != api.ACMEChallengeHTTP {
+		return response.NotFound(nil)
+	}
+
 	if acmeCfg.Domain == "" {
 		return response.SmartError(errors.New("ACME domain is not configured"))
 	}
@@ -49,15 +54,16 @@ func acmeProvideChallenge(d *Daemon, r *http.Request) response.Response {
 
 	defer resp.Body.Close()
 
-	challenge, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return response.InternalError(err)
 	}
 
 	return response.ManualResponse(func(w http.ResponseWriter) error {
 		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(resp.StatusCode)
 
-		_, err = w.Write(challenge)
+		_, err = w.Write(body)
 		if err != nil {
 			return err
 		}
