@@ -216,7 +216,7 @@ func (t *InternalIncusTarget) SetProject(project string) error {
 // SetPostMigrationVMConfig stops the target instance and applies post-migration configuration before restarting it.
 func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i migration.Instance, q migration.QueueEntry) error {
 	props := i.Properties
-	props.Apply(i.Overrides.Properties)
+	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 
 	defs, err := properties.Definitions(t.TargetType, t.version)
 	if err != nil {
@@ -485,7 +485,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	}
 
 	props := instanceDef.Properties
-	props.Apply(instanceDef.Overrides.Properties)
+	props.Apply(instanceDef.Overrides.InstancePropertiesConfigurable)
 
 	defs, err := properties.Definitions(t.TargetType, t.version)
 	if err != nil {
@@ -584,7 +584,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 	}
 
 	props := instDef.Properties
-	props.Apply(instDef.Overrides.Properties)
+	props.Apply(instDef.Overrides.InstancePropertiesConfigurable)
 	// After the scheduler places the instance, get its target and create storage volumes on that member.
 	if len(props.Disks) > 1 {
 		instInfo, etag, err := t.incusClient.GetInstance(apiDef.Name)
@@ -1188,7 +1188,7 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 
 	for hwaddr, targetNet := range placement.Networks {
 		var instNIC api.InstancePropertiesNIC
-		for _, nic := range inst.Properties.NICs {
+		for _, nic := range inst.NICs {
 			if nic.HardwareAddress == hwaddr {
 				instNIC = nic
 				break

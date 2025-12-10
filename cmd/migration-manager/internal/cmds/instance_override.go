@@ -128,13 +128,13 @@ func (c *cmdInstanceOverrideShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	numCPUSDisplay := strconv.Itoa(int(override.Properties.CPUs))
-	if override.Properties.CPUs == 0 {
+	numCPUSDisplay := strconv.Itoa(int(override.CPUs))
+	if override.CPUs == 0 {
 		numCPUSDisplay = ""
 	}
 
-	memoryDisplay := units.GetByteSizeStringIEC(override.Properties.Memory, 2)
-	if override.Properties.Memory == 0 {
+	memoryDisplay := units.GetByteSizeStringIEC(override.Memory, 2)
+	if override.Memory == 0 {
 		memoryDisplay = ""
 	}
 

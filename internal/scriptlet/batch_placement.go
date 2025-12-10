@@ -34,7 +34,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		}
 
 		resp.TargetName = targetName
-		slog.Info("Batch placement assigned target for instance", slog.String("location", instance.Properties.Location), slog.String("target", resp.TargetName))
+		slog.Info("Batch placement assigned target for instance", slog.String("location", instance.Location), slog.String("target", resp.TargetName))
 
 		return starlark.None, nil
 	}
@@ -52,7 +52,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		}
 
 		resp.TargetProject = projectName
-		slog.Info("Batch placement assigned project for instance", slog.String("location", instance.Properties.Location), slog.String("project", resp.TargetProject))
+		slog.Info("Batch placement assigned project for instance", slog.String("location", instance.Location), slog.String("project", resp.TargetProject))
 
 		return starlark.None, nil
 	}
@@ -71,7 +71,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		}
 
 		var diskExists bool
-		for _, d := range instance.Properties.Disks {
+		for _, d := range instance.Disks {
 			if d.Name == diskName && d.Supported {
 				diskExists = true
 				break
@@ -79,7 +79,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		}
 
 		if !diskExists {
-			return nil, fmt.Errorf("No disk found with name %q on instance %q", diskName, instance.Properties.Location)
+			return nil, fmt.Errorf("No disk found with name %q on instance %q", diskName, instance.Location)
 		}
 
 		if resp.StoragePools == nil {
@@ -87,7 +87,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		}
 
 		resp.StoragePools[diskName] = poolName
-		slog.Info("Batch placement assigned storage pool for instance", slog.String("location", instance.Properties.Location), slog.String("disk", diskName), slog.String("pool", poolName))
+		slog.Info("Batch placement assigned storage pool for instance", slog.String("location", instance.Location), slog.String("disk", diskName), slog.String("pool", poolName))
 
 		return starlark.None, nil
 	}
@@ -133,7 +133,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		}
 
 		var nicExists bool
-		for _, d := range instance.Properties.NICs {
+		for _, d := range instance.NICs {
 			if d.HardwareAddress == nicMac {
 				nicExists = true
 				break
@@ -141,7 +141,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		}
 
 		if !nicExists {
-			return nil, fmt.Errorf("No NIC found with hardware address %q on instance %q", nicMac, instance.Properties.Location)
+			return nil, fmt.Errorf("No NIC found with hardware address %q on instance %q", nicMac, instance.Location)
 		}
 
 		if resp.Networks == nil {
@@ -154,7 +154,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 			VlanID:  vlanID,
 		}
 
-		slog.Info("Batch placement assigned network for instance", slog.String("location", instance.Properties.Location), slog.String("nic", nicMac), slog.String("network", netName), slog.String("nic_type", nicType), slog.String("vlan_id", vlanID))
+		slog.Info("Batch placement assigned network for instance", slog.String("location", instance.Location), slog.String("nic", nicMac), slog.String("network", netName), slog.String("nic_type", nicType), slog.String("vlan_id", vlanID))
 
 		return starlark.None, nil
 	}

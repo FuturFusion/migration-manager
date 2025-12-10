@@ -413,7 +413,7 @@ func TestMigration_beginImports(t *testing.T) {
 def placement(instance, batch):
 	set_target('tgt2')
 	set_project('project2')
-	set_pool('{}_disk_1'.format(instance.properties.name), 'pool2')
+	set_pool('{}_disk_1'.format(instance.name), 'pool2')
 	set_network('00:00:00:00:00:01', 'net2', 'managed', '')`,
 
 			hasVMwareSDK:    true,
