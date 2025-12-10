@@ -124,21 +124,33 @@ The following functions are available to the scriptlet:
 
 ```{note}
 Field names of instances and batches are the same as the JSON or YAML representation shown over the API or in the `migration-manager instance show` and `migration-manager batch show` commands.
+
+Unlike with instance filtering, overrides will not overwrite their corresponding value on the instance object. Individual overrides can be accessed via the `overrides` field of the instance, for example `instance.overrides.name`.
 ```
 
 ##### Example scriptlet
 
 ```python
 def placement(instance, batch):
+    # If the instance name is "my-vm", use target "tgt1" and project "project1"
+    if instance.name == "my-vm":
+        set_project("project1")
+        set_target("tgt1")
+
     # If instances have 1 disk and 2 NICs exactly, perform the following overrides
     if len(instance.disks) == 1 and len(instance.nics) == 2:
-       log_info("Detected instance with 1 disk and 2 NICs:", instance.location)
-       # Use pool "mypool" for the first disk of each instance.
-       set_pool(instance.disks[0].name, "mypool")
+        log_info("Detected instance with 1 disk and 2 NICs:", instance.location)
+        # Use pool "mypool1" for the first disk of each instance.
+        set_pool(instance.disks[0].name, "mypool1")
 
-       # Use network mynetwork1 for the first NIC, and mynetwork2 for the second NIC of each instance.
-       set_network(instance.nics[0].hardware_address, "mynetwork1", "managed", "")
-       set_network(instance.nics[1].hardware_address, "mynetwork2", "bridged", "10")
+        # Use network mynetwork1 for the first NIC, and mynetwork2 for the second NIC of each instance.
+        set_network(instance.nics[0].hardware_address, "mynetwork1", "managed", "")
+        set_network(instance.nics[1].hardware_address, "mynetwork2", "bridged", "10")
+    else:
+        # For disks from datastore "my-datastore" in source "src1", use the target pool "my-pool2":
+        for disk in instance.disks:
+            if instance.source == "src1" and disk.name.startswith("[my-datastore] "):
+                set_pool(disk.name, "mypool2")
 
     # For all other instances, use the default placement
 ```
