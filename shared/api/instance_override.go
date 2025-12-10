@@ -8,6 +8,9 @@ import (
 //
 // swagger:model
 type InstanceOverride struct {
+	// Overrides to properties imported from the source.
+	InstancePropertiesConfigurable `yaml:",inline"`
+
 	// The last time this instance override was updated
 	// Example: 2024-11-12 16:15:00 +0000 UTC
 	LastUpdate time.Time `json:"last_update" yaml:"last_update"`
@@ -23,7 +26,4 @@ type InstanceOverride struct {
 	// If true, restrictions that put the VM in a blocked state, preventing migration, will be ignored.
 	// Example: true
 	IgnoreRestrictions bool `json:"ignore_restrictions" yaml:"ignore_restrictions"`
-
-	// Overrides to properties imported from the source.
-	Properties InstancePropertiesConfigurable `json:"properties" yaml:"properties"`
 }
