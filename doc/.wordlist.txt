@@ -1,10 +1,12 @@
 acked
 bugfixes
+Backend
 config
 CLI
 CPUs
 disklib
 DCO
+DNS
 expr
 ESXi
 Expr
@@ -27,7 +29,9 @@ NICs
 NSX
 OIDC
 OpenFGA
+pre
 PKCS
+resolvers
 resync
 resynced
 scriptlet
@@ -35,6 +39,7 @@ SDK
 SHA
 Starlark
 TLS
+unstarted
 UI
 vCenter
 virtio
