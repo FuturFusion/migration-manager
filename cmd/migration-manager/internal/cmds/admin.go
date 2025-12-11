@@ -47,5 +47,21 @@ func (c *cmdAdminOS) Command() *cobra.Command {
 		},
 	}
 
-	return cli.NewCommand(args)
+	cmd := cli.NewCommand(args)
+	preFunc := cmd.PersistentPreRun
+	preFuncErr := cmd.PersistentPreRunE
+	cmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if preFuncErr != nil {
+			err := preFuncErr(cmd, args)
+			if err != nil {
+				return err
+			}
+		} else if preFunc != nil {
+			preFunc(cmd, args)
+		}
+
+		return c.global.PreRun(cmd, args)
+	}
+
+	return cmd
 }

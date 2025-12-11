@@ -3,6 +3,7 @@ The following tutorials demonstrate various features and guides for using Migrat
 
 ```{toctree}
 :maxdepth: 1
+Install with IncusOS </tutorials/incus_os_install>
 Migrate from ESXi </tutorials/migrate_esxi>
 Migrate from vCenter </tutorials/migrate_vcenter>
 Complex Migrations </tutorials/migrate_complex>

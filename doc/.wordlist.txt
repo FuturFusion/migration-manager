@@ -2,6 +2,7 @@ acked
 bugfixes
 Backend
 config
+customizer
 CLI
 CPUs
 disklib
@@ -30,6 +31,7 @@ NSX
 OIDC
 OpenFGA
 pre
+preseed
 PKCS
 resolvers
 resync

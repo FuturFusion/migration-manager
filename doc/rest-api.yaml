@@ -1,4 +1,8 @@
 definitions:
+    ACMEChallengeType:
+        title: ACMEChallengeType represents challenge types for ACME configuration.
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
     Artifact:
         properties:
             architectures:
@@ -282,16 +286,100 @@ definitions:
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     Instance:
         properties:
+            architecture:
+                description: Architecture of the Instance.
+                example: x86_64
+                type: string
+                x-go-name: Architecture
+            background_import:
+                description: Whether the Instance supports background-import migrations.
+                example: true
+                type: boolean
+                x-go-name: BackgroundImport
+            config:
+                additionalProperties:
+                    type: string
+                description: Additional configuration of the Instance.
+                type: object
+                x-go-name: Config
+            cpus:
+                description: Number of CPUs assigned to the Instance.
+                example: 4
+                format: int64
+                type: integer
+                x-go-name: CPUs
+            description:
+                description: Description of the Instance.
+                example: Windows Server 2025
+                type: string
+                x-go-name: Description
+            disks:
+                description: List of disks assigned to the Instance.
+                items:
+                    $ref: '#/definitions/InstancePropertiesDisk'
+                type: array
+                x-go-name: Disks
             last_update_from_source:
                 description: Last synced update from the source.
                 example: "2025-01-01 01:00:00"
                 format: date-time
                 type: string
                 x-go-name: LastUpdateFromSource
+            legacy_boot:
+                description: Whether the Instance uses legacy (CSM) boot.
+                example: true
+                type: boolean
+                x-go-name: LegacyBoot
+            location:
+                description: Location path of the Instance.
+                example: /path/to/instance_name
+                type: string
+                x-go-name: Location
+            memory:
+                description: Memory in bytes assigned to the Instance.
+                example: 1073741824
+                format: int64
+                type: integer
+                x-go-name: Memory
+            name:
+                description: Name of the Instance.
+                example: myVM
+                type: string
+                x-go-name: Name
+            nics:
+                description: List of network interface cards assigned to the Instance.
+                items:
+                    $ref: '#/definitions/InstancePropertiesNIC'
+                type: array
+                x-go-name: NICs
+            os:
+                description: OS name of the Instance.
+                example: Ubuntu
+                type: string
+                x-go-name: OS
+            os_version:
+                description: OS version of the Instance.
+                example: "24.04"
+                type: string
+                x-go-name: OSVersion
             overrides:
                 $ref: '#/definitions/InstanceOverride'
-            properties:
-                $ref: '#/definitions/InstanceProperties'
+            running:
+                description: Whether the Instance was running when the sync was performed.
+                example: true
+                type: boolean
+                x-go-name: Running
+            secure_boot:
+                description: Whether the Instance has secure-boot enabled.
+                example: true
+                type: boolean
+                x-go-name: SecureBoot
+            snapshots:
+                description: List of snapshots for the Instance.
+                items:
+                    $ref: '#/definitions/InstancePropertiesSnapshot'
+                type: array
+                x-go-name: Snapshots
             source:
                 description: The originating source name for this instance
                 example: MySource
@@ -299,16 +387,49 @@ definitions:
                 x-go-name: Source
             source_type:
                 $ref: '#/definitions/SourceType'
+            tpm:
+                description: Whether the Instance has a TPM.
+                example: true
+                type: boolean
+                x-go-name: TPM
+            uuid:
+                description: Unique identifier of the Instance.
+                example: a2095069-a527-4b2a-ab23-1739325dcac7
+                format: uuid
+                type: string
+                x-go-name: UUID
         title: Instance defines a VM instance to be migrated.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     InstanceOverride:
         properties:
+            architecture:
+                description: Architecture of the Instance.
+                example: x86_64
+                type: string
+                x-go-name: Architecture
             comment:
                 description: An optional comment about the override
                 example: '"Manually tweak number of CPUs"'
                 type: string
                 x-go-name: Comment
+            config:
+                additionalProperties:
+                    type: string
+                description: Additional configuration of the Instance.
+                type: object
+                x-go-name: Config
+            cpus:
+                description: Number of CPUs assigned to the Instance.
+                example: 4
+                format: int64
+                type: integer
+                x-go-name: CPUs
+            description:
+                description: Description of the Instance.
+                example: Windows Server 2025
+                type: string
+                x-go-name: Description
             disable_migration:
                 description: If true, migration of this instance will be disabled.
                 example: true
@@ -325,8 +446,27 @@ definitions:
                 format: date-time
                 type: string
                 x-go-name: LastUpdate
-            properties:
-                $ref: '#/definitions/InstancePropertiesConfigurable'
+            memory:
+                description: Memory in bytes assigned to the Instance.
+                example: 1073741824
+                format: int64
+                type: integer
+                x-go-name: Memory
+            name:
+                description: Name of the Instance.
+                example: myVM
+                type: string
+                x-go-name: Name
+            os:
+                description: OS name of the Instance.
+                example: Ubuntu
+                type: string
+                x-go-name: OS
+            os_version:
+                description: OS version of the Instance.
+                example: "24.04"
+                type: string
+                x-go-name: OSVersion
         title: InstanceOverride defines a limited set of instance values that can be overridden as part of the migration process.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
@@ -567,6 +707,14 @@ definitions:
                 type: boolean
                 x-go-name: AllowUnknownOS
         type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    LogScope:
+        title: LogScope is a type of log that a logging target will receive.
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    LogType:
+        title: LogType is a type of logging target.
+        type: string
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     MigrationNetworkPlacement:
         properties:
@@ -878,6 +1026,8 @@ definitions:
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     SystemSecurity:
         properties:
+            acme:
+                $ref: '#/definitions/SystemSecurityACME'
             oidc:
                 $ref: '#/definitions/SystemSecurityOIDC'
             openfga:
@@ -889,6 +1039,48 @@ definitions:
                 type: array
                 x-go-name: TrustedTLSClientCertFingerprints
         title: SystemSecurity represents the system's security configuration.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemSecurityACME:
+        properties:
+            agree_tos:
+                description: Agree to ACME terms of service.
+                type: boolean
+                x-go-name: AgreeTOS
+            ca_url:
+                description: URL to the directory resource of the ACME service.
+                type: string
+                x-go-name: CAURL
+            challenge:
+                $ref: '#/definitions/ACMEChallengeType'
+            domain:
+                description: Domain for which the certificate is issued.
+                type: string
+                x-go-name: Domain
+            email:
+                description: Email address used for the account registration.
+                type: string
+                x-go-name: Email
+            http_challenge_address:
+                description: Address and interface for HTTP server (used by HTTP-01).
+                type: string
+                x-go-name: Address
+            provider:
+                description: Backend provider for the challenge (used by DNS-01).
+                type: string
+                x-go-name: Provider
+            provider_environment:
+                description: Environment variables to set during the challenge (used by DNS-01).
+                items:
+                    type: string
+                type: array
+                x-go-name: ProviderEnvironment
+            provider_resolves:
+                description: List of DNS resolvers (used by DNS-01).
+                items:
+                    type: string
+                type: array
+                x-go-name: ProviderResolvers
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     SystemSecurityOIDC:
@@ -943,11 +1135,67 @@ definitions:
                 description: Daemon log level.
                 type: string
                 x-go-name: LogLevel
+            log_targets:
+                description: Additional logging targets.
+                items:
+                    $ref: '#/definitions/SystemSettingsLog'
+                type: array
+                x-go-name: LogTargets
             sync_interval:
                 description: Interval over which data from all sources will be periodically resynced.
                 type: string
                 x-go-name: SyncInterval
         title: SystemSettings represents global system settings.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemSettingsLog:
+        properties:
+            address:
+                description: Address of the logging target.
+                example: https://example.com:443
+                type: string
+                x-go-name: Address
+            ca_cert:
+                description: CA Certificate used to authenticate with the logging target.
+                type: string
+                x-go-name: CACert
+            level:
+                description: Log level to display.
+                example: WARN
+                type: string
+                x-go-name: Level
+            name:
+                description: Name identifying the logging target.
+                example: foo
+                type: string
+                x-go-name: Name
+            password:
+                description: Password of the logging target.
+                type: string
+                x-go-name: Password
+            retry_count:
+                description: Number of attempts to make against the logging target.
+                format: int64
+                type: integer
+                x-go-name: RetryCount
+            retry_timeout:
+                description: How long to wait between retrying a log.
+                type: string
+                x-go-name: RetryTimeout
+            scopes:
+                description: Logging scopes to send to the logging target.
+                example: '[logging, lifecycle]'
+                items:
+                    $ref: '#/definitions/LogScope'
+                type: array
+                x-go-name: Scopes
+            type:
+                $ref: '#/definitions/LogType'
+            username:
+                description: Username of the logging target.
+                type: string
+                x-go-name: Username
+        title: SystemSettingsLog represents configuration for a logging target.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     Target:
