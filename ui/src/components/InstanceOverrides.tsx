@@ -54,15 +54,15 @@ const InstanceOverrides: FC = () => {
   if (instance && overrideExists) {
     const overrides = instance.overrides;
     formikInitialValues = {
-      name: overrides.properties.name,
+      name: overrides.name,
       comment: overrides.comment,
       disable_migration: overrides.disable_migration.toString(),
       ignore_restrictions: overrides.ignore_restrictions.toString(),
-      cpus: overrides.properties.cpus,
-      memory: bytesToHumanReadable(overrides.properties.memory),
-      config: overrides.properties.config,
-      os: overrides.properties.os,
-      os_version: overrides.properties.os_version,
+      cpus: overrides.cpus,
+      memory: bytesToHumanReadable(overrides.memory),
+      config: overrides.config,
+      os: overrides.os,
+      os_version: overrides.os_version,
     };
   }
 

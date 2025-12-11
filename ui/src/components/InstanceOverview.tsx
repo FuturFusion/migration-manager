@@ -28,8 +28,8 @@ const InstanceOverview = () => {
   }
 
   const configDiff = Object.fromEntries(
-    Object.entries(instance.overrides?.properties.config ?? []).filter(
-      ([key]) => !(key in instance.properties.config),
+    Object.entries(instance.overrides?.config ?? []).filter(
+      ([key]) => !(key in instance.config),
     ),
   );
 
@@ -39,9 +39,7 @@ const InstanceOverview = () => {
       <div className="container">
         <div className="row">
           <div className="col-2 detail-table-header">UUID</div>
-          <div className="col-10 detail-table-cell">
-            {instance.properties.uuid}
-          </div>
+          <div className="col-10 detail-table-cell">{instance.uuid}</div>
         </div>
         <div className="row">
           <div className="col-2 detail-table-header">Source</div>
@@ -56,18 +54,16 @@ const InstanceOverview = () => {
         </div>
         <div className="row">
           <div className="col-2 detail-table-header">Location</div>
-          <div className="col-10 detail-table-cell">
-            {instance.properties.location}
-          </div>
+          <div className="col-10 detail-table-cell">{instance.location}</div>
         </div>
         <div className="row">
           <div className="col-2 detail-table-header">OS</div>
           <div className="col-10 detail-table-cell">
             <ItemOverride
-              original={instance.properties.os}
-              override={instance.overrides && instance.overrides.properties.os}
+              original={instance.os}
+              override={instance.overrides && instance.overrides.os}
               showOverride={
-                hasOverride(instance) && instance.overrides.properties.os !== ""
+                hasOverride(instance) && instance.overrides.os !== ""
               }
             />
           </div>
@@ -76,13 +72,10 @@ const InstanceOverview = () => {
           <div className="col-2 detail-table-header">OS version</div>
           <div className="col-10 detail-table-cell">
             <ItemOverride
-              original={instance.properties.os_version}
-              override={
-                instance.overrides && instance.overrides.properties.os_version
-              }
+              original={instance.os_version}
+              override={instance.overrides && instance.overrides.os_version}
               showOverride={
-                hasOverride(instance) &&
-                instance.overrides.properties.os_version !== ""
+                hasOverride(instance) && instance.overrides.os_version !== ""
               }
             />
           </div>
@@ -91,13 +84,10 @@ const InstanceOverview = () => {
           <div className="col-2 detail-table-header">Name</div>
           <div className="col-10 detail-table-cell">
             <ItemOverride
-              original={instance.properties.name}
-              override={
-                instance.overrides && instance.overrides.properties.name
-              }
+              original={instance.name}
+              override={instance.overrides && instance.overrides.name}
               showOverride={
-                hasOverride(instance) &&
-                instance.overrides.properties.name != ""
+                hasOverride(instance) && instance.overrides.name != ""
               }
             />
           </div>
@@ -106,12 +96,10 @@ const InstanceOverview = () => {
           <div className="col-2 detail-table-header">CPU</div>
           <div className="col-10 detail-table-cell">
             <ItemOverride
-              original={instance.properties.cpus}
-              override={
-                instance.overrides && instance.overrides.properties.cpus
-              }
+              original={instance.cpus}
+              override={instance.overrides && instance.overrides.cpus}
               showOverride={
-                hasOverride(instance) && instance.overrides.properties.cpus > 0
+                hasOverride(instance) && instance.overrides.cpus > 0
               }
             />
           </div>
@@ -120,13 +108,10 @@ const InstanceOverview = () => {
           <div className="col-2 detail-table-header">Memory</div>
           <div className="col-10 detail-table-cell">
             <ItemOverride
-              original={bytesToHumanReadable(instance.properties.memory)}
-              override={bytesToHumanReadable(
-                instance.overrides?.properties.memory,
-              )}
+              original={bytesToHumanReadable(instance.memory)}
+              override={bytesToHumanReadable(instance.overrides?.memory)}
               showOverride={
-                hasOverride(instance) &&
-                instance.overrides.properties.memory > 0
+                hasOverride(instance) && instance.overrides.memory > 0
               }
             />
           </div>
@@ -134,55 +119,49 @@ const InstanceOverview = () => {
         <div className="row">
           <div className="col-2 detail-table-header">Firmware</div>
           <div className="col-10 detail-table-cell">
-            {instance.properties.legacy_boot ? "BIOS" : "UEFI"}
+            {instance.legacy_boot ? "BIOS" : "UEFI"}
           </div>
         </div>
-        {!instance.properties.legacy_boot && (
+        {!instance.legacy_boot && (
           <div className="row">
             <div className="col-2 detail-table-header">Secure boot</div>
             <div className="col-10 detail-table-cell">
-              {instance.properties.secure_boot ? "Yes" : "No"}
+              {instance.secure_boot ? "Yes" : "No"}
             </div>
           </div>
         )}
         <div className="row">
           <div className="col-2 detail-table-header">Running</div>
           <div className="col-10 detail-table-cell">
-            {instance.properties.running ? "Yes" : "No"}
+            {instance.running ? "Yes" : "No"}
           </div>
         </div>
         <div className="row">
           <div className="col-2 detail-table-header">Background import</div>
           <div className="col-10 detail-table-cell">
-            {instance.properties.background_import ? "Yes" : "No"}
+            {instance.background_import ? "Yes" : "No"}
           </div>
         </div>
-        {Object.entries(instance.overrides?.properties.config ?? []).length >
-          0 && (
+        {Object.entries(instance.overrides?.config ?? []).length > 0 && (
           <div className="row">
             <div className="col-2 detail-table-header">Config</div>
             <div className="col-10 detail-table-cell">
               <Table borderless size="sm" style={{ width: "auto" }}>
                 <tbody>
-                  {Object.entries(instance.properties.config).map(
-                    ([key, value]) => (
-                      <tr key={key}>
-                        <td>{key}</td>
-                        <td>
-                          <ItemOverride
-                            original={value}
-                            override={
-                              instance.overrides?.properties.config[key]
-                            }
-                            showOverride={
-                              (instance.overrides?.properties.config[key] ??
-                                "") !== ""
-                            }
-                          />
-                        </td>
-                      </tr>
-                    ),
-                  )}
+                  {Object.entries(instance.config).map(([key, value]) => (
+                    <tr key={key}>
+                      <td>{key}</td>
+                      <td>
+                        <ItemOverride
+                          original={value}
+                          override={instance.overrides?.config[key]}
+                          showOverride={
+                            (instance.overrides?.config[key] ?? "") !== ""
+                          }
+                        />
+                      </td>
+                    </tr>
+                  ))}
                   {Object.entries(configDiff).map(([key, value]) => (
                     <tr key={key}>
                       <td>{key}</td>
@@ -195,7 +174,7 @@ const InstanceOverview = () => {
           </div>
         )}
       </div>
-      {instance.properties.nics?.length > 0 && (
+      {instance.nics?.length > 0 && (
         <>
           <hr className="my-4" />
           <h6 className="mb-3">NICs</h6>
@@ -210,7 +189,7 @@ const InstanceOverview = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {instance.properties.nics.map((item, index) => (
+                  {instance.nics.map((item, index) => (
                     <tr key={index}>
                       <td>{item.source_specific_id}</td>
                       <td>{item.hardware_address}</td>
@@ -230,7 +209,7 @@ const InstanceOverview = () => {
           </div>
         </>
       )}
-      {instance.properties.disks?.length > 0 && (
+      {instance.disks?.length > 0 && (
         <>
           <hr className="my-4" />
           <h6 className="mb-3">Disks</h6>
@@ -246,7 +225,7 @@ const InstanceOverview = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {instance.properties.disks.map((item, index) => (
+                  {instance.disks.map((item, index) => (
                     <tr key={index}>
                       <td>{item.name}</td>
                       <td>{bytesToHumanReadable(item.capacity)}</td>

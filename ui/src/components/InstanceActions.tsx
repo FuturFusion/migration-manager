@@ -39,12 +39,10 @@ const InstanceActions: FC<Props> = ({ instance }) => {
   return (
     <div className="relative inline-block">
       <div>
-        {!instance.properties.background_import && (
+        {!instance.background_import && (
           <MdOutlineQueryBuilder title="No background import" size={20} />
         )}
-        {instance.properties.running && (
-          <MdOutlinePlayCircle title="Running" size={20} />
-        )}
+        {instance.running && <MdOutlinePlayCircle title="Running" size={20} />}
         {instance.overrides && instance.overrides.ignore_restrictions && (
           <OverlayTrigger
             placement="top"
