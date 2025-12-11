@@ -15,22 +15,22 @@ require (
 	github.com/hexdigest/gowrap v1.4.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/lxc/distrobuilder v0.0.0-20251008023811-a3072be2ef91
-	github.com/lxc/incus-os/incus-osd v0.0.0-20251128203143-ed788dd4e9a0
+	github.com/lxc/incus-os/incus-osd v0.0.0-20251211063133-dc3444b6809e
 	github.com/lxc/incus/v6 v6.19.2-0.20251210203713-23bc5120f57b
 	github.com/matryer/moq v0.4.0
 	github.com/mattn/go-sqlite3 v1.14.32
-	github.com/olekukonko/tablewriter v1.1.0
+	github.com/olekukonko/tablewriter v1.1.2
 	github.com/openfga/cli v0.6.2
 	github.com/openfga/go-sdk v0.7.3
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/shogo82148/logrus-slog-hook v0.1.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	github.com/tidwall/gjson v1.18.0
 	github.com/vmware/govmomi v0.50.0
-	github.com/zitadel/oidc/v3 v3.45.0
+	github.com/zitadel/oidc/v3 v3.45.1
 	go.starlark.net v0.0.0-20251109183026-be02852a5e1f
 	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
 	golang.org/x/mod v0.30.0
@@ -57,6 +57,7 @@ require (
 	github.com/bmatcuk/doublestar/v4 v4.9.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/clipperhouse/displaywidth v0.6.1 // indirect
 	github.com/clipperhouse/stringish v0.1.1 // indirect
 	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
@@ -95,7 +96,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/karlseguin/ccache/v3 v3.0.6 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/klauspost/compress v1.18.1 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/kr/fs v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
