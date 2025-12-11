@@ -2,18 +2,15 @@ package cmds
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"sort"
-	"strconv"
 
 	"github.com/lxc/incus/v6/shared/termios"
-	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -128,23 +125,13 @@ func (c *cmdInstanceOverrideShow) Run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	numCPUSDisplay := strconv.Itoa(int(override.Properties.CPUs))
-	if override.Properties.CPUs == 0 {
-		numCPUSDisplay = ""
+	b, err := yaml.Marshal(override)
+	if err != nil {
+		return err
 	}
 
-	memoryDisplay := units.GetByteSizeStringIEC(override.Properties.Memory, 2)
-	if override.Properties.Memory == 0 {
-		memoryDisplay = ""
-	}
-
-	// Render the table.
-	header := []string{"Last Update", "Comment", "Migration Disabled", "Ignore Restrictions", "Num vCPUs", "Memory"}
-	data := [][]string{{override.LastUpdate.String(), override.Comment, strconv.FormatBool(override.DisableMigration), strconv.FormatBool(override.IgnoreRestrictions), numCPUSDisplay, memoryDisplay}}
-
-	sort.Sort(util.SortColumnsNaturally(data))
-
-	return util.RenderTable(cmd.OutOrStdout(), c.flagFormat, header, data, override)
+	fmt.Println(string(b))
+	return nil
 }
 
 // Update an instance override.

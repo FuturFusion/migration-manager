@@ -44,10 +44,10 @@ func (i Instance) Validate() error {
 		return NewValidationErrf("Invalid instance, source id can not be empty")
 	}
 
-	if i.Overrides.Properties.Name != "" {
-		err := validate.IsHostname(i.Overrides.Properties.Name)
+	if i.Overrides.Name != "" {
+		err := validate.IsHostname(i.Overrides.Name)
 		if err != nil {
-			return NewValidationErrf("Invalid instance override, name %q is not a valid hostname: %v", i.Overrides.Properties.Name, err)
+			return NewValidationErrf("Invalid instance override, name %q is not a valid hostname: %v", i.Overrides.Name, err)
 		}
 	}
 
@@ -71,7 +71,7 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 	}
 
 	props := i.Properties
-	props.Apply(i.Overrides.Properties)
+	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 	err := validate.IsHostname(props.Name)
 	if err != nil {
 		return fmt.Errorf("Instance name %q is not a valid hostname: %w", props.Name, err)
@@ -116,7 +116,7 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 // If a unique, human-readable identifier is needed, use the Location property.
 func (i Instance) GetName() string {
 	props := i.Properties
-	props.Apply(i.Overrides.Properties)
+	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 
 	return props.Name
 }
@@ -267,7 +267,7 @@ func (i Instance) ToAPI() api.Instance {
 		Source:               i.Source,
 		SourceType:           i.SourceType,
 		LastUpdateFromSource: i.LastUpdateFromSource,
-		Properties:           i.Properties,
+		InstanceProperties:   i.Properties,
 		Overrides:            i.Overrides,
 	}
 

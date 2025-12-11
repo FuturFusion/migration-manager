@@ -355,7 +355,7 @@ We can create some batches with more complex parameters. Here we will create two
         rerun_scriptlets: false
         placement_scriptlet: |
             def placement(instance, batch):
-                for disk in instance.properties.disks:
+                for disk in instance.disks:
                     if disk.capacity >= (1024 * 1024 * 1024 * 100):
                         set_pool(disk.name, 'pool02')
         post_migration_retries: 5
@@ -479,7 +479,7 @@ Additionally, from earlier, we know `Debian Bookworm` did not have background im
         rerun_scriptlets: false
         placement_scriptlet: |
             def placement(instance, batch):
-                if instance.properties.os_version.startswith("CentOS"):
+                if instance.os_version.startswith("CentOS"):
                     set_target("incus02")
         post_migration_retries: 5
         instance_restriction_overrides:

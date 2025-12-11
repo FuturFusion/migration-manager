@@ -349,18 +349,18 @@ func (c *cmdBatchInfo) Run(cmd *cobra.Command, args []string) error {
 			disabled = " (Migration Disabled)"
 		}
 
-		cmd.Printf("  - %s%s\n", i.Properties.Location, disabled)
+		cmd.Printf("  - %s%s\n", i.Location, disabled)
 	}
 
 	cmd.Printf("\nQueued Instances:\n")
 
 	for _, i := range instances {
-		q, ok := queueMap[i.Properties.UUID]
+		q, ok := queueMap[i.UUID]
 		if !ok || q.BatchName != name {
 			continue
 		}
 
-		cmd.Printf("  - %s (%s)\n", i.Properties.Location, q.MigrationStatus)
+		cmd.Printf("  - %s (%s)\n", i.Location, q.MigrationStatus)
 	}
 
 	return nil

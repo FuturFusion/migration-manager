@@ -232,7 +232,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osNa
 		}
 	}
 
-	if !instance.Properties.LegacyBoot {
+	if !instance.LegacyBoot {
 		err := runScriptInChroot("reinstall-grub-uefi.sh")
 		if err != nil {
 			return err

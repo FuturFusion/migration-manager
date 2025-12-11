@@ -103,8 +103,8 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	data := [][]string{}
 
 	for _, i := range instances {
-		props := i.Properties
-		props.Apply(i.Overrides.Properties)
+		props := i.InstanceProperties
+		props.Apply(i.Overrides.InstancePropertiesConfigurable)
 
 		row := []string{props.UUID.String(), i.Source, props.Location, props.OSVersion, strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.BackgroundImport), strconv.FormatBool(i.Overrides.DisableMigration)}
 

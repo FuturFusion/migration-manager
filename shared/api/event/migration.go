@@ -37,13 +37,13 @@ func NewMigrationEvent(action api.LifecycleAction, instance api.Instance, queueE
 
 	entities := []string{
 		QueueEntryURI(queueEntry.InstanceUUID),
-		InstanceURI(instance.Properties.UUID),
+		InstanceURI(instance.UUID),
 		BatchURI(queueEntry.BatchName),
 		SourceURI(instance.Source),
 		TargetURI(queueEntry.Placement.TargetName),
 	}
 
-	for _, nic := range instance.Properties.NICs {
+	for _, nic := range instance.NICs {
 		entities = append(entities, NetworkURI(nic.UUID))
 	}
 

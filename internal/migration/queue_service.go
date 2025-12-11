@@ -337,7 +337,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			return fmt.Errorf("Failed to get source %q: %w", instance.Source, err)
 		}
 
-		instance.Properties.Apply(instance.Overrides.Properties)
+		instance.Properties.Apply(instance.Overrides.InstancePropertiesConfigurable)
 		// Setup the default "idle" command
 		workerCommand = WorkerCommand{
 			Command:      api.WORKERCOMMAND_IDLE,

@@ -173,7 +173,7 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 		// Sort the list by source, then location.
 		sort.Slice(result, func(i, j int) bool {
 			if result[i].Source == result[j].Source {
-				return result[i].Properties.Location < result[j].Properties.Location
+				return result[i].Location < result[j].Location
 			}
 
 			return result[i].Source < result[j].Source
@@ -389,7 +389,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	apiInstance := currentInstance.ToAPI()
-	d.logHandler.SendLifecycle(r.Context(), event.NewInstanceEvent(event.InstanceOverrideModified, r, apiInstance, apiInstance.Properties.UUID))
+	d.logHandler.SendLifecycle(r.Context(), event.NewInstanceEvent(event.InstanceOverrideModified, r, apiInstance, apiInstance.UUID))
 
 	return response.SyncResponseLocation(true, nil, "/"+api.APIVersion+"/instances/"+UUIDString+"/override")
 }
@@ -437,7 +437,7 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	d.logHandler.SendLifecycle(r.Context(), event.NewInstanceEvent(event.InstanceOverrideModified, r, apiInstance, apiInstance.Properties.UUID))
+	d.logHandler.SendLifecycle(r.Context(), event.NewInstanceEvent(event.InstanceOverrideModified, r, apiInstance, apiInstance.UUID))
 
 	return response.EmptySyncResponse
 }

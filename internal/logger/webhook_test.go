@@ -52,7 +52,7 @@ func TestLogWebhook(t *testing.T) {
 
 			instanceData: api.Instance{
 				Source: "src1",
-				Properties: api.InstanceProperties{
+				InstanceProperties: api.InstanceProperties{
 					UUID:                           uuidA,
 					Location:                       "/path/to/instance1",
 					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "instance1"},
@@ -103,7 +103,7 @@ func TestLogWebhook(t *testing.T) {
 
 			instanceData: api.Instance{
 				Source: "src1",
-				Properties: api.InstanceProperties{
+				InstanceProperties: api.InstanceProperties{
 					UUID:                           uuidA,
 					Location:                       "/path/to/instance1",
 					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "instance1"},

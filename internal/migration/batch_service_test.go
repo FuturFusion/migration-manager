@@ -1928,7 +1928,7 @@ def placement(instance, batch):
 def placement(instance, batch):
 			set_target("tgt1")
 			set_project("project1")
-			for disk in instance.properties.disks:
+			for disk in instance.disks:
 			  if disk.supported:
 			    set_pool(disk.name, "pool1")
 			set_network("/path/to/netname1", "net1", "managed", "")
