@@ -44,51 +44,44 @@ const InstanceDataTable: FC<Props> = ({ instances, isLoading, error }) => {
         },
         {
           content: (
-            <Link
-              to={`/ui/instances/${item.properties.uuid}`}
-              className="data-table-link"
-            >
-              {item.properties.location}
+            <Link to={`/ui/instances/${item.uuid}`} className="data-table-link">
+              {item.location}
             </Link>
           ),
-          sortKey: item.properties.location,
+          sortKey: item.location,
           class: className,
         },
         {
-          content: item.properties.os_version,
-          sortKey: item.properties.os_version,
-          class: className,
-        },
-        {
-          content: (
-            <ItemOverride
-              original={item.properties.cpus}
-              override={item.overrides && item.overrides.properties.cpus}
-              showOverride={
-                isOverrideDefined && item.overrides.properties.cpus > 0
-              }
-            />
-          ),
-          sortKey:
-            isOverrideDefined && item.overrides.properties.cpus > 0
-              ? item.overrides.properties.cpus
-              : item.properties.cpus,
+          content: item.os_version,
+          sortKey: item.os_version,
           class: className,
         },
         {
           content: (
             <ItemOverride
-              original={bytesToHumanReadable(item.properties.memory)}
-              override={bytesToHumanReadable(item.overrides?.properties.memory)}
-              showOverride={
-                isOverrideDefined && item.overrides.properties.memory > 0
-              }
+              original={item.cpus}
+              override={item.overrides && item.overrides.cpus}
+              showOverride={isOverrideDefined && item.overrides.cpus > 0}
             />
           ),
           sortKey:
-            isOverrideDefined && item.overrides.properties.memory > 0
-              ? item.overrides.properties.memory
-              : item.properties.memory,
+            isOverrideDefined && item.overrides.cpus > 0
+              ? item.overrides.cpus
+              : item.cpus,
+          class: className,
+        },
+        {
+          content: (
+            <ItemOverride
+              original={bytesToHumanReadable(item.memory)}
+              override={bytesToHumanReadable(item.overrides?.memory)}
+              showOverride={isOverrideDefined && item.overrides.memory > 0}
+            />
+          ),
+          sortKey:
+            isOverrideDefined && item.overrides.memory > 0
+              ? item.overrides.memory
+              : item.memory,
           class: className,
         },
         {

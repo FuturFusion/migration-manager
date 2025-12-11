@@ -28,10 +28,10 @@ export interface InstanceProperties {
   description: string;
   cpus: number;
   memory: number;
-  location: string;
   config: Record<string, string>;
   os: string;
   os_version: string;
+  location: string;
   secure_boot: boolean;
   legacy_boot: boolean;
   tpm: boolean;
@@ -58,14 +58,37 @@ export interface InstanceOverride {
   comment: string;
   disable_migration: boolean;
   ignore_restrictions: boolean;
-  properties: InstancePropertiesConfigurable;
+  name: string;
+  description: string;
+  cpus: number;
+  memory: number;
+  config: Record<string, string>;
+  os: string;
+  os_version: string;
 }
 
 export interface Instance {
   last_update_from_source: string;
   source: string;
   source_type: SourceType;
-  properties: InstanceProperties;
+  uuid: string;
+  name: string;
+  description: string;
+  cpus: number;
+  memory: number;
+  config: Record<string, string>;
+  os: string;
+  os_version: string;
+  location: string;
+  secure_boot: boolean;
+  legacy_boot: boolean;
+  tpm: boolean;
+  running: boolean;
+  background_import: boolean;
+  architecture: string;
+  nics: InstancePropertiesNIC[];
+  disks: InstancePropertiesDisk[];
+  snapshots: InstanceSnapshotInfo[];
   overrides: InstanceOverride;
 }
 
