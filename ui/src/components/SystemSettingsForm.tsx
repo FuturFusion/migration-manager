@@ -14,6 +14,7 @@ const SystemSettingsForm: FC<Props> = ({ settings, onSubmit }) => {
     sync_interval: settings?.sync_interval ?? "",
     disable_auto_sync: settings?.disable_auto_sync ?? false,
     log_level: settings?.log_level ?? "",
+    log_targets: settings?.log_targets ?? [],
   };
 
   const formik = useFormik({

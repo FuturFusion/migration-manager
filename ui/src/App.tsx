@@ -56,6 +56,8 @@ function App() {
             <Route path="/ui" element={<Home />} />
             <Route path="/ui/settings" element={<Settings />} />
             <Route path="/ui/settings/:activeTab" element={<Settings />} />
+            <Route path="/ui/settings/logging/add" element={<Settings />} />
+            <Route path="/ui/settings/logging/:itemId" element={<Settings />} />
             <Route path="/ui/sources" element={<Source />} />
             <Route path="/ui/sources/create" element={<SourceCreate />} />
             <Route path="/ui/sources/:name" element={<SourceDetail />} />
