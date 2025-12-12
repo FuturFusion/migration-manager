@@ -1,11 +1,13 @@
+import { FC } from "react";
 import { useNavigate, useParams } from "react-router";
 import TabView from "components/TabView";
 import SystemCertConfiguration from "components/SystemCertConfiguration";
 import SystemNetworkConfiguration from "components/SystemNetworkConfiguration";
 import SystemSecurityConfiguration from "components/SystemSecurityConfiguration";
 import SystemSettingsConfiguration from "components/SystemSettingsConfiguration";
+import SystemLoggingConfiguration from "components/SystemLoggingConfiguration";
 
-const Settings = () => {
+const Settings: FC = () => {
   const { activeTab } = useParams<{ activeTab: string }>();
   const navigate = useNavigate();
 
@@ -24,6 +26,11 @@ const Settings = () => {
       key: "settings",
       title: "Settings",
       content: <SystemSettingsConfiguration />,
+    },
+    {
+      key: "logging",
+      title: "Logging",
+      content: <SystemLoggingConfiguration />,
     },
     {
       key: "certificate",

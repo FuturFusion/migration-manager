@@ -1,14 +1,34 @@
-import { ACMEChallengeValues } from "util/settings";
+import {
+  ACMEChallengeValues,
+  LogTypeValues,
+  LogScopeValues,
+} from "util/settings";
 
 export interface SystemNetwork {
   rest_server_address: string;
   worker_endpoint: string;
 }
 
+export type LogType = (typeof LogTypeValues)[number];
+export type LogScope = (typeof LogScopeValues)[number];
+
+export interface SystemSettingsLog {
+  name: string;
+  type: LogType;
+  level: string;
+  address: string;
+  username: string;
+  password: string;
+  ca_cert: string;
+  retry_count: number;
+  scopes: LogScope[];
+}
+
 export interface SystemSettings {
   sync_interval: string;
   disable_auto_sync: boolean;
   log_level: string;
+  log_targets: SystemSettingsLog[];
 }
 
 export interface SystemSecurity {
