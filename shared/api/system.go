@@ -191,7 +191,7 @@ type SystemSecurityACME struct {
 	ProviderEnvironment []string `json:"provider_environment" yaml:"provider_environment"`
 
 	// List of DNS resolvers (used by DNS-01).
-	ProviderResolvers []string `json:"provider_resolves" yaml:"provider_resolvers"`
+	ProviderResolvers []string `json:"provider_resolvers" yaml:"provider_resolvers"`
 }
 
 // SystemCertificatePost represents the fields available for an update of the
