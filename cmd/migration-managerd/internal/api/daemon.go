@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -11,9 +12,11 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	incusUtil "github.com/lxc/incus/v6/shared/util"
@@ -146,6 +149,11 @@ func (d *Daemon) cleanupCacheDir() error {
 }
 
 func (d *Daemon) Start() error {
+	err := d.restoreBackup(d.ShutdownCtx)
+	if err != nil {
+		slog.Error("Failed to restore from backup", slog.Any("error", err))
+	}
+
 	cfg, err := config.InitConfig(d.os.ConfigFile)
 	if err != nil {
 		return err
@@ -837,4 +845,205 @@ func (d *Daemon) getWorkerEndpoint() string {
 	}
 
 	return fmt.Sprintf("https://%s", d.config.Network.Address)
+}
+
+// validateBackup validates backup files in the directory and cleans up active migrations and artifacts in the database file.
+func validateBackup(ctx context.Context, dir string) error {
+	_, err := os.Stat(dir)
+	if err != nil {
+		return err
+	}
+
+	// Validate certs.
+	cert, err := os.ReadFile(filepath.Join(dir, "server.crt"))
+	if err != nil {
+		return err
+	}
+
+	key, err := os.ReadFile(filepath.Join(dir, "server.key"))
+	if err != nil {
+		return err
+	}
+
+	ca, err := os.ReadFile(filepath.Join(dir, "server.ca"))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	certBlock, _ := pem.Decode(cert)
+	if certBlock == nil {
+		return fmt.Errorf("Certificate must be base64 encoded PEM certificate")
+	}
+
+	keyBlock, _ := pem.Decode(key)
+	if keyBlock == nil {
+		return fmt.Errorf("Key must be base64 encoded PEM key")
+	}
+
+	if ca != nil {
+		caBlock, _ := pem.Decode(ca)
+		if caBlock == nil {
+			return fmt.Errorf("CA must be base64 encoded PEM key")
+		}
+	}
+
+	_, err = incusTLS.KeyPairAndCA(dir, "server", incusTLS.CertServer, true)
+	if err != nil {
+		return fmt.Errorf("Failed to load certificate data: %w", err)
+	}
+
+	// Validate db schema.
+	maxSchema := db.MaxSupportedSchema()
+	sqlDB, _, err := db.OpenDatabase(filepath.Join(dir, "database"), false)
+	if err != nil {
+		return fmt.Errorf("Failed to start database: %w", err)
+	}
+
+	schemaVersion, err := sqlDB.SchemaVersion(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to determine current schema version: %w", err)
+	}
+
+	if int64(maxSchema) < schemaVersion {
+		return fmt.Errorf("Backup cannot be applied. Schema version %d is higher than maximum supported version %d", schemaVersion, maxSchema)
+	}
+
+	artifactDir, err := os.ReadDir(filepath.Join(dir, "artifacts"))
+	if err != nil {
+		return fmt.Errorf("Failed to determine artifacts directory: %w", err)
+	}
+
+	existingUUIDs := []any{}
+	parameters := []string{}
+	for _, e := range artifactDir {
+		id, err := uuid.Parse(e.Name())
+		if err != nil {
+			return fmt.Errorf("Found invalid artifact entry %q: %w", e.Name(), err)
+		}
+
+		existingUUIDs = append(existingUUIDs, id.String())
+		parameters = append(parameters, "?")
+	}
+
+	err = sqlDB.Transaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
+		// Delete unfinished queue entries.
+		_, err := tx.ExecContext(ctx, `DELETE FROM queue WHERE migration_status != ?`, api.MIGRATIONSTATUS_FINISHED)
+		if err != nil {
+			return fmt.Errorf("Failed to update 'queue' table: %w", err)
+		}
+
+		// Error out any running batches.
+		_, err = tx.ExecContext(ctx, `UPDATE batches SET status=?, status_message='Canceled by backup restore' WHERE status=? OR status=?`,
+			api.BATCHSTATUS_ERROR, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_STOPPED)
+		if err != nil {
+			return fmt.Errorf("Failed to update 'batches' table: %w", err)
+		}
+
+		// Remove unincluded artifact records.
+		if len(existingUUIDs) == 0 {
+			_, err := tx.ExecContext(ctx, `DELETE FROM artifacts`)
+			if err != nil {
+				return fmt.Errorf("Failed to update 'artifacts' table: %w", err)
+			}
+		} else {
+			_, err := tx.ExecContext(ctx, fmt.Sprintf(`DELETE FROM artifacts WHERE uuid NOT IN (%s)`, strings.Join(parameters, ",")), existingUUIDs...)
+			if err != nil {
+				return fmt.Errorf("Failed to update 'artifacts' table: %w", err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	err = sqlDB.Close()
+	if err != nil {
+		return fmt.Errorf("Failed to close database: %w", err)
+	}
+
+	// Validate that the config file exists.
+	_, err = config.LoadConfig(filepath.Join(dir, "config.yml"))
+	if err != nil {
+		return fmt.Errorf("Failed to load system configuration: %w", err)
+	}
+
+	return nil
+}
+
+func (d *Daemon) restoreBackup(ctx context.Context) error {
+	backupTarball := filepath.Join(d.os.CacheDir, "backup.tar.gz")
+	_, err := os.Stat(backupTarball)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("Failed to find backup tarball %q: %w", backupTarball, err)
+	}
+
+	// No backup, nothing to do.
+	if err != nil {
+		return nil
+	}
+
+	restoreTarball := filepath.Join(d.os.CacheDir, "restore.tar.gz")
+	err = util.CreateTarball(ctx, restoreTarball, d.os.VarDir)
+	if err != nil {
+		return fmt.Errorf("Failed to archive existing state files before performing backup: %w", err)
+	}
+
+	reverter := revert.New()
+	defer reverter.Fail()
+
+	// Undo changes on error.
+	reverter.Add(func() {
+		slog.Info("Reverting restore from backup")
+		err = os.RemoveAll(d.os.VarDir)
+		if err != nil {
+			slog.Error("Failed to remove state files", slog.Any("error", err))
+			return
+		}
+
+		err = util.UnpackTarball(filepath.Dir(d.os.VarDir), restoreTarball)
+		if err != nil {
+			slog.Error("Failed to unpack original state files archive", slog.Any("error", err))
+			return
+		}
+
+		err = os.RemoveAll(backupTarball)
+		if err != nil {
+			slog.Error("Failed to remove backup tarball", slog.Any("error", err))
+			return
+		}
+
+		err = os.RemoveAll(restoreTarball)
+		if err != nil {
+			slog.Error("Failed to remove restore tarball", slog.Any("error", err))
+			return
+		}
+	})
+
+	err = os.RemoveAll(d.os.VarDir)
+	if err != nil {
+		return fmt.Errorf("failed to remove existing state files: %w", err)
+	}
+
+	err = util.UnpackTarball(filepath.Dir(d.os.VarDir), backupTarball)
+	if err != nil {
+		return fmt.Errorf("Failed to unpack backup tarball %q: %w", backupTarball, err)
+	}
+
+	// Ensure the backup is valid.
+	err = validateBackup(ctx, d.os.VarDir)
+	if err != nil {
+		return fmt.Errorf("Failed to validate backup files: %w", err)
+	}
+
+	// Remove the backup tarball before exiting.
+	err = os.RemoveAll(backupTarball)
+	if err != nil {
+		return fmt.Errorf("Failed to remove backup tarball %q: %w", backupTarball, err)
+	}
+
+	reverter.Success()
+
+	return nil
 }
