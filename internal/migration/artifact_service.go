@@ -118,7 +118,7 @@ func (a artifactService) Update(ctx context.Context, id uuid.UUID, artifact *Art
 
 // WriteFile writes the file into the directory contained in a tarball at ArtifactDir/{uuid}.tar.gz.
 func (a artifactService) WriteFile(id uuid.UUID, fileName string, reader io.ReadCloser) error {
-	return a.os.WriteToArtifact(id, fileName, reader)
+	return a.os.WriteFile(filepath.Join(a.os.ArtifactDir, id.String(), fileName), reader)
 }
 
 // HasRequiredArtifactsForInstance returns whether the given set of artifacts contains the required subset for the instance.
