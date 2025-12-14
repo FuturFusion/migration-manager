@@ -22,7 +22,7 @@ type Node struct {
 // OpenDatabase creates a new DB object.
 //
 // Return the newly created DB object.
-func OpenDatabase(dir string) (*Node, bool, error) {
+func OpenDatabase(dir string, applyUpdates bool) (*Node, bool, error) {
 	db, err := sqlite.Open(dir)
 	if err != nil {
 		return nil, false, err
@@ -31,9 +31,12 @@ func OpenDatabase(dir string) (*Node, bool, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
-	_, changed, err := EnsureSchema(db, dir)
-	if err != nil {
-		return nil, false, err
+	var changed bool
+	if applyUpdates {
+		_, changed, err = EnsureSchema(db, dir)
+		if err != nil {
+			return nil, false, err
+		}
 	}
 
 	node := &Node{
@@ -56,6 +59,18 @@ func (n *Node) Transaction(ctx context.Context, f func(context.Context, *sql.Tx)
 // Close the database facade.
 func (n *Node) Close() error {
 	return n.DB.Close()
+}
+
+func (n *Node) SchemaVersion(ctx context.Context) (int64, error) {
+	var version int64
+	err := query.Transaction(ctx, n.DB, func(ctx context.Context, tx *sql.Tx) error {
+		return tx.QueryRowContext(ctx, "SELECT version FROM schema ORDER BY version DESC LIMIT 1").Scan(&version)
+	})
+	if err != nil {
+		return -1, err
+	}
+
+	return version, nil
 }
 
 // EnsureSchema applies all relevant schema updates to the local database.

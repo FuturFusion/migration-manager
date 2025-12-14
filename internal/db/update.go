@@ -32,6 +32,17 @@ func SchemaDotGo() error {
 	return schema.DotGo(updates, "schema")
 }
 
+func MaxSupportedSchema() int {
+	maxSchema := 0
+	for v := range updates {
+		if v > maxSchema {
+			maxSchema = v
+		}
+	}
+
+	return maxSchema
+}
+
 /* Database updates are one-time actions that are needed to move an
    existing database from one version of the schema to the next.
 

@@ -164,7 +164,7 @@ func (d *Daemon) Start() error {
 
 	// Open the local sqlite database.
 	var schemaChanged bool
-	d.db, schemaChanged, err = db.OpenDatabase(d.os.LocalDatabaseDir())
+	d.db, schemaChanged, err = db.OpenDatabase(d.os.DatabaseDir, true)
 	if err != nil {
 		slog.Error("Failed to open sqlite database", logger.Err(err))
 		return err
