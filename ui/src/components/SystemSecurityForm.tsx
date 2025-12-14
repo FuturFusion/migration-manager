@@ -47,6 +47,12 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
           values.trusted_tls_client_cert_fingerprints.filter(
             (s) => s.trim() !== "",
           ),
+        acme: {
+          ...values.acme,
+          provider_environment: values.acme.provider_environment.filter(
+            (s) => s.trim() !== "",
+          ),
+        },
       });
     },
   });
