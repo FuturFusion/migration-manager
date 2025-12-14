@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lxc/incus/v6/shared/util"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
@@ -37,27 +36,12 @@ func (c *cmdGlobal) Run(cmd *cobra.Command, args []string) error {
 }
 
 func main() {
-	sysInfo := sys.DefaultOS()
-
 	// Make sure expected directories exist and create them if missing.
-	for _, dir := range []string{
-		sysInfo.CacheDir,
-		sysInfo.LogDir,
-		sysInfo.RunDir,
-		sysInfo.VarDir,
-		sysInfo.UsrDir,
-		sysInfo.ShareDir,
-		sysInfo.LocalDatabaseDir(),
-		sysInfo.ArtifactDir,
-		sysInfo.ImageDir,
-	} {
-		if !util.PathExists(dir) {
-			err := os.MkdirAll(dir, 0o755)
-			if err != nil {
-				fmt.Printf("%s\n", err)
-				os.Exit(1)
-			}
-		}
+	sysInfo := sys.DefaultOS()
+	err := sysInfo.Init()
+	if err != nil {
+		fmt.Printf("%s\n", err)
+		os.Exit(1)
 	}
 
 	defaultLogFile := filepath.Join(sysInfo.LogDir, "migration-manager.log")
@@ -86,7 +70,7 @@ func main() {
 	app.Version = version.Version
 
 	// Run the main command and handle errors
-	err := app.Execute()
+	err = app.Execute()
 	if err != nil {
 		app.Printf("%s\n", err)
 		os.Exit(1)

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	incusUtil "github.com/lxc/incus/v6/shared/util"
+
 	"github.com/FuturFusion/migration-manager/internal/util"
 )
 
@@ -29,6 +31,9 @@ type OS struct {
 
 	ArtifactDir string // Location of user-supplied files (e.g. /var/lib/migration-manager/artifacts/).
 	ImageDir    string // Location of the worker images (e.g. /usr/share/migration-manager/images/).
+	DatabaseDir string // Location of the database files (e.g. /var/lib/migration-manager/database/).
+
+	ConfigFile string // System config yaml file (e.g. /var/lib/migration-manager/config.yml).
 }
 
 // DefaultOS returns a fresh uninitialized OS instance with default values.
@@ -42,9 +47,35 @@ func DefaultOS() *OS {
 		ShareDir:    util.SharePath(),
 		ArtifactDir: util.VarPath("artifacts"),
 		ImageDir:    util.SharePath("images"),
+		DatabaseDir: util.VarPath("database"),
+		ConfigFile:  util.VarPath("config.yml"),
 	}
 
 	return newOS
+}
+
+func (s *OS) Init() error {
+	// Make sure expected directories exist and create them if missing.
+	for _, dir := range []string{
+		s.CacheDir,
+		s.LogDir,
+		s.RunDir,
+		s.VarDir,
+		s.UsrDir,
+		s.ShareDir,
+		s.ArtifactDir,
+		s.ImageDir,
+		s.DatabaseDir,
+	} {
+		if !incusUtil.PathExists(dir) {
+			err := os.MkdirAll(dir, 0o755)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // GetUnixSocket returns the full path to the unix.socket file that this daemon is listening on.
@@ -55,11 +86,6 @@ func (s *OS) GetUnixSocket() string {
 	}
 
 	return filepath.Join(s.RunDir, "unix.socket")
-}
-
-// LocalDatabaseDir returns the path of the local database directory.
-func (s *OS) LocalDatabaseDir() string {
-	return filepath.Join(s.VarDir, "database")
 }
 
 // WorkerImageExists checks if the worker image and binary exist on the filesystem.
