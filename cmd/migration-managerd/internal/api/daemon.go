@@ -146,7 +146,7 @@ func (d *Daemon) cleanupCacheDir() error {
 }
 
 func (d *Daemon) Start() error {
-	cfg, err := config.LoadConfig()
+	cfg, err := config.InitConfig(d.os.ConfigFile)
 	if err != nil {
 		return err
 	}
