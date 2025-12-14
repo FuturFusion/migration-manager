@@ -38,7 +38,7 @@ var _ Target = &TargetMock{}
 //			CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
 //				panic("mock out the CreateNewVM method")
 //			},
-//			CreateStoragePoolVolumeFromBackupFunc: func(poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
+//			CreateStoragePoolVolumeFromBackupFunc: func(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
 //				panic("mock out the CreateStoragePoolVolumeFromBackup method")
 //			},
 //			CreateStoragePoolVolumeFromISOFunc: func(pool string, isoFilePath string) ([]incus.Operation, error) {
@@ -130,7 +130,7 @@ type TargetMock struct {
 	CreateNewVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error)
 
 	// CreateStoragePoolVolumeFromBackupFunc mocks the CreateStoragePoolVolumeFromBackup method.
-	CreateStoragePoolVolumeFromBackupFunc func(poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error)
+	CreateStoragePoolVolumeFromBackupFunc func(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error)
 
 	// CreateStoragePoolVolumeFromISOFunc mocks the CreateStoragePoolVolumeFromISO method.
 	CreateStoragePoolVolumeFromISOFunc func(pool string, isoFilePath string) ([]incus.Operation, error)
@@ -239,6 +239,8 @@ type TargetMock struct {
 		}
 		// CreateStoragePoolVolumeFromBackup holds details about calls to the CreateStoragePoolVolumeFromBackup method.
 		CreateStoragePoolVolumeFromBackup []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 			// PoolName is the poolName argument value.
 			PoolName string
 			// BackupFilePath is the backupFilePath argument value.
@@ -575,16 +577,18 @@ func (mock *TargetMock) CreateNewVMCalls() []struct {
 }
 
 // CreateStoragePoolVolumeFromBackup calls CreateStoragePoolVolumeFromBackupFunc.
-func (mock *TargetMock) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
+func (mock *TargetMock) CreateStoragePoolVolumeFromBackup(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
 	if mock.CreateStoragePoolVolumeFromBackupFunc == nil {
 		panic("TargetMock.CreateStoragePoolVolumeFromBackupFunc: method is nil but Target.CreateStoragePoolVolumeFromBackup was just called")
 	}
 	callInfo := struct {
+		Ctx            context.Context
 		PoolName       string
 		BackupFilePath string
 		Architecture   string
 		VolumeName     string
 	}{
+		Ctx:            ctx,
 		PoolName:       poolName,
 		BackupFilePath: backupFilePath,
 		Architecture:   architecture,
@@ -593,7 +597,7 @@ func (mock *TargetMock) CreateStoragePoolVolumeFromBackup(poolName string, backu
 	mock.lockCreateStoragePoolVolumeFromBackup.Lock()
 	mock.calls.CreateStoragePoolVolumeFromBackup = append(mock.calls.CreateStoragePoolVolumeFromBackup, callInfo)
 	mock.lockCreateStoragePoolVolumeFromBackup.Unlock()
-	return mock.CreateStoragePoolVolumeFromBackupFunc(poolName, backupFilePath, architecture, volumeName)
+	return mock.CreateStoragePoolVolumeFromBackupFunc(ctx, poolName, backupFilePath, architecture, volumeName)
 }
 
 // CreateStoragePoolVolumeFromBackupCalls gets all the calls that were made to CreateStoragePoolVolumeFromBackup.
@@ -601,12 +605,14 @@ func (mock *TargetMock) CreateStoragePoolVolumeFromBackup(poolName string, backu
 //
 //	len(mockedTarget.CreateStoragePoolVolumeFromBackupCalls())
 func (mock *TargetMock) CreateStoragePoolVolumeFromBackupCalls() []struct {
+	Ctx            context.Context
 	PoolName       string
 	BackupFilePath string
 	Architecture   string
 	VolumeName     string
 } {
 	var calls []struct {
+		Ctx            context.Context
 		PoolName       string
 		BackupFilePath string
 		Architecture   string
