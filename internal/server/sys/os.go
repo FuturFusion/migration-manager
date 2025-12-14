@@ -105,7 +105,7 @@ func (s *OS) LoadWorkerImage(ctx context.Context, arch string) (string, error) {
 
 	// Create a tarball for the worker binary.
 	binaryPath := filepath.Join(s.CacheDir, "migration-manager-worker.tar.gz")
-	err = util.CreateTarball(binaryPath, filepath.Join(s.UsrDir, "migration-manager-worker"))
+	err = util.CreateTarball(ctx, binaryPath, filepath.Join(s.UsrDir, "migration-manager-worker"))
 	if err != nil {
 		return "", err
 	}

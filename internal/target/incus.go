@@ -861,7 +861,7 @@ func (t *InternalIncusTarget) GetStoragePoolVolumeNames(pool string) ([]string, 
 	return t.incusClient.GetStoragePoolVolumeNames(pool)
 }
 
-func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
+func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -885,7 +885,7 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(poolName string,
 
 	// Use all the target parameters in the file name in case other worker images are being concurrently created.
 	backupName := filepath.Join(util.CachePath(), fmt.Sprintf("%s%s_%s_%s_%s_worker.tar.gz", sys.WorkerImageBuildPrefix, t.GetName(), pool.Name, architecture, version.GoVersion()))
-	err = createIncusBackup(backupName, backupFilePath, pool, volumeName)
+	err = createIncusBackup(ctx, backupName, backupFilePath, pool, volumeName)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1014,7 +1014,7 @@ type backupIndexFile struct {
 }
 
 // createIncusBackup creates a backup tarball at backupPath with the given imagePath, for the given pool.
-func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.StoragePool, volumeName string) error {
+func createIncusBackup(ctx context.Context, backupPath string, imagePath string, pool *incusAPI.StoragePool, volumeName string) error {
 	imgFile, err := os.Open(imagePath)
 	if err != nil {
 		return err
@@ -1094,7 +1094,7 @@ func createIncusBackup(backupPath string, imagePath string, pool *incusAPI.Stora
 		return err
 	}
 
-	return util.CreateTarball(backupPath, filepath.Join(tmpDir, "backup"))
+	return util.CreateTarball(ctx, backupPath, filepath.Join(tmpDir, "backup"))
 }
 
 type IncusDetails struct {
