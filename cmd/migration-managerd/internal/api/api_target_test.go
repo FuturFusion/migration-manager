@@ -385,7 +385,7 @@ func daemonSetup(t *testing.T) *Daemon {
 		},
 	}
 
-	daemon.db, _, err = db.OpenDatabase(tmpDir)
+	daemon.db, _, err = db.OpenDatabase(tmpDir, true)
 	require.NoError(t, err)
 
 	tx := transaction.Enable(daemon.db.DB)
@@ -421,7 +421,7 @@ func daemonSetup(t *testing.T) *Daemon {
 func startTestDaemon(t *testing.T, daemon *Daemon, endpoints []APIEndpoint, internalEndpoints []APIEndpoint) (*http.Client, string) {
 	t.Helper()
 
-	for _, dir := range []string{daemon.os.CacheDir, daemon.os.LogDir, daemon.os.RunDir, daemon.os.VarDir, daemon.os.UsrDir, daemon.os.LocalDatabaseDir(), daemon.os.ArtifactDir} {
+	for _, dir := range []string{daemon.os.CacheDir, daemon.os.LogDir, daemon.os.RunDir, daemon.os.VarDir, daemon.os.UsrDir, daemon.os.DatabaseDir, daemon.os.ArtifactDir} {
 		if !incusUtil.PathExists(dir) {
 			require.NoError(t, os.MkdirAll(dir, 0o755))
 		}
