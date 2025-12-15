@@ -6,11 +6,16 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
+	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/ioprogress"
 	"github.com/lxc/incus/v6/shared/termios"
+	"github.com/lxc/incus/v6/shared/units"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -38,6 +43,14 @@ func (c *CmdConfig) Command() *cobra.Command {
 	// Settings config
 	configSettingsCmd := cmdConfigSettings{global: c.Global}
 	cmd.AddCommand(configSettingsCmd.Command())
+
+	// Backup
+	configBackupCmd := cmdConfigBackup{global: c.Global}
+	cmd.AddCommand(configBackupCmd.Command())
+
+	// Restore
+	configRestoreCmd := cmdConfigRestore{global: c.Global}
+	cmd.AddCommand(configRestoreCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
@@ -474,6 +487,123 @@ func (c *cmdConfigSettingsShow) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Println(string(b))
+
+	return nil
+}
+
+type cmdConfigBackup struct {
+	global *CmdGlobal
+
+	flagArtifacts string
+}
+
+func (c *cmdConfigBackup) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "backup <file-path>"
+	cmd.Short = "Create a backup tarball for Migration Manager"
+
+	cmd.RunE = c.Run
+	cmd.Flags().StringVarP(&c.flagArtifacts, "include-artifacts", "i", "", "Comma-delimited list of artifact UUIDs to include in the backup")
+
+	return cmd
+}
+
+func (c *cmdConfigBackup) Run(cmd *cobra.Command, args []string) error {
+	exit, err := c.global.CheckArgs(cmd, args, 0, 1)
+	if exit {
+		return err
+	}
+
+	filePath := "backup.tar.gz"
+	if len(args) == 1 {
+		filePath = args[0]
+	}
+
+	cfg := api.SystemBackupPost{IncludeArtifacts: []uuid.UUID{}}
+	if c.flagArtifacts != "" {
+		for _, u := range strings.Split(c.flagArtifacts, ",") {
+			id, err := uuid.Parse(u)
+			if err != nil {
+				return fmt.Errorf("Failed to parse artifact UUID %q: %w", u, err)
+			}
+
+			cfg.IncludeArtifacts = append(cfg.IncludeArtifacts, id)
+		}
+	}
+
+	b, err := json.Marshal(cfg)
+	if err != nil {
+		return err
+	}
+
+	outFile, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+
+	progress := util.ProgressRenderer{
+		Format: fmt.Sprintf("Downloading backup file to %q: %%s", filePath),
+	}
+
+	err = c.global.doHTTPRequestV1Writer("/system/:backup", http.MethodPost, outFile, b, progress.UpdateProgress)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type cmdConfigRestore struct {
+	global *CmdGlobal
+}
+
+func (c *cmdConfigRestore) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "restore <file-path>"
+	cmd.Short = "Restore Migration Manager from a backup tarball"
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdConfigRestore) Run(cmd *cobra.Command, args []string) error {
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	filePath := args[0]
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	s, err := file.Stat()
+	if err != nil {
+		return err
+	}
+
+	progress := util.ProgressRenderer{
+		Format: fmt.Sprintf("Uploading backup file %s: %%s", filePath),
+	}
+
+	reader := &ioprogress.ProgressReader{
+		ReadCloser: file,
+		Tracker: &ioprogress.ProgressTracker{
+			Length: s.Size(),
+			Handler: func(percent int64, speed int64) {
+				progress.UpdateProgress(ioprogress.ProgressData{Text: fmt.Sprintf("%d%% (%s/s)", percent, units.GetByteSizeString(speed, 2))})
+			},
+		},
+	}
+
+	_, _, err = c.global.doHTTPRequestV1Reader("/system/:restore", http.MethodPost, "", reader)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
