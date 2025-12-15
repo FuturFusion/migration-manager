@@ -335,23 +335,23 @@ func (c *CmdGlobal) doHTTPRequestV1Reader(endpoint string, method string, query 
 	return c.makeHTTPRequest(endpoint, method, query, reader)
 }
 
-func (c *CmdGlobal) doHTTPRequestV1Writer(endpoint string, method string, writer io.WriteSeeker, progress func(ioprogress.ProgressData)) (*incusAPI.Response, http.Header, error) {
-	req, client, err := c.buildRequest(endpoint, method, "", nil)
+func (c *CmdGlobal) doHTTPRequestV1Writer(endpoint string, method string, writer io.WriteSeeker, content []byte, progress func(ioprogress.ProgressData)) error {
+	req, client, err := c.buildRequest(endpoint, method, "", bytes.NewBuffer(content))
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	resp, doneCh, err := cancel.CancelableDownload(nil, c.requestFunc(client), req) //nolint:bodyclose // bodyclose can't handle nested functions.
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	defer func() { _ = resp.Body.Close() }()
 	defer close(doneCh)
 	if resp.StatusCode != http.StatusOK {
-		response, err := c.parseResponse(resp)
+		_, err := c.parseResponse(resp)
 		if err != nil {
-			return response, resp.Header, fmt.Errorf("Failed to parse response: %w", err)
+			return fmt.Errorf("Failed to parse response: %w", err)
 		}
 	}
 
@@ -370,10 +370,10 @@ func (c *CmdGlobal) doHTTPRequestV1Writer(endpoint string, method string, writer
 
 	_, err = io.Copy(writer, body)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	return nil, resp.Header, nil
+	return nil
 }
 
 func responseToStruct(response *incusAPI.Response, targetStruct any) error {

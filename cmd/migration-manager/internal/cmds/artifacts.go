@@ -185,7 +185,7 @@ func (c *cmdArtifactExport) Run(cmd *cobra.Command, args []string) error {
 		Format: fmt.Sprintf("Downloading artifact to %q: %%s", filePath),
 	}
 
-	_, _, err = c.global.doHTTPRequestV1Writer("/artifacts/"+artUUID+"/files/"+fileName, http.MethodGet, outFile, progress.UpdateProgress)
+	err = c.global.doHTTPRequestV1Writer("/artifacts/"+artUUID+"/files/"+fileName, http.MethodGet, outFile, nil, progress.UpdateProgress)
 	if err != nil {
 		return err
 	}
