@@ -145,6 +145,45 @@ func (d *Daemon) cleanupCacheDir() error {
 		}
 	}
 
+	dir, err := os.ReadDir(d.os.CacheDir)
+	if err != nil {
+		return err
+	}
+
+	var workerImages []string
+	if !util.IsIncusOS() {
+		workerImages, err = filepath.Glob(filepath.Join(d.os.CacheDir, util.RawWorkerImage("*")))
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, e := range dir {
+		fullPath := filepath.Join(d.os.CacheDir, e.Name())
+		if e.IsDir() && fullPath == d.os.ACMEDir {
+			// Always keep the ACME dir.
+			continue
+		}
+
+		if !util.IsIncusOS() && slices.Contains(workerImages, fullPath) {
+			// Always keep worker images.
+			continue
+		}
+
+		info, err := e.Info()
+		if err != nil {
+			return err
+		}
+
+		if time.Since(info.ModTime()) >= 7*24*time.Hour {
+			slog.Info("Deleting expired cache file", slog.String("filename", fullPath))
+			err := os.RemoveAll(fullPath)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
