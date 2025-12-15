@@ -32,6 +32,7 @@ type OS struct {
 	ArtifactDir string // Location of user-supplied files (e.g. /var/lib/migration-manager/artifacts/).
 	ImageDir    string // Location of the worker images (e.g. /usr/share/migration-manager/images/).
 	DatabaseDir string // Location of the database files (e.g. /var/lib/migration-manager/database/).
+	ACMEDir     string // Location of ACME account files (e.g. /var/cache/migration-manager/acme/).
 
 	ConfigFile string // System config yaml file (e.g. /var/lib/migration-manager/config.yml).
 }
@@ -48,6 +49,7 @@ func DefaultOS() *OS {
 		ArtifactDir: util.VarPath("artifacts"),
 		ImageDir:    util.SharePath("images"),
 		DatabaseDir: util.VarPath("database"),
+		ACMEDir:     util.CachePath("acme"),
 		ConfigFile:  util.VarPath("config.yml"),
 	}
 
