@@ -3,8 +3,13 @@ package schema
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"os"
+	"path"
+	"runtime"
 	"sort"
+	"strings"
 
 	"github.com/FuturFusion/migration-manager/internal/db/query"
 )
@@ -92,8 +97,8 @@ func (s *Schema) Fresh(statement string) {
 //
 // If a schema hook was set with Hook(), it will be run before running the
 // queries in the file and it will be passed a patch version equals to -1.
-func (s *Schema) File(path string) {
-	s.path = path
+func (s *Schema) File(filePath string) {
+	s.path = filePath
 }
 
 // Ensure makes sure that the actual schema in the given database matches the
@@ -184,6 +189,40 @@ func (s *Schema) Ensure(db *sql.DB) (int, bool, error) {
 	return current, changed, nil
 }
 
+// Dump returns a text of SQL commands that can be used to create this schema
+// from scratch in one go, without going through individual patches
+// (essentially flattening them).
+//
+// It requires that all patches in this schema have been applied, otherwise an
+// error will be returned.
+func (s *Schema) Dump(db *sql.DB) (string, error) {
+	var statements []string
+	err := query.Transaction(context.TODO(), db, func(ctx context.Context, tx *sql.Tx) error {
+		err := checkAllUpdatesAreApplied(ctx, tx, s.updates)
+		if err != nil {
+			return err
+		}
+
+		statements, err = selectTablesSQL(ctx, tx)
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+
+	for i, statement := range statements {
+		statements[i] = formatSQL(statement)
+	}
+
+	// Add a statement for inserting the current schema version row.
+	statements = append(
+		statements,
+		fmt.Sprintf(`
+INSERT INTO schema (version, updated_at) VALUES (%d, strftime("%%s"))
+`, len(s.updates)))
+	return strings.Join(statements, ";\n"), nil
+}
+
 // Ensure that the schema exists.
 func ensureSchemaTableExists(ctx context.Context, tx *sql.Tx) error {
 	exists, err := DoesSchemaTableExist(ctx, tx)
@@ -261,6 +300,49 @@ func ensureUpdatesAreApplied(ctx context.Context, tx *sql.Tx, current int, updat
 	return changed, nil
 }
 
+// Check that all the given updates are applied.
+func checkAllUpdatesAreApplied(ctx context.Context, tx *sql.Tx, updates []Update) error {
+	versions, err := selectSchemaVersions(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("failed to fetch update versions: %w", err)
+	}
+
+	if len(versions) == 0 {
+		return errors.New("expected schema table to contain at least one row")
+	}
+
+	err = checkSchemaVersionsHaveNoHoles(versions)
+	if err != nil {
+		return err
+	}
+
+	current := versions[len(versions)-1]
+	if current != len(updates) {
+		return fmt.Errorf("update level is %d, expected %d", current, len(updates))
+	}
+
+	return nil
+}
+
+// Format the given SQL statement in a human-readable way.
+//
+// In particular make sure that each column definition in a CREATE TABLE clause
+// is in its own row, since SQLite dumps occasionally stuff more than one
+// column in the same line.
+func formatSQL(statement string) string {
+	lines := strings.Split(statement, "\n")
+	for i, line := range lines {
+		if strings.Contains(line, "UNIQUE") {
+			// Let UNIQUE(x, y) constraints alone.
+			continue
+		}
+
+		lines[i] = strings.ReplaceAll(line, ", ", ",\n    ")
+	}
+
+	return strings.Join(lines, "\n")
+}
+
 // Check that the given list of update version numbers doesn't have "holes",
 // that is each version equal the preceding version plus 1.
 func checkSchemaVersionsHaveNoHoles(versions []int) error {
@@ -272,3 +354,60 @@ func checkSchemaVersionsHaveNoHoles(versions []int) error {
 	}
 	return nil
 }
+
+// DotGo writes '<name>.go' source file in the package of the calling function, containing
+// SQL statements that match the given schema updates.
+//
+// The <name>.go file contains a "flattened" render of all given updates and
+// can be used to initialize brand new databases using Schema.Fresh().
+func DotGo(updates map[int]Update, name string) error {
+	// Apply all the updates that we have on a pristine database and dump
+	// the resulting schema.
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		return fmt.Errorf("failed to open schema.go for writing: %w", err)
+	}
+
+	defer func() { _ = db.Close() }()
+
+	schema := NewFromMap(updates)
+
+	_, _, err = schema.Ensure(db)
+	if err != nil {
+		return err
+	}
+
+	dump, err := schema.Dump(db)
+	if err != nil {
+		return err
+	}
+
+	// Passing 1 to runtime.Caller identifies our caller.
+	_, filename, _, _ := runtime.Caller(1)
+
+	file, err := os.Create(path.Join(path.Dir(filename), name+".go"))
+	if err != nil {
+		return fmt.Errorf("failed to open Go file for writing: %w", err)
+	}
+
+	defer func() { _ = file.Close() }()
+
+	pkg := path.Base(path.Dir(filename))
+	_, err = file.Write(fmt.Appendf(nil, dotGoTemplate, pkg, dump))
+	if err != nil {
+		return fmt.Errorf("failed to write to Go file: %w", err)
+	}
+
+	return nil
+}
+
+// Template for schema files (can't use backticks since we need to use backticks
+// inside the template itself).
+const dotGoTemplate = "package %s\n\n" +
+	"// DO NOT EDIT BY HAND\n" +
+	"//\n" +
+	"// This code was generated by the schema.DotGo function. If you need to\n" +
+	"// modify the database schema, please add a new schema update to update.go\n" +
+	"// and the run 'make update-schema'.\n" +
+	"const freshSchema = `\n" +
+	"%s`\n"

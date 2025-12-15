@@ -6,33 +6,29 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/revert"
 )
 
-// WriteToArtifact reads from the reader and writes to the given file name in the corresponding artifact directory.
-// While the write is in progress, a .part file will be present in the directory.
-func (s *OS) WriteToArtifact(id uuid.UUID, fileName string, reader io.ReadCloser) error {
+// WriteFile reads from the reader and writes to the given file path.
+// While the write is in progress, a {filePath).part file will be present.
+func (s *OS) WriteFile(filePath string, reader io.ReadCloser) error {
 	s.writeLock.Lock()
 	defer s.writeLock.Unlock()
 
 	reverter := revert.New()
 	defer reverter.Fail()
 
-	artDir := filepath.Join(s.ArtifactDir, id.String())
-
-	err := os.MkdirAll(artDir, 0o755)
+	err := os.MkdirAll(filepath.Dir(filePath), 0o755)
 	if err != nil {
-		return fmt.Errorf("Failed to create artifact directory %q: %w", artDir, err)
+		return fmt.Errorf("Failed to create directory %q: %w", filePath, err)
 	}
 
-	filePath := filepath.Join(artDir, fileName)
 	partPath := filePath + ".part"
 
 	// Remove any existing part files.
 	err = os.Remove(partPath)
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("Failed to delete existing stale artifact part file %q: %w", partPath, err)
+		return fmt.Errorf("Failed to delete existing stale part file %q: %w", partPath, err)
 	}
 
 	// Clear this run's part file on errors.

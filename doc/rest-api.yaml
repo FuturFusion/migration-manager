@@ -989,6 +989,18 @@ definitions:
     SourceType:
         type: string
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SystemBackupPost:
+        properties:
+            include_artifacts:
+                description: List of artifact UUIDs to include in the backup.
+                items:
+                    format: uuid
+                    type: string
+                type: array
+                x-go-name: IncludeArtifacts
+        title: SystemBackupPost represents configuration for creating a system backup.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
     SystemCertificatePost:
         description: |-
             SystemCertificatePost represents the fields available for an update of the
@@ -1075,7 +1087,7 @@ definitions:
                     type: string
                 type: array
                 x-go-name: ProviderEnvironment
-            provider_resolves:
+            provider_resolvers:
                 description: List of DNS resolvers (used by DNS-01).
                 items:
                     type: string
@@ -2605,6 +2617,62 @@ paths:
             summary: Get the sources
             tags:
                 - sources
+    /1.0/system/:backup:
+        post:
+            consumes:
+                - application/json
+            description: Generate and return a `gzip` compressed tar archive backup of the system state and configuration.
+            operationId: system_backup_post
+            parameters:
+                - description: Backup configuration
+                  in: body
+                  name: system
+                  required: true
+                  schema:
+                    $ref: '#/definitions/SystemBackupPost'
+            produces:
+                - application/json
+                - application/gzip
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "412":
+                    $ref: '#/responses/PreconditionFailed'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Generate a system backup
+            tags:
+                - system
+    /1.0/system/:restore:
+        post:
+            consumes:
+                - application/gzip
+            description: |-
+                Restore a `gzip` compressed tar backup of the system state and configuration. Upon completion Migration Manager will immediately restart.
+
+                Remember to properly set the `Content-Type: application/gzip` HTTP header.
+            operationId: system_restore_post
+            parameters:
+                - description: Application backup to restore
+                  in: body
+                  name: gzip tar archive
+                  required: true
+                  schema:
+                    type: file
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Restore a system backup
+            tags:
+                - system
     /1.0/system/certificate:
         post:
             consumes:

@@ -3,14 +3,33 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"path/filepath"
+	"sync"
+
+	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/internal/server/sys"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
+
+var systemBackupCmd = APIEndpoint{
+	Path: "system/:backup",
+
+	Post: APIEndpointAction{Handler: systemBackupPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+}
+
+var systemRestoreCmd = APIEndpoint{
+	Path: "system/:restore",
+
+	Post: APIEndpointAction{Handler: systemRestorePost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+}
 
 var systemNetworkCmd = APIEndpoint{
 	Path: "system/network",
@@ -37,6 +56,143 @@ var systemCertificateCmd = APIEndpoint{
 	Path: "system/certificate",
 
 	Post: APIEndpointAction{Handler: systemCertificateUpdate, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+}
+
+var restoreLock sync.Mutex
+
+// swagger:operation POST /1.0/system/:backup system system_backup_post
+//
+//	Generate a system backup
+//
+//	Generate and return a `gzip` compressed tar archive backup of the system state and configuration.
+//
+//	---
+//	consumes:
+//	  - application/json
+//	produces:
+//	  - application/json
+//	  - application/gzip
+//	parameters:
+//	  - in: body
+//	    name: system
+//	    description: Backup configuration
+//	    required: true
+//	    schema:
+//	      $ref: "#/definitions/SystemBackupPost"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "412":
+//	    $ref: "#/responses/PreconditionFailed"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func systemBackupPost(d *Daemon, r *http.Request) response.Response {
+	var cfg api.SystemBackupPost
+	err := json.NewDecoder(r.Body).Decode(&cfg)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	artifacts, err := d.artifact.GetAll(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	includeMap := map[uuid.UUID]bool{}
+	for _, artUUID := range cfg.IncludeArtifacts {
+		includeMap[artUUID] = true
+	}
+
+	exclude := []string{}
+	for _, a := range artifacts {
+		if !includeMap[a.UUID] {
+			exclude = append(exclude, filepath.Join(filepath.Base(d.os.ArtifactDir), a.UUID.String()))
+		}
+	}
+
+	return response.ManualResponse(func(w http.ResponseWriter) error {
+		w.Header().Set("Content-Type", "application/gzip")
+		err = util.CreateTarballWriter(r.Context(), w, d.os.VarDir, exclude...)
+		if err != nil {
+			return response.SmartError(err).Render(w)
+		}
+
+		return nil
+	})
+}
+
+// swagger:operation POST /1.0/system/:restore system system_restore_post
+//
+//	Restore a system backup
+//
+//	Restore a `gzip` compressed tar backup of the system state and configuration. Upon completion Migration Manager will immediately restart.
+//
+//	Remember to properly set the `Content-Type: application/gzip` HTTP header.
+//
+//	---
+//	consumes:
+//	  - application/gzip
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: body
+//	    name: gzip tar archive
+//	    description: Application backup to restore
+//	    required: true
+//	    schema:
+//	      type: file
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func systemRestorePost(d *Daemon, r *http.Request) response.Response {
+	queue, err := d.queue.GetAll(r.Context())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	for _, q := range queue {
+		if q.MigrationStatus != api.MIGRATIONSTATUS_FINISHED && q.MigrationStatus != api.MIGRATIONSTATUS_ERROR && q.MigrationStatus != api.MIGRATIONSTATUS_CANCELED {
+			return response.SmartError(fmt.Errorf("Unable to perform backup restore, queue entries are still migrating"))
+		}
+	}
+
+	err = d.os.WriteFile(filepath.Join(d.os.CacheDir, "backup.tar.gz"), r.Body)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	go func() {
+		<-r.Context().Done() // Wait until request has finished.
+
+		restoreLock.Lock()
+		defer restoreLock.Unlock()
+		slog.Info("Restarting daemon to initiate restore from backup")
+		err := sys.ReplaceDaemon()
+		if err != nil {
+			slog.Error("Failed restarting daemon", slog.Any("error", err))
+		}
+	}()
+
+	return response.ManualResponse(func(w http.ResponseWriter) error {
+		err := response.EmptySyncResponse.Render(w)
+		if err != nil {
+			return err
+		}
+
+		f, ok := w.(http.Flusher)
+		if ok {
+			f.Flush()
+			return nil
+		}
+
+		return fmt.Errorf("Unable to flush response writer %T", f)
+	})
 }
 
 // swagger:operation GET /1.0/system/settings system_settings system_settings_get

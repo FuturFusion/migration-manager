@@ -118,7 +118,7 @@ func UpdateCertificate(ctx context.Context, filesystem *sys.OS, cfg api.SystemSe
 		return nil, nil
 	}
 
-	dir := filepath.Join(filesystem.CacheDir, "acme")
+	dir := filesystem.ACMEDir
 	err = os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create acme account path %q: %w", dir, err)

@@ -107,3 +107,16 @@ func execFromFile(ctx context.Context, tx *sql.Tx, path string, hook Hook) error
 
 	return nil
 }
+
+// Return a list of SQL statements that can be used to create all tables in the
+// database.
+func selectTablesSQL(ctx context.Context, tx *sql.Tx) ([]string, error) {
+	statement := `
+SELECT sql FROM sqlite_master WHERE
+  type IN ('table', 'index', 'view', 'trigger') AND
+  name != 'schema' AND
+  name NOT LIKE 'sqlite_%'
+ORDER BY name
+`
+	return query.SelectStrings(ctx, tx, statement)
+}

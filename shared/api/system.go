@@ -2,6 +2,8 @@ package api
 
 import (
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 // SystemConfig is the full set of system configuration options for Migration Manager.
@@ -210,4 +212,12 @@ type SystemCertificatePost struct {
 	// The new certificate CA (X509 PEM encoded) for the system (server CA).
 	// Example: X509 PEM certificate CA
 	CA string `json:"ca" yaml:"ca"`
+}
+
+// SystemBackupPost represents configuration for creating a system backup.
+//
+// swagger:model
+type SystemBackupPost struct {
+	// List of artifact UUIDs to include in the backup.
+	IncludeArtifacts []uuid.UUID `json:"include_artifacts" yaml:"include_artifacts"`
 }

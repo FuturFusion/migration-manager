@@ -1,7 +1,6 @@
 package config
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -20,21 +19,29 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-func LoadConfig() (*api.SystemConfig, error) {
-	// Set the default port for a fresh config.
-	c := &api.SystemConfig{}
-	contents, err := os.ReadFile(util.VarPath("config.yml"))
+func LoadConfig(configPath string) (*api.SystemConfig, error) {
+	contents, err := os.ReadFile(configPath)
 	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return c, nil
-		}
-
 		return nil, err
 	}
 
+	c := &api.SystemConfig{}
 	err = yaml.Unmarshal(contents, c)
 	if err != nil {
 		return nil, err
+	}
+
+	return c, nil
+}
+
+func InitConfig(dir string) (*api.SystemConfig, error) {
+	c, err := LoadConfig(dir)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	if err != nil {
+		return &api.SystemConfig{}, nil
 	}
 
 	return c, nil

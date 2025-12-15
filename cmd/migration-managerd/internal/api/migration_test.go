@@ -636,7 +636,7 @@ def placement(instance, batch):
 
 						return tc.vmStartErr[instanceName]
 					},
-					CreateStoragePoolVolumeFromBackupFunc: func(poolName, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
+					CreateStoragePoolVolumeFromBackupFunc: func(ctx context.Context, poolName, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
 						return []incus.Operation{}, func() {}, tc.backupCreateErr
 					},
 					CreateVMDefinitionFunc: func(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint, endpoint string, targeNetwork api.MigrationNetworkPlacement) (incusAPI.InstancesPost, error) {
