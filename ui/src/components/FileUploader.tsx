@@ -1,19 +1,14 @@
 import { FC, useRef, useState } from "react";
 import { Button, Form, InputGroup, Spinner } from "react-bootstrap";
-import { useQueryClient } from "@tanstack/react-query";
-import { uploadArtifactFile } from "api/artifacts";
-import { useNotification } from "context/notificationContext";
 
 interface Props {
-  uuid?: string;
+  onUpload: (file: File | null) => Promise<boolean>;
 }
 
-const ArtifactFileUploader: FC<Props> = ({ uuid }) => {
+const FileUploader: FC<Props> = ({ onUpload }) => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [uploadInProgress, setUploadInProgress] = useState(false);
-  const queryClient = useQueryClient();
-  const { notify } = useNotification();
 
   const clearFile = () => {
     if (fileInputRef.current) {
@@ -33,21 +28,10 @@ const ArtifactFileUploader: FC<Props> = ({ uuid }) => {
     if (!file || uploadInProgress) return;
 
     setUploadInProgress(true);
-    await uploadArtifactFile(uuid, file)
-      .then((response) => {
-        if (response.error_code == 0) {
-          notify.success(`Artifact file uploaded`);
-          void queryClient.invalidateQueries({
-            queryKey: ["artifacts", uuid],
-          });
-          clearFile();
-          return;
-        }
-        notify.error(response.error);
-      })
-      .catch((e) => {
-        notify.error(`Error during artifact creation: ${e}`);
-      });
+    const result = await onUpload(file);
+    if (result) {
+      clearFile();
+    }
 
     setUploadInProgress(false);
   };
@@ -61,19 +45,25 @@ const ArtifactFileUploader: FC<Props> = ({ uuid }) => {
         ref={fileInputRef}
         onChange={handleFileChange}
       />
-      <Button onClick={handleUpload} disabled={!file} size="sm">
-        {!uploadInProgress && <>Upload</>}
-        {uploadInProgress && (
+      <Button
+        onClick={handleUpload}
+        disabled={!file}
+        variant="success"
+        size="sm"
+      >
+        {uploadInProgress ? (
           <Spinner
             animation="border"
             role="status"
             variant="outline-secondary"
             style={{ width: "1rem", height: "1rem" }}
           />
+        ) : (
+          "Upload"
         )}
       </Button>
     </InputGroup>
   );
 };
 
-export default ArtifactFileUploader;
+export default FileUploader;

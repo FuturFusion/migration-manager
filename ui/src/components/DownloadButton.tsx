@@ -1,15 +1,19 @@
 import { FC, useState } from "react";
-import { Button, Spinner } from "react-bootstrap";
-import { BsDownload } from "react-icons/bs";
-import { downloadArtifactFile } from "api/artifacts";
+import { Button, Spinner, ButtonProps } from "react-bootstrap";
 import { useNotification } from "context/notificationContext";
 
-interface Props {
-  artifactUUID: string;
-  fileName: string;
+interface Props extends ButtonProps {
+  filename: string;
+  children: React.ReactNode;
+  onDownload: () => string | Promise<string>;
 }
 
-const ArtifactFileDownloadButton: FC<Props> = ({ artifactUUID, fileName }) => {
+const DownloadButton: FC<Props> = ({
+  filename,
+  children,
+  onDownload,
+  ...props
+}) => {
   const [downloadInProgress, setDownloadInProgress] = useState(false);
   const { notify } = useNotification();
 
@@ -20,11 +24,11 @@ const ArtifactFileDownloadButton: FC<Props> = ({ artifactUUID, fileName }) => {
 
     try {
       setDownloadInProgress(true);
-      const url = await downloadArtifactFile(artifactUUID, fileName);
+      const url = await onDownload();
 
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${fileName}`;
+      a.download = `${filename}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -37,24 +41,19 @@ const ArtifactFileDownloadButton: FC<Props> = ({ artifactUUID, fileName }) => {
   };
 
   return (
-    <Button
-      title="Download"
-      size="sm"
-      variant="outline-secondary"
-      className="bg-white border no-hover m-2"
-      onClick={handleDownload}
-    >
-      {!downloadInProgress && <BsDownload />}
-      {downloadInProgress && (
+    <Button onClick={handleDownload} {...props}>
+      {downloadInProgress ? (
         <Spinner
           animation="border"
           role="status"
           variant="outline-secondary"
           style={{ width: "1rem", height: "1rem" }}
         />
+      ) : (
+        children
       )}
     </Button>
   );
 };
 
-export default ArtifactFileDownloadButton;
+export default DownloadButton;
