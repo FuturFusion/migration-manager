@@ -22,6 +22,7 @@ require (
 	github.com/olekukonko/tablewriter v1.1.2
 	github.com/openfga/cli v0.6.2
 	github.com/openfga/go-sdk v0.7.3
+	github.com/pires/go-proxyproto v0.8.1
 	github.com/schollz/progressbar/v3 v3.18.0
 	github.com/shogo82148/logrus-slog-hook v0.1.0
 	github.com/sirupsen/logrus v1.9.3
