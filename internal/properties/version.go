@@ -34,8 +34,8 @@ func compareSourceVersions(src api.SourceType, srcVer string, defVer string) err
 			return nil
 		}
 
-		// Use v8 definitions for v7.
-		if srcMajor == "v7" && defMajor == "v8" {
+		// Use v8 definitions for v7 and v9.
+		if (srcMajor == "v7" || srcMajor == "v9") && defMajor == "v8" {
 			return nil
 		}
 
