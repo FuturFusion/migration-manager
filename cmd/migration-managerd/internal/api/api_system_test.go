@@ -12,6 +12,7 @@ import (
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
 
+	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/listener"
 	"github.com/FuturFusion/migration-manager/internal/acme"
 	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -106,11 +107,13 @@ func TestSecurityUpdate(t *testing.T) {
 			name: "success - put with full change",
 			config: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b", "c"},
+				TrustedHTTPSProxies:              []string{"10.0.0.101", "10.0.0.102"},
 				OIDC:                             api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
 				OpenFGA:                          api.SystemSecurityOpenFGA{APIURL: "https://example.com", APIToken: "token", StoreID: "7ZZZZZZZZZZZZZZZZZZZZZZZZZ"},
 			},
 			wantConfig: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b", "c"},
+				TrustedHTTPSProxies:              []string{"10.0.0.101", "10.0.0.102"},
 				OIDC:                             api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
 				OpenFGA:                          api.SystemSecurityOpenFGA{APIURL: "https://example.com", APIToken: "token", StoreID: "7ZZZZZZZZZZZZZZZZZZZZZZZZZ"},
 				ACME:                             acme.SetACMEDefaults(api.SystemSecurityACME{}),
@@ -158,6 +161,22 @@ func TestSecurityUpdate(t *testing.T) {
 
 			wantHTTPStatus: http.StatusInternalServerError,
 		},
+		{
+			name: "error - invalid proxy address",
+			initConfig: api.SystemSecurity{
+				OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
+			},
+			config: api.SystemSecurity{
+				TrustedTLSClientCertFingerprints: []string{"a", "b"},
+				TrustedHTTPSProxies:              []string{"abcd"},
+			},
+			wantConfig: api.SystemSecurity{
+				OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
+				ACME: acme.SetACMEDefaults(api.SystemSecurityACME{}),
+			},
+
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
 	}
 
 	for i, tc := range cases {
@@ -171,6 +190,17 @@ func TestSecurityUpdate(t *testing.T) {
 				daemon.oidcVerifier, err = oidc.NewVerifier(tc.initConfig.OIDC.Issuer, tc.initConfig.OIDC.ClientID, tc.initConfig.OIDC.Scope, tc.config.OIDC.Audience, tc.config.OIDC.Claim)
 				require.NoError(t, err)
 			}
+
+			cert, key, err := incusTLS.GenerateMemCert(false, true)
+			require.NoError(t, err)
+
+			certInfo, err := incusTLS.KeyPairFromRaw(cert, key)
+			require.NoError(t, err)
+
+			l, err := net.Listen("tcp", ":0")
+			require.NoError(t, err)
+			daemon.listener = listener.NewFancyTLSListener(l, certInfo)
+			defer func() { _ = daemon.listener.Close() }()
 
 			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemSecurityCmd}, nil)
 

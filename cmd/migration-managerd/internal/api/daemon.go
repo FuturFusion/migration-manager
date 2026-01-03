@@ -591,6 +591,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 
 	newCfg = *fullCfg
 	changedNetwork := init || newCfg.Network != oldCfg.Network
+	changedProxy := init || !slices.Equal(newCfg.Security.TrustedHTTPSProxies, oldCfg.Security.TrustedHTTPSProxies)
 	changedOIDC := init || newCfg.Security.OIDC != oldCfg.Security.OIDC
 	changedOpenFGA := init || newCfg.Security.OpenFGA != oldCfg.Security.OpenFGA || !slices.Equal(newCfg.Security.TrustedTLSClientCertFingerprints, oldCfg.Security.TrustedTLSClientCertFingerprints)
 	logTargetsChanged := init || logger.WebhookConfigChanged(oldCfg.Settings.LogTargets, newCfg.Settings.LogTargets)
@@ -617,6 +618,13 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 		if changedNetwork {
 			errCh := d.updateHTTPListener(applyCfg.Network.Address)
 			err := <-errCh
+			if err != nil {
+				return err
+			}
+		}
+
+		if changedProxy {
+			err := d.listener.(*listener.FancyTLSListener).TrustedProxy(applyCfg.Security.TrustedHTTPSProxies)
 			if err != nil {
 				return err
 			}

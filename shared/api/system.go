@@ -105,6 +105,9 @@ type SystemSecurity struct {
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `json:"trusted_tls_client_cert_fingerprints" yaml:"trusted_tls_client_cert_fingerprints"`
 
+	// An array of trusted HTTPS proxy addresses.
+	TrustedHTTPSProxies []string `json:"trusted_https_proxies" yaml:"trusted_https_proxies"`
+
 	// OIDC configuration.
 	OIDC SystemSecurityOIDC `json:"oidc"    yaml:"oidc"`
 
