@@ -4,10 +4,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
+	"fmt"
 	"net"
+	"slices"
 	"sync"
 
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	"github.com/pires/go-proxyproto"
 )
 
 // FancyTLSListener is a variation of the standard tls.Listener that supports
@@ -15,8 +18,9 @@ import (
 // Requests served before the swap will continue using the old configuration.
 type FancyTLSListener struct {
 	net.Listener
-	mu     sync.RWMutex
-	config *tls.Config
+	mu           sync.RWMutex
+	config       *tls.Config
+	trustedProxy []net.IP
 }
 
 // NewFancyTLSListener creates a new FancyTLSListener.
@@ -40,6 +44,10 @@ func (l *FancyTLSListener) Accept() (net.Conn, error) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	config := l.config
+
+	if isProxy(c.RemoteAddr().String(), l.trustedProxy) {
+		c = proxyproto.NewConn(c)
+	}
 
 	return tls.Server(c, config), nil
 }
@@ -76,4 +84,33 @@ func (l *FancyTLSListener) Close() error {
 	}
 
 	return nil
+}
+
+// TrustedProxy sets new the https trusted proxy configuration.
+func (l *FancyTLSListener) TrustedProxy(proxies []string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	l.trustedProxy = make([]net.IP, 0, len(proxies))
+	for _, p := range proxies {
+		ip := net.ParseIP(p)
+		if ip == nil {
+			return fmt.Errorf("HTTPS proxy %q is not a valid IP", p)
+		}
+
+		l.trustedProxy = append(l.trustedProxy, ip)
+	}
+
+	return nil
+}
+
+func isProxy(addr string, proxies []net.IP) bool {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return false
+	}
+
+	hostIP := net.ParseIP(host)
+
+	return slices.ContainsFunc(proxies, hostIP.Equal)
 }
