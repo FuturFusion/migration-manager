@@ -43,25 +43,6 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-// APIEndpoint represents a URL in our API.
-type APIEndpoint struct {
-	Path   string // Path pattern for this endpoint.
-	Get    APIEndpointAction
-	Head   APIEndpointAction
-	Put    APIEndpointAction
-	Post   APIEndpointAction
-	Delete APIEndpointAction
-	Patch  APIEndpointAction
-}
-
-// APIEndpointAction represents an action on an API endpoint.
-type APIEndpointAction struct {
-	Handler        func(d *Daemon, r *http.Request) response.Response
-	AccessHandler  func(d *Daemon, r *http.Request) response.Response
-	Authenticator  Authenticator
-	AllowUntrusted bool
-}
-
 type Daemon struct {
 	db          *db.Node
 	os          *sys.OS
