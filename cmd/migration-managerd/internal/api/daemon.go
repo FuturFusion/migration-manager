@@ -723,91 +723,47 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 
 	restAPI.HandleFunc(uri, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-
-		var authenticator Authenticator
-		switch r.Method {
-		case "GET":
-			authenticator = c.Get.Authenticator
-		case "HEAD":
-			authenticator = c.Head.Authenticator
-		case "PUT":
-			authenticator = c.Put.Authenticator
-		case "POST":
-			authenticator = c.Post.Authenticator
-		case "DELETE":
-			authenticator = c.Delete.Authenticator
-		case "PATCH":
-			authenticator = c.Patch.Authenticator
+		action, err := c.Action(r.Method)
+		if err != nil {
+			_ = response.NotFound(err).Render(w)
+			return
 		}
 
+		// Set the default authenticator.
+		authenticator := action.Authenticator
 		if authenticator == nil {
 			authenticator = DefaultAuthenticate
 		}
 
-		// Authentication
+		var verifier *oidc.Verifier
 		authResp, err := authenticator(d, w, r)
 		if err != nil {
-			_, ok := err.(*oidc.AuthError)
-			if ok {
-				// Ensure the OIDC headers are set if needed.
-				if authResp.verifier != nil {
-					_ = authResp.verifier.WriteHeaders(w)
-				}
-
+			if !action.AllowUntrusted {
+				slog.Warn("Rejecting request from unauthenticated client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
 				_ = response.Unauthorized(err).Render(w)
 				return
 			}
-		}
 
-		untrustedOk := (r.Method == "GET" && c.Get.AllowUntrusted) || (r.Method == "POST" && c.Post.AllowUntrusted)
-		if authResp.trusted {
-			slog.Debug("Handling API request", slog.String("method", r.Method), slog.String("url", r.URL.RequestURI()), slog.String("ip", r.RemoteAddr))
-
+			slog.Debug("Allowing untrusted action", slog.String("method", r.Method), slog.Any("url", r.URL), slog.String("ip", r.RemoteAddr))
+		} else {
 			// Add authentication/authorization context data.
+			verifier = authResp.verifier
 			ctx := context.WithValue(r.Context(), request.CtxUsername, authResp.username)
 			ctx = context.WithValue(ctx, request.CtxProtocol, authResp.protocol)
-
 			r = r.WithContext(ctx)
-		} else if untrustedOk && r.Header.Get("X-MigrationManager-authenticated") == "" {
-			slog.Debug("Allowing untrusted", slog.String("method", r.Method), slog.Any("url", r.URL), slog.String("ip", r.RemoteAddr))
-		} else {
-			if authResp.verifier != nil {
-				_ = authResp.verifier.WriteHeaders(w)
-			}
-
-			slog.Warn("Rejecting request from untrusted client", slog.String("ip", r.RemoteAddr), slog.String("path", r.RequestURI), slog.String("method", r.Method))
-			_ = response.Forbidden(nil).Render(w)
-			return
 		}
-
-		// Actually process the request
-		var resp response.Response
 
 		// Return Unavailable Error (503) if daemon is shutting down.
 		// There are some exceptions:
 		// - /1.0 endpoint
 		// - GET queries
-		allowedDuringShutdown := func() bool {
-			if apiVersion == "internal" {
-				return true
-			}
-
-			if c.Path == "" {
-				return true
-			}
-
-			if r.Method == "GET" {
-				return true
-			}
-
-			return false
-		}
-
-		if d.ShutdownCtx.Err() == context.Canceled && !allowedDuringShutdown() {
+		allowedDuringShutdown := apiVersion == "internal" || c.Path == "" || r.Method == "GET"
+		if d.ShutdownCtx.Err() == context.Canceled && !allowedDuringShutdown {
 			_ = response.Unavailable(fmt.Errorf("Shutting down")).Render(w)
 			return
 		}
 
+		slog.Debug("Handling API request", slog.String("method", r.Method), slog.String("url", r.URL.RequestURI()), slog.String("ip", r.RemoteAddr))
 		handleRequest := func(action APIEndpointAction) response.Response {
 			if action.Handler == nil {
 				return response.NotImplemented(nil)
@@ -816,11 +772,6 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 			// All APIEndpointActions should have an access handler or should allow untrusted requests.
 			if action.AccessHandler == nil && !action.AllowUntrusted {
 				return response.InternalError(fmt.Errorf("Access handler not defined for %s %s", r.Method, r.URL.RequestURI()))
-			}
-
-			// If the request is not trusted, only call the handler if the action allows it.
-			if !authResp.trusted && !action.AllowUntrusted {
-				return response.Forbidden(fmt.Errorf("You must be authenticated"))
 			}
 
 			// Call the access handler if there is one.
@@ -834,26 +785,10 @@ func (d *Daemon) createCmd(restAPI *http.ServeMux, apiVersion string, c APIEndpo
 			return action.Handler(d, r)
 		}
 
-		switch r.Method {
-		case "GET":
-			resp = handleRequest(c.Get)
-		case "HEAD":
-			resp = handleRequest(c.Head)
-		case "PUT":
-			resp = handleRequest(c.Put)
-		case "POST":
-			resp = handleRequest(c.Post)
-		case "DELETE":
-			resp = handleRequest(c.Delete)
-		case "PATCH":
-			resp = handleRequest(c.Patch)
-		default:
-			resp = response.NotFound(fmt.Errorf("Method %q not found", r.Method))
-		}
-
+		resp := handleRequest(*action)
 		// If sending out Forbidden, make sure we have OIDC headers.
-		if resp.Code() == http.StatusForbidden && authResp.verifier != nil {
-			_ = authResp.verifier.WriteHeaders(w)
+		if resp.Code() == http.StatusForbidden && verifier != nil {
+			_ = verifier.WriteHeaders(w)
 		}
 
 		// Handle errors
