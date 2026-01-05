@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/tls"
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -13,6 +14,44 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 )
+
+// APIEndpoint represents a URL in our API.
+type APIEndpoint struct {
+	Path   string // Path pattern for this endpoint.
+	Get    APIEndpointAction
+	Head   APIEndpointAction
+	Put    APIEndpointAction
+	Post   APIEndpointAction
+	Delete APIEndpointAction
+	Patch  APIEndpointAction
+}
+
+func (a *APIEndpoint) Action(method string) (*APIEndpointAction, error) {
+	switch method {
+	case "GET":
+		return &a.Get, nil
+	case "HEAD":
+		return &a.Head, nil
+	case "PUT":
+		return &a.Put, nil
+	case "POST":
+		return &a.Post, nil
+	case "DELETE":
+		return &a.Delete, nil
+	case "PATCH":
+		return &a.Patch, nil
+	default:
+		return nil, fmt.Errorf("Unknown request method %q", method)
+	}
+}
+
+// APIEndpointAction represents an action on an API endpoint.
+type APIEndpointAction struct {
+	Handler        func(d *Daemon, r *http.Request) response.Response
+	AccessHandler  func(d *Daemon, r *http.Request) response.Response
+	Authenticator  Authenticator
+	AllowUntrusted bool
+}
 
 // swagger:operation GET / server api_get
 //
