@@ -33,6 +33,7 @@ export interface SystemSettings {
 
 export interface SystemSecurity {
   trusted_tls_client_cert_fingerprints: string[];
+  trusted_https_proxies: string[];
   oidc: SystemSecurityOIDC;
   openfga: SystemSecurityOpenFGA;
   acme: SystemSecurityACME;
