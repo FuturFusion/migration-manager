@@ -529,7 +529,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	}
 
 	if targetNetwork != (api.MigrationNetworkPlacement{}) {
-		ret.Devices["eth0"] = map[string]string{"name": "eth0"}
+		ret.Devices["eth0"] = map[string]string{"name": "eth0", "type": "nic"}
 		if targetNetwork.NICType == api.INCUSNICTYPE_MANAGED {
 			ret.Devices["eth0"]["network"] = targetNetwork.Network
 		} else {
