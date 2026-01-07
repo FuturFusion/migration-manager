@@ -412,7 +412,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
                   />
                 </Form.Group>
                 <Form.Group className="mb-3" controlId="migration_network">
-                  <Form.Label>Network mappings</Form.Label>
+                  <Form.Label>Networks used for migrations</Form.Label>
                   <MigrationNetworkWidget
                     value={formik.values.defaults?.migration_network ?? []}
                     targets={targets}
