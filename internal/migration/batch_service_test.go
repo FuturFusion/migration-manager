@@ -1469,7 +1469,7 @@ func TestBatchService_StartBatchByName(t *testing.T) {
 			newQueueEntries := []string{}
 			repo := &mock.BatchRepoMock{
 				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
-					includeExpr := []string{}
+					includeExpr := make([]string, 0, len(tc.numMatchingInstances[true]))
 					for _, id := range tc.numMatchingInstances[true] {
 						includeExpr = append(includeExpr, "uuid == '"+id+"'")
 					}

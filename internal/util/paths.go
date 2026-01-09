@@ -31,7 +31,8 @@ func CachePath(path ...string) string {
 		cacheDir = filepath.Join(varDir, "cache")
 	}
 
-	items := []string{cacheDir}
+	items := make([]string, 0, len(path)+1)
+	items = append(items, cacheDir)
 	items = append(items, path...)
 	return filepath.Join(items...)
 }
@@ -45,7 +46,8 @@ func LogPath(path ...string) string {
 		logDir = filepath.Join(varDir, "logs")
 	}
 
-	items := []string{logDir}
+	items := make([]string, 0, len(path)+1)
+	items = append(items, logDir)
 	items = append(items, path...)
 	return filepath.Join(items...)
 }
@@ -59,7 +61,8 @@ func RunPath(path ...string) string {
 		runDir = filepath.Join(varDir, "run")
 	}
 
-	items := []string{runDir}
+	items := make([]string, 0, len(path)+1)
+	items = append(items, runDir)
 	items = append(items, path...)
 	return filepath.Join(items...)
 }
@@ -72,7 +75,8 @@ func VarPath(path ...string) string {
 		varDir = "/var/lib/migration-manager"
 	}
 
-	items := []string{varDir}
+	items := make([]string, 0, len(path)+1)
+	items = append(items, varDir)
 	items = append(items, path...)
 	return filepath.Join(items...)
 }
@@ -86,7 +90,8 @@ func SharePath(path ...string) string {
 		usrDir = filepath.Join(varDir, "share")
 	}
 
-	items := []string{usrDir}
+	items := make([]string, 0, len(path)+1)
+	items = append(items, usrDir)
 	items = append(items, path...)
 	return filepath.Join(items...)
 }
@@ -100,7 +105,8 @@ func UsrPath(path ...string) string {
 		usrDir = filepath.Join(varDir, "lib")
 	}
 
-	items := []string{usrDir}
+	items := make([]string, 0, len(path)+1)
+	items = append(items, usrDir)
 	items = append(items, path...)
 	return filepath.Join(items...)
 }

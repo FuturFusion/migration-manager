@@ -33,7 +33,7 @@ func (q queue) GetAll(ctx context.Context) (migration.QueueEntries, error) {
 }
 
 func (q queue) GetAllByState(ctx context.Context, status ...api.MigrationStatusType) (migration.QueueEntries, error) {
-	filters := []entities.QueueEntryFilter{}
+	filters := make([]entities.QueueEntryFilter, 0, len(status))
 	for _, s := range status {
 		filters = append(filters, entities.QueueEntryFilter{MigrationStatus: &s})
 	}
@@ -46,7 +46,7 @@ func (q queue) GetAllByBatch(ctx context.Context, batch string) (migration.Queue
 }
 
 func (q queue) GetAllByBatchAndState(ctx context.Context, batch string, statuses ...api.MigrationStatusType) (migration.QueueEntries, error) {
-	filters := []entities.QueueEntryFilter{}
+	filters := make([]entities.QueueEntryFilter, 0, len(statuses))
 	for _, s := range statuses {
 		filters = append(filters, entities.QueueEntryFilter{BatchName: &batch, MigrationStatus: &s})
 	}

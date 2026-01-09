@@ -245,7 +245,8 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osNa
 
 func ActivateVG(opts ...string) error {
 	if len(opts) > 0 {
-		args := []string{"-a", "y", "--config"}
+		args := make([]string, 0, len(opts)+3)
+		args = append(args, "-a", "y", "--config")
 		args = append(args, opts...)
 		_, err := subprocess.RunCommand("vgchange", args...)
 		return err
@@ -330,7 +331,8 @@ func runScriptInChroot(scriptName string, args ...string) error {
 	defer func() { _ = os.Remove(filepath.Join(chrootMountPath, scriptName)) }()
 
 	// Run the script within the chroot.
-	cmd := []string{chrootMountPath, filepath.Join("/", scriptName)}
+	cmd := make([]string, 0, len(args)+2)
+	cmd = append(cmd, chrootMountPath, filepath.Join("/", scriptName))
 	cmd = append(cmd, args...)
 	_, err = subprocess.RunCommand("chroot", cmd...)
 	return err

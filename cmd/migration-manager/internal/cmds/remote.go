@@ -189,7 +189,7 @@ func (c *cmdRemoteList) run(cmd *cobra.Command, args []string) error {
 
 	// Render the table.
 	header := []string{"Name", "Address", "Auth Type"}
-	data := [][]string{}
+	data := make([][]string, 0, (len(cfg.Remotes)+1)*3)
 	localName := "local"
 	if cfg.DefaultRemote == "" {
 		localName = "local (current)"

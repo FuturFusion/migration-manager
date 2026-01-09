@@ -90,8 +90,8 @@ func setupDiskClone(rootPartition string, rootPartitionType PartitionType, rootM
 		return "", nil, err
 	}
 
-	args := []string{filepath.Join("/tmp", scriptName)}
-	args = append(args, string(rootPartitionType), rootPartition)
+	args := make([]string, 0, len(rootMountOpts)+3)
+	args = append(args, filepath.Join("/tmp", scriptName), string(rootPartitionType), rootPartition)
 	args = append(args, rootMountOpts...)
 	output, err := subprocess.RunCommand("/bin/sh", args...)
 	if err != nil {
@@ -174,8 +174,7 @@ func cleanupDiskClone(rootPartitionType PartitionType) error {
 		return err
 	}
 
-	args := []string{filepath.Join("/tmp", scriptName)}
-	args = append(args, "cleanup", string(rootPartitionType))
+	args := []string{filepath.Join("/tmp", scriptName), "cleanup", string(rootPartitionType)}
 	_, err = subprocess.RunCommand("/bin/sh", args...)
 	if err != nil {
 		return err
