@@ -126,6 +126,10 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 		return fmt.Errorf("Last trusted TLS client certificate fingerprint cannot be removed")
 	}
 
+	if len(newCfg.Security.TrustedHTTPSProxies) != 0 && newCfg.Network.Address == "" {
+		return fmt.Errorf("Cannot set HTTPS proxy addresses without a network listener")
+	}
+
 	for _, p := range newCfg.Security.TrustedHTTPSProxies {
 		if net.ParseIP(p) == nil {
 			return fmt.Errorf("HTTPS Proxy address %q is not a valid IP", p)
