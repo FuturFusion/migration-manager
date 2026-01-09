@@ -100,8 +100,8 @@ func ReplaceFortigateBoot(kvmFile string, dryRun bool) error {
 		return err
 	}
 
-	args := []string{filepath.Join("/tmp", scriptName)}
-	args = append(args, kvmFile, rootPartition)
+	args := make([]string, 0, len(rootMountOpts)+3)
+	args = append(args, filepath.Join("/tmp", scriptName), kvmFile, rootPartition)
 	args = append(args, rootMountOpts...)
 	_, err = subprocess.RunCommand("/bin/sh", args...)
 	if err != nil {

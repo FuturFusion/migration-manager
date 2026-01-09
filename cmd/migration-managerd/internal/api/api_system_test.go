@@ -82,7 +82,7 @@ func TestCertificateUpdate(t *testing.T) {
 func TestSecurityUpdate(t *testing.T) {
 	cases := []struct {
 		name       string
-		initConfig api.SystemSecurity
+		initConfig api.SystemConfig
 		config     api.SystemSecurity
 		wantConfig api.SystemSecurity
 
@@ -104,7 +104,8 @@ func TestSecurityUpdate(t *testing.T) {
 			wantHTTPStatus: http.StatusOK,
 		},
 		{
-			name: "success - put with full change",
+			name:       "success - put with full change",
+			initConfig: api.SystemConfig{Network: api.SystemNetwork{Address: ":6443"}},
 			config: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b", "c"},
 				TrustedHTTPSProxies:              []string{"10.0.0.101", "10.0.0.102"},
@@ -124,7 +125,7 @@ func TestSecurityUpdate(t *testing.T) {
 		},
 		{
 			name:           "success - add first trusted fingerprint",
-			initConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{}},
+			initConfig:     api.SystemConfig{Network: api.SystemNetwork{Address: ":6443"}, Security: api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{}}},
 			config:         api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}},
 			wantConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}, ACME: acme.SetACMEDefaults(api.SystemSecurityACME{})},
 			changedOpenFGA: true,
@@ -132,7 +133,7 @@ func TestSecurityUpdate(t *testing.T) {
 		},
 		{
 			name:           "success - remove trusted fingerprint",
-			initConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a", "b"}},
+			initConfig:     api.SystemConfig{Network: api.SystemNetwork{Address: ":6443"}, Security: api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a", "b"}}},
 			config:         api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}},
 			wantConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}, ACME: acme.SetACMEDefaults(api.SystemSecurityACME{})},
 			changedOpenFGA: true,
@@ -140,15 +141,16 @@ func TestSecurityUpdate(t *testing.T) {
 		},
 		{
 			name:           "error - cannot remove last trusted fingerprint",
-			initConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}},
+			initConfig:     api.SystemConfig{Network: api.SystemNetwork{Address: ":6443"}, Security: api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}}},
 			config:         api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{}},
 			wantConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}, ACME: acme.SetACMEDefaults(api.SystemSecurityACME{})},
 			wantHTTPStatus: http.StatusInternalServerError,
 		},
 		{
 			name: "error - invalid values",
-			initConfig: api.SystemSecurity{
-				OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
+			initConfig: api.SystemConfig{
+				Network:  api.SystemNetwork{Address: ":6443"},
+				Security: api.SystemSecurity{OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"}},
 			},
 			config: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b"},
@@ -163,12 +165,27 @@ func TestSecurityUpdate(t *testing.T) {
 		},
 		{
 			name: "error - invalid proxy address",
-			initConfig: api.SystemSecurity{
-				OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
+			initConfig: api.SystemConfig{
+				Network:  api.SystemNetwork{Address: ":6443"},
+				Security: api.SystemSecurity{OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"}},
 			},
 			config: api.SystemSecurity{
 				TrustedTLSClientCertFingerprints: []string{"a", "b"},
 				TrustedHTTPSProxies:              []string{"abcd"},
+			},
+			wantConfig: api.SystemSecurity{
+				OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
+				ACME: acme.SetACMEDefaults(api.SystemSecurityACME{}),
+			},
+
+			wantHTTPStatus: http.StatusInternalServerError,
+		},
+		{
+			name:       "error - proxy address with no network listener",
+			initConfig: api.SystemConfig{Security: api.SystemSecurity{OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"}}},
+			config: api.SystemSecurity{
+				TrustedTLSClientCertFingerprints: []string{"a", "b"},
+				TrustedHTTPSProxies:              []string{"10.0.0.101"},
 			},
 			wantConfig: api.SystemSecurity{
 				OIDC: api.SystemSecurityOIDC{Issuer: "test", ClientID: "testID"},
@@ -183,11 +200,11 @@ func TestSecurityUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
 			daemon := daemonSetup(t)
-			daemon.config.Security.ACME = acme.SetACMEDefaults(tc.initConfig.ACME)
-			daemon.config.Security.OIDC = tc.initConfig.OIDC
+			daemon.config.Security.ACME = acme.SetACMEDefaults(tc.initConfig.Security.ACME)
+			daemon.config.Security.OIDC = tc.initConfig.Security.OIDC
 			if daemon.config.Security.OIDC != (api.SystemSecurityOIDC{}) {
 				var err error
-				daemon.oidcVerifier, err = oidc.NewVerifier(tc.initConfig.OIDC.Issuer, tc.initConfig.OIDC.ClientID, tc.initConfig.OIDC.Scope, tc.config.OIDC.Audience, tc.config.OIDC.Claim)
+				daemon.oidcVerifier, err = oidc.NewVerifier(tc.initConfig.Security.OIDC.Issuer, tc.initConfig.Security.OIDC.ClientID, tc.initConfig.Security.OIDC.Scope, tc.config.OIDC.Audience, tc.config.OIDC.Claim)
 				require.NoError(t, err)
 			}
 
@@ -197,10 +214,13 @@ func TestSecurityUpdate(t *testing.T) {
 			certInfo, err := incusTLS.KeyPairFromRaw(cert, key)
 			require.NoError(t, err)
 
-			l, err := net.Listen("tcp", ":0")
-			require.NoError(t, err)
-			daemon.listener = listener.NewFancyTLSListener(l, certInfo)
-			defer func() { _ = daemon.listener.Close() }()
+			if tc.initConfig.Network.Address != "" {
+				daemon.config.Network = tc.initConfig.Network
+				l, err := net.Listen("tcp", tc.initConfig.Network.Address)
+				require.NoError(t, err)
+				daemon.listener = listener.NewFancyTLSListener(l, certInfo)
+				defer func() { _ = daemon.listener.Close() }()
+			}
 
 			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemSecurityCmd}, nil)
 

@@ -35,13 +35,14 @@ func NewMigrationEvent(action api.LifecycleAction, instance api.Instance, queueE
 		Instance:   instance.ToFilterable(),
 	})
 
-	entities := []string{
+	entities := make([]string, 0, len(instance.NICs)+5)
+	entities = append(entities,
 		QueueEntryURI(queueEntry.InstanceUUID),
 		InstanceURI(instance.UUID),
 		BatchURI(queueEntry.BatchName),
 		SourceURI(instance.Source),
 		TargetURI(queueEntry.Placement.TargetName),
-	}
+	)
 
 	for _, nic := range instance.NICs {
 		entities = append(entities, NetworkURI(nic.UUID))

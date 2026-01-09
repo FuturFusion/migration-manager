@@ -604,7 +604,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 			}
 		}
 
-		if changedProxy {
+		if changedProxy && d.listener != nil {
 			err := d.listener.(*listener.FancyTLSListener).TrustedProxy(applyCfg.Security.TrustedHTTPSProxies)
 			if err != nil {
 				return err

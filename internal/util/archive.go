@@ -26,7 +26,7 @@ func CreateTarballWriter(ctx context.Context, w io.Writer, contentPath string, e
 func createTarball(ctx context.Context, stdin io.Reader, stdout io.Writer, tarballPath string, contentPath string, exclusions ...string) error {
 	args := []string{"-C", filepath.Dir(contentPath), "-czf", tarballPath, filepath.Base(contentPath)}
 
-	allArgs := []string{}
+	allArgs := make([]string, 0, (2*len(exclusions))+len(args))
 	for _, e := range exclusions {
 		allArgs = append(allArgs, "--exclude", e)
 	}

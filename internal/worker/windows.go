@@ -311,7 +311,8 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 			return err
 		}
 
-		args := []string{filepath.Join("/tmp", hivexScriptName)}
+		args := make([]string, 0, len(hwAddrs)+1)
+		args = append(args, filepath.Join("/tmp", hivexScriptName))
 		args = append(args, hwAddrs...)
 		_, err = subprocess.RunCommand("/bin/sh", args...)
 		if err != nil {

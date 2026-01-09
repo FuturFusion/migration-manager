@@ -27,7 +27,7 @@ func (s source) Create(ctx context.Context, in migration.Source) (int64, error) 
 }
 
 func (s source) GetAll(ctx context.Context, sourceTypes ...api.SourceType) (migration.Sources, error) {
-	filters := []entities.SourceFilter{}
+	filters := make([]entities.SourceFilter, 0, len(sourceTypes))
 	for _, s := range sourceTypes {
 		filters = append(filters, entities.SourceFilter{SourceType: &s})
 	}
@@ -36,7 +36,7 @@ func (s source) GetAll(ctx context.Context, sourceTypes ...api.SourceType) (migr
 }
 
 func (s source) GetAllNames(ctx context.Context, sourceTypes ...api.SourceType) ([]string, error) {
-	filters := []entities.SourceFilter{}
+	filters := make([]entities.SourceFilter, 0, len(sourceTypes))
 	for _, s := range sourceTypes {
 		filters = append(filters, entities.SourceFilter{SourceType: &s})
 	}
