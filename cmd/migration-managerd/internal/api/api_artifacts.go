@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 	"github.com/FuturFusion/migration-manager/shared/api/event"
 )
@@ -27,8 +29,9 @@ var artifactsCmd = APIEndpoint{
 var artifactCmd = APIEndpoint{
 	Path: "artifacts/{uuid}",
 
-	Get: APIEndpointAction{Handler: artifactGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView), Authenticator: TokenAuthenticate},
-	Put: APIEndpointAction{Handler: artifactPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit), Authenticator: TokenAuthenticate},
+	Get:    APIEndpointAction{Handler: artifactGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView), Authenticator: TokenAuthenticate},
+	Put:    APIEndpointAction{Handler: artifactPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit), Authenticator: TokenAuthenticate},
+	Delete: APIEndpointAction{Handler: artifactDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete), Authenticator: TokenAuthenticate},
 }
 
 var artifactFilesCmd = APIEndpoint{
@@ -256,6 +259,72 @@ func artifactPut(d *Daemon, r *http.Request) response.Response {
 	}
 
 	d.logHandler.SendLifecycle(r.Context(), event.NewArtifactEvent(event.ArtifactModified, r, art.ToAPI(), art.UUID))
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation DELETE /1.0/artifacts/{uuid} artifacts artifact_delete
+//
+//	Delete an artifact
+//
+//	Removes an artifact and all its files (if forced).
+//
+//	---
+//	produces:
+//	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: Whether to forcibly delete all artifact files.
+//	    type: string
+//	    example: "1"
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func artifactDelete(d *Daemon, r *http.Request) response.Response {
+	artUUIDStr := r.PathValue("force")
+	artUUID, err := uuid.Parse(artUUIDStr)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	// lock the artifact for writing.
+	artifactLock.Lock()
+	defer artifactLock.Unlock()
+
+	force := r.PathValue("force") == "1"
+	var art *migration.Artifact
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		var err error
+		art, err = d.artifact.GetByUUID(ctx, artUUID)
+		if err != nil {
+			return err
+		}
+
+		if len(art.Files) > 0 && !force {
+			return fmt.Errorf("Cannot remove artifact %q with %d files", artUUID.String(), len(art.Files))
+		}
+
+		for _, f := range art.Files {
+			err = d.artifact.DeleteFile(art.UUID, f)
+			if err != nil {
+				return err
+			}
+		}
+
+		return d.artifact.DeleteByUUID(ctx, art.UUID)
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewArtifactEvent(event.ArtifactRemoved, r, art.ToAPI(), art.UUID))
 
 	return response.EmptySyncResponse
 }
