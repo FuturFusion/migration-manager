@@ -113,7 +113,7 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		}
 
 		if vlanID != "" {
-			if nicType != string(api.INCUSNICTYPE_BRIDGED) {
+			if nicType != string(api.INCUSNICTYPE_BRIDGED) && nicType != string(api.INCUSNICTYPE_PHYSICAL) {
 				slog.Error("Batch placement failed. Vlan tagging not supported for NIC type", slog.String("nic_type", nicType))
 				return nil, fmt.Errorf("Vlan tagging (%q) is not supported for NIC type %q", vlanID, nicType)
 			}

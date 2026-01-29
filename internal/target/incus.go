@@ -256,8 +256,8 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		}
 
 		switch netCfg.NICType {
-		case api.INCUSNICTYPE_BRIDGED:
-			apiDef.Devices[nicDeviceName]["nictype"] = "bridged"
+		case api.INCUSNICTYPE_BRIDGED, api.INCUSNICTYPE_PHYSICAL:
+			apiDef.Devices[nicDeviceName]["nictype"] = string(netCfg.NICType)
 			apiDef.Devices[nicDeviceName]["parent"] = netCfg.Network
 			if netCfg.VlanID != "" {
 				if strings.Contains(netCfg.VlanID, ",") {

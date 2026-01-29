@@ -82,7 +82,7 @@ func (n Network) Validate() error {
 			return NewValidationErrf("Invalid network override: %v", err)
 		}
 
-		if n.Overrides.NICType != api.INCUSNICTYPE_BRIDGED && n.Overrides.VlanID != "" {
+		if n.Overrides.NICType != api.INCUSNICTYPE_BRIDGED && n.Overrides.NICType != api.INCUSNICTYPE_PHYSICAL && n.Overrides.VlanID != "" {
 			return NewValidationErrf("Vlan tagging not supported by NIC type %q", n.Overrides.NICType)
 		}
 	}
