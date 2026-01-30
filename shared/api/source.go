@@ -2,6 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"path/filepath"
+	"strings"
+	"time"
 )
 
 type SourceType string
@@ -72,4 +75,28 @@ type VMwareProperties struct {
 	// Maximum number of concurrent imports that can occur
 	// Example: 10
 	ImportLimit int `json:"import_limit,omitempty" yaml:"import_limit,omitempty"`
+
+	// Timeout for establishing connections to the source.
+	// Example: 10s
+	ConnectionTimeout string `json:"connection_timeout" yaml:"connection_timeout"`
+
+	// Datacenter paths to search for VMs, networks, and datastores. Defaults to '/...' (all).
+	DatacenterPaths []string `json:"datacenter_paths" yaml:"datacenter_paths"`
+}
+
+// SetDefaults sets default values for source properties.
+func (s *VMwareProperties) SetDefaults() {
+	if s.ConnectionTimeout == "" {
+		s.ConnectionTimeout = (10 * time.Second).String()
+	}
+
+	// TODO: Check if vCenter allows '.' as a datacenter name because filepath.Clean won't work then.
+	for i, p := range s.DatacenterPaths {
+		p = "/" + p
+		if !strings.HasSuffix("p", "/...") {
+			p += "/..."
+		}
+
+		s.DatacenterPaths[i] = filepath.Clean(p)
+	}
 }

@@ -3,10 +3,14 @@ package migration
 import (
 	"crypto/x509"
 	"encoding/json"
+	"fmt"
 	"net/url"
+	"slices"
+	"time"
 
 	"github.com/lxc/incus/v6/shared/validate"
 
+	internalapi "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -52,6 +56,82 @@ func (s Source) Validate() error {
 	return nil
 }
 
+// GetVMwareProperties sets default values for missing fields, and returns the properties object for a VMware source.
+func (s *Source) GetVMwareProperties() (*api.VMwareProperties, error) {
+	if s.SourceType != api.SOURCETYPE_VMWARE {
+		return nil, fmt.Errorf("Source %q type is %q, not %q", s.Name, s.SourceType, api.SOURCETYPE_VMWARE)
+	}
+
+	err := s.SetDefaults()
+	if err != nil {
+		return nil, err
+	}
+
+	var props api.VMwareProperties
+	err = json.Unmarshal(s.Properties, &props)
+	if err != nil {
+		return nil, err
+	}
+
+	return &props, nil
+}
+
+// GetNSXProperties sets default values for missing fields, and returns the properties object for a NSX source.
+func (s *Source) GetNSXProperties() (*internalapi.NSXSourceProperties, error) {
+	if s.SourceType != api.SOURCETYPE_NSX {
+		return nil, fmt.Errorf("Source %q type is %q, not %q", s.Name, s.SourceType, api.SOURCETYPE_NSX)
+	}
+
+	err := s.SetDefaults()
+	if err != nil {
+		return nil, err
+	}
+
+	var props internalapi.NSXSourceProperties
+	err = json.Unmarshal(s.Properties, &props)
+	if err != nil {
+		return nil, err
+	}
+
+	return &props, nil
+}
+
+// SetDefaults sets default values for source properties.
+func (s *Source) SetDefaults() error {
+	switch s.SourceType {
+	case api.SOURCETYPE_NSX:
+		var properties internalapi.NSXSourceProperties
+
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return fmt.Errorf("Invalid properties for VMware type: %w", err)
+		}
+
+		properties.SetDefaults()
+
+		s.Properties, err = json.Marshal(properties)
+
+		return err
+	case api.SOURCETYPE_VMWARE:
+		var properties api.VMwareProperties
+
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return fmt.Errorf("Invalid properties for VMware type: %w", err)
+		}
+
+		properties.SetDefaults()
+
+		s.Properties, err = json.Marshal(properties)
+
+		return err
+	case api.SOURCETYPE_COMMON:
+		return nil
+	default:
+		return nil
+	}
+}
+
 func (s Source) validateSourceTypeCommon() error {
 	var v any
 	err := json.Unmarshal(s.Properties, &v)
@@ -81,6 +161,15 @@ func (s Source) validateSourceTypeVMware() error {
 
 	if properties.Password == "" {
 		return NewValidationErrf("Invalid source, password can not be empty for source type VMware")
+	}
+
+	_, err = time.ParseDuration(properties.ConnectionTimeout)
+	if err != nil {
+		return NewValidationErrf("Invalid source, connection timeout %q is not a valid duration: %v", properties.ConnectionTimeout, err)
+	}
+
+	if slices.Contains(properties.DatacenterPaths, "") {
+		return NewValidationErrf("Invalid source, specified datacenter path must not be empty")
 	}
 
 	return nil
