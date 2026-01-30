@@ -276,9 +276,10 @@ func (c *cmdArtifactUpload) Command() *cobra.Command {
 
 	Upload an artifact file with the given set of properties.
 
-	Supported types: sdk, os-image
+	Supported types: sdk, os-image, driver
 
-	'architectures' and 'versions' are a comma delimited list, and only compatible with os-image.
+	- 'architectures' is a comma-delimited list applying to 'driver' and 'os-image'.
+	- 'versions' is a comma-delimited list applying to 'os-image'.
 	`
 
 	cmd.RunE = c.Run
