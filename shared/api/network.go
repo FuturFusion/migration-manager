@@ -26,12 +26,14 @@ const (
 type IncusNICType string
 
 const (
-	INCUSNICTYPE_BRIDGED IncusNICType = "bridged"
-	INCUSNICTYPE_MANAGED IncusNICType = "managed"
+	INCUSNICTYPE_BRIDGED  IncusNICType = "bridged"
+	INCUSNICTYPE_PHYSICAL IncusNICType = "physical"
+	INCUSNICTYPE_MANAGED  IncusNICType = "managed"
 )
 
 func ValidNICType(s string) error {
 	switch IncusNICType(s) {
+	case INCUSNICTYPE_PHYSICAL:
 	case INCUSNICTYPE_BRIDGED:
 	case INCUSNICTYPE_MANAGED:
 	default:

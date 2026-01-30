@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"net/url"
 	"os"
@@ -9,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/exp/slog"
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/migration-manager/internal/acme"
