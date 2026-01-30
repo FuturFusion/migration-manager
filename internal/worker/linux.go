@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -71,7 +72,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osNa
 		distro = "openSUSE"
 	} else if strings.Contains(strings.ToLower(osName), "oracle") {
 		distro = "Oracle"
-	} else if strings.Contains(strings.ToLower(osName), "rhel") {
+	} else if slices.Contains([]string{"rhel", "redhat", "red-hat", "red hat"}, strings.ToLower(osName)) {
 		distro = "RHEL"
 	} else if strings.Contains(strings.ToLower(osName), "sles") {
 		distro = "SUSE"
@@ -80,6 +81,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osNa
 	}
 
 	if distro == "" {
+		slog.Info("Could not determine Linux distribution, not performing any post-migration actions")
 		return nil
 	}
 
