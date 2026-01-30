@@ -1,6 +1,6 @@
 import { NetworkType } from "util/network";
 
-type IncusNICType = "" | "bridged" | "managed";
+type IncusNICType = "" | "bridged" | "managed" | "physical";
 
 export interface NetworkPlacement {
   network: string;

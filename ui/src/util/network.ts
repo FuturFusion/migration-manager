@@ -8,4 +8,5 @@ export enum NetworkType {
 export enum IncusNICType {
   Bridged = "bridged",
   Managed = "managed",
+  Physical = "physical",
 }
