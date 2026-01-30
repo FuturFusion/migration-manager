@@ -171,6 +171,16 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 	networksBySrc := map[string]map[string]migration.Network{}
 	instancesBySrc := map[string]map[uuid.UUID]migration.Instance{}
 	for _, src := range vmSourcesByName {
+		props, err := src.GetVMwareProperties()
+		if err != nil {
+			return err
+		}
+
+		timeout, err := time.ParseDuration(props.ConnectionTimeout)
+		if err != nil {
+			return err
+		}
+
 		log := log.With(slog.String("source", src.Name))
 
 		if src.GetExternalConnectivityStatus() != api.EXTERNALCONNECTIVITYSTATUS_OK {
@@ -179,12 +189,16 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 			continue
 		}
 
+		ctx, cancel := context.WithTimeout(ctx, timeout)
 		srcNetworks, srcInstances, importWarnings, err := fetchVMWareSourceData(ctx, src)
 		if err != nil {
+			cancel()
 			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, src.Name, err.Error()))
 			log.Error("Failed to fetch records from source", logger.Err(err))
 			continue
 		}
+
+		cancel()
 
 		warnings = append(warnings, importWarnings...)
 
@@ -193,17 +207,31 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 	}
 
 	for _, src := range networkSourcesByName {
+		props, err := src.GetVMwareProperties()
+		if err != nil {
+			return err
+		}
+
+		timeout, err := time.ParseDuration(props.ConnectionTimeout)
+		if err != nil {
+			return err
+		}
+
 		if src.GetExternalConnectivityStatus() != api.EXTERNALCONNECTIVITYSTATUS_OK {
 			warnings = append(warnings, migration.NewSyncWarning(api.SourceUnavailable, src.Name, fmt.Sprintf("status: %q", src.GetExternalConnectivityStatus())))
 			continue
 		}
 
+		ctx, cancel := context.WithTimeout(ctx, timeout)
 		found, err := fetchNSXSourceData(ctx, src, vmSourcesByName, networksBySrc)
 		if err != nil {
+			cancel()
 			warnings = append(warnings, migration.NewSyncWarning(api.NetworkImportFailed, src.Name, err.Error()))
 			log.Error("Failed to fetch records from source", logger.Err(err))
 			continue
 		}
+
+		cancel()
 
 		if found {
 			break

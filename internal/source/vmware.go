@@ -180,34 +180,52 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 	warnings := migration.Warnings{}
 	finder := find.NewFinder(s.govmomiClient.Client)
-	vms, err := finder.VirtualMachineList(ctx, "/...")
-	var notFoundErr *find.NotFoundError
-	if err != nil {
-		if errors.As(err, &notFoundErr) {
-			log.Warn("Registered source has no VMs")
+	paths := []string{"/..."}
 
-			return ret, nil, nil
-		}
-
-		return nil, nil, err
+	if len(s.DatacenterPaths) > 0 {
+		paths = s.DatacenterPaths
 	}
 
-	networks, err := finder.NetworkList(ctx, "/...")
-	if err != nil {
-		if !errors.As(err, &notFoundErr) {
-			return nil, nil, err
+	vms := []*object.VirtualMachine{}
+	networks := []object.NetworkReference{}
+	datastores := []*object.Datastore{}
+	for _, p := range paths {
+		var notFoundErr *find.NotFoundError
+		pathVMs, err := finder.VirtualMachineList(ctx, p)
+		if err != nil {
+			if !errors.As(err, &notFoundErr) {
+				return nil, nil, err
+			}
+
+			log.Warn("Registered source has no VMs in path", slog.String("path", p))
 		}
 
-		log.Warn("Registered source has no networks")
+		pathNets, err := finder.NetworkList(ctx, p)
+		if err != nil {
+			if errors.As(err, &notFoundErr) {
+				return nil, nil, err
+			}
+
+			log.Warn("Registered source has no networks in path", slog.String("path", p))
+		}
+
+		pathDatastores, err := finder.DatastoreList(ctx, p)
+		if err != nil {
+			if errors.As(err, &notFoundErr) {
+				return nil, nil, err
+			}
+
+			log.Warn("Registered source has no datastores in path", slog.String("path", p))
+		}
+
+		vms = append(vms, pathVMs...)
+		networks = append(networks, pathNets...)
+		datastores = append(datastores, pathDatastores...)
 	}
 
-	datastores, err := finder.DatastoreList(ctx, "/...")
-	if err != nil {
-		if !errors.As(err, &notFoundErr) {
-			return nil, nil, err
-		}
-
-		log.Warn("Registered source has no datastores")
+	if len(vms) == 0 || len(datastores) == 0 || len(networks) == 0 {
+		log.Warn("No data was imported from the source")
+		return ret, nil, nil
 	}
 
 	networkLocationsByID := map[string]string{}
@@ -219,7 +237,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	var tc *tags.Manager
 	if !s.isESXI {
 		c := rest.NewClient(s.govmomiClient.Client)
-		err = c.Login(ctx, url.UserPassword(s.Username, s.Password))
+		err := c.Login(ctx, url.UserPassword(s.Username, s.Password))
 		if err != nil {
 			return nil, nil, fmt.Errorf("Failed to login to REST API: %w", err)
 		}
@@ -373,15 +391,33 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) (migration.Networks, error) {
 	finder := find.NewFinder(s.govmomiClient.Client)
-	networks, err := finder.NetworkList(ctx, "/...")
-	if err != nil {
+	paths := []string{"/..."}
+
+	if len(s.DatacenterPaths) > 0 {
+		paths = s.DatacenterPaths
+	}
+
+	log := slog.With(slog.String("source", s.Name))
+
+	networks := []object.NetworkReference{}
+	for _, p := range paths {
 		var notFoundErr *find.NotFoundError
-		if errors.As(err, &notFoundErr) {
-			slog.Warn("Registered source has no networks", slog.String("source", s.Name))
-			return migration.Networks{}, nil
+		pathNets, err := finder.NetworkList(ctx, p)
+		if err != nil {
+			if errors.As(err, &notFoundErr) {
+				return nil, err
+			}
+
+			log.Warn("Registered source has no networks in path", slog.String("path", p))
 		}
 
-		return nil, err
+		networks = append(networks, pathNets...)
+	}
+
+	if len(networks) == 0 {
+		log.Warn("No networks were imported from the source")
+
+		return migration.Networks{}, nil
 	}
 
 	v := view.NewManager(s.govmomiClient.Client)
