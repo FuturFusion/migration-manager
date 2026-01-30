@@ -1044,6 +1044,12 @@ definitions:
                 $ref: '#/definitions/SystemSecurityOIDC'
             openfga:
                 $ref: '#/definitions/SystemSecurityOpenFGA'
+            trusted_https_proxies:
+                description: An array of trusted HTTPS proxy addresses.
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedHTTPSProxies
             trusted_tls_client_cert_fingerprints:
                 description: An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
                 items:
@@ -1460,6 +1466,29 @@ paths:
             tags:
                 - artifacts
     /1.0/artifacts/{uuid}:
+        delete:
+            description: Removes an artifact and all its files (if forced).
+            operationId: artifact_delete
+            parameters:
+                - description: Whether to forcibly delete all artifact files.
+                  example: "1"
+                  in: query
+                  name: force
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Delete an artifact
+            tags:
+                - artifacts
         get:
             description: Gets a specific artifact.
             operationId: artifact_get

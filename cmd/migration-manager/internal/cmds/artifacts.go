@@ -48,6 +48,10 @@ func (c *CmdArtifact) Command() *cobra.Command {
 	configRemoveCmd := cmdArtifactRemove{global: c.Global}
 	cmd.AddCommand(configRemoveCmd.Command())
 
+	// RemoveFile
+	configRemoveFileCmd := cmdArtifactRemoveFile{global: c.Global}
+	cmd.AddCommand(configRemoveFileCmd.Command())
+
 	// Upload
 	configUploadCmd := cmdArtifactUpload{global: c.Global}
 	cmd.AddCommand(configUploadCmd.Command())
@@ -194,12 +198,49 @@ func (c *cmdArtifactExport) Run(cmd *cobra.Command, args []string) error {
 }
 
 type cmdArtifactRemove struct {
-	global *CmdGlobal
+	global    *CmdGlobal
+	flagForce bool
 }
 
 func (c *cmdArtifactRemove) Command() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Use = "remove <uuid> <file-name>"
+	cmd.Use = "remove <uuid>"
+	cmd.Short = "Remove an artifact"
+
+	cmd.RunE = c.Run
+	cmd.Flags().BoolVarP(&c.flagForce, "format", "f", false, "Forcibly remove all files")
+
+	return cmd
+}
+
+func (c *cmdArtifactRemove) Run(cmd *cobra.Command, args []string) error {
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	artUUID := args[0]
+	query := ""
+
+	if c.flagForce {
+		query = "?force=1"
+	}
+
+	_, _, err = c.global.doHTTPRequestV1("/artifacts/"+artUUID+query, http.MethodDelete, "", nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type cmdArtifactRemoveFile struct {
+	global *CmdGlobal
+}
+
+func (c *cmdArtifactRemoveFile) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "remove-file <uuid> <file-name>"
 	cmd.Short = "Remove an artifact file"
 
 	cmd.RunE = c.Run
@@ -207,7 +248,7 @@ func (c *cmdArtifactRemove) Command() *cobra.Command {
 	return cmd
 }
 
-func (c *cmdArtifactRemove) Run(cmd *cobra.Command, args []string) error {
+func (c *cmdArtifactRemoveFile) Run(cmd *cobra.Command, args []string) error {
 	exit, err := c.global.CheckArgs(cmd, args, 2, 2)
 	if exit {
 		return err
