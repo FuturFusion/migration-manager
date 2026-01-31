@@ -45,6 +45,22 @@ export const updateArtifact = (
   });
 };
 
+export const deleteArtifact = (
+  uuid: string,
+  force: boolean,
+): Promise<APIResponse<object>> => {
+  let url = `/1.0/artifacts/${uuid}`;
+  if (force) {
+    url += "?force=1";
+  }
+  return new Promise((resolve, reject) => {
+    fetch(url, { method: "DELETE" })
+      .then((response) => response.json())
+      .then((data) => resolve(data))
+      .catch(reject);
+  });
+};
+
 export const downloadArtifactFile = (
   uuid: string,
   name: string,
