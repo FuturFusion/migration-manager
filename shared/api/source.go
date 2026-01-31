@@ -93,7 +93,7 @@ func (s *VMwareProperties) SetDefaults() {
 	// TODO: Check if vCenter allows '.' as a datacenter name because filepath.Clean won't work then.
 	for i, p := range s.DatacenterPaths {
 		p = "/" + p
-		if !strings.HasSuffix("p", "/...") {
+		if !strings.HasSuffix(p, "/...") {
 			p += "/..."
 		}
 
