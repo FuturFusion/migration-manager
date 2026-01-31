@@ -288,7 +288,7 @@ func artifactPut(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func artifactDelete(d *Daemon, r *http.Request) response.Response {
-	artUUIDStr := r.PathValue("force")
+	artUUIDStr := r.PathValue("uuid")
 	artUUID, err := uuid.Parse(artUUIDStr)
 	if err != nil {
 		return response.BadRequest(err)
@@ -298,7 +298,7 @@ func artifactDelete(d *Daemon, r *http.Request) response.Response {
 	artifactLock.Lock()
 	defer artifactLock.Unlock()
 
-	force := r.PathValue("force") == "1"
+	force := r.URL.Query().Get("force") == "1"
 	var art *migration.Artifact
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
 		var err error
