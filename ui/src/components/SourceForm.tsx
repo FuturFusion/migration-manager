@@ -5,7 +5,7 @@ import { useFormik } from "formik";
 import LoadingButton from "components/LoadingButton";
 import PasswordField from "components/PasswordField";
 import TLSFingerprintConfirmModal from "components/TLSFingerprintConfirmModal";
-import { Source, SourceFormValues } from "types/source";
+import { Source, SourceFormValues, VMwareProperties } from "types/source";
 import { SourceType } from "util/source";
 
 interface Props {
@@ -48,7 +48,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
     return errors;
   };
 
-  let formikInitialValues = {
+  let formikInitialValues: SourceFormValues = {
     name: "",
     sourceType: SourceType.VMware,
     endpoint: "",
@@ -56,6 +56,8 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
     password: "",
     trustedServerCertificateFingerprint: "",
     importLimit: importLimit,
+    connectionTimeout: "10s",
+    datacenterPaths: [],
   };
 
   if (source) {
@@ -69,6 +71,15 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
         source.properties.trusted_server_certificate_fingerprint,
       importLimit: source.properties.import_limit || importLimit,
     };
+
+    if (source.source_type == SourceType.VMware) {
+      formikInitialValues.connectionTimeout = (
+        source.properties as VMwareProperties
+      ).connection_timeout;
+      formikInitialValues.datacenterPaths = (
+        source.properties as VMwareProperties
+      ).datacenter_paths;
+    }
   }
 
   const formik = useFormik({
@@ -85,6 +96,10 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
           trusted_server_certificate_fingerprint:
             values.trustedServerCertificateFingerprint,
           import_limit: values.importLimit,
+          connection_timeout: values.connectionTimeout,
+          datacenter_paths: values.datacenterPaths?.filter(
+            (s) => s.trim() !== "",
+          ),
         },
       };
 
@@ -223,6 +238,40 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
               {formik.errors.importLimit}
             </Form.Control.Feedback>
           </Form.Group>
+          {formik.values.sourceType == SourceType.VMware && (
+            <>
+              <Form.Group className="mb-3" controlId="fingerprint">
+                <Form.Label>Connection timeout</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="connectionTimeout"
+                  value={formik.values.connectionTimeout}
+                  disabled={formik.isSubmitting}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  isInvalid={
+                    !!formik.errors.connectionTimeout &&
+                    formik.touched.connectionTimeout
+                  }
+                />
+              </Form.Group>
+              <Form.Group className="mb-3" controlId="datacenterPaths">
+                <Form.Label>Datacenter paths</Form.Label>
+                <Form.Control
+                  type="text"
+                  as="textarea"
+                  rows={5}
+                  name="datacenterPaths"
+                  value={formik.values.datacenterPaths?.join("\n") ?? ""}
+                  onChange={(e) => {
+                    const lines = e.target.value.split("\n");
+                    formik.setFieldValue("datacenterPaths", lines);
+                  }}
+                  onBlur={formik.handleBlur}
+                />
+              </Form.Group>
+            </>
+          )}
         </Form>
       </div>
       <div className="fixed-footer p-3">

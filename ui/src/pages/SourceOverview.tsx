@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { fetchSource } from "api/sources";
+import { VMwareProperties } from "types/source";
+import { SourceType } from "util/source";
 
 const SourceOverview = () => {
   const { name } = useParams();
@@ -65,6 +67,24 @@ const SourceOverview = () => {
           {source?.properties.import_limit}
         </div>
       </div>
+      {source?.source_type == SourceType.VMware && (
+        <>
+          <div className="row">
+            <div className="col-2 detail-table-header">Connection timeout</div>
+            <div className="col-10 detail-table-cell">
+              {(source?.properties as VMwareProperties).connection_timeout}
+            </div>
+          </div>
+          <div className="row">
+            <div className="col-2 detail-table-header">Datacenter paths</div>
+            <div className="col-10 detail-table-cell">
+              {(source?.properties as VMwareProperties).datacenter_paths?.map(
+                (item, index) => <div key={index}>{item}</div>,
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };

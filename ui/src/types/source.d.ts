@@ -7,6 +7,8 @@ export interface VMwareProperties {
   trusted_server_certificate_fingerprint: string;
   connectivity_status?: ExternalConnectivityStatus;
   import_limit: number;
+  connection_timeout: string;
+  datacenter_paths: string[];
 }
 
 export interface NSXProperties {
@@ -32,4 +34,6 @@ export interface SourceFormValues {
   password: string;
   trustedServerCertificateFingerprint: string;
   importLimit: number;
+  connectionTimeout?: string;
+  datacenterPaths?: string[];
 }
