@@ -45,10 +45,10 @@ func init() {
 	_ = pongo2.RegisterFilter("toHex", toHex)
 }
 
-func DetermineWindowsPartitions() (base string, recovery string, err error) {
+func DetermineWindowsPartitions() (base string, recovery string, ok bool, err error) {
 	partitions, err := internalUtil.ScanPartitions("")
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 
 	for _, dev := range partitions.BlockDevices {
@@ -65,16 +65,20 @@ func DetermineWindowsPartitions() (base string, recovery string, err error) {
 		}
 	}
 
-	if base == "" || recovery == "" {
+	if base == "" {
 		b, err := json.Marshal(partitions)
 		if err != nil {
-			return "", "", err
+			return "", "", false, err
 		}
 
-		return "", "", fmt.Errorf("Could not determine partitions: %v", string(b))
+		return "", "", false, fmt.Errorf("Could not determine partitions: %v", string(b))
 	}
 
-	return "/dev/" + base, "/dev/" + recovery, nil
+	if recovery == "" {
+		return "/dev/" + base, "", false, nil
+	}
+
+	return "/dev/" + base, "/dev/" + recovery, true, nil
 }
 
 func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
@@ -125,16 +129,20 @@ func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error
 	return err
 }
 
-func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string, dryRun bool) error {
+func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture, isoFile string, dryRun bool) error {
 	slog.Info("Preparing to inject Windows drivers into VM")
 	windowsVersion, err := internalUtil.MapWindowsVersionToAbbrev(osVersion)
 	if err != nil {
 		return err
 	}
 
-	mainPartition, recoveryPartition, err := DetermineWindowsPartitions()
+	mainPartition, recoveryPartition, recoveryExists, err := DetermineWindowsPartitions()
 	if err != nil {
 		return err
+	}
+
+	if !recoveryExists {
+		slog.Warn("Windows recovery partition was not found!")
 	}
 
 	if dryRun {
@@ -145,19 +153,21 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 
 		defer func() { _ = cleanupDiskClone(PARTITION_TYPE_PLAIN) }()
 
-		recoveryPartition, err = getMatchingPartition(recoveryPartition, mainPartition)
-		if err != nil {
-			return err
-		}
-
 		err = ensureMountIsLoop(mainPartition, PARTITION_TYPE_PLAIN)
 		if err != nil {
 			return fmt.Errorf("Unexpected main partition location: %w", err)
 		}
 
-		err = ensureMountIsLoop(recoveryPartition, PARTITION_TYPE_PLAIN)
-		if err != nil {
-			return fmt.Errorf("Unexpected recovery partition location: %w", err)
+		if recoveryExists {
+			recoveryPartition, err = getMatchingPartition(recoveryPartition, mainPartition)
+			if err != nil {
+				return err
+			}
+
+			err = ensureMountIsLoop(recoveryPartition, PARTITION_TYPE_PLAIN)
+			if err != nil {
+				return fmt.Errorf("Unexpected recovery partition location: %w", err)
+			}
 		}
 	}
 
@@ -229,12 +239,15 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 	}
 
 	// Mount the Windows recovery partition.
-	err = DoMount(recoveryPartition, windowsRecoveryMountPath, nil)
-	if err != nil {
-		return err
-	}
 
-	defer func() { _ = DoUnmount(windowsRecoveryMountPath) }()
+	if recoveryExists {
+		err = DoMount(recoveryPartition, windowsRecoveryMountPath, nil)
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = DoUnmount(windowsRecoveryMountPath) }()
+	}
 
 	// The cloned disk takes longer to populate, so wait an initial 10s before commencing.
 	if dryRun {
@@ -243,7 +256,7 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 
 	// ntfs-3g is a FUSE-backed file system; the newly mounted file systems might not be ready right away, so wait until they are.
 	mountCheckTries := 0
-	for !util.PathExists(filepath.Join(windowsMainMountPath, "Windows")) || !util.PathExists(filepath.Join(windowsRecoveryMountPath, "Recovery")) {
+	for !util.PathExists(filepath.Join(windowsMainMountPath, "Windows")) || (recoveryExists && !util.PathExists(filepath.Join(windowsRecoveryMountPath, "Recovery"))) {
 		maxTries := 100
 		interval := 100 * time.Millisecond
 		if dryRun {
@@ -263,7 +276,7 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 	}
 
 	// Finally get around to injecting the drivers.
-	err = injectDriversHelper(ctx, windowsVersion)
+	err = injectDriversHelper(ctx, windowsVersion, osArchitecture, recoveryExists)
 	if err != nil {
 		return err
 	}
@@ -324,7 +337,7 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, isoFile string,
 	return nil
 }
 
-func injectDriversHelper(ctx context.Context, windowsVersion string) error {
+func injectDriversHelper(ctx context.Context, windowsVersion string, windowsArchitecture string, recoveryExists bool) error {
 	cacheDir := "/tmp/inject-drivers"
 	err := os.MkdirAll(cacheDir, 0o700)
 	if err != nil {
@@ -333,36 +346,41 @@ func injectDriversHelper(ctx context.Context, windowsVersion string) error {
 
 	repackUtuil := windows.NewRepackUtil(cacheDir, ctx, logger.SlogBackedLogrus())
 
-	reWim, err := shared.FindFirstMatch(windowsRecoveryMountPath, "Recovery/WindowsRE", "winre.wim")
-	if err != nil {
-		return fmt.Errorf("Unable to find winre.wim: %w", err)
-	}
+	var reWim string
+	var reWimInfo windows.WimInfo
+	if recoveryExists {
+		reWim, err = shared.FindFirstMatch(windowsRecoveryMountPath, "Recovery/WindowsRE", "winre.wim")
+		if err != nil {
+			return fmt.Errorf("Unable to find winre.wim: %w", err)
+		}
 
-	reWimInfo, err := repackUtuil.GetWimInfo(reWim)
-	if err != nil {
-		return fmt.Errorf("Failed to get RE wim info: %w", err)
+		reWimInfo, err = repackUtuil.GetWimInfo(reWim)
+		if err != nil {
+			return fmt.Errorf("Failed to get RE wim info: %w", err)
+		}
+
+		windowsArchitecture = windows.DetectWindowsArchitecture(reWimInfo.Architecture(1))
+		if windowsVersion == "" {
+			windowsVersion = windows.DetectWindowsVersion(reWimInfo.Name(1))
+		}
 	}
 
 	if windowsVersion == "" {
-		windowsVersion = windows.DetectWindowsVersion(reWimInfo.Name(1))
-	}
-
-	windowsArchitecture := windows.DetectWindowsArchitecture(reWimInfo.Architecture(1))
-
-	if windowsVersion == "" {
-		return fmt.Errorf("Failed to detect Windows version. Please provide the version using the --windows-version flag")
+		return fmt.Errorf("Failed to detect Windows version")
 	}
 
 	if windowsArchitecture == "" {
-		return fmt.Errorf("Failed to detect Windows architecture. Please provide the architecture using the --windows-architecture flag")
+		return fmt.Errorf("Failed to detect Windows architecture")
 	}
 
 	repackUtuil.SetWindowsVersionArchitecture(windowsVersion, windowsArchitecture)
 
 	// Inject drivers into the RE wim image.
-	err = repackUtuil.InjectDriversIntoWim(reWim, reWimInfo, driversMountPath)
-	if err != nil {
-		return fmt.Errorf("Failed to modify wim %q: %w", reWim, err)
+	if recoveryExists {
+		err = repackUtuil.InjectDriversIntoWim(reWim, reWimInfo, driversMountPath)
+		if err != nil {
+			return fmt.Errorf("Failed to modify wim %q: %w", reWim, err)
+		}
 	}
 
 	// Inject drivers into the Windows install.

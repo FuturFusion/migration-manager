@@ -279,7 +279,7 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand, dry
 			return err
 		}
 
-		err = worker.WindowsInjectDrivers(ctx, cmd.OSVersion, file, dryRun)
+		err = worker.WindowsInjectDrivers(ctx, cmd.OSVersion, cmd.Architecture, file, dryRun)
 		if err != nil {
 			return err
 		}
