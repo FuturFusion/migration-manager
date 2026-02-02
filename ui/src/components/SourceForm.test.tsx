@@ -41,7 +41,7 @@ test("renders and submit SourceForm", async () => {
       trusted_server_certificate_fingerprint: "",
       import_limit: 50,
       connection_timeout: "10s",
-      datacenter_paths: [],
+      datacenters: [],
     },
   });
 });

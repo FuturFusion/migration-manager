@@ -57,7 +57,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
     trustedServerCertificateFingerprint: "",
     importLimit: importLimit,
     connectionTimeout: "10s",
-    datacenterPaths: [],
+    datacenters: [],
   };
 
   if (source) {
@@ -76,9 +76,9 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
       formikInitialValues.connectionTimeout = (
         source.properties as VMwareProperties
       ).connection_timeout;
-      formikInitialValues.datacenterPaths = (
+      formikInitialValues.datacenters = (
         source.properties as VMwareProperties
-      ).datacenter_paths;
+      ).datacenters;
     }
   }
 
@@ -97,9 +97,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
             values.trustedServerCertificateFingerprint,
           import_limit: values.importLimit,
           connection_timeout: values.connectionTimeout,
-          datacenter_paths: values.datacenterPaths?.filter(
-            (s) => s.trim() !== "",
-          ),
+          datacenters: values.datacenters?.filter((s) => s.trim() !== ""),
         },
       };
 
@@ -255,17 +253,17 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
                   }
                 />
               </Form.Group>
-              <Form.Group className="mb-3" controlId="datacenterPaths">
-                <Form.Label>Datacenter paths</Form.Label>
+              <Form.Group className="mb-3" controlId="datacenters">
+                <Form.Label>Datacenters</Form.Label>
                 <Form.Control
                   type="text"
                   as="textarea"
                   rows={5}
-                  name="datacenterPaths"
-                  value={formik.values.datacenterPaths?.join("\n") ?? ""}
+                  name="datacenters"
+                  value={formik.values.datacenters?.join("\n") ?? ""}
                   onChange={(e) => {
                     const lines = e.target.value.split("\n");
-                    formik.setFieldValue("datacenterPaths", lines);
+                    formik.setFieldValue("datacenters", lines);
                   }}
                   onBlur={formik.handleBlur}
                 />

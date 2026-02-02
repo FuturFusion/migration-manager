@@ -87,6 +87,8 @@ func TestSourceAdd(t *testing.T) {
 		username                            string
 		password                            string
 		importLimit                         int
+		connectionTimeout                   string
+		datacenterPaths                     string
 		migrationManagerdHTTPStatus         int
 		migrationManagerdResponse           string
 
@@ -116,6 +118,8 @@ func TestSourceAdd(t *testing.T) {
 			username:                            vcUser,
 			password:                            vcPassword,
 			importLimit:                         10,
+			connectionTimeout:                   "10s",
+			datacenterPaths:                     "",
 			migrationManagerdHTTPStatus:         http.StatusOK,
 			migrationManagerdResponse:           `{"Metadata": {"ConnectivityStatus": "OK"}}`,
 
@@ -126,6 +130,8 @@ func TestSourceAdd(t *testing.T) {
 			args:                        []string{"vmware", "newTarget", vCenterSimulator.URL.String()},
 			username:                    vcUser,
 			password:                    vcPassword,
+			connectionTimeout:           "10s",
+			datacenterPaths:             "",
 			migrationManagerdHTTPStatus: http.StatusOK,
 			migrationManagerdResponse:   `{"Metadata": {"ConnectivityStatus": "OK"}}`,
 
@@ -151,9 +157,13 @@ func TestSourceAdd(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			strIndex := 0
+			strArgs := []string{tc.username, tc.connectionTimeout, tc.datacenterPaths}
 			asker := &AskerMock{
 				AskStringFunc: func(question string, defaultAnswer string, validate func(string) error) (string, error) {
-					return tc.username, nil
+					out := strArgs[strIndex]
+					strIndex++
+					return out, nil
 				},
 				AskPasswordOnceFunc: func(question string) string {
 					return tc.password
@@ -489,6 +499,8 @@ func TestSourceUpdate(t *testing.T) {
 				{Value: vcUser},
 				{Value: vcPassword},
 				{Value: strconv.Itoa(10)},
+				{Value: "10s"},
+				{Value: "dc01"},
 				{Value: testcert.LocalhostCertFingerprint},
 			},
 			askBoolReturns: []queue.Item[bool]{{Value: true}},
@@ -506,6 +518,8 @@ func TestSourceUpdate(t *testing.T) {
 				{Value: "new name"},
 				{Value: vCenterSimulator.URL.String()},
 				{Value: strconv.Itoa(10)},
+				{Value: "10s"},
+				{Value: "dc01"},
 				{Value: testcert.LocalhostCertFingerprint},
 			},
 			askBoolReturns: []queue.Item[bool]{{Value: false}},
