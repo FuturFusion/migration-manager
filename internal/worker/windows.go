@@ -141,6 +141,10 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 		return err
 	}
 
+	if !recoveryExists {
+		slog.Warn("Windows recovery partition was not found!")
+	}
+
 	if dryRun {
 		mainPartition, _, err = setupDiskClone(mainPartition, PARTITION_TYPE_PLAIN, nil)
 		if err != nil {
