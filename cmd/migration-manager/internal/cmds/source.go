@@ -137,7 +137,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		dcPathStr, err := c.global.Asker.AskString("Comma-separated list of datacenters to import from [defaults to all datacenters]: ", "", nil)
+		dcPathStr, err := c.global.Asker.AskString("Comma-separated list of datacenters to import from [defaults to all datacenters]: ", "", validate.IsAny)
 		if err != nil {
 			return err
 		}
