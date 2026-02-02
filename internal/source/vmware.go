@@ -202,7 +202,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 		pathNets, err := finder.NetworkList(ctx, p)
 		if err != nil {
-			if errors.As(err, &notFoundErr) {
+			if !errors.As(err, &notFoundErr) {
 				return nil, nil, err
 			}
 
@@ -211,7 +211,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 		pathDatastores, err := finder.DatastoreList(ctx, p)
 		if err != nil {
-			if errors.As(err, &notFoundErr) {
+			if !errors.As(err, &notFoundErr) {
 				return nil, nil, err
 			}
 
