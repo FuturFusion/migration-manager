@@ -174,8 +174,8 @@ func (s Source) validateSourceTypeVMware() error {
 		return NewValidationErrf("Invalid source, connection timeout %q is not a valid duration: %v", properties.ConnectionTimeout, err)
 	}
 
-	if slices.Contains(properties.DatacenterPaths, "") {
-		return NewValidationErrf("Invalid source, specified datacenter path must not be empty")
+	if slices.Contains(properties.Datacenters, "") {
+		return NewValidationErrf("Invalid source, specified datacenter must not be empty")
 	}
 
 	return nil

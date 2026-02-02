@@ -182,8 +182,8 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	finder := find.NewFinder(s.govmomiClient.Client)
 	paths := []string{"/..."}
 
-	if len(s.DatacenterPaths) > 0 {
-		paths = s.DatacenterPaths
+	if len(s.Datacenters) > 0 {
+		paths = s.Datacenters
 	}
 
 	vms := []*object.VirtualMachine{}
@@ -393,8 +393,8 @@ func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) (migration.Ne
 	finder := find.NewFinder(s.govmomiClient.Client)
 	paths := []string{"/..."}
 
-	if len(s.DatacenterPaths) > 0 {
-		paths = s.DatacenterPaths
+	if len(s.Datacenters) > 0 {
+		paths = s.Datacenters
 	}
 
 	log := slog.With(slog.String("source", s.Name))

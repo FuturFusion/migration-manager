@@ -80,8 +80,8 @@ type VMwareProperties struct {
 	// Example: 10s
 	ConnectionTimeout string `json:"connection_timeout" yaml:"connection_timeout"`
 
-	// Datacenter paths to search for VMs, networks, and datastores. Defaults to '/...' (all).
-	DatacenterPaths []string `json:"datacenter_paths" yaml:"datacenter_paths"`
+	// Datacenters to search for VMs, networks, and datastores. Defaults to all datacenters.
+	Datacenters []string `json:"datacenters" yaml:"datacenters"`
 }
 
 // SetDefaults sets default values for source properties.
@@ -90,17 +90,17 @@ func (s *VMwareProperties) SetDefaults() {
 		s.ConnectionTimeout = (10 * time.Second).String()
 	}
 
-	if s.DatacenterPaths == nil {
-		s.DatacenterPaths = []string{"/..."}
+	if s.Datacenters == nil {
+		s.Datacenters = []string{"/..."}
 	} else {
 		// TODO: Check if vCenter allows '.' as a datacenter name because filepath.Clean won't work then.
-		for i, p := range s.DatacenterPaths {
+		for i, p := range s.Datacenters {
 			p = "/" + p
 			if !strings.HasSuffix(p, "/...") {
 				p += "/..."
 			}
 
-			s.DatacenterPaths[i] = filepath.Clean(p)
+			s.Datacenters[i] = filepath.Clean(p)
 		}
 	}
 }
