@@ -90,13 +90,17 @@ func (s *VMwareProperties) SetDefaults() {
 		s.ConnectionTimeout = (10 * time.Second).String()
 	}
 
-	// TODO: Check if vCenter allows '.' as a datacenter name because filepath.Clean won't work then.
-	for i, p := range s.DatacenterPaths {
-		p = "/" + p
-		if !strings.HasSuffix(p, "/...") {
-			p += "/..."
-		}
+	if s.DatacenterPaths == nil {
+		s.DatacenterPaths = []string{"/..."}
+	} else {
+		// TODO: Check if vCenter allows '.' as a datacenter name because filepath.Clean won't work then.
+		for i, p := range s.DatacenterPaths {
+			p = "/" + p
+			if !strings.HasSuffix(p, "/...") {
+				p += "/..."
+			}
 
-		s.DatacenterPaths[i] = filepath.Clean(p)
+			s.DatacenterPaths[i] = filepath.Clean(p)
+		}
 	}
 }

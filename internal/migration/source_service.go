@@ -52,12 +52,12 @@ func (s sourceService) RemoveActiveImport(sourceName string) {
 }
 
 func (s sourceService) Create(ctx context.Context, newSource Source) (Source, error) {
-	err := newSource.Validate()
+	err := newSource.SetDefaults()
 	if err != nil {
 		return Source{}, err
 	}
 
-	err = newSource.SetDefaults()
+	err = newSource.Validate()
 	if err != nil {
 		return Source{}, err
 	}
@@ -92,12 +92,12 @@ func (s sourceService) GetByName(ctx context.Context, name string) (*Source, err
 }
 
 func (s sourceService) Update(ctx context.Context, name string, newSource *Source, instanceService InstanceService) error {
-	err := newSource.Validate()
+	err := newSource.SetDefaults()
 	if err != nil {
 		return err
 	}
 
-	err = newSource.SetDefaults()
+	err = newSource.Validate()
 	if err != nil {
 		return err
 	}
