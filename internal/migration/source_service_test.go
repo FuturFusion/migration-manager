@@ -65,6 +65,54 @@ func TestSourceService_Create(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
+			name: "success - NSX",
+			source: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_NSX,
+				Properties: json.RawMessage(`{
+  "endpoint": "endpoint.url",
+  "username": "user",
+  "password": "pass",
+	"connectivity_status": "OK"
+}
+`),
+			},
+			repoCreateSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_NSX,
+				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass","connectivity_status":"OK","connection_timeout":"10s","datacenter_paths":["/..."],"compute_managers":null,"segments":null,"edge_nodes":null,"policies":null}`),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - VMware with non-defaults",
+			source: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: json.RawMessage(`{
+  "endpoint": "endpoint.url",
+  "username": "user",
+  "password": "pass",
+	"connectivity_status": "OK",
+	"connection_timeout":"5s",
+	"datacenter_paths":["dc1","dc2","/dc3/..."]
+}
+`),
+			},
+			repoCreateSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass","connectivity_status":"OK","connection_timeout":"5s","datacenter_paths":["/dc1/...","/dc2/...","/dc3/..."]}`),
+			},
+
+			assertErr: require.NoError,
+		},
+		{
 			name: "error - invalid id",
 			source: migration.Source{
 				ID:         -1, // invalid
