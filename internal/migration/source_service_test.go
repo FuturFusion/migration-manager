@@ -59,13 +59,7 @@ func TestSourceService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
-				Properties: json.RawMessage(`{
-  "endpoint": "endpoint.url",
-  "username": "user",
-  "password": "pass",
-	"connectivity_status": "OK"
-}
-`),
+				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass","connectivity_status":"OK","connection_timeout":"10s","datacenter_paths":["/..."]}`),
 			},
 
 			assertErr: require.NoError,
@@ -452,11 +446,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
-				Properties: json.RawMessage(`{
-  "endpoint": "endpoint.url",
-  "username": "user",
-  "password": "pass"
-}
+				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username": "user","password": "pass","connection_timeout":"10s","datacenter_paths":["/..."]}
 `),
 			},
 
