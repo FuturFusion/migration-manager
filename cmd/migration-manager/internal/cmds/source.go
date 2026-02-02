@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
@@ -125,12 +126,30 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
+		timeoutStr := (time.Second * 10).String()
+		timeoutStr, err = c.global.Asker.AskString(fmt.Sprintf("Connection timeout for the source [default=%s]: ", timeoutStr), timeoutStr, nil)
+		if err != nil {
+			return err
+		}
+
+		_, err = time.ParseDuration(timeoutStr)
+		if err != nil {
+			return err
+		}
+
+		dcPathStr, err := c.global.Asker.AskString("Comma-separated list of datacenters to import from [defaults to all datacenters]: ", "", nil)
+		if err != nil {
+			return err
+		}
+
 		vmwareProperties := api.VMwareProperties{
 			Endpoint:                            sourceEndpoint,
 			TrustedServerCertificateFingerprint: c.flagTrustedServerCertificateFingerprint,
 			Username:                            sourceUsername,
 			Password:                            sourcePassword,
 			ImportLimit:                         int(importLimit),
+			ConnectionTimeout:                   timeoutStr,
+			Datacenters:                         strings.Split(dcPathStr, ","),
 		}
 
 		s := api.Source{
@@ -371,6 +390,27 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		vmwareProperties.ImportLimit = int(importLimit)
+
+		timeoutStr := vmwareProperties.ConnectionTimeout
+		timeoutStr, err = c.global.Asker.AskString(fmt.Sprintf("Connection timeout for the source [default=%s]: ", timeoutStr), timeoutStr, nil)
+		if err != nil {
+			return err
+		}
+
+		_, err = time.ParseDuration(timeoutStr)
+		if err != nil {
+			return err
+		}
+
+		vmwareProperties.ConnectionTimeout = timeoutStr
+
+		dcPathStr := strings.Join(vmwareProperties.Datacenters, ",")
+		dcPathStr, err = c.global.Asker.AskString(fmt.Sprintf("Comma-separated list of datacenters to import from [default=%s]: ", dcPathStr), dcPathStr, nil)
+		if err != nil {
+			return err
+		}
+
+		vmwareProperties.Datacenters = strings.Split(dcPathStr, ",")
 
 		vmwareProperties.TrustedServerCertificateFingerprint, err = c.global.Asker.AskString("Manually-set trusted TLS cert SHA256 fingerprint ["+vmwareProperties.TrustedServerCertificateFingerprint+"]: ", vmwareProperties.TrustedServerCertificateFingerprint, validateSHA256Format)
 		if err != nil {
