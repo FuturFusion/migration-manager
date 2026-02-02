@@ -104,27 +104,33 @@ func (s *Source) SetDefaults() error {
 
 		err := json.Unmarshal(s.Properties, &properties)
 		if err != nil {
-			return fmt.Errorf("Invalid properties for VMware type: %w", err)
+			return NewValidationErrf("Invalid properties for %q source type: %v", s.SourceType, err)
 		}
 
 		properties.SetDefaults()
 
 		s.Properties, err = json.Marshal(properties)
+		if err != nil {
+			return NewValidationErrf("%v", err)
+		}
 
-		return err
+		return nil
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
 
 		err := json.Unmarshal(s.Properties, &properties)
 		if err != nil {
-			return fmt.Errorf("Invalid properties for VMware type: %w", err)
+			return NewValidationErrf("Invalid properties for %s source type: %v", s.SourceType, err)
 		}
 
 		properties.SetDefaults()
 
 		s.Properties, err = json.Marshal(properties)
+		if err != nil {
+			return NewValidationErrf("%v", err)
+		}
 
-		return err
+		return nil
 	case api.SOURCETYPE_COMMON:
 		return nil
 	default:
