@@ -45,10 +45,10 @@ func init() {
 	_ = pongo2.RegisterFilter("toHex", toHex)
 }
 
-func DetermineWindowsPartitions() (base string, recovery string, err error) {
+func DetermineWindowsPartitions() (base string, recovery string, ok bool, err error) {
 	partitions, err := internalUtil.ScanPartitions("")
 	if err != nil {
-		return "", "", err
+		return "", "", false, err
 	}
 
 	for _, dev := range partitions.BlockDevices {
@@ -65,16 +65,20 @@ func DetermineWindowsPartitions() (base string, recovery string, err error) {
 		}
 	}
 
-	if base == "" || recovery == "" {
+	if base == "" {
 		b, err := json.Marshal(partitions)
 		if err != nil {
-			return "", "", err
+			return "", "", false, err
 		}
 
-		return "", "", fmt.Errorf("Could not determine partitions: %v", string(b))
+		return "", "", false, fmt.Errorf("Could not determine partitions: %v", string(b))
 	}
 
-	return "/dev/" + base, "/dev/" + recovery, nil
+	if recovery == "" {
+		return "/dev/" + base, "", false, nil
+	}
+
+	return "/dev/" + base, "/dev/" + recovery, true, nil
 }
 
 func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
