@@ -169,9 +169,12 @@ func (s Source) validateSourceTypeVMware() error {
 		return NewValidationErrf("Invalid source, password can not be empty for source type VMware")
 	}
 
-	_, err = time.ParseDuration(properties.ConnectionTimeout)
-	if err != nil {
-		return NewValidationErrf("Invalid source, connection timeout %q is not a valid duration: %v", properties.ConnectionTimeout, err)
+	if properties.ConnectionTimeout.Duration <= time.Duration(0) {
+		return NewValidationErrf("Invalid source, connection timeout %q is not a valid duration", properties.ConnectionTimeout)
+	}
+
+	if properties.ImportTimeout.Duration <= time.Duration(0) {
+		return NewValidationErrf("Invalid source, import timeout %q is not a valid duration", properties.ConnectionTimeout)
 	}
 
 	if slices.Contains(properties.Datacenters, "") {
