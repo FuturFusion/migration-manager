@@ -66,11 +66,8 @@ func newInternalIncusTargetFrom(apiTarget api.Target) (*InternalIncusTarget, err
 	}
 
 	connTimeout := DefaultConnectionTimeout
-	if connProperties.ConnectionTimeout != "" {
-		connTimeout, err = time.ParseDuration(connProperties.ConnectionTimeout)
-		if err != nil {
-			return nil, err
-		}
+	if connProperties.ConnectionTimeout != (api.Duration{}) {
+		connTimeout = connProperties.ConnectionTimeout.Duration
 	}
 
 	return &InternalIncusTarget{

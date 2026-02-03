@@ -180,14 +180,9 @@ func (b Batch) Validate() error {
 			return NewValidationErrf("Invalid constraint max concurrent instances must not be negative")
 		}
 
-		if c.MinInstanceBootTime != "" {
-			bootTime, err := time.ParseDuration(c.MinInstanceBootTime)
-			if err != nil {
-				return NewValidationErrf("Invalid constraint minimum boot time %q: %v", c.MinInstanceBootTime, err)
-			}
-
-			if bootTime <= 0 {
-				return NewValidationErrf("Invalid constraint minimum boot time %q must be greater than 0", c.MinInstanceBootTime)
+		if c.MinInstanceBootTime != (api.Duration{}) {
+			if c.MinInstanceBootTime.Duration <= 0 {
+				return NewValidationErrf("Invalid constraint minimum boot time %q must be greater than 0", c.MinInstanceBootTime.String())
 			}
 		}
 	}
@@ -203,26 +198,16 @@ func (b Batch) Validate() error {
 		}
 	}
 
-	syncInterval, err := time.ParseDuration(b.Config.BackgroundSyncInterval)
-	if err != nil {
-		return NewValidationErrf("Invalid background sync interval %q: %v", b.Config.BackgroundSyncInterval, err)
+	if b.Config.BackgroundSyncInterval.Duration <= 0 {
+		return NewValidationErrf("Invalid background sync interval %q", b.Config.BackgroundSyncInterval)
 	}
 
-	finalSyncLimit, err := time.ParseDuration(b.Config.FinalBackgroundSyncLimit)
-	if err != nil {
-		return NewValidationErrf("Invalid final background sync limit %q: %v", b.Config.FinalBackgroundSyncLimit, err)
+	if b.Config.FinalBackgroundSyncLimit.Duration <= 0 {
+		return NewValidationErrf("Invalid final background sync limit %q", b.Config.FinalBackgroundSyncLimit)
 	}
 
-	if finalSyncLimit > syncInterval {
+	if b.Config.FinalBackgroundSyncLimit.Duration > b.Config.BackgroundSyncInterval.Duration {
 		return NewValidationErrf("Final background sync limit %q cannot be greater than the background sync interval %q", b.Config.FinalBackgroundSyncLimit, b.Config.BackgroundSyncInterval)
-	}
-
-	if finalSyncLimit <= 0 {
-		return NewValidationErrf("Final background sync limit %q must be greater than 0", b.Config.FinalBackgroundSyncLimit)
-	}
-
-	if syncInterval <= 0 {
-		return NewValidationErrf("Background sync interval %q must be greater than 0", b.Config.FinalBackgroundSyncLimit)
 	}
 
 	return nil

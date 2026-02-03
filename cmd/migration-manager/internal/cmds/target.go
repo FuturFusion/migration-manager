@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -139,10 +140,12 @@ func (c *cmdTargetAdd) Run(cmd *cobra.Command, args []string) error {
 
 		incusProperties.CreateLimit = int(createLimit)
 
-		incusProperties.ConnectionTimeout, err = c.global.Asker.AskString(fmt.Sprintf("Specify the timeout for connecting to the target [default=%s]: ", (5*time.Minute).String()), (5 * time.Minute).String(), func(s string) error {
-			_, err := time.ParseDuration(s)
+		connTimeout, err := c.global.Asker.AskString(fmt.Sprintf("Specify the timeout for connecting to the target [default=%s]: ", (5*time.Minute).String()), (5 * time.Minute).String(), validate.IsAny)
+		if err != nil {
 			return err
-		})
+		}
+
+		incusProperties.ConnectionTimeout, err = api.ParseDuration(connTimeout)
 		if err != nil {
 			return err
 		}
@@ -406,10 +409,12 @@ func (c *cmdTargetUpdate) Run(cmd *cobra.Command, args []string) error {
 
 		incusProperties.CreateLimit = int(createLimit)
 
-		incusProperties.ConnectionTimeout, err = c.global.Asker.AskString(fmt.Sprintf("Specify the timeout for connecting to the target [default=%s]: ", (5*time.Minute).String()), (5 * time.Minute).String(), func(s string) error {
-			_, err := time.ParseDuration(s)
+		connTimeout, err := c.global.Asker.AskString(fmt.Sprintf("Specify the timeout for connecting to the target [default=%s]: ", incusProperties.ConnectionTimeout.String()), incusProperties.ConnectionTimeout.String(), validate.IsAny)
+		if err != nil {
 			return err
-		})
+		}
+
+		incusProperties.ConnectionTimeout, err = api.ParseDuration(connTimeout)
 		if err != nil {
 			return err
 		}

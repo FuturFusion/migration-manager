@@ -51,12 +51,7 @@ func (d *Daemon) runPeriodicTask(ctx context.Context, task Task, f func(context.
 
 			// Override the default duration for sync tasks.
 			if task == SyncTask {
-				syncInterval, err := time.ParseDuration(d.config.Settings.SyncInterval)
-				if err != nil {
-					slog.Error("Invalid sync interval duration, falling back to %q")
-				} else {
-					interval = syncInterval
-				}
+				interval = d.config.Settings.SyncInterval.Duration
 			}
 
 			now := time.Now().UTC()
@@ -76,8 +71,7 @@ func (d *Daemon) runPeriodicTask(ctx context.Context, task Task, f func(context.
 				case <-ctx.Done():
 					done = true
 				default:
-					syncInterval, err := time.ParseDuration(d.config.Settings.SyncInterval)
-					if err == nil && time.Now().UTC().After(now.Add(syncInterval)) {
+					if time.Now().UTC().After(now.Add(d.config.Settings.SyncInterval.Duration)) {
 						done = true
 						continue
 					}

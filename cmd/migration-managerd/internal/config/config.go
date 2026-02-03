@@ -100,8 +100,8 @@ func SetDefaults(s api.SystemConfig) (*api.SystemConfig, error) {
 
 	newCfg.Security.ACME = acme.SetACMEDefaults(newCfg.Security.ACME)
 
-	if newCfg.Settings.SyncInterval == "" {
-		newCfg.Settings.SyncInterval = (10 * time.Minute).Truncate(time.Minute).String()
+	if newCfg.Settings.SyncInterval == (api.Duration{}) {
+		newCfg.Settings.SyncInterval = api.AsDuration(10 * time.Minute)
 	}
 
 	if newCfg.Settings.LogLevel == "" {
@@ -196,12 +196,7 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 		}
 	}
 
-	syncInterval, err := time.ParseDuration(newCfg.Settings.SyncInterval)
-	if err != nil {
-		return fmt.Errorf("Invalid sync interval duration %q: %w", newCfg.Settings.SyncInterval, err)
-	}
-
-	if syncInterval <= time.Second {
+	if newCfg.Settings.SyncInterval.Duration <= time.Second {
 		return fmt.Errorf("Sync interval %q is too frequent, must be at least 1s", newCfg.Settings.SyncInterval)
 	}
 

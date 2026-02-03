@@ -4,7 +4,6 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"net/url"
-	"time"
 
 	"github.com/lxc/incus/v6/shared/validate"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
@@ -65,9 +64,8 @@ func (t Target) validateTargetTypeIncus() error {
 		return NewValidationErrf("Invalid target, endpoint %q is not a valid URL: %v", properties.Endpoint, err)
 	}
 
-	_, err = time.ParseDuration(properties.ConnectionTimeout)
-	if err != nil {
-		return NewValidationErrf("Invalid target, connection timeout %q is not a valid duration: %v", properties.ConnectionTimeout, err)
+	if properties.ConnectionTimeout.Duration <= 0 {
+		return NewValidationErrf("Invalid target, connection timeout %q is not a valid duration", properties.ConnectionTimeout.String())
 	}
 
 	return nil
