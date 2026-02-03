@@ -45,12 +45,12 @@ type Source interface {
 	// Returns an array of all VMs available from the source, encoded as Instances.
 	//
 	// Returns an error if there is a problem fetching VMs or their properties.
-	GetAllVMs(ctx context.Context) (migration.Instances, migration.Warnings, error)
+	GetAllVMs(ctx context.Context) (migration.Instances, map[string]string, migration.Warnings, error)
 
 	// Returns an array of all networks available from the source, encoded as Networks.
 	//
 	// Returns an error if there is a problem fetching networks or their properties.
-	GetAllNetworks(ctx context.Context) (migration.Networks, error)
+	GetAllNetworks(ctx context.Context, networks map[string]string) (migration.Networks, error)
 
 	// Deletes a given snapshot, if it exists, from the specified VM.
 	//
