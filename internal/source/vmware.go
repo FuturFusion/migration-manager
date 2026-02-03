@@ -833,7 +833,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					continue
 				}
 
-				diskName, err := vmware.IsSupportedDisk(disk)
+				diskName, _, err := vmware.IsSupportedDisk(disk)
 				if err != nil {
 					log.Warn("VM contains a disk that does not support migration. This disk can not be migrated with the VM", slog.String("disk", diskName), slog.Any("error", err))
 					unsupportedDisks[diskName] = true

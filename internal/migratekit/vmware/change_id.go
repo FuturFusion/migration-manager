@@ -52,7 +52,7 @@ func GetChangeID(disk *types.VirtualDisk) (*ChangeID, error) {
 }
 
 // IsSupportedDisk checks whether the given VMware disk is supported by migration manager.
-func IsSupportedDisk(disk *types.VirtualDisk) (string, error) {
+func IsSupportedDisk(disk *types.VirtualDisk) (string, []string, error) {
 	isSupported := func(diskMode string, sharing string) error {
 		if diskMode == string(types.VirtualDiskModeIndependent_persistent) || diskMode == string(types.VirtualDiskModeIndependent_nonpersistent) {
 			return fmt.Errorf("Disk does not support snapshots")
@@ -66,50 +66,57 @@ func IsSupportedDisk(disk *types.VirtualDisk) (string, error) {
 	}
 
 	// Ignore raw disks or disks that are excluded from snapshots.
+	snapshots := []string{}
 	switch t := disk.GetVirtualDevice().Backing.(type) {
 	case *types.VirtualDiskRawDiskMappingVer1BackingInfo:
 		for t.Parent != nil {
+			snapshots = append(snapshots, t.FileName)
 			t = t.Parent
 		}
 
-		return t.FileName, fmt.Errorf("Raw disk cannot be migrated")
+		return t.FileName, snapshots, fmt.Errorf("Raw disk cannot be migrated")
 	case *types.VirtualDiskRawDiskVer2BackingInfo:
-		return t.DeviceName, fmt.Errorf("Raw disk cannot be migrated")
+		return t.DeviceName, snapshots, fmt.Errorf("Raw disk cannot be migrated")
 	case *types.VirtualDiskPartitionedRawDiskVer2BackingInfo:
-		return t.DeviceName, fmt.Errorf("Raw disk cannot be migrated")
+		return t.DeviceName, snapshots, fmt.Errorf("Raw disk cannot be migrated")
 	case *types.VirtualDiskFlatVer2BackingInfo:
 		for t.Parent != nil {
+			snapshots = append(snapshots, t.FileName)
 			t = t.Parent
 		}
 
-		return t.FileName, isSupported(t.DiskMode, t.Sharing)
+		return t.FileName, snapshots, isSupported(t.DiskMode, t.Sharing)
 	case *types.VirtualDiskFlatVer1BackingInfo:
 		for t.Parent != nil {
+			snapshots = append(snapshots, t.FileName)
 			t = t.Parent
 		}
 
-		return t.FileName, isSupported(t.DiskMode, "")
+		return t.FileName, snapshots, isSupported(t.DiskMode, "")
 	case *types.VirtualDiskLocalPMemBackingInfo:
-		return t.FileName, isSupported(t.DiskMode, "")
+		return t.FileName, snapshots, isSupported(t.DiskMode, "")
 	case *types.VirtualDiskSeSparseBackingInfo:
 		for t.Parent != nil {
+			snapshots = append(snapshots, t.FileName)
 			t = t.Parent
 		}
 
-		return t.FileName, isSupported(t.DiskMode, "")
+		return t.FileName, snapshots, isSupported(t.DiskMode, "")
 	case *types.VirtualDiskSparseVer1BackingInfo:
 		for t.Parent != nil {
+			snapshots = append(snapshots, t.FileName)
 			t = t.Parent
 		}
 
-		return t.FileName, isSupported(t.DiskMode, "")
+		return t.FileName, snapshots, isSupported(t.DiskMode, "")
 	case *types.VirtualDiskSparseVer2BackingInfo:
 		for t.Parent != nil {
+			snapshots = append(snapshots, t.FileName)
 			t = t.Parent
 		}
 
-		return t.FileName, isSupported(t.DiskMode, "")
+		return t.FileName, snapshots, isSupported(t.DiskMode, "")
 	default:
-		return "unknown", fmt.Errorf("Unknown disk type %T", t)
+		return "unknown", snapshots, fmt.Errorf("Unknown disk type %T", t)
 	}
 }
