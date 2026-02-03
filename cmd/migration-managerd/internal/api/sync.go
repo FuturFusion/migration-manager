@@ -333,7 +333,20 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 		}
 	}()
 
-	srcNetworks, srcInstances, importWarnings, err := fetchVMWareSourceData(ctx, src)
+	props, err := src.GetVMwareProperties()
+	if err != nil {
+		return err
+	}
+
+	timeout, err := time.ParseDuration(props.ConnectionTimeout)
+	if err != nil {
+		return err
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	srcNetworks, srcInstances, importWarnings, err := fetchVMWareSourceData(timeoutCtx, src)
 	if err != nil {
 		warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, src.Name, err.Error()))
 		return err
@@ -362,7 +375,7 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 				continue
 			}
 
-			matchingNSXSource, err = fetchNSXSourceData(ctx, nsxSource, sourcesByName, networksBySrc)
+			matchingNSXSource, err = fetchNSXSourceData(timeoutCtx, nsxSource, sourcesByName, networksBySrc)
 			if err != nil {
 				warnings = append(warnings, migration.NewSyncWarning(api.NetworkImportFailed, src.Name, err.Error()))
 				return fmt.Errorf("Failed to fetch network properties from NSX: %w", err)
@@ -399,7 +412,7 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 				return fmt.Errorf("Failed to connect to source %q: %w", src.Name, err)
 			}
 
-			nsxIP, err = vmwareSrc.GetNSXManagerIP(ctx)
+			nsxIP, err = vmwareSrc.GetNSXManagerIP(timeoutCtx)
 			if err != nil {
 				return fmt.Errorf("Failed to look for NSX Managers for source %q: %w", src.Name, err)
 			}
