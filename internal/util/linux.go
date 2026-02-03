@@ -2,6 +2,7 @@ package util
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 
 	"github.com/lxc/incus/v6/shared/subprocess"
@@ -49,7 +50,7 @@ func IsDebianOrDerivative(osString string) bool {
 }
 
 func IsRHELOrDerivative(osString string) bool {
-	return strings.Contains(strings.ToLower(osString), "centos") || strings.Contains(strings.ToLower(osString), "oracle") || strings.Contains(strings.ToLower(osString), "rhel")
+	return strings.Contains(strings.ToLower(osString), "centos") || strings.Contains(strings.ToLower(osString), "oracle") || slices.Contains([]string{"rhel", "redhat", "red-hat", "red hat"}, strings.ToLower(osString))
 }
 
 func IsSUSEOrDerivative(osString string) bool {
