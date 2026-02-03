@@ -103,15 +103,14 @@ func (s *NbdkitServers) Start(ctx context.Context) error {
 	for _, device := range snapshot.Config.Hardware.Device {
 		switch disk := device.(type) {
 		case *types.VirtualDisk:
-			// Ignore raw disks or those excluded from snapshots.
-			_, err := vmware.IsSupportedDisk(disk)
-			if err != nil {
-				continue
-			}
-
-			diskName, err := vmware.IsSupportedDisk(disk)
+			diskName, snapshotTree, err := vmware.IsSupportedDisk(disk)
 			if err != nil {
 				return err
+			}
+
+			// Use the latest snapshot vmdk as the disk source so we traverse all snapshots.
+			if len(snapshotTree) > 0 {
+				diskName = snapshotTree[0]
 			}
 
 			password, _ := s.VddkConfig.Endpoint.User.Password()
