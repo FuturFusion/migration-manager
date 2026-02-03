@@ -88,6 +88,7 @@ func TestSourceAdd(t *testing.T) {
 		password                            string
 		importLimit                         int
 		connectionTimeout                   string
+		importTimeout                       string
 		datacenterPaths                     string
 		migrationManagerdHTTPStatus         int
 		migrationManagerdResponse           string
@@ -119,6 +120,7 @@ func TestSourceAdd(t *testing.T) {
 			password:                            vcPassword,
 			importLimit:                         10,
 			connectionTimeout:                   "10s",
+			importTimeout:                       "10s",
 			datacenterPaths:                     "",
 			migrationManagerdHTTPStatus:         http.StatusOK,
 			migrationManagerdResponse:           `{"Metadata": {"ConnectivityStatus": "OK"}}`,
@@ -131,6 +133,7 @@ func TestSourceAdd(t *testing.T) {
 			username:                    vcUser,
 			password:                    vcPassword,
 			connectionTimeout:           "10s",
+			importTimeout:               "10s",
 			datacenterPaths:             "",
 			migrationManagerdHTTPStatus: http.StatusOK,
 			migrationManagerdResponse:   `{"Metadata": {"ConnectivityStatus": "OK"}}`,
@@ -500,6 +503,7 @@ func TestSourceUpdate(t *testing.T) {
 				{Value: vcPassword},
 				{Value: strconv.Itoa(10)},
 				{Value: "10s"},
+				{Value: "11s"},
 				{Value: "dc01"},
 				{Value: testcert.LocalhostCertFingerprint},
 			},
@@ -519,6 +523,7 @@ func TestSourceUpdate(t *testing.T) {
 				{Value: vCenterSimulator.URL.String()},
 				{Value: strconv.Itoa(10)},
 				{Value: "10s"},
+				{Value: "11s"},
 				{Value: "dc01"},
 				{Value: testcert.LocalhostCertFingerprint},
 			},
