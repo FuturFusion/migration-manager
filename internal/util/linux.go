@@ -50,7 +50,9 @@ func IsDebianOrDerivative(osString string) bool {
 }
 
 func IsRHELOrDerivative(osString string) bool {
-	return strings.Contains(strings.ToLower(osString), "centos") || strings.Contains(strings.ToLower(osString), "oracle") || slices.Contains([]string{"rhel", "redhat", "red-hat", "red hat"}, strings.ToLower(osString))
+	return strings.Contains(strings.ToLower(osString), "centos") || strings.Contains(strings.ToLower(osString), "oracle") || slices.ContainsFunc([]string{"rhel", "redhat", "red-hat", "red hat"}, func(s string) bool {
+		return strings.Contains(strings.ToLower(osString), s)
+	})
 }
 
 func IsSUSEOrDerivative(osString string) bool {
