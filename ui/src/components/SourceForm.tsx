@@ -56,7 +56,8 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
     password: "",
     trustedServerCertificateFingerprint: "",
     importLimit: importLimit,
-    connectionTimeout: "10s",
+    connectionTimeout: "10m",
+    importTimeout: "10s",
     datacenters: [],
   };
 
@@ -76,6 +77,9 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
       formikInitialValues.connectionTimeout = (
         source.properties as VMwareProperties
       ).connection_timeout;
+      formikInitialValues.importTimeout = (
+        source.properties as VMwareProperties
+      ).import_timeout;
       formikInitialValues.datacenters = (
         source.properties as VMwareProperties
       ).datacenters;
@@ -97,6 +101,7 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
             values.trustedServerCertificateFingerprint,
           import_limit: values.importLimit,
           connection_timeout: values.connectionTimeout,
+          import_timeout: values.importTimeout,
           datacenters: values.datacenters?.filter((s) => s.trim() !== ""),
         },
       };
@@ -250,6 +255,21 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
                   isInvalid={
                     !!formik.errors.connectionTimeout &&
                     formik.touched.connectionTimeout
+                  }
+                />
+              </Form.Group>
+              <Form.Group className="mb-3" controlId="fingerprint">
+                <Form.Label>VM import timeout</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="importTimeout"
+                  value={formik.values.importTimeout}
+                  disabled={formik.isSubmitting}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  isInvalid={
+                    !!formik.errors.importTimeout &&
+                    formik.touched.importTimeout
                   }
                 />
               </Form.Group>
