@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"github.com/stretchr/testify/require"
@@ -461,7 +462,7 @@ func TestSystemLogTargets(t *testing.T) {
 					Password:     "",
 					CACert:       "",
 					RetryCount:   3,
-					RetryTimeout: "10s",
+					RetryTimeout: api.AsDuration(10 * time.Second),
 					Scopes:       []api.LogScope{api.LogScopeLifecycle, api.LogScopeLogging},
 				},
 			},
@@ -479,7 +480,7 @@ func TestSystemLogTargets(t *testing.T) {
 					Password:     "password",
 					CACert:       string(certPEM),
 					RetryCount:   1,
-					RetryTimeout: "11s",
+					RetryTimeout: api.AsDuration(11 * time.Second),
 					Scopes:       []api.LogScope{api.LogScopeLogging},
 				},
 			},
@@ -493,7 +494,7 @@ func TestSystemLogTargets(t *testing.T) {
 					Password:     "password",
 					CACert:       string(certPEM),
 					RetryCount:   1,
-					RetryTimeout: "11s",
+					RetryTimeout: api.AsDuration(11 * time.Second),
 					Scopes:       []api.LogScope{api.LogScopeLogging},
 				},
 			},

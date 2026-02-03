@@ -266,7 +266,7 @@ func TestTargetPut(t *testing.T) {
 					ID:         1,
 					Name:       "foo",
 					TargetType: api.TARGETTYPE_INCUS,
-					Properties: json.RawMessage(`{"endpoint": "bar", "connectivity_status": "OK", "connection_timeout": "10m"}`),
+					Properties: json.RawMessage(`{"endpoint": "bar", "connectivity_status": "OK", "connection_timeout": "10m0s"}`),
 				})
 				require.NoError(t, err)
 				return etag
@@ -377,7 +377,7 @@ func daemonSetup(t *testing.T) *Daemon {
 	daemon := NewDaemon(handler)
 	daemon.config = api.SystemConfig{
 		Settings: api.SystemSettings{
-			SyncInterval: "10m",
+			SyncInterval: api.AsDuration(10 * time.Minute),
 			LogLevel:     "WARN",
 		},
 		Security: api.SystemSecurity{

@@ -70,8 +70,8 @@ var (
 		Status:            api.BATCHSTATUS_DEFINED,
 		IncludeExpression: "true",
 		Config: api.BatchConfig{
-			BackgroundSyncInterval:   (10 * time.Minute).String(),
-			FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+			BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+			FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 		},
 	}
 

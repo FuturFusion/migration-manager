@@ -161,7 +161,7 @@ func TestSourceAdd(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			strIndex := 0
-			strArgs := []string{tc.username, tc.connectionTimeout, tc.datacenterPaths}
+			strArgs := []string{tc.username, tc.connectionTimeout, tc.importTimeout, tc.datacenterPaths}
 			asker := &AskerMock{
 				AskStringFunc: func(question string, defaultAnswer string, validate func(string) error) (string, error) {
 					out := strArgs[strIndex]

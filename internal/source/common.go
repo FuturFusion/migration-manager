@@ -39,12 +39,8 @@ func (s *InternalSource) GetName() string {
 	return s.Name
 }
 
-func (s *InternalSource) GetAllVMs(ctx context.Context) (migration.Instances, error) {
-	return nil, fmt.Errorf("Not implemented by InternalSource")
-}
-
-func (s *InternalSource) GetAllNetworks(ctx context.Context) ([]api.Network, error) {
-	return nil, fmt.Errorf("Not implemented by InternalSource")
+func (s *InternalSource) GetAllVMs(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error) {
+	return nil, nil, nil, fmt.Errorf("Not implemented by InternalSource")
 }
 
 func (s *InternalSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {

@@ -38,8 +38,8 @@ func TestBatchService_Create(t *testing.T) {
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoCreateBatch: migration.Batch{
@@ -49,8 +49,8 @@ func TestBatchService_Create(t *testing.T) {
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 
@@ -134,8 +134,8 @@ func TestBatchService_Create(t *testing.T) {
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoCreateErr: boom.Error,
@@ -151,8 +151,8 @@ func TestBatchService_Create(t *testing.T) {
 				IncludeExpression: "true",
 				Status:            api.BATCHSTATUS_DEFINED,
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			instanceSvcGetAllByBatchIDErr: boom.Error,
@@ -432,8 +432,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -443,8 +443,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Status:            api.BATCHSTATUS_DEFINED,
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 
@@ -459,8 +459,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -471,8 +471,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
 					RerunScriptlets:          true,
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 
@@ -488,8 +488,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				IncludeExpression: "true",
 				Constraints:       []api.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -500,8 +500,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				IncludeExpression: "true",
 				Constraints:       []api.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			queueSvcGetAllByBatch:    migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_WAITING}},
@@ -519,8 +519,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				IncludeExpression: "true",
 				Constraints:       []api.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -531,8 +531,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				IncludeExpression: "true",
 				Constraints:       []api.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}, {Name: "constraint2", IncludeExpression: "false"}},
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			queueSvcGetAllByBatch:    migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT}},
@@ -577,8 +577,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameErr: boom.Error,
@@ -594,8 +594,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -605,8 +605,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 
@@ -625,8 +625,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				},
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -636,8 +636,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 
@@ -654,8 +654,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				IncludeExpression: "true and true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -665,8 +665,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 
@@ -683,8 +683,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -693,8 +693,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults: defaultPlacement,
 				Status:   api.BATCHSTATUS_DEFINED,
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoUpdateErr: boom.Error,
@@ -710,8 +710,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults:          defaultPlacement,
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -720,8 +720,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				Defaults: defaultPlacement,
 				Status:   api.BATCHSTATUS_DEFINED,
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			instanceSvcGetAllByBatchIDErr: boom.Error,
@@ -738,8 +738,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				IncludeExpression: "true",
 				Constraints:       []api.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -750,8 +750,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				IncludeExpression: "true",
 				Constraints:       []api.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			queueSvcGetAllByBatchErr: boom.Error,
@@ -768,8 +768,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				IncludeExpression: "true",
 				Constraints:       []api.BatchConstraint{{Name: "constraint1", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			repoGetByNameBatch: &migration.Batch{
@@ -780,8 +780,8 @@ func TestBatchService_UpdateByID(t *testing.T) {
 				IncludeExpression: "true",
 				Constraints:       []api.BatchConstraint{{Name: "constraint2", IncludeExpression: "true"}},
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 				},
 			},
 			queueSvcGetAllByBatch:    migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT}},
@@ -2106,8 +2106,8 @@ def placement(instance, batch):
 					},
 				},
 				Config: api.BatchConfig{
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 					PlacementScriptlet:       tc.scriptlet,
 				},
 			})

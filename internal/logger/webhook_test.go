@@ -46,7 +46,7 @@ func TestLogWebhook(t *testing.T) {
 				Level:        "warn",
 				Address:      "*", // apply test server address
 				RetryCount:   3,
-				RetryTimeout: "10s",
+				RetryTimeout: api.AsDuration(10 * time.Second),
 				Scopes:       []api.LogScope{api.LogScopeLifecycle, api.LogScopeLogging},
 			},
 
@@ -97,7 +97,7 @@ func TestLogWebhook(t *testing.T) {
 				Level:        "warn",
 				Address:      "*", // apply test server address
 				RetryCount:   3,
-				RetryTimeout: "10s",
+				RetryTimeout: api.AsDuration(10 * time.Second),
 				Scopes:       []api.LogScope{api.LogScopeLifecycle},
 			},
 
@@ -147,7 +147,7 @@ func TestLogWebhook(t *testing.T) {
 				Level:        "warn",
 				Address:      "*",
 				RetryCount:   3,
-				RetryTimeout: "10s",
+				RetryTimeout: api.AsDuration(10 * time.Second),
 				Scopes:       []api.LogScope{api.LogScopeLogging},
 			},
 			wantResps: []api.Event{defaultLog},
@@ -164,7 +164,7 @@ func TestLogWebhook(t *testing.T) {
 				Level:        "warn",
 				Address:      "*",
 				RetryCount:   3,
-				RetryTimeout: "10s",
+				RetryTimeout: api.AsDuration(10 * time.Second),
 				Scopes:       []api.LogScope{},
 			},
 			sendLog: func(log *slog.Logger) func(msg string, args ...any) {
@@ -180,7 +180,7 @@ func TestLogWebhook(t *testing.T) {
 				Level:        "warn",
 				Address:      "*",
 				RetryCount:   3,
-				RetryTimeout: "10s",
+				RetryTimeout: api.AsDuration(10 * time.Second),
 				Scopes:       []api.LogScope{api.LogScopeLogging},
 			},
 			sendLog: func(log *slog.Logger) func(msg string, args ...any) {

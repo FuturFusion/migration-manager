@@ -722,8 +722,8 @@ def placement(instance, batch):
 				IncludeExpression: "true",
 				Config: api.BatchConfig{
 					RerunScriptlets:          tc.rerunScriptlet,
-					BackgroundSyncInterval:   (10 * time.Minute).String(),
-					FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+					BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+					FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 					PlacementScriptlet:       tc.scriptlet,
 				},
 			}
