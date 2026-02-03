@@ -174,7 +174,7 @@ func (s *InternalVMwareSource) GetNSXManagerIP(ctx context.Context) (string, err
 	return managerIP, nil
 }
 
-func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, migration.Warnings, error) {
+func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, map[string]string, migration.Warnings, error) {
 	log := slog.With(slog.String("source", s.Name))
 	ret := migration.Instances{}
 
@@ -191,28 +191,31 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	datastores := []*object.Datastore{}
 	for _, p := range paths {
 		var notFoundErr *find.NotFoundError
+		log.Debug("Fetching VMs from source")
 		pathVMs, err := finder.VirtualMachineList(ctx, p)
 		if err != nil {
 			if !errors.As(err, &notFoundErr) {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			log.Warn("Registered source has no VMs in path", slog.String("path", p))
 		}
 
+		log.Debug("Fetching networks from source")
 		pathNets, err := finder.NetworkList(ctx, p)
 		if err != nil {
 			if !errors.As(err, &notFoundErr) {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			log.Warn("Registered source has no networks in path", slog.String("path", p))
 		}
 
+		log.Debug("Fetching datastores from source")
 		pathDatastores, err := finder.DatastoreList(ctx, p)
 		if err != nil {
 			if !errors.As(err, &notFoundErr) {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			log.Warn("Registered source has no datastores in path", slog.String("path", p))
@@ -225,11 +228,12 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 	if len(vms) == 0 || len(datastores) == 0 || len(networks) == 0 {
 		log.Warn("No data was imported from the source")
-		return ret, nil, nil
+		return ret, map[string]string{}, nil, nil
 	}
 
 	networkLocationsByID := map[string]string{}
 	for _, n := range networks {
+		log.Debug("Fetching additional network info", slog.String("location", n.GetInventoryPath()))
 		networkLocationsByID[parseNetworkID(ctx, n)] = n.GetInventoryPath()
 	}
 
@@ -237,15 +241,17 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	var tc *tags.Manager
 	if !s.isESXI {
 		c := rest.NewClient(s.govmomiClient.Client)
+		log.Debug("Connecting to vCenter REST API")
 		err := c.Login(ctx, url.UserPassword(s.Username, s.Password))
 		if err != nil {
-			return nil, nil, fmt.Errorf("Failed to login to REST API: %w", err)
+			return nil, nil, nil, fmt.Errorf("Failed to login to REST API: %w", err)
 		}
 
 		tc = tags.NewManager(c)
+		log.Debug("Fetching vCenter categories")
 		allCats, err := tc.GetCategories(ctx)
 		if err != nil {
-			return nil, nil, fmt.Errorf("No tag categories found: %w", err)
+			return nil, nil, nil, fmt.Errorf("No tag categories found: %w", err)
 		}
 
 		catMap = make(map[string]string, len(allCats))
@@ -263,9 +269,10 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		}
 
 		var vmProperties mo.VirtualMachine
+		log.Debug("Importing VM")
 		err := vm.Properties(ctx, vm.Reference(), []string{}, &vmProperties)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 
 		// If a VM has no configuration, then it's just a stub, so skip it.
@@ -299,9 +306,10 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		}
 
 		if !s.isESXI {
+			log.Debug("Fetching vCenter tags")
 			vmTags, err := tc.GetAttachedTags(ctx, vm.Reference())
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, nil, err
 			}
 
 			for _, tag := range vmTags {
@@ -313,10 +321,12 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 				}
 			}
 
+			log.Debug("Fetching vCenter resource pools")
 			vmResourcePool, err := vm.ResourcePool(ctx)
 			if err != nil {
 				log.Error("Failed determine resource pool for VM", slog.Any("error", err))
 			} else {
+				log.Debug("Fetching vCenter resource pool data")
 				poolName, err := vmResourcePool.ObjectName(ctx)
 				if err != nil {
 					log.Error("Failed determine resource pool name for VM", slog.Any("error", err))
@@ -361,6 +371,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 				}
 
 				diskPath, _ = strings.CutSuffix(diskPath, ".vmdk")
+				log.Debug("Fetching datastore file", slog.String("file", diskPath))
 				_, err := datastore.Stat(ctx, diskPath+"-ctk.vmdk")
 				if err != nil {
 					log.Warn("Failed to find ctk file in datastore", slog.String("disk", disk.Name), slog.String("datastore", datastore.InventoryPath), slog.String("file", diskPath+"-ctk.vmdk"), slog.Any("error", err))
@@ -386,35 +397,13 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		ret = append(ret, inst)
 	}
 
-	return ret, warnings, nil
+	return ret, networkLocationsByID, warnings, nil
 }
 
-func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) (migration.Networks, error) {
-	finder := find.NewFinder(s.govmomiClient.Client)
-	paths := []string{"/..."}
-
-	if len(s.Datacenters) > 0 {
-		paths = s.Datacenters
-	}
-
+func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context, networkLocationsByID map[string]string) (migration.Networks, error) {
 	log := slog.With(slog.String("source", s.Name))
 
-	networks := []object.NetworkReference{}
-	for _, p := range paths {
-		var notFoundErr *find.NotFoundError
-		pathNets, err := finder.NetworkList(ctx, p)
-		if err != nil {
-			if errors.As(err, &notFoundErr) {
-				return nil, err
-			}
-
-			log.Warn("Registered source has no networks in path", slog.String("path", p))
-		}
-
-		networks = append(networks, pathNets...)
-	}
-
-	if len(networks) == 0 {
+	if len(networkLocationsByID) == 0 {
 		log.Warn("No networks were imported from the source")
 
 		return migration.Networks{}, nil
@@ -422,20 +411,17 @@ func (s *InternalVMwareSource) GetAllNetworks(ctx context.Context) (migration.Ne
 
 	v := view.NewManager(s.govmomiClient.Client)
 	objType := []string{"Network"}
+	log.Debug("Fetching network managed objects")
 	c, err := v.CreateContainerView(ctx, s.govmomiClient.ServiceContent.RootFolder, objType, true)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create container view for %s: %w", s.Name, err)
 	}
 
 	var results []any
+	log.Debug("Retrieving additional network data")
 	err = c.Retrieve(ctx, objType, nil, &results)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to retrieve networks from %q: %w", s.Name, err)
-	}
-
-	networkLocationsByID := map[string]string{}
-	for _, n := range networks {
-		networkLocationsByID[parseNetworkID(ctx, n)] = n.GetInventoryPath()
 	}
 
 	networksInUse := migration.Networks{}
@@ -847,7 +833,7 @@ func (s *InternalVMwareSource) getVMProperties(vm *object.VirtualMachine, vmProp
 					continue
 				}
 
-				diskName, err := vmware.IsSupportedDisk(disk)
+				diskName, _, err := vmware.IsSupportedDisk(disk)
 				if err != nil {
 					log.Warn("VM contains a disk that does not support migration. This disk can not be migrated with the VM", slog.String("disk", diskName), slog.Any("error", err))
 					unsupportedDisks[diskName] = true

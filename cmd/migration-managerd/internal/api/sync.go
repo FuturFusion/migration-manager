@@ -1073,12 +1073,12 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 		return nil, nil, nil, fmt.Errorf("Failed to connect to source: %w", err)
 	}
 
-	instances, warnings, err := s.GetAllVMs(ctx)
+	instances, networkLocationsByID, warnings, err := s.GetAllVMs(ctx)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Failed to get VMs: %w", err)
 	}
 
-	allNetworks, err := s.GetAllNetworks(ctx)
+	allNetworks, err := s.GetAllNetworks(ctx, networkLocationsByID)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Failed to get networks: %w", err)
 	}

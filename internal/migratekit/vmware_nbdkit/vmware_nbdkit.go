@@ -103,15 +103,14 @@ func (s *NbdkitServers) Start(ctx context.Context) error {
 	for _, device := range snapshot.Config.Hardware.Device {
 		switch disk := device.(type) {
 		case *types.VirtualDisk:
-			// Ignore raw disks or those excluded from snapshots.
-			_, err := vmware.IsSupportedDisk(disk)
-			if err != nil {
-				continue
-			}
-
-			diskName, err := vmware.IsSupportedDisk(disk)
+			diskName, snapshotTree, err := vmware.IsSupportedDisk(disk)
 			if err != nil {
 				return err
+			}
+
+			// Use the latest snapshot vmdk as the disk source so we traverse all snapshots.
+			if len(snapshotTree) > 0 {
+				diskName = snapshotTree[0]
 			}
 
 			password, _ := s.VddkConfig.Endpoint.User.Password()
@@ -272,7 +271,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 
 	devIncus := util.UnixHTTPClient("/dev/incus/sock")
 	for _, server := range s.Servers {
-		diskName, err := vmware.IsSupportedDisk(server.Disk)
+		diskName, _, err := vmware.IsSupportedDisk(server.Disk)
 		if err != nil {
 			return err
 		}
@@ -301,7 +300,7 @@ func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
 }
 
 func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsClean bool, statusCallback func(string, bool)) error {
-	diskName, err := vmware.IsSupportedDisk(s.Disk)
+	diskName, _, err := vmware.IsSupportedDisk(s.Disk)
 	if err != nil {
 		return err
 	}
@@ -315,7 +314,7 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 
 	index := 1
 	for i, server := range s.Servers.Servers {
-		serverDiskName, err := vmware.IsSupportedDisk(server.Disk)
+		serverDiskName, _, err := vmware.IsSupportedDisk(server.Disk)
 		if err != nil {
 			return err
 		}
@@ -346,14 +345,14 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 }
 
 func (s *NbdkitServer) IncrementalCopyToTarget(ctx context.Context, t target.Target, path string, statusCallback func(string, bool)) error {
-	diskName, err := vmware.IsSupportedDisk(s.Disk)
+	diskName, _, err := vmware.IsSupportedDisk(s.Disk)
 	if err != nil {
 		return err
 	}
 
 	index := 1
 	for i, server := range s.Servers.Servers {
-		serverDiskName, err := vmware.IsSupportedDisk(server.Disk)
+		serverDiskName, _, err := vmware.IsSupportedDisk(server.Disk)
 		if err != nil {
 			return err
 		}

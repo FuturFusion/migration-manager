@@ -363,6 +363,9 @@ func injectDriversHelper(ctx context.Context, windowsVersion string, windowsArch
 		if windowsVersion == "" {
 			windowsVersion = windows.DetectWindowsVersion(reWimInfo.Name(1))
 		}
+	} else {
+		windowsArchitecture = windows.DetectWindowsArchitecture(windowsArchitecture)
+		windowsVersion = windows.DetectWindowsVersion(windowsVersion)
 	}
 
 	if windowsVersion == "" {
