@@ -76,6 +76,12 @@ const SourceOverview = () => {
             </div>
           </div>
           <div className="row">
+            <div className="col-2 detail-table-header">VM Import timeout</div>
+            <div className="col-10 detail-table-cell">
+              {(source?.properties as VMwareProperties).import_timeout}
+            </div>
+          </div>
+          <div className="row">
             <div className="col-2 detail-table-header">Datacenters</div>
             <div className="col-10 detail-table-cell">
               {(source?.properties as VMwareProperties).datacenters?.map(

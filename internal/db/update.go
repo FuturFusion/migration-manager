@@ -273,8 +273,8 @@ ALTER TABLE queue_new RENAME TO queue;
 			RerunScriptlets:          b.rerunScriptlets,
 			PostMigrationRetries:     b.retries,
 			RestrictionOverrides:     api.InstanceRestrictionOverride{},
-			BackgroundSyncInterval:   (10 * time.Minute).String(),
-			FinalBackgroundSyncLimit: (10 * time.Minute).String(),
+			BackgroundSyncInterval:   api.AsDuration(10 * time.Minute),
+			FinalBackgroundSyncLimit: api.AsDuration(10 * time.Minute),
 			PlacementScriptlet:       b.scriptlet,
 		}
 

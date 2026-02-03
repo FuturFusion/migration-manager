@@ -248,12 +248,12 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 		apiBatch.Defaults.Placement.StoragePool = api.DefaultStoragePool
 	}
 
-	if apiBatch.Config.BackgroundSyncInterval == "" {
-		apiBatch.Config.BackgroundSyncInterval = (time.Minute * 10).String()
+	if apiBatch.Config.BackgroundSyncInterval == (api.Duration{}) {
+		apiBatch.Config.BackgroundSyncInterval = api.AsDuration(10 * time.Minute)
 	}
 
-	if apiBatch.Config.FinalBackgroundSyncLimit == "" {
-		apiBatch.Config.FinalBackgroundSyncLimit = (time.Minute * 10).String()
+	if apiBatch.Config.FinalBackgroundSyncLimit == (api.Duration{}) {
+		apiBatch.Config.FinalBackgroundSyncLimit = api.AsDuration(10 * time.Minute)
 	}
 
 	batch := migration.Batch{

@@ -126,13 +126,24 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		timeoutStr := (time.Second * 10).String()
-		timeoutStr, err = c.global.Asker.AskString(fmt.Sprintf("Connection timeout for the source [default=%s]: ", timeoutStr), timeoutStr, nil)
+		connTimeoutStr := (time.Minute * 10).String()
+		connTimeoutStr, err = c.global.Asker.AskString(fmt.Sprintf("Connection timeout for the source [default=%s]: ", connTimeoutStr), connTimeoutStr, nil)
 		if err != nil {
 			return err
 		}
 
-		_, err = time.ParseDuration(timeoutStr)
+		connTimeout, err := api.ParseDuration(connTimeoutStr)
+		if err != nil {
+			return err
+		}
+
+		importTimeoutStr := (time.Second * 10).String()
+		importTimeoutStr, err = c.global.Asker.AskString(fmt.Sprintf("VM import timeout for the source [default=%s]: ", importTimeoutStr), importTimeoutStr, nil)
+		if err != nil {
+			return err
+		}
+
+		importTimeout, err := api.ParseDuration(importTimeoutStr)
 		if err != nil {
 			return err
 		}
@@ -148,7 +159,8 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			Username:                            sourceUsername,
 			Password:                            sourcePassword,
 			ImportLimit:                         int(importLimit),
-			ConnectionTimeout:                   timeoutStr,
+			ConnectionTimeout:                   connTimeout,
+			ImportTimeout:                       importTimeout,
 			Datacenters:                         strings.Split(dcPathStr, ","),
 		}
 
@@ -391,18 +403,31 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 
 		vmwareProperties.ImportLimit = int(importLimit)
 
-		timeoutStr := vmwareProperties.ConnectionTimeout
-		timeoutStr, err = c.global.Asker.AskString(fmt.Sprintf("Connection timeout for the source [default=%s]: ", timeoutStr), timeoutStr, nil)
+		connTimeoutStr := vmwareProperties.ConnectionTimeout.String()
+		connTimeoutStr, err = c.global.Asker.AskString(fmt.Sprintf("Connection timeout for the source [default=%s]: ", connTimeoutStr), connTimeoutStr, nil)
 		if err != nil {
 			return err
 		}
 
-		_, err = time.ParseDuration(timeoutStr)
+		connTimeout, err := api.ParseDuration(connTimeoutStr)
 		if err != nil {
 			return err
 		}
 
-		vmwareProperties.ConnectionTimeout = timeoutStr
+		vmwareProperties.ConnectionTimeout = connTimeout
+
+		importTimeoutStr := vmwareProperties.ConnectionTimeout.String()
+		importTimeoutStr, err = c.global.Asker.AskString(fmt.Sprintf("VM import timeout for the source [default=%s]: ", importTimeoutStr), importTimeoutStr, nil)
+		if err != nil {
+			return err
+		}
+
+		importTimeout, err := api.ParseDuration(importTimeoutStr)
+		if err != nil {
+			return err
+		}
+
+		vmwareProperties.ImportTimeout = importTimeout
 
 		dcPathStr := strings.Join(vmwareProperties.Datacenters, ",")
 		dcPathStr, err = c.global.Asker.AskString(fmt.Sprintf("Comma-separated list of datacenters to import from [default=%s]: ", dcPathStr), dcPathStr, nil)

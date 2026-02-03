@@ -50,8 +50,8 @@ func WebhookDefaultConfig(cfg api.SystemSettingsLog) api.SystemSettingsLog {
 		newCfg.RetryCount = 3
 	}
 
-	if cfg.RetryTimeout == "" {
-		newCfg.RetryTimeout = (time.Second * 10).String()
+	if cfg.RetryTimeout == (api.Duration{}) {
+		newCfg.RetryTimeout = api.AsDuration(time.Second * 10)
 	}
 
 	if len(cfg.Scopes) == 0 {
@@ -117,9 +117,8 @@ func WebhookValidateConfig(cfg api.SystemSettingsLog) error {
 		}
 	}
 
-	_, err = time.ParseDuration(cfg.RetryTimeout)
-	if err != nil {
-		return fmt.Errorf("Logger retry timeout %q is invalid: %w", cfg.RetryTimeout, err)
+	if cfg.RetryTimeout.Duration <= 0 {
+		return fmt.Errorf("Logger retry timeout %q is invalid", cfg.RetryTimeout)
 	}
 
 	return nil
@@ -162,11 +161,7 @@ func NewWebhookLogger(cfg api.SystemSettingsLog) (slog.Handler, error) {
 		client: &http.Client{},
 	}
 
-	var err error
-	w.retryTimeout, err = time.ParseDuration(cfg.RetryTimeout)
-	if err != nil {
-		return nil, err
-	}
+	w.retryTimeout = cfg.RetryTimeout.Duration
 
 	if cfg.CACert != "" {
 		// Prepare the TLS config.

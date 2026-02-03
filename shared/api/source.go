@@ -77,8 +77,12 @@ type VMwareProperties struct {
 	ImportLimit int `json:"import_limit,omitempty" yaml:"import_limit,omitempty"`
 
 	// Timeout for establishing connections to the source.
+	// Example: 10m
+	ConnectionTimeout Duration `json:"connection_timeout" yaml:"connection_timeout"`
+
+	// Timeout for importing individual virtual machines from the source.
 	// Example: 10s
-	ConnectionTimeout string `json:"connection_timeout" yaml:"connection_timeout"`
+	ImportTimeout Duration `json:"import_timeout" yaml:"import_timeout"`
 
 	// Datacenters to search for VMs, networks, and datastores. Defaults to all datacenters.
 	Datacenters []string `json:"datacenters" yaml:"datacenters"`
@@ -86,8 +90,12 @@ type VMwareProperties struct {
 
 // SetDefaults sets default values for source properties.
 func (s *VMwareProperties) SetDefaults() {
-	if s.ConnectionTimeout == "" {
-		s.ConnectionTimeout = (10 * time.Second).String()
+	if s.ConnectionTimeout == (Duration{}) {
+		s.ConnectionTimeout = AsDuration(10 * time.Minute)
+	}
+
+	if s.ImportTimeout == (Duration{}) {
+		s.ImportTimeout = AsDuration(10 * time.Second)
 	}
 
 	datacenters := []string{}

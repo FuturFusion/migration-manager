@@ -34,10 +34,7 @@ var _ Source = &SourceMock{}
 //			DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
 //				panic("mock out the DoBasicConnectivityCheck method")
 //			},
-//			GetAllNetworksFunc: func(ctx context.Context, networks map[string]string) (migration.Networks, error) {
-//				panic("mock out the GetAllNetworks method")
-//			},
-//			GetAllVMsFunc: func(ctx context.Context) (migration.Instances, map[string]string, migration.Warnings, error) {
+//			GetAllVMsFunc: func(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error) {
 //				panic("mock out the GetAllVMs method")
 //			},
 //			GetNameFunc: func() string {
@@ -74,11 +71,8 @@ type SourceMock struct {
 	// DoBasicConnectivityCheckFunc mocks the DoBasicConnectivityCheck method.
 	DoBasicConnectivityCheckFunc func() (api.ExternalConnectivityStatus, *x509.Certificate)
 
-	// GetAllNetworksFunc mocks the GetAllNetworks method.
-	GetAllNetworksFunc func(ctx context.Context, networks map[string]string) (migration.Networks, error)
-
 	// GetAllVMsFunc mocks the GetAllVMs method.
-	GetAllVMsFunc func(ctx context.Context) (migration.Instances, map[string]string, migration.Warnings, error)
+	GetAllVMsFunc func(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error)
 
 	// GetNameFunc mocks the GetName method.
 	GetNameFunc func() string
@@ -119,13 +113,6 @@ type SourceMock struct {
 		// DoBasicConnectivityCheck holds details about calls to the DoBasicConnectivityCheck method.
 		DoBasicConnectivityCheck []struct {
 		}
-		// GetAllNetworks holds details about calls to the GetAllNetworks method.
-		GetAllNetworks []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-			// Networks is the networks argument value.
-			Networks map[string]string
-		}
 		// GetAllVMs holds details about calls to the GetAllVMs method.
 		GetAllVMs []struct {
 			// Ctx is the ctx argument value.
@@ -165,7 +152,6 @@ type SourceMock struct {
 	lockDeleteVMSnapshot              sync.RWMutex
 	lockDisconnect                    sync.RWMutex
 	lockDoBasicConnectivityCheck      sync.RWMutex
-	lockGetAllNetworks                sync.RWMutex
 	lockGetAllVMs                     sync.RWMutex
 	lockGetName                       sync.RWMutex
 	lockImportDisks                   sync.RWMutex
@@ -305,44 +291,8 @@ func (mock *SourceMock) DoBasicConnectivityCheckCalls() []struct {
 	return calls
 }
 
-// GetAllNetworks calls GetAllNetworksFunc.
-func (mock *SourceMock) GetAllNetworks(ctx context.Context, networks map[string]string) (migration.Networks, error) {
-	if mock.GetAllNetworksFunc == nil {
-		panic("SourceMock.GetAllNetworksFunc: method is nil but Source.GetAllNetworks was just called")
-	}
-	callInfo := struct {
-		Ctx      context.Context
-		Networks map[string]string
-	}{
-		Ctx:      ctx,
-		Networks: networks,
-	}
-	mock.lockGetAllNetworks.Lock()
-	mock.calls.GetAllNetworks = append(mock.calls.GetAllNetworks, callInfo)
-	mock.lockGetAllNetworks.Unlock()
-	return mock.GetAllNetworksFunc(ctx, networks)
-}
-
-// GetAllNetworksCalls gets all the calls that were made to GetAllNetworks.
-// Check the length with:
-//
-//	len(mockedSource.GetAllNetworksCalls())
-func (mock *SourceMock) GetAllNetworksCalls() []struct {
-	Ctx      context.Context
-	Networks map[string]string
-} {
-	var calls []struct {
-		Ctx      context.Context
-		Networks map[string]string
-	}
-	mock.lockGetAllNetworks.RLock()
-	calls = mock.calls.GetAllNetworks
-	mock.lockGetAllNetworks.RUnlock()
-	return calls
-}
-
 // GetAllVMs calls GetAllVMsFunc.
-func (mock *SourceMock) GetAllVMs(ctx context.Context) (migration.Instances, map[string]string, migration.Warnings, error) {
+func (mock *SourceMock) GetAllVMs(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error) {
 	if mock.GetAllVMsFunc == nil {
 		panic("SourceMock.GetAllVMsFunc: method is nil but Source.GetAllVMs was just called")
 	}

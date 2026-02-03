@@ -69,5 +69,5 @@ type IncusProperties struct {
 
 	// Timeout for establishing connections to the target.
 	// Example: 5m
-	ConnectionTimeout string `json:"connection_timeout" yaml:"connection_timeout"`
+	ConnectionTimeout Duration `json:"connection_timeout" yaml:"connection_timeout"`
 }

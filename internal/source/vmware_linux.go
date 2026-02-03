@@ -23,7 +23,7 @@ type InternalVMwareSourceSpecific struct {
 }
 
 func (s *InternalVMwareSource) ImportDisks(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error {
-	vm, err := s.getVM(ctx, vmName)
+	vm, err := s.getVMReference(ctx, vmName)
 	if err != nil {
 		return err
 	}

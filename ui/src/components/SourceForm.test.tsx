@@ -40,7 +40,8 @@ test("renders and submit SourceForm", async () => {
       password: "admin",
       trusted_server_certificate_fingerprint: "",
       import_limit: 50,
-      connection_timeout: "10s",
+      connection_timeout: "10m",
+      import_timeout: "10s",
       datacenters: [],
     },
   });

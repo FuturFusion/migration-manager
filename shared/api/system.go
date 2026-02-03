@@ -18,7 +18,7 @@ type SystemConfig struct {
 // swagger:model
 type SystemSettings struct {
 	// Interval over which data from all sources will be periodically resynced.
-	SyncInterval string `json:"sync_interval" yaml:"sync_interval"`
+	SyncInterval Duration `json:"sync_interval" yaml:"sync_interval"`
 
 	// Whether automatic periodic sync of all sources should be disabled.
 	DisableAutoSync bool `json:"disable_auto_sync" yaml:"disable_auto_sync"`
@@ -80,7 +80,7 @@ type SystemSettingsLog struct {
 	RetryCount int `json:"retry_count" yaml:"retry_count"`
 
 	// How long to wait between retrying a log.
-	RetryTimeout string `json:"retry_timeout" yaml:"retry_timeout"`
+	RetryTimeout Duration `json:"retry_timeout" yaml:"retry_timeout"`
 
 	// Logging scopes to send to the logging target.
 	// Example: [logging, lifecycle]

@@ -289,11 +289,8 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Window,
 	if constraint.MaxConcurrentInstances == 0 || numMatches <= constraint.MaxConcurrentInstances {
 		// If there is no minimum migration time, we just use the earliest valid migration window.
 		minBootTime := time.Duration(0)
-		if constraint.MinInstanceBootTime != "" {
-			minBootTime, err = time.ParseDuration(constraint.MinInstanceBootTime)
-			if err != nil {
-				return nil, err
-			}
+		if constraint.MinInstanceBootTime != (api.Duration{}) {
+			minBootTime = constraint.MinInstanceBootTime.Duration
 		}
 
 		return windows.GetEarliest(minBootTime)
@@ -455,30 +452,20 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 					return fmt.Errorf("Failed to get queue entry batch %q: %w", queueEntry.BatchName, err)
 				}
 
-				syncInterval, err := time.ParseDuration(batch.Config.BackgroundSyncInterval)
-				if err != nil {
-					return fmt.Errorf("Invalid background sync interval %q: %w", batch.Config.BackgroundSyncInterval, err)
-				}
-
-				finalSyncLimit, err := time.ParseDuration(batch.Config.FinalBackgroundSyncLimit)
-				if err != nil {
-					return fmt.Errorf("Invalid final background sync limit %q: %w", batch.Config.FinalBackgroundSyncLimit, err)
-				}
-
 				now := time.Now().UTC()
 				var resync bool
 				// It has been more then BackgroundSyncInterval time since the last sync.
 				timeSinceLastSync := now.Sub(queueEntry.LastBackgroundSync)
-				if timeSinceLastSync >= syncInterval {
+				if timeSinceLastSync >= batch.Config.BackgroundSyncInterval.Duration {
 					// Only resync if window won't have begun before the next interval is reached.
-					if window == nil || window.Start.After(now.Add(syncInterval)) {
+					if window == nil || window.Start.After(now.Add(batch.Config.BackgroundSyncInterval.Duration)) {
 						resync = true
 					}
 				}
 
 				if !resync && window != nil {
 					// If time between the last sync and the window start time is less than the sync interval, but more then the final sync buffer, then sync anyway.
-					if window.Start.Sub(queueEntry.LastBackgroundSync) < syncInterval && window.Start.Sub(now) >= finalSyncLimit {
+					if window.Start.Sub(queueEntry.LastBackgroundSync) < batch.Config.BackgroundSyncInterval.Duration && window.Start.Sub(now) >= batch.Config.FinalBackgroundSyncLimit.Duration {
 						resync = true
 					}
 				}

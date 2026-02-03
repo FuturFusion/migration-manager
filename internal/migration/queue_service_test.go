@@ -707,7 +707,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName:    migration.Batch{Defaults: defaultPlacement, Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour.String()}}},
+			batchSvcGetByName:    migration.Batch{Defaults: defaultPlacement, Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: api.AsDuration(time.Hour)}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -752,7 +752,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName:    migration.Batch{Defaults: defaultPlacement, Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour.String()}}},
+			batchSvcGetByName:    migration.Batch{Defaults: defaultPlacement, Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: api.AsDuration(time.Hour)}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -797,7 +797,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			repoGetAll:            migration.QueueEntries{{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE}, {InstanceUUID: uuidB, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_FINAL_IMPORT}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 
-			batchSvcGetByName:    migration.Batch{Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour.String()}}},
+			batchSvcGetByName:    migration.Batch{Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: api.AsDuration(time.Hour)}}},
 			instanceSvcGetQueued: migration.Instances{{UUID: uuidA}, {UUID: uuidB}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
@@ -899,7 +899,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:                  "error - target.GetByName",
 			uuidArg:               uuidA,
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
-			batchSvcGetByName:     migration.Batch{Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour.String()}}},
+			batchSvcGetByName:     migration.Batch{Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: api.AsDuration(time.Hour)}}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
 				Source: "one",
@@ -922,7 +922,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			name:                  "error - batch.GetEarliestWindow",
 			uuidArg:               uuidA,
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
-			batchSvcGetByName:     migration.Batch{Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour.String()}}},
+			batchSvcGetByName:     migration.Batch{Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: api.AsDuration(time.Hour)}}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				UUID:   uuidA,
 				Source: "one",
@@ -957,7 +957,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		{
 			name:                  "error - repo.Update",
 			uuidArg:               uuidA,
-			batchSvcGetByName:     migration.Batch{Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: time.Hour.String()}}},
+			batchSvcGetByName:     migration.Batch{Name: "one", Constraints: []api.BatchConstraint{{IncludeExpression: "true", MaxConcurrentInstances: 1, MinInstanceBootTime: api.AsDuration(time.Hour)}}},
 			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", ImportStage: migration.IMPORTSTAGE_BACKGROUND, MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
 			instanceSvcGetByIDInstance: migration.Instance{
 				Source: "one",
@@ -1479,7 +1479,7 @@ func TestQueueService_GetNextWindow(t *testing.T) {
 		{
 			name:                 "success - matches constraint with boot time forcing later window",
 			queueEntry:           migration.QueueEntry{},
-			constraints:          []api.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: (time.Minute * 5).String()}},
+			constraints:          []api.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: api.AsDuration(5 * time.Minute)}},
 			matchingInstances:    []int{3},
 			notMatchingInstances: []int{3},
 			targetExprValue:      1,
@@ -1490,7 +1490,7 @@ func TestQueueService_GetNextWindow(t *testing.T) {
 		{
 			name:                 "success - matches constraint with boot time forcing later window, respects time left",
 			queueEntry:           migration.QueueEntry{},
-			constraints:          []api.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: (time.Minute * 5).String()}},
+			constraints:          []api.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: api.AsDuration(5 * time.Minute)}},
 			matchingInstances:    []int{3},
 			notMatchingInstances: []int{3},
 			targetExprValue:      1,
@@ -1501,7 +1501,7 @@ func TestQueueService_GetNextWindow(t *testing.T) {
 		{
 			name:                 "success - non-matching constraint with boot time using earlier window",
 			queueEntry:           migration.QueueEntry{},
-			constraints:          []api.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: (time.Minute * 5).String()}},
+			constraints:          []api.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: api.AsDuration(5 * time.Minute)}},
 			matchingInstances:    []int{3},
 			notMatchingInstances: []int{3},
 			targetExprValue:      0,
@@ -1538,7 +1538,7 @@ func TestQueueService_GetNextWindow(t *testing.T) {
 		{
 			name:                 "error - no valid window for boot time",
 			queueEntry:           migration.QueueEntry{},
-			constraints:          []api.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: time.Hour.String()}},
+			constraints:          []api.BatchConstraint{{IncludeExpression: "cpus == 1", MinInstanceBootTime: api.AsDuration(time.Hour)}},
 			matchingInstances:    []int{3},
 			notMatchingInstances: []int{3},
 			targetExprValue:      1,

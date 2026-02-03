@@ -176,11 +176,6 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 			return err
 		}
 
-		timeout, err := time.ParseDuration(props.ConnectionTimeout)
-		if err != nil {
-			return err
-		}
-
 		log := log.With(slog.String("source", src.Name))
 
 		if src.GetExternalConnectivityStatus() != api.EXTERNALCONNECTIVITYSTATUS_OK {
@@ -189,7 +184,7 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 			continue
 		}
 
-		ctx, cancel := context.WithTimeout(ctx, timeout)
+		ctx, cancel := context.WithTimeout(ctx, props.ConnectionTimeout.Duration)
 		srcNetworks, srcInstances, importWarnings, err := fetchVMWareSourceData(ctx, src)
 		if err != nil {
 			cancel()
@@ -212,17 +207,12 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 			return err
 		}
 
-		timeout, err := time.ParseDuration(props.ConnectionTimeout)
-		if err != nil {
-			return err
-		}
-
 		if src.GetExternalConnectivityStatus() != api.EXTERNALCONNECTIVITYSTATUS_OK {
 			warnings = append(warnings, migration.NewSyncWarning(api.SourceUnavailable, src.Name, fmt.Sprintf("status: %q", src.GetExternalConnectivityStatus())))
 			continue
 		}
 
-		ctx, cancel := context.WithTimeout(ctx, timeout)
+		ctx, cancel := context.WithTimeout(ctx, props.ConnectionTimeout.Duration)
 		found, err := fetchNSXSourceData(ctx, src, vmSourcesByName, networksBySrc)
 		if err != nil {
 			cancel()
@@ -338,12 +328,7 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 		return err
 	}
 
-	timeout, err := time.ParseDuration(props.ConnectionTimeout)
-	if err != nil {
-		return err
-	}
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, timeout)
+	timeoutCtx, cancel := context.WithTimeout(ctx, props.ConnectionTimeout.Duration)
 	defer cancel()
 
 	srcNetworks, srcInstances, importWarnings, err := fetchVMWareSourceData(timeoutCtx, src)
@@ -1073,14 +1058,9 @@ func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[strin
 		return nil, nil, nil, fmt.Errorf("Failed to connect to source: %w", err)
 	}
 
-	instances, networkLocationsByID, warnings, err := s.GetAllVMs(ctx)
+	instances, allNetworks, warnings, err := s.GetAllVMs(ctx)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Failed to get VMs: %w", err)
-	}
-
-	allNetworks, err := s.GetAllNetworks(ctx, networkLocationsByID)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Failed to get networks: %w", err)
 	}
 
 	// Only record networks that are actually in use by detected VMs.
