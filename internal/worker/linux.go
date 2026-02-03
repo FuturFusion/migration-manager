@@ -72,7 +72,9 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osNa
 		distro = "openSUSE"
 	} else if strings.Contains(strings.ToLower(osName), "oracle") {
 		distro = "Oracle"
-	} else if slices.Contains([]string{"rhel", "redhat", "red-hat", "red hat"}, strings.ToLower(osName)) {
+	} else if slices.ContainsFunc([]string{"rhel", "redhat", "red-hat", "red hat"}, func(s string) bool {
+		return strings.Contains(strings.ToLower(osName), s)
+	}) {
 		distro = "RHEL"
 	} else if strings.Contains(strings.ToLower(osName), "sles") {
 		distro = "SUSE"
