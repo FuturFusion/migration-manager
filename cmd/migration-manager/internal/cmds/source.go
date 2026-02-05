@@ -160,7 +160,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			Password:                            sourcePassword,
 			ImportLimit:                         int(importLimit),
 			ConnectionTimeout:                   connTimeout,
-			ImportTimeout:                       importTimeout,
+			SyncTimeout:                         importTimeout,
 			Datacenters:                         strings.Split(dcPathStr, ","),
 		}
 
@@ -427,7 +427,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		vmwareProperties.ImportTimeout = importTimeout
+		vmwareProperties.SyncTimeout = importTimeout
 
 		dcPathStr := strings.Join(vmwareProperties.Datacenters, ",")
 		dcPathStr, err = c.global.Asker.AskString(fmt.Sprintf("Comma-separated list of datacenters to import from [default=%s]: ", dcPathStr), dcPathStr, nil)

@@ -173,8 +173,12 @@ func (s Source) validateSourceTypeVMware() error {
 		return NewValidationErrf("Invalid source, connection timeout %q is not a valid duration", properties.ConnectionTimeout)
 	}
 
-	if properties.ImportTimeout.Duration <= time.Duration(0) {
+	if properties.SyncTimeout.Duration <= time.Duration(0) {
 		return NewValidationErrf("Invalid source, import timeout %q is not a valid duration", properties.ConnectionTimeout)
+	}
+
+	if properties.SyncLimit <= 0 {
+		return NewValidationErrf("Invalid source, sync limit must be 1 or more")
 	}
 
 	if slices.Contains(properties.Datacenters, "") {
