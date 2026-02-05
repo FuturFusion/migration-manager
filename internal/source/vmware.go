@@ -29,6 +29,7 @@ import (
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
+	"golang.org/x/sync/errgroup"
 
 	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
@@ -267,34 +268,46 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		}
 	}
 
-	for _, vm := range vmRefs {
-		inst, instWarnings, err := s.getVM(ctx, vm, tc, networkLocationsByID, catMap, datastores)
-		warnings = append(warnings, instWarnings...)
+	grp := errgroup.Group{}
+	grp.SetLimit(s.SyncLimit)
 
-		if err != nil && errors.Is(err, context.DeadlineExceeded) {
-			msg := fmt.Sprintf("Import timeout (%s) exceeded", s.ImportTimeout)
-			if ctx.Err() != nil {
-				msg = fmt.Sprintf("Source connection timeout (%s) exceeded", s.ConnectionTimeout)
+	for _, vm := range vmRefs {
+		grp.Go(func() error {
+			inst, instWarnings, err := s.getVM(ctx, vm, tc, networkLocationsByID, catMap, datastores)
+			warnings = append(warnings, instWarnings...)
+
+			if err != nil && errors.Is(err, context.DeadlineExceeded) {
+				msg := fmt.Sprintf("Import timeout (%s) exceeded", s.SyncTimeout)
+				if ctx.Err() != nil {
+					msg = fmt.Sprintf("Source connection timeout (%s) exceeded", s.ConnectionTimeout)
+				}
+
+				warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, msg))
+				return nil
 			}
 
-			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, msg))
-			continue
-		}
+			if err != nil {
+				return err
+			}
 
-		if err != nil {
-			return nil, nil, nil, err
-		}
+			if inst != nil {
+				vms = append(vms, *inst)
+			}
 
-		if inst != nil {
-			vms = append(vms, *inst)
-		}
+			return nil
+		})
+	}
+
+	err = grp.Wait()
+	if err != nil {
+		return nil, nil, warnings, err
 	}
 
 	return vms, networks, warnings, nil
 }
 
 func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMachine, tc *tags.Manager, networkLocationsByID map[string]string, catMap map[string]string, datastores []*object.Datastore) (*migration.Instance, migration.Warnings, error) {
-	ctx, cancel := context.WithTimeout(ctx, s.ImportTimeout.Duration)
+	ctx, cancel := context.WithTimeout(ctx, s.SyncTimeout.Duration)
 	defer cancel()
 
 	warnings := migration.Warnings{}
