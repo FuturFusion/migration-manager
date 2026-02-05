@@ -273,21 +273,22 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 	for _, vm := range vmRefs {
 		grp.Go(func() error {
-			inst, instWarnings, err := s.getVM(ctx, vm, tc, networkLocationsByID, catMap, datastores)
-			warnings = append(warnings, instWarnings...)
-
-			if err != nil && errors.Is(err, context.DeadlineExceeded) {
-				msg := fmt.Sprintf("Import timeout (%s) exceeded", s.SyncTimeout)
-				if ctx.Err() != nil {
-					msg = fmt.Sprintf("Source connection timeout (%s) exceeded", s.ConnectionTimeout)
+			inst, warningType, err := s.getVM(ctx, vm, tc, networkLocationsByID, catMap, datastores)
+			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					if ctx.Err() != nil {
+						err = fmt.Errorf("Source connection timeout (%s) exceeded: %w", s.ConnectionTimeout, err)
+					} else {
+						err = fmt.Errorf("Import timeout (%s) exceeded: %w", s.SyncTimeout, err)
+					}
 				}
 
-				warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, msg))
-				return nil
-			}
+				// Only return an error if we got no warning hint.
+				if warningType == "" {
+					return err
+				}
 
-			if err != nil {
-				return err
+				warnings = append(warnings, migration.NewSyncWarning(warningType, s.Name, err.Error()))
 			}
 
 			if inst != nil {
@@ -306,34 +307,32 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	return vms, networks, warnings, nil
 }
 
-func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMachine, tc *tags.Manager, networkLocationsByID map[string]string, catMap map[string]string, datastores []*object.Datastore) (*migration.Instance, migration.Warnings, error) {
+func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMachine, tc *tags.Manager, networkLocationsByID map[string]string, catMap map[string]string, datastores []*object.Datastore) (*migration.Instance, api.WarningType, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.SyncTimeout.Duration)
 	defer cancel()
 
-	warnings := migration.Warnings{}
-
-	log := slog.With(slog.String("location", vm.InventoryPath), slog.String("source", s.Name))
+	log := slog.With(slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.String("method", "getVM"))
 	// Ignore any vCLS instances.
 	if strings.HasPrefix(vm.Name(), "vCLS-") {
 		log.Info("Ignoring vCLS tagged VM")
-		return nil, warnings, nil
+		return nil, api.InstanceIgnored, fmt.Errorf("Not importing vCLS tagged VM %q", vm.InventoryPath)
 	}
 
 	var vmProperties mo.VirtualMachine
 	log.Debug("Importing VM")
 	err := vm.Properties(ctx, vm.Reference(), []string{}, &vmProperties)
 	if err != nil {
-		return nil, warnings, nil
+		return nil, api.InstanceImportFailed, fmt.Errorf("Failed to fetch VMware properties for VM %q: %w", vm.InventoryPath, err)
 	}
 
 	// If a VM has no configuration, then it's just a stub, so skip it.
 	if vmProperties.Config == nil {
-		return nil, warnings, nil
+		return nil, api.InstanceIgnored, fmt.Errorf("Not importing VM with empty source config %q", vm.InventoryPath)
 	}
 
 	// Skip VM templates.
 	if vmProperties.Config.Template {
-		return nil, warnings, nil
+		return nil, api.InstanceIgnored, fmt.Errorf("Not importing VM tagged as a template %q", vm.InventoryPath)
 	}
 
 	vmProps, err := s.getVMProperties(vm, vmProperties, networkLocationsByID)
@@ -345,22 +344,21 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 			_ = os.WriteFile(fileName, b, 0o644)
 		}
 
-		msg := fmt.Sprintf("Failed to import %q: %v", vm.InventoryPath, err)
-		warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, msg))
 		log.Error("Failed to record vm properties", slog.Any("error", err))
-		return nil, warnings, nil
+
+		return nil, api.InstanceImportFailed, fmt.Errorf("Failed to record properties for VM %q: %w", vm.InventoryPath, err)
 	}
 
 	if vmProps.Description == "VMware vCenter Server Appliance" {
 		log.Info("Ignoring vCenter Server tagged VM")
-		return nil, warnings, nil
+		return nil, api.InstanceIgnored, fmt.Errorf("Not importing VM tagged as vCenter appliance %q", vm.InventoryPath)
 	}
 
 	if !s.isESXI {
 		log.Debug("Fetching vCenter tags")
 		vmTags, err := tc.GetAttachedTags(ctx, vm.Reference())
 		if err != nil {
-			return nil, warnings, err
+			return nil, api.InstanceImportFailed, fmt.Errorf("Failed to import tags for VM %q: %w", vm.InventoryPath, err)
 		}
 
 		for _, tag := range vmTags {
@@ -372,15 +370,24 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 			}
 		}
 
+		// VMware returns an error if the VM happens to not have resource pools, so we only return early if there was a context deadline error.
 		log.Debug("Fetching vCenter resource pools")
 		vmResourcePool, err := vm.ResourcePool(ctx)
 		if err != nil {
 			log.Error("Failed determine resource pool for VM", slog.Any("error", err))
+			if errors.Is(err, context.DeadlineExceeded) {
+				return nil, api.InstanceImportFailed, fmt.Errorf("Failed to fetch resource pools for VM %q: %w", vm.InventoryPath, err)
+			}
+
 		} else {
 			log.Debug("Fetching vCenter resource pool data")
 			poolName, err := vmResourcePool.ObjectName(ctx)
 			if err != nil {
 				log.Error("Failed determine resource pool name for VM", slog.Any("error", err))
+				if errors.Is(err, context.DeadlineExceeded) {
+					return nil, api.InstanceImportFailed, fmt.Errorf("Failed to fetch resource pool names for VM %q: %w", vm.InventoryPath, err)
+				}
+
 			} else {
 				resourcePoolKey := fmt.Sprintf("%s.resource_pool", s.SourceType)
 				vmProps.Config[resourcePoolKey] = poolName
@@ -435,17 +442,17 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 	if inst.GetOSType() == api.OSTYPE_WINDOWS {
 		_, err := util.MapWindowsVersionToAbbrev(inst.Properties.OSVersion)
 		if err != nil {
-			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, fmt.Sprintf("%q: %v", inst.Properties.Location, err.Error())))
-			return nil, warnings, nil
+			return nil, api.InstanceImportFailed, fmt.Errorf("Failed to determine OS version for Windows VM %q: %w", inst.Properties.Location, err)
 		}
 	}
 
 	err = inst.DisabledReason(api.InstanceRestrictionOverride{})
 	if err != nil {
-		warnings = append(warnings, migration.NewSyncWarning(api.InstanceCannotMigrate, s.Name, fmt.Sprintf("%q: %v", inst.Properties.Location, err.Error())))
+		// Return the instance as this should not be a fatal error.
+		return &inst, api.InstanceCannotMigrate, fmt.Errorf("%q: %w", inst.Properties.Location, err)
 	}
 
-	return &inst, warnings, nil
+	return &inst, "", nil
 }
 
 func (s *InternalVMwareSource) getAllNetworks(ctx context.Context, networkLocationsByID map[string]string) (migration.Networks, error) {
