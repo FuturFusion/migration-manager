@@ -371,27 +371,17 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 		}
 
 		// VMware returns an error if the VM happens to not have resource pools, so we only return early if there was a context deadline error.
-		log.Debug("Fetching vCenter resource pools")
-		vmResourcePool, err := vm.ResourcePool(ctx)
+		log.Debug("Fetching VM resource pool name")
+		var pool mo.ResourcePool
+		err = property.DefaultCollector(s.govmomiClient.Client).RetrieveOne(ctx, *vmProperties.ResourcePool, []string{"name"}, &pool)
 		if err != nil {
-			log.Error("Failed determine resource pool for VM", slog.Any("error", err))
+			log.Error("Failed determine resource pool name for VM", slog.Any("error", err))
 			if errors.Is(err, context.DeadlineExceeded) {
-				return nil, api.InstanceImportFailed, fmt.Errorf("Failed to fetch resource pools for VM %q: %w", vm.InventoryPath, err)
+				return nil, api.InstanceImportFailed, fmt.Errorf("Failed to fetch resource pool names for VM %q: %w", vm.InventoryPath, err)
 			}
-
 		} else {
-			log.Debug("Fetching vCenter resource pool data")
-			poolName, err := vmResourcePool.ObjectName(ctx)
-			if err != nil {
-				log.Error("Failed determine resource pool name for VM", slog.Any("error", err))
-				if errors.Is(err, context.DeadlineExceeded) {
-					return nil, api.InstanceImportFailed, fmt.Errorf("Failed to fetch resource pool names for VM %q: %w", vm.InventoryPath, err)
-				}
-
-			} else {
-				resourcePoolKey := fmt.Sprintf("%s.resource_pool", s.SourceType)
-				vmProps.Config[resourcePoolKey] = poolName
-			}
+			resourcePoolKey := fmt.Sprintf("%s.resource_pool", s.SourceType)
+			vmProps.Config[resourcePoolKey] = pool.Name
 		}
 	}
 
