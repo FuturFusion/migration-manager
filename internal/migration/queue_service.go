@@ -651,7 +651,7 @@ func (s queueService) RetryByUUID(ctx context.Context, id uuid.UUID, networkSvc 
 		}
 
 		status := api.MIGRATIONSTATUS_WAITING
-		message := "Preparing for migration"
+		message := "Performing initial migration checks"
 		err = inst.DisabledReason(batch.Config.RestrictionOverrides)
 		if err != nil {
 			status = api.MIGRATIONSTATUS_BLOCKED
