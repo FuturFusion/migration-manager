@@ -124,6 +124,10 @@ type InstancePropertiesDisk struct {
 	// Whether the disk supports migration.
 	// Example: true
 	Supported bool `json:"supported" yaml:"supported" expr:"supported"`
+
+	// Whether background import has been explicitly verified as supported.
+	// Example: true
+	BackgroundImportVerified bool `json:"background_import_verified" yaml:"background_import_verified" expr:"background_import_verified"`
 }
 
 // InstancePropertiesSnapshot are all properties supported by snapshots.
