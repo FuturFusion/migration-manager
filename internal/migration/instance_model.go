@@ -99,7 +99,7 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 		return fmt.Errorf("Could not determine instance IP, check if guest agent is running")
 	}
 
-	if !i.Properties.BackgroundImport && !overrides.AllowNoBackgroundImport {
+	if !i.Properties.SupportsBackgroundImport() && !overrides.AllowNoBackgroundImport {
 		return fmt.Errorf("Background import is not supported")
 	}
 
@@ -119,6 +119,18 @@ func (i Instance) GetName() string {
 	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 
 	return props.Name
+}
+
+func (i Instance) NeedsBackgroundImportVerification() bool {
+	if i.Properties.BackgroundImport {
+		for _, disk := range i.Properties.Disks {
+			if disk.Supported && !disk.BackgroundImportVerified {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // GetOSType returns the OS type, as determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html

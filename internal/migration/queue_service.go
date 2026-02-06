@@ -397,7 +397,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		windowName := queueEntry.GetWindowName()
 		if targetLimitReached || sourceLimitReached {
 			newStatusMessage = "Waiting for other instances to finish importing"
-		} else if queueEntry.ImportStage == IMPORTSTAGE_BACKGROUND && instance.Properties.BackgroundImport {
+		} else if queueEntry.ImportStage == IMPORTSTAGE_BACKGROUND && instance.Properties.SupportsBackgroundImport() {
 			// If we can do a background disk sync, kick it off.
 			workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
 
@@ -436,7 +436,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 				}
 			} else {
 				// Only perform background resync if it's supported and we haven't entered final migration anyway.
-				if queueEntry.ImportStage != IMPORTSTAGE_FINAL || !instance.Properties.BackgroundImport || queueEntry.LastBackgroundSync.IsZero() {
+				if queueEntry.ImportStage != IMPORTSTAGE_FINAL || !instance.Properties.SupportsBackgroundImport() || queueEntry.LastBackgroundSync.IsZero() {
 					if newStatusMessage == "Waiting for worker to connect" {
 						_, err = s.UpdateStatusByUUID(ctx, instance.UUID, newStatus, "Waiting for migration window", newImportStage, windowName)
 						if err != nil {
