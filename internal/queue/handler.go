@@ -3,6 +3,7 @@ package queue
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/google/uuid"
@@ -56,6 +57,17 @@ type MigrationState struct {
 	Sources      map[uuid.UUID]migration.Source
 }
 
+type BatchMigrationState map[string]MigrationState
+
+func (b BatchMigrationState) Queue() map[uuid.UUID]migration.QueueEntry {
+	entries := map[uuid.UUID]migration.QueueEntry{}
+	for _, s := range b {
+		maps.Copy(entries, s.QueueEntries)
+	}
+
+	return entries
+}
+
 func (s *Handler) InitWorkerCache(initial map[uuid.UUID]time.Time) error {
 	return s.workerUpdateCache.Replace(initial)
 }
@@ -76,8 +88,8 @@ func (s *Handler) RemoveFromCache(instanceUUID uuid.UUID) {
 }
 
 // GetMigrationState fetches all migration state information corresponding to the given batch status and migration status.
-func (s *Handler) GetMigrationState(ctx context.Context, batchStatus api.BatchStatusType, migrationStatuses ...api.MigrationStatusType) (map[string]MigrationState, error) {
-	migrationState := map[string]MigrationState{}
+func (s *Handler) GetMigrationState(ctx context.Context, batchStatus api.BatchStatusType, migrationStatuses ...api.MigrationStatusType) (BatchMigrationState, error) {
+	migrationState := BatchMigrationState{}
 
 	var entries migration.QueueEntries
 	var batches migration.Batches
