@@ -162,13 +162,9 @@ definitions:
     BatchConfig:
         properties:
             background_sync_interval:
-                description: Interval over which background sync will be rerun until the migration window has begun.
-                type: string
-                x-go-name: BackgroundSyncInterval
+                $ref: '#/definitions/Duration'
             final_background_sync_limit:
-                description: The minimum amount of time before the migration window begins that background sync can be re-attempted.
-                type: string
-                x-go-name: FinalBackgroundSyncLimit
+                $ref: '#/definitions/Duration'
             instance_restriction_overrides:
                 $ref: '#/definitions/InstanceRestrictionOverride'
             placement_scriptlet:
@@ -204,9 +200,7 @@ definitions:
                 type: integer
                 x-go-name: MaxConcurrentInstances
             min_instance_boot_time:
-                description: Minimum amount of time required for an instance to boot after initial disk import. Migration window duration must be at least this much.
-                type: string
-                x-go-name: MinInstanceBootTime
+                $ref: '#/definitions/Duration'
             name:
                 description: Name of the constraint.
                 type: string
@@ -280,6 +274,10 @@ definitions:
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     BatchStatusType:
         type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    Duration:
+        title: Duration is a wrapper around time.Duration for easy json parsing.
+        type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     IncusNICType:
         type: string
@@ -622,6 +620,11 @@ definitions:
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     InstancePropertiesDisk:
         properties:
+            background_import_verified:
+                description: Whether background import has been explicitly verified as supported.
+                example: true
+                type: boolean
+                x-go-name: BackgroundImportVerified
             capacity:
                 description: Capacity of the disk in bytes.
                 example: 1073741824
@@ -1160,9 +1163,7 @@ definitions:
                 type: array
                 x-go-name: LogTargets
             sync_interval:
-                description: Interval over which data from all sources will be periodically resynced.
-                type: string
-                x-go-name: SyncInterval
+                $ref: '#/definitions/Duration'
         title: SystemSettings represents global system settings.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
@@ -1197,9 +1198,7 @@ definitions:
                 type: integer
                 x-go-name: RetryCount
             retry_timeout:
-                description: How long to wait between retrying a log.
-                type: string
-                x-go-name: RetryTimeout
+                $ref: '#/definitions/Duration'
             scopes:
                 description: Logging scopes to send to the logging target.
                 example: '[logging, lifecycle]'
@@ -2000,6 +1999,24 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the instance
+            tags:
+                - instances
+    /1.0/instances/{uuid}/:reset-background-import:
+        post:
+            description: Resets background import verification for an instance whose source reports background import support, but could not be verified..
+            operationId: instance_reset_background_import
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Reactivates instance background import support
             tags:
                 - instances
     /1.0/instances/{uuid}/override:
