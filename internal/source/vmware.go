@@ -514,6 +514,32 @@ func (s *InternalVMwareSource) getAllNetworks(ctx context.Context, networkLocati
 	return networksInUse, nil
 }
 
+// GetBackgroundImport returns the background import support property of an instance by its UUID.
+func (s *InternalVMwareSource) GetBackgroundImport(ctx context.Context, instUUID uuid.UUID) (bool, error) {
+	obj, err := object.NewSearchIndex(s.govmomiClient.Client).FindByUuid(ctx, nil, instUUID.String(), true, ptr.To(true))
+	if err != nil {
+		return false, err
+	}
+
+	props, err := properties.Definitions(s.SourceType, s.version)
+	if err != nil {
+		return false, err
+	}
+
+	info, err := props.Get(properties.InstanceBackgroundImport)
+	if err != nil {
+		return false, err
+	}
+
+	var vm mo.VirtualMachine
+	err = object.NewVirtualMachine(s.govmomiClient.Client, obj.Reference()).Properties(ctx, obj.Reference(), []string{info.Key}, &vm)
+	if err != nil {
+		return false, err
+	}
+
+	return *vm.Config.ChangeTrackingEnabled, nil
+}
+
 // VerifyBackgroundImport checks each supported disk for each VM for a corresponding ctk file for each VM that reports to support background import.
 // Returns the updated instance objects.
 func (s *InternalVMwareSource) VerifyBackgroundImport(ctx context.Context, instances migration.Instances) (migration.Instances, error) {
