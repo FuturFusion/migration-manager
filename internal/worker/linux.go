@@ -89,25 +89,83 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osNa
 
 	slog.Info("Preparing to perform post-migration configuration of VM")
 
+	err := cleanupClones()
+	if err != nil {
+		return fmt.Errorf("Failed to attempt cleanup of stale clone state")
+	}
+
+	defer func() { _ = cleanupClones() }()
+
 	// Determine the root partition.
-	rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition(looksLikeLinuxRootPartition)
+	rootParent, rootPart, rootType, rootOpts, err := determineRootPartition(looksLikeLinuxRootPartition)
 	if err != nil {
 		return err
 	}
 
-	var vgFilter []string
+	var mappings map[string]map[string]string
+	var plan map[string]mountInfo
 	if dryRun {
-		rootPartition, vgFilter, err = setupDiskClone(rootPartition, rootPartitionType, rootMountOpts)
+		plan, err = getRequiredMounts(looksLikeLinuxRootPartition)
 		if err != nil {
 			return err
 		}
 
-		defer func() { _ = cleanupDiskClone(rootPartitionType) }()
+		mappings, err = setupDiskClone(plan)
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = DeactivateVG() }()
+
+		for vgName, sourceToClone := range mappings {
+			if vgName != "" {
+				vgFilter := []string{}
+				// Create a filter to avoid lvm duplication errors.
+				for src, clone := range sourceToClone {
+					parts := strings.Split(src, "/")
+					vgFilter = append(vgFilter, fmt.Sprintf("'a|%s|', 'r|%s|', 'r|/dev/mapper/clone_%s|'", clone, src, parts[len(parts)-1]))
+				}
+
+				filter := "devices { filter = [ " + strings.Join(vgFilter, ", ") + " ] }"
+				slog.Info("Activating volume groups with filter", slog.String("config", filter), slog.String("vg_name", vgName))
+				err := ActivateVG(filter, vgName)
+				if err != nil {
+					return err
+				}
+			}
+
+			for src, clone := range sourceToClone {
+				partType := PARTITION_TYPE_PLAIN
+				if vgName != "" {
+					partType = PARTITION_TYPE_LVM
+				}
+
+				if partType == PARTITION_TYPE_PLAIN && src == rootParent {
+					clonePart, err := getMatchingPartition(rootPart, clone)
+					if err != nil {
+						return err
+					}
+
+					rootPart = clonePart
+				}
+
+				// After activating the VG, ensure the mapping is to a loop device if performing dry-run.
+				err := ensureMountIsLoop(clone, partType)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		err = ensureMountIsLoop(rootPart, rootType)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Activate VG prior to mounting, if needed.
-	if rootPartitionType == PARTITION_TYPE_LVM {
-		err := ActivateVG(vgFilter...)
+	if !dryRun && rootType == PARTITION_TYPE_LVM {
+		err := ActivateVG()
 		if err != nil {
 			return err
 		}
@@ -115,16 +173,8 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osNa
 		defer func() { _ = DeactivateVG() }()
 	}
 
-	// After activating the VG, ensure the mapping is to a loop device if performing dry-run.
-	if dryRun {
-		err := ensureMountIsLoop(rootPartition, rootPartitionType)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Mount the migrated root partition.
-	err = DoMount(rootPartition, chrootMountPath, rootMountOpts)
+	err = DoMount(rootPart, chrootMountPath, rootOpts)
 	if err != nil {
 		return err
 	}
@@ -160,7 +210,34 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osNa
 			opts = []string{"-o", mnt["options"]}
 		}
 
-		err := DoMount(mnt["device"], filepath.Join(chrootMountPath, mnt["path"]), opts)
+		log := slog.With(slog.String("fstab", mnt["device"]))
+		dev := mnt["device"]
+		p, ok := plan[mnt["device"]]
+		if dryRun && ok {
+			log = log.With(slog.String("path", p.Path), slog.String("parent", p.Parent))
+			log.Info("Finding fstab entry in lsblk")
+			for _, sourceToClone := range mappings {
+				path := p.Parent
+				if p.Type == PARTITION_TYPE_LVM {
+					path = p.Path
+				}
+
+				clone, ok := sourceToClone[path]
+				if ok {
+					part, err := getMatchingPartition(p.Path, clone)
+					if err != nil {
+						return err
+					}
+
+					log.Info("Found a matching fstab clone", slog.String("clone", part))
+					dev = part
+					break
+				}
+			}
+		}
+
+		log.Info("Mounting the disk from fstab", slog.String("device", dev), slog.String("target", filepath.Join(chrootMountPath, mnt["path"])), slog.String("opts", strings.Join(opts, ",")))
+		err := DoMount(dev, filepath.Join(chrootMountPath, mnt["path"]), opts)
 		if err != nil {
 			return err
 		}
@@ -265,31 +342,32 @@ func DeactivateVG() error {
 	return err
 }
 
-func determineRootPartition(looksLikeRootPartition func(partition string, opts []string) bool) (string, PartitionType, []string, error) {
+func determineRootPartition(looksLikeRootPartition func(partition string, opts []string) bool) (string, string, PartitionType, []string, error) {
 	lvs, err := scanVGs()
 	if err != nil {
-		return "", PARTITION_TYPE_UNKNOWN, nil, err
+		return "", "", PARTITION_TYPE_UNKNOWN, nil, err
 	}
 
 	// If a VG(s) exists, check if any LVs look like the root partition.
 	if len(lvs.Report[0].LV) > 0 {
 		err := ActivateVG()
 		if err != nil {
-			return "", PARTITION_TYPE_UNKNOWN, nil, err
+			return "", "", PARTITION_TYPE_UNKNOWN, nil, err
 		}
 
 		defer func() { _ = DeactivateVG() }()
 
 		for _, lv := range lvs.Report[0].LV {
 			if looksLikeRootPartition(fmt.Sprintf("/dev/%s/%s", lv.VGName, lv.LVName), nil) {
-				return fmt.Sprintf("/dev/%s/%s", lv.VGName, lv.LVName), PARTITION_TYPE_LVM, nil, nil
+				rootPath := "/dev/" + lv.VGName + "/" + lv.LVName
+				return rootPath, rootPath, PARTITION_TYPE_LVM, nil, nil
 			}
 		}
 	}
 
 	partitions, err := internalUtil.ScanPartitions("")
 	if err != nil {
-		return "", PARTITION_TYPE_UNKNOWN, nil, err
+		return "", "", PARTITION_TYPE_UNKNOWN, nil, err
 	}
 
 	for _, dev := range partitions.BlockDevices {
@@ -299,24 +377,30 @@ func determineRootPartition(looksLikeRootPartition func(partition string, opts [
 
 		// Loop through any partitions on /dev/sda and check if they look like the root partition.
 		for _, p := range dev.Children {
-			partition := fmt.Sprintf("/dev/%s", p.Name)
+			if p.Name == "" || p.PKName == "" {
+				return "", "", PARTITION_TYPE_UNKNOWN, nil, fmt.Errorf("Unable to determine root disk: %+v", dev)
+			}
+
+			partition := "/dev/" + p.Name
+			parent := "/dev/" + p.PKName
+
 			if p.FSType == "btrfs" {
 				btrfsSubvol, err := getBTRFSTopSubvol(partition)
 				if err != nil {
-					return "", PARTITION_TYPE_UNKNOWN, nil, err
+					return "", "", PARTITION_TYPE_UNKNOWN, nil, err
 				}
 
 				opts := []string{"-o", fmt.Sprintf("subvol=%s", btrfsSubvol)}
 				if looksLikeRootPartition(partition, opts) {
-					return partition, PARTITION_TYPE_PLAIN, opts, nil
+					return parent, partition, PARTITION_TYPE_PLAIN, opts, nil
 				}
 			} else if looksLikeRootPartition(partition, nil) {
-				return partition, PARTITION_TYPE_PLAIN, nil, nil
+				return parent, partition, PARTITION_TYPE_PLAIN, nil, nil
 			}
 		}
 	}
 
-	return "", PARTITION_TYPE_UNKNOWN, nil, fmt.Errorf("Failed to determine the root partition")
+	return "", "", PARTITION_TYPE_UNKNOWN, nil, fmt.Errorf("Failed to determine the root partition")
 }
 
 func runScriptInChroot(scriptName string, args ...string) error {
@@ -432,4 +516,88 @@ func getBTRFSTopSubvol(partition string) (string, error) {
 	}
 
 	return "", fmt.Errorf("Unable to determine top level subvolume for partition %s", partition)
+}
+
+// getRequiredMounts returns a list of disks that must be mounted according to /etc/fstab on the root partition.
+func getRequiredMounts(partFunc func(string, []string) bool) (map[string]mountInfo, error) {
+	lvs, err := scanVGs()
+	if err != nil {
+		return nil, err
+	}
+
+	// Determine the root partition.
+	_, rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition(partFunc)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(lvs.Report[0].LV) > 0 {
+		err := ActivateVG()
+		if err != nil {
+			return nil, err
+		}
+
+		defer func() { _ = DeactivateVG() }()
+	}
+
+	lsblk, err := internalUtil.ScanPartitions("")
+	if err != nil {
+		return nil, err
+	}
+
+	parent, _, err := lsblk.FindDisk(rootPartition)
+	if err != nil {
+		return nil, err
+	}
+
+	plan := map[string]mountInfo{rootPartition: {
+		Parent:  parent,
+		Path:    rootPartition,
+		Type:    rootPartitionType,
+		Options: rootMountOpts,
+		Root:    true,
+	}}
+
+	// Mount everything here as read-only as we are just inspecting /etc/fstab.
+	readOnly := []string{"-o", "ro"}
+	if len(rootMountOpts) >= 2 && rootMountOpts[0] == "-o" {
+		readOnly[1] += "," + strings.Join(rootMountOpts[1:], ",")
+	}
+
+	// Mount the migrated root partition.
+	err = DoMount(rootPartition, chrootMountPath, readOnly)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() { _ = DoUnmount(chrootMountPath) }()
+
+	for _, mnt := range getAdditionalMounts() {
+		dev, after, _ := strings.Cut(mnt["device"], "=")
+		if after != "" {
+			dev = after
+		}
+
+		parent, path, err := lsblk.FindDisk(dev)
+		if err != nil {
+			return nil, fmt.Errorf("Unknown disk %q", mnt["device"])
+		}
+
+		partType := PARTITION_TYPE_PLAIN
+		for _, lv := range lvs.Report[0].LV {
+			if path == "/dev/"+lv.VGName+"/"+lv.LVName {
+				partType = PARTITION_TYPE_LVM
+			}
+		}
+
+		next := mountInfo{Parent: parent, Path: path, Type: partType}
+
+		if mnt["options"] != "" {
+			next.Options = []string{"-o", mnt["options"]}
+		}
+
+		plan[mnt["device"]] = next
+	}
+
+	return plan, nil
 }
