@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 	"github.com/FuturFusion/migration-manager/shared/api/event"
@@ -37,6 +38,12 @@ var instanceOverrideCmd = APIEndpoint{
 	Delete: APIEndpointAction{Handler: instanceOverrideDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
 	Get:    APIEndpointAction{Handler: instanceOverrideGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 	Put:    APIEndpointAction{Handler: instanceOverridePut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
+}
+
+var instanceResetBackgroundImportCmd = APIEndpoint{
+	Path: "instances/{uuid}/:reset-background-import",
+
+	Post: APIEndpointAction{Handler: instanceResetBackgroundImport, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 // swagger:operation GET /1.0/instances instances instances_get
@@ -438,6 +445,80 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 	}
 
 	d.logHandler.SendLifecycle(r.Context(), event.NewInstanceEvent(event.InstanceOverrideModified, r, apiInstance, apiInstance.UUID))
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/instances/{uuid}/:reset-background-import instances instance_reset_background_import
+//
+//	Reactivates instance background import support
+//
+//	Resets background import verification for an instance whose source reports background import support, but could not be verified..
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func instanceResetBackgroundImport(d *Daemon, r *http.Request) response.Response {
+	uuidString := r.PathValue("uuid")
+
+	instanceUUID, err := uuid.Parse(uuidString)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	var apiInstance api.Instance
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		inst, err := d.instance.GetByUUID(ctx, instanceUUID)
+		if err != nil {
+			return err
+		}
+
+		src, err := d.source.GetByName(ctx, inst.Source)
+		if err != nil {
+			return err
+		}
+
+		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		if err != nil {
+			return err
+		}
+
+		err = is.Connect(ctx)
+		if err != nil {
+			return err
+		}
+
+		supported, err := is.GetBackgroundImport(ctx, inst.UUID)
+		if err != nil {
+			return err
+		}
+
+		if !supported {
+			return fmt.Errorf("Instance %q (%q) on source %q does not have background import support", inst.UUID, inst.Properties.Location, src.Name)
+		}
+
+		err = d.instance.ResetBackgroundImport(ctx, inst)
+		if err != nil {
+			return err
+		}
+
+		apiInstance = inst.ToAPI()
+		return nil
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewInstanceEvent(event.InstanceModified, r, apiInstance, apiInstance.UUID))
 
 	return response.EmptySyncResponse
 }
