@@ -66,6 +66,9 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			RemoveFromQueueFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the RemoveFromQueue method")
 //			},
+//			ResetBackgroundImportFunc: func(ctx context.Context, instance *migration.Instance) error {
+//				panic("mock out the ResetBackgroundImport method")
+//			},
 //			UpdateFunc: func(ctx context.Context, instance *migration.Instance) error {
 //				panic("mock out the Update method")
 //			},
@@ -120,6 +123,9 @@ type InstanceServiceMock struct {
 
 	// RemoveFromQueueFunc mocks the RemoveFromQueue method.
 	RemoveFromQueueFunc func(ctx context.Context, id uuid.UUID) error
+
+	// ResetBackgroundImportFunc mocks the ResetBackgroundImport method.
+	ResetBackgroundImportFunc func(ctx context.Context, instance *migration.Instance) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, instance *migration.Instance) error
@@ -219,6 +225,13 @@ type InstanceServiceMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// ResetBackgroundImport holds details about calls to the ResetBackgroundImport method.
+		ResetBackgroundImport []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Instance is the instance argument value.
+			Instance *migration.Instance
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -242,6 +255,7 @@ type InstanceServiceMock struct {
 	lockGetPostMigrationRetries  sync.RWMutex
 	lockRecordPostMigrationRetry sync.RWMutex
 	lockRemoveFromQueue          sync.RWMutex
+	lockResetBackgroundImport    sync.RWMutex
 	lockUpdate                   sync.RWMutex
 }
 
@@ -758,6 +772,42 @@ func (mock *InstanceServiceMock) RemoveFromQueueCalls() []struct {
 	mock.lockRemoveFromQueue.RLock()
 	calls = mock.calls.RemoveFromQueue
 	mock.lockRemoveFromQueue.RUnlock()
+	return calls
+}
+
+// ResetBackgroundImport calls ResetBackgroundImportFunc.
+func (mock *InstanceServiceMock) ResetBackgroundImport(ctx context.Context, instance *migration.Instance) error {
+	if mock.ResetBackgroundImportFunc == nil {
+		panic("InstanceServiceMock.ResetBackgroundImportFunc: method is nil but InstanceService.ResetBackgroundImport was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		Instance *migration.Instance
+	}{
+		Ctx:      ctx,
+		Instance: instance,
+	}
+	mock.lockResetBackgroundImport.Lock()
+	mock.calls.ResetBackgroundImport = append(mock.calls.ResetBackgroundImport, callInfo)
+	mock.lockResetBackgroundImport.Unlock()
+	return mock.ResetBackgroundImportFunc(ctx, instance)
+}
+
+// ResetBackgroundImportCalls gets all the calls that were made to ResetBackgroundImport.
+// Check the length with:
+//
+//	len(mockedInstanceService.ResetBackgroundImportCalls())
+func (mock *InstanceServiceMock) ResetBackgroundImportCalls() []struct {
+	Ctx      context.Context
+	Instance *migration.Instance
+} {
+	var calls []struct {
+		Ctx      context.Context
+		Instance *migration.Instance
+	}
+	mock.lockResetBackgroundImport.RLock()
+	calls = mock.calls.ResetBackgroundImport
+	mock.lockResetBackgroundImport.RUnlock()
 	return calls
 }
 
