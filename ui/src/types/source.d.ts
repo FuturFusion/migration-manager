@@ -8,7 +8,8 @@ export interface VMwareProperties {
   connectivity_status?: ExternalConnectivityStatus;
   import_limit: number;
   connection_timeout: string;
-  import_timeout: string;
+  sync_timeout: string;
+  sync_limit: number;
   datacenters: string[];
 }
 
@@ -36,6 +37,7 @@ export interface SourceFormValues {
   trustedServerCertificateFingerprint: string;
   importLimit: number;
   connectionTimeout?: string;
-  importTimeout?: string;
+  syncTimeout?: string;
+  syncLimit?: number;
   datacenters?: string[];
 }

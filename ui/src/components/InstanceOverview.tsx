@@ -222,6 +222,7 @@ const InstanceOverview = () => {
                     <th>Capacity</th>
                     <th>Shared</th>
                     <th>Supported</th>
+                    <th>Background Import Verified</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -231,6 +232,7 @@ const InstanceOverview = () => {
                       <td>{bytesToHumanReadable(item.capacity)}</td>
                       <td>{item.shared ? "Yes" : "No"}</td>
                       <td>{item.supported ? "Yes" : "No"}</td>
+                      <td>{item.background_import_verified ? "Yes" : "No"}</td>
                     </tr>
                   ))}
                 </tbody>
