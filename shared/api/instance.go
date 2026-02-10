@@ -46,9 +46,9 @@ func (i Instance) GetName() string {
 type InstanceFilterable struct {
 	InstanceProperties
 
-	Source               string     `json:"source"                  yaml:"source"                  expr:"source"`
-	SourceType           SourceType `json:"source_type"             yaml:"source_type"             expr:"source_type"`
-	LastUpdateFromSource time.Time  `json:"last_update_from_source" yaml:"last_update_from_source" expr:"last_update_from_source"`
+	Source               string    `json:"source"                  yaml:"source"                  expr:"source"`
+	SourceType           string    `json:"source_type"             yaml:"source_type"             expr:"source_type"`
+	LastUpdateFromSource time.Time `json:"last_update_from_source" yaml:"last_update_from_source" expr:"last_update_from_source"`
 }
 
 func (i Instance) ToFilterable() InstanceFilterable {
@@ -58,7 +58,7 @@ func (i Instance) ToFilterable() InstanceFilterable {
 	return InstanceFilterable{
 		InstanceProperties:   props,
 		Source:               i.Source,
-		SourceType:           i.SourceType,
+		SourceType:           string(i.SourceType),
 		LastUpdateFromSource: i.LastUpdateFromSource,
 	}
 }

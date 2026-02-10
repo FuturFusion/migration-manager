@@ -2,7 +2,6 @@ package migration
 
 import (
 	"fmt"
-	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -150,8 +149,8 @@ func (i *Instance) GetOSType() api.OSType {
 	return api.OSTYPE_LINUX
 }
 
-func (i Instance) MatchesCriteria(expression string) (bool, error) {
-	filterable, includeExpr, err := i.CompileIncludeExpression(expression)
+func (i Instance) MatchesCriteria(expression string, locationAlias bool) (bool, error) {
+	filterable, includeExpr, err := i.CompileIncludeExpression(expression, locationAlias)
 	if err != nil {
 		return false, fmt.Errorf("Failed to compile include expression %q: %v", expression, err)
 	}
@@ -169,7 +168,7 @@ func (i Instance) MatchesCriteria(expression string) (bool, error) {
 	return result, nil
 }
 
-func (i Instance) CompileIncludeExpression(expression string) (*api.InstanceFilterable, *vm.Program, error) {
+func (i Instance) CompileIncludeExpression(expression string, locationAlias bool) (*api.InstanceFilterable, *vm.Program, error) {
 	filterable := i.ToAPI().ToFilterable()
 	matchTag := func(exact bool, params ...any) (any, error) {
 		if len(params) != 2 {
@@ -218,33 +217,8 @@ func (i Instance) CompileIncludeExpression(expression string) (*api.InstanceFilt
 		return false, nil
 	}
 
-	customFunctions := []expr.Option{
-		expr.Function("path_base", func(params ...any) (any, error) {
-			if len(params) != 1 {
-				return nil, fmt.Errorf("invalid number of arguments, expected 1, got: %d", len(params))
-			}
-
-			path, ok := params[0].(string)
-			if !ok {
-				return nil, fmt.Errorf("invalid argument type, expected string, got: %T", params[0])
-			}
-
-			return filepath.Base(path), nil
-		}),
-
-		expr.Function("path_dir", func(params ...any) (any, error) {
-			if len(params) != 1 {
-				return nil, fmt.Errorf("invalid number of arguments, expected 1, got: %d", len(params))
-			}
-
-			path, ok := params[0].(string)
-			if !ok {
-				return nil, fmt.Errorf("invalid argument type, expected string, got: %T", params[0])
-			}
-
-			return filepath.Dir(path), nil
-		}),
-
+	customFunctions := append([]expr.Option{}, pathFunctions...)
+	customFunctions = append(customFunctions,
 		expr.Function("has_tag", func(params ...any) (any, error) {
 			return matchTag(true, params...)
 		}),
@@ -252,7 +226,7 @@ func (i Instance) CompileIncludeExpression(expression string) (*api.InstanceFilt
 		expr.Function("matches_tag", func(params ...any) (any, error) {
 			return matchTag(false, params...)
 		}),
-	}
+	)
 
 	// Instantiate all nil fields when compiling the expression for consistency.
 	baseEnv := api.InstanceFilterable{
@@ -267,6 +241,10 @@ func (i Instance) CompileIncludeExpression(expression string) (*api.InstanceFilt
 	}
 
 	options := append([]expr.Option{expr.Env(baseEnv)}, customFunctions...)
+
+	if locationAlias {
+		expression = matchLocationAlias(expression, options...)
+	}
 
 	program, err := expr.Compile(expression, options...)
 	if err != nil {

@@ -150,7 +150,7 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid status: %v", err)
 	}
 
-	_, _, err = Instance{}.CompileIncludeExpression(b.IncludeExpression)
+	_, _, err = Instance{}.CompileIncludeExpression(b.IncludeExpression, false)
 	if err != nil {
 		return NewValidationErrf("Invalid batch %q is not a valid include expression: %v", b.IncludeExpression, err)
 	}
@@ -171,7 +171,7 @@ func (b Batch) Validate() error {
 		}
 
 		exprs[c.IncludeExpression] = true
-		_, _, err = Instance{}.CompileIncludeExpression(b.IncludeExpression)
+		_, _, err = Instance{}.CompileIncludeExpression(b.IncludeExpression, false)
 		if err != nil {
 			return NewValidationErrf("Invalid constraint %q is not a valid include expression: %v", b.IncludeExpression, err)
 		}

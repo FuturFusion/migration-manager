@@ -167,7 +167,7 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 				continue
 			}
 
-			match, err := instance.MatchesCriteria(includeExpression)
+			match, err := instance.MatchesCriteria(includeExpression, true)
 			if err != nil {
 				return response.SmartError(err)
 			}

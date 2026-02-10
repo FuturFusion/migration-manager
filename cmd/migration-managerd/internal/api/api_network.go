@@ -51,6 +51,12 @@ var networkOverrideCmd = APIEndpoint{
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: include_expression
+//	    description: An expression used to select networks to add to the result
+//	    type: string
+//	    example: name matches 'centos'
 //	responses:
 //	  "200":
 //	    description: API networks
@@ -80,6 +86,8 @@ var networkOverrideCmd = APIEndpoint{
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func networksGet(d *Daemon, r *http.Request) response.Response {
+	includeExpression := r.FormValue("include_expression")
+
 	// Parse the recursion field.
 	networks, err := d.network.GetAll(r.Context())
 	if err != nil {
@@ -88,12 +96,22 @@ func networksGet(d *Daemon, r *http.Request) response.Response {
 
 	result := make([]api.Network, 0, len(networks))
 	for _, network := range networks {
-		apiNet, err := network.ToAPI()
-		if err != nil {
-			return response.SmartError(err)
+		var match bool
+		if includeExpression != "" {
+			match, err = network.MatchesCriteria(includeExpression, true)
+			if err != nil {
+				return response.SmartError(err)
+			}
 		}
 
-		result = append(result, *apiNet)
+		if includeExpression == "" || match {
+			apiNet, err := network.ToAPI()
+			if err != nil {
+				return response.SmartError(err)
+			}
+
+			result = append(result, *apiNet)
+		}
 	}
 
 	return response.SyncResponse(true, result)
