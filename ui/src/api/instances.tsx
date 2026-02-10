@@ -49,3 +49,14 @@ export const deleteInstanceOverride = (
       .catch(reject);
   });
 };
+
+export const resetBackgroundImport = (
+  uuid: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/instances/${uuid}/:reset-background-import`, { method: "POST" })
+      .then((response) => response.json())
+      .then(resolve)
+      .catch(reject);
+  });
+};

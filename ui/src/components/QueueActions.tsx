@@ -1,8 +1,9 @@
 import { FC, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { MdOutlineDelete, MdOutlineStopCircle } from "react-icons/md";
+import { MdOutlineDelete, MdOutlineStopCircle, MdSync } from "react-icons/md";
 import { RiResetLeftLine } from "react-icons/ri";
 import { Button } from "react-bootstrap";
+import { resetBackgroundImport } from "api/instances";
 import { cancelQueue, deleteQueue, retryQueue } from "api/queue";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
@@ -39,6 +40,11 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
     cursor: "pointer",
     color:
       canRetryQueueEntry(queueEntry) && !opInprogress ? "grey" : "lightgrey",
+  };
+
+  const resetStyle = {
+    cursor: "pointer",
+    color: !opInprogress ? "grey" : "lightgrey",
   };
 
   const onCancel = () => {
@@ -107,6 +113,28 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
       });
   };
 
+  const onResetBackgroundImport = () => {
+    if (opInprogress) {
+      return;
+    }
+
+    setOpInprogress(true);
+    resetBackgroundImport(queueEntry.instance_uuid)
+      .then((response) => {
+        setOpInprogress(false);
+        if (response.error_code == 0) {
+          notify.success(`Queue entry ${queueEntry.instance_uuid} reset`);
+          queryClient.invalidateQueries({ queryKey: ["queue"] });
+          return;
+        }
+        notify.error(response.error);
+      })
+      .catch((e) => {
+        setOpInprogress(false);
+        notify.error(`Error during queue entry reset: ${e}`);
+      });
+  };
+
   return (
     <div>
       <MdOutlineStopCircle
@@ -135,6 +163,14 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
           }
 
           setShowDeleteModal(true);
+        }}
+      />
+      <MdSync
+        title="Reset background import"
+        size={25}
+        style={resetStyle}
+        onClick={() => {
+          onResetBackgroundImport();
         }}
       />
       <ModalWindow
