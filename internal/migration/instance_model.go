@@ -100,6 +100,10 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 	}
 
 	if !i.Properties.SupportsBackgroundImport() && !overrides.AllowNoBackgroundImport {
+		if i.Properties.BackgroundImport {
+			return fmt.Errorf("Verifying background import support")
+		}
+
 		return fmt.Errorf("Background import is not supported")
 	}
 
