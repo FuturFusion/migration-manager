@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v6/shared/validate"
 
@@ -88,6 +90,52 @@ func (n Network) Validate() error {
 	}
 
 	return nil
+}
+
+func (n Network) ToFilterable() api.NetworkFilterable {
+	return api.NetworkFilterable{
+		UUID:             n.UUID,
+		SourceSpecificID: n.SourceSpecificID,
+		Source:           n.Source,
+		Type:             n.Type,
+		Location:         n.Location,
+	}
+}
+
+func (n Network) MatchesCriteria(expression string) (bool, error) {
+	filterable, includeExpr, err := n.CompileIncludeExpression(expression)
+	if err != nil {
+		return false, fmt.Errorf("Failed to compile include expression %q: %v", expression, err)
+	}
+
+	output, err := expr.Run(includeExpr, filterable)
+	if err != nil {
+		return false, fmt.Errorf("Failed to run include expression %q with network %v: %v", expression, filterable, err)
+	}
+
+	result, ok := output.(bool)
+	if !ok {
+		return false, fmt.Errorf("Include expression %q does not evaluate to boolean result: %v", expression, output)
+	}
+
+	return result, nil
+}
+
+func (n Network) CompileIncludeExpression(expression string) (*api.NetworkFilterable, *vm.Program, error) {
+	filterable := n.ToFilterable()
+
+	customFunctions := append([]expr.Option{}, pathFunctions...)
+
+	// Instantiate all nil fields when compiling the expression for consistency.
+	baseEnv := api.NetworkFilterable{}
+	options := append([]expr.Option{expr.Env(baseEnv)}, customFunctions...)
+
+	program, err := expr.Compile(expression, options...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return &filterable, program, nil
 }
 
 // FilterUsedNetworks returns the subset of supplied networks that are in use by the supplied instances.
