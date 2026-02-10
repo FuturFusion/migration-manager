@@ -98,7 +98,7 @@ func networksGet(d *Daemon, r *http.Request) response.Response {
 	for _, network := range networks {
 		var match bool
 		if includeExpression != "" {
-			match, err = network.MatchesCriteria(includeExpression)
+			match, err = network.MatchesCriteria(includeExpression, true)
 			if err != nil {
 				return response.SmartError(err)
 			}
