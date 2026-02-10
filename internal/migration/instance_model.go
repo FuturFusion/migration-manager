@@ -149,8 +149,8 @@ func (i *Instance) GetOSType() api.OSType {
 	return api.OSTYPE_LINUX
 }
 
-func (i Instance) MatchesCriteria(expression string) (bool, error) {
-	filterable, includeExpr, err := i.CompileIncludeExpression(expression)
+func (i Instance) MatchesCriteria(expression string, locationAlias bool) (bool, error) {
+	filterable, includeExpr, err := i.CompileIncludeExpression(expression, locationAlias)
 	if err != nil {
 		return false, fmt.Errorf("Failed to compile include expression %q: %v", expression, err)
 	}
@@ -168,7 +168,7 @@ func (i Instance) MatchesCriteria(expression string) (bool, error) {
 	return result, nil
 }
 
-func (i Instance) CompileIncludeExpression(expression string) (*api.InstanceFilterable, *vm.Program, error) {
+func (i Instance) CompileIncludeExpression(expression string, locationAlias bool) (*api.InstanceFilterable, *vm.Program, error) {
 	filterable := i.ToAPI().ToFilterable()
 	matchTag := func(exact bool, params ...any) (any, error) {
 		if len(params) != 2 {
@@ -241,6 +241,10 @@ func (i Instance) CompileIncludeExpression(expression string) (*api.InstanceFilt
 	}
 
 	options := append([]expr.Option{expr.Env(baseEnv)}, customFunctions...)
+
+	if locationAlias {
+		expression = matchLocationAlias(expression, options...)
+	}
 
 	program, err := expr.Compile(expression, options...)
 	if err != nil {

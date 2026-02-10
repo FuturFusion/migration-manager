@@ -102,8 +102,8 @@ func (n Network) ToFilterable() api.NetworkFilterable {
 	}
 }
 
-func (n Network) MatchesCriteria(expression string) (bool, error) {
-	filterable, includeExpr, err := n.CompileIncludeExpression(expression)
+func (n Network) MatchesCriteria(expression string, locationAlias bool) (bool, error) {
+	filterable, includeExpr, err := n.CompileIncludeExpression(expression, locationAlias)
 	if err != nil {
 		return false, fmt.Errorf("Failed to compile include expression %q: %v", expression, err)
 	}
@@ -121,7 +121,7 @@ func (n Network) MatchesCriteria(expression string) (bool, error) {
 	return result, nil
 }
 
-func (n Network) CompileIncludeExpression(expression string) (*api.NetworkFilterable, *vm.Program, error) {
+func (n Network) CompileIncludeExpression(expression string, locationAlias bool) (*api.NetworkFilterable, *vm.Program, error) {
 	filterable := n.ToFilterable()
 
 	customFunctions := append([]expr.Option{}, pathFunctions...)
@@ -129,6 +129,10 @@ func (n Network) CompileIncludeExpression(expression string) (*api.NetworkFilter
 	// Instantiate all nil fields when compiling the expression for consistency.
 	baseEnv := api.NetworkFilterable{}
 	options := append([]expr.Option{expr.Env(baseEnv)}, customFunctions...)
+
+	if locationAlias {
+		expression = matchLocationAlias(expression, options...)
+	}
 
 	program, err := expr.Compile(expression, options...)
 	if err != nil {
