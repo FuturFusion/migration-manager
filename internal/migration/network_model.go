@@ -139,11 +139,11 @@ func (n Network) CompileIncludeExpression(expression string) (*api.NetworkFilter
 }
 
 // FilterUsedNetworks returns the subset of supplied networks that are in use by the supplied instances.
-func FilterUsedNetworks(nets Networks, vms Instances) Networks {
+func FilterUsedNetworks(nets Networks, instances Instances) Networks {
 	instanceNICsToSources := map[string]string{}
-	for _, vm := range vms {
-		for _, nic := range vm.Properties.NICs {
-			instanceNICsToSources[nic.SourceSpecificID] = vm.Source
+	for _, inst := range instances {
+		for _, nic := range inst.Properties.NICs {
+			instanceNICsToSources[nic.SourceSpecificID] = inst.Source
 		}
 	}
 
