@@ -1,11 +1,16 @@
 import { Instance } from "types/instance";
 import { Network } from "types/network";
 import { APIResponse } from "types/response";
+import { handleAPIResponse } from "util/response";
 
-export const fetchNetworks = (): Promise<Network[]> => {
+export const fetchNetworks = (filter: string): Promise<Network[]> => {
+  let url = `/1.0/networks?recursion=1`;
+  if (filter) {
+    url += `&include_expression=${filter}`;
+  }
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/networks?recursion=1`)
-      .then((response) => response.json())
+    fetch(url)
+      .then(handleAPIResponse)
       .then((data) => resolve(data.metadata))
       .catch(reject);
   });
