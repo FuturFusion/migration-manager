@@ -106,6 +106,7 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 // skipNonResponsiveSources - If true, if a connection to a source returns an error, syncing from that source will be skipped.
 func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 	log := slog.With(slog.String("method", "syncAllSources"))
+	log.Info("Syncing all sources")
 	vmSourcesByName := map[string]migration.Source{}
 	networkSourcesByName := map[string]migration.Source{}
 	var sources migration.Sources
@@ -294,6 +295,7 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 
 // syncSourceData fetches instance and network data from the source and updates our database records.
 func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error {
+	slog.Info("Syncing source", slog.String("source", src.Name))
 	nsxSources, err := d.source.GetAll(ctx, api.SOURCETYPE_NSX)
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve %q sources: %w", api.SOURCETYPE_NSX, err)
@@ -916,6 +918,7 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 		slog.String("source", src.Name),
 	)
 
+	log.Debug("Fetching NSX data for source")
 	s, err := source.NewInternalNSXSourceFrom(src.ToAPI())
 	if err != nil {
 		return false, fmt.Errorf("Failed to create NSX source from source %q: %w", src.Name, err)
@@ -1048,6 +1051,7 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 
 // fetchVMWareSourceData connects to a VMWare source and returns the resources we care about, keyed by their unique identifiers.
 func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[string]migration.Network, map[uuid.UUID]migration.Instance, migration.Warnings, error) {
+	slog.Debug("Fetching VMware data for source", slog.String("source", src.Name))
 	s, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Failed to create VMwareSource from source: %w", err)

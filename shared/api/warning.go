@@ -17,6 +17,8 @@ const (
 	NetworkImportFailed WarningType = "Networks not imported"
 	// InstanceImportFailed indicates an instance failed to be imported from its source.
 	InstanceImportFailed WarningType = "Instances not imported"
+	// InstanceIgnored indicates that an instance was purposely ignored from source import.
+	InstanceIgnored WarningType = "Instances were ignored"
 	// InstanceMissingNetworkSource indicates an instance contains a network with an external source, but that source is not registered.
 	InstanceMissingNetworkSource WarningType = "External networks with no registered source"
 	// SourceUnavailable indicates a target is unavailable.

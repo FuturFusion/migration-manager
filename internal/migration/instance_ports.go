@@ -23,6 +23,7 @@ type InstanceService interface {
 	GetBatchesByUUID(ctx context.Context, id uuid.UUID) (Batches, error)
 
 	Update(ctx context.Context, instance *Instance) error
+	ResetBackgroundImport(ctx context.Context, instance *Instance) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 
 	RemoveFromQueue(ctx context.Context, id uuid.UUID) error

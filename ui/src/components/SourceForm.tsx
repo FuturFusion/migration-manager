@@ -57,7 +57,8 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
     trustedServerCertificateFingerprint: "",
     importLimit: importLimit,
     connectionTimeout: "10m",
-    importTimeout: "10s",
+    syncTimeout: "10s",
+    syncLimit: 1,
     datacenters: [],
   };
 
@@ -77,9 +78,12 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
       formikInitialValues.connectionTimeout = (
         source.properties as VMwareProperties
       ).connection_timeout;
-      formikInitialValues.importTimeout = (
+      formikInitialValues.syncTimeout = (
         source.properties as VMwareProperties
-      ).import_timeout;
+      ).sync_timeout;
+      formikInitialValues.syncLimit = (
+        source.properties as VMwareProperties
+      ).sync_limit;
       formikInitialValues.datacenters = (
         source.properties as VMwareProperties
       ).datacenters;
@@ -101,7 +105,8 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
             values.trustedServerCertificateFingerprint,
           import_limit: values.importLimit,
           connection_timeout: values.connectionTimeout,
-          import_timeout: values.importTimeout,
+          sync_timeout: values.syncTimeout,
+          sync_limit: values.syncLimit,
           datacenters: values.datacenters?.filter((s) => s.trim() !== ""),
         },
       };
@@ -259,17 +264,30 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
                 />
               </Form.Group>
               <Form.Group className="mb-3" controlId="fingerprint">
-                <Form.Label>VM import timeout</Form.Label>
+                <Form.Label>VM sync timeout</Form.Label>
                 <Form.Control
                   type="text"
-                  name="importTimeout"
-                  value={formik.values.importTimeout}
+                  name="syncTimeout"
+                  value={formik.values.syncTimeout}
                   disabled={formik.isSubmitting}
                   onChange={formik.handleChange}
                   onBlur={formik.handleBlur}
                   isInvalid={
-                    !!formik.errors.importTimeout &&
-                    formik.touched.importTimeout
+                    !!formik.errors.syncTimeout && formik.touched.syncTimeout
+                  }
+                />
+              </Form.Group>
+              <Form.Group className="mb-3" controlId="fingerprint">
+                <Form.Label>VM concurrent sync limit</Form.Label>
+                <Form.Control
+                  type="number"
+                  name="syncLimit"
+                  value={formik.values.syncLimit}
+                  disabled={formik.isSubmitting}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  isInvalid={
+                    !!formik.errors.syncLimit && formik.touched.syncLimit
                   }
                 />
               </Form.Group>

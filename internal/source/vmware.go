@@ -29,6 +29,7 @@ import (
 	"github.com/vmware/govmomi/vim25/mo"
 	"github.com/vmware/govmomi/vim25/soap"
 	"github.com/vmware/govmomi/vim25/types"
+	"golang.org/x/sync/errgroup"
 
 	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/migratekit/vmware"
@@ -190,7 +191,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 	vmRefs := []*object.VirtualMachine{}
 	netRefs := []object.NetworkReference{}
-	datastores := []*object.Datastore{}
+	var numDatastores int
 	for _, p := range paths {
 		var notFoundErr *find.NotFoundError
 		log.Debug("Fetching VMs from source")
@@ -225,10 +226,10 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 
 		vmRefs = append(vmRefs, pathVMs...)
 		netRefs = append(netRefs, pathNets...)
-		datastores = append(datastores, pathDatastores...)
+		numDatastores += len(pathDatastores)
 	}
 
-	if len(vmRefs) == 0 || len(datastores) == 0 || len(netRefs) == 0 {
+	if len(vmRefs) == 0 || numDatastores == 0 || len(netRefs) == 0 {
 		log.Warn("No data was imported from the source")
 		return vms, migration.Networks{}, nil, nil
 	}
@@ -267,60 +268,71 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 		}
 	}
 
-	for _, vm := range vmRefs {
-		inst, instWarnings, err := s.getVM(ctx, vm, tc, networkLocationsByID, catMap, datastores)
-		warnings = append(warnings, instWarnings...)
+	grp := errgroup.Group{}
+	grp.SetLimit(s.SyncLimit)
 
-		if err != nil && errors.Is(err, context.DeadlineExceeded) {
-			msg := fmt.Sprintf("Import timeout (%s) exceeded", s.ImportTimeout)
-			if ctx.Err() != nil {
-				msg = fmt.Sprintf("Source connection timeout (%s) exceeded", s.ConnectionTimeout)
+	for _, vm := range vmRefs {
+		grp.Go(func() error {
+			inst, warningType, err := s.getVM(ctx, vm, tc, networkLocationsByID, catMap)
+			if err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					if ctx.Err() != nil {
+						err = fmt.Errorf("Source connection timeout (%s) exceeded: %w", s.ConnectionTimeout, err)
+					} else {
+						err = fmt.Errorf("Import timeout (%s) exceeded: %w", s.SyncTimeout, err)
+					}
+				}
+
+				// Only return an error if we got no warning hint.
+				if warningType == "" {
+					return err
+				}
+
+				warnings = append(warnings, migration.NewSyncWarning(warningType, s.Name, err.Error()))
 			}
 
-			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, msg))
-			continue
-		}
+			if inst != nil {
+				vms = append(vms, *inst)
+			}
 
-		if err != nil {
-			return nil, nil, nil, err
-		}
+			return nil
+		})
+	}
 
-		if inst != nil {
-			vms = append(vms, *inst)
-		}
+	err = grp.Wait()
+	if err != nil {
+		return nil, nil, warnings, err
 	}
 
 	return vms, networks, warnings, nil
 }
 
-func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMachine, tc *tags.Manager, networkLocationsByID map[string]string, catMap map[string]string, datastores []*object.Datastore) (*migration.Instance, migration.Warnings, error) {
-	ctx, cancel := context.WithTimeout(ctx, s.ImportTimeout.Duration)
+func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMachine, tc *tags.Manager, networkLocationsByID map[string]string, catMap map[string]string) (*migration.Instance, api.WarningType, error) {
+	ctx, cancel := context.WithTimeout(ctx, s.SyncTimeout.Duration)
 	defer cancel()
 
-	warnings := migration.Warnings{}
-
-	log := slog.With(slog.String("location", vm.InventoryPath), slog.String("source", s.Name))
+	log := slog.With(slog.String("location", vm.InventoryPath), slog.String("source", s.Name), slog.String("method", "getVM"))
 	// Ignore any vCLS instances.
 	if strings.HasPrefix(vm.Name(), "vCLS-") {
 		log.Info("Ignoring vCLS tagged VM")
-		return nil, warnings, nil
+		return nil, api.InstanceIgnored, fmt.Errorf("Not importing vCLS tagged VM %q", vm.InventoryPath)
 	}
 
 	var vmProperties mo.VirtualMachine
 	log.Debug("Importing VM")
 	err := vm.Properties(ctx, vm.Reference(), []string{}, &vmProperties)
 	if err != nil {
-		return nil, warnings, nil
+		return nil, api.InstanceImportFailed, fmt.Errorf("Failed to fetch VMware properties for VM %q: %w", vm.InventoryPath, err)
 	}
 
 	// If a VM has no configuration, then it's just a stub, so skip it.
 	if vmProperties.Config == nil {
-		return nil, warnings, nil
+		return nil, api.InstanceIgnored, fmt.Errorf("Not importing VM with empty source config %q", vm.InventoryPath)
 	}
 
 	// Skip VM templates.
 	if vmProperties.Config.Template {
-		return nil, warnings, nil
+		return nil, api.InstanceIgnored, fmt.Errorf("Not importing VM tagged as a template %q", vm.InventoryPath)
 	}
 
 	vmProps, err := s.getVMProperties(vm, vmProperties, networkLocationsByID)
@@ -332,22 +344,21 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 			_ = os.WriteFile(fileName, b, 0o644)
 		}
 
-		msg := fmt.Sprintf("Failed to import %q: %v", vm.InventoryPath, err)
-		warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, msg))
 		log.Error("Failed to record vm properties", slog.Any("error", err))
-		return nil, warnings, nil
+
+		return nil, api.InstanceImportFailed, fmt.Errorf("Failed to record properties for VM %q: %w", vm.InventoryPath, err)
 	}
 
 	if vmProps.Description == "VMware vCenter Server Appliance" {
 		log.Info("Ignoring vCenter Server tagged VM")
-		return nil, warnings, nil
+		return nil, api.InstanceIgnored, fmt.Errorf("Not importing VM tagged as vCenter appliance %q", vm.InventoryPath)
 	}
 
 	if !s.isESXI {
 		log.Debug("Fetching vCenter tags")
 		vmTags, err := tc.GetAttachedTags(ctx, vm.Reference())
 		if err != nil {
-			return nil, warnings, err
+			return nil, api.InstanceImportFailed, fmt.Errorf("Failed to import tags for VM %q: %w", vm.InventoryPath, err)
 		}
 
 		for _, tag := range vmTags {
@@ -359,19 +370,18 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 			}
 		}
 
-		log.Debug("Fetching vCenter resource pools")
-		vmResourcePool, err := vm.ResourcePool(ctx)
+		// VMware returns an error if the VM happens to not have resource pools, so we only return early if there was a context deadline error.
+		log.Debug("Fetching VM resource pool name")
+		var pool mo.ResourcePool
+		err = property.DefaultCollector(s.govmomiClient.Client).RetrieveOne(ctx, *vmProperties.ResourcePool, []string{"name"}, &pool)
 		if err != nil {
-			log.Error("Failed determine resource pool for VM", slog.Any("error", err))
-		} else {
-			log.Debug("Fetching vCenter resource pool data")
-			poolName, err := vmResourcePool.ObjectName(ctx)
-			if err != nil {
-				log.Error("Failed determine resource pool name for VM", slog.Any("error", err))
-			} else {
-				resourcePoolKey := fmt.Sprintf("%s.resource_pool", s.SourceType)
-				vmProps.Config[resourcePoolKey] = poolName
+			log.Error("Failed determine resource pool name for VM", slog.Any("error", err))
+			if errors.Is(err, context.DeadlineExceeded) {
+				return nil, api.InstanceImportFailed, fmt.Errorf("Failed to fetch resource pool names for VM %q: %w", vm.InventoryPath, err)
 			}
+		} else {
+			resourcePoolKey := fmt.Sprintf("%s.resource_pool", s.SourceType)
+			vmProps.Config[resourcePoolKey] = pool.Name
 		}
 	}
 
@@ -383,56 +393,20 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 		Properties:           *vmProps,
 	}
 
-	// Check if background import is really active.
-	if inst.Properties.BackgroundImport {
-		for _, disk := range inst.Properties.Disks {
-			if !disk.Supported {
-				continue
-			}
-
-			var datastore *object.Datastore
-			var diskPath string
-			for _, store := range datastores {
-				name := filepath.Base(store.InventoryPath)
-				path, ok := strings.CutPrefix(disk.Name, "["+name+"] ")
-				if ok {
-					datastore = store
-					diskPath = path
-					break
-				}
-			}
-
-			if datastore == nil {
-				log.Warn("Failed to find datastore for disk", slog.String("disk", disk.Name))
-				inst.Properties.BackgroundImport = false
-				break
-			}
-
-			diskPath, _ = strings.CutSuffix(diskPath, ".vmdk")
-			log.Debug("Fetching datastore file", slog.String("file", diskPath))
-			_, err := datastore.Stat(ctx, diskPath+"-ctk.vmdk")
-			if err != nil {
-				log.Warn("Failed to find ctk file in datastore", slog.String("disk", disk.Name), slog.String("datastore", datastore.InventoryPath), slog.String("file", diskPath+"-ctk.vmdk"), slog.Any("error", err))
-				inst.Properties.BackgroundImport = false
-				break
-			}
-		}
-	}
-
 	if inst.GetOSType() == api.OSTYPE_WINDOWS {
 		_, err := util.MapWindowsVersionToAbbrev(inst.Properties.OSVersion)
 		if err != nil {
-			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, s.Name, fmt.Sprintf("%q: %v", inst.Properties.Location, err.Error())))
-			return nil, warnings, nil
+			return nil, api.InstanceImportFailed, fmt.Errorf("Failed to determine OS version for Windows VM %q: %w", inst.Properties.Location, err)
 		}
 	}
 
 	err = inst.DisabledReason(api.InstanceRestrictionOverride{})
 	if err != nil {
-		warnings = append(warnings, migration.NewSyncWarning(api.InstanceCannotMigrate, s.Name, fmt.Sprintf("%q: %v", inst.Properties.Location, err.Error())))
+		// Return the instance as this should not be a fatal error.
+		return &inst, api.InstanceCannotMigrate, fmt.Errorf("%q: %w", inst.Properties.Location, err)
 	}
 
-	return &inst, warnings, nil
+	return &inst, "", nil
 }
 
 func (s *InternalVMwareSource) getAllNetworks(ctx context.Context, networkLocationsByID map[string]string) (migration.Networks, error) {
@@ -538,6 +512,154 @@ func (s *InternalVMwareSource) getAllNetworks(ctx context.Context, networkLocati
 	}
 
 	return networksInUse, nil
+}
+
+// GetBackgroundImport returns the background import support property of an instance by its UUID.
+func (s *InternalVMwareSource) GetBackgroundImport(ctx context.Context, instUUID uuid.UUID) (bool, error) {
+	obj, err := object.NewSearchIndex(s.govmomiClient.Client).FindByUuid(ctx, nil, instUUID.String(), true, ptr.To(true))
+	if err != nil {
+		return false, err
+	}
+
+	props, err := properties.Definitions(s.SourceType, s.version)
+	if err != nil {
+		return false, err
+	}
+
+	info, err := props.Get(properties.InstanceBackgroundImport)
+	if err != nil {
+		return false, err
+	}
+
+	var vm mo.VirtualMachine
+	err = object.NewVirtualMachine(s.govmomiClient.Client, obj.Reference()).Properties(ctx, obj.Reference(), []string{info.Key}, &vm)
+	if err != nil {
+		return false, err
+	}
+
+	return *vm.Config.ChangeTrackingEnabled, nil
+}
+
+// VerifyBackgroundImport checks each supported disk for each VM for a corresponding ctk file for each VM that reports to support background import.
+// Returns the updated instance objects.
+func (s *InternalVMwareSource) VerifyBackgroundImport(ctx context.Context, instances migration.Instances) (migration.Instances, error) {
+	log := slog.With(slog.String("source", s.Name))
+	log.Info("Verifying background import support")
+
+	finder := find.NewFinder(s.govmomiClient.Client)
+	paths := []string{"/..."}
+	datastores := []*object.Datastore{}
+
+	if len(s.Datacenters) > 0 {
+		paths = s.Datacenters
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, s.ConnectionTimeout.Duration)
+	defer cancel()
+
+	// Prepare the disks and instances that we care about so we don't query vCenter unecessarily.
+	candidateInsts := map[uuid.UUID]map[string]struct{}{}
+	for _, inst := range instances {
+		if inst.Properties.BackgroundImport {
+			candidateDisks := map[string]struct{}{}
+			for _, disk := range inst.Properties.Disks {
+				if disk.Supported && !disk.BackgroundImportVerified {
+					candidateDisks[disk.Name] = struct{}{}
+				}
+			}
+
+			if len(candidateDisks) > 0 {
+				candidateInsts[inst.UUID] = candidateDisks
+			}
+		}
+	}
+
+	if len(candidateInsts) == 0 {
+		return nil, nil
+	}
+
+	for _, p := range paths {
+		var notFoundErr *find.NotFoundError
+		log.Debug("Fetching datastores from source")
+		pathDatastores, err := finder.DatastoreList(ctx, p)
+		if err != nil {
+			if !errors.As(err, &notFoundErr) {
+				return nil, err
+			}
+
+			log.Warn("Registered source has no datastores in path", slog.String("path", p))
+		}
+
+		datastores = append(datastores, pathDatastores...)
+	}
+
+	updatedInstances := migration.Instances{}
+	for _, inst := range instances {
+		candidateDisks, ok := candidateInsts[inst.UUID]
+		if !ok {
+			continue
+		}
+
+		var updated bool
+		for i, disk := range inst.Properties.Disks {
+			_, ok := candidateDisks[disk.Name]
+			if !ok {
+				continue
+			}
+
+			var datastore *object.Datastore
+			var diskPath string
+			for _, store := range datastores {
+				name := filepath.Base(store.InventoryPath)
+				path, ok := strings.CutPrefix(disk.Name, "["+name+"] ")
+				if ok {
+					datastore = store
+					diskPath = path
+					break
+				}
+			}
+
+			diskPath, ok = strings.CutSuffix(diskPath, ".vmdk")
+			if !ok {
+				continue
+			}
+
+			if datastore == nil {
+				log.Warn("Failed to find datastore for disk", slog.String("disk", disk.Name))
+				// This might be a permission error that is fixable, therefore don't disable background import so we can check again later.
+				break
+			}
+
+			ctkFile := diskPath + "-ctk.vmdk"
+			log.Debug("Fetching datastore file", slog.String("disk", disk.Name), slog.String("file", ctkFile))
+
+			// Use the per VM sync timeout as checking the datastore is an expensive call.
+			ctx, cancel := context.WithTimeout(ctx, s.SyncTimeout.Duration)
+			_, err := datastore.Stat(ctx, ctkFile)
+			cancel()
+			if err != nil {
+				log.Warn("Failed to find ctk file in datastore", slog.String("disk", disk.Name), slog.String("datastore", datastore.InventoryPath), slog.String("file", ctkFile), slog.Any("error", err))
+
+				// If we didn't get a context timeout, assume the query succeeded but failed to find the ctk file.
+				// So we should disable background import for this VM because it's not fully supported.
+				if !errors.Is(err, context.DeadlineExceeded) {
+					inst.Properties.BackgroundImport = false
+					updated = true
+				}
+
+				break
+			}
+
+			inst.Properties.Disks[i].BackgroundImportVerified = true
+			updated = true
+		}
+
+		if updated {
+			updatedInstances = append(updatedInstances, inst)
+		}
+	}
+
+	return updatedInstances, nil
 }
 
 func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName string, snapshotName string) error {

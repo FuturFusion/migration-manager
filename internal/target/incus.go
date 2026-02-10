@@ -398,7 +398,7 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 			instance.Config[info.Key] = "2"
 		case properties.InstanceMemory:
 			instance.Config[info.Key] = "4GiB"
-			if p.BackgroundImport {
+			if p.SupportsBackgroundImport() {
 				instance.Config[info.Key] = "8GiB"
 			}
 
@@ -1180,6 +1180,10 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 			if !network.Managed && netCfg.NICType == api.INCUSNICTYPE_MANAGED {
 				return fmt.Errorf("Target migration network %q is not a managed network", network.Name)
 			}
+
+			if network.Managed && network.Type != "bridge" && (netCfg.NICType == api.INCUSNICTYPE_BRIDGED || netCfg.NICType == api.INCUSNICTYPE_PHYSICAL) {
+				return fmt.Errorf("Target migration network %q expects nictype %q, not %q", network.Name, api.INCUSNICTYPE_MANAGED, netCfg.NICType)
+			}
 		}
 	}
 
@@ -1214,6 +1218,10 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 			if exists {
 				if !n.Managed && targetNet.NICType == api.INCUSNICTYPE_MANAGED {
 					return fmt.Errorf("Target network %q is not a managed network", n.Name)
+				}
+
+				if n.Managed && n.Type != "bridge" && (targetNet.NICType == api.INCUSNICTYPE_BRIDGED || targetNet.NICType == api.INCUSNICTYPE_PHYSICAL) {
+					return fmt.Errorf("Target network %q expects nictype %q, not %q", n.Name, api.INCUSNICTYPE_MANAGED, targetNet.NICType)
 				}
 
 				break

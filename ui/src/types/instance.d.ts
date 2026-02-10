@@ -9,6 +9,7 @@ export interface InstancePropertiesDisk {
   capacity: number;
   shared: boolean;
   supported: boolean;
+  background_import_verified: boolean;
 }
 
 export interface InstancePropertiesNIC {

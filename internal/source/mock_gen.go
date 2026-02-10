@@ -10,6 +10,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
+	"github.com/google/uuid"
 )
 
 // Ensure, that SourceMock does implement Source.
@@ -37,6 +38,9 @@ var _ Source = &SourceMock{}
 //			GetAllVMsFunc: func(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error) {
 //				panic("mock out the GetAllVMs method")
 //			},
+//			GetBackgroundImportFunc: func(ctx context.Context, instUUID uuid.UUID) (bool, error) {
+//				panic("mock out the GetBackgroundImport method")
+//			},
 //			GetNameFunc: func() string {
 //				panic("mock out the GetName method")
 //			},
@@ -48,6 +52,9 @@ var _ Source = &SourceMock{}
 //			},
 //			PowerOffVMFunc: func(ctx context.Context, vmName string) error {
 //				panic("mock out the PowerOffVM method")
+//			},
+//			VerifyBackgroundImportFunc: func(ctx context.Context, instances migration.Instances) (migration.Instances, error) {
+//				panic("mock out the VerifyBackgroundImport method")
 //			},
 //			WithAdditionalRootCertificateFunc: func(rootCert *x509.Certificate)  {
 //				panic("mock out the WithAdditionalRootCertificate method")
@@ -74,6 +81,9 @@ type SourceMock struct {
 	// GetAllVMsFunc mocks the GetAllVMs method.
 	GetAllVMsFunc func(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error)
 
+	// GetBackgroundImportFunc mocks the GetBackgroundImport method.
+	GetBackgroundImportFunc func(ctx context.Context, instUUID uuid.UUID) (bool, error)
+
 	// GetNameFunc mocks the GetName method.
 	GetNameFunc func() string
 
@@ -85,6 +95,9 @@ type SourceMock struct {
 
 	// PowerOffVMFunc mocks the PowerOffVM method.
 	PowerOffVMFunc func(ctx context.Context, vmName string) error
+
+	// VerifyBackgroundImportFunc mocks the VerifyBackgroundImport method.
+	VerifyBackgroundImportFunc func(ctx context.Context, instances migration.Instances) (migration.Instances, error)
 
 	// WithAdditionalRootCertificateFunc mocks the WithAdditionalRootCertificate method.
 	WithAdditionalRootCertificateFunc func(rootCert *x509.Certificate)
@@ -118,6 +131,13 @@ type SourceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
+		// GetBackgroundImport holds details about calls to the GetBackgroundImport method.
+		GetBackgroundImport []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// InstUUID is the instUUID argument value.
+			InstUUID uuid.UUID
+		}
 		// GetName holds details about calls to the GetName method.
 		GetName []struct {
 		}
@@ -142,6 +162,13 @@ type SourceMock struct {
 			// VmName is the vmName argument value.
 			VmName string
 		}
+		// VerifyBackgroundImport holds details about calls to the VerifyBackgroundImport method.
+		VerifyBackgroundImport []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Instances is the instances argument value.
+			Instances migration.Instances
+		}
 		// WithAdditionalRootCertificate holds details about calls to the WithAdditionalRootCertificate method.
 		WithAdditionalRootCertificate []struct {
 			// RootCert is the rootCert argument value.
@@ -153,10 +180,12 @@ type SourceMock struct {
 	lockDisconnect                    sync.RWMutex
 	lockDoBasicConnectivityCheck      sync.RWMutex
 	lockGetAllVMs                     sync.RWMutex
+	lockGetBackgroundImport           sync.RWMutex
 	lockGetName                       sync.RWMutex
 	lockImportDisks                   sync.RWMutex
 	lockIsConnected                   sync.RWMutex
 	lockPowerOffVM                    sync.RWMutex
+	lockVerifyBackgroundImport        sync.RWMutex
 	lockWithAdditionalRootCertificate sync.RWMutex
 }
 
@@ -323,6 +352,42 @@ func (mock *SourceMock) GetAllVMsCalls() []struct {
 	return calls
 }
 
+// GetBackgroundImport calls GetBackgroundImportFunc.
+func (mock *SourceMock) GetBackgroundImport(ctx context.Context, instUUID uuid.UUID) (bool, error) {
+	if mock.GetBackgroundImportFunc == nil {
+		panic("SourceMock.GetBackgroundImportFunc: method is nil but Source.GetBackgroundImport was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		InstUUID uuid.UUID
+	}{
+		Ctx:      ctx,
+		InstUUID: instUUID,
+	}
+	mock.lockGetBackgroundImport.Lock()
+	mock.calls.GetBackgroundImport = append(mock.calls.GetBackgroundImport, callInfo)
+	mock.lockGetBackgroundImport.Unlock()
+	return mock.GetBackgroundImportFunc(ctx, instUUID)
+}
+
+// GetBackgroundImportCalls gets all the calls that were made to GetBackgroundImport.
+// Check the length with:
+//
+//	len(mockedSource.GetBackgroundImportCalls())
+func (mock *SourceMock) GetBackgroundImportCalls() []struct {
+	Ctx      context.Context
+	InstUUID uuid.UUID
+} {
+	var calls []struct {
+		Ctx      context.Context
+		InstUUID uuid.UUID
+	}
+	mock.lockGetBackgroundImport.RLock()
+	calls = mock.calls.GetBackgroundImport
+	mock.lockGetBackgroundImport.RUnlock()
+	return calls
+}
+
 // GetName calls GetNameFunc.
 func (mock *SourceMock) GetName() string {
 	if mock.GetNameFunc == nil {
@@ -454,6 +519,42 @@ func (mock *SourceMock) PowerOffVMCalls() []struct {
 	mock.lockPowerOffVM.RLock()
 	calls = mock.calls.PowerOffVM
 	mock.lockPowerOffVM.RUnlock()
+	return calls
+}
+
+// VerifyBackgroundImport calls VerifyBackgroundImportFunc.
+func (mock *SourceMock) VerifyBackgroundImport(ctx context.Context, instances migration.Instances) (migration.Instances, error) {
+	if mock.VerifyBackgroundImportFunc == nil {
+		panic("SourceMock.VerifyBackgroundImportFunc: method is nil but Source.VerifyBackgroundImport was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		Instances migration.Instances
+	}{
+		Ctx:       ctx,
+		Instances: instances,
+	}
+	mock.lockVerifyBackgroundImport.Lock()
+	mock.calls.VerifyBackgroundImport = append(mock.calls.VerifyBackgroundImport, callInfo)
+	mock.lockVerifyBackgroundImport.Unlock()
+	return mock.VerifyBackgroundImportFunc(ctx, instances)
+}
+
+// VerifyBackgroundImportCalls gets all the calls that were made to VerifyBackgroundImport.
+// Check the length with:
+//
+//	len(mockedSource.VerifyBackgroundImportCalls())
+func (mock *SourceMock) VerifyBackgroundImportCalls() []struct {
+	Ctx       context.Context
+	Instances migration.Instances
+} {
+	var calls []struct {
+		Ctx       context.Context
+		Instances migration.Instances
+	}
+	mock.lockVerifyBackgroundImport.RLock()
+	calls = mock.calls.VerifyBackgroundImport
+	mock.lockVerifyBackgroundImport.RUnlock()
 	return calls
 }
 

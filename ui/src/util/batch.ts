@@ -13,7 +13,7 @@ export enum BatchStatus {
 
 export const canResetBatch = (batch: Batch) => {
   const status = batch.status;
-  if (status == BatchStatus.Running) {
+  if (status != BatchStatus.Defined) {
     return true;
   }
 

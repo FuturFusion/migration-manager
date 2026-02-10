@@ -3,8 +3,10 @@ package worker
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -71,98 +73,92 @@ func DoUnmount(path string) error {
 	return err
 }
 
-// setupDiskClone starts the necessary device-mapper clones for the given root partition.
-// If the partition points to an LVM logical volume, then a clone is opened for each physical volume in the volume group, and a vgchange filter is returned.
-// Otherwise, it returns the root partition on the loop device corresponding to the clone.
-func setupDiskClone(rootPartition string, rootPartitionType PartitionType, rootMountOpts []string) (string, []string, error) {
+type mountInfo struct {
+	Parent  string
+	Path    string
+	Type    PartitionType
+	Options []string
+	Root    bool
+}
+
+// setupDiskClone starts the necessary device-mapper clones for the given block devices.
+// If a block device points to an LVM logical volume, then a clone is opened for each physical volume in the volume group.
+// Otherwise, it returns the loop device corresponding to the clone.
+func setupDiskClone(plan map[string]mountInfo) (map[string]map[string]string, error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
 	scriptName := "setup-root-disk-clone.sh"
 	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
 	// Write the fortigateVersion script to /tmp.
 	err = os.WriteFile(filepath.Join("/tmp", scriptName), script, 0o755)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
-	args := make([]string, 0, len(rootMountOpts)+3)
-	args = append(args, filepath.Join("/tmp", scriptName), string(rootPartitionType), rootPartition)
-	args = append(args, rootMountOpts...)
+	args := []string{filepath.Join("/tmp", scriptName)}
+	for _, disk := range plan {
+		if disk.Type == PARTITION_TYPE_LVM {
+			args = append(args, string(disk.Type)+"="+disk.Path)
+		} else {
+			args = append(args, string(disk.Type)+"="+disk.Parent)
+		}
+	}
+
+	slog.Info("Creating clones for mounts", slog.String("plan", strings.Join(args, " ")))
 	output, err := subprocess.RunCommand("/bin/sh", args...)
 	if err != nil {
-		return "", nil, err
+		return nil, err
 	}
 
-	reverter.Add(func() { _ = cleanupDiskClone(rootPartitionType) })
-
+	reverter.Add(func() { _ = cleanupClones() })
 	if output == "" {
-		return "", nil, fmt.Errorf("Failed to read cloned disk mappings")
+		return nil, fmt.Errorf("Failed to read cloned disk mappings")
 	}
 
 	mappings := strings.Split(output, " ")
 	if len(mappings) < 1 {
-		return "", nil, fmt.Errorf("Unexpected number of cloned disk mappings (%d)", len(mappings))
+		return nil, fmt.Errorf("Unexpected number of cloned disk mappings (%d)", len(mappings))
 	}
 
-	// If the partition type is LVM, we also need a vg filter to handle the UUID duplication.
-	if rootPartitionType == PARTITION_TYPE_LVM {
-		filter := []string{}
-		for _, mapping := range mappings {
-			parts := strings.Split(mapping, "=")
-			if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-				return "", nil, fmt.Errorf("Unexpected cloned disk mapping %q", mapping)
+	cloneMappings := map[string]map[string]string{}
+	for _, m := range mappings {
+		slog.Info("Created clone", slog.String("mapping", m))
+		parts := strings.Split(m, "=")
+		if len(parts) != 3 || slices.Contains(parts[1:], "") {
+			return nil, fmt.Errorf("Unable to determine disk mappings from %q", output)
+		}
+
+		vg := parts[0]
+		src := parts[1]
+		dst := parts[2]
+
+		// If the vg name is empty, then assume no LVM.
+		if vg == "" {
+			err = lsblkWaitToPopulate(vg, dst, time.Second*30)
+			if err != nil {
+				return nil, fmt.Errorf("Error waiting for lsblk to populate fields: %w", err)
 			}
-
-			parent := parts[0]
-			clone := parts[1]
-			filter = append(filter, fmt.Sprintf("'a|%s|', 'r|%s|'", clone, parent))
 		}
 
-		// get the vg_name from the supplied partition path.
-		parts := strings.Split(rootPartition, "/")
-		if len(parts) < 3 || parts[2] == "" {
-			return "", nil, fmt.Errorf("Unable to determine root partition %q vg name", rootPartition)
+		if cloneMappings[vg] == nil {
+			cloneMappings[vg] = map[string]string{}
 		}
 
-		vgName := parts[2]
-
-		// Return the original root partition path which follows the vg name, as well as a filter for vgchange.
-		vgFilter := []string{fmt.Sprintf("devices { filter = [ %s ] }", strings.Join(filter, ", ")), vgName}
-
-		reverter.Success()
-
-		return rootPartition, vgFilter, nil
-	}
-
-	parts := strings.Split(mappings[0], "=")
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		return "", nil, fmt.Errorf("Unexpected cloned disk mapping %q", mappings[0])
-	}
-
-	// Some fields of `lsblk` seem to take a while to populate, so retry for up to 10s.
-	cloneDisk := parts[1]
-	err = lsblkWaitToPopulate(rootPartition, cloneDisk, time.Second*30)
-	if err != nil {
-		return "", nil, fmt.Errorf("Error waiting for lsblk to populate fields: %w", err)
-	}
-
-	rootPart, err := getMatchingPartition(rootPartition, cloneDisk)
-	if err != nil {
-		return "", nil, err
+		cloneMappings[vg][src] = dst
 	}
 
 	reverter.Success()
 
-	return rootPart, nil, nil
+	return cloneMappings, nil
 }
 
-// cleanupDiskClone closes all device-mapper clones and cleans up the filesystem.
-func cleanupDiskClone(rootPartitionType PartitionType) error {
+// cleanupClones closes all device-mapper clones and cleans up the filesystem.
+func cleanupClones() error {
 	scriptName := "setup-root-disk-clone.sh"
 	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
 	if err != nil {
@@ -174,13 +170,9 @@ func cleanupDiskClone(rootPartitionType PartitionType) error {
 		return err
 	}
 
-	args := []string{filepath.Join("/tmp", scriptName), "cleanup", string(rootPartitionType)}
-	_, err = subprocess.RunCommand("/bin/sh", args...)
-	if err != nil {
-		return err
-	}
+	_, err = subprocess.RunCommand("/bin/sh", filepath.Join("/tmp", scriptName), "cleanup")
 
-	return nil
+	return err
 }
 
 // getMatchingPartition returns the partition on 'disk' matching the partition number of 'partition'.
@@ -197,6 +189,11 @@ func getMatchingPartition(partition string, disk string) (string, error) {
 
 	partNum := lsblk.BlockDevices[0].PartN
 
+	// If the source disk is not a partition, then there's nothing to do.
+	if partNum == 0 {
+		return disk, nil
+	}
+
 	lsblk, err = internalUtil.ScanPartitions(disk)
 	if err != nil {
 		return "", err
@@ -206,6 +203,7 @@ func getMatchingPartition(partition string, disk string) (string, error) {
 		return "", fmt.Errorf("Unable to inspect disk %q", disk)
 	}
 
+	// If the disk has no children, assume it is already a partition and traverse up.
 	if len(lsblk.BlockDevices[0].Children) == 0 {
 		if lsblk.BlockDevices[0].PKName == "" {
 			return "", fmt.Errorf("No disks found matching %q", disk)
@@ -257,24 +255,30 @@ func lsblkWaitToPopulate(minPartition string, disk string, timeout time.Duration
 	minPartNum := lsblk.BlockDevices[0].PartN
 
 	for ctx.Err() == nil {
-		lsblk, err := internalUtil.ScanPartitions(disk)
+		loop, err := internalUtil.ScanPartitions(disk)
 		if err != nil {
 			return err
 		}
 
-		if len(lsblk.BlockDevices) == 0 {
+		if len(loop.BlockDevices) == 0 {
 			return fmt.Errorf("Unable to inspect disk %q", disk)
 		}
 
 		var foundMatch bool
-		for _, part := range lsblk.BlockDevices[0].Children {
-			if part.PartN == 0 || part.PKName == "" {
-				foundMatch = false
-				break
-			}
 
-			if part.PartN == minPartNum {
-				foundMatch = true
+		// If the source is not a partition, there will be no children to check.
+		if minPartNum == 0 {
+			foundMatch = loop.BlockDevices[0].Name != ""
+		} else {
+			for _, part := range loop.BlockDevices[0].Children {
+				if part.PartN == 0 || part.PKName == "" {
+					foundMatch = false
+					break
+				}
+
+				if part.PartN == minPartNum {
+					foundMatch = true
+				}
 			}
 		}
 

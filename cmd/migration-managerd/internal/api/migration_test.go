@@ -75,9 +75,10 @@ func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int
 
 	for i, supported := range disks {
 		inst.Properties.Disks = append(inst.Properties.Disks, api.InstancePropertiesDisk{
-			Capacity:  1024 * 1024 * 1024,
-			Name:      fmt.Sprintf("%s_disk_%d", name, i),
-			Supported: supported,
+			Capacity:                 1024 * 1024 * 1024,
+			Name:                     fmt.Sprintf("%s_disk_%d", name, i),
+			Supported:                supported,
+			BackgroundImportVerified: true,
 		})
 	}
 

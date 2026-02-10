@@ -59,7 +59,7 @@ func TestSourceService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
-				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass","connectivity_status":"OK","connection_timeout":"10m0s","import_timeout":"10s","datacenters":["/..."]}`),
+				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass","connectivity_status":"OK","connection_timeout":"10m0s","sync_timeout":"10s","sync_limit":1,"datacenters":["/..."]}`),
 			},
 
 			assertErr: require.NoError,
@@ -82,7 +82,7 @@ func TestSourceService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_NSX,
-				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass","connectivity_status":"OK","connection_timeout":"10m0s","import_timeout":"10s","datacenters":["/..."],"compute_managers":null,"segments":null,"edge_nodes":null,"policies":null}`),
+				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass","connectivity_status":"OK","connection_timeout":"10m0s","sync_timeout":"10s","sync_limit":1,"datacenters":["/..."],"compute_managers":null,"segments":null,"edge_nodes":null,"policies":null}`),
 			},
 
 			assertErr: require.NoError,
@@ -99,7 +99,8 @@ func TestSourceService_Create(t *testing.T) {
   "password": "pass",
 	"connectivity_status": "OK",
 	"connection_timeout":"5s",
-	"import_timeout":"4s",
+	"sync_timeout":"4s",
+	"sync_limit":2,
 	"datacenters":["dc1","dc2","/dc3/..."]
 }
 `),
@@ -108,7 +109,7 @@ func TestSourceService_Create(t *testing.T) {
 				ID:         1,
 				Name:       "one",
 				SourceType: api.SOURCETYPE_VMWARE,
-				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass","connectivity_status":"OK","connection_timeout":"5s","import_timeout":"4s","datacenters":["/dc1/...","/dc2/...","/dc3/..."]}`),
+				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass","connectivity_status":"OK","connection_timeout":"5s","sync_timeout":"4s","sync_limit":2,"datacenters":["/dc1/...","/dc2/...","/dc3/..."]}`),
 			},
 
 			assertErr: require.NoError,

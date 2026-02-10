@@ -1,8 +1,11 @@
 package worker
 
 import (
+	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
@@ -10,7 +13,7 @@ import (
 
 func DetermineFortigateVersion() (string, error) {
 	// Determine the root partition.
-	rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition(looksLikeFortigateRootPartition)
+	_, rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition(looksLikeFortigateRootPartition)
 	if err != nil {
 		return "", err
 	}
@@ -55,37 +58,88 @@ func DetermineFortigateVersion() (string, error) {
 }
 
 func ReplaceFortigateBoot(kvmFile string, dryRun bool) error {
-	rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition(looksLikeFortigateRootPartition)
+	err := cleanupClones()
 	if err != nil {
 		return err
 	}
 
-	var vgFilter []string
-	if dryRun {
-		rootPartition, vgFilter, err = setupDiskClone(rootPartition, rootPartitionType, rootMountOpts)
-		if err != nil {
-			return err
-		}
+	defer func() { _ = cleanupClones() }()
 
-		defer func() { _ = cleanupDiskClone(rootPartitionType) }()
+	rootParent, rootPartition, rootPartitionType, rootMountOpts, err := determineRootPartition(looksLikeFortigateRootPartition)
+	if err != nil {
+		return err
 	}
 
-	// Activate VG prior to mounting, if needed.
-	if rootPartitionType == PARTITION_TYPE_LVM {
-		err := ActivateVG(vgFilter...)
+	plan := map[string]mountInfo{rootPartition: {
+		Parent:  rootParent,
+		Path:    rootPartition,
+		Type:    rootPartitionType,
+		Options: rootMountOpts,
+		Root:    true,
+	}}
+
+	if dryRun {
+		mappings, err := setupDiskClone(plan)
 		if err != nil {
 			return err
 		}
 
 		defer func() { _ = DeactivateVG() }()
-	}
 
-	// After activating the VG, ensure the mapping is to a loop device if performing dry-run.
-	if dryRun {
-		err := ensureMountIsLoop(rootPartition, rootPartitionType)
+		for vgName, sourceToClone := range mappings {
+			if vgName != "" {
+				vgFilter := []string{}
+				// Create a filter to avoid lvm duplication errors.
+				for src, clone := range sourceToClone {
+					parts := strings.Split(src, "/")
+					vgFilter = append(vgFilter, fmt.Sprintf("'a|%s|', 'r|%s|', 'r|/dev/mapper/clone_%s|'", clone, src, parts[len(parts)-1]))
+				}
+
+				filter := "devices { filter = [ " + strings.Join(vgFilter, ", ") + " ] }"
+				slog.Info("Activating volume groups with filter", slog.String("config", filter), slog.String("vg_name", vgName))
+				err := ActivateVG(filter, vgName)
+				if err != nil {
+					return err
+				}
+			}
+
+			for src, clone := range sourceToClone {
+				partType := PARTITION_TYPE_PLAIN
+				if vgName != "" {
+					partType = PARTITION_TYPE_LVM
+				}
+
+				if partType == PARTITION_TYPE_PLAIN && src == rootParent {
+					clonePartition, err := getMatchingPartition(rootPartition, clone)
+					if err != nil {
+						return err
+					}
+
+					rootPartition = clonePartition
+				}
+
+				// After activating the VG, ensure the mapping is to a loop device if performing dry-run.
+				err := ensureMountIsLoop(clone, partType)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		err = ensureMountIsLoop(rootPartition, rootPartitionType)
 		if err != nil {
 			return err
 		}
+	}
+
+	// Activate VG prior to mounting, if needed.
+	if !dryRun && rootPartitionType == PARTITION_TYPE_LVM {
+		err := ActivateVG()
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = DeactivateVG() }()
 	}
 
 	scriptName := "fortigate-replace-boot.sh"

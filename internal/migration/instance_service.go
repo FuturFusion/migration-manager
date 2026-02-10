@@ -164,6 +164,39 @@ func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 	return nil
 }
 
+// ResetBackgroundImport sets the background_import value to true, and unsets the background import verified flag on all disks.
+// If the instance is in a running batch with background_import restrictions overridden, then an error will be returned.
+func (s instanceService) ResetBackgroundImport(ctx context.Context, inst *Instance) error {
+	if inst.Properties.BackgroundImport {
+		return nil
+	}
+
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		if !inst.Overrides.DisableMigration {
+			batches, err := s.repo.GetBatchesByUUID(ctx, inst.UUID)
+			if err != nil {
+				return err
+			}
+
+			for _, b := range batches {
+				if (b.Config.RestrictionOverrides.AllowNoBackgroundImport || inst.Overrides.IgnoreRestrictions) && b.Status == api.BATCHSTATUS_RUNNING {
+					return fmt.Errorf("Cannot reset background_import for unrestricted instance in a running batch %q", b.Name)
+				}
+			}
+
+			// Enable background import and unset verification flag for all disks.
+			inst.Properties.BackgroundImport = true
+			for i := range inst.Properties.Disks {
+				inst.Properties.Disks[i].BackgroundImportVerified = false
+			}
+
+			return s.Update(ctx, inst)
+		}
+
+		return nil
+	})
+}
+
 func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		oldInstance, err := s.repo.GetByUUID(ctx, id)

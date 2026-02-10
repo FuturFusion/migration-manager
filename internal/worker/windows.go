@@ -45,10 +45,10 @@ func init() {
 	_ = pongo2.RegisterFilter("toHex", toHex)
 }
 
-func DetermineWindowsPartitions() (base string, recovery string, ok bool, err error) {
+func DetermineWindowsPartitions() (mainParent string, base string, recoveryParent string, recovery string, ok bool, err error) {
 	partitions, err := internalUtil.ScanPartitions("")
 	if err != nil {
-		return "", "", false, err
+		return "", "", "", "", false, err
 	}
 
 	for _, dev := range partitions.BlockDevices {
@@ -59,26 +59,28 @@ func DetermineWindowsPartitions() (base string, recovery string, ok bool, err er
 		for _, child := range dev.Children {
 			if child.PartLabel == "Basic data partition" && child.PartTypeName == "Microsoft basic data" {
 				base = child.Name
+				mainParent = child.PKName
 			} else if child.PartTypeName == "Windows recovery environment" {
 				recovery = child.Name
+				recoveryParent = child.PKName
 			}
 		}
 	}
 
-	if base == "" {
+	if base == "" || mainParent == "" {
 		b, err := json.Marshal(partitions)
 		if err != nil {
-			return "", "", false, err
+			return "", "", "", "", false, err
 		}
 
-		return "", "", false, fmt.Errorf("Could not determine partitions: %v", string(b))
+		return "", "", "", "", false, fmt.Errorf("Could not determine partitions: %v", string(b))
 	}
 
-	if recovery == "" {
-		return "/dev/" + base, "", false, nil
+	if recovery == "" || recoveryParent == "" {
+		return "/dev/" + mainParent, "/dev/" + base, "", "", false, nil
 	}
 
-	return "/dev/" + base, "/dev/" + recovery, true, nil
+	return "/dev/" + mainParent, "/dev/" + base, "/dev/" + recoveryParent, "/dev/" + recovery, true, nil
 }
 
 func WindowsDetectBitLockerStatus(partition string) (BitLockerState, error) {
@@ -136,22 +138,47 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 		return err
 	}
 
-	mainPartition, recoveryPartition, recoveryExists, err := DetermineWindowsPartitions()
+	err = cleanupClones()
+	if err != nil {
+		return fmt.Errorf("Failed to attempt cleanup of stale clone state")
+	}
+
+	defer func() { _ = cleanupClones() }()
+
+	mainParent, mainPartition, recoveryParent, recoveryPartition, recoveryExists, err := DetermineWindowsPartitions()
 	if err != nil {
 		return err
 	}
+
+	plan := map[string]mountInfo{mainPartition: {
+		Parent:  mainParent,
+		Path:    mainPartition,
+		Type:    PARTITION_TYPE_PLAIN,
+		Options: []string{},
+		Root:    true,
+	}}
 
 	if !recoveryExists {
 		slog.Warn("Windows recovery partition was not found!")
 	}
 
 	if dryRun {
-		mainPartition, _, err = setupDiskClone(mainPartition, PARTITION_TYPE_PLAIN, nil)
+		mappings, err := setupDiskClone(plan)
 		if err != nil {
 			return err
 		}
 
-		defer func() { _ = cleanupDiskClone(PARTITION_TYPE_PLAIN) }()
+		for src, clone := range mappings[""] {
+			if src == mainParent {
+				clonePart, err := getMatchingPartition(mainPartition, clone)
+				if err != nil {
+					return err
+				}
+
+				mainPartition = clonePart
+				break
+			}
+		}
 
 		err = ensureMountIsLoop(mainPartition, PARTITION_TYPE_PLAIN)
 		if err != nil {
@@ -159,9 +186,16 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 		}
 
 		if recoveryExists {
-			recoveryPartition, err = getMatchingPartition(recoveryPartition, mainPartition)
-			if err != nil {
-				return err
+			for src, clone := range mappings[""] {
+				if src == recoveryParent {
+					clonePart, err := getMatchingPartition(recoveryPartition, clone)
+					if err != nil {
+						return err
+					}
+
+					recoveryPartition = clonePart
+					break
+				}
 			}
 
 			err = ensureMountIsLoop(recoveryPartition, PARTITION_TYPE_PLAIN)

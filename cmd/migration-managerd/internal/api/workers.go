@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -43,6 +44,7 @@ func (d *Daemon) runPeriodicTask(ctx context.Context, task Task, f func(context.
 
 			// Don't run the sync task if it's disabled.
 			if task != SyncTask || !d.config.Settings.DisableAutoSync {
+				slog.Debug("Running periodic task", slog.Any("task", task))
 				err := f(ctx)
 				if err != nil {
 					slog.Error("Failed to run periodic task", slog.String("task", string(task)), logger.Err(err))
@@ -86,29 +88,25 @@ func (d *Daemon) runPeriodicTask(ctx context.Context, task Task, f func(context.
 }
 
 func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
-	entries, err := d.queue.GetAllByState(ctx, api.MIGRATIONSTATUS_BLOCKED, api.MIGRATIONSTATUS_WAITING)
+	state, err := d.queueHandler.GetMigrationState(ctx, api.BATCHSTATUS_RUNNING, api.MIGRATIONSTATUS_BLOCKED, api.MIGRATIONSTATUS_WAITING)
 	if err != nil {
-		return fmt.Errorf("Failed to fetch blocked queue entries: %w", err)
+		return fmt.Errorf("Failed to fetch blocked and waiting migration state: %w", err)
 	}
 
+	entries := state.Queue()
 	if len(entries) == 0 {
 		return nil
 	}
 
-	queueInstances, err := d.instance.GetAllQueued(ctx, entries)
-	if err != nil {
-		return fmt.Errorf("Failed to fetch blocked instances: %w", err)
-	}
-
+	slog.Info("Assessing queued instances for target import")
 	artifacts, err := d.artifact.GetAll(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to fetch artifact records: %w", err)
 	}
 
 	blockedInstances := map[uuid.UUID]string{}
-	instancesByUUID := make(map[uuid.UUID]migration.Instance, len(queueInstances))
-	for _, inst := range queueInstances {
-		instancesByUUID[inst.UUID] = inst
+	for _, q := range entries {
+		inst := state[q.BatchName].Instances[q.InstanceUUID]
 		err := d.artifact.HasRequiredArtifactsForInstance(artifacts, inst)
 		if err != nil {
 			slog.Error("Blocking queue entries due to artifact error", slog.Any("error", err))
@@ -125,7 +123,54 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 		}
 	}
 
-	batchMap := map[string]*migration.Batch{}
+	instancesBySource := map[string]migration.Instances{}
+	for _, q := range entries {
+		inst := state[q.BatchName].Instances[q.InstanceUUID]
+		if instancesBySource[inst.Source] == nil {
+			instancesBySource[inst.Source] = migration.Instances{}
+		}
+
+		instancesBySource[inst.Source] = append(instancesBySource[inst.Source], inst)
+	}
+
+	for srcName, instances := range instancesBySource {
+		q := entries[instances[0].UUID]
+		src, ok := state[q.BatchName].Sources[q.InstanceUUID]
+		if !ok {
+			continue
+		}
+
+		verifyImport := slices.ContainsFunc(instances, func(i migration.Instance) bool { return i.NeedsBackgroundImportVerification() })
+		if !verifyImport {
+			continue
+		}
+
+		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		if err != nil {
+			return fmt.Errorf("Failed to parse %q source %q: %w", src.SourceType, src.Name, err)
+		}
+
+		err = is.Connect(ctx)
+		if err != nil {
+			return fmt.Errorf("Failed to connect to %q source %q: %w", src.SourceType, src.Name, err)
+		}
+
+		disableVMs, err := is.VerifyBackgroundImport(ctx, instances)
+		if err != nil {
+			return fmt.Errorf("Failed to verify VM background import support for source %q: %w", srcName, err)
+		}
+
+		for _, inst := range disableVMs {
+			err = d.instance.Update(ctx, &inst)
+			if err != nil {
+				return fmt.Errorf("Failed to update instance %q background import support: %w", inst.Properties.Location, err)
+			}
+
+			// Update the instance in the state cache.
+			state[q.BatchName].Instances[inst.UUID] = inst
+		}
+	}
+
 	for _, q := range entries {
 		// Block all entries if we failed to validate the filesystem.
 		if blockedInstances[q.InstanceUUID] != "" {
@@ -139,24 +184,14 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			continue
 		}
 
-		inst, ok := instancesByUUID[q.InstanceUUID]
-		if !ok || q.MigrationStatus != api.MIGRATIONSTATUS_BLOCKED {
-			continue
-		}
-
-		if batchMap[q.BatchName] == nil {
-			batchMap[q.BatchName], err = d.batch.GetByName(ctx, q.BatchName)
-			if err != nil {
-				return fmt.Errorf("Failed to get batch for queue entry %q: %w", inst.Properties.Location, err)
-			}
-		}
+		inst := state[q.BatchName].Instances[q.InstanceUUID]
 
 		// Otherwise check why the VM is blocked, and unblock it if needed.
-		err := inst.DisabledReason(batchMap[q.BatchName].Config.RestrictionOverrides)
+		err := inst.DisabledReason(state[q.BatchName].Batch.Config.RestrictionOverrides)
 		if err != nil {
 			slog.Warn("Instance is blocked from migration", slog.String("location", inst.Properties.Location), slog.String("reason", err.Error()))
 			if err.Error() != q.MigrationStatusMessage {
-				_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, q.MigrationStatus, err.Error(), q.ImportStage, q.GetWindowName())
+				_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_BLOCKED, err.Error(), q.ImportStage, q.GetWindowName())
 				if err != nil {
 					return fmt.Errorf("Failed to update queue entry block message for %q: %w", inst.Properties.Location, err)
 				}
@@ -165,9 +200,12 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			continue
 		}
 
-		_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, string(api.MIGRATIONSTATUS_WAITING), q.ImportStage, q.GetWindowName())
-		if err != nil {
-			return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
+		// If we passed every check, and the old status was Blocked, then unblock the queue entry.
+		if q.MigrationStatus == api.MIGRATIONSTATUS_BLOCKED {
+			_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, "Instance has been unblocked", q.ImportStage, q.GetWindowName())
+			if err != nil {
+				return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
+			}
 		}
 	}
 

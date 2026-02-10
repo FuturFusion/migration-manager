@@ -1,6 +1,8 @@
 package api
 
 import (
+	"slices"
+
 	"github.com/google/uuid"
 )
 
@@ -124,6 +126,10 @@ type InstancePropertiesDisk struct {
 	// Whether the disk supports migration.
 	// Example: true
 	Supported bool `json:"supported" yaml:"supported" expr:"supported"`
+
+	// Whether background import has been explicitly verified as supported.
+	// Example: true
+	BackgroundImportVerified bool `json:"background_import_verified" yaml:"background_import_verified" expr:"background_import_verified"`
 }
 
 // InstancePropertiesSnapshot are all properties supported by snapshots.
@@ -131,6 +137,15 @@ type InstancePropertiesSnapshot struct {
 	// Name of the snapshot.
 	// Example: snapshot1
 	Name string `json:"name" yaml:"name" expr:"name"`
+}
+
+// SupportsBackgroundImport returns whether the instance has background import support, and all supported disks have been verified.
+func (i InstanceProperties) SupportsBackgroundImport() bool {
+	if i.BackgroundImport {
+		return !slices.ContainsFunc(i.Disks, func(d InstancePropertiesDisk) bool { return d.Supported && !d.BackgroundImportVerified })
+	}
+
+	return false
 }
 
 // Apply updates the properties with the given set of configurable properties.
