@@ -97,7 +97,7 @@ func (n Network) ToFilterable() api.NetworkFilterable {
 		UUID:             n.UUID,
 		SourceSpecificID: n.SourceSpecificID,
 		Source:           n.Source,
-		Type:             n.Type,
+		Type:             string(n.Type),
 		Location:         n.Location,
 	}
 }

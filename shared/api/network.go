@@ -77,11 +77,11 @@ type Network struct {
 }
 
 type NetworkFilterable struct {
-	UUID             uuid.UUID   `json:"uuid"               yaml:"uuid"               expr:"uuid"`
-	SourceSpecificID string      `json:"source_specific_id" yaml:"source_specific_id" expr:"source_specific_id"`
-	Source           string      `json:"source"             yaml:"source"             expr:"source"`
-	Type             NetworkType `json:"type"               yaml:"type"               expr:"type"`
-	Location         string      `json:"location"           yaml:"location"           expr:"location"`
+	UUID             uuid.UUID `json:"uuid"               yaml:"uuid"               expr:"uuid"`
+	SourceSpecificID string    `json:"source_specific_id" yaml:"source_specific_id" expr:"source_specific_id"`
+	Source           string    `json:"source"             yaml:"source"             expr:"source"`
+	Type             string    `json:"type"               yaml:"type"               expr:"type"`
+	Location         string    `json:"location"           yaml:"location"           expr:"location"`
 }
 
 // NetworkPlacement defines the configurable properties of Network.
