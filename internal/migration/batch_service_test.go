@@ -1792,7 +1792,7 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 				SourceType: api.SOURCETYPE_VMWARE,
 			}
 
-			res, err := instance.MatchesCriteria(currentBatch.IncludeExpression)
+			res, err := instance.MatchesCriteria(currentBatch.IncludeExpression, false)
 			tc.assertErr(t, err)
 
 			require.Equal(t, tc.wantResult, res)

@@ -131,7 +131,7 @@ func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueS
 			}
 
 			for _, inst := range instances {
-				match, err := inst.MatchesCriteria(c.IncludeExpression)
+				match, err := inst.MatchesCriteria(c.IncludeExpression, false)
 				if err != nil {
 					return fmt.Errorf("Failed to check constraint %q against instance %q: %w", c.IncludeExpression, inst.Properties.Location, err)
 				}
@@ -261,7 +261,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 		// Update each instance for this batch.
 		assignedInstances := map[uuid.UUID]bool{}
 		for _, instance := range instances {
-			isMatch, err := instance.MatchesCriteria(batch.IncludeExpression)
+			isMatch, err := instance.MatchesCriteria(batch.IncludeExpression, false)
 			if err != nil {
 				return err
 			}
@@ -285,7 +285,7 @@ func (s batchService) UpdateInstancesAssignedToBatch(ctx context.Context, batch 
 
 		// Check if any unassigned instances should be assigned to this batch.
 		for _, instance := range instances {
-			isMatch, err := instance.MatchesCriteria(batch.IncludeExpression)
+			isMatch, err := instance.MatchesCriteria(batch.IncludeExpression, false)
 			if err != nil {
 				return err
 			}

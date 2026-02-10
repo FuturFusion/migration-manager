@@ -245,7 +245,7 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Window,
 		}
 
 		for _, c := range constraints {
-			match, err := inst.MatchesCriteria(c.IncludeExpression)
+			match, err := inst.MatchesCriteria(c.IncludeExpression, false)
 			if err != nil {
 				return nil, err
 			}
@@ -276,7 +276,7 @@ func (s queueService) GetNextWindow(ctx context.Context, q QueueEntry) (*Window,
 			continue
 		}
 
-		match, err := inst.MatchesCriteria(constraint.IncludeExpression)
+		match, err := inst.MatchesCriteria(constraint.IncludeExpression, false)
 		if err != nil {
 			return nil, err
 		}
