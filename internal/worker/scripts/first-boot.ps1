@@ -7,9 +7,9 @@ reg delete "hklm\system\currentcontrolset\services\migrationmanagerfirstboot" /f
 remove-item "C:\migration-manager-first-boot.ps1"
 
 # Run the Incus agent if present.
-get-psdrive -psprovider filesystem | foreach-object {
-  if (test-path "$($_.Root)\incus-agent") {
-    start-process powershell.exe -argumentlist "-file `"$($_.Root)\install.ps1`"" -wait
+foreach ($drive in get-psdrive -psprovider filesystem) {
+  if (test-path "$($drive.Root)\incus-agent") {
+    start-process powershell.exe -argumentlist "-file `"$($drive.Root)\install.ps1`"" -wait
     break
   }
 }
