@@ -1,8 +1,5 @@
 $ErrorActionPreference = 'Stop'
 
-# Delete the service so it doesn't run again.
-reg delete "hklm\system\currentcontrolset\services\virtioassignnetcfg" /f
-
 # Delete the script file before continuing any further.
 remove-item "C:\virtio-assign-netcfg.ps1"
 
@@ -12,7 +9,10 @@ $virtio_desc = "Red Hat VirtIO Ethernet Adapter"
 # net_class_guid is a constant GUID under which all network adapters live.
 $net_class_guid = "{4D36E972-E325-11CE-BFC1-08002bE10318}"
 
-$macs=$args
+$macs = get-content "C:\migration_manager_nics"
+
+# Remove the nics file after we have populated the list.
+remove-item "C:\migration_manager_nics"
 
 # Read the previous GUID-to-NIC mappings.
 $old_macs_to_guids = @{}
@@ -26,8 +26,8 @@ get-content "C:\migration_manager_old_guids" | foreach-object {
 # We're done with the GUID mapping so delete it.
 remove-item "C:\migration_manager_old_guids"
 
-if ($old_macs_to_guids.count -eq 0) {
-  write-output "No previous GUIDs found, exiting"
+if ($old_macs_to_guids.count -eq 0 -or $macs.count -eq 0) {
+  write-output "No previous GUIDs or MACs found, exiting"
   exit
 }
 

@@ -332,6 +332,41 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 		return err
 	}
 
+	firstBootName := "first-boot.ps1"
+	firstBootScript, err := embeddedScripts.ReadFile(filepath.Join("scripts/", firstBootName))
+	if err != nil {
+		return err
+	}
+
+	// Write the first-boot script to C:\.
+	err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration-manager-"+firstBootName), firstBootScript, 0o755)
+	if err != nil {
+		return err
+	}
+
+	// Write the first-boot script to C:\.
+	err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration-manager-"+firstBootName), firstBootScript, 0o755)
+	if err != nil {
+		return err
+	}
+
+	hivexBootName := "hivex-first-boot.sh"
+	hivexBootScript, err := embeddedScripts.ReadFile(filepath.Join("scripts/", hivexBootName))
+	if err != nil {
+		return err
+	}
+
+	// Write the hivex script to /tmp.
+	err = os.WriteFile(filepath.Join("/tmp", hivexBootName), hivexBootScript, 0o755)
+	if err != nil {
+		return err
+	}
+
+	_, err = subprocess.RunCommand("/bin/sh", filepath.Join("/tmp", hivexBootName))
+	if err != nil {
+		return err
+	}
+
 	// Re-assign network configs to the new NIC if we have MACs.
 	if len(hwAddrs) > 0 {
 		hivexScriptName := "hivex-assign-netcfg.sh"

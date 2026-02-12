@@ -4,6 +4,8 @@ set -e
 
 mount_dir="/run/mount/win_main"
 hive_dir="${mount_dir}/Windows/System32/config/SYSTEM"
+old_guid_file="${mount_dir}/migration_manager_old_guids"
+nics_file="${mount_dir}/migration_manager_nics"
 
 # Just exit if no MACs provided.
 if [ 0 = ${#} ]; then
@@ -33,7 +35,9 @@ if [ "$(wc -l /tmp/macs_to_guids)" = 0 ]; then
   exit 0
 fi
 
-macs=""
+# Remove the state files in case they exist.
+rm -rf "${old_guid_file}" "${nics_file}"
+
 for mac in "${@}" ; do
   # Grab the previous GUID for this MAC.
   mac="$(printf "%s" "${mac}" | tr '[:upper:]' '[:lower:]')"
@@ -51,16 +55,6 @@ for mac in "${@}" ; do
     exit 1
   fi
 
-  echo "${old_guid}" >> "${mount_dir}/migration_manager_old_guids"
-  macs="${macs} ${mac}"
+  echo "${old_guid}" >> "${old_guid_file}"
+  echo "${mac}" >> "${nics_file}"
 done
-
-# Create a service that runs before any user boots. For some reason, we can't run powershell.exe directly here, it has to be called from cmd.exe.
-cat << EOF | hivexregedit --merge --prefix 'HKEY_LOCAL_MACHINE\SYSTEM' "${hive_dir}"
-[${control_set}\Services\VirtIOAssignNetCfg]
-"Type"=dword:00000010
-"Start"=dword:00000002
-"ErrorControl"=dword:00000001
-"ObjectName"="LocalSystem"
-"ImagePath"="C:\\\Windows\\\System32\\\cmd.exe /c C:\\\Windows\\\System32\\\WindowsPowerShell\\\v1.0\\\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\\\virtio-assign-netcfg.ps1 ${macs}"
-EOF
