@@ -150,7 +150,7 @@ linters:
       - linters:
           - revive
         # It's useful to have a util and API package but revive disagrees.
-        source: '^package (util|api)$'
+        source: '^package (util|api|version)$'
         text: var-naming
       - linters:
           - sqlclosecheck
