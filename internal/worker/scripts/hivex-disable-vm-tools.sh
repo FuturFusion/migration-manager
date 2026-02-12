@@ -104,7 +104,7 @@ else
 fi
 
 echo "Removing stats provider TypeLib"
-  cat << EOF | hivexregedit --merge --prefix 'HKLM\SOFTWARE' "${hive_dir}/SOFTWARE"
+cat << EOF | hivexregedit --merge --prefix 'HKLM\SOFTWARE' "${hive_dir}/SOFTWARE"
 $(hivexregedit --export --prefix 'HKLM\SOFTWARE' "${hive_dir}/SOFTWARE" "Classes\TypeLib" --unsafe-printable-strings 2>/dev/null | awk '/^\[/ {s=$0} /=.*VMware Hi-Performance Stats Provider/ {print s}' | sed -e 's/^\[/[-/' -e 's/}\\1.0\]$/}]/')
 EOF
 
@@ -123,10 +123,6 @@ fi
 echo "Removing snapshot provider TypeLib"
 cat << EOF | hivexregedit --merge --prefix 'HKLM\SOFTWARE' "${hive_dir}/SOFTWARE"
 $(hivexregedit --export --prefix 'HKLM\SOFTWARE' "${hive_dir}/SOFTWARE" "Classes\TypeLib" --unsafe-printable-strings 2>/dev/null | awk '/^\[/ {s=$0} /=.*VCBSnapshotProvider.*Library/ {print s}' | sed -e 's/^\[/[-/' -e 's/}\\1.0\]$/}]/')
-EOF
-
-cat << EOF | hivexregedit --merge --prefix 'HKLM\SOFTWARE' "${hive_dir}/SOFTWARE"
-$(hivexregedit --export --prefix 'HKLM\SOFTWARE' "${hive_dir}/SOFTWARE" "Classes\TypeLib" --unsafe-printable-strings 2>/dev/null | awk '/^\[/ {s=$0} /=.*VMware Hi-Performance Stats Provider.*/ {print s}' | sed -e 's/^\[/[-/' -e 's/}\\1.0\]$/}]/')
 EOF
 
 snapshot_provider_appid="$(hivexregedit --export --prefix 'HKLM\SOFTWARE' "${hive_dir}/SOFTWARE" "Classes\AppID" --unsafe-printable-strings 2>/dev/null | awk '/^\[/ {s=$0} /=.*VCBSnapshotProvider/ {print s}' | sed -e 's/^\[/[-/')"
@@ -208,6 +204,7 @@ cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
 [-ControlSet001\Services\vmmouse]
 [-ControlSet001\Services\vmusbmouse]
 [-ControlSet001\Services\vmvss]
+[-ControlSet001\Services\VMTools]
 
 [-ControlSet002\Services\EventLog\Application\VGAuth]
 [-ControlSet002\Services\EventLog\Application\VMUpgradeHelper]
@@ -225,6 +222,7 @@ cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
 [-ControlSet002\Services\vmmouse]
 [-ControlSet002\Services\vmusbmouse]
 [-ControlSet002\Services\vmvss]
+[-ControlSet002\Services\VMTools]
 EOF
 
 echo "Removing controller 001 system drivers"
@@ -247,7 +245,6 @@ cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
 $(hivexregedit --export --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM" 'ControlSet002\Enum' --unsafe-printable-strings |  awk '/^\[/ { s=$0 } /"DeviceDesc"=.*VMware (SVGA|.*Pointing|VMCI).*"/ { print s }' | sed -e's/^\[/[-/')
 EOF
 
-
 echo "Removing driver packages"
 cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
 $(hivexregedit --export --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM" 'DriverDatabase\DriverPackages'  --unsafe-printable-strings 2>/dev/null | awk '/^\[/ {s=$0} ; /"OemPath"=str\(1\):".*\\Program Files\\Common Files\\VMware\\Drivers\\.*"/ { print s }' | sed -e 's/^\[/[-/')
@@ -261,10 +258,6 @@ if ! echo "${control_set_num}" | grep -qE "^[0-9]+$" ; then
 fi
 
 control_set="$(printf "ControlSet%03d" "${control_set_num}")"
-cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
-[-${control_set}\Services\VMTools]
-EOF
-
 if hivexregedit --export --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM" "${control_set}\Services\VMTools" --max-depth 1 > /dev/null 2>&1 ; then
   echo "VMTools record still exists" >&2
   exit 1
