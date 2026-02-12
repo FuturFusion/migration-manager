@@ -116,6 +116,12 @@ func (c *cmdRemoteAdd) validateArgsAndFlags(cmd *cobra.Command, args []string) e
 		return fmt.Errorf(`Value for flag "--auth-type" needs to be %q or %q`, config.AuthTypeTLS, config.AuthTypeOIDC)
 	}
 
+	if addrURL.Path == "/" {
+		addrURL.Path = ""
+	}
+
+	args[1] = addrURL.String()
+
 	return nil
 }
 
