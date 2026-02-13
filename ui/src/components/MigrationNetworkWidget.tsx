@@ -3,7 +3,7 @@ import { Button, Form, Table } from "react-bootstrap";
 import { BsPlus, BsTrash } from "react-icons/bs";
 import { MigrationNetworkPlacement } from "types/batch";
 import { Target } from "types/target";
-import { IncusNICType } from "util/network";
+import { IncusNICType, canSetVLAN } from "util/network";
 
 interface Props {
   targets: Target[];
@@ -72,11 +72,25 @@ const MigrationNetworkWidget: FC<Props> = ({ targets, value, onChange }) => {
                       name="target"
                       size="sm"
                       value={item.target}
-                      onChange={(e) =>
-                        handleEdit(index, "target", e.target.value)
-                      }
+                      onChange={(e) => {
+                        // Show a default NIC type as soon as a target is set, and clear it when a target is unset.
+                        if (
+                          e.target.value !== "" &&
+                          item.nictype === ("" as IncusNICType)
+                        ) {
+                          item.nictype = IncusNICType.Managed;
+                          item.vlan_id = "";
+                        } else if (e.target.value === "") {
+                          item.nictype = "" as IncusNICType;
+                          item.vlan_id = "";
+                          item.network = "";
+                          item.target_project = "";
+                        }
+
+                        handleEdit(index, "target", e.target.value);
+                      }}
                     >
-                      <option value="">-- Select an option --</option>
+                      <option value="">-- Target --</option>
                       {targets.map((option) => (
                         <option key={option.name} value={option.name}>
                           {option.name}
@@ -99,7 +113,7 @@ const MigrationNetworkWidget: FC<Props> = ({ targets, value, onChange }) => {
                     <Form.Control
                       type="text"
                       size="sm"
-                      placeholder="Network"
+                      placeholder="Network on target"
                       value={item.network}
                       onChange={(e) =>
                         handleEdit(index, "network", e.target.value)
@@ -111,11 +125,15 @@ const MigrationNetworkWidget: FC<Props> = ({ targets, value, onChange }) => {
                       name="nictype"
                       size="sm"
                       value={item.nictype}
-                      onChange={(e) =>
-                        handleEdit(index, "nictype", e.target.value)
-                      }
+                      onChange={(e) => {
+                        if (!canSetVLAN(e.target.value as IncusNICType)) {
+                          item.vlan_id = "";
+                        }
+
+                        handleEdit(index, "nictype", e.target.value);
+                      }}
                     >
-                      <option value=""></option>
+                      <option value="">-- NIC Type --</option>
                       {Object.values(IncusNICType).map((value) => (
                         <option key={value} value={value}>
                           {value}
@@ -129,6 +147,7 @@ const MigrationNetworkWidget: FC<Props> = ({ targets, value, onChange }) => {
                       size="sm"
                       placeholder="VLAN ID"
                       value={item.vlan_id}
+                      disabled={!canSetVLAN(item.nictype as IncusNICType)}
                       onChange={(e) =>
                         handleEdit(index, "vlan_id", e.target.value)
                       }
