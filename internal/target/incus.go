@@ -238,6 +238,9 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		}
 	}
 
+	// Clear migration.stateful=false before starting the VM.
+	delete(apiDef.Config, "migration.stateful")
+
 	// Delete any pre-existing eth0 device.
 	delete(apiDef.Devices, "eth0")
 
@@ -502,6 +505,9 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	for _, nic := range instanceDef.Properties.NICs {
 		hwaddrs = append(hwaddrs, nic.HardwareAddress)
 	}
+
+	// Set migration.stateful = false during migration.
+	ret.Config["migration.stateful"] = "false"
 
 	// This config key will persist to indicate that this VM was migrated through migration manager.
 	ret.Config["user.migration_source"] = instanceDef.Source
