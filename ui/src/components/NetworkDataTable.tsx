@@ -2,7 +2,7 @@ import { FC } from "react";
 import { Link } from "react-router";
 import DataTable from "components/DataTable.tsx";
 import ItemOverride from "components/ItemOverride";
-import { Network } from "types/network";
+import { Network, IncusNICType } from "types/network";
 
 interface Props {
   networks: Network[];
@@ -65,7 +65,10 @@ const NetworkDataTable: FC<Props> = ({ networks, isLoading, error }) => {
             <ItemOverride
               original={item.placement.network}
               override={item.overrides.network}
-              showOverride={item.overrides?.network !== ""}
+              showOverride={
+                item.overrides?.network !== "" &&
+                item.overrides?.network !== item.placement?.network
+              }
             />
           ),
           sortKey:
@@ -78,11 +81,14 @@ const NetworkDataTable: FC<Props> = ({ networks, isLoading, error }) => {
             <ItemOverride
               original={item.placement.nictype}
               override={item.overrides.nictype}
-              showOverride={item.overrides?.nictype !== ""}
+              showOverride={
+                item.overrides?.nictype !== ("" as IncusNICType) &&
+                item.overrides?.nictype !== item.placement?.nictype
+              }
             />
           ),
           sortKey:
-            item.overrides?.nictype !== ""
+            item.overrides?.nictype !== ("" as IncusNICType)
               ? item.overrides.nictype
               : item.placement.nictype,
         },
@@ -91,7 +97,10 @@ const NetworkDataTable: FC<Props> = ({ networks, isLoading, error }) => {
             <ItemOverride
               original={item.placement.vlan_id}
               override={item.overrides.vlan_id}
-              showOverride={item.overrides?.vlan_id !== ""}
+              showOverride={
+                item.overrides?.vlan_id !== "" &&
+                item.overrides?.vlan_id !== item.placement?.vlan_id
+              }
             />
           ),
           sortKey:
