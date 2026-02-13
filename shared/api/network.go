@@ -101,6 +101,15 @@ type NetworkPlacement struct {
 	VlanID string `json:"vlan_id" yaml:"vlan_id"`
 }
 
+// Validate the network placement.
+func (n NetworkPlacement) Validate() error {
+	if n.NICType != INCUSNICTYPE_PHYSICAL && n.NICType != INCUSNICTYPE_BRIDGED && n.VlanID != "" {
+		return fmt.Errorf("Cannot set VLAN ID with NIC type %q", n.NICType)
+	}
+
+	return ValidNICType(string(n.NICType))
+}
+
 // Apply updates the properties with the given set of configurable properties.
 // Only non-default values will be applied.
 func (n *NetworkPlacement) Apply(overrides NetworkPlacement) {

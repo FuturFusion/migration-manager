@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/lxc/incus/v6/shared/scriptlet"
+	"github.com/lxc/incus/v6/shared/validate"
 	"go.starlark.net/starlark"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -113,11 +114,6 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 		}
 
 		if vlanID != "" {
-			if nicType != string(api.INCUSNICTYPE_BRIDGED) && nicType != string(api.INCUSNICTYPE_PHYSICAL) {
-				slog.Error("Batch placement failed. Vlan tagging not supported for NIC type", slog.String("nic_type", nicType))
-				return nil, fmt.Errorf("Vlan tagging (%q) is not supported for NIC type %q", vlanID, nicType)
-			}
-
 			for _, id := range strings.Split(vlanID, ",") {
 				intID, err := strconv.Atoi(id)
 				if err != nil || intID == 0 {
@@ -148,11 +144,23 @@ func BatchPlacementRun(ctx context.Context, loader *scriptlet.Loader, instance a
 			resp.Networks = map[string]api.NetworkPlacement{}
 		}
 
-		resp.Networks[nicMac] = api.NetworkPlacement{
+		placement := api.NetworkPlacement{
 			Network: netName,
 			NICType: api.IncusNICType(nicType),
 			VlanID:  vlanID,
 		}
+
+		err = validate.IsAPIName(placement.Network, false)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid network name %q: %v", placement.Network, err)
+		}
+
+		err = placement.Validate()
+		if err != nil {
+			return nil, fmt.Errorf("Failed to validate network placement: %w", err)
+		}
+
+		resp.Networks[nicMac] = placement
 
 		slog.Info("Batch placement assigned network for instance", slog.String("location", instance.Location), slog.String("nic", nicMac), slog.String("network", netName), slog.String("nic_type", nicType), slog.String("vlan_id", vlanID))
 

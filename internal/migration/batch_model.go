@@ -140,9 +140,9 @@ func (b Batch) Validate() error {
 			return NewValidationErrf("Invalid batch, target migration network name %q is not a valid name: %v", netCfg.Network, err)
 		}
 
-		err = api.ValidNICType(string(netCfg.NICType))
+		err = netCfg.Validate()
 		if err != nil {
-			return NewValidationErrf("Invalid batch, target migration network NIC type %q is invalid: %v", netCfg.NICType, err)
+			return NewValidationErrf("Invalid batch, target migration network for target %q and project %q is invalid: %v", netCfg.Target, netCfg.TargetProject, err)
 		}
 
 		if existingTargets[netCfg.Target] == nil {
