@@ -531,13 +531,12 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 		} else {
 			ret.Devices["eth0"]["nictype"] = string(targetNetwork.NICType)
 			ret.Devices["eth0"]["parent"] = targetNetwork.Network
-		}
-
-		if targetNetwork.VlanID != "" {
-			if strings.Contains(targetNetwork.VlanID, ",") {
-				ret.Devices["eth0"]["vlan.tagged"] = targetNetwork.VlanID
-			} else {
-				ret.Devices["eth0"]["vlan"] = targetNetwork.VlanID
+			if targetNetwork.VlanID != "" {
+				if strings.Contains(targetNetwork.VlanID, ",") {
+					ret.Devices["eth0"]["vlan.tagged"] = targetNetwork.VlanID
+				} else {
+					ret.Devices["eth0"]["vlan"] = targetNetwork.VlanID
+				}
 			}
 		}
 	}
