@@ -6,7 +6,7 @@ import { useFormik } from "formik";
 import { fetchNetwork, updateNetwork } from "api/networks";
 import { useNotification } from "context/notificationContext";
 import { APIResponse } from "types/response";
-import { IncusNICType } from "util/network";
+import { IncusNICType, canSetVLAN } from "util/network";
 
 const NetworkOverrides: FC = () => {
   const { uuid } = useParams();
@@ -24,14 +24,14 @@ const NetworkOverrides: FC = () => {
 
   let formikInitialValues = {
     network: "",
-    nictype: "",
+    nictype: "managed",
     vlan_id: "",
   };
 
   if (network) {
     formikInitialValues = {
       network: network.overrides?.network,
-      nictype: network.overrides?.nictype,
+      nictype: network.overrides?.nictype || "managed",
       vlan_id: network.overrides?.vlan_id,
     };
   }
@@ -95,11 +95,16 @@ const NetworkOverrides: FC = () => {
           <Form.Select
             name="nictype"
             value={formik.values.nictype}
-            onChange={formik.handleChange}
+            onChange={(e) => {
+              if (!canSetVLAN(e.target.value as IncusNICType)) {
+                formik.values.vlan_id = "";
+              }
+
+              formik.handleChange(e);
+            }}
             onBlur={formik.handleBlur}
             isInvalid={!!formik.errors.nictype && formik.touched.nictype}
           >
-            <option value=""></option>
             {Object.values(IncusNICType).map((value) => (
               <option key={value} value={value}>
                 {value}
@@ -116,6 +121,7 @@ const NetworkOverrides: FC = () => {
             type="text"
             name="vlan_id"
             value={formik.values.vlan_id}
+            disabled={!canSetVLAN(formik.values.nictype as IncusNICType)}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
             isInvalid={!!formik.errors.vlan_id && formik.touched.vlan_id}
