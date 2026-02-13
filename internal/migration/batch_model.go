@@ -123,6 +123,7 @@ func (b Batch) Validate() error {
 		return NewValidationErrf("Invalid batch placement, default storage pool %q is not a valid name: %v", b.Defaults.Placement.StoragePool, err)
 	}
 
+	existingTargets := map[string]map[string]bool{}
 	for _, netCfg := range b.Defaults.MigrationNetwork {
 		err := validate.IsAPIName(netCfg.Target, false)
 		if err != nil {
@@ -143,6 +144,16 @@ func (b Batch) Validate() error {
 		if err != nil {
 			return NewValidationErrf("Invalid batch, target migration network NIC type %q is invalid: %v", netCfg.NICType, err)
 		}
+
+		if existingTargets[netCfg.Target] == nil {
+			existingTargets[netCfg.Target] = map[string]bool{}
+		}
+
+		if existingTargets[netCfg.Target][netCfg.TargetProject] {
+			return NewValidationErrf("Invalid batch, more than one migration network defined for target %q and project %q", netCfg.Target, netCfg.TargetProject)
+		}
+
+		existingTargets[netCfg.Target][netCfg.TargetProject] = true
 	}
 
 	err = b.Status.Validate()

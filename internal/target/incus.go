@@ -238,6 +238,9 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		}
 	}
 
+	// Clear migration.stateful=false before starting the VM.
+	delete(apiDef.Config, "migration.stateful")
+
 	// Delete any pre-existing eth0 device.
 	delete(apiDef.Devices, "eth0")
 
@@ -248,9 +251,8 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 			return fmt.Errorf("No network placement found for NIC %q for instance %q on target %q", nic.HardwareAddress, i.GetName(), t.GetName())
 		}
 
-		if apiDef.Devices[nicDeviceName] == nil {
-			apiDef.Devices[nicDeviceName] = map[string]string{}
-		}
+		// Don't inherit any previous config for the NIC.
+		apiDef.Devices[nicDeviceName] = map[string]string{}
 
 		switch netCfg.NICType {
 		case api.INCUSNICTYPE_BRIDGED, api.INCUSNICTYPE_PHYSICAL:
@@ -504,6 +506,9 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 		hwaddrs = append(hwaddrs, nic.HardwareAddress)
 	}
 
+	// Set migration.stateful = false during migration.
+	ret.Config["migration.stateful"] = "false"
+
 	// This config key will persist to indicate that this VM was migrated through migration manager.
 	ret.Config["user.migration_source"] = instanceDef.Source
 
@@ -532,13 +537,12 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 		} else {
 			ret.Devices["eth0"]["nictype"] = string(targetNetwork.NICType)
 			ret.Devices["eth0"]["parent"] = targetNetwork.Network
-		}
-
-		if targetNetwork.VlanID != "" {
-			if strings.Contains(targetNetwork.VlanID, ",") {
-				ret.Devices["eth0"]["vlan.tagged"] = targetNetwork.VlanID
-			} else {
-				ret.Devices["eth0"]["vlan"] = targetNetwork.VlanID
+			if targetNetwork.VlanID != "" {
+				if strings.Contains(targetNetwork.VlanID, ",") {
+					ret.Devices["eth0"]["vlan.tagged"] = targetNetwork.VlanID
+				} else {
+					ret.Devices["eth0"]["vlan"] = targetNetwork.VlanID
+				}
 			}
 		}
 	}
