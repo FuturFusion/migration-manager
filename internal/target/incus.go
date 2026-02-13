@@ -248,9 +248,8 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 			return fmt.Errorf("No network placement found for NIC %q for instance %q on target %q", nic.HardwareAddress, i.GetName(), t.GetName())
 		}
 
-		if apiDef.Devices[nicDeviceName] == nil {
-			apiDef.Devices[nicDeviceName] = map[string]string{}
-		}
+		// Don't inherit any previous config for the NIC.
+		apiDef.Devices[nicDeviceName] = map[string]string{}
 
 		switch netCfg.NICType {
 		case api.INCUSNICTYPE_BRIDGED, api.INCUSNICTYPE_PHYSICAL:
