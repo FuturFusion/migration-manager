@@ -168,9 +168,9 @@ func (n Network) ToAPI() (*api.Network, error) {
 		Network: strings.ReplaceAll(filepath.Base(n.Location), " ", "-"),
 	}
 
-	// Set bridged config for VMware port groups.
+	// Set physical config for VMware port groups.
 	if n.Type == api.NETWORKTYPE_VMWARE_DISTRIBUTED {
-		placement.NICType = api.INCUSNICTYPE_BRIDGED
+		placement.NICType = api.INCUSNICTYPE_PHYSICAL
 
 		var netProps internalAPI.VCenterNetworkProperties
 		err := json.Unmarshal(n.Properties, &netProps)

@@ -256,13 +256,23 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 
 		switch netCfg.NICType {
 		case api.INCUSNICTYPE_BRIDGED, api.INCUSNICTYPE_PHYSICAL:
-			apiDef.Devices[nicDeviceName]["nictype"] = string(netCfg.NICType)
-			apiDef.Devices[nicDeviceName]["parent"] = netCfg.Network
-			if netCfg.VlanID != "" {
-				if strings.Contains(netCfg.VlanID, ",") {
-					apiDef.Devices[nicDeviceName]["vlan.tagged"] = netCfg.VlanID
-				} else {
-					apiDef.Devices[nicDeviceName]["vlan"] = netCfg.VlanID
+			network, _, err := t.incusClient.GetNetwork(netCfg.Network)
+			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+				return err
+			}
+
+			// If the nictype is physical, allow either managed type: physical or unmanaged nictype: physical.
+			if network != nil && network.Type == string(api.INCUSNICTYPE_PHYSICAL) && netCfg.NICType == api.INCUSNICTYPE_PHYSICAL {
+				apiDef.Devices[nicDeviceName]["network"] = netCfg.Network
+			} else {
+				apiDef.Devices[nicDeviceName]["nictype"] = string(netCfg.NICType)
+				apiDef.Devices[nicDeviceName]["parent"] = netCfg.Network
+				if netCfg.VlanID != "" {
+					if strings.Contains(netCfg.VlanID, ",") {
+						apiDef.Devices[nicDeviceName]["vlan.tagged"] = netCfg.VlanID
+					} else {
+						apiDef.Devices[nicDeviceName]["vlan"] = netCfg.VlanID
+					}
 				}
 			}
 
