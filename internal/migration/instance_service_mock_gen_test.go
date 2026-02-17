@@ -69,6 +69,9 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			ResetBackgroundImportFunc: func(ctx context.Context, instance *migration.Instance) error {
 //				panic("mock out the ResetBackgroundImport method")
 //			},
+//			SetBackgroundImportVerifiedFunc: func(ctx context.Context, id uuid.UUID, hasSupport bool, disks []string) (*migration.Instance, error) {
+//				panic("mock out the SetBackgroundImportVerified method")
+//			},
 //			UpdateFunc: func(ctx context.Context, instance *migration.Instance) error {
 //				panic("mock out the Update method")
 //			},
@@ -126,6 +129,9 @@ type InstanceServiceMock struct {
 
 	// ResetBackgroundImportFunc mocks the ResetBackgroundImport method.
 	ResetBackgroundImportFunc func(ctx context.Context, instance *migration.Instance) error
+
+	// SetBackgroundImportVerifiedFunc mocks the SetBackgroundImportVerified method.
+	SetBackgroundImportVerifiedFunc func(ctx context.Context, id uuid.UUID, hasSupport bool, disks []string) (*migration.Instance, error)
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, instance *migration.Instance) error
@@ -232,6 +238,17 @@ type InstanceServiceMock struct {
 			// Instance is the instance argument value.
 			Instance *migration.Instance
 		}
+		// SetBackgroundImportVerified holds details about calls to the SetBackgroundImportVerified method.
+		SetBackgroundImportVerified []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// HasSupport is the hasSupport argument value.
+			HasSupport bool
+			// Disks is the disks argument value.
+			Disks []string
+		}
 		// Update holds details about calls to the Update method.
 		Update []struct {
 			// Ctx is the ctx argument value.
@@ -240,23 +257,24 @@ type InstanceServiceMock struct {
 			Instance *migration.Instance
 		}
 	}
-	lockCreate                   sync.RWMutex
-	lockDeleteByUUID             sync.RWMutex
-	lockGetAll                   sync.RWMutex
-	lockGetAllAssigned           sync.RWMutex
-	lockGetAllByBatch            sync.RWMutex
-	lockGetAllBySource           sync.RWMutex
-	lockGetAllQueued             sync.RWMutex
-	lockGetAllUUIDs              sync.RWMutex
-	lockGetAllUUIDsBySource      sync.RWMutex
-	lockGetAllUnassigned         sync.RWMutex
-	lockGetBatchesByUUID         sync.RWMutex
-	lockGetByUUID                sync.RWMutex
-	lockGetPostMigrationRetries  sync.RWMutex
-	lockRecordPostMigrationRetry sync.RWMutex
-	lockRemoveFromQueue          sync.RWMutex
-	lockResetBackgroundImport    sync.RWMutex
-	lockUpdate                   sync.RWMutex
+	lockCreate                      sync.RWMutex
+	lockDeleteByUUID                sync.RWMutex
+	lockGetAll                      sync.RWMutex
+	lockGetAllAssigned              sync.RWMutex
+	lockGetAllByBatch               sync.RWMutex
+	lockGetAllBySource              sync.RWMutex
+	lockGetAllQueued                sync.RWMutex
+	lockGetAllUUIDs                 sync.RWMutex
+	lockGetAllUUIDsBySource         sync.RWMutex
+	lockGetAllUnassigned            sync.RWMutex
+	lockGetBatchesByUUID            sync.RWMutex
+	lockGetByUUID                   sync.RWMutex
+	lockGetPostMigrationRetries     sync.RWMutex
+	lockRecordPostMigrationRetry    sync.RWMutex
+	lockRemoveFromQueue             sync.RWMutex
+	lockResetBackgroundImport       sync.RWMutex
+	lockSetBackgroundImportVerified sync.RWMutex
+	lockUpdate                      sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -808,6 +826,50 @@ func (mock *InstanceServiceMock) ResetBackgroundImportCalls() []struct {
 	mock.lockResetBackgroundImport.RLock()
 	calls = mock.calls.ResetBackgroundImport
 	mock.lockResetBackgroundImport.RUnlock()
+	return calls
+}
+
+// SetBackgroundImportVerified calls SetBackgroundImportVerifiedFunc.
+func (mock *InstanceServiceMock) SetBackgroundImportVerified(ctx context.Context, id uuid.UUID, hasSupport bool, disks []string) (*migration.Instance, error) {
+	if mock.SetBackgroundImportVerifiedFunc == nil {
+		panic("InstanceServiceMock.SetBackgroundImportVerifiedFunc: method is nil but InstanceService.SetBackgroundImportVerified was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		ID         uuid.UUID
+		HasSupport bool
+		Disks      []string
+	}{
+		Ctx:        ctx,
+		ID:         id,
+		HasSupport: hasSupport,
+		Disks:      disks,
+	}
+	mock.lockSetBackgroundImportVerified.Lock()
+	mock.calls.SetBackgroundImportVerified = append(mock.calls.SetBackgroundImportVerified, callInfo)
+	mock.lockSetBackgroundImportVerified.Unlock()
+	return mock.SetBackgroundImportVerifiedFunc(ctx, id, hasSupport, disks)
+}
+
+// SetBackgroundImportVerifiedCalls gets all the calls that were made to SetBackgroundImportVerified.
+// Check the length with:
+//
+//	len(mockedInstanceService.SetBackgroundImportVerifiedCalls())
+func (mock *InstanceServiceMock) SetBackgroundImportVerifiedCalls() []struct {
+	Ctx        context.Context
+	ID         uuid.UUID
+	HasSupport bool
+	Disks      []string
+} {
+	var calls []struct {
+		Ctx        context.Context
+		ID         uuid.UUID
+		HasSupport bool
+		Disks      []string
+	}
+	mock.lockSetBackgroundImportVerified.RLock()
+	calls = mock.calls.SetBackgroundImportVerified
+	mock.lockSetBackgroundImportVerified.RUnlock()
 	return calls
 }
 
