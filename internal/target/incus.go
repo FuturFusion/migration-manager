@@ -1234,8 +1234,18 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 					return fmt.Errorf("Target network %q is not a managed network", n.Name)
 				}
 
-				if n.Managed && n.Type != "bridge" && (targetNet.NICType == api.INCUSNICTYPE_BRIDGED || targetNet.NICType == api.INCUSNICTYPE_PHYSICAL) {
-					return fmt.Errorf("Target network %q expects nictype %q, not %q", n.Name, api.INCUSNICTYPE_MANAGED, targetNet.NICType)
+				if n.Managed {
+					isInvalidType := false
+					switch targetNet.NICType {
+					case api.INCUSNICTYPE_BRIDGED:
+						isInvalidType = n.Type != "bridge"
+					case api.INCUSNICTYPE_PHYSICAL:
+						isInvalidType = n.Type != "bridge" && n.Type != "physical"
+					}
+
+					if isInvalidType {
+						return fmt.Errorf("Target network %q expects nictype %q, not %q", n.Name, api.INCUSNICTYPE_MANAGED, targetNet.NICType)
+					}
 				}
 
 				break
