@@ -24,6 +24,7 @@ type InstanceService interface {
 
 	Update(ctx context.Context, instance *Instance) error
 	ResetBackgroundImport(ctx context.Context, instance *Instance) error
+	SetBackgroundImportVerified(ctx context.Context, id uuid.UUID, hasSupport bool, disks []string) (*Instance, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 
 	RemoveFromQueue(ctx context.Context, id uuid.UUID) error

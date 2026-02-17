@@ -155,19 +155,24 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			return fmt.Errorf("Failed to connect to %q source %q: %w", src.SourceType, src.Name, err)
 		}
 
-		disableVMs, err := is.VerifyBackgroundImport(ctx, instances)
+		verifiedVMs, err := is.VerifyBackgroundImport(ctx, instances)
 		if err != nil {
 			return fmt.Errorf("Failed to verify VM background import support for source %q: %w", srcName, err)
 		}
 
-		for _, inst := range disableVMs {
-			err = d.instance.Update(ctx, &inst)
+		for _, inst := range verifiedVMs {
+			disks := make([]string, 0, len(inst.Properties.Disks))
+			for _, d := range inst.Properties.Disks {
+				disks = append(disks, d.Name)
+			}
+
+			newInst, err := d.instance.SetBackgroundImportVerified(ctx, inst.UUID, inst.Properties.BackgroundImport, disks)
 			if err != nil {
 				return fmt.Errorf("Failed to update instance %q background import support: %w", inst.Properties.Location, err)
 			}
 
 			// Update the instance in the state cache.
-			state[q.BatchName].Instances[inst.UUID] = inst
+			state[q.BatchName].Instances[inst.UUID] = *newInst
 		}
 	}
 

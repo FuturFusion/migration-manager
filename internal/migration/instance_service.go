@@ -197,6 +197,53 @@ func (s instanceService) ResetBackgroundImport(ctx context.Context, inst *Instan
 	})
 }
 
+// SetBackgroundImportVerified sets BackgroundImport to hasSupport and sets BackgroundImportVerified = true for every disk name in disks, returning the instance.
+func (s instanceService) SetBackgroundImportVerified(ctx context.Context, id uuid.UUID, hasSupport bool, disks []string) (*Instance, error) {
+	var inst *Instance
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		inst, err = s.repo.GetByUUID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		// If nothing changed, there's nothing to do.
+		if len(disks) == 0 && inst.Properties.BackgroundImport == hasSupport {
+			return nil
+		}
+
+		names := make(map[string]struct{}, len(disks))
+		for _, d := range disks {
+			names[d] = struct{}{}
+		}
+
+		modified := inst.Properties.BackgroundImport != hasSupport
+		inst.Properties.BackgroundImport = hasSupport
+		for i := range inst.Properties.Disks {
+			_, ok := names[inst.Properties.Disks[i].Name]
+			if ok {
+				if !inst.Properties.Disks[i].BackgroundImportVerified {
+					modified = true
+				}
+
+				inst.Properties.Disks[i].BackgroundImportVerified = true
+			}
+		}
+
+		if !modified {
+			return nil
+		}
+
+		// Only update the instance if we actually changed a value.
+		return s.repo.Update(ctx, *inst)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return inst, nil
+}
+
 func (s instanceService) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		oldInstance, err := s.repo.GetByUUID(ctx, id)

@@ -256,13 +256,23 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 
 		switch netCfg.NICType {
 		case api.INCUSNICTYPE_BRIDGED, api.INCUSNICTYPE_PHYSICAL:
-			apiDef.Devices[nicDeviceName]["nictype"] = string(netCfg.NICType)
-			apiDef.Devices[nicDeviceName]["parent"] = netCfg.Network
-			if netCfg.VlanID != "" {
-				if strings.Contains(netCfg.VlanID, ",") {
-					apiDef.Devices[nicDeviceName]["vlan.tagged"] = netCfg.VlanID
-				} else {
-					apiDef.Devices[nicDeviceName]["vlan"] = netCfg.VlanID
+			network, _, err := t.incusClient.GetNetwork(netCfg.Network)
+			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+				return err
+			}
+
+			// If the nictype is physical, allow either managed type: physical or unmanaged nictype: physical.
+			if network != nil && network.Type == string(api.INCUSNICTYPE_PHYSICAL) && netCfg.NICType == api.INCUSNICTYPE_PHYSICAL {
+				apiDef.Devices[nicDeviceName]["network"] = netCfg.Network
+			} else {
+				apiDef.Devices[nicDeviceName]["nictype"] = string(netCfg.NICType)
+				apiDef.Devices[nicDeviceName]["parent"] = netCfg.Network
+				if netCfg.VlanID != "" {
+					if strings.Contains(netCfg.VlanID, ",") {
+						apiDef.Devices[nicDeviceName]["vlan.tagged"] = netCfg.VlanID
+					} else {
+						apiDef.Devices[nicDeviceName]["vlan"] = netCfg.VlanID
+					}
 				}
 			}
 
@@ -1224,8 +1234,18 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 					return fmt.Errorf("Target network %q is not a managed network", n.Name)
 				}
 
-				if n.Managed && n.Type != "bridge" && (targetNet.NICType == api.INCUSNICTYPE_BRIDGED || targetNet.NICType == api.INCUSNICTYPE_PHYSICAL) {
-					return fmt.Errorf("Target network %q expects nictype %q, not %q", n.Name, api.INCUSNICTYPE_MANAGED, targetNet.NICType)
+				if n.Managed {
+					isInvalidType := false
+					switch targetNet.NICType {
+					case api.INCUSNICTYPE_BRIDGED:
+						isInvalidType = n.Type != "bridge"
+					case api.INCUSNICTYPE_PHYSICAL:
+						isInvalidType = n.Type != "bridge" && n.Type != "physical"
+					}
+
+					if isInvalidType {
+						return fmt.Errorf("Target network %q expects nictype %q, not %q", n.Name, api.INCUSNICTYPE_MANAGED, targetNet.NICType)
+					}
 				}
 
 				break
