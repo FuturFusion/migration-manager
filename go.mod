@@ -6,6 +6,7 @@ toolchain go1.24.8
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2
+	github.com/Microsoft/go-winio v0.6.2
 	github.com/Rican7/retry v0.3.1
 	github.com/expr-lang/expr v1.17.2
 	github.com/flosch/pongo2/v4 v4.0.2
@@ -33,7 +34,6 @@ require (
 	github.com/vmware/govmomi v0.50.0
 	github.com/zitadel/oidc/v3 v3.45.1
 	go.starlark.net v0.0.0-20251109183026-be02852a5e1f
-	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39
 	golang.org/x/mod v0.30.0
 	golang.org/x/oauth2 v0.33.0
 	golang.org/x/sync v0.18.0
@@ -169,6 +169,7 @@ require (
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
+	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39 // indirect
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/telemetry v0.0.0-20251111182119-bc8e575c7b54 // indirect
 	golang.org/x/term v0.37.0 // indirect

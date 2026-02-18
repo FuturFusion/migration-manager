@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 # Delete the script file before continuing any further.
-remove-item "C:\virtio-assign-netcfg.ps1"
+remove-item "C:\migration-manager-virtio-assign-netcfg.ps1"
 
 # Descriptions of the various NIC drivers we care about.
 $virtio_desc = "Red Hat VirtIO Ethernet Adapter"
