@@ -14,6 +14,11 @@ foreach ($drive in get-psdrive -psprovider filesystem) {
   }
 }
 
+# Bring disks that had a drive letter online.
+if (test-path "C:\migration-manager-virtio-assign-diskcfg.ps1") {
+  start-process powershell.exe -argumentlist "-file `"C:\migration-manager-virtio-assign-diskcfg.ps1`"" -wait
+}
+
 # Run network config reassignment if present.
 if (test-path "C:\virtio-assign-netcfg.ps1") {
   start-process powershell.exe -argumentlist "-file `"C:\virtio-assign-netcfg.ps1`"" -wait
