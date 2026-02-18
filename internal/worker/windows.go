@@ -1,7 +1,9 @@
 package worker
 
 import (
+	"bufio"
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -14,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Microsoft/go-winio/pkg/guid"
 	"github.com/flosch/pongo2/v4"
 	"github.com/lxc/distrobuilder/shared"
 	"github.com/lxc/distrobuilder/windows"
@@ -367,6 +370,30 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 		return err
 	}
 
+	mountIDs, err := GetWindowsMounts(windowsMainMountPath)
+	if err != nil {
+		return err
+	}
+
+	if len(mountIDs) > 0 {
+		err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration_manager_disk_ids"), []byte(mountIDs), 0o755)
+		if err != nil {
+			return err
+		}
+
+		ps1ScriptName := "virtio-assign-diskcfg.ps1"
+		ps1Script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", ps1ScriptName))
+		if err != nil {
+			return err
+		}
+
+		// Write the ps1 script to C:\.
+		err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration-manager-"+ps1ScriptName), ps1Script, 0o755)
+		if err != nil {
+			return err
+		}
+	}
+
 	// Re-assign network configs to the new NIC if we have MACs.
 	if len(hwAddrs) > 0 {
 		hivexScriptName := "hivex-assign-netcfg.sh"
@@ -377,7 +404,7 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 		}
 
 		// Write the ps1 script to C:\.
-		err = os.WriteFile(filepath.Join(windowsMainMountPath, ps1ScriptName), ps1Script, 0o755)
+		err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration-manager-"+ps1ScriptName), ps1Script, 0o755)
 		if err != nil {
 			return err
 		}
@@ -462,6 +489,62 @@ func injectDriversHelper(ctx context.Context, windowsVersion string, windowsArch
 	}
 
 	return nil
+}
+
+func parseWindowsMountID(b string) (string, error) {
+	bytes, err := hex.DecodeString(strings.ReplaceAll(b, ",", ""))
+	if err != nil {
+		return "", err
+	}
+
+	switch len(bytes) {
+	case 24:
+		var guidBytes [16]byte
+		copy(guidBytes[:], bytes[8:])
+		return "{" + guid.FromWindowsArray(guidBytes).String() + "}", nil
+	case 12:
+		return fmt.Sprintf("%d", binary.LittleEndian.Uint32(bytes[:4])), nil
+	default:
+		return "", fmt.Errorf("Unknown byte sequence %q", b)
+	}
+}
+
+func GetWindowsMounts(rootPath string) (string, error) {
+	records, err := subprocess.RunCommand("hivexregedit", "--export", "--prefix", "HKLM/SYSTEM", filepath.Join(rootPath, "Windows/System32/config/SYSTEM"), "MountedDevices")
+	if err != nil {
+		return "", fmt.Errorf("Failed to read mounted devices from registry: %w", err)
+	}
+
+	seen := map[string]bool{}
+	sc := bufio.NewScanner(strings.NewReader(records))
+	var b strings.Builder
+	for sc.Scan() {
+		line := sc.Text()
+		if strings.HasPrefix(line, `"\\DosDevices\\`) {
+			parts := strings.Split(line, ":")
+			if len(parts) != 3 {
+				continue
+			}
+
+			id, err := parseWindowsMountID(parts[2])
+			if err != nil {
+				// The path may not have been assigned to any disk we can parse, so just log and continue.
+				slog.Error("Coult not parse Windows Drive letter location", slog.String("drive_letter", parts[0]), slog.Any("error", err))
+				continue
+			}
+
+			if !seen[id] {
+				_, err := b.WriteString(id + "\n")
+				if err != nil {
+					return "", err
+				}
+
+				seen[id] = true
+			}
+		}
+	}
+
+	return b.String(), nil
 }
 
 // toHex is a pongo2 filter which converts the provided value to a hex value understood by the Windows registry.
