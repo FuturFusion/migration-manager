@@ -21,6 +21,7 @@ if (test-path "C:\migration-manager-virtio-assign-diskcfg.ps1") {
 
 # Run network config reassignment if present.
 if (test-path "C:\migration-manager-virtio-assign-netcfg.ps1") {
-  start-process powershell.exe -argumentlist "-file `"C:\migration-manager-virtio-assign-netcfg.ps1`"" -wait
+  $cmd = '-command "& ''C:\migration-manager-virtio-assign-netcfg.ps1'' *> ''C:\migration-manager-net.log''"'
+  start-process powershell.exe -argumentlist $cmd -wait
 }
 

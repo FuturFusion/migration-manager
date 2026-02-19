@@ -230,7 +230,9 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 			return err
 		}
 
-		hwAddrs = strings.Split(string(out), " ")
+		if string(out) != "not found" {
+			hwAddrs = strings.Split(string(out), " ")
+		}
 	}
 
 	// Mount the virtio drivers image.
