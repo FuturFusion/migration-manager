@@ -1,6 +1,8 @@
 $ErrorActionPreference = 'Stop'
 
 # Delete the script file before continuing any further.
+write-output "Starting network re-assignment"
+
 remove-item "C:\migration-manager-virtio-assign-netcfg.ps1"
 
 # Descriptions of the various NIC drivers we care about.
@@ -9,7 +11,16 @@ $virtio_desc = "Red Hat VirtIO Ethernet Adapter"
 # net_class_guid is a constant GUID under which all network adapters live.
 $net_class_guid = "{4D36E972-E325-11CE-BFC1-08002bE10318}"
 
+if (-not (test-path "C:\migration_manager_nics") -or -not (test-path "C:\migration_manager_old_guids")) {
+  write-output "No Pre-migration NICs or GUIDs were found"
+  exit
+}
+
 $macs = get-content "C:\migration_manager_nics"
+
+$macs | foreach-object {
+  write-output ("Found MAC: {0}" -f $_)
+}
 
 # Remove the nics file after we have populated the list.
 remove-item "C:\migration_manager_nics"
@@ -18,9 +29,11 @@ remove-item "C:\migration_manager_nics"
 $old_macs_to_guids = @{}
 get-content "C:\migration_manager_old_guids" | foreach-object {
   $cols = $_ -split '\s+'
-    if ($cols.length -ge 2) {
-      $old_macs_to_guids[$cols[1]] = $cols[0]
-    }
+  if ($cols.length -ge 2) {
+    $old_macs_to_guids[$cols[1]] = $cols[0]
+  }
+
+  write-output ("Mappings from MACs to old GUIDs: {0}:{1}" -f $cols[1], $cols[0])
 }
 
 # We're done with the GUID mapping so delete it.
@@ -31,13 +44,16 @@ if ($old_macs_to_guids.count -eq 0 -or $macs.count -eq 0) {
   exit
 }
 
+write-output "Waiting for network adapter enumeration"
+
 # This service script runs before device enumeration so we have to wait for it.
 $timeout = 90
 $elapsed = 0
 $done = 0
 do {
-  $nics = get-netadapter -physical | where-object { $_.interfacedescription -like "*$virtio_desc*" }
-  if ($nics.count -eq $macs.count) {
+  $nics = @(get-netadapter -physical | where-object { $_.interfacedescription -like "*$virtio_desc*" })
+  write-output ("Enumeration count: expected: {0} actual: {1}" -f $macs.count, $nics.count)
+  if ($nics.count -ge $macs.count) {
     $done = 1
     break
   }
@@ -45,6 +61,8 @@ do {
   start-sleep -seconds 1
   $elapsed = $elapsed + 1
 } while ($elapsed -lt $timeout -and $done -eq 0)
+
+write-output ("Finished waiting for network adapter enumeration after {0}s" -f $elapsed)
 
 # Fetch preliminary data for each old and new NIC, for each given MAC.
 $old_nics = @{}
@@ -57,6 +75,11 @@ get-netadapter -physical | foreach-object {
     desc = $_.interfacedescription
     instanceid = (get-pnpdevice -friendlyname $_.interfacedescription).instanceid
   }
+
+  write-output("Found network adapter: '{0}': '{1}'" -f $obj.name, $obj.desc)
+  write-output("  - MAC:  '{0}'" -f $mac)
+  write-output("  - GUID: '{0}'" -f $obj.guid)
+  write-output("  - Path: '{0}'" -f $obj.instanceid)
 
   # Only consider MACs that were migrated (supplied in args).
   if (-not ($macs -contains $mac)) {
@@ -75,6 +98,9 @@ get-netadapter -physical | foreach-object {
       desc = (get-pnpdevice -instanceid $old_data.pnpinstanceid).friendlyname
       instanceid = $old_data.pnpinstanceid
     }
+    write-output("Adapter match from pre-migration: '{0}': '{1}'" -f $old_nics[$mac].name, $old_nics[$mac].desc)
+    write-output("  - GUID: '{0}'" -f $old_nics[$mac].guid)
+    write-output("  - Path: '{0}'" -f $old_nics[$mac].instanceid)
   }
 }
 
@@ -113,9 +139,12 @@ foreach ($mac in $new_nics.keys) {
     continue
   }
 
+  write-output ("Interface index old:{0} new:{1}" -f $old_pspath, $new_pspath)
+
   # Copy the old nic's GUID to the new driver's paths.
   $old_net_path = "system\currentcontrolset\control\class\$net_class_guid\$old_pspath"
   $new_net_path = "system\currentcontrolset\control\class\$net_class_guid\$new_pspath"
+  write-output "Transferring linkage config between interfaces"
   reg copy "hklm\$old_net_path\linkage" "hklm\$new_net_path\linkage" /f
   set-itemproperty -path "hklm:\$new_net_path" -name netcfginstanceid -value "$old_guid"
 
@@ -123,6 +152,7 @@ foreach ($mac in $new_nics.keys) {
   # Copy the device ID from the new driver's nic GUID to the old driver's nic GUID.
   $old_network_path = "hklm\system\currentcontrolset\control\network\$net_class_guid\$old_guid\connection"
   $new_network_path = "hklm\system\currentcontrolset\control\network\$net_class_guid\$new_guid\connection"
+  write-output "Transferring device ID between network configurations"
   reg copy "$new_network_path" "$old_network_path" /f
 
   $changed = 1

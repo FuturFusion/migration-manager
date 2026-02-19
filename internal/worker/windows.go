@@ -230,7 +230,9 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 			return err
 		}
 
-		hwAddrs = strings.Split(string(out), " ")
+		if string(out) != "not found" {
+			hwAddrs = strings.Split(string(out), " ")
+		}
 	}
 
 	// Mount the virtio drivers image.
@@ -529,7 +531,7 @@ func GetWindowsMounts(rootPath string) (string, error) {
 			id, err := parseWindowsMountID(parts[2])
 			if err != nil {
 				// The path may not have been assigned to any disk we can parse, so just log and continue.
-				slog.Error("Coult not parse Windows Drive letter location", slog.String("drive_letter", parts[0]), slog.Any("error", err))
+				slog.Warn("Could not parse Windows drive location", slog.String("letter", parts[0]), slog.Any("error", err))
 				continue
 			}
 
