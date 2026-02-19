@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 type CompressionMethod string
@@ -85,6 +86,12 @@ func (b *NbdkitBuilder) Build() (*NbdkitServer, error) {
 	socket := fmt.Sprintf("%s/nbdkit.sock", tmp)
 	pidFile := fmt.Sprintf("%s/nbdkit.pid", tmp)
 
+	pwFile := filepath.Join(tmp, "password")
+	err = os.WriteFile(pwFile, []byte(b.password), 0o600)
+	if err != nil {
+		return nil, err
+	}
+
 	cmd := exec.Command(
 		"nbdkit",
 		"--exit-with-parent",
@@ -95,7 +102,7 @@ func (b *NbdkitBuilder) Build() (*NbdkitServer, error) {
 		"vddk",
 		fmt.Sprintf("server=%s", b.server),
 		fmt.Sprintf("user=%s", b.username),
-		fmt.Sprintf("password=%s", b.password),
+		fmt.Sprintf("password=+%s", pwFile),
 		fmt.Sprintf("thumbprint=%s", b.thumbprint),
 		fmt.Sprintf("compression=%s", b.compression),
 		fmt.Sprintf("vm=moref=%s", b.vm),
@@ -106,8 +113,9 @@ func (b *NbdkitBuilder) Build() (*NbdkitServer, error) {
 	)
 
 	return &NbdkitServer{
-		cmd:     cmd,
-		socket:  socket,
-		pidFile: pidFile,
+		cmd:      cmd,
+		socket:   socket,
+		pidFile:  pidFile,
+		cacheDir: tmp,
 	}, nil
 }

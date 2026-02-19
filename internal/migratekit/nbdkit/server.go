@@ -10,9 +10,10 @@ import (
 )
 
 type NbdkitServer struct {
-	cmd     *exec.Cmd
-	socket  string
-	pidFile string
+	cacheDir string
+	cmd      *exec.Cmd
+	socket   string
+	pidFile  string
 }
 
 func (s *NbdkitServer) Start() error {
@@ -51,6 +52,7 @@ func (s *NbdkitServer) Start() error {
 }
 
 func (s *NbdkitServer) Stop() error {
+	defer func() { _ = os.RemoveAll(s.cacheDir) }()
 	if err := s.cmd.Process.Kill(); err != nil {
 		return fmt.Errorf("failed to stop nbdkit server: %w", err)
 	}
