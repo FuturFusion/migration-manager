@@ -442,7 +442,7 @@ func injectDriversHelper(ctx context.Context, windowsVersion string, windowsArch
 		return err
 	}
 
-	repackUtuil := windows.NewRepackUtil(cacheDir, ctx, logger.SlogBackedLogrus())
+	repackUtil := windows.NewRepackUtil(cacheDir, ctx, logger.SlogBackedLogrus())
 
 	var reWim string
 	var reWimInfo windows.WimInfo
@@ -452,7 +452,7 @@ func injectDriversHelper(ctx context.Context, windowsVersion string, windowsArch
 			return fmt.Errorf("Unable to find winre.wim: %w", err)
 		}
 
-		reWimInfo, err = repackUtuil.GetWimInfo(reWim)
+		reWimInfo, err = repackUtil.GetWimInfo(reWim)
 		if err != nil {
 			return fmt.Errorf("Failed to get RE wim info: %w", err)
 		}
@@ -474,18 +474,18 @@ func injectDriversHelper(ctx context.Context, windowsVersion string, windowsArch
 		return fmt.Errorf("Failed to detect Windows architecture")
 	}
 
-	repackUtuil.SetWindowsVersionArchitecture(windowsVersion, windowsArchitecture)
+	repackUtil.SetWindowsVersionArchitecture(windowsVersion, windowsArchitecture)
 
 	// Inject drivers into the RE wim image.
 	if recoveryExists {
-		err = repackUtuil.InjectDriversIntoWim(reWim, reWimInfo, driversMountPath)
+		err = repackUtil.InjectDriversIntoWim(reWim, reWimInfo, driversMountPath)
 		if err != nil {
 			return fmt.Errorf("Failed to modify wim %q: %w", reWim, err)
 		}
 	}
 
 	// Inject drivers into the Windows install.
-	err = repackUtuil.InjectDrivers(windowsMainMountPath, driversMountPath)
+	err = repackUtil.InjectDrivers(windowsMainMountPath, driversMountPath)
 	if err != nil {
 		return fmt.Errorf("Failed to inject drivers: %w", err)
 	}
