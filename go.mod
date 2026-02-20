@@ -1,8 +1,6 @@
 module github.com/FuturFusion/migration-manager
 
-go 1.24.7
-
-toolchain go1.24.8
+go 1.25.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.2
@@ -15,7 +13,7 @@ require (
 	github.com/gosimple/slug v1.15.0
 	github.com/hexdigest/gowrap v1.4.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
-	github.com/lxc/distrobuilder v0.0.0-20251008023811-a3072be2ef91
+	github.com/lxc/distrobuilder v0.0.0-20260219234844-b9159b379bc7
 	github.com/lxc/incus-os/incus-osd v0.0.0-20251211063133-dc3444b6809e
 	github.com/lxc/incus/v6 v6.19.2-0.20251210203713-23bc5120f57b
 	github.com/matryer/moq v0.4.0
@@ -174,8 +172,8 @@ require (
 	golang.org/x/telemetry v0.0.0-20251111182119-bc8e575c7b54 // indirect
 	golang.org/x/term v0.37.0 // indirect
 	gonum.org/v1/gonum v0.16.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20251022142026-3a174f9686a8 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251124214823-79d6a2a48846 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/grpc v1.77.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
