@@ -47,7 +47,7 @@ if ($old_macs_to_guids.count -eq 0 -or $macs.count -eq 0) {
 write-output "Waiting for network adapter enumeration"
 
 # This service script runs before device enumeration so we have to wait for it.
-$timeout = 90
+$timeout = 180
 $elapsed = 0
 $done = 0
 do {
