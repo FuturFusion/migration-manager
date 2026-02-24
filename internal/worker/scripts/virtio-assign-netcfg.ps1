@@ -67,13 +67,14 @@ write-output ("Finished waiting for network adapter enumeration after {0}s" -f $
 # Fetch preliminary data for each old and new NIC, for each given MAC.
 $old_nics = @{}
 $new_nics = @{}
-get-netadapter -physical | foreach-object {
-  $mac = $_.macaddress
+$allnics = get-netadapter -physical
+foreach ($nic in $allnics) {
+  $mac = $nic.macaddress
   $obj = [pscustomobject]@{
-    guid = $_.interfaceguid
-    name = $_.name
-    desc = $_.interfacedescription
-    instanceid = (get-pnpdevice -friendlyname $_.interfacedescription).instanceid
+    guid = $nic.interfaceguid
+    name = $nic.name
+    desc = $nic.interfacedescription
+    instanceid = (get-pnpdevice -friendlyname $nic.interfacedescription).instanceid
   }
 
   write-output("Found network adapter: '{0}': '{1}'" -f $obj.name, $obj.desc)
@@ -88,7 +89,7 @@ get-netadapter -physical | foreach-object {
   }
 
   # If we found a VirtIO NIC with a matching MAC, and a previous NIC existed, fetch its data so we can copy it to the new NIC.
-  if ($_.interfacedescription -like "*$virtio_desc*" -and $old_macs_to_guids.containskey($mac)) {
+  if ($nic.interfacedescription -like "*$virtio_desc*" -and $old_macs_to_guids.containskey($mac)) {
     $new_nics[$mac] = $obj
     $old_guid = $old_macs_to_guids[$mac]
     $old_data = get-itemproperty "hklm:\system\currentcontrolset\control\network\$net_class_guid\$old_guid\connection"
@@ -118,6 +119,7 @@ foreach ($mac in $new_nics.keys) {
 
   $old_guid = $old_nics[$mac].guid
   $old_desc = $old_nics[$mac].desc
+  $old_instance_id = $old_nics[$mac].instanceid
 
   $new_guid = $new_nics[$mac].guid
   $new_desc = $new_nics[$mac].desc
@@ -129,13 +131,39 @@ foreach ($mac in $new_nics.keys) {
   get-ciminstance win32_networkadapter | foreach-object {
     if ($_.name -eq $new_desc) {
       $new_pspath = "{0:D4}" -f [int]$_.deviceid
+      write-output ("Found new index: '{0}'" -f $new_pspath)
     } elseif ($_.name -eq $old_desc) {
       $old_pspath = "{0:D4}" -f [int]$_.deviceid
+      write-output ("Found old index: '{0}'" -f $old_pspath)
     }
   }
 
   if ($new_pspath -eq $null -or $old_pspath -eq $null) {
-    write-output "Failed to find Interface indexes"
+    write-output ("Falling back to direct registry check for indexes: '{0}','{1}'" -f $old_pspath,$new_pspath)
+    $indexes = get-childitem "hklm:\system\currentcontrolset\control\class\$net_class_guid" -erroraction silentlycontinue
+    foreach ($index in $indexes) {
+      if (-not ($index.pschildname -match '^\d+$')) {
+        continue
+      }
+
+      $props = get-itemproperty $index.pspath
+      $guid = $props.netcfginstanceid
+      $instanceid = $props.deviceinstanceid
+
+      if (($old_pspath -eq $null) -and ($instanceid -eq $old_instance_id) -and ($guid -eq $old_guid)) {
+        $old_pspath = $index.pschildname
+        write-output ("Using fallback for old index: '{0}'" -f $old_pspath)
+      }
+
+      if (($new_pspath -eq $null) -and ($instanceid -eq $new_instance_id) -and ($guid -eq $new_guid)) {
+        $new_pspath = $index.pschildname
+        write-output ("Using fallback for new index: '{0}'" -f $new_pspath)
+      }
+    }
+  }
+
+  if ($new_pspath -eq $null -or $old_pspath -eq $null) {
+    write-output ("Failed to find Interface indexes: '{0}','{1}'" -f $old_pspath,$new_pspath)
     continue
   }
 
