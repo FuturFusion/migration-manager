@@ -138,11 +138,14 @@ func (i Instance) NeedsBackgroundImportVerification() bool {
 
 // GetOSType returns the OS type, as determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
 func (i *Instance) GetOSType() api.OSType {
-	if strings.HasPrefix(strings.ToLower(i.Properties.OS), "win") {
+	props := i.Properties
+	props.Apply(i.Overrides.InstancePropertiesConfigurable)
+
+	if strings.HasPrefix(strings.ToLower(props.OS), "win") {
 		return api.OSTYPE_WINDOWS
 	}
 
-	if strings.HasPrefix(i.Properties.Description, "FortiGate") {
+	if strings.HasPrefix(props.Description, "FortiGate") {
 		return api.OSTYPE_FORTIGATE
 	}
 
