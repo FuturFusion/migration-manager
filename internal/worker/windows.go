@@ -320,54 +320,26 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 		return err
 	}
 
-	hivexScriptName := "hivex-disable-vm-tools.sh"
-	hivexScript, err := embeddedScripts.ReadFile(filepath.Join("scripts/", hivexScriptName))
+	// Disable VM tools.
+	err = injectScript("hivex-disable-vm-tools.sh", filepath.Join("/tmp", "hivex-disable-vm-tools.sh"), true)
 	if err != nil {
 		return err
 	}
 
-	// Write the hivex script to /tmp.
-	err = os.WriteFile(filepath.Join("/tmp", hivexScriptName), hivexScript, 0o755)
+	// Run CPU hotplug workarounds.
+	err = injectScript("hivex-cpu-hotplug-compat.sh", filepath.Join("/tmp", "hivex-cpu-hotplug-compat.sh"), true)
 	if err != nil {
 		return err
 	}
 
-	_, err = subprocess.RunCommand("/bin/sh", filepath.Join("/tmp", hivexScriptName))
+	// Add the first-boot script.
+	err = injectScript("first-boot.ps1", filepath.Join(windowsMainMountPath, "migration-manager-first-boot.ps1"), false)
 	if err != nil {
 		return err
 	}
 
-	firstBootName := "first-boot.ps1"
-	firstBootScript, err := embeddedScripts.ReadFile(filepath.Join("scripts/", firstBootName))
-	if err != nil {
-		return err
-	}
-
-	// Write the first-boot script to C:\.
-	err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration-manager-"+firstBootName), firstBootScript, 0o755)
-	if err != nil {
-		return err
-	}
-
-	// Write the first-boot script to C:\.
-	err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration-manager-"+firstBootName), firstBootScript, 0o755)
-	if err != nil {
-		return err
-	}
-
-	hivexBootName := "hivex-first-boot.sh"
-	hivexBootScript, err := embeddedScripts.ReadFile(filepath.Join("scripts/", hivexBootName))
-	if err != nil {
-		return err
-	}
-
-	// Write the hivex script to /tmp.
-	err = os.WriteFile(filepath.Join("/tmp", hivexBootName), hivexBootScript, 0o755)
-	if err != nil {
-		return err
-	}
-
-	_, err = subprocess.RunCommand("/bin/sh", filepath.Join("/tmp", hivexBootName))
+	// Inject the service for the first-boot script.
+	err = injectScript("hivex-first-boot.sh", filepath.Join("/tmp", "hivex-first-boot.sh"), true)
 	if err != nil {
 		return err
 	}
@@ -383,14 +355,8 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 			return err
 		}
 
-		ps1ScriptName := "virtio-assign-diskcfg.ps1"
-		ps1Script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", ps1ScriptName))
-		if err != nil {
-			return err
-		}
-
-		// Write the ps1 script to C:\.
-		err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration-manager-"+ps1ScriptName), ps1Script, 0o755)
+		// Add the first-boot script for disk reassignment.
+		err = injectScript("virtio-assign-diskcfg.ps1", filepath.Join(windowsMainMountPath, "migration-manager-virtio-assign-diskcfg.ps1"), false)
 		if err != nil {
 			return err
 		}
@@ -398,34 +364,12 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 
 	// Re-assign network configs to the new NIC if we have MACs.
 	if len(hwAddrs) > 0 {
-		hivexScriptName := "hivex-assign-netcfg.sh"
-		ps1ScriptName := "virtio-assign-netcfg.ps1"
-		ps1Script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", ps1ScriptName))
+		err = injectScript("virtio-assign-netcfg.ps1", filepath.Join(windowsMainMountPath, "migration-manager-virtio-assign-netcfg.ps1"), false)
 		if err != nil {
 			return err
 		}
 
-		// Write the ps1 script to C:\.
-		err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration-manager-"+ps1ScriptName), ps1Script, 0o755)
-		if err != nil {
-			return err
-		}
-
-		hivexScript, err := embeddedScripts.ReadFile(filepath.Join("scripts/", hivexScriptName))
-		if err != nil {
-			return err
-		}
-
-		// Write the hivex script to /tmp.
-		err = os.WriteFile(filepath.Join("/tmp", hivexScriptName), hivexScript, 0o755)
-		if err != nil {
-			return err
-		}
-
-		args := make([]string, 0, len(hwAddrs)+1)
-		args = append(args, filepath.Join("/tmp", hivexScriptName))
-		args = append(args, hwAddrs...)
-		_, err = subprocess.RunCommand("/bin/sh", args...)
+		err = injectScript("hivex-assign-netcfg.sh", filepath.Join("/tmp", "hivex-assign-netcfg.sh"), true, hwAddrs...)
 		if err != nil {
 			return err
 		}
