@@ -327,3 +327,30 @@ func ensureMountIsLoop(rootPartition string, rootPartitionType PartitionType) er
 
 	return nil
 }
+
+func injectScript(scriptName string, finalPath string, run bool, args ...string) error {
+	slog.Debug("Injecting script", slog.String("script", scriptName), slog.String("location", finalPath))
+	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(finalPath, script, 0o755)
+	if err != nil {
+		return err
+	}
+
+	if run {
+		cmd := make([]string, 0, len(args)+1)
+		cmd = append(cmd, finalPath)
+		cmd = append(cmd, args...)
+
+		slog.Debug("Running script", slog.String("script", scriptName), slog.Any("args", cmd))
+		_, err = subprocess.RunCommand("/bin/sh", cmd...)
+		if err != nil {
+			return fmt.Errorf("Failed to run %q: %w", scriptName, err)
+		}
+	}
+
+	return nil
+}
