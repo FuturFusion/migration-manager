@@ -326,6 +326,12 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 		return err
 	}
 
+	// Run CPU hotplug workarounds.
+	err = injectScript("hivex-cpu-hotplug-compat.sh", filepath.Join("/tmp", "hivex-cpu-hotplug-compat.sh"), true)
+	if err != nil {
+		return err
+	}
+
 	// Add the first-boot script.
 	err = injectScript("first-boot.ps1", filepath.Join(windowsMainMountPath, "migration-manager-first-boot.ps1"), false)
 	if err != nil {
