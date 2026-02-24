@@ -899,6 +899,17 @@ func (d *Daemon) syncInstancesFromSource(ctx context.Context, sourceName string,
 				slog.Any("uuid", inst.UUID),
 			)
 
+			// Set fallback architecture.
+			if inst.Properties.Architecture == "" {
+				arch, err := osarch.ArchitectureName(osarch.ARCH_64BIT_INTEL_X86)
+				if err != nil {
+					return nil, err
+				}
+
+				inst.Properties.Architecture = arch
+				log.Debug("Unable to determine architecture; Using fallback", slog.String("architecture", arch))
+			}
+
 			log.Info("Recording new instance detected on source")
 			newInst, err := i.Create(ctx, inst)
 			if err != nil {
