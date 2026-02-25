@@ -5,6 +5,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/server/request"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
+	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -91,10 +92,11 @@ var apiInternal = []APIEndpoint{
 //	    $ref: "#/responses/InternalServerError"
 func api10Get(d *Daemon, r *http.Request) response.Response {
 	srv := api.ServerUntrusted{
-		APIStatus:   api.APIStatus,
-		APIVersion:  api.APIVersion,
-		Auth:        "untrusted",
-		AuthMethods: []string{"oidc", "tls"},
+		APIStatus:     api.APIStatus,
+		APIVersion:    api.APIVersion,
+		ServerVersion: version.Version,
+		Auth:          "untrusted",
+		AuthMethods:   []string{"oidc", "tls"},
 	}
 
 	// Return the authentication method, if any, that the client is using.
