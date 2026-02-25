@@ -1,6 +1,6 @@
 package version
 
-const Version string = "0.5.8"
+const Version string = "0.5.9"
 
 // GoVersion returns the project version formatted as a Go semantic version string.
 func GoVersion() string {
