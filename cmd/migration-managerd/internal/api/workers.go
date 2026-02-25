@@ -114,12 +114,10 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			continue
 		}
 
-		if inst.Properties.Architecture != "" {
-			_, err := d.os.WorkerImageExists(inst.Properties.Architecture)
-			if err != nil {
-				slog.Error("Blocking queue entries due to filesystem error", slog.Any("error", err))
-				blockedInstances[inst.UUID] = fmt.Sprintf("Filesystem error: %v", err.Error())
-			}
+		_, err = d.os.WorkerImageExists(inst.GetArchitecture())
+		if err != nil {
+			slog.Error("Blocking queue entries due to filesystem error", slog.Any("error", err))
+			blockedInstances[inst.UUID] = fmt.Sprintf("Filesystem error: %v", err.Error())
 		}
 	}
 
@@ -532,13 +530,8 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 		return err
 	}
 
-	var workerVolumeExists bool
-	for _, vol := range volumes {
-		if vol == "custom/"+util.WorkerVolume(instance.Properties.Architecture) {
-			workerVolumeExists = true
-			break
-		}
-	}
+	arch := instance.GetArchitecture()
+	workerVolumeExists := slices.Contains(volumes, "custom/"+util.WorkerVolume(arch))
 
 	// If we need to download missing files, or upload them to the target, set a status message.
 	if !workerVolumeExists {
@@ -548,12 +541,12 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 		}
 
 		log.Info("Worker image doesn't exist in storage pool, importing...")
-		workerPath, err := d.os.LoadWorkerImage(ctx, instance.Properties.Architecture)
+		workerPath, err := d.os.LoadWorkerImage(ctx, arch)
 		if err != nil {
 			return err
 		}
 
-		ops, cleanup, err := it.CreateStoragePoolVolumeFromBackup(ctx, pool, workerPath, instance.Properties.Architecture, util.WorkerVolume(instance.Properties.Architecture))
+		ops, cleanup, err := it.CreateStoragePoolVolumeFromBackup(ctx, pool, workerPath, arch, util.WorkerVolume(arch))
 		if err != nil {
 			return err
 		}
@@ -661,7 +654,7 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to create instance definition: %w", err)
 	}
 
-	cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, q.Placement, util.WorkerVolume(inst.Properties.Architecture))
+	cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, q.Placement, util.WorkerVolume(inst.GetArchitecture()))
 	if err != nil {
 		return fmt.Errorf("Failed to create new instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
 	}

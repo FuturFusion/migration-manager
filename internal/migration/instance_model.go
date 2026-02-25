@@ -9,6 +9,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v6/shared/osarch"
 	"github.com/lxc/incus/v6/shared/validate"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -82,7 +83,7 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 		}
 	}
 
-	if props.Architecture == "" {
+	if i.GetArchitecture() == "" {
 		return fmt.Errorf("Could not determine instance architecture, check if guest agent is running")
 	}
 
@@ -122,6 +123,18 @@ func (i Instance) GetName() string {
 	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 
 	return props.Name
+}
+
+// GetArchitecture returns the architecture of the instance, applying any overrides, and falling back to x86_64.
+func (i Instance) GetArchitecture() string {
+	props := i.Properties
+	props.Apply(i.Overrides.InstancePropertiesConfigurable)
+
+	if props.Architecture == "" {
+		return osarch.ArchitectureDefault
+	}
+
+	return props.Architecture
 }
 
 func (i Instance) NeedsBackgroundImportVerification() bool {

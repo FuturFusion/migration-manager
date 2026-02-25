@@ -774,14 +774,9 @@ func (d *Daemon) syncInstancesFromSource(ctx context.Context, sourceName string,
 
 		// Set fallback architecture.
 		if inst.Properties.Architecture == "" {
-			arch, err := osarch.ArchitectureName(osarch.ARCH_64BIT_INTEL_X86)
-			if err != nil {
-				return nil, err
-			}
-
-			inst.Properties.Architecture = arch
+			inst.Properties.Architecture = osarch.ArchitectureDefault
 			instanceUpdated = true
-			log.Debug("Unable to determine architecture; Using fallback", slog.String("architecture", arch))
+			log.Debug("Unable to determine architecture; Using fallback", slog.String("architecture", osarch.ArchitectureDefault))
 		}
 
 		if inst.Properties.OS != srcInst.Properties.OS && srcInst.Properties.OS != "" {
@@ -901,13 +896,8 @@ func (d *Daemon) syncInstancesFromSource(ctx context.Context, sourceName string,
 
 			// Set fallback architecture.
 			if inst.Properties.Architecture == "" {
-				arch, err := osarch.ArchitectureName(osarch.ARCH_64BIT_INTEL_X86)
-				if err != nil {
-					return nil, err
-				}
-
-				inst.Properties.Architecture = arch
-				log.Debug("Unable to determine architecture; Using fallback", slog.String("architecture", arch))
+				inst.Properties.Architecture = osarch.ArchitectureDefault
+				log.Debug("Unable to determine architecture; Using fallback", slog.String("architecture", osarch.ArchitectureDefault))
 			}
 
 			log.Info("Recording new instance detected on source")
