@@ -343,7 +343,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			Source:       *source,
 			OS:           instance.Properties.OS,
 			OSVersion:    instance.Properties.OSVersion,
-			Architecture: instance.Properties.Architecture,
+			Architecture: instance.GetArchitecture(),
 			OSType:       instance.GetOSType(),
 		}
 

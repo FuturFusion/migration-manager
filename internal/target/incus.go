@@ -19,6 +19,7 @@ import (
 
 	incus "github.com/lxc/incus/v6/client"
 	incusAPI "github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v6/shared/osarch"
 	"github.com/lxc/incus/v6/shared/revert"
 	incusTLS "github.com/lxc/incus/v6/shared/tls"
 	"gopkg.in/yaml.v3"
@@ -309,7 +310,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	}
 
 	// Remove the migration ISO image.
-	delete(apiDef.Devices, util.WorkerVolume(i.Properties.Architecture))
+	delete(apiDef.Devices, util.WorkerVolume(i.GetArchitecture()))
 	apiDef.Profiles = []string{"default"}
 
 	osInfo, err := defs.Get(properties.InstanceOS)
@@ -444,7 +445,7 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 			return incusAPI.InstancesPost{}, err
 		}
 
-		instance.Config[info.Key] = "x86_64"
+		instance.Config[info.Key] = osarch.ArchitectureDefault
 		instance.Architecture = instance.Config[info.Key]
 	}
 
@@ -570,7 +571,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 
 	rootPool := placement.StoragePools[instDef.Properties.Disks[0].Name]
 	// Attach bootable ISO to run migration of this VM.
-	apiDef.Devices[util.WorkerVolume(instDef.Properties.Architecture)] = map[string]string{
+	apiDef.Devices[util.WorkerVolume(instDef.GetArchitecture())] = map[string]string{
 		"type":          "disk",
 		"pool":          rootPool,
 		"source":        bootISOImage,
