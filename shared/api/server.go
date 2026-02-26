@@ -88,4 +88,9 @@ type ServerUntrusted struct {
 	//
 	// API extension: macaroon_authentication
 	AuthMethods []string `json:"auth_methods" yaml:"auth_methods"`
+
+	// Server version
+	// Read only: true
+	// Example: 1.0.0
+	ServerVersion string `json:"server_version" yaml:"server_version"`
 }

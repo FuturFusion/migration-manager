@@ -3,4 +3,5 @@ export interface Settings {
   api_version: number;
   auth?: string;
   auth_methods?: string[];
+  server_version: string;
 }

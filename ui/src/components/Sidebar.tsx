@@ -15,10 +15,16 @@ import {
   MdWarningAmber,
 } from "react-icons/md";
 import { PiNetwork } from "react-icons/pi";
+import { useQuery } from "@tanstack/react-query";
+import { fetchSettings } from "api/server";
 import { useAuth } from "context/authContext";
 
 const Sidebar = () => {
   const { isAuthenticated } = useAuth();
+  const { data: settings = null } = useQuery({
+    queryKey: ["settings"],
+    queryFn: fetchSettings,
+  });
 
   const logout = () => {
     fetch("/oidc/logout").then(() => {
@@ -119,6 +125,9 @@ const Sidebar = () => {
               </li>
             </>
           )}
+          <Navbar.Text as="span" className="mx-auto">
+            <small>Version: {settings?.server_version}</small>
+          </Navbar.Text>
         </Nav>
       </Navbar>
     </>
