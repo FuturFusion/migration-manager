@@ -451,14 +451,14 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 
 	warnings := migration.Warnings{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
-		assignedInstances, err := d.instance.GetAllAssigned(ctx)
+		migratingInstances, err := d.instance.GetAllInRunningBatches(ctx)
 		if err != nil {
 			return fmt.Errorf("Failed to get unassigned internal instance records: %w", err)
 		}
 
-		instanceIsAssigned := make(map[uuid.UUID]bool, len(assignedInstances))
-		for _, inst := range assignedInstances {
-			instanceIsAssigned[inst.UUID] = true
+		instanceIsMigrating := make(map[uuid.UUID]bool, len(migratingInstances))
+		for _, inst := range migratingInstances {
+			instanceIsMigrating[inst.UUID] = true
 		}
 
 		// Generate UUIDs for networks.
@@ -516,8 +516,8 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 			}
 
 			for _, inst := range allInstances {
-				// If the instance is already assigned, then omit it from consideration, unless it is disabled.
-				if instanceIsAssigned[inst.UUID] && inst.DisabledReason(api.InstanceRestrictionOverride{}) == nil {
+				// If the instance is already assigned to a running batch, then omit it from consideration, unless it is disabled.
+				if instanceIsMigrating[inst.UUID] && inst.DisabledReason(api.InstanceRestrictionOverride{}) == nil {
 					delete(srcInstances, inst.UUID)
 					continue
 				}
@@ -544,7 +544,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 
 			// Build maps to make comparison easier.
 			assignedNetworksByName := map[string]migration.Network{}
-			for _, net := range migration.FilterUsedNetworks(dbNetworksBySrc[srcName], assignedInstances) {
+			for _, net := range migration.FilterUsedNetworks(dbNetworksBySrc[srcName], migratingInstances) {
 				assignedNetworksByName[net.SourceSpecificID] = net
 			}
 
