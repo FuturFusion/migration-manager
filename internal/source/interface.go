@@ -47,7 +47,7 @@ type Source interface {
 	// Returns an array of all VMs available from the source, encoded as Instances.
 	//
 	// Returns an error if there is a problem fetching VMs or their properties.
-	GetAllVMs(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error)
+	GetAllVMs(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error)
 
 	// VerifyBackgroundImport checks each supported disk for each VM to verify whether background import is supported, returning the list of UUIDs that fail the check.
 	VerifyBackgroundImport(ctx context.Context, instances migration.Instances) (migration.Instances, error)

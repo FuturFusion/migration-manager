@@ -14,6 +14,10 @@ type InstanceProperties struct {
 	// Example: a2095069-a527-4b2a-ab23-1739325dcac7
 	UUID uuid.UUID `json:"uuid" yaml:"uuid" expr:"uuid"`
 
+	// SourceSpecificID is the unique identifier internal to the source type.
+	// Example: vm-123 (vmware)
+	SourceSpecificID string `json:"source_specific_id" yaml:"source_specific_id" expr:"source_specific_id"`
+
 	// Location path of the Instance.
 	// Example: /path/to/instance_name
 	Location string `json:"location" yaml:"location" expr:"location"`

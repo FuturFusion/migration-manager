@@ -177,7 +177,7 @@ func (s *InternalVMwareSource) GetNSXManagerIP(ctx context.Context) (string, err
 	return managerIP, nil
 }
 
-func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error) {
+func (s *InternalVMwareSource) GetAllVMs(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error) {
 	log := slog.With(slog.String("source", s.Name))
 	vms := migration.Instances{}
 
@@ -271,7 +271,17 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	grp := errgroup.Group{}
 	grp.SetLimit(s.SyncLimit)
 
+	filter := map[string]bool{}
+	for _, id := range sourceSpecificIDs {
+		filter[id] = true
+	}
+
 	for _, vm := range vmRefs {
+		// Filter VMs, if a filter is supplied.
+		if len(sourceSpecificIDs) > 0 && !filter[vm.Reference().String()] {
+			continue
+		}
+
 		grp.Go(func() error {
 			inst, warningType, err := s.getVM(ctx, vm, tc, networkLocationsByID, catMap)
 			if err != nil {
@@ -385,6 +395,7 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 		}
 	}
 
+	vmProps.SourceSpecificID = vm.Reference().String()
 	inst := migration.Instance{
 		UUID:                 vmProps.UUID,
 		Source:               s.Name,
