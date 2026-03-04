@@ -42,6 +42,10 @@ func (c *CmdQueue) Command() *cobra.Command {
 	queueRetryCmd := cmdQueueRetry{global: c.Global}
 	cmd.AddCommand(queueRetryCmd.Command())
 
+	// Resolve
+	queueResolveCmd := cmdQueueResolve{global: c.Global}
+	cmd.AddCommand(queueResolveCmd.Command())
+
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
@@ -97,9 +101,9 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 
 	// Render the table.
 	batchesByName := map[string]api.Batch{}
-	header := []string{"Name", "Batch", "Last Update", "Status", "Status Message", "Migration Window"}
+	header := []string{"UUID", "Name", "Batch", "Last Update", "Status", "Status Message", "Migration Window"}
 	if c.flagVerbose {
-		header = append(header, "UUID", "Batch Status", "Batch Status Message", "Target", "Target Project`")
+		header = append(header, "Batch Status", "Batch Status Message", "Target", "Target Project`")
 
 		// Get the current migration queue.
 		resp, _, err := c.global.doHTTPRequestV1("/batches", http.MethodGet, "recursion=1", nil)
@@ -139,9 +143,9 @@ func (c *cmdQueueList) Run(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		row := []string{q.InstanceName, q.BatchName, lastUpdate, string(q.MigrationStatus), q.MigrationStatusMessage, window}
+		row := []string{q.InstanceUUID.String(), q.InstanceName, q.BatchName, lastUpdate, string(q.MigrationStatus), q.MigrationStatusMessage, window}
 		if c.flagVerbose {
-			row = append(row, q.InstanceUUID.String(), string(batchesByName[q.BatchName].Status), batchesByName[q.BatchName].StatusMessage, q.Placement.TargetName, q.Placement.TargetProject)
+			row = append(row, string(batchesByName[q.BatchName].Status), batchesByName[q.BatchName].StatusMessage, q.Placement.TargetName, q.Placement.TargetProject)
 		}
 
 		data = append(data, row)
@@ -193,6 +197,9 @@ func (c *cmdQueueRemove) Run(cmd *cobra.Command, args []string) error {
 // Cancel the queue entry.
 type cmdQueueCancel struct {
 	global *CmdGlobal
+
+	flagCleanup bool
+	flagForce   bool
 }
 
 func (c *cmdQueueCancel) Command() *cobra.Command {
@@ -202,6 +209,9 @@ func (c *cmdQueueCancel) Command() *cobra.Command {
 	cmd.Long = `Description:
   Cancel migration for the queue entry.
 `
+
+	cmd.Flags().BoolVarP(&c.flagCleanup, "cleanup", "c", false, "Clean up resources created on the target for this queue entry")
+	cmd.Flags().BoolVarP(&c.flagForce, "force", "f", false, "Clean up resources, even late in the migration")
 
 	cmd.RunE = c.Run
 
@@ -216,9 +226,16 @@ func (c *cmdQueueCancel) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	instanceUUID := args[0]
+	query := ""
+	if c.flagCleanup {
+		query = "cleanup=1"
+		if c.flagForce {
+			query += "&force=1"
+		}
+	}
 
 	// Cancel the queue entry.
-	_, _, err = c.global.doHTTPRequestV1("/queue/"+instanceUUID+"/:cancel", http.MethodPost, "", nil)
+	_, _, err = c.global.doHTTPRequestV1("/queue/"+instanceUUID+"/:cancel", http.MethodPost, query, nil)
 	if err != nil {
 		return err
 	}
@@ -261,5 +278,42 @@ func (c *cmdQueueRetry) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	cmd.Printf("Successfully restarted queue entry %q.\n", instanceUUID)
+	return nil
+}
+
+// Resolve the queue entry.
+type cmdQueueResolve struct {
+	global *CmdGlobal
+}
+
+func (c *cmdQueueResolve) Command() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.Use = "resolve <instance UUID>"
+	cmd.Short = "Resolve conflicted queue entries"
+	cmd.Long = `Description:
+  Mark queue entries with 'Conflict' state as resolved, returning them to their previous migration state.
+`
+
+	cmd.RunE = c.Run
+
+	return cmd
+}
+
+func (c *cmdQueueResolve) Run(cmd *cobra.Command, args []string) error {
+	// Quick checks.
+	exit, err := c.global.CheckArgs(cmd, args, 1, 1)
+	if exit {
+		return err
+	}
+
+	instanceUUID := args[0]
+
+	// Resolve the queue entry.
+	_, _, err = c.global.doHTTPRequestV1("/queue/"+instanceUUID+"/:resolve", http.MethodPost, "", nil)
+	if err != nil {
+		return err
+	}
+
+	cmd.Printf("Successfully resolved queue entry %q.\n", instanceUUID)
 	return nil
 }
