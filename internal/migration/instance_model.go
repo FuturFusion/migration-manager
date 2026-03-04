@@ -420,7 +420,7 @@ func (i Instance) CompileIncludeExpression(expression string, locationAlias bool
 		},
 	}
 
-	options := append([]expr.Option{expr.Env(baseEnv)}, customFunctions...)
+	options := append([]expr.Option{expr.Env(baseEnv), expr.Patch(patcher{})}, customFunctions...)
 
 	if locationAlias {
 		expression = matchLocationAlias(expression, options...)

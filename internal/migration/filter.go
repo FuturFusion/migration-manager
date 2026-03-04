@@ -3,12 +3,14 @@ package migration
 import (
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"strconv"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/ast"
 	"github.com/expr-lang/expr/checker"
 	"github.com/expr-lang/expr/conf"
+	"github.com/google/uuid"
 )
 
 // Common functions for parsing paths with expr-lang.
@@ -69,4 +71,22 @@ func matchLocationAlias(expression string, ops ...expr.Option) string {
 
 	// Otherwise, treat it as a location match.
 	return "location matches " + strconv.Quote(expression)
+}
+
+type patcher struct{}
+
+func (patcher) Visit(node *ast.Node) {
+	n, ok := (*node).(*ast.IdentifierNode)
+	if ok {
+		// Wrap UUIDs in a call to uuid.String()
+		isUUID := n.Type() == reflect.TypeOf(uuid.UUID{})
+		if isUUID {
+			ast.Patch(node, &ast.CallNode{
+				Callee: &ast.MemberNode{
+					Node:     n,
+					Property: &ast.StringNode{Value: "String"},
+				},
+			})
+		}
+	}
 }
