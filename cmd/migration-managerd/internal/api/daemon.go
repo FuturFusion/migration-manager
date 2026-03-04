@@ -71,6 +71,7 @@ type Daemon struct {
 	server       *http.Server
 
 	batchLock util.IDLock[string]
+	syncCache *util.Cache[string, struct{}]
 
 	ShutdownCtx    context.Context    // Canceled when shutdown starts.
 	ShutdownCancel context.CancelFunc // Cancels the shutdownCtx to indicate shutdown starting.
@@ -86,6 +87,7 @@ func NewDaemon(logHandler *logger.Handler) *Daemon {
 		os:             sys.DefaultOS(),
 		logHandler:     logHandler,
 		batchLock:      util.NewIDLock[string](),
+		syncCache:      util.NewCache[string, struct{}](),
 		ShutdownCtx:    shutdownCtx,
 		ShutdownCancel: shutdownCancel,
 		ShutdownDoneCh: make(chan error),

@@ -159,7 +159,9 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 				src.Properties = b
 			}
 
-			result = append(result, src.ToAPI())
+			apiSrc := src.ToAPI()
+			_, apiSrc.Syncing = d.syncCache.Read(src.Name)
+			result = append(result, apiSrc)
 		}
 
 		return response.SyncResponse(true, result)
@@ -364,9 +366,11 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 		src.Properties = b
 	}
 
+	apiSrc := src.ToAPI()
+	_, apiSrc.Syncing = d.syncCache.Read(src.Name)
 	return response.SyncResponseETag(
 		true,
-		src.ToAPI(),
+		apiSrc,
 		src,
 	)
 }
@@ -501,6 +505,11 @@ func sourceSyncPost(d *Daemon, r *http.Request) response.Response {
 	src, err := d.source.GetByName(r.Context(), name)
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	status := src.GetExternalConnectivityStatus()
+	if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		return response.SmartError(fmt.Errorf("Cannot sync source %q with connectivity status %q", src.Name, status))
 	}
 
 	err = d.syncOneSource(r.Context(), *src)

@@ -124,6 +124,8 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 				continue
 			}
 
+			d.syncCache.Write(src.Name, struct{}{}, nil)
+
 			if slices.Contains(api.VMSourceTypes(), src.SourceType) {
 				vmSourcesByName[src.Name] = src
 			}
@@ -138,6 +140,8 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 	if err != nil {
 		return err
 	}
+
+	defer func() { _ = d.syncCache.Replace(map[string]struct{}{}) }()
 
 	warnings := migration.Warnings{}
 	defer func() {
@@ -296,6 +300,9 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 // syncSourceData fetches instance and network data from the source and updates our database records.
 func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error {
 	slog.Info("Syncing source", slog.String("source", src.Name))
+	d.syncCache.Write(src.Name, struct{}{}, nil)
+	defer d.syncCache.Delete(src.Name)
+
 	nsxSources, err := d.source.GetAll(ctx, api.SOURCETYPE_NSX)
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve %q sources: %w", api.SOURCETYPE_NSX, err)
