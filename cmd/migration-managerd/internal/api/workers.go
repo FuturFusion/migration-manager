@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"slices"
 	"sync"
@@ -803,7 +804,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 	defer workerLock.RUnlock()
 
 	log := slog.With(slog.String("method", "finalizeCompleteInstances"))
-	var migrationState map[string]queue.MigrationState
+	var migrationState queue.BatchMigrationState
 
 	queueEntriesToReset := map[uuid.UUID]bool{}
 	windowsByQueueUUID := map[uuid.UUID]migration.Window{}
@@ -832,6 +833,11 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 	})
 	if err != nil {
 		return err
+	}
+
+	err = d.finalSourceAndTargetChecks(ctx, migrationState)
+	if err != nil {
+		return fmt.Errorf("Failed to perform final source and target checks: %w", err)
 	}
 
 	finishedInstances := []uuid.UUID{}
@@ -887,6 +893,363 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 					return fmt.Errorf("Failed to set batch status to %q: %w", api.BATCHSTATUS_FINISHED, err)
 				}
 			}
+		}
+
+		return nil
+	})
+}
+
+// finalSourceAndTargetChecks performs one final source sync for each instance in the migration state.
+// If the instance has changed, the instance record will be updated, new networks will be recorded, and several checks will be performed:
+// - Ensure the instance UUID, name, and disks did not change, otherwise place the queue entry into an ERROR state.
+// - Ensure the instance can still be placed on the associated target, otherwise place the queue entry into a recoverable CONFLICT state.
+func (d *Daemon) finalSourceAndTargetChecks(ctx context.Context, migrationState queue.BatchMigrationState) error {
+	log := slog.With(slog.String("method", "finalSourceAndTargetChecks"))
+	existingNetworks := migration.Networks{}
+	err := transaction.Do(ctx, func(ctx context.Context) error {
+		var err error
+		existingNetworks, err = d.network.GetAll(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	instancesByUUID := map[uuid.UUID]migration.Instance{}
+	instanceSourceIDs := map[string][]string{}
+	sourcesByName := map[string]migration.Source{}
+	batchesByInstance := map[uuid.UUID]string{}
+	for _, s := range migrationState {
+		for _, inst := range s.Instances {
+			if s.QueueEntries[inst.UUID].MigrationStatus != api.MIGRATIONSTATUS_WORKER_DONE {
+				continue
+			}
+
+			batchesByInstance[inst.UUID] = s.Batch.Name
+			instancesByUUID[inst.UUID] = inst
+			if instanceSourceIDs[inst.Source] == nil {
+				instanceSourceIDs[inst.Source] = []string{}
+			}
+
+			instanceSourceIDs[inst.Source] = append(instanceSourceIDs[inst.Source], inst.Properties.SourceSpecificID)
+		}
+
+		for instUUID, src := range s.Sources {
+			if s.QueueEntries[instUUID].MigrationStatus != api.MIGRATIONSTATUS_WORKER_DONE {
+				continue
+			}
+
+			_, ok := sourcesByName[src.Name]
+			if !ok {
+				sourcesByName[src.Name] = src
+			}
+		}
+	}
+
+	// Key networks by their source and source ID because imported networks won't have a UUID yet.
+	networksBySourceAndID := map[string]map[string]migration.Network{}
+	for _, n := range existingNetworks {
+		if networksBySourceAndID[n.Source] == nil {
+			networksBySourceAndID[n.Source] = map[string]migration.Network{}
+		}
+
+		networksBySourceAndID[n.Source][n.SourceSpecificID] = n
+	}
+
+	// Get new source information.
+	srcInsts := migration.Instances{}
+	srcNetworks := migration.Networks{}
+	clientsBySourceName := map[string]source.Source{}
+	for srcName, ids := range instanceSourceIDs {
+		s, err := source.NewInternalVMwareSourceFrom(sourcesByName[srcName].ToAPI())
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := context.WithTimeout(ctx, s.ConnectionTimeout.Duration)
+		err = s.Connect(ctx)
+		if err != nil {
+			cancel()
+			return err
+		}
+
+		insts, networks, _, err := s.GetAllVMs(ctx, ids...)
+		cancel()
+		if err != nil {
+			return err
+		}
+
+		if clientsBySourceName[srcName] == nil {
+			clientsBySourceName[srcName] = s
+		}
+
+		srcInsts = append(srcInsts, insts...)
+		srcNetworks = append(srcNetworks, networks...)
+	}
+
+	type conflictState struct {
+		status     api.MigrationStatusType
+		message    string
+		properties api.InstanceProperties
+		placement  *api.Placement
+	}
+
+	targetDetails := map[string]*target.IncusDetails{}
+	updatedInstances := map[uuid.UUID]conflictState{}
+	for _, srcInst := range srcInsts {
+		log := log.With(slog.String("location", srcInst.Properties.Location), slog.String("uuid", srcInst.UUID.String()), slog.String("source", srcInst.Source), slog.String("id", srcInst.Properties.SourceSpecificID))
+		var matchingBatch string
+		var oldUUID uuid.UUID
+		for batchName, state := range migrationState {
+			for _, inst := range state.Instances {
+				if inst.Source == srcInst.Source && inst.Properties.SourceSpecificID == srcInst.Properties.SourceSpecificID {
+					matchingBatch = batchName
+					oldUUID = inst.UUID
+					break
+				}
+			}
+
+			if matchingBatch != "" {
+				break
+			}
+		}
+
+		if matchingBatch == "" || oldUUID == uuid.Nil {
+			log.Error("Found instance not matching any queue entry")
+			continue
+		}
+
+		state := migrationState[matchingBatch]
+		oldInst := state.Instances[oldUUID]
+
+		// Only consider instances that have finished migrating.
+		if state.QueueEntries[oldUUID].MigrationStatus != api.MIGRATIONSTATUS_WORKER_DONE {
+			continue
+		}
+
+		log.Info("Performing final source and target checks")
+
+		if srcInst.Properties.Running {
+			log.Info("Detected source instance is still running, powering off before proceeding")
+			s := clientsBySourceName[srcInst.Source]
+			ctx, cancel := context.WithTimeout(ctx, s.Timeout())
+			err = s.PowerOffVM(ctx, srcInst.Properties.Location)
+			cancel()
+			if err != nil {
+				return fmt.Errorf("Failed to power off source VM for final source and target checks: %w", err)
+			}
+
+			srcInst.Properties.Running = false
+		}
+
+		// ApplyUpdates won't change the UUID so check it explicitly.
+		if oldInst.UUID != srcInst.UUID {
+			log.Error("Instance identifying information changed, canceling migration")
+			updatedInstances[oldInst.UUID] = conflictState{
+				status:     api.MIGRATIONSTATUS_ERROR,
+				message:    fmt.Sprintf("Instance source UUID has changed (expected %q, found %q)", oldInst.UUID, srcInst.UUID),
+				properties: srcInst.Properties,
+			}
+
+			continue
+		}
+
+		updatedInst, updated := oldInst.ApplyUpdates(srcInst)
+		if !updated {
+			log.Info("Instance has not changed, skipping further checks")
+			continue
+		}
+
+		if oldInst.GetName() != updatedInst.GetName() {
+			log.Error("Instance identifying information changed, canceling migration")
+			updatedInstances[oldInst.UUID] = conflictState{
+				status:     api.MIGRATIONSTATUS_ERROR,
+				message:    fmt.Sprintf("Instance source name has changed (expected %q, found %q)", oldInst.GetName(), updatedInst.GetName()),
+				properties: updatedInst.Properties,
+			}
+
+			continue
+		}
+
+		if !slices.Equal(oldInst.Properties.Disks, updatedInst.Properties.Disks) {
+			log.Error("Instance identifying information changed, canceling migration")
+			updatedInstances[oldInst.UUID] = conflictState{
+				status:     api.MIGRATIONSTATUS_ERROR,
+				message:    "Instance source disks have changed",
+				properties: updatedInst.Properties,
+			}
+
+			continue
+		}
+
+		windows := migration.Windows{}
+		for _, w := range state.Windows {
+			windows = append(windows, w)
+		}
+
+		allNetworks := existingNetworks
+		for i, n := range srcNetworks {
+			if networksBySourceAndID[n.Source] == nil {
+				continue
+			}
+
+			_, ok := networksBySourceAndID[n.Source][n.SourceSpecificID]
+			if !ok {
+				n.UUID, err = uuid.NewRandom()
+				if err != nil {
+					return err
+				}
+
+				srcNetworks[i] = n
+				allNetworks = append(allNetworks, n)
+			}
+		}
+
+		oldPlacement := state.QueueEntries[updatedInst.UUID].Placement
+		usedNetworks := migration.FilterUsedNetworks(allNetworks, migration.Instances{updatedInst})
+		log.Info("Recomputing placement", slog.Bool("use_scriptlet", state.Batch.Config.PlacementScriptlet != ""))
+		newPlacement, err := d.batch.DeterminePlacement(ctx, updatedInst, usedNetworks, state.Batch, windows)
+		if err != nil {
+			return err
+		}
+
+		var replacePlacement *api.Placement
+		if oldPlacement.TargetName != newPlacement.TargetName || oldPlacement.TargetProject != newPlacement.TargetProject || !maps.Equal(oldPlacement.StoragePools, newPlacement.StoragePools) {
+			log.Warn("Instance placement determination changed", slog.Bool("blocking", !state.Batch.Defaults.ForceConflictResolution))
+			if !state.Batch.Defaults.ForceConflictResolution {
+				updatedInstances[oldInst.UUID] = conflictState{
+					status:     api.MIGRATIONSTATUS_CONFLICT,
+					message:    fmt.Sprintf("Instance placement changed: %v", err),
+					properties: updatedInst.Properties,
+				}
+
+				continue
+			}
+
+			log.Info("Using previous placement to force conflict resolution")
+		} else if !maps.Equal(oldPlacement.Networks, newPlacement.Networks) {
+			log.Info("Placement contains new networks")
+			replacePlacement = newPlacement
+
+			// Preserve the initial placement's running state, as the source VM will always be powered off at this point.
+			replacePlacement.Running = oldPlacement.Running
+		}
+
+		details, ok := targetDetails[state.Targets[oldInst.UUID].Name]
+		if !ok {
+			t, err := target.NewTarget(state.Targets[oldInst.UUID].ToAPI())
+			if err != nil {
+				return err
+			}
+
+			ctx, cancel := context.WithTimeout(ctx, t.Timeout())
+			err = t.Connect(ctx)
+			if err != nil {
+				cancel()
+				return err
+			}
+
+			details, err = t.GetDetails(ctx)
+			cancel()
+			if err != nil {
+				return err
+			}
+
+			targetDetails[state.Targets[oldInst.UUID].Name] = details
+		}
+
+		q := state.QueueEntries[oldInst.UUID]
+		if replacePlacement != nil {
+			q.Placement = *replacePlacement
+		}
+
+		err = target.CanPlaceInstance(ctx, details, q, updatedInst.ToAPI(), state.Batch.ToAPI(windows))
+		if err != nil {
+			log.Warn("Instance cannot be placed", slog.Bool("blocking", !state.Batch.Defaults.ForceConflictResolution), slog.Any("error", err))
+			if state.Batch.Defaults.ForceConflictResolution {
+				log.Info("Using previous instance configuration to force conflict resolution")
+				continue
+			}
+
+			updatedInstances[oldInst.UUID] = conflictState{
+				status:     api.MIGRATIONSTATUS_CONFLICT,
+				message:    fmt.Sprintf("Instance can no longer be placed on the target: %v", err),
+				properties: updatedInst.Properties,
+				placement:  replacePlacement,
+			}
+
+			continue
+		}
+
+		// If we got this far, just update the instance with no conflict or error.
+		updatedInstances[oldInst.UUID] = conflictState{properties: updatedInst.Properties, placement: replacePlacement}
+	}
+
+	// No conflicts. Update the instance and create additional network records.
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		for _, n := range srcNetworks {
+			if networksBySourceAndID[n.Source] == nil {
+				continue
+			}
+
+			_, ok := networksBySourceAndID[n.Source][n.SourceSpecificID]
+			if !ok {
+				log.Info("Creating new detected network record", slog.String("network", n.Location))
+				n, err = d.network.Create(ctx, n)
+				if err != nil {
+					return err
+				}
+
+				networksBySourceAndID[n.Source][n.SourceSpecificID] = n
+			}
+		}
+
+		for id, data := range updatedInstances {
+			batchName := batchesByInstance[id]
+			state := migrationState[batchName]
+			inst := instancesByUUID[id]
+			inst.Properties = data.properties
+			for i, nic := range inst.Properties.NICs {
+				network, ok := networksBySourceAndID[inst.Source][nic.SourceSpecificID]
+				if nic.UUID == uuid.Nil && ok {
+					inst.Properties.NICs[i].UUID = network.UUID
+				}
+			}
+
+			log.Info("Updating instance record")
+			err := d.instance.Update(ctx, &inst, true)
+			if err != nil {
+				return err
+			}
+
+			if data.message != "" {
+				log.Info("Updating queue migration status", slog.String("status", string(data.status)))
+				q, err := d.queue.UpdateStatusByUUID(ctx, id, data.status, data.message, state.QueueEntries[id].ImportStage, state.QueueEntries[id].GetWindowName())
+				if err != nil {
+					return err
+				}
+
+				state.QueueEntries[id] = *q
+				migrationState[batchName] = state
+			}
+
+			if data.placement != nil {
+				log.Info("Updating queue placement")
+				q, err := d.queue.UpdatePlacementByUUID(ctx, id, *data.placement)
+				if err != nil {
+					return err
+				}
+
+				state.QueueEntries[id] = *q
+				migrationState[batchName] = state
+			}
+
+			state.Instances[inst.UUID] = inst
+			migrationState[batchName] = state
 		}
 
 		return nil
