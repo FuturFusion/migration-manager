@@ -87,6 +87,9 @@ type BatchDefaults struct {
 
 	// Network configuration to use during migration of the instance. If unspecified, the default network configuration in the default profile will be used.
 	MigrationNetwork []MigrationNetworkPlacement `json:"migration_network" yaml:"migration_network"`
+
+	// Whether to forcibly use the configuration that will allow the migration to proceed, when encountering late-migration conflicts. May result in an out-of-date migration.
+	ForceConflictResolution bool `json:"force_conflict_resolution" yaml:"force_conflict_resolution"`
 }
 
 type MigrationNetworkPlacement struct {

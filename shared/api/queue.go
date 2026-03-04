@@ -21,7 +21,10 @@ const (
 	MIGRATIONSTATUS_FINISHED          MigrationStatusType = "Finished"
 	MIGRATIONSTATUS_ERROR             MigrationStatusType = "Error"
 	MIGRATIONSTATUS_CANCELED          MigrationStatusType = "Canceled"
+	MIGRATIONSTATUS_CONFLICT          MigrationStatusType = "Conflict"
 )
+
+const ConflictResolvedMessage = "Conflict resolved"
 
 // Validate ensures the MigrationStatusType is valid.
 func (m MigrationStatusType) Validate() error {
@@ -37,6 +40,7 @@ func (m MigrationStatusType) Validate() error {
 	case MIGRATIONSTATUS_FINISHED:
 	case MIGRATIONSTATUS_IDLE:
 	case MIGRATIONSTATUS_WORKER_DONE:
+	case MIGRATIONSTATUS_CONFLICT:
 	default:
 		return fmt.Errorf("%s is not a valid migration status", m)
 	}
