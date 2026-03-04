@@ -43,6 +43,11 @@ var queueRetryCmd = APIEndpoint{
 	Post: APIEndpointAction{Handler: queueRetry, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
+var queueResolveCmd = APIEndpoint{
+	Path: "queue/{uuid}/:resolve",
+	Post: APIEndpointAction{Handler: queueResolve, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
+}
+
 // swagger:operation GET /1.0/queue queue queueRoot_get
 //
 //	Get the current migration queue
@@ -428,7 +433,7 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	if cleanup {
+	if cleanup && tgt != nil {
 		t, err := target.NewTarget(tgt.ToAPI())
 		if err != nil {
 			return response.SmartError(err)
@@ -441,12 +446,12 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 			return response.SmartError(err)
 		}
 
-		err = t.SetProject(apiQueue.Placement.TargetName)
+		err = t.SetProject(apiQueue.Placement.TargetProject)
 		if err != nil {
 			return response.SmartError(err)
 		}
 
-		err = t.CleanupVM(ctx, apiQueue.InstanceName, true)
+		err = t.CleanupVM(ctx, apiQueue.InstanceName, !force)
 		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 			return response.SmartError(err)
 		}
@@ -534,6 +539,85 @@ func queueRetry(d *Daemon, r *http.Request) response.Response {
 	}
 
 	d.logHandler.SendLifecycle(r.Context(), event.NewQueueEntryEvent(event.QueueEntryRetried, r, apiQueue, apiQueue.InstanceUUID))
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/queue/{uuid}/:resolve queue queue_resolve
+//
+//	Mark queue entry conflicts as resolved
+//
+//	Mark the conflict as resolved and return the queue entry to its last migration state.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func queueResolve(d *Daemon, r *http.Request) response.Response {
+	// Exclusively grab the worker lock so migration actions don't interfere.
+	workerLock.Lock()
+	defer workerLock.Unlock()
+
+	uuidStr := r.PathValue("uuid")
+	queueUUID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	var apiQueue api.QueueEntry
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		q, err := d.queue.GetByInstanceUUID(ctx, queueUUID)
+		if err != nil {
+			return err
+		}
+
+		if q.MigrationStatus != api.MIGRATIONSTATUS_CONFLICT {
+			return fmt.Errorf("Queue entry %q has no conflict", q.InstanceUUID)
+		}
+
+		q.MigrationStatusMessage = api.ConflictResolvedMessage
+		if q.ImportStage == migration.IMPORTSTAGE_COMPLETE {
+			q.MigrationStatus = api.MIGRATIONSTATUS_WORKER_DONE
+		} else {
+			q.MigrationStatus = api.MIGRATIONSTATUS_WAITING
+		}
+
+		q, err = d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, q.MigrationStatus, q.MigrationStatusMessage, q.ImportStage, q.GetWindowName())
+		if err != nil {
+			return err
+		}
+
+		inst, err := d.instance.GetByUUID(ctx, queueUUID)
+		if err != nil {
+			return err
+		}
+
+		window, err := d.queue.GetNextWindow(ctx, *q)
+		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return err
+		}
+
+		if window == nil {
+			window = &migration.Window{}
+		}
+
+		apiQueue = q.ToAPI(inst.GetName(), d.queueHandler.LastWorkerUpdate(q.InstanceUUID), *window)
+
+		return nil
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewQueueEntryEvent(event.QueueEntryResolved, r, apiQueue, apiQueue.InstanceUUID))
 
 	return response.EmptySyncResponse
 }

@@ -17,6 +17,7 @@ const (
 	QueueEntryCanceled api.LifecycleAction = "queue-entry-canceled"
 	QueueEntryRetried  api.LifecycleAction = "queue-entry-retried"
 	QueueEntryRemoved  api.LifecycleAction = "queue-entry-removed"
+	QueueEntryResolved api.LifecycleAction = "queue-entry-resolved"
 )
 
 func QueueEntryURI(id uuid.UUID) string {

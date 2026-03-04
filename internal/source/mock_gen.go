@@ -35,7 +35,7 @@ var _ Source = &SourceMock{}
 //			DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
 //				panic("mock out the DoBasicConnectivityCheck method")
 //			},
-//			GetAllVMsFunc: func(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error) {
+//			GetAllVMsFunc: func(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error) {
 //				panic("mock out the GetAllVMs method")
 //			},
 //			GetBackgroundImportFunc: func(ctx context.Context, instUUID uuid.UUID) (bool, error) {
@@ -79,7 +79,7 @@ type SourceMock struct {
 	DoBasicConnectivityCheckFunc func() (api.ExternalConnectivityStatus, *x509.Certificate)
 
 	// GetAllVMsFunc mocks the GetAllVMs method.
-	GetAllVMsFunc func(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error)
+	GetAllVMsFunc func(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error)
 
 	// GetBackgroundImportFunc mocks the GetBackgroundImport method.
 	GetBackgroundImportFunc func(ctx context.Context, instUUID uuid.UUID) (bool, error)
@@ -130,6 +130,8 @@ type SourceMock struct {
 		GetAllVMs []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// SourceSpecificIDs is the sourceSpecificIDs argument value.
+			SourceSpecificIDs []string
 		}
 		// GetBackgroundImport holds details about calls to the GetBackgroundImport method.
 		GetBackgroundImport []struct {
@@ -321,19 +323,21 @@ func (mock *SourceMock) DoBasicConnectivityCheckCalls() []struct {
 }
 
 // GetAllVMs calls GetAllVMsFunc.
-func (mock *SourceMock) GetAllVMs(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error) {
+func (mock *SourceMock) GetAllVMs(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error) {
 	if mock.GetAllVMsFunc == nil {
 		panic("SourceMock.GetAllVMsFunc: method is nil but Source.GetAllVMs was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx               context.Context
+		SourceSpecificIDs []string
 	}{
-		Ctx: ctx,
+		Ctx:               ctx,
+		SourceSpecificIDs: sourceSpecificIDs,
 	}
 	mock.lockGetAllVMs.Lock()
 	mock.calls.GetAllVMs = append(mock.calls.GetAllVMs, callInfo)
 	mock.lockGetAllVMs.Unlock()
-	return mock.GetAllVMsFunc(ctx)
+	return mock.GetAllVMsFunc(ctx, sourceSpecificIDs...)
 }
 
 // GetAllVMsCalls gets all the calls that were made to GetAllVMs.
@@ -341,10 +345,12 @@ func (mock *SourceMock) GetAllVMs(ctx context.Context) (migration.Instances, mig
 //
 //	len(mockedSource.GetAllVMsCalls())
 func (mock *SourceMock) GetAllVMsCalls() []struct {
-	Ctx context.Context
+	Ctx               context.Context
+	SourceSpecificIDs []string
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx               context.Context
+		SourceSpecificIDs []string
 	}
 	mock.lockGetAllVMs.RLock()
 	calls = mock.calls.GetAllVMs
