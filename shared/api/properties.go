@@ -1,6 +1,7 @@
 package api
 
 import (
+	"maps"
 	"slices"
 
 	"github.com/google/uuid"
@@ -183,7 +184,8 @@ func (i *InstanceProperties) Apply(cfg InstancePropertiesConfigurable) {
 		i.Memory = cfg.Memory
 	}
 
-	for k, v := range cfg.Config {
-		i.Config[k] = v
-	}
+	config := map[string]string{}
+	maps.Copy(config, i.Config)
+	maps.Copy(config, cfg.Config)
+	i.Config = config
 }
