@@ -3,6 +3,7 @@ package migration
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -120,7 +121,7 @@ func (s instanceService) GetBatchesByUUID(ctx context.Context, id uuid.UUID) (Ba
 	return s.repo.GetBatchesByUUID(ctx, id)
 }
 
-func (s instanceService) Update(ctx context.Context, instance *Instance) error {
+func (s instanceService) Update(ctx context.Context, instance *Instance, allowWhileMigrating bool) error {
 	err := instance.Validate()
 	if err != nil {
 		return err
@@ -132,26 +133,22 @@ func (s instanceService) Update(ctx context.Context, instance *Instance) error {
 			return err
 		}
 
-		batches, err := s.repo.GetBatchesByUUID(ctx, instance.UUID)
-		if err != nil {
-			return err
-		}
-
-		if len(batches) > 0 {
-			var unrestrictedForBatch, inRunningBatch bool
-			for _, b := range batches {
-				if oldInstance.DisabledReason(b.Config.RestrictionOverrides) == nil {
-					unrestrictedForBatch = true
-					inRunningBatch = b.Status == api.BATCHSTATUS_RUNNING
-					break
-				}
+		if !allowWhileMigrating {
+			batches, err := s.repo.GetBatchesByUUID(ctx, instance.UUID)
+			if err != nil {
+				return err
 			}
 
-			// If the instance can be migrated as-is in any of its batches, the only allowed change is to disable migration, unless the batch has already started.
-			if unrestrictedForBatch {
-				if inRunningBatch || !instance.Overrides.DisableMigration {
-					return fmt.Errorf("Instance %q is part of a batch and cannot be modified: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
+			// Only update instances in idle batches, or instances that are blocked.
+			if slices.ContainsFunc(batches, func(b Batch) bool {
+				if b.Status != api.BATCHSTATUS_RUNNING && b.Status != api.BATCHSTATUS_ERROR {
+					return false
 				}
+
+				// Instance is not blocked, so don't update.
+				return oldInstance.DisabledReason(b.Config.RestrictionOverrides) == nil
+			}) {
+				return fmt.Errorf("Instance %q is part of a running batch and cannot be modified: %w", oldInstance.Properties.Location, ErrOperationNotPermitted)
 			}
 		}
 
@@ -190,7 +187,7 @@ func (s instanceService) ResetBackgroundImport(ctx context.Context, inst *Instan
 				inst.Properties.Disks[i].BackgroundImportVerified = false
 			}
 
-			return s.Update(ctx, inst)
+			return s.Update(ctx, inst, false)
 		}
 
 		return nil

@@ -724,37 +724,6 @@ func (d *Daemon) syncInstancesFromSource(ctx context.Context, sourceName string,
 		}
 
 		log.Debug("Comparing instance")
-		instanceUpdated := false
-
-		if inst.Properties.Location != srcInst.Properties.Location {
-			log.Debug("Instance location changed", slog.String("new_location", srcInst.Properties.Location))
-			inst.Properties.Location = srcInst.Properties.Location
-			instanceUpdated = true
-		}
-
-		if inst.Properties.Name != srcInst.Properties.Name {
-			log.Debug("Instance name changed", slog.String("new", srcInst.Properties.Name), slog.String("old", inst.Properties.Name))
-			inst.Properties.Name = srcInst.Properties.Name
-			instanceUpdated = true
-		}
-
-		if inst.Properties.BackgroundImport != srcInst.Properties.BackgroundImport {
-			log.Debug("Instance background import changed", slog.Bool("new", srcInst.Properties.BackgroundImport), slog.Bool("old", inst.Properties.BackgroundImport))
-			inst.Properties.BackgroundImport = srcInst.Properties.BackgroundImport
-			instanceUpdated = true
-		}
-
-		if inst.Properties.Description != srcInst.Properties.Description {
-			log.Debug("Instance description changed", slog.String("new", srcInst.Properties.Description), slog.String("old", inst.Properties.Description))
-			inst.Properties.Description = srcInst.Properties.Description
-			instanceUpdated = true
-		}
-
-		if inst.Properties.Architecture != srcInst.Properties.Architecture && srcInst.Properties.Architecture != "" {
-			log.Debug("Instance architecture changed", slog.String("new", srcInst.Properties.Architecture), slog.String("old", inst.Properties.Architecture))
-			inst.Properties.Architecture = srcInst.Properties.Architecture
-			instanceUpdated = true
-		}
 
 		instanceIncomplete := false
 		if srcInst.Properties.Architecture == "" || srcInst.Properties.OS == "" || srcInst.Properties.OSVersion == "" {
@@ -772,107 +741,11 @@ func (d *Daemon) syncInstancesFromSource(ctx context.Context, sourceName string,
 			warnings = append(warnings, migration.NewSyncWarning(api.InstanceIncomplete, inst.Source, fmt.Sprintf("%q has incomplete properties. Ensure VM is powered on and guest agent is running", inst.Properties.Location)))
 		}
 
-		// Set fallback architecture.
-		if inst.Properties.Architecture == "" {
-			inst.Properties.Architecture = osarch.ArchitectureDefault
-			instanceUpdated = true
-			log.Debug("Unable to determine architecture; Using fallback", slog.String("architecture", osarch.ArchitectureDefault))
-		}
-
-		if inst.Properties.OS != srcInst.Properties.OS && srcInst.Properties.OS != "" {
-			log.Debug("Instance os changed", slog.String("new", srcInst.Properties.OS), slog.String("old", inst.Properties.OS))
-			inst.Properties.OS = srcInst.Properties.OS
-			instanceUpdated = true
-		}
-
-		if inst.Properties.OSVersion != srcInst.Properties.OSVersion && srcInst.Properties.OSVersion != "" {
-			log.Debug("Instance os version changed", slog.String("new", srcInst.Properties.OSVersion), slog.String("old", inst.Properties.OSVersion))
-			inst.Properties.OSVersion = srcInst.Properties.OSVersion
-			instanceUpdated = true
-		}
-
-		if !slices.Equal(inst.Properties.Disks, srcInst.Properties.Disks) {
-			log.Debug("Instance disks changed")
-			inst.Properties.Disks = srcInst.Properties.Disks
-			instanceUpdated = true
-		}
-
-		if !slices.Equal(inst.Properties.NICs, srcInst.Properties.NICs) {
-			oldNics := map[string]api.InstancePropertiesNIC{}
-			for _, nic := range inst.Properties.NICs {
-				oldNics[nic.SourceSpecificID] = nic
-			}
-
-			// Preserve IPs from the previous sync in case the VM has turned off.
-			newNics := make([]api.InstancePropertiesNIC, len(srcInst.Properties.NICs))
-			for i, nic := range srcInst.Properties.NICs {
-				oldNIC, ok := oldNics[nic.SourceSpecificID]
-				if ok {
-					if nic.IPv4Address == "" && oldNIC.IPv4Address != "" {
-						nic.IPv4Address = oldNIC.IPv4Address
-					}
-
-					if nic.IPv6Address == "" && oldNIC.IPv6Address != "" {
-						nic.IPv6Address = oldNIC.IPv6Address
-					}
-				}
-
-				newNics[i] = nic
-			}
-
-			if !slices.Equal(inst.Properties.NICs, newNics) {
-				log.Debug("Instance nics changed")
-				instanceUpdated = true
-				inst.Properties.NICs = srcInst.Properties.NICs
-			}
-		}
-
-		if !slices.Equal(inst.Properties.Snapshots, srcInst.Properties.Snapshots) {
-			log.Debug("Instance snapshots changed")
-			inst.Properties.Snapshots = srcInst.Properties.Snapshots
-			instanceUpdated = true
-		}
-
-		if inst.Properties.CPUs != srcInst.Properties.CPUs {
-			log.Debug("Instance cpu limit changed", slog.Int64("new", srcInst.Properties.CPUs), slog.Int64("old", inst.Properties.CPUs))
-			inst.Properties.CPUs = srcInst.Properties.CPUs
-			instanceUpdated = true
-		}
-
-		if inst.Properties.Memory != srcInst.Properties.Memory {
-			log.Debug("Instance memory limit changed", slog.Int64("new", srcInst.Properties.Memory), slog.Int64("old", inst.Properties.Memory))
-			inst.Properties.Memory = srcInst.Properties.Memory
-			instanceUpdated = true
-		}
-
-		if inst.Properties.LegacyBoot != srcInst.Properties.LegacyBoot {
-			log.Debug("Instance CSM mode changed", slog.Bool("new", srcInst.Properties.LegacyBoot), slog.Bool("old", inst.Properties.LegacyBoot))
-			inst.Properties.LegacyBoot = srcInst.Properties.LegacyBoot
-			instanceUpdated = true
-		}
-
-		if inst.Properties.SecureBoot != srcInst.Properties.SecureBoot {
-			log.Debug("Instance secure boot changed", slog.Bool("new", srcInst.Properties.SecureBoot), slog.Bool("old", inst.Properties.SecureBoot))
-			inst.Properties.SecureBoot = srcInst.Properties.SecureBoot
-			instanceUpdated = true
-		}
-
-		if inst.Properties.TPM != srcInst.Properties.TPM {
-			log.Debug("Instance tpm state changed", slog.Bool("new", srcInst.Properties.TPM), slog.Bool("old", inst.Properties.TPM))
-			inst.Properties.TPM = srcInst.Properties.TPM
-			instanceUpdated = true
-		}
-
-		if inst.Properties.Running != srcInst.Properties.Running {
-			log.Debug("Instance running state changed", slog.Bool("new", srcInst.Properties.Running), slog.Bool("old", inst.Properties.Running))
-			inst.Properties.Running = srcInst.Properties.Running
-			instanceUpdated = true
-		}
-
+		inst, instanceUpdated := inst.ApplyUpdates(srcInst)
 		if instanceUpdated {
 			log.Info("Syncing changes to instance from source")
 			inst.LastUpdateFromSource = srcInst.LastUpdateFromSource
-			err := i.Update(ctx, &inst)
+			err := i.Update(ctx, &inst, false)
 			if err != nil && !errors.Is(err, migration.ErrOperationNotPermitted) {
 				return nil, fmt.Errorf("Failed to update instance: %w", err)
 			}

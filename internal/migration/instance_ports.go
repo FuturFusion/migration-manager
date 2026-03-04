@@ -22,7 +22,7 @@ type InstanceService interface {
 	GetAllQueued(ctx context.Context, queue QueueEntries) (Instances, error)
 	GetBatchesByUUID(ctx context.Context, id uuid.UUID) (Batches, error)
 
-	Update(ctx context.Context, instance *Instance) error
+	Update(ctx context.Context, instance *Instance, allowWhileMigrating bool) error
 	ResetBackgroundImport(ctx context.Context, instance *Instance) error
 	SetBackgroundImportVerified(ctx context.Context, id uuid.UUID, hasSupport bool, disks []string) (*Instance, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
