@@ -431,6 +431,16 @@ func (s batchService) StartBatchByName(ctx context.Context, batchName string, wi
 				message = err.Error()
 			}
 
+			match, err := inst.MatchesCriteria(batch.IncludeExpression, false)
+			if err != nil {
+				return err
+			}
+
+			if !match && !batch.Defaults.ForceConflictResolution {
+				status = api.MIGRATIONSTATUS_CONFLICT
+				message = "Instance no longer matches batch expression"
+			}
+
 			_, err = queueSvc.CreateEntry(ctx, QueueEntry{
 				InstanceUUID:           inst.UUID,
 				BatchName:              batchName,
