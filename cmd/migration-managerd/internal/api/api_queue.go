@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/source"
+	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 	"github.com/FuturFusion/migration-manager/shared/api/event"
@@ -350,6 +351,17 @@ func queueDelete(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cleanup
+//	    description: Whether to cleanup the target instance.
+//	    type: string
+//	    example: "1"
+//	  - in: query
+//	    name: force
+//	    description: If cleanup=1, whether to cleanup the target instance even if the queue entry was late in the migration process.
+//	    type: string
+//	    example: "1"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -370,17 +382,17 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
+	cleanup := r.FormValue("cleanup") == "1"
+	force := r.FormValue("force") == "1"
+
 	var src *migration.Source
 	var location string
 	var apiQueue api.QueueEntry
+	var tgt *migration.Target
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
 		q, begunFinalSteps, err := d.queue.CancelByUUID(ctx, queueUUID)
 		if err != nil {
 			return err
-		}
-
-		if !begunFinalSteps {
-			return nil
 		}
 
 		inst, err := d.instance.GetByUUID(ctx, queueUUID)
@@ -388,9 +400,20 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 			return err
 		}
 
-		if inst.Properties.Running {
+		if inst.Properties.Running && begunFinalSteps {
 			location = inst.Properties.Location
 			src, err = d.source.GetByName(ctx, inst.Source)
+			if err != nil {
+				return err
+			}
+		}
+
+		if begunFinalSteps {
+			cleanup = cleanup && force
+		}
+
+		if cleanup && q.Placement.TargetName != "" {
+			tgt, err = d.target.GetByName(ctx, q.Placement.TargetName)
 			if err != nil {
 				return err
 			}
@@ -403,6 +426,30 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 	})
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	if cleanup {
+		t, err := target.NewTarget(tgt.ToAPI())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), t.Timeout())
+		defer cancel()
+		err = t.Connect(ctx)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		err = t.SetProject(apiQueue.Placement.TargetName)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		err = t.CleanupVM(ctx, apiQueue.InstanceName, true)
+		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return response.SmartError(err)
+		}
 	}
 
 	if src != nil {
