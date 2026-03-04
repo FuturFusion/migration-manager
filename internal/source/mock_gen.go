@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/x509"
 	"sync"
+	"time"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -53,6 +54,9 @@ var _ Source = &SourceMock{}
 //			PowerOffVMFunc: func(ctx context.Context, vmName string) error {
 //				panic("mock out the PowerOffVM method")
 //			},
+//			TimeoutFunc: func() time.Duration {
+//				panic("mock out the Timeout method")
+//			},
 //			VerifyBackgroundImportFunc: func(ctx context.Context, instances migration.Instances) (migration.Instances, error) {
 //				panic("mock out the VerifyBackgroundImport method")
 //			},
@@ -95,6 +99,9 @@ type SourceMock struct {
 
 	// PowerOffVMFunc mocks the PowerOffVM method.
 	PowerOffVMFunc func(ctx context.Context, vmName string) error
+
+	// TimeoutFunc mocks the Timeout method.
+	TimeoutFunc func() time.Duration
 
 	// VerifyBackgroundImportFunc mocks the VerifyBackgroundImport method.
 	VerifyBackgroundImportFunc func(ctx context.Context, instances migration.Instances) (migration.Instances, error)
@@ -166,6 +173,9 @@ type SourceMock struct {
 			// VmName is the vmName argument value.
 			VmName string
 		}
+		// Timeout holds details about calls to the Timeout method.
+		Timeout []struct {
+		}
 		// VerifyBackgroundImport holds details about calls to the VerifyBackgroundImport method.
 		VerifyBackgroundImport []struct {
 			// Ctx is the ctx argument value.
@@ -189,6 +199,7 @@ type SourceMock struct {
 	lockImportDisks                   sync.RWMutex
 	lockIsConnected                   sync.RWMutex
 	lockPowerOffVM                    sync.RWMutex
+	lockTimeout                       sync.RWMutex
 	lockVerifyBackgroundImport        sync.RWMutex
 	lockWithAdditionalRootCertificate sync.RWMutex
 }
@@ -531,6 +542,33 @@ func (mock *SourceMock) PowerOffVMCalls() []struct {
 	mock.lockPowerOffVM.RLock()
 	calls = mock.calls.PowerOffVM
 	mock.lockPowerOffVM.RUnlock()
+	return calls
+}
+
+// Timeout calls TimeoutFunc.
+func (mock *SourceMock) Timeout() time.Duration {
+	if mock.TimeoutFunc == nil {
+		panic("SourceMock.TimeoutFunc: method is nil but Source.Timeout was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockTimeout.Lock()
+	mock.calls.Timeout = append(mock.calls.Timeout, callInfo)
+	mock.lockTimeout.Unlock()
+	return mock.TimeoutFunc()
+}
+
+// TimeoutCalls gets all the calls that were made to Timeout.
+// Check the length with:
+//
+//	len(mockedSource.TimeoutCalls())
+func (mock *SourceMock) TimeoutCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockTimeout.RLock()
+	calls = mock.calls.Timeout
+	mock.lockTimeout.RUnlock()
 	return calls
 }
 

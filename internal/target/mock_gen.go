@@ -35,9 +35,6 @@ var _ Target = &TargetMock{}
 //			ConnectFunc: func(ctx context.Context) error {
 //				panic("mock out the Connect method")
 //			},
-//			ConnectionTimeoutFunc: func() time.Duration {
-//				panic("mock out the ConnectionTimeout method")
-//			},
 //			CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
 //				panic("mock out the CreateNewVM method")
 //			},
@@ -128,9 +125,6 @@ type TargetMock struct {
 
 	// ConnectFunc mocks the Connect method.
 	ConnectFunc func(ctx context.Context) error
-
-	// ConnectionTimeoutFunc mocks the ConnectionTimeout method.
-	ConnectionTimeoutFunc func() time.Duration
 
 	// CreateNewVMFunc mocks the CreateNewVM method.
 	CreateNewVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error)
@@ -229,9 +223,6 @@ type TargetMock struct {
 		Connect []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
-		}
-		// ConnectionTimeout holds details about calls to the ConnectionTimeout method.
-		ConnectionTimeout []struct {
 		}
 		// CreateNewVM holds details about calls to the CreateNewVM method.
 		CreateNewVM []struct {
@@ -402,7 +393,6 @@ type TargetMock struct {
 	lockCheckIncusAgent                   sync.RWMutex
 	lockCleanupVM                         sync.RWMutex
 	lockConnect                           sync.RWMutex
-	lockConnectionTimeout                 sync.RWMutex
 	lockCreateNewVM                       sync.RWMutex
 	lockCreateStoragePoolVolumeFromBackup sync.RWMutex
 	lockCreateStoragePoolVolumeFromISO    sync.RWMutex
@@ -535,33 +525,6 @@ func (mock *TargetMock) ConnectCalls() []struct {
 	mock.lockConnect.RLock()
 	calls = mock.calls.Connect
 	mock.lockConnect.RUnlock()
-	return calls
-}
-
-// ConnectionTimeout calls ConnectionTimeoutFunc.
-func (mock *TargetMock) ConnectionTimeout() time.Duration {
-	if mock.ConnectionTimeoutFunc == nil {
-		panic("TargetMock.ConnectionTimeoutFunc: method is nil but Target.ConnectionTimeout was just called")
-	}
-	callInfo := struct {
-	}{}
-	mock.lockConnectionTimeout.Lock()
-	mock.calls.ConnectionTimeout = append(mock.calls.ConnectionTimeout, callInfo)
-	mock.lockConnectionTimeout.Unlock()
-	return mock.ConnectionTimeoutFunc()
-}
-
-// ConnectionTimeoutCalls gets all the calls that were made to ConnectionTimeout.
-// Check the length with:
-//
-//	len(mockedTarget.ConnectionTimeoutCalls())
-func (mock *TargetMock) ConnectionTimeoutCalls() []struct {
-} {
-	var calls []struct {
-	}
-	mock.lockConnectionTimeout.RLock()
-	calls = mock.calls.ConnectionTimeout
-	mock.lockConnectionTimeout.RUnlock()
 	return calls
 }
 
