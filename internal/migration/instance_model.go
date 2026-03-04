@@ -231,9 +231,27 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 	}
 
 	if !slices.Equal(inst.Properties.Disks, srcInst.Properties.Disks) {
-		log.Debug("Instance disks changed")
-		inst.Properties.Disks = srcInst.Properties.Disks
-		instanceUpdated = true
+		oldDisks := map[string]api.InstancePropertiesDisk{}
+		for _, d := range inst.Properties.Disks {
+			oldDisks[d.Name] = d
+		}
+
+		// Preserve background import verification.
+		newDisks := make([]api.InstancePropertiesDisk, len(srcInst.Properties.Disks))
+		for i, newDisk := range srcInst.Properties.Disks {
+			oldDisk, ok := oldDisks[newDisk.Name]
+			if ok {
+				newDisk.BackgroundImportVerified = oldDisk.BackgroundImportVerified
+			}
+
+			newDisks[i] = newDisk
+		}
+
+		if !slices.Equal(inst.Properties.Disks, newDisks) {
+			log.Debug("Instance disks changed")
+			inst.Properties.Disks = newDisks
+			instanceUpdated = true
+		}
 	}
 
 	if !slices.Equal(inst.Properties.NICs, srcInst.Properties.NICs) {
