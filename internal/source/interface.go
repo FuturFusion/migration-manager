@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"crypto/x509"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -36,6 +37,9 @@ type Source interface {
 
 	// Returns whether currently connected to the source or not.
 	IsConnected() bool
+
+	// Timeout for connections to the source.
+	Timeout() time.Duration
 
 	// -----------------------------------------------
 

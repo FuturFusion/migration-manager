@@ -61,7 +61,8 @@ func NewInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, e
 
 	return &InternalVMwareSource{
 		InternalSource: InternalSource{
-			Source: apiSource,
+			Source:            apiSource,
+			connectionTimeout: connProperties.ConnectionTimeout.Duration,
 		},
 		InternalVMwareSourceSpecific: InternalVMwareSourceSpecific{
 			VMwareProperties: connProperties,
@@ -287,7 +288,7 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context, sourceSpecificIDs 
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
 					if ctx.Err() != nil {
-						err = fmt.Errorf("Source connection timeout (%s) exceeded: %w", s.ConnectionTimeout, err)
+						err = fmt.Errorf("Source connection timeout (%s) exceeded: %w", s.Timeout(), err)
 					} else {
 						err = fmt.Errorf("Import timeout (%s) exceeded: %w", s.SyncTimeout, err)
 					}
@@ -565,7 +566,7 @@ func (s *InternalVMwareSource) VerifyBackgroundImport(ctx context.Context, insta
 		paths = s.Datacenters
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, s.ConnectionTimeout.Duration)
+	ctx, cancel := context.WithTimeout(ctx, s.Timeout())
 	defer cancel()
 
 	// Prepare the disks and instances that we care about so we don't query vCenter unecessarily.
