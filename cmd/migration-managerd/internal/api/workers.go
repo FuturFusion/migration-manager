@@ -547,19 +547,9 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 			return err
 		}
 
-		ops, cleanup, err := it.CreateStoragePoolVolumeFromBackup(ctx, pool, workerPath, arch, util.WorkerVolume(arch))
+		err = it.CreateStoragePoolVolumeFromBackup(ctx, pool, workerPath, arch, util.WorkerVolume(arch))
 		if err != nil {
 			return err
-		}
-
-		// Always clean up created files.
-		defer cleanup()
-
-		for _, op := range ops {
-			err = op.WaitContext(ctx)
-			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
-				return err
-			}
 		}
 
 		_, err = d.batch.UpdateStatusByName(ctx, batch.Name, batch.Status, string(api.BATCHSTATUS_RUNNING))

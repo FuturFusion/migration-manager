@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -587,7 +588,10 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 	}
 
 	reverter.Add(func() {
-		_ = t.CleanupVM(ctx, apiDef.Name, true)
+		err = t.CleanupVM(context.Background(), apiDef.Name, true)
+		if err != nil {
+			slog.Error("Failed to clean up instance after error", slog.String("name", apiDef.Name), slog.Any("error", err))
+		}
 	})
 
 	err = op.WaitContext(ctx)
@@ -873,18 +877,15 @@ func (t *InternalIncusTarget) GetStoragePoolVolumeNames(pool string) ([]string, 
 	return t.incusClient.GetStoragePoolVolumeNames(pool)
 }
 
-func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
-	reverter := revert.New()
-	defer reverter.Fail()
-
+func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) error {
 	pool, _, err := t.incusClient.GetStoragePool(poolName)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	s, _, err := t.incusClient.GetServer()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	poolIsShared := false
@@ -899,24 +900,24 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(ctx context.Cont
 	backupName := filepath.Join(util.CachePath(), fmt.Sprintf("%s%s_%s_%s_%s_worker.tar.gz", sys.WorkerImageBuildPrefix, t.GetName(), pool.Name, architecture, version.GoVersion()))
 	err = createIncusBackup(ctx, backupName, backupFilePath, pool, volumeName)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	// remove the backup file after writing the image.
-	reverter.Add(func() { _ = os.RemoveAll(backupName) })
+	defer func() { _ = os.RemoveAll(backupName) }()
 
 	// If the pool is a shared pool, we only need to create the volume once.
 	ops := []incus.Operation{}
 	if poolIsShared {
 		f, err := os.Open(backupName)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: volumeName}
 		op, err := t.incusClient.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		ops = append(ops, op)
@@ -924,32 +925,35 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(ctx context.Cont
 		// If the pool is local-only, we have to create the volume for each member.
 		members, err := t.incusClient.GetClusterMemberNames()
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		ops = make([]incus.Operation, 0, len(members))
 		for _, member := range members {
 			f, err := os.Open(backupName)
 			if err != nil {
-				return nil, nil, err
+				return err
 			}
 
 			createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: volumeName}
 			target := t.incusClient.UseTarget(member)
 			op, err := target.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
 			if err != nil {
-				return nil, nil, err
+				return err
 			}
 
 			ops = append(ops, op)
 		}
 	}
 
-	cleanup := reverter.Clone().Fail
+	for _, op := range ops {
+		err = op.WaitContext(ctx)
+		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return err
+		}
+	}
 
-	reverter.Success()
-
-	return ops, cleanup, nil
+	return nil
 }
 
 func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(poolName string, isoFilePath string) ([]incus.Operation, error) {
