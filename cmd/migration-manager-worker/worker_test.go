@@ -474,7 +474,7 @@ func TestRun(t *testing.T) {
 				DeleteVMSnapshotFunc: func(ctx context.Context, vmName string, snapshotName string) error {
 					return tc.sourceDeleteVMSnapshotErr
 				},
-				ImportDisksFunc: func(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error {
+				ImportDisksFunc: func(ctx context.Context, vmName string, sdkPath string, disks []api.InstancePropertiesDisk, statusCallback func(string, bool)) error {
 					return tc.sourceImportDisksErr
 				},
 				PowerOffVMFunc: func(ctx context.Context, vmName string) error {

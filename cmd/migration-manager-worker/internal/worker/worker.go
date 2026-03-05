@@ -241,8 +241,19 @@ func (w *Worker) importDisksHelper(ctx context.Context, cmd api.WorkerCommand) e
 		}
 	}
 
+	resp, err := w.doHTTPRequestV1("/1.0/instances/"+w.uuid, http.MethodGet, "secret="+w.token+"&instance="+w.uuid, nil)
+	if err != nil {
+		return err
+	}
+
+	var instance api.Instance
+	err = responseToStruct(resp, &instance)
+	if err != nil {
+		return err
+	}
+
 	// Do the actual import.
-	return w.source.ImportDisks(ctx, cmd.Location, worker.VMwareSDKPath, func(status string, isImportant bool) {
+	return w.source.ImportDisks(ctx, cmd.Location, worker.VMwareSDKPath, instance.Disks, func(status string, isImportant bool) {
 		slog.Info(status) //nolint:sloglint
 
 		// Only send updates back to the server if important or once every 5 seconds.

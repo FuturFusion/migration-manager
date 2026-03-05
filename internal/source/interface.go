@@ -70,7 +70,7 @@ type Source interface {
 	// directly write to raw disk devices, overwriting any data that might already be present.
 	//
 	// Returns an error if there is a problem importing the disk(s).
-	ImportDisks(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error
+	ImportDisks(ctx context.Context, vmName string, sdkPath string, disks []api.InstancePropertiesDisk, statusCallback func(string, bool)) error
 
 	// Powers off a VM.
 	//
