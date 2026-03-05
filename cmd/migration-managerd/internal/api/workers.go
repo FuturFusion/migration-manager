@@ -825,12 +825,22 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 		return err
 	}
 
+	if len(migrationState) == 0 {
+		return nil
+	}
+
 	err = d.finalSourceAndTargetChecks(ctx, migrationState)
 	if err != nil {
 		return fmt.Errorf("Failed to perform final source and target checks: %w", err)
 	}
 
+	type conflict struct {
+		uuid uuid.UUID
+		err  error
+	}
+
 	finishedInstances := []uuid.UUID{}
+	conflictedEntries := []conflict{}
 	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
 		return util.RunConcurrentMap(state.Instances, func(instUUID uuid.UUID, instance migration.Instance) error {
 			if queueEntriesToReset[instUUID] {
@@ -845,6 +855,7 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 			window := windowsByQueueUUID[instUUID]
 			err := d.configureMigratedInstances(ctx, state.QueueEntries[instUUID], window, instance, state.Sources[instUUID], state.Targets[instUUID], state.Batch)
 			if err != nil {
+				conflictedEntries = append(conflictedEntries, conflict{uuid: instUUID, err: err})
 				return err
 			}
 
@@ -863,6 +874,18 @@ func (d *Daemon) finalizeCompleteInstances(ctx context.Context) (_err error) {
 
 	// Set fully completed batches to FINISHED state.
 	return transaction.Do(ctx, func(ctx context.Context) error {
+		queue := migrationState.Queue()
+		for _, c := range conflictedEntries {
+			q, err := d.queue.UpdateStatusByUUID(ctx, c.uuid, api.MIGRATIONSTATUS_CONFLICT, c.err.Error(), queue[c.uuid].ImportStage, queue[c.uuid].GetWindowName())
+			if err != nil {
+				return err
+			}
+
+			state := migrationState[q.BatchName]
+			state.QueueEntries[q.InstanceUUID] = *q
+			migrationState[q.BatchName] = state
+		}
+
 		for batch := range migrationState {
 			entries, err := d.queue.GetAllByBatch(ctx, batch)
 			if err != nil {
