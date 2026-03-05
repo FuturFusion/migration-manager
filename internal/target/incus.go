@@ -243,8 +243,12 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	// Clear migration.stateful=false before starting the VM.
 	delete(apiDef.Config, "migration.stateful")
 
-	// Delete any pre-existing eth0 device.
-	delete(apiDef.Devices, "eth0")
+	// Delete any pre-existing NICs.
+	for name, dev := range apiDef.Devices {
+		if dev["type"] == "nic" {
+			delete(apiDef.Devices, name)
+		}
+	}
 
 	for idx, nic := range props.NICs {
 		nicDeviceName := fmt.Sprintf("eth%d", idx)
