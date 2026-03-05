@@ -99,4 +99,8 @@ type Placement struct {
 	// Network placement configuration keyed by attached network identifier.
 	// Example: {"00:00:00:00:00:01": "incusbr0"}
 	Networks map[string]NetworkPlacement `json:"networks" yaml:"networks"`
+
+	// Whether the target instance should be running after migration is complete.
+	// Example: true
+	Running bool `json:"running" yaml:"running"`
 }
