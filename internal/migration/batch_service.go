@@ -534,7 +534,7 @@ func (s batchService) DeterminePlacement(ctx context.Context, instance Instance,
 }
 
 // ResetBatchByName returns the batch to Defined state, and removes all associated queue entries. Also cleans up target and source concurrency limits.
-func (s batchService) ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService) (*Batch, error) {
+func (s batchService) ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService, force bool) (*Batch, error) {
 	var batch *Batch
 	err := transaction.Do(ctx, func(ctx context.Context) error {
 		var err error
@@ -562,7 +562,7 @@ func (s batchService) ResetBatchByName(ctx context.Context, name string, queueSv
 			}
 		}
 
-		if entriesCommitted {
+		if entriesCommitted && !force {
 			return fmt.Errorf("Queue entries have already begun final import or post-migration steps: %w", ErrOperationNotPermitted)
 		}
 
