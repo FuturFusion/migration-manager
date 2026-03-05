@@ -240,7 +240,7 @@ func workerUpdatePost(d *Daemon, r *http.Request) response.Response {
 		}
 
 		// Power on the source VM if it was initially running.
-		if inst.Properties.Running {
+		if updatedEntry.Placement.Running {
 			is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
 			if err != nil {
 				return response.SmartError(err)

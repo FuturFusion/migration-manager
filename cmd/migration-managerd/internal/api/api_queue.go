@@ -405,7 +405,7 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 			return err
 		}
 
-		if inst.Properties.Running && begunFinalSteps {
+		if q.Placement.Running && begunFinalSteps {
 			location = inst.Properties.Location
 			src, err = d.source.GetByName(ctx, inst.Source)
 			if err != nil {

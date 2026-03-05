@@ -714,7 +714,7 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 	)
 
 	// First power on the source VM if it was initially running.
-	if state.Instances[instUUID].Properties.Running {
+	if state.QueueEntries[instUUID].Placement.Running {
 		src := state.Sources[instUUID]
 		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
 		if err != nil {
@@ -1307,7 +1307,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 		}
 
 		// VM wasn't initially running, so no need to turn it back on.
-		if !i.Properties.Running {
+		if !q.Placement.Running {
 			return
 		}
 

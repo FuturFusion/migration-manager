@@ -393,7 +393,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	}
 
 	// Only start the VM if it was initially running.
-	if i.Properties.Running {
+	if q.Placement.Running {
 		err := t.StartVM(ctx, i.GetName())
 		if err != nil {
 			return fmt.Errorf("Failed to start instance %q on target %q: %w", i.GetName(), t.GetName(), err)
