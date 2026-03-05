@@ -64,12 +64,13 @@ Some batch properties cannot be modified once the batch has started, or once any
 
 #### Defaults
 
-| Configuration              | Description                                                                         | Value(s)        | Default                |
-| :---                       | :---                                                                                | :---            | :---                   |
-| `placement.target`         | Default migration target (can be overridden by placement scriptlet)                 | string          | first available target |
-| `placement.target_project` | Default migration target project (can be overridden by placement scriptlet)         | string          | `default`              |
-| `placement.storage_pool`   | Default migration target storage pool (can be overridden by placement scriptlet)    | string          | `default`              |
-| `migration_network`        | Override the network on the target used by instances during migration               | list            |                        |
+| Configuration               | Description                                                                                                     | Value(s)        | Default                |
+| :---                        | :---                                                                                                            | :---            | :---                   |
+| `placement.target`          | Default migration target (can be overridden by placement scriptlet)                                             | string          | first available target |
+| `placement.target_project`  | Default migration target project (can be overridden by placement scriptlet)                                     | string          | `default`              |
+| `placement.storage_pool`    | Default migration target storage pool (can be overridden by placement scriptlet)                                | string          | `default`              |
+| `force_conflict_resolution` | Ignore all recoverable conflicts. May result in migration proceeding with an out-of-date instance configuration | true/false      | false                  |
+| `migration_network`         | Override the network on the target used by instances during migration                                           | list            |                        |
 
 #### Migration network configuration
 
