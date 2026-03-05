@@ -88,7 +88,7 @@ func (s *NbdkitServers) createSnapshot(ctx context.Context) error {
 	return nil
 }
 
-func (s *NbdkitServers) Start(ctx context.Context) error {
+func (s *NbdkitServers) Start(ctx context.Context, validate func(d []*types.VirtualDisk) error) error {
 	err := s.createSnapshot(ctx)
 	if err != nil {
 		return err
@@ -100,45 +100,57 @@ func (s *NbdkitServers) Start(ctx context.Context) error {
 		return err
 	}
 
+	allDisks := []*types.VirtualDisk{}
 	for _, device := range snapshot.Config.Hardware.Device {
 		switch disk := device.(type) {
 		case *types.VirtualDisk:
-			diskName, snapshotTree, err := vmware.IsSupportedDisk(disk)
-			if err != nil {
-				return err
-			}
-
-			// Use the latest snapshot vmdk as the disk source so we traverse all snapshots.
-			if len(snapshotTree) > 0 {
-				diskName = snapshotTree[0]
-			}
-
-			password, _ := s.VddkConfig.Endpoint.User.Password()
-			server, err := nbdkit.NewNbdkitBuilder().
-				Server(s.VddkConfig.Endpoint.Host).
-				Username(s.VddkConfig.Endpoint.User.Username()).
-				Password(password).
-				Thumbprint(s.VddkConfig.Thumbprint).
-				VirtualMachine(s.VirtualMachine.Reference().Value).
-				Snapshot(s.SnapshotRef.Value).
-				Filename(diskName).
-				Compression(s.VddkConfig.Compression).
-				SDK(s.SDKPath).
-				Build()
-			if err != nil {
-				return err
-			}
-
-			if err := server.Start(); err != nil {
-				return err
-			}
-
-			s.Servers = append(s.Servers, &NbdkitServer{
-				Servers: s,
-				Disk:    disk,
-				Nbdkit:  server,
-			})
+			allDisks = append(allDisks, disk)
 		}
+	}
+
+	if validate != nil {
+		err := validate(allDisks)
+		if err != nil {
+			return fmt.Errorf("Failed to validate source disks: %w", err)
+		}
+	}
+
+	for _, disk := range allDisks {
+		diskName, snapshotTree, err := vmware.IsSupportedDisk(disk)
+		if err != nil {
+			return err
+		}
+
+		// Use the latest snapshot vmdk as the disk source so we traverse all snapshots.
+		if len(snapshotTree) > 0 {
+			diskName = snapshotTree[0]
+		}
+
+		password, _ := s.VddkConfig.Endpoint.User.Password()
+		server, err := nbdkit.NewNbdkitBuilder().
+			Server(s.VddkConfig.Endpoint.Host).
+			Username(s.VddkConfig.Endpoint.User.Username()).
+			Password(password).
+			Thumbprint(s.VddkConfig.Thumbprint).
+			VirtualMachine(s.VirtualMachine.Reference().Value).
+			Snapshot(s.SnapshotRef.Value).
+			Filename(diskName).
+			Compression(s.VddkConfig.Compression).
+			SDK(s.SDKPath).
+			Build()
+		if err != nil {
+			return err
+		}
+
+		if err := server.Start(); err != nil {
+			return err
+		}
+
+		s.Servers = append(s.Servers, &NbdkitServer{
+			Servers: s,
+			Disk:    disk,
+			Nbdkit:  server,
+		})
 	}
 
 	c := make(chan os.Signal, 1)
@@ -257,8 +269,8 @@ func getIncusDisk(ctx context.Context, client *http.Client, diskName string) (st
 	return "", false, fmt.Errorf("Failed to find disk with ID %q", diskID)
 }
 
-func (s *NbdkitServers) MigrationCycle(ctx context.Context, runV2V bool) error {
-	err := s.Start(ctx)
+func (s *NbdkitServers) MigrationCycle(ctx context.Context, diskValidator func([]*types.VirtualDisk) error, runV2V bool) error {
+	err := s.Start(ctx, diskValidator)
 	if err != nil {
 		return err
 	}
