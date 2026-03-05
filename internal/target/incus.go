@@ -1168,7 +1168,8 @@ func (t *InternalIncusTarget) GetDetails(ctx context.Context) (*IncusDetails, er
 	}, nil
 }
 
-func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Placement, inst api.Instance, batch api.Batch) error {
+func CanPlaceInstance(ctx context.Context, info *IncusDetails, q migration.QueueEntry, inst api.Instance, batch api.Batch) error {
+	placement := q.Placement
 	if info == nil {
 		return fmt.Errorf("Target %q does not exist", placement.TargetName)
 	}
@@ -1181,8 +1182,14 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 		return fmt.Errorf("Project %q does not exist on target %q", placement.TargetProject, info.Name)
 	}
 
-	if slices.Contains(info.InstancesByProject[placement.TargetProject], inst.GetName()) {
+	instanceExists := slices.Contains(info.InstancesByProject[placement.TargetProject], inst.GetName())
+	importDone := q.MigrationStatus == api.MIGRATIONSTATUS_WORKER_DONE
+	if !importDone && instanceExists {
 		return fmt.Errorf("Instance already exists with name %q on target %q in project %q", inst.GetName(), info.Name, placement.TargetProject)
+	}
+
+	if importDone && !instanceExists {
+		return fmt.Errorf("Could not find instance with name %q on target %q in project %q", inst.GetName(), info.Name, placement.TargetProject)
 	}
 
 	for _, netCfg := range batch.Defaults.MigrationNetwork {
