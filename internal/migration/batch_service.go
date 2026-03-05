@@ -108,15 +108,15 @@ func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueS
 		}
 	}
 
+	queueEntries, err := queueSvc.GetAllByBatch(ctx, oldBatch.Name)
+	if err != nil {
+		return fmt.Errorf("Failed to get queue entries for batch %q: %w", oldBatch.Name, err)
+	}
+
 	if len(constraintsToCheck) > 0 {
 		instances, err := s.instance.GetAllByBatch(ctx, oldBatch.Name)
 		if err != nil {
 			return fmt.Errorf("Failed to get instances for batch %q: %w", oldBatch.Name, err)
-		}
-
-		queueEntries, err := queueSvc.GetAllByBatch(ctx, oldBatch.Name)
-		if err != nil {
-			return fmt.Errorf("Failed to get queue entries for batch %q: %w", oldBatch.Name, err)
 		}
 
 		queueMap := make(map[uuid.UUID]QueueEntry, len(queueEntries))
@@ -157,9 +157,17 @@ func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueS
 	if oldBatch.Defaults.Placement.StoragePool != newBatch.Defaults.Placement.StoragePool ||
 		oldBatch.Defaults.Placement.Target != newBatch.Defaults.Placement.Target ||
 		oldBatch.Defaults.Placement.TargetProject != newBatch.Defaults.Placement.TargetProject ||
-		oldBatch.Config.PlacementScriptlet != newBatch.Config.PlacementScriptlet ||
 		!slices.Equal(oldBatch.Defaults.MigrationNetwork, newBatch.Defaults.MigrationNetwork) {
 		return fmt.Errorf("Cannot modify placement of running batch %q: %w", oldBatch.Name, ErrOperationNotPermitted)
+	}
+
+	// Don't allow editing the scriptlet unless we're sure no queue entry is about to use it. Conflicts will never self-resolve so allow those.
+	anyWithoutPlacement := slices.ContainsFunc(queueEntries, func(q QueueEntry) bool {
+		return q.StatusBeforePlacement() && q.MigrationStatus != api.MIGRATIONSTATUS_CONFLICT
+	})
+
+	if oldBatch.Config.PlacementScriptlet != newBatch.Config.PlacementScriptlet && anyWithoutPlacement {
+		return fmt.Errorf("Cannot modify placement scriptlet of batch %q while queue entries have not finalized their placement: %w", oldBatch.Name, ErrOperationNotPermitted)
 	}
 
 	if oldBatch.IncludeExpression != newBatch.IncludeExpression {

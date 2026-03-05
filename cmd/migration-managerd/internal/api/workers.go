@@ -325,7 +325,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				}
 
 				// Verify that the target placement actually exists and the instance can be placed there.
-				err := target.CanPlaceInstance(ctx, info, entry.Placement, instance.ToAPI(), state.Batch.ToAPI(nil))
+				err := target.CanPlaceInstance(ctx, info, entry, instance.ToAPI(), state.Batch.ToAPI(nil))
 				if err != nil {
 					placementLock.Lock()
 					placementErrs[instUUID] = err
