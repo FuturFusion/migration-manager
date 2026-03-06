@@ -72,6 +72,7 @@ test("renders and submit BatchForm", async () => {
         target: "t1",
         target_project: "default",
       },
+      force_conflict_resolution: false,
     },
   });
 });

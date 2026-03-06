@@ -80,10 +80,11 @@ export const handleStopBatch = (
 
 export const handleResetBatch = (
   batchName: string,
+  force: boolean,
   onSuccess: (message: string) => void,
   onError: (message: string) => void,
 ) => {
-  void resetBatch(batchName)
+  void resetBatch(batchName, force)
     .then((response) => {
       if (response.error_code === 0) {
         onSuccess(`Batch ${batchName} reset successfully`);

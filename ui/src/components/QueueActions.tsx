@@ -1,16 +1,17 @@
 import { FC, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { MdOutlineDelete, MdOutlineStopCircle, MdSync } from "react-icons/md";
+import { MdBuildCircle, MdOutlineDelete, MdSync } from "react-icons/md";
 import { RiResetLeftLine } from "react-icons/ri";
 import { Button } from "react-bootstrap";
 import { resetBackgroundImport } from "api/instances";
-import { cancelQueue, deleteQueue, retryQueue } from "api/queue";
+import { deleteQueue, resolveQueue, retryQueue } from "api/queue";
 import ModalWindow from "components/ModalWindow";
+import QueueCancelBtn from "components/QueueCancelBtn";
 import { useNotification } from "context/notificationContext";
 import { QueueEntry } from "types/queue";
 import {
-  canCancelQueueEntry,
   canDeleteQueueEntry,
+  canResolveQueueEntry,
   canRetryQueueEntry,
 } from "util/queue";
 
@@ -23,12 +24,6 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
   const [opInprogress, setOpInprogress] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { notify } = useNotification();
-
-  const cancelStyle = {
-    cursor: "pointer",
-    color:
-      canCancelQueueEntry(queueEntry) && !opInprogress ? "grey" : "lightgrey",
-  };
 
   const deleteStyle = {
     cursor: "pointer",
@@ -47,26 +42,10 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
     color: !opInprogress ? "grey" : "lightgrey",
   };
 
-  const onCancel = () => {
-    if (!canCancelQueueEntry(queueEntry) || opInprogress) {
-      return;
-    }
-
-    setOpInprogress(true);
-    cancelQueue(queueEntry.instance_uuid)
-      .then((response) => {
-        setOpInprogress(false);
-        if (response.error_code == 0) {
-          notify.success(`Queue entry ${queueEntry.instance_uuid} canceled`);
-          queryClient.invalidateQueries({ queryKey: ["queue"] });
-          return;
-        }
-        notify.error(response.error);
-      })
-      .catch((e) => {
-        setOpInprogress(false);
-        notify.error(`Error during queue entry cancelation: ${e}`);
-      });
+  const resolveStyle = {
+    cursor: "pointer",
+    color:
+      canResolveQueueEntry(queueEntry) && !opInprogress ? "grey" : "lightgrey",
   };
 
   const onDelete = () => {
@@ -88,6 +67,28 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
       .catch((e) => {
         setOpInprogress(false);
         notify.error(`Error during queue entry deletion: ${e}`);
+      });
+  };
+
+  const onResolve = () => {
+    if (!canResolveQueueEntry(queueEntry) || opInprogress) {
+      return;
+    }
+
+    setOpInprogress(true);
+    resolveQueue(queueEntry.instance_uuid)
+      .then((response) => {
+        setOpInprogress(false);
+        if (response.error_code == 0) {
+          notify.success(`Queue entry ${queueEntry.instance_uuid} resolved`);
+          queryClient.invalidateQueries({ queryKey: ["queue"] });
+          return;
+        }
+        notify.error(response.error);
+      })
+      .catch((e) => {
+        setOpInprogress(false);
+        notify.error(`Error during queue entry resolve: ${e}`);
       });
   };
 
@@ -137,14 +138,7 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
 
   return (
     <div>
-      <MdOutlineStopCircle
-        title="Cancel"
-        size={25}
-        style={cancelStyle}
-        onClick={() => {
-          onCancel();
-        }}
-      />
+      <QueueCancelBtn queueEntry={queueEntry} />
       <RiResetLeftLine
         title="Retry"
         size={22}
@@ -171,6 +165,14 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
         style={resetStyle}
         onClick={() => {
           onResetBackgroundImport();
+        }}
+      />
+      <MdBuildCircle
+        title="Resolve"
+        size={25}
+        style={resolveStyle}
+        onClick={() => {
+          onResolve();
         }}
       />
       <ModalWindow

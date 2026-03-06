@@ -30,9 +30,31 @@ export const deleteQueue = (uuid: string): Promise<APIResponse<object>> => {
   });
 };
 
-export const cancelQueue = (uuid: string): Promise<APIResponse<null>> => {
+export const cancelQueue = (
+  uuid: string,
+  force: boolean,
+  cleanup: boolean,
+): Promise<APIResponse<null>> => {
+  const params = new URLSearchParams();
+  if (force) {
+    params.set("force", "1");
+  }
+
+  if (cleanup) {
+    params.set("cleanup", "1");
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/queue/${uuid}/:cancel`, { method: "POST" })
+    fetch(`/1.0/queue/${uuid}/:cancel?${params.toString()}`, { method: "POST" })
+      .then((response) => response.json())
+      .then(resolve)
+      .catch(reject);
+  });
+};
+
+export const resolveQueue = (uuid: string): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/queue/${uuid}/:resolve`, { method: "POST" })
       .then((response) => response.json())
       .then(resolve)
       .catch(reject);
