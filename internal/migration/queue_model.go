@@ -68,6 +68,18 @@ func (q QueueEntry) StatusBeforeMigrationWindow() bool {
 	}
 }
 
+// StatusBeforePlacement returns whether the migration status of the queue entry places it before it has finalized its target placement.
+func (q QueueEntry) StatusBeforePlacement() bool {
+	switch q.MigrationStatus {
+	case api.MIGRATIONSTATUS_BLOCKED, api.MIGRATIONSTATUS_WAITING, api.MIGRATIONSTATUS_CREATING:
+		return true
+	case api.MIGRATIONSTATUS_CONFLICT:
+		return q.ImportStage != IMPORTSTAGE_COMPLETE
+	}
+
+	return false
+}
+
 // IsCommitted returns whether the queue entry is past the point of no return (the source VM has been powered off, or is about to be by some concurrent task).
 func (q QueueEntry) IsCommitted() bool {
 	switch q.MigrationStatus {
@@ -83,7 +95,7 @@ func (q QueueEntry) IsCommitted() bool {
 		api.MIGRATIONSTATUS_POST_IMPORT,
 		api.MIGRATIONSTATUS_WORKER_DONE:
 		return true
-	case api.MIGRATIONSTATUS_IDLE:
+	case api.MIGRATIONSTATUS_IDLE, api.MIGRATIONSTATUS_CONFLICT:
 		// We can be idle for many reasons:
 		// - waiting for background import (not committed, import stage is 'background')
 		// - waiting for migration window after background import (not committed, import stage is 'final' or 'background' if background import is not supported)

@@ -32,6 +32,7 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 		TargetProject: b.Defaults.Placement.TargetProject,
 		StoragePools:  map[string]string{},
 		Networks:      map[string]api.NetworkPlacement{},
+		Running:       instance.Properties.Running,
 	}
 
 	// Use the same pool for all supported disks by default.

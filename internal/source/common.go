@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"time"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -12,9 +13,10 @@ import (
 type InternalSource struct {
 	api.Source `yaml:",inline"`
 
-	version     string
-	isESXI      bool
-	isConnected bool
+	version           string
+	isESXI            bool
+	isConnected       bool
+	connectionTimeout time.Duration
 }
 
 func (s *InternalSource) Connect(ctx context.Context) error {
@@ -53,4 +55,8 @@ func (s *InternalSource) ImportDisks(ctx context.Context, vmName string, statusC
 
 func (s *InternalSource) PowerOffVM(ctx context.Context, vmName string) error {
 	return fmt.Errorf("Not implemented by InternalSource")
+}
+
+func (s *InternalSource) Timeout() time.Duration {
+	return s.connectionTimeout
 }

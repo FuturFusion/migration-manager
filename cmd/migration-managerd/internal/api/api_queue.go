@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/source"
+	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 	"github.com/FuturFusion/migration-manager/shared/api/event"
@@ -40,6 +41,11 @@ var queueCancelCmd = APIEndpoint{
 var queueRetryCmd = APIEndpoint{
 	Path: "queue/{uuid}/:retry",
 	Post: APIEndpointAction{Handler: queueRetry, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
+}
+
+var queueResolveCmd = APIEndpoint{
+	Path: "queue/{uuid}/:resolve",
+	Post: APIEndpointAction{Handler: queueResolve, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 // swagger:operation GET /1.0/queue queue queueRoot_get
@@ -350,6 +356,17 @@ func queueDelete(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: cleanup
+//	    description: Whether to cleanup the target instance.
+//	    type: string
+//	    example: "1"
+//	  - in: query
+//	    name: force
+//	    description: If cleanup=1, whether to cleanup the target instance even if the queue entry was late in the migration process.
+//	    type: string
+//	    example: "1"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -370,17 +387,17 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
+	cleanup := r.FormValue("cleanup") == "1"
+	force := r.FormValue("force") == "1"
+
 	var src *migration.Source
 	var location string
 	var apiQueue api.QueueEntry
+	var tgt *migration.Target
 	err = transaction.Do(r.Context(), func(ctx context.Context) error {
 		q, begunFinalSteps, err := d.queue.CancelByUUID(ctx, queueUUID)
 		if err != nil {
 			return err
-		}
-
-		if !begunFinalSteps {
-			return nil
 		}
 
 		inst, err := d.instance.GetByUUID(ctx, queueUUID)
@@ -388,9 +405,20 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 			return err
 		}
 
-		if inst.Properties.Running {
+		if q.Placement.Running && begunFinalSteps {
 			location = inst.Properties.Location
 			src, err = d.source.GetByName(ctx, inst.Source)
+			if err != nil {
+				return err
+			}
+		}
+
+		if begunFinalSteps {
+			cleanup = cleanup && force
+		}
+
+		if cleanup && q.Placement.TargetName != "" {
+			tgt, err = d.target.GetByName(ctx, q.Placement.TargetName)
 			if err != nil {
 				return err
 			}
@@ -403,6 +431,30 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 	})
 	if err != nil {
 		return response.SmartError(err)
+	}
+
+	if cleanup && tgt != nil {
+		t, err := target.NewTarget(tgt.ToAPI())
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), t.Timeout())
+		defer cancel()
+		err = t.Connect(ctx)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		err = t.SetProject(apiQueue.Placement.TargetProject)
+		if err != nil {
+			return response.SmartError(err)
+		}
+
+		err = t.CleanupVM(ctx, apiQueue.InstanceName, !force)
+		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return response.SmartError(err)
+		}
 	}
 
 	if src != nil {
@@ -487,6 +539,85 @@ func queueRetry(d *Daemon, r *http.Request) response.Response {
 	}
 
 	d.logHandler.SendLifecycle(r.Context(), event.NewQueueEntryEvent(event.QueueEntryRetried, r, apiQueue, apiQueue.InstanceUUID))
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/queue/{uuid}/:resolve queue queue_resolve
+//
+//	Mark queue entry conflicts as resolved
+//
+//	Mark the conflict as resolved and return the queue entry to its last migration state.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func queueResolve(d *Daemon, r *http.Request) response.Response {
+	// Exclusively grab the worker lock so migration actions don't interfere.
+	workerLock.Lock()
+	defer workerLock.Unlock()
+
+	uuidStr := r.PathValue("uuid")
+	queueUUID, err := uuid.Parse(uuidStr)
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	var apiQueue api.QueueEntry
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		q, err := d.queue.GetByInstanceUUID(ctx, queueUUID)
+		if err != nil {
+			return err
+		}
+
+		if q.MigrationStatus != api.MIGRATIONSTATUS_CONFLICT {
+			return fmt.Errorf("Queue entry %q has no conflict", q.InstanceUUID)
+		}
+
+		q.MigrationStatusMessage = api.ConflictResolvedMessage
+		if q.ImportStage == migration.IMPORTSTAGE_COMPLETE {
+			q.MigrationStatus = api.MIGRATIONSTATUS_WORKER_DONE
+		} else {
+			q.MigrationStatus = api.MIGRATIONSTATUS_WAITING
+		}
+
+		q, err = d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, q.MigrationStatus, q.MigrationStatusMessage, q.ImportStage, q.GetWindowName())
+		if err != nil {
+			return err
+		}
+
+		inst, err := d.instance.GetByUUID(ctx, queueUUID)
+		if err != nil {
+			return err
+		}
+
+		window, err := d.queue.GetNextWindow(ctx, *q)
+		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return err
+		}
+
+		if window == nil {
+			window = &migration.Window{}
+		}
+
+		apiQueue = q.ToAPI(inst.GetName(), d.queueHandler.LastWorkerUpdate(q.InstanceUUID), *window)
+
+		return nil
+	})
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	d.logHandler.SendLifecycle(r.Context(), event.NewQueueEntryEvent(event.QueueEntryResolved, r, apiQueue, apiQueue.InstanceUUID))
 
 	return response.EmptySyncResponse
 }

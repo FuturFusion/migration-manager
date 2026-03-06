@@ -124,7 +124,7 @@ func (n Network) CompileIncludeExpression(expression string, locationAlias bool)
 
 	// Instantiate all nil fields when compiling the expression for consistency.
 	baseEnv := api.NetworkFilterable{}
-	options := append([]expr.Option{expr.Env(baseEnv)}, customFunctions...)
+	options := append([]expr.Option{expr.Env(baseEnv), expr.Patch(patcher{})}, customFunctions...)
 
 	if locationAlias {
 		expression = matchLocationAlias(expression, options...)

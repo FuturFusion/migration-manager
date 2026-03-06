@@ -1,6 +1,7 @@
 package api
 
 import (
+	"maps"
 	"slices"
 
 	"github.com/google/uuid"
@@ -13,6 +14,10 @@ type InstanceProperties struct {
 	// Unique identifier of the Instance.
 	// Example: a2095069-a527-4b2a-ab23-1739325dcac7
 	UUID uuid.UUID `json:"uuid" yaml:"uuid" expr:"uuid"`
+
+	// SourceSpecificID is the unique identifier internal to the source type.
+	// Example: vm-123 (vmware)
+	SourceSpecificID string `json:"source_specific_id" yaml:"source_specific_id" expr:"source_specific_id"`
 
 	// Location path of the Instance.
 	// Example: /path/to/instance_name
@@ -179,7 +184,8 @@ func (i *InstanceProperties) Apply(cfg InstancePropertiesConfigurable) {
 		i.Memory = cfg.Memory
 	}
 
-	for k, v := range cfg.Config {
-		i.Config[k] = v
-	}
+	config := map[string]string{}
+	maps.Copy(config, i.Config)
+	maps.Copy(config, cfg.Config)
+	i.Config = config
 }

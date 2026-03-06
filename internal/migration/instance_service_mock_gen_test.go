@@ -30,14 +30,14 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			GetAllFunc: func(ctx context.Context) (migration.Instances, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetAllAssignedFunc: func(ctx context.Context) (migration.Instances, error) {
-//				panic("mock out the GetAllAssigned method")
-//			},
 //			GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
 //				panic("mock out the GetAllByBatch method")
 //			},
 //			GetAllBySourceFunc: func(ctx context.Context, source string) (migration.Instances, error) {
 //				panic("mock out the GetAllBySource method")
+//			},
+//			GetAllInRunningBatchesFunc: func(ctx context.Context) (migration.Instances, error) {
+//				panic("mock out the GetAllInRunningBatches method")
 //			},
 //			GetAllQueuedFunc: func(ctx context.Context, queue migration.QueueEntries) (migration.Instances, error) {
 //				panic("mock out the GetAllQueued method")
@@ -72,7 +72,7 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			SetBackgroundImportVerifiedFunc: func(ctx context.Context, id uuid.UUID, hasSupport bool, disks []string) (*migration.Instance, error) {
 //				panic("mock out the SetBackgroundImportVerified method")
 //			},
-//			UpdateFunc: func(ctx context.Context, instance *migration.Instance) error {
+//			UpdateFunc: func(ctx context.Context, instance *migration.Instance, allowWhileMigrating bool) error {
 //				panic("mock out the Update method")
 //			},
 //		}
@@ -91,14 +91,14 @@ type InstanceServiceMock struct {
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Instances, error)
 
-	// GetAllAssignedFunc mocks the GetAllAssigned method.
-	GetAllAssignedFunc func(ctx context.Context) (migration.Instances, error)
-
 	// GetAllByBatchFunc mocks the GetAllByBatch method.
 	GetAllByBatchFunc func(ctx context.Context, batch string) (migration.Instances, error)
 
 	// GetAllBySourceFunc mocks the GetAllBySource method.
 	GetAllBySourceFunc func(ctx context.Context, source string) (migration.Instances, error)
+
+	// GetAllInRunningBatchesFunc mocks the GetAllInRunningBatches method.
+	GetAllInRunningBatchesFunc func(ctx context.Context) (migration.Instances, error)
 
 	// GetAllQueuedFunc mocks the GetAllQueued method.
 	GetAllQueuedFunc func(ctx context.Context, queue migration.QueueEntries) (migration.Instances, error)
@@ -134,7 +134,7 @@ type InstanceServiceMock struct {
 	SetBackgroundImportVerifiedFunc func(ctx context.Context, id uuid.UUID, hasSupport bool, disks []string) (*migration.Instance, error)
 
 	// UpdateFunc mocks the Update method.
-	UpdateFunc func(ctx context.Context, instance *migration.Instance) error
+	UpdateFunc func(ctx context.Context, instance *migration.Instance, allowWhileMigrating bool) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -157,11 +157,6 @@ type InstanceServiceMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetAllAssigned holds details about calls to the GetAllAssigned method.
-		GetAllAssigned []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-		}
 		// GetAllByBatch holds details about calls to the GetAllByBatch method.
 		GetAllByBatch []struct {
 			// Ctx is the ctx argument value.
@@ -175,6 +170,11 @@ type InstanceServiceMock struct {
 			Ctx context.Context
 			// Source is the source argument value.
 			Source string
+		}
+		// GetAllInRunningBatches holds details about calls to the GetAllInRunningBatches method.
+		GetAllInRunningBatches []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// GetAllQueued holds details about calls to the GetAllQueued method.
 		GetAllQueued []struct {
@@ -255,14 +255,16 @@ type InstanceServiceMock struct {
 			Ctx context.Context
 			// Instance is the instance argument value.
 			Instance *migration.Instance
+			// AllowWhileMigrating is the allowWhileMigrating argument value.
+			AllowWhileMigrating bool
 		}
 	}
 	lockCreate                      sync.RWMutex
 	lockDeleteByUUID                sync.RWMutex
 	lockGetAll                      sync.RWMutex
-	lockGetAllAssigned              sync.RWMutex
 	lockGetAllByBatch               sync.RWMutex
 	lockGetAllBySource              sync.RWMutex
+	lockGetAllInRunningBatches      sync.RWMutex
 	lockGetAllQueued                sync.RWMutex
 	lockGetAllUUIDs                 sync.RWMutex
 	lockGetAllUUIDsBySource         sync.RWMutex
@@ -381,38 +383,6 @@ func (mock *InstanceServiceMock) GetAllCalls() []struct {
 	return calls
 }
 
-// GetAllAssigned calls GetAllAssignedFunc.
-func (mock *InstanceServiceMock) GetAllAssigned(ctx context.Context) (migration.Instances, error) {
-	if mock.GetAllAssignedFunc == nil {
-		panic("InstanceServiceMock.GetAllAssignedFunc: method is nil but InstanceService.GetAllAssigned was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-	}{
-		Ctx: ctx,
-	}
-	mock.lockGetAllAssigned.Lock()
-	mock.calls.GetAllAssigned = append(mock.calls.GetAllAssigned, callInfo)
-	mock.lockGetAllAssigned.Unlock()
-	return mock.GetAllAssignedFunc(ctx)
-}
-
-// GetAllAssignedCalls gets all the calls that were made to GetAllAssigned.
-// Check the length with:
-//
-//	len(mockedInstanceService.GetAllAssignedCalls())
-func (mock *InstanceServiceMock) GetAllAssignedCalls() []struct {
-	Ctx context.Context
-} {
-	var calls []struct {
-		Ctx context.Context
-	}
-	mock.lockGetAllAssigned.RLock()
-	calls = mock.calls.GetAllAssigned
-	mock.lockGetAllAssigned.RUnlock()
-	return calls
-}
-
 // GetAllByBatch calls GetAllByBatchFunc.
 func (mock *InstanceServiceMock) GetAllByBatch(ctx context.Context, batch string) (migration.Instances, error) {
 	if mock.GetAllByBatchFunc == nil {
@@ -482,6 +452,38 @@ func (mock *InstanceServiceMock) GetAllBySourceCalls() []struct {
 	mock.lockGetAllBySource.RLock()
 	calls = mock.calls.GetAllBySource
 	mock.lockGetAllBySource.RUnlock()
+	return calls
+}
+
+// GetAllInRunningBatches calls GetAllInRunningBatchesFunc.
+func (mock *InstanceServiceMock) GetAllInRunningBatches(ctx context.Context) (migration.Instances, error) {
+	if mock.GetAllInRunningBatchesFunc == nil {
+		panic("InstanceServiceMock.GetAllInRunningBatchesFunc: method is nil but InstanceService.GetAllInRunningBatches was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetAllInRunningBatches.Lock()
+	mock.calls.GetAllInRunningBatches = append(mock.calls.GetAllInRunningBatches, callInfo)
+	mock.lockGetAllInRunningBatches.Unlock()
+	return mock.GetAllInRunningBatchesFunc(ctx)
+}
+
+// GetAllInRunningBatchesCalls gets all the calls that were made to GetAllInRunningBatches.
+// Check the length with:
+//
+//	len(mockedInstanceService.GetAllInRunningBatchesCalls())
+func (mock *InstanceServiceMock) GetAllInRunningBatchesCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetAllInRunningBatches.RLock()
+	calls = mock.calls.GetAllInRunningBatches
+	mock.lockGetAllInRunningBatches.RUnlock()
 	return calls
 }
 
@@ -874,21 +876,23 @@ func (mock *InstanceServiceMock) SetBackgroundImportVerifiedCalls() []struct {
 }
 
 // Update calls UpdateFunc.
-func (mock *InstanceServiceMock) Update(ctx context.Context, instance *migration.Instance) error {
+func (mock *InstanceServiceMock) Update(ctx context.Context, instance *migration.Instance, allowWhileMigrating bool) error {
 	if mock.UpdateFunc == nil {
 		panic("InstanceServiceMock.UpdateFunc: method is nil but InstanceService.Update was just called")
 	}
 	callInfo := struct {
-		Ctx      context.Context
-		Instance *migration.Instance
+		Ctx                 context.Context
+		Instance            *migration.Instance
+		AllowWhileMigrating bool
 	}{
-		Ctx:      ctx,
-		Instance: instance,
+		Ctx:                 ctx,
+		Instance:            instance,
+		AllowWhileMigrating: allowWhileMigrating,
 	}
 	mock.lockUpdate.Lock()
 	mock.calls.Update = append(mock.calls.Update, callInfo)
 	mock.lockUpdate.Unlock()
-	return mock.UpdateFunc(ctx, instance)
+	return mock.UpdateFunc(ctx, instance, allowWhileMigrating)
 }
 
 // UpdateCalls gets all the calls that were made to Update.
@@ -896,12 +900,14 @@ func (mock *InstanceServiceMock) Update(ctx context.Context, instance *migration
 //
 //	len(mockedInstanceService.UpdateCalls())
 func (mock *InstanceServiceMock) UpdateCalls() []struct {
-	Ctx      context.Context
-	Instance *migration.Instance
+	Ctx                 context.Context
+	Instance            *migration.Instance
+	AllowWhileMigrating bool
 } {
 	var calls []struct {
-		Ctx      context.Context
-		Instance *migration.Instance
+		Ctx                 context.Context
+		Instance            *migration.Instance
+		AllowWhileMigrating bool
 	}
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update

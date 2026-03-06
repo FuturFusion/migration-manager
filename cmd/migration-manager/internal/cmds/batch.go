@@ -443,6 +443,8 @@ func (c *cmdBatchStop) Run(cmd *cobra.Command, args []string) error {
 // Reset the batch.
 type cmdBatchReset struct {
 	global *CmdGlobal
+
+	flagForce bool
 }
 
 func (c *cmdBatchReset) Command() *cobra.Command {
@@ -453,6 +455,7 @@ func (c *cmdBatchReset) Command() *cobra.Command {
   Deactivate a batch and reset the migration process for its instances.
 `
 
+	cmd.Flags().BoolVarP(&c.flagForce, "force", "f", false, "Clear all queue entries, even finished ones. Finished target instances will not be cleaned up")
 	cmd.RunE = c.Run
 
 	return cmd
@@ -467,8 +470,13 @@ func (c *cmdBatchReset) Run(cmd *cobra.Command, args []string) error {
 
 	name := args[0]
 
-	// Start the batch.
-	_, _, err = c.global.doHTTPRequestV1("/batches/"+name+"/:reset", http.MethodPost, "", nil)
+	query := ""
+	if c.flagForce {
+		query = "force=1"
+	}
+
+	// Reset the batch.
+	_, _, err = c.global.doHTTPRequestV1("/batches/"+name+"/:reset", http.MethodPost, query, nil)
 	if err != nil {
 		return err
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -761,6 +762,12 @@ func batchStopPost(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: query
+//	    name: force
+//	    description: Reset all queue entries, even finished ones. Finished instances will not be cleaned up from the target.
+//	    type: string
+//	    example: "1"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -772,6 +779,7 @@ func batchStopPost(d *Daemon, r *http.Request) response.Response {
 //	    $ref: "#/responses/InternalServerError"
 func batchResetPost(d *Daemon, r *http.Request) response.Response {
 	name := r.PathValue("name")
+	force := r.FormValue("force") == "1"
 	var apiBatch api.Batch
 	err := transaction.Do(r.Context(), func(ctx context.Context) error {
 		// Get a record of all queue entries before we wipe the records.
@@ -780,7 +788,7 @@ func batchResetPost(d *Daemon, r *http.Request) response.Response {
 			return err
 		}
 
-		batch, err := d.batch.ResetBatchByName(ctx, name, d.queue, d.source, d.target)
+		batch, err := d.batch.ResetBatchByName(ctx, name, d.queue, d.source, d.target, force)
 		if err != nil {
 			return err
 		}
@@ -809,38 +817,76 @@ func batchResetPost(d *Daemon, r *http.Request) response.Response {
 			return err
 		}
 
+		sources, err := d.source.GetAll(ctx)
+		if err != nil {
+			return err
+		}
+
 		targetMap := make(map[string]migration.Target, len(targets))
 		for _, t := range targets {
 			targetMap[t.Name] = t
 		}
 
+		sourceMap := make(map[string]migration.Source, len(sources))
+		for _, s := range sources {
+			sourceMap[s.Name] = s
+		}
+
 		for _, q := range entries {
 			inst := instMap[q.InstanceUUID]
 			t, ok := targetMap[q.Placement.TargetName]
-			if !ok {
-				continue
+			if ok {
+				it, err := target.NewTarget(t.ToAPI())
+				if err != nil {
+					return err
+				}
+
+				ctx, cancel := context.WithTimeout(ctx, it.Timeout())
+				err = it.Connect(ctx)
+				if err != nil {
+					cancel()
+					return err
+				}
+
+				err = it.SetProject(q.Placement.TargetProject)
+				if err != nil {
+					cancel()
+					return err
+				}
+
+				// Only remove VMs with a worker volume,
+				// in case we are resetting a completed or errored batch where some VMs have already completed migration.
+				if q.MigrationStatus != api.MIGRATIONSTATUS_FINISHED {
+					err = it.CleanupVM(ctx, inst.GetName(), !force)
+					cancel()
+					if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+						return err
+					}
+				}
+
+				cancel()
 			}
 
-			it, err := target.NewTarget(t.ToAPI())
-			if err != nil {
-				return err
-			}
+			// Power back on source VMs that were powered on for unfinished queue entries.
+			s, ok := sourceMap[inst.Source]
+			if ok && q.Placement.Running && q.MigrationStatus != api.MIGRATIONSTATUS_FINISHED {
+				is, err := source.NewInternalVMwareSourceFrom(s.ToAPI())
+				if err != nil {
+					return err
+				}
 
-			err = it.Connect(ctx)
-			if err != nil {
-				return err
-			}
+				ctx, cancel := context.WithTimeout(ctx, is.Timeout())
+				err = is.Connect(ctx)
+				if err != nil {
+					cancel()
+					return err
+				}
 
-			err = it.SetProject(q.Placement.TargetProject)
-			if err != nil {
-				return err
-			}
-
-			// Only remove VMs with a worker volume,
-			// in case we are resetting a completed or errored batch where some VMs have already completed migration.
-			err = it.CleanupVM(ctx, inst.GetName(), true)
-			if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
-				return err
+				err = is.PowerOnVM(ctx, inst.Properties.Location)
+				cancel()
+				if err != nil {
+					return err
+				}
 			}
 		}
 

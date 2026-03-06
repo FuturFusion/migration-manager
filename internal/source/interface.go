@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"crypto/x509"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -37,6 +38,9 @@ type Source interface {
 	// Returns whether currently connected to the source or not.
 	IsConnected() bool
 
+	// Timeout for connections to the source.
+	Timeout() time.Duration
+
 	// -----------------------------------------------
 
 	// Returns the human-readable name for this source.
@@ -47,7 +51,7 @@ type Source interface {
 	// Returns an array of all VMs available from the source, encoded as Instances.
 	//
 	// Returns an error if there is a problem fetching VMs or their properties.
-	GetAllVMs(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error)
+	GetAllVMs(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error)
 
 	// VerifyBackgroundImport checks each supported disk for each VM to verify whether background import is supported, returning the list of UUIDs that fail the check.
 	VerifyBackgroundImport(ctx context.Context, instances migration.Instances) (migration.Instances, error)
@@ -66,7 +70,7 @@ type Source interface {
 	// directly write to raw disk devices, overwriting any data that might already be present.
 	//
 	// Returns an error if there is a problem importing the disk(s).
-	ImportDisks(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error
+	ImportDisks(ctx context.Context, vmName string, sdkPath string, disks []api.InstancePropertiesDisk, statusCallback func(string, bool)) error
 
 	// Powers off a VM.
 	//

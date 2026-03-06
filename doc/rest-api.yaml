@@ -210,6 +210,10 @@ definitions:
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     BatchDefaults:
         properties:
+            force_conflict_resolution:
+                description: Whether to forcibly use the configuration that will allow the migration to proceed, when encountering late-migration conflicts. May result in an out-of-date migration.
+                type: boolean
+                x-go-name: ForceConflictResolution
             migration_network:
                 description: Network configuration to use during migration of the instance. If unspecified, the default network configuration in the default profile will be used.
                 items:
@@ -383,6 +387,11 @@ definitions:
                 example: MySource
                 type: string
                 x-go-name: Source
+            source_specific_id:
+                description: SourceSpecificID is the unique identifier internal to the source type.
+                example: vm-123 (vmware)
+                type: string
+                x-go-name: SourceSpecificID
             source_type:
                 $ref: '#/definitions/SourceType'
             tpm:
@@ -556,6 +565,11 @@ definitions:
                     $ref: '#/definitions/InstancePropertiesSnapshot'
                 type: array
                 x-go-name: Snapshots
+            source_specific_id:
+                description: SourceSpecificID is the unique identifier internal to the source type.
+                example: vm-123 (vmware)
+                type: string
+                x-go-name: SourceSpecificID
             tpm:
                 description: Whether the Instance has a TPM.
                 example: true
@@ -849,6 +863,11 @@ definitions:
                     "00:00:00:00:00:01": incusbr0
                 type: object
                 x-go-name: Networks
+            running:
+                description: Whether the target instance should be running after migration is complete.
+                example: true
+                type: boolean
+                x-go-name: Running
             storage_pools:
                 additionalProperties:
                     type: string
@@ -957,6 +976,12 @@ definitions:
                     core.https_address: :6443
                 type: object
                 x-go-name: Config
+            server_version:
+                description: Server version
+                example: 1.0.0
+                readOnly: true
+                type: string
+                x-go-name: ServerVersion
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     Source:
@@ -972,6 +997,11 @@ definitions:
                 x-go-name: Properties
             source_type:
                 $ref: '#/definitions/SourceType'
+            syncing:
+                description: Whether the source record was undergoing a data sync when requested.
+                example: true
+                type: boolean
+                x-go-name: Syncing
         title: Source defines properties common to all sources.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
@@ -1838,6 +1868,12 @@ paths:
         post:
             description: Resets a batch, removes all queue entries, and cleans up incomplete target VMs and volumes.
             operationId: batches_reset_post
+            parameters:
+                - description: Reset all queue entries, even finished ones. Finished instances will not be cleaned up from the target.
+                  example: "1"
+                  in: query
+                  name: force
+                  type: string
             produces:
                 - application/json
             responses:
@@ -2145,6 +2181,12 @@ paths:
         get:
             description: Returns a list of networks (structs).
             operationId: networks_get
+            parameters:
+                - description: An expression used to select networks to add to the result
+                  example: name matches 'centos'
+                  in: query
+                  name: include_expression
+                  type: string
             produces:
                 - application/json
             responses:
@@ -2392,6 +2434,17 @@ paths:
         post:
             description: Cancels migration for the queue entry.
             operationId: queue_cancel
+            parameters:
+                - description: Whether to cleanup the target instance.
+                  example: "1"
+                  in: query
+                  name: cleanup
+                  type: string
+                - description: If cleanup=1, whether to cleanup the target instance even if the queue entry was late in the migration process.
+                  example: "1"
+                  in: query
+                  name: force
+                  type: string
             produces:
                 - application/json
             responses:
@@ -2404,6 +2457,24 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Cancels the queue entry
+            tags:
+                - queue
+    /1.0/queue/{uuid}/:resolve:
+        post:
+            description: Mark the conflict as resolved and return the queue entry to its last migration state.
+            operationId: queue_resolve
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Mark queue entry conflicts as resolved
             tags:
                 - queue
     /1.0/queue/{uuid}/:retry:

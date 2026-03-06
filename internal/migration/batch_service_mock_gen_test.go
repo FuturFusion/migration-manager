@@ -48,7 +48,7 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
-//			ResetBatchByNameFunc: func(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) (*migration.Batch, error) {
+//			ResetBatchByNameFunc: func(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService, force bool) (*migration.Batch, error) {
 //				panic("mock out the ResetBatchByName method")
 //			},
 //			StartBatchByNameFunc: func(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) (*migration.Batch, error) {
@@ -98,7 +98,7 @@ type BatchServiceMock struct {
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
 
 	// ResetBatchByNameFunc mocks the ResetBatchByName method.
-	ResetBatchByNameFunc func(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) (*migration.Batch, error)
+	ResetBatchByNameFunc func(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService, force bool) (*migration.Batch, error)
 
 	// StartBatchByNameFunc mocks the StartBatchByName method.
 	StartBatchByNameFunc func(ctx context.Context, name string, windowSvc migration.WindowService, networkSvc migration.NetworkService, queueSvc migration.QueueService) (*migration.Batch, error)
@@ -193,6 +193,8 @@ type BatchServiceMock struct {
 			SourceSvc migration.SourceService
 			// TargetSvc is the targetSvc argument value.
 			TargetSvc migration.TargetService
+			// Force is the force argument value.
+			Force bool
 		}
 		// StartBatchByName holds details about calls to the StartBatchByName method.
 		StartBatchByName []struct {
@@ -586,7 +588,7 @@ func (mock *BatchServiceMock) RenameCalls() []struct {
 }
 
 // ResetBatchByName calls ResetBatchByNameFunc.
-func (mock *BatchServiceMock) ResetBatchByName(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService) (*migration.Batch, error) {
+func (mock *BatchServiceMock) ResetBatchByName(ctx context.Context, name string, queueSvc migration.QueueService, sourceSvc migration.SourceService, targetSvc migration.TargetService, force bool) (*migration.Batch, error) {
 	if mock.ResetBatchByNameFunc == nil {
 		panic("BatchServiceMock.ResetBatchByNameFunc: method is nil but BatchService.ResetBatchByName was just called")
 	}
@@ -596,17 +598,19 @@ func (mock *BatchServiceMock) ResetBatchByName(ctx context.Context, name string,
 		QueueSvc  migration.QueueService
 		SourceSvc migration.SourceService
 		TargetSvc migration.TargetService
+		Force     bool
 	}{
 		Ctx:       ctx,
 		Name:      name,
 		QueueSvc:  queueSvc,
 		SourceSvc: sourceSvc,
 		TargetSvc: targetSvc,
+		Force:     force,
 	}
 	mock.lockResetBatchByName.Lock()
 	mock.calls.ResetBatchByName = append(mock.calls.ResetBatchByName, callInfo)
 	mock.lockResetBatchByName.Unlock()
-	return mock.ResetBatchByNameFunc(ctx, name, queueSvc, sourceSvc, targetSvc)
+	return mock.ResetBatchByNameFunc(ctx, name, queueSvc, sourceSvc, targetSvc, force)
 }
 
 // ResetBatchByNameCalls gets all the calls that were made to ResetBatchByName.
@@ -619,6 +623,7 @@ func (mock *BatchServiceMock) ResetBatchByNameCalls() []struct {
 	QueueSvc  migration.QueueService
 	SourceSvc migration.SourceService
 	TargetSvc migration.TargetService
+	Force     bool
 } {
 	var calls []struct {
 		Ctx       context.Context
@@ -626,6 +631,7 @@ func (mock *BatchServiceMock) ResetBatchByNameCalls() []struct {
 		QueueSvc  migration.QueueService
 		SourceSvc migration.SourceService
 		TargetSvc migration.TargetService
+		Force     bool
 	}
 	mock.lockResetBatchByName.RLock()
 	calls = mock.calls.ResetBatchByName

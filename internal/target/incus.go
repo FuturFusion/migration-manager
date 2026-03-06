@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -242,8 +243,12 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	// Clear migration.stateful=false before starting the VM.
 	delete(apiDef.Config, "migration.stateful")
 
-	// Delete any pre-existing eth0 device.
-	delete(apiDef.Devices, "eth0")
+	// Delete any pre-existing NICs.
+	for name, dev := range apiDef.Devices {
+		if dev["type"] == "nic" {
+			delete(apiDef.Devices, name)
+		}
+	}
 
 	for idx, nic := range props.NICs {
 		nicDeviceName := fmt.Sprintf("eth%d", idx)
@@ -388,7 +393,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	}
 
 	// Only start the VM if it was initially running.
-	if i.Properties.Running {
+	if q.Placement.Running {
 		err := t.StartVM(ctx, i.GetName())
 		if err != nil {
 			return fmt.Errorf("Failed to start instance %q on target %q: %w", i.GetName(), t.GetName(), err)
@@ -587,7 +592,10 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 	}
 
 	reverter.Add(func() {
-		_ = t.CleanupVM(ctx, apiDef.Name, true)
+		err = t.CleanupVM(context.Background(), apiDef.Name, true)
+		if err != nil {
+			slog.Error("Failed to clean up instance after error", slog.String("name", apiDef.Name), slog.Any("error", err))
+		}
 	})
 
 	err = op.WaitContext(ctx)
@@ -643,6 +651,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 			instInfo.Devices[diskKey]["source"] = diskName
 		}
 
+		apiDef.Start = true
 		op, err := tgtClient.UpdateInstance(instInfo.Name, instInfo.InstancePut, etag)
 		if err != nil {
 			return nil, err
@@ -810,14 +819,23 @@ func (t *InternalIncusTarget) CheckIncusAgent(ctx context.Context, instanceName 
 
 	var err error
 	for ctx.Err() == nil {
-		// Limit each exec to 5s.
-		execCtx, cancel := context.WithTimeout(ctx, time.Second*5)
-		err = t.Exec(execCtx, instanceName, []string{"echo"})
-		cancel()
+		var state *incusAPI.InstanceState
+		state, _, err = t.incusClient.GetInstanceState(instanceName)
 
-		// If there is no error, then the agent is running.
-		if err == nil {
-			return nil
+		// If there is no error, then check for agent status.
+		if err == nil && state != nil {
+			// Start the instance if it hasn't started for some reason.
+			if state.StatusCode != incusAPI.Running {
+				err = t.StartVM(ctx, instanceName)
+				if err != nil {
+					return fmt.Errorf("Failed to start instance %q: %w", instanceName, err)
+				}
+			}
+
+			// If there are processes, then infer that the agent is running and exit.
+			if state.Processes > 0 {
+				return nil
+			}
 		}
 
 		if incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
@@ -873,18 +891,15 @@ func (t *InternalIncusTarget) GetStoragePoolVolumeNames(pool string) ([]string, 
 	return t.incusClient.GetStoragePoolVolumeNames(pool)
 }
 
-func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
-	reverter := revert.New()
-	defer reverter.Fail()
-
+func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) error {
 	pool, _, err := t.incusClient.GetStoragePool(poolName)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	s, _, err := t.incusClient.GetServer()
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	poolIsShared := false
@@ -899,24 +914,24 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(ctx context.Cont
 	backupName := filepath.Join(util.CachePath(), fmt.Sprintf("%s%s_%s_%s_%s_worker.tar.gz", sys.WorkerImageBuildPrefix, t.GetName(), pool.Name, architecture, version.GoVersion()))
 	err = createIncusBackup(ctx, backupName, backupFilePath, pool, volumeName)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 
 	// remove the backup file after writing the image.
-	reverter.Add(func() { _ = os.RemoveAll(backupName) })
+	defer func() { _ = os.RemoveAll(backupName) }()
 
 	// If the pool is a shared pool, we only need to create the volume once.
 	ops := []incus.Operation{}
 	if poolIsShared {
 		f, err := os.Open(backupName)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: volumeName}
 		op, err := t.incusClient.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		ops = append(ops, op)
@@ -924,32 +939,35 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(ctx context.Cont
 		// If the pool is local-only, we have to create the volume for each member.
 		members, err := t.incusClient.GetClusterMemberNames()
 		if err != nil {
-			return nil, nil, err
+			return err
 		}
 
 		ops = make([]incus.Operation, 0, len(members))
 		for _, member := range members {
 			f, err := os.Open(backupName)
 			if err != nil {
-				return nil, nil, err
+				return err
 			}
 
 			createArgs := incus.StorageVolumeBackupArgs{BackupFile: f, Name: volumeName}
 			target := t.incusClient.UseTarget(member)
 			op, err := target.CreateStoragePoolVolumeFromBackup(poolName, createArgs)
 			if err != nil {
-				return nil, nil, err
+				return err
 			}
 
 			ops = append(ops, op)
 		}
 	}
 
-	cleanup := reverter.Clone().Fail
+	for _, op := range ops {
+		err = op.WaitContext(ctx)
+		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return err
+		}
+	}
 
-	reverter.Success()
-
-	return ops, cleanup, nil
+	return nil
 }
 
 func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(poolName string, isoFilePath string) ([]incus.Operation, error) {
@@ -1164,7 +1182,8 @@ func (t *InternalIncusTarget) GetDetails(ctx context.Context) (*IncusDetails, er
 	}, nil
 }
 
-func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Placement, inst api.Instance, batch api.Batch) error {
+func CanPlaceInstance(ctx context.Context, info *IncusDetails, q migration.QueueEntry, inst api.Instance, batch api.Batch) error {
+	placement := q.Placement
 	if info == nil {
 		return fmt.Errorf("Target %q does not exist", placement.TargetName)
 	}
@@ -1177,8 +1196,14 @@ func CanPlaceInstance(ctx context.Context, info *IncusDetails, placement api.Pla
 		return fmt.Errorf("Project %q does not exist on target %q", placement.TargetProject, info.Name)
 	}
 
-	if slices.Contains(info.InstancesByProject[placement.TargetProject], inst.GetName()) {
+	instanceExists := slices.Contains(info.InstancesByProject[placement.TargetProject], inst.GetName())
+	importDone := q.MigrationStatus == api.MIGRATIONSTATUS_WORKER_DONE
+	if !importDone && instanceExists {
 		return fmt.Errorf("Instance already exists with name %q on target %q in project %q", inst.GetName(), info.Name, placement.TargetProject)
+	}
+
+	if importDone && !instanceExists {
+		return fmt.Errorf("Could not find instance with name %q on target %q in project %q", inst.GetName(), info.Name, placement.TargetProject)
 	}
 
 	for _, netCfg := range batch.Defaults.MigrationNetwork {

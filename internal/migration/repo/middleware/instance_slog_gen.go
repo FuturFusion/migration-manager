@@ -84,25 +84,6 @@ func (_d InstanceRepoWithSlog) GetAll(ctx context.Context) (i1 _sourceMigration.
 	return _d._base.GetAll(ctx)
 }
 
-// GetAllAssigned implements _sourceMigration.InstanceRepo
-func (_d InstanceRepoWithSlog) GetAllAssigned(ctx context.Context) (i1 _sourceMigration.Instances, err error) {
-	_d._log.With(
-		slog.Any("ctx", ctx),
-	).Debug("InstanceRepoWithSlog: calling GetAllAssigned")
-	defer func() {
-		log := _d._log.With(
-			slog.Any("i1", i1),
-			slog.Any("err", err),
-		)
-		if err != nil {
-			log.Error("InstanceRepoWithSlog: method GetAllAssigned returned an error")
-		} else {
-			log.Debug("InstanceRepoWithSlog: method GetAllAssigned finished")
-		}
-	}()
-	return _d._base.GetAllAssigned(ctx)
-}
-
 // GetAllByBatch implements _sourceMigration.InstanceRepo
 func (_d InstanceRepoWithSlog) GetAllByBatch(ctx context.Context, batch string) (i1 _sourceMigration.Instances, err error) {
 	_d._log.With(
@@ -161,6 +142,25 @@ func (_d InstanceRepoWithSlog) GetAllByUUIDs(ctx context.Context, id ...uuid.UUI
 		}
 	}()
 	return _d._base.GetAllByUUIDs(ctx, id...)
+}
+
+// GetAllInRunningBatches implements _sourceMigration.InstanceRepo
+func (_d InstanceRepoWithSlog) GetAllInRunningBatches(ctx context.Context) (i1 _sourceMigration.Instances, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+	).Debug("InstanceRepoWithSlog: calling GetAllInRunningBatches")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("i1", i1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method GetAllInRunningBatches returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method GetAllInRunningBatches finished")
+		}
+	}()
+	return _d._base.GetAllInRunningBatches(ctx)
 }
 
 // GetAllUUIDs implements _sourceMigration.InstanceRepo

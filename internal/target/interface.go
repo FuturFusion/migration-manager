@@ -112,7 +112,7 @@ type Target interface {
 	GetStoragePoolVolumeNames(pool string) ([]string, error)
 
 	// Wrapper around Incus' CreateStoragePoolVolumeFromBackup.
-	CreateStoragePoolVolumeFromBackup(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error)
+	CreateStoragePoolVolumeFromBackup(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) error
 
 	// Wrapper around Incus' CreateStoragePoolVolumeFromISO.
 	CreateStoragePoolVolumeFromISO(pool string, isoFilePath string) ([]incus.Operation, error)

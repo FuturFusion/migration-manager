@@ -272,18 +272,18 @@ func TestInstanceService_GetAllLocations(t *testing.T) {
 	}
 }
 
-func TestInstanceService_GetAllAssigned(t *testing.T) {
+func TestInstanceService_GetAllInRunningBatches(t *testing.T) {
 	tests := []struct {
-		name                        string
-		repoGetAllAssignedInstances migration.Instances
-		repoGetAllAssignedErr       error
+		name                                string
+		repoGetAllInRunningBatchesInstances migration.Instances
+		repoGetAllInRunningBatchesErr       error
 
 		assertErr require.ErrorAssertionFunc
 		count     int
 	}{
 		{
 			name: "success",
-			repoGetAllAssignedInstances: migration.Instances{
+			repoGetAllInRunningBatchesInstances: migration.Instances{
 				migration.Instance{
 					UUID:       uuidA,
 					Properties: api.InstanceProperties{Location: "/inventory/path/A"},
@@ -298,8 +298,8 @@ func TestInstanceService_GetAllAssigned(t *testing.T) {
 			count:     2,
 		},
 		{
-			name:                  "error - repo",
-			repoGetAllAssignedErr: boom.Error,
+			name:                          "error - repo",
+			repoGetAllInRunningBatchesErr: boom.Error,
 
 			assertErr: boom.ErrorIs,
 			count:     0,
@@ -310,15 +310,15 @@ func TestInstanceService_GetAllAssigned(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Setup
 			repo := &mock.InstanceRepoMock{
-				GetAllAssignedFunc: func(ctx context.Context) (migration.Instances, error) {
-					return tc.repoGetAllAssignedInstances, tc.repoGetAllAssignedErr
+				GetAllInRunningBatchesFunc: func(ctx context.Context) (migration.Instances, error) {
+					return tc.repoGetAllInRunningBatchesInstances, tc.repoGetAllInRunningBatchesErr
 				},
 			}
 
 			instanceSvc := migration.NewInstanceService(repo)
 
 			// Run test
-			instances, err := instanceSvc.GetAllAssigned(context.Background())
+			instances, err := instanceSvc.GetAllInRunningBatches(context.Background())
 
 			// Assert
 			tc.assertErr(t, err)
@@ -500,7 +500,7 @@ func TestInstanceService_Update(t *testing.T) {
 			assertErr: require.NoError,
 		},
 		{
-			name: "success - can only disable if in non-running batches",
+			name: "success - can disable if in non-running batches",
 			instance: migration.Instance{
 				UUID:       uuidA,
 				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
@@ -511,6 +511,26 @@ func TestInstanceService_Update(t *testing.T) {
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
 				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", OS: "os", OSVersion: "os_version"}, BackgroundImport: true},
+
+				Source: "one",
+			},
+			instanceSvcGetBatchesByUUID: migration.Batches{{Status: api.BATCHSTATUS_DEFINED}},
+
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - can edit if in a non-running batch",
+			instance: migration.Instance{
+				UUID:       uuidA,
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
+				Overrides:  api.InstanceOverride{Comment: "edited instance"},
+
+				Source: "one",
+			},
+			repoGetByUUIDInstance: migration.Instance{
+				UUID:       uuidA,
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
+				Overrides:  api.InstanceOverride{Comment: "edited instance"},
 
 				Source: "one",
 			},
@@ -534,25 +554,6 @@ func TestInstanceService_Update(t *testing.T) {
 				Source: "one",
 			},
 			instanceSvcGetBatchesByUUID: migration.Batches{{Status: api.BATCHSTATUS_RUNNING}},
-
-			assertErr: require.Error,
-		},
-		{
-			name: "error - cannot edit if in a non-running batch",
-			instance: migration.Instance{
-				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
-				Overrides:  api.InstanceOverride{Comment: "edited instance"},
-
-				Source: "one",
-			},
-			repoGetByUUIDInstance: migration.Instance{
-				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
-
-				Source: "one",
-			},
-			instanceSvcGetBatchesByUUID: migration.Batches{{Status: api.BATCHSTATUS_DEFINED}},
 
 			assertErr: require.Error,
 		},
@@ -609,29 +610,6 @@ func TestInstanceService_Update(t *testing.T) {
 
 			assertErr: boom.ErrorIs,
 		},
-		{
-			name: "error - already assigned to batch",
-			instance: migration.Instance{
-				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
-
-				Source: "one",
-			},
-			repoGetByUUIDInstance: migration.Instance{
-				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", OS: "os", OSVersion: "os_version", Architecture: "x86_64"}, BackgroundImport: true},
-
-				Source: "one",
-			},
-			instanceSvcGetBatchesByUUID: migration.Batches{
-				{},
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				require.ErrorIs(tt, err, migration.ErrOperationNotPermitted, a...)
-			},
-		},
-
 		{
 			name: "error - can't disable, already assigned to running batch",
 			instance: migration.Instance{
@@ -698,7 +676,7 @@ func TestInstanceService_Update(t *testing.T) {
 			instanceSvc := migration.NewInstanceService(repo)
 
 			// Run test
-			err := instanceSvc.Update(context.Background(), &tc.instance)
+			err := instanceSvc.Update(context.Background(), &tc.instance, false)
 
 			// Assert
 			tc.assertErr(t, err)

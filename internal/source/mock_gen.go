@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/x509"
 	"sync"
+	"time"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
@@ -35,7 +36,7 @@ var _ Source = &SourceMock{}
 //			DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
 //				panic("mock out the DoBasicConnectivityCheck method")
 //			},
-//			GetAllVMsFunc: func(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error) {
+//			GetAllVMsFunc: func(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error) {
 //				panic("mock out the GetAllVMs method")
 //			},
 //			GetBackgroundImportFunc: func(ctx context.Context, instUUID uuid.UUID) (bool, error) {
@@ -44,7 +45,7 @@ var _ Source = &SourceMock{}
 //			GetNameFunc: func() string {
 //				panic("mock out the GetName method")
 //			},
-//			ImportDisksFunc: func(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error {
+//			ImportDisksFunc: func(ctx context.Context, vmName string, sdkPath string, disks []api.InstancePropertiesDisk, statusCallback func(string, bool)) error {
 //				panic("mock out the ImportDisks method")
 //			},
 //			IsConnectedFunc: func() bool {
@@ -52,6 +53,9 @@ var _ Source = &SourceMock{}
 //			},
 //			PowerOffVMFunc: func(ctx context.Context, vmName string) error {
 //				panic("mock out the PowerOffVM method")
+//			},
+//			TimeoutFunc: func() time.Duration {
+//				panic("mock out the Timeout method")
 //			},
 //			VerifyBackgroundImportFunc: func(ctx context.Context, instances migration.Instances) (migration.Instances, error) {
 //				panic("mock out the VerifyBackgroundImport method")
@@ -79,7 +83,7 @@ type SourceMock struct {
 	DoBasicConnectivityCheckFunc func() (api.ExternalConnectivityStatus, *x509.Certificate)
 
 	// GetAllVMsFunc mocks the GetAllVMs method.
-	GetAllVMsFunc func(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error)
+	GetAllVMsFunc func(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error)
 
 	// GetBackgroundImportFunc mocks the GetBackgroundImport method.
 	GetBackgroundImportFunc func(ctx context.Context, instUUID uuid.UUID) (bool, error)
@@ -88,13 +92,16 @@ type SourceMock struct {
 	GetNameFunc func() string
 
 	// ImportDisksFunc mocks the ImportDisks method.
-	ImportDisksFunc func(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error
+	ImportDisksFunc func(ctx context.Context, vmName string, sdkPath string, disks []api.InstancePropertiesDisk, statusCallback func(string, bool)) error
 
 	// IsConnectedFunc mocks the IsConnected method.
 	IsConnectedFunc func() bool
 
 	// PowerOffVMFunc mocks the PowerOffVM method.
 	PowerOffVMFunc func(ctx context.Context, vmName string) error
+
+	// TimeoutFunc mocks the Timeout method.
+	TimeoutFunc func() time.Duration
 
 	// VerifyBackgroundImportFunc mocks the VerifyBackgroundImport method.
 	VerifyBackgroundImportFunc func(ctx context.Context, instances migration.Instances) (migration.Instances, error)
@@ -130,6 +137,8 @@ type SourceMock struct {
 		GetAllVMs []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+			// SourceSpecificIDs is the sourceSpecificIDs argument value.
+			SourceSpecificIDs []string
 		}
 		// GetBackgroundImport holds details about calls to the GetBackgroundImport method.
 		GetBackgroundImport []struct {
@@ -149,6 +158,8 @@ type SourceMock struct {
 			VmName string
 			// SdkPath is the sdkPath argument value.
 			SdkPath string
+			// Disks is the disks argument value.
+			Disks []api.InstancePropertiesDisk
 			// StatusCallback is the statusCallback argument value.
 			StatusCallback func(string, bool)
 		}
@@ -161,6 +172,9 @@ type SourceMock struct {
 			Ctx context.Context
 			// VmName is the vmName argument value.
 			VmName string
+		}
+		// Timeout holds details about calls to the Timeout method.
+		Timeout []struct {
 		}
 		// VerifyBackgroundImport holds details about calls to the VerifyBackgroundImport method.
 		VerifyBackgroundImport []struct {
@@ -185,6 +199,7 @@ type SourceMock struct {
 	lockImportDisks                   sync.RWMutex
 	lockIsConnected                   sync.RWMutex
 	lockPowerOffVM                    sync.RWMutex
+	lockTimeout                       sync.RWMutex
 	lockVerifyBackgroundImport        sync.RWMutex
 	lockWithAdditionalRootCertificate sync.RWMutex
 }
@@ -321,19 +336,21 @@ func (mock *SourceMock) DoBasicConnectivityCheckCalls() []struct {
 }
 
 // GetAllVMs calls GetAllVMsFunc.
-func (mock *SourceMock) GetAllVMs(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error) {
+func (mock *SourceMock) GetAllVMs(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error) {
 	if mock.GetAllVMsFunc == nil {
 		panic("SourceMock.GetAllVMsFunc: method is nil but Source.GetAllVMs was just called")
 	}
 	callInfo := struct {
-		Ctx context.Context
+		Ctx               context.Context
+		SourceSpecificIDs []string
 	}{
-		Ctx: ctx,
+		Ctx:               ctx,
+		SourceSpecificIDs: sourceSpecificIDs,
 	}
 	mock.lockGetAllVMs.Lock()
 	mock.calls.GetAllVMs = append(mock.calls.GetAllVMs, callInfo)
 	mock.lockGetAllVMs.Unlock()
-	return mock.GetAllVMsFunc(ctx)
+	return mock.GetAllVMsFunc(ctx, sourceSpecificIDs...)
 }
 
 // GetAllVMsCalls gets all the calls that were made to GetAllVMs.
@@ -341,10 +358,12 @@ func (mock *SourceMock) GetAllVMs(ctx context.Context) (migration.Instances, mig
 //
 //	len(mockedSource.GetAllVMsCalls())
 func (mock *SourceMock) GetAllVMsCalls() []struct {
-	Ctx context.Context
+	Ctx               context.Context
+	SourceSpecificIDs []string
 } {
 	var calls []struct {
-		Ctx context.Context
+		Ctx               context.Context
+		SourceSpecificIDs []string
 	}
 	mock.lockGetAllVMs.RLock()
 	calls = mock.calls.GetAllVMs
@@ -416,7 +435,7 @@ func (mock *SourceMock) GetNameCalls() []struct {
 }
 
 // ImportDisks calls ImportDisksFunc.
-func (mock *SourceMock) ImportDisks(ctx context.Context, vmName string, sdkPath string, statusCallback func(string, bool)) error {
+func (mock *SourceMock) ImportDisks(ctx context.Context, vmName string, sdkPath string, disks []api.InstancePropertiesDisk, statusCallback func(string, bool)) error {
 	if mock.ImportDisksFunc == nil {
 		panic("SourceMock.ImportDisksFunc: method is nil but Source.ImportDisks was just called")
 	}
@@ -424,17 +443,19 @@ func (mock *SourceMock) ImportDisks(ctx context.Context, vmName string, sdkPath 
 		Ctx            context.Context
 		VmName         string
 		SdkPath        string
+		Disks          []api.InstancePropertiesDisk
 		StatusCallback func(string, bool)
 	}{
 		Ctx:            ctx,
 		VmName:         vmName,
 		SdkPath:        sdkPath,
+		Disks:          disks,
 		StatusCallback: statusCallback,
 	}
 	mock.lockImportDisks.Lock()
 	mock.calls.ImportDisks = append(mock.calls.ImportDisks, callInfo)
 	mock.lockImportDisks.Unlock()
-	return mock.ImportDisksFunc(ctx, vmName, sdkPath, statusCallback)
+	return mock.ImportDisksFunc(ctx, vmName, sdkPath, disks, statusCallback)
 }
 
 // ImportDisksCalls gets all the calls that were made to ImportDisks.
@@ -445,12 +466,14 @@ func (mock *SourceMock) ImportDisksCalls() []struct {
 	Ctx            context.Context
 	VmName         string
 	SdkPath        string
+	Disks          []api.InstancePropertiesDisk
 	StatusCallback func(string, bool)
 } {
 	var calls []struct {
 		Ctx            context.Context
 		VmName         string
 		SdkPath        string
+		Disks          []api.InstancePropertiesDisk
 		StatusCallback func(string, bool)
 	}
 	mock.lockImportDisks.RLock()
@@ -519,6 +542,33 @@ func (mock *SourceMock) PowerOffVMCalls() []struct {
 	mock.lockPowerOffVM.RLock()
 	calls = mock.calls.PowerOffVM
 	mock.lockPowerOffVM.RUnlock()
+	return calls
+}
+
+// Timeout calls TimeoutFunc.
+func (mock *SourceMock) Timeout() time.Duration {
+	if mock.TimeoutFunc == nil {
+		panic("SourceMock.TimeoutFunc: method is nil but Source.Timeout was just called")
+	}
+	callInfo := struct {
+	}{}
+	mock.lockTimeout.Lock()
+	mock.calls.Timeout = append(mock.calls.Timeout, callInfo)
+	mock.lockTimeout.Unlock()
+	return mock.TimeoutFunc()
+}
+
+// TimeoutCalls gets all the calls that were made to Timeout.
+// Check the length with:
+//
+//	len(mockedSource.TimeoutCalls())
+func (mock *SourceMock) TimeoutCalls() []struct {
+} {
+	var calls []struct {
+	}
+	mock.lockTimeout.RLock()
+	calls = mock.calls.Timeout
+	mock.lockTimeout.RUnlock()
 	return calls
 }
 

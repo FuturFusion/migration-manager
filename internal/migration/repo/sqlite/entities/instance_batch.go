@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Code generation directives.
@@ -36,15 +37,17 @@ type InstanceBatchFilter struct {
 	InstanceID *int64
 }
 
-func GetAssignedInstances(ctx context.Context, tx dbtx) (migration.Instances, error) {
+func GetInstancesInRunningBatches(ctx context.Context, tx dbtx) (migration.Instances, error) {
 	stmt := fmt.Sprintf(`SELECT %s
 FROM instances
 JOIN instances_batches ON instances_batches.instance_id = instances.id
+JOIN batches ON instances_batches.batch_id = batches.id
 JOIN sources ON instances.source_id = sources.id
+WHERE batches.status = ? OR batches.status = ?
 ORDER BY instances.uuid
 `, instanceColumns())
 
-	return getInstancesRaw(ctx, tx, stmt)
+	return getInstancesRaw(ctx, tx, stmt, api.BATCHSTATUS_RUNNING, api.BATCHSTATUS_ERROR)
 }
 
 func GetInstancesByBatch(ctx context.Context, tx dbtx, batchName *string) (migration.Instances, error) {

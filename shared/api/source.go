@@ -31,6 +31,10 @@ func NetworkSourceTypes() []SourceType {
 type Source struct {
 	SourcePut
 
+	// Whether the source record was undergoing a data sync when requested.
+	// Example: true
+	Syncing bool `json:"syncing" yaml:"syncing"`
+
 	// SourceType defines the type of the source
 	// Example: vmware
 	SourceType SourceType `json:"source_type" yaml:"source_type"`

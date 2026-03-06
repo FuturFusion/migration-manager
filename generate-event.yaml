@@ -26,6 +26,7 @@
     - queue-entry-canceled
     - queue-entry-retried
     - queue-entry-removed
+    - queue-entry-resolved
   path_args:
     - name: id
       type: uuid.UUID

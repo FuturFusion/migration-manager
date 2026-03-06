@@ -15,14 +15,14 @@ type InstanceService interface {
 	GetAllBySource(ctx context.Context, source string) (Instances, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetAllUUIDsBySource(ctx context.Context, source string) ([]uuid.UUID, error)
-	GetAllAssigned(ctx context.Context) (Instances, error)
+	GetAllInRunningBatches(ctx context.Context) (Instances, error)
 	GetAllUnassigned(ctx context.Context) (Instances, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Instance, error)
 
 	GetAllQueued(ctx context.Context, queue QueueEntries) (Instances, error)
 	GetBatchesByUUID(ctx context.Context, id uuid.UUID) (Batches, error)
 
-	Update(ctx context.Context, instance *Instance) error
+	Update(ctx context.Context, instance *Instance, allowWhileMigrating bool) error
 	ResetBackgroundImport(ctx context.Context, instance *Instance) error
 	SetBackgroundImportVerified(ctx context.Context, id uuid.UUID, hasSupport bool, disks []string) (*Instance, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
@@ -45,7 +45,7 @@ type InstanceRepo interface {
 	GetAllByUUIDs(ctx context.Context, id ...uuid.UUID) (Instances, error)
 	GetAllUUIDs(ctx context.Context) ([]uuid.UUID, error)
 	GetAllUUIDsBySource(ctx context.Context, source string) ([]uuid.UUID, error)
-	GetAllAssigned(ctx context.Context) (Instances, error)
+	GetAllInRunningBatches(ctx context.Context) (Instances, error)
 	GetAllUnassigned(ctx context.Context) (Instances, error)
 	GetBatchesByUUID(ctx context.Context, instanceUUID uuid.UUID) (Batches, error)
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Instance, error)

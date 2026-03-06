@@ -385,7 +385,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 	override.LastUpdate = time.Now().UTC()
 	currentInstance.Overrides = override
 
-	err = d.instance.Update(ctx, currentInstance)
+	err = d.instance.Update(ctx, currentInstance, false)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating override for instance %q: %w", UUID, err))
 	}
@@ -438,7 +438,7 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 
 		apiInstance = inst.ToAPI()
 
-		return d.instance.Update(ctx, inst)
+		return d.instance.Update(ctx, inst, false)
 	})
 	if err != nil {
 		return response.SmartError(err)

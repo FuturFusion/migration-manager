@@ -61,7 +61,8 @@ func NewInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, e
 
 	return &InternalVMwareSource{
 		InternalSource: InternalSource{
-			Source: apiSource,
+			Source:            apiSource,
+			connectionTimeout: connProperties.ConnectionTimeout.Duration,
 		},
 		InternalVMwareSourceSpecific: InternalVMwareSourceSpecific{
 			VMwareProperties: connProperties,
@@ -177,7 +178,7 @@ func (s *InternalVMwareSource) GetNSXManagerIP(ctx context.Context) (string, err
 	return managerIP, nil
 }
 
-func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instances, migration.Networks, migration.Warnings, error) {
+func (s *InternalVMwareSource) GetAllVMs(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error) {
 	log := slog.With(slog.String("source", s.Name))
 	vms := migration.Instances{}
 
@@ -271,13 +272,23 @@ func (s *InternalVMwareSource) GetAllVMs(ctx context.Context) (migration.Instanc
 	grp := errgroup.Group{}
 	grp.SetLimit(s.SyncLimit)
 
+	filter := map[string]bool{}
+	for _, id := range sourceSpecificIDs {
+		filter[id] = true
+	}
+
 	for _, vm := range vmRefs {
+		// Filter VMs, if a filter is supplied.
+		if len(sourceSpecificIDs) > 0 && !filter[vm.Reference().String()] {
+			continue
+		}
+
 		grp.Go(func() error {
 			inst, warningType, err := s.getVM(ctx, vm, tc, networkLocationsByID, catMap)
 			if err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {
 					if ctx.Err() != nil {
-						err = fmt.Errorf("Source connection timeout (%s) exceeded: %w", s.ConnectionTimeout, err)
+						err = fmt.Errorf("Source connection timeout (%s) exceeded: %w", s.Timeout(), err)
 					} else {
 						err = fmt.Errorf("Import timeout (%s) exceeded: %w", s.SyncTimeout, err)
 					}
@@ -385,6 +396,7 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 		}
 	}
 
+	vmProps.SourceSpecificID = vm.Reference().String()
 	inst := migration.Instance{
 		UUID:                 vmProps.UUID,
 		Source:               s.Name,
@@ -554,7 +566,7 @@ func (s *InternalVMwareSource) VerifyBackgroundImport(ctx context.Context, insta
 		paths = s.Datacenters
 	}
 
-	ctx, cancel := context.WithTimeout(ctx, s.ConnectionTimeout.Duration)
+	ctx, cancel := context.WithTimeout(ctx, s.Timeout())
 	defer cancel()
 
 	// Prepare the disks and instances that we care about so we don't query vCenter unecessarily.

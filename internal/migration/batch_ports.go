@@ -23,7 +23,7 @@ type BatchService interface {
 	DeleteByName(ctx context.Context, name string) error
 	StartBatchByName(ctx context.Context, name string, windowSvc WindowService, networkSvc NetworkService, queueSvc QueueService) (*Batch, error)
 	StopBatchByName(ctx context.Context, name string) (*Batch, error)
-	ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService) (*Batch, error)
+	ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService, force bool) (*Batch, error)
 
 	DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, windows Windows) (*api.Placement, error)
 }

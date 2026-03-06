@@ -38,7 +38,7 @@ var _ Target = &TargetMock{}
 //			CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
 //				panic("mock out the CreateNewVM method")
 //			},
-//			CreateStoragePoolVolumeFromBackupFunc: func(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
+//			CreateStoragePoolVolumeFromBackupFunc: func(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) error {
 //				panic("mock out the CreateStoragePoolVolumeFromBackup method")
 //			},
 //			CreateStoragePoolVolumeFromISOFunc: func(pool string, isoFilePath string) ([]incus.Operation, error) {
@@ -130,7 +130,7 @@ type TargetMock struct {
 	CreateNewVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error)
 
 	// CreateStoragePoolVolumeFromBackupFunc mocks the CreateStoragePoolVolumeFromBackup method.
-	CreateStoragePoolVolumeFromBackupFunc func(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error)
+	CreateStoragePoolVolumeFromBackupFunc func(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) error
 
 	// CreateStoragePoolVolumeFromISOFunc mocks the CreateStoragePoolVolumeFromISO method.
 	CreateStoragePoolVolumeFromISOFunc func(pool string, isoFilePath string) ([]incus.Operation, error)
@@ -577,7 +577,7 @@ func (mock *TargetMock) CreateNewVMCalls() []struct {
 }
 
 // CreateStoragePoolVolumeFromBackup calls CreateStoragePoolVolumeFromBackupFunc.
-func (mock *TargetMock) CreateStoragePoolVolumeFromBackup(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) ([]incus.Operation, func(), error) {
+func (mock *TargetMock) CreateStoragePoolVolumeFromBackup(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) error {
 	if mock.CreateStoragePoolVolumeFromBackupFunc == nil {
 		panic("TargetMock.CreateStoragePoolVolumeFromBackupFunc: method is nil but Target.CreateStoragePoolVolumeFromBackup was just called")
 	}

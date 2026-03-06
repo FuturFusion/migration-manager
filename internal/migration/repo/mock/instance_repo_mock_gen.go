@@ -30,9 +30,6 @@ var _ migration.InstanceRepo = &InstanceRepoMock{}
 //			GetAllFunc: func(ctx context.Context) (migration.Instances, error) {
 //				panic("mock out the GetAll method")
 //			},
-//			GetAllAssignedFunc: func(ctx context.Context) (migration.Instances, error) {
-//				panic("mock out the GetAllAssigned method")
-//			},
 //			GetAllByBatchFunc: func(ctx context.Context, batch string) (migration.Instances, error) {
 //				panic("mock out the GetAllByBatch method")
 //			},
@@ -41,6 +38,9 @@ var _ migration.InstanceRepo = &InstanceRepoMock{}
 //			},
 //			GetAllByUUIDsFunc: func(ctx context.Context, id ...uuid.UUID) (migration.Instances, error) {
 //				panic("mock out the GetAllByUUIDs method")
+//			},
+//			GetAllInRunningBatchesFunc: func(ctx context.Context) (migration.Instances, error) {
+//				panic("mock out the GetAllInRunningBatches method")
 //			},
 //			GetAllUUIDsFunc: func(ctx context.Context) ([]uuid.UUID, error) {
 //				panic("mock out the GetAllUUIDs method")
@@ -79,9 +79,6 @@ type InstanceRepoMock struct {
 	// GetAllFunc mocks the GetAll method.
 	GetAllFunc func(ctx context.Context) (migration.Instances, error)
 
-	// GetAllAssignedFunc mocks the GetAllAssigned method.
-	GetAllAssignedFunc func(ctx context.Context) (migration.Instances, error)
-
 	// GetAllByBatchFunc mocks the GetAllByBatch method.
 	GetAllByBatchFunc func(ctx context.Context, batch string) (migration.Instances, error)
 
@@ -90,6 +87,9 @@ type InstanceRepoMock struct {
 
 	// GetAllByUUIDsFunc mocks the GetAllByUUIDs method.
 	GetAllByUUIDsFunc func(ctx context.Context, id ...uuid.UUID) (migration.Instances, error)
+
+	// GetAllInRunningBatchesFunc mocks the GetAllInRunningBatches method.
+	GetAllInRunningBatchesFunc func(ctx context.Context) (migration.Instances, error)
 
 	// GetAllUUIDsFunc mocks the GetAllUUIDs method.
 	GetAllUUIDsFunc func(ctx context.Context) ([]uuid.UUID, error)
@@ -133,11 +133,6 @@ type InstanceRepoMock struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 		}
-		// GetAllAssigned holds details about calls to the GetAllAssigned method.
-		GetAllAssigned []struct {
-			// Ctx is the ctx argument value.
-			Ctx context.Context
-		}
 		// GetAllByBatch holds details about calls to the GetAllByBatch method.
 		GetAllByBatch []struct {
 			// Ctx is the ctx argument value.
@@ -158,6 +153,11 @@ type InstanceRepoMock struct {
 			Ctx context.Context
 			// ID is the id argument value.
 			ID []uuid.UUID
+		}
+		// GetAllInRunningBatches holds details about calls to the GetAllInRunningBatches method.
+		GetAllInRunningBatches []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// GetAllUUIDs holds details about calls to the GetAllUUIDs method.
 		GetAllUUIDs []struct {
@@ -205,20 +205,20 @@ type InstanceRepoMock struct {
 			Instance migration.Instance
 		}
 	}
-	lockCreate              sync.RWMutex
-	lockDeleteByUUID        sync.RWMutex
-	lockGetAll              sync.RWMutex
-	lockGetAllAssigned      sync.RWMutex
-	lockGetAllByBatch       sync.RWMutex
-	lockGetAllBySource      sync.RWMutex
-	lockGetAllByUUIDs       sync.RWMutex
-	lockGetAllUUIDs         sync.RWMutex
-	lockGetAllUUIDsBySource sync.RWMutex
-	lockGetAllUnassigned    sync.RWMutex
-	lockGetBatchesByUUID    sync.RWMutex
-	lockGetByUUID           sync.RWMutex
-	lockRemoveFromQueue     sync.RWMutex
-	lockUpdate              sync.RWMutex
+	lockCreate                 sync.RWMutex
+	lockDeleteByUUID           sync.RWMutex
+	lockGetAll                 sync.RWMutex
+	lockGetAllByBatch          sync.RWMutex
+	lockGetAllBySource         sync.RWMutex
+	lockGetAllByUUIDs          sync.RWMutex
+	lockGetAllInRunningBatches sync.RWMutex
+	lockGetAllUUIDs            sync.RWMutex
+	lockGetAllUUIDsBySource    sync.RWMutex
+	lockGetAllUnassigned       sync.RWMutex
+	lockGetBatchesByUUID       sync.RWMutex
+	lockGetByUUID              sync.RWMutex
+	lockRemoveFromQueue        sync.RWMutex
+	lockUpdate                 sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -322,38 +322,6 @@ func (mock *InstanceRepoMock) GetAllCalls() []struct {
 	mock.lockGetAll.RLock()
 	calls = mock.calls.GetAll
 	mock.lockGetAll.RUnlock()
-	return calls
-}
-
-// GetAllAssigned calls GetAllAssignedFunc.
-func (mock *InstanceRepoMock) GetAllAssigned(ctx context.Context) (migration.Instances, error) {
-	if mock.GetAllAssignedFunc == nil {
-		panic("InstanceRepoMock.GetAllAssignedFunc: method is nil but InstanceRepo.GetAllAssigned was just called")
-	}
-	callInfo := struct {
-		Ctx context.Context
-	}{
-		Ctx: ctx,
-	}
-	mock.lockGetAllAssigned.Lock()
-	mock.calls.GetAllAssigned = append(mock.calls.GetAllAssigned, callInfo)
-	mock.lockGetAllAssigned.Unlock()
-	return mock.GetAllAssignedFunc(ctx)
-}
-
-// GetAllAssignedCalls gets all the calls that were made to GetAllAssigned.
-// Check the length with:
-//
-//	len(mockedInstanceRepo.GetAllAssignedCalls())
-func (mock *InstanceRepoMock) GetAllAssignedCalls() []struct {
-	Ctx context.Context
-} {
-	var calls []struct {
-		Ctx context.Context
-	}
-	mock.lockGetAllAssigned.RLock()
-	calls = mock.calls.GetAllAssigned
-	mock.lockGetAllAssigned.RUnlock()
 	return calls
 }
 
@@ -462,6 +430,38 @@ func (mock *InstanceRepoMock) GetAllByUUIDsCalls() []struct {
 	mock.lockGetAllByUUIDs.RLock()
 	calls = mock.calls.GetAllByUUIDs
 	mock.lockGetAllByUUIDs.RUnlock()
+	return calls
+}
+
+// GetAllInRunningBatches calls GetAllInRunningBatchesFunc.
+func (mock *InstanceRepoMock) GetAllInRunningBatches(ctx context.Context) (migration.Instances, error) {
+	if mock.GetAllInRunningBatchesFunc == nil {
+		panic("InstanceRepoMock.GetAllInRunningBatchesFunc: method is nil but InstanceRepo.GetAllInRunningBatches was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockGetAllInRunningBatches.Lock()
+	mock.calls.GetAllInRunningBatches = append(mock.calls.GetAllInRunningBatches, callInfo)
+	mock.lockGetAllInRunningBatches.Unlock()
+	return mock.GetAllInRunningBatchesFunc(ctx)
+}
+
+// GetAllInRunningBatchesCalls gets all the calls that were made to GetAllInRunningBatches.
+// Check the length with:
+//
+//	len(mockedInstanceRepo.GetAllInRunningBatchesCalls())
+func (mock *InstanceRepoMock) GetAllInRunningBatchesCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockGetAllInRunningBatches.RLock()
+	calls = mock.calls.GetAllInRunningBatches
+	mock.lockGetAllInRunningBatches.RUnlock()
 	return calls
 }
 

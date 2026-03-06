@@ -252,7 +252,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"Name", "Type", "Endpoint", "Connectivity Status", "Username", "Trusted TLS Cert SHA256 Fingerprint"}
+	header := []string{"Name", "Type", "Endpoint", "Connectivity Status", "Syncing", "Username", "Trusted TLS Cert SHA256 Fingerprint"}
 	data := [][]string{}
 
 	for _, s := range sources {
@@ -266,7 +266,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			data = append(data, []string{s.Name, string(s.SourceType), vmwareProperties.Endpoint, string(vmwareProperties.ConnectivityStatus), vmwareProperties.Username, vmwareProperties.TrustedServerCertificateFingerprint})
+			data = append(data, []string{s.Name, string(s.SourceType), vmwareProperties.Endpoint, string(vmwareProperties.ConnectivityStatus), strconv.FormatBool(s.Syncing), vmwareProperties.Username, vmwareProperties.TrustedServerCertificateFingerprint})
 		case api.SOURCETYPE_COMMON:
 			// Nothing to output in this case
 		default:
