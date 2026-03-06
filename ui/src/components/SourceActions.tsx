@@ -15,7 +15,7 @@ const SourceActions: FC<Props> = ({ source }) => {
     syncSource(source.name)
       .then((response) => {
         if (response.error_code == 0) {
-          notify.success(`Source sync triggered successfully`);
+          notify.success(`Source sync completed successfully`);
           return;
         }
         notify.error(response.error);
