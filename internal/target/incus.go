@@ -651,6 +651,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 			instInfo.Devices[diskKey]["source"] = diskName
 		}
 
+		apiDef.Start = true
 		op, err := tgtClient.UpdateInstance(instInfo.Name, instInfo.InstancePut, etag)
 		if err != nil {
 			return nil, err
@@ -818,14 +819,23 @@ func (t *InternalIncusTarget) CheckIncusAgent(ctx context.Context, instanceName 
 
 	var err error
 	for ctx.Err() == nil {
-		// Limit each exec to 5s.
-		execCtx, cancel := context.WithTimeout(ctx, time.Second*5)
-		err = t.Exec(execCtx, instanceName, []string{"echo"})
-		cancel()
+		var state *incusAPI.InstanceState
+		state, _, err = t.incusClient.GetInstanceState(instanceName)
 
-		// If there is no error, then the agent is running.
-		if err == nil {
-			return nil
+		// If there is no error, then check for agent status.
+		if err == nil && state != nil {
+			// Start the instance if it hasn't started for some reason.
+			if state.StatusCode != incusAPI.Running {
+				err = t.StartVM(ctx, instanceName)
+				if err != nil {
+					return fmt.Errorf("Failed to start instance %q: %w", instanceName, err)
+				}
+			}
+
+			// If there are processes, then infer that the agent is running and exit.
+			if state.Processes > 0 {
+				return nil
+			}
 		}
 
 		if incusAPI.StatusErrorCheck(err, http.StatusNotFound) {

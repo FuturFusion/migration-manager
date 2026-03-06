@@ -657,12 +657,6 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		})
 	}
 
-	// Start the instance.
-	err = it.StartVM(timeoutCtx, inst.GetName())
-	if err != nil {
-		return fmt.Errorf("Failed to start instance %q on target %q: %w", instanceDef.Name, it.GetName(), err)
-	}
-
 	var window migration.Window
 	if q.GetWindowName() != nil {
 		window = windows[*q.GetWindowName()]
