@@ -29,6 +29,7 @@ export interface MigrationNetworkPlacement extends NetworkPlacement {
 export interface BatchDefaults {
   placement: BatchPlacement;
   migration_network: MigrationNetworkPlacement[];
+  force_conflict_resolution: boolean;
 }
 
 export interface BatchConstraint {

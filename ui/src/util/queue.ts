@@ -8,9 +8,11 @@ export enum MigrationStatus {
   Idle = "Idle",
   FinalImport = "Performing final import tasks",
   PostImport = "Performing post-import tasks",
+  WorkerDone = "Worker tasks complete",
   Finished = "Finished",
   Error = "Error",
   Canceled = "Canceled",
+  Conflict = "Conflict",
 }
 
 export const canDeleteQueueEntry = (queueEntry: QueueEntry) => {
@@ -25,6 +27,15 @@ export const canDeleteQueueEntry = (queueEntry: QueueEntry) => {
 export const canCancelQueueEntry = (queueEntry: QueueEntry) => {
   const status = queueEntry.migration_status;
   if (status != MigrationStatus.Canceled) {
+    return true;
+  }
+
+  return false;
+};
+
+export const canResolveQueueEntry = (queueEntry: QueueEntry) => {
+  const status = queueEntry.migration_status;
+  if (status === MigrationStatus.Conflict) {
     return true;
   }
 

@@ -26,6 +26,7 @@ export interface Source {
   name: string;
   source_type: SourceType;
   properties: VMwareProperties | NSXProperties;
+  syncing?: boolean;
 }
 
 export interface SourceFormValues {

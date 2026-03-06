@@ -53,6 +53,12 @@ const SourceOverview = () => {
         </div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">Syncing</div>
+        <div className="col-10 detail-table-cell">
+          {source?.syncing ? "Yes" : "No"}
+        </div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">
           Trusted server certificate fingerprint
         </div>

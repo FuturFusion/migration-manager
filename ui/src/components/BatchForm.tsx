@@ -137,6 +137,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
         target_project: "default",
       },
       migration_network: [],
+      force_conflict_resolution: false,
     },
   };
 
@@ -181,6 +182,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
           target_project: batch.defaults.placement.target_project,
         },
         migration_network: batch.defaults.migration_network,
+        force_conflict_resolution: batch.defaults.force_conflict_resolution,
       },
     };
   }
@@ -585,6 +587,30 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                   />
+                </Form.Group>
+                <Form.Group
+                  className="mb-3"
+                  controlId="force_conflict_resolution"
+                >
+                  <Form.Label>Force conflict resolution</Form.Label>
+                  <Form.Select
+                    name="defaults.force_conflict_resolution"
+                    value={
+                      formik.values.defaults.force_conflict_resolution
+                        ? "true"
+                        : "false"
+                    }
+                    onChange={(e) =>
+                      formik.setFieldValue(
+                        "defaults.force_conflict_resolution",
+                        e.target.value === "true",
+                      )
+                    }
+                    onBlur={formik.handleBlur}
+                  >
+                    <option value="false">no</option>
+                    <option value="true">yes</option>
+                  </Form.Select>
                 </Form.Group>
               </div>
             )}

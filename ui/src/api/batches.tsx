@@ -85,9 +85,19 @@ export const stopBatch = (name: string): Promise<APIResponse<null>> => {
   });
 };
 
-export const resetBatch = (name: string): Promise<APIResponse<null>> => {
+export const resetBatch = (
+  name: string,
+  force: boolean,
+): Promise<APIResponse<null>> => {
+  const params = new URLSearchParams();
+  if (force) {
+    params.set("force", "1");
+  }
+
   return new Promise((resolve, reject) => {
-    fetch(`/1.0/batches/${name}/:reset`, { method: "POST" })
+    fetch(`/1.0/batches/${name}/:reset?${params.toString()}`, {
+      method: "POST",
+    })
       .then((response) => response.json())
       .then(resolve)
       .catch(reject);
