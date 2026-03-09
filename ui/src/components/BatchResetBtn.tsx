@@ -77,7 +77,7 @@ const BatchResetBtn: FC<Props> = ({ batch }) => {
           <Form.Group controlId="force">
             <Form.Check
               type="checkbox"
-              label="Force"
+              label="Ignore current migration state"
               name="force"
               checked={forceReset}
               onChange={(e) => setForceReset(e.currentTarget.checked)}

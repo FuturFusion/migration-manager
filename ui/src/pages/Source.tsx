@@ -27,14 +27,12 @@ const Source = () => {
     "Endpoint",
     "Connectivity status",
     "Username",
-    "Syncing",
     "Actions",
   ];
   const rows = sources.map((item) => {
     let connStatus = undefined;
     let endpoint = "";
     let username = "";
-    const syncing = item.syncing ? "Yes" : "No";
 
     if (item.source_type == SourceType.VMware) {
       const props = item.properties as VMwareProperties;
@@ -70,16 +68,17 @@ const Source = () => {
           sortKey: endpoint,
         },
         {
-          content: connStatus,
+          content: (
+            <>
+              {connStatus}
+              {item.syncing && " (syncing)"}
+            </>
+          ),
           sortKey: connStatus,
         },
         {
           content: username,
           sortKey: username,
-        },
-        {
-          content: syncing,
-          sortKey: syncing,
         },
         {
           content: <SourceActions source={item} />,
