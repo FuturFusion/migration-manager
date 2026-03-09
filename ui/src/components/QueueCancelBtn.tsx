@@ -82,7 +82,7 @@ const QueueCancelBtn: FC<Props> = ({ queueEntry }) => {
           <Form.Group controlId="force">
             <Form.Check
               type="checkbox"
-              label="Force"
+              label="Force deletion of instance in final migration"
               name="force"
               checked={forceCancel}
               onChange={(e) => setForceCancel(e.currentTarget.checked)}
@@ -94,7 +94,7 @@ const QueueCancelBtn: FC<Props> = ({ queueEntry }) => {
           <Form.Group controlId="cleanup">
             <Form.Check
               type="checkbox"
-              label="Cleanup"
+              label="Delete instance and volumes from target"
               name="cleanup"
               checked={cleanupCancel}
               onChange={(e) => setCleanupCancel(e.currentTarget.checked)}
