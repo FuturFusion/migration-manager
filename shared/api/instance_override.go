@@ -26,4 +26,12 @@ type InstanceOverride struct {
 	// If true, restrictions that put the VM in a blocked state, preventing migration, will be ignored.
 	// Example: true
 	IgnoreRestrictions bool `json:"ignore_restrictions" yaml:"ignore_restrictions"`
+
+	// If true, after migration the associated target VM will be started.
+	// Example: true
+	StartedAfterMigration bool `json:"started_after_migration" yaml:"started_after_migration"`
+
+	// If true, after migration the associated target VM will be left stopped.
+	// Example: true
+	StoppedAfterMigration bool `json:"stopped_after_migration" yaml:"stopped_after_migration"`
 }
