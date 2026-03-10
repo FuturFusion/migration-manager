@@ -3,10 +3,12 @@ package migration
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"slices"
 	"time"
 
 	"github.com/google/uuid"
+	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -159,6 +161,53 @@ func (s instanceService) Update(ctx context.Context, instance *Instance, allowWh
 	}
 
 	return nil
+}
+
+func (s instanceService) UpdateOverride(ctx context.Context, id uuid.UUID, newOverrides api.InstanceOverride) error {
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		instance, err := s.repo.GetByUUID(ctx, id)
+		if err != nil {
+			return err
+		}
+
+		entry, err := s.repo.GetQueueEntryByUUID(ctx, id)
+		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+			return err
+		}
+
+		if entry == nil {
+			return s.Update(ctx, instance, false)
+		}
+
+		oldOverrides := instance.Overrides
+		if !oldOverrides.DisableMigration && newOverrides.DisableMigration {
+			return fmt.Errorf("Migration has already started for instance %q", instance.UUID)
+		}
+
+		// If a queue entry exists, disallow modifying fields that we use to determine worker config, unless the queue entry has been canceled.
+		if entry.MigrationStatus != api.MIGRATIONSTATUS_CANCELED {
+			if oldOverrides.Description != newOverrides.Description ||
+				oldOverrides.OS != newOverrides.OS ||
+				oldOverrides.OSVersion != newOverrides.OSVersion ||
+				oldOverrides.Architecture != newOverrides.Architecture {
+				return fmt.Errorf("Cannot override OS information for instance %q after migration has started", instance.UUID)
+			}
+		}
+
+		instance.Overrides = newOverrides
+		err = s.Update(ctx, instance, true)
+		if err != nil {
+			return err
+		}
+
+		// Update the queue entry if its running state should change.
+		if (entry.Placement.Running && newOverrides.StoppedAfterMigration) || (!entry.Placement.Running && newOverrides.StartedAfterMigration) {
+			entry.Placement.Running = newOverrides.StartedAfterMigration
+			return s.repo.UpdateQueueEntry(ctx, *entry)
+		}
+
+		return nil
+	})
 }
 
 // ResetBackgroundImport sets the background_import value to true, and unsets the background import verified flag on all disks.
