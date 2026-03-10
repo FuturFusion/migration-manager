@@ -199,7 +199,6 @@ type cmdQueueCancel struct {
 	global *CmdGlobal
 
 	flagCleanup bool
-	flagForce   bool
 }
 
 func (c *cmdQueueCancel) Command() *cobra.Command {
@@ -211,7 +210,6 @@ func (c *cmdQueueCancel) Command() *cobra.Command {
 `
 
 	cmd.Flags().BoolVarP(&c.flagCleanup, "cleanup", "c", false, "Clean up resources created on the target for this queue entry")
-	cmd.Flags().BoolVarP(&c.flagForce, "force", "f", false, "Clean up resources, even late in the migration")
 
 	cmd.RunE = c.Run
 
@@ -229,9 +227,6 @@ func (c *cmdQueueCancel) Run(cmd *cobra.Command, args []string) error {
 	query := ""
 	if c.flagCleanup {
 		query = "cleanup=1"
-		if c.flagForce {
-			query += "&force=1"
-		}
 	}
 
 	// Cancel the queue entry.
