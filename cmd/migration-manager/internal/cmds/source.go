@@ -267,8 +267,6 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 			}
 
 			data = append(data, []string{s.Name, string(s.SourceType), vmwareProperties.Endpoint, string(vmwareProperties.ConnectivityStatus), strconv.FormatBool(s.Syncing), vmwareProperties.Username, vmwareProperties.TrustedServerCertificateFingerprint})
-		case api.SOURCETYPE_COMMON:
-			// Nothing to output in this case
 		default:
 			return fmt.Errorf("Unsupported source type %s", s.SourceType)
 		}

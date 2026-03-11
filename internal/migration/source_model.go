@@ -34,7 +34,7 @@ func (s Source) Validate() error {
 		return NewValidationErrf("Invalid source, name %q: %v", s.Name, err)
 	}
 
-	if s.SourceType != api.SOURCETYPE_COMMON && s.SourceType != api.SOURCETYPE_VMWARE && s.SourceType != api.SOURCETYPE_NSX {
+	if s.SourceType != api.SOURCETYPE_VMWARE && s.SourceType != api.SOURCETYPE_NSX {
 		return NewValidationErrf("Invalid source, %s is not a valid source type", s.SourceType)
 	}
 
@@ -43,8 +43,6 @@ func (s Source) Validate() error {
 	}
 
 	switch s.SourceType {
-	case api.SOURCETYPE_COMMON:
-		err = s.validateSourceTypeCommon()
 	case api.SOURCETYPE_VMWARE:
 		err = s.validateSourceTypeVMware()
 	}
@@ -131,21 +129,9 @@ func (s *Source) SetDefaults() error {
 		}
 
 		return nil
-	case api.SOURCETYPE_COMMON:
-		return nil
 	default:
 		return nil
 	}
-}
-
-func (s Source) validateSourceTypeCommon() error {
-	var v any
-	err := json.Unmarshal(s.Properties, &v)
-	if err != nil {
-		return NewValidationErrf("Invalid properties for common type: %v", err)
-	}
-
-	return nil
 }
 
 func (s Source) validateSourceTypeVMware() error {

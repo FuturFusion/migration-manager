@@ -215,11 +215,6 @@ func TestSourceList(t *testing.T) {
   "status": "Success",
   "metadata": [
     {
-      "name": "source 1",
-      "database_id": 1,
-      "source_type": "common"
-    },
-    {
       "name": "source 2",
       "database_id": 2,
       "source_type": "vmware",
