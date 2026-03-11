@@ -870,7 +870,7 @@ func batchResetPost(d *Daemon, r *http.Request) response.Response {
 			// Power back on source VMs that were powered on for unfinished queue entries.
 			s, ok := sourceMap[inst.Source]
 			if ok && q.Placement.Running && q.MigrationStatus != api.MIGRATIONSTATUS_FINISHED {
-				is, err := source.NewInternalVMwareSourceFrom(s.ToAPI())
+				is, err := source.NewVMSource(s.ToAPI())
 				if err != nil {
 					return err
 				}

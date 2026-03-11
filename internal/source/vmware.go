@@ -45,7 +45,18 @@ type InternalVMwareSource struct {
 	InternalVMwareSourceSpecific `yaml:",inline"`
 }
 
-func NewInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, error) {
+var _ Source = &InternalVMwareSource{}
+
+var NewVMSource = func(s api.Source) (Source, error) {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		return newInternalVMwareSourceFrom(s)
+	default:
+		return nil, fmt.Errorf("Unknown source type %q", s.SourceType)
+	}
+}
+
+func newInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, error) {
 	if apiSource.SourceType != api.SOURCETYPE_VMWARE {
 		return nil, errors.New("Source is not of type VMware")
 	}

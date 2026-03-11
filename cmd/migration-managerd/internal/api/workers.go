@@ -144,7 +144,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			continue
 		}
 
-		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		is, err := source.NewVMSource(src.ToAPI())
 		if err != nil {
 			return fmt.Errorf("Failed to parse %q source %q: %w", src.SourceType, src.Name, err)
 		}
@@ -710,7 +710,7 @@ func (d *Daemon) resetQueueEntry(ctx context.Context, instUUID uuid.UUID, state 
 	// First power on the source VM if it was initially running.
 	if state.QueueEntries[instUUID].Placement.Running {
 		src := state.Sources[instUUID]
-		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		is, err := source.NewVMSource(src.ToAPI())
 		if err != nil {
 			return fmt.Errorf("Failed to configure %q source-specific configuration for restarting source VM on source %q: %w", src.SourceType, src.Name, err)
 		}
@@ -972,12 +972,12 @@ func (d *Daemon) finalSourceAndTargetChecks(ctx context.Context, migrationState 
 	srcNetworks := migration.Networks{}
 	clientsBySourceName := map[string]source.Source{}
 	for srcName, ids := range instanceSourceIDs {
-		s, err := source.NewInternalVMwareSourceFrom(sourcesByName[srcName].ToAPI())
+		s, err := source.NewVMSource(sourcesByName[srcName].ToAPI())
 		if err != nil {
 			return err
 		}
 
-		ctx, cancel := context.WithTimeout(ctx, s.ConnectionTimeout.Duration)
+		ctx, cancel := context.WithTimeout(ctx, s.Timeout())
 		err = s.Connect(ctx)
 		if err != nil {
 			cancel()
@@ -1305,7 +1305,7 @@ func (d *Daemon) configureMigratedInstances(ctx context.Context, q migration.Que
 			return
 		}
 
-		is, err := source.NewInternalVMwareSourceFrom(s.ToAPI())
+		is, err := source.NewVMSource(s.ToAPI())
 		if err != nil {
 			log.Error("Failed to establish source-specific type to restart VM after migration failure", logger.Err(err))
 			return

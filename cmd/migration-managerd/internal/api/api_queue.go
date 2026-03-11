@@ -448,7 +448,7 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 	}
 
 	if src != nil {
-		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		is, err := source.NewVMSource(src.ToAPI())
 		if err != nil {
 			return response.SmartError(err)
 		}

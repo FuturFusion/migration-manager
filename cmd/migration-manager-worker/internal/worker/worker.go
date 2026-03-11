@@ -368,7 +368,7 @@ func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, s
 
 	switch src.SourceType {
 	case api.SOURCETYPE_VMWARE:
-		w.source, err = source.NewInternalVMwareSourceFrom(src)
+		w.source, err = source.NewVMSource(src)
 		if err != nil {
 			return err
 		}

@@ -98,7 +98,7 @@ func workerCommandPost(d *Daemon, r *http.Request) response.Response {
 				return err
 			}
 
-			s, err := source.NewInternalVMwareSourceFrom(workerCommand.Source.ToAPI())
+			s, err := source.NewVMSource(workerCommand.Source.ToAPI())
 			if err != nil {
 				return err
 			}
@@ -293,7 +293,7 @@ func workerUpdatePost(d *Daemon, r *http.Request) response.Response {
 
 		// Power on the source VM if it was initially running.
 		if updatedEntry.Placement.Running {
-			is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+			is, err := source.NewVMSource(src.ToAPI())
 			if err != nil {
 				return response.SmartError(err)
 			}

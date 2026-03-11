@@ -495,7 +495,7 @@ func instanceResetBackgroundImport(d *Daemon, r *http.Request) response.Response
 			return err
 		}
 
-		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		is, err := source.NewVMSource(src.ToAPI())
 		if err != nil {
 			return err
 		}
