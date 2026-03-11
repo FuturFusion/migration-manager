@@ -18,6 +18,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/migration/endpoint/mock"
 	"github.com/FuturFusion/migration-manager/internal/properties"
 	"github.com/FuturFusion/migration-manager/internal/queue"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/target"
 	"github.com/FuturFusion/migration-manager/internal/testing/boom"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -620,6 +621,13 @@ def placement(instance, batch):
 			d := daemonSetup(t)
 			d.queueHandler = queue.NewMigrationHandler(d.batch, d.instance, d.network, d.source, d.target, d.queue, d.window)
 			_, _ = startTestDaemon(t, d, nil, []APIEndpoint{workerUpdateCmd, workerCommandCmd})
+
+			origTarget := target.NewTarget
+			origSource := source.NewVMSource
+			defer func() {
+				target.NewTarget = origTarget
+				source.NewVMSource = origSource
+			}()
 
 			var ranCleanup bool
 			target.NewTarget = func(t api.Target) (target.Target, error) {
