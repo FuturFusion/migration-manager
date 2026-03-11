@@ -693,6 +693,21 @@ func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName stri
 	return nil
 }
 
+func (s *InternalVMwareSource) IsRunning(ctx context.Context, vmLocation string) (bool, error) {
+	vm, err := s.getVMReference(ctx, vmLocation)
+	if err != nil {
+		return false, err
+	}
+
+	// Get the VM's current power state.
+	state, err := vm.PowerState(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return state == types.VirtualMachinePowerStatePoweredOn, nil
+}
+
 func (s *InternalVMwareSource) PowerOnVM(ctx context.Context, vmLocation string) error {
 	vm, err := s.getVMReference(ctx, vmLocation)
 	if err != nil {
