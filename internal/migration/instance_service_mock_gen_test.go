@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
+	"github.com/FuturFusion/migration-manager/shared/api"
 	"github.com/google/uuid"
 )
 
@@ -75,6 +76,9 @@ var _ migration.InstanceService = &InstanceServiceMock{}
 //			UpdateFunc: func(ctx context.Context, instance *migration.Instance, allowWhileMigrating bool) error {
 //				panic("mock out the Update method")
 //			},
+//			UpdateOverrideFunc: func(ctx context.Context, id uuid.UUID, override api.InstanceOverride) error {
+//				panic("mock out the UpdateOverride method")
+//			},
 //		}
 //
 //		// use mockedInstanceService in code that requires migration.InstanceService
@@ -135,6 +139,9 @@ type InstanceServiceMock struct {
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, instance *migration.Instance, allowWhileMigrating bool) error
+
+	// UpdateOverrideFunc mocks the UpdateOverride method.
+	UpdateOverrideFunc func(ctx context.Context, id uuid.UUID, override api.InstanceOverride) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -258,6 +265,15 @@ type InstanceServiceMock struct {
 			// AllowWhileMigrating is the allowWhileMigrating argument value.
 			AllowWhileMigrating bool
 		}
+		// UpdateOverride holds details about calls to the UpdateOverride method.
+		UpdateOverride []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+			// Override is the override argument value.
+			Override api.InstanceOverride
+		}
 	}
 	lockCreate                      sync.RWMutex
 	lockDeleteByUUID                sync.RWMutex
@@ -277,6 +293,7 @@ type InstanceServiceMock struct {
 	lockResetBackgroundImport       sync.RWMutex
 	lockSetBackgroundImportVerified sync.RWMutex
 	lockUpdate                      sync.RWMutex
+	lockUpdateOverride              sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -912,5 +929,45 @@ func (mock *InstanceServiceMock) UpdateCalls() []struct {
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// UpdateOverride calls UpdateOverrideFunc.
+func (mock *InstanceServiceMock) UpdateOverride(ctx context.Context, id uuid.UUID, override api.InstanceOverride) error {
+	if mock.UpdateOverrideFunc == nil {
+		panic("InstanceServiceMock.UpdateOverrideFunc: method is nil but InstanceService.UpdateOverride was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		ID       uuid.UUID
+		Override api.InstanceOverride
+	}{
+		Ctx:      ctx,
+		ID:       id,
+		Override: override,
+	}
+	mock.lockUpdateOverride.Lock()
+	mock.calls.UpdateOverride = append(mock.calls.UpdateOverride, callInfo)
+	mock.lockUpdateOverride.Unlock()
+	return mock.UpdateOverrideFunc(ctx, id, override)
+}
+
+// UpdateOverrideCalls gets all the calls that were made to UpdateOverride.
+// Check the length with:
+//
+//	len(mockedInstanceService.UpdateOverrideCalls())
+func (mock *InstanceServiceMock) UpdateOverrideCalls() []struct {
+	Ctx      context.Context
+	ID       uuid.UUID
+	Override api.InstanceOverride
+} {
+	var calls []struct {
+		Ctx      context.Context
+		ID       uuid.UUID
+		Override api.InstanceOverride
+	}
+	mock.lockUpdateOverride.RLock()
+	calls = mock.calls.UpdateOverride
+	mock.lockUpdateOverride.RUnlock()
 	return calls
 }
