@@ -15,7 +15,6 @@ interface Props {
 const QueueCancelBtn: FC<Props> = ({ queueEntry }) => {
   const [showModal, setShowModal] = useState(false);
   const [opInprogress, setOpInprogress] = useState(false);
-  const [forceCancel, setForceCancel] = useState(false);
   const [cleanupCancel, setCleanupCancel] = useState(false);
   const { notify } = useNotification();
   const queryClient = useQueryClient();
@@ -32,7 +31,7 @@ const QueueCancelBtn: FC<Props> = ({ queueEntry }) => {
     }
 
     setOpInprogress(true);
-    cancelQueue(queueEntry.instance_uuid, forceCancel, cleanupCancel)
+    cancelQueue(queueEntry.instance_uuid, cleanupCancel)
       .then((response) => {
         setOpInprogress(false);
         setShowModal(false);
@@ -78,18 +77,6 @@ const QueueCancelBtn: FC<Props> = ({ queueEntry }) => {
           <br />
           This action cannot be undone.
         </p>
-        <div className="my-3">
-          <Form.Group controlId="force">
-            <Form.Check
-              type="checkbox"
-              label="Force deletion of instance in final migration"
-              name="force"
-              checked={forceCancel}
-              onChange={(e) => setForceCancel(e.currentTarget.checked)}
-              disabled={opInprogress}
-            />
-          </Form.Group>
-        </div>
         <div className="my-3">
           <Form.Group controlId="cleanup">
             <Form.Check

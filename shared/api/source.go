@@ -10,7 +10,6 @@ import (
 type SourceType string
 
 const (
-	SOURCETYPE_COMMON SourceType = "common"
 	SOURCETYPE_VMWARE SourceType = "vmware"
 	SOURCETYPE_NSX    SourceType = "nsx"
 )

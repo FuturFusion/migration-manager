@@ -49,6 +49,8 @@ const InstanceOverrides: FC = () => {
     config: {},
     os: "",
     os_version: "",
+    started_after_migration: "false",
+    stopped_after_migration: "false",
   };
 
   if (instance && overrideExists) {
@@ -63,6 +65,8 @@ const InstanceOverrides: FC = () => {
       config: overrides.config,
       os: overrides.os,
       os_version: overrides.os_version,
+      started_after_migration: overrides.started_after_migration.toString(),
+      stopped_after_migration: overrides.stopped_after_migration.toString(),
     };
   }
 
@@ -124,6 +128,8 @@ const InstanceOverrides: FC = () => {
           os: values.os,
           os_version: values.os_version,
         },
+        started_after_migration: values.started_after_migration == "true",
+        stopped_after_migration: values.stopped_after_migration == "true",
       };
 
       updateInstanceOverride(
@@ -290,6 +296,44 @@ const InstanceOverrides: FC = () => {
           />
           <Form.Control.Feedback type="invalid">
             {formik.errors.os_version}
+          </Form.Control.Feedback>
+        </Form.Group>
+        <Form.Group className="mb-3" controlId="started_after_migration">
+          <Form.Label>Start VM after migration</Form.Label>
+          <Form.Select
+            name="started_after_migration"
+            value={
+              formik.values.started_after_migration === "true"
+                ? "start"
+                : formik.values.stopped_after_migration === "true"
+                  ? "stop"
+                  : "default"
+            }
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "default") {
+                formik.setFieldValue("started_after_migration", "false");
+                formik.setFieldValue("stopped_after_migration", "false");
+              } else if (value === "start") {
+                formik.setFieldValue("started_after_migration", "true");
+                formik.setFieldValue("stopped_after_migration", "false");
+              } else if (value === "stop") {
+                formik.setFieldValue("started_after_migration", "false");
+                formik.setFieldValue("stopped_after_migration", "true");
+              }
+            }}
+            onBlur={formik.handleBlur}
+            isInvalid={
+              !!formik.errors.started_after_migration &&
+              formik.touched.started_after_migration
+            }
+          >
+            <option value="default">default</option>
+            <option value="start">started</option>
+            <option value="stop">stopped</option>
+          </Form.Select>
+          <Form.Control.Feedback type="invalid">
+            {formik.errors.started_after_migration}
           </Form.Control.Feedback>
         </Form.Group>
         <Form.Group className="mb-3" controlId="config">

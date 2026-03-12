@@ -35,6 +35,14 @@ func (b *Batch) GetIncusPlacement(instance Instance, usedNetworks Networks, plac
 		Running:       instance.Properties.Running,
 	}
 
+	if instance.Overrides.StartedAfterMigration {
+		resp.Running = true
+	}
+
+	if instance.Overrides.StoppedAfterMigration {
+		resp.Running = false
+	}
+
 	// Use the same pool for all supported disks by default.
 	for _, d := range instance.Properties.Disks {
 		if !d.Supported {

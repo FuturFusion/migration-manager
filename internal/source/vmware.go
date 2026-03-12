@@ -45,7 +45,18 @@ type InternalVMwareSource struct {
 	InternalVMwareSourceSpecific `yaml:",inline"`
 }
 
-func NewInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, error) {
+var _ Source = &InternalVMwareSource{}
+
+var NewVMSource = func(s api.Source) (Source, error) {
+	switch s.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		return newInternalVMwareSourceFrom(s)
+	default:
+		return nil, fmt.Errorf("Unknown source type %q", s.SourceType)
+	}
+}
+
+func newInternalVMwareSourceFrom(apiSource api.Source) (*InternalVMwareSource, error) {
 	if apiSource.SourceType != api.SOURCETYPE_VMWARE {
 		return nil, errors.New("Source is not of type VMware")
 	}
@@ -691,6 +702,21 @@ func (s *InternalVMwareSource) DeleteVMSnapshot(ctx context.Context, vmName stri
 	}
 
 	return nil
+}
+
+func (s *InternalVMwareSource) IsRunning(ctx context.Context, vmLocation string) (bool, error) {
+	vm, err := s.getVMReference(ctx, vmLocation)
+	if err != nil {
+		return false, err
+	}
+
+	// Get the VM's current power state.
+	state, err := vm.PowerState(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return state == types.VirtualMachinePowerStatePoweredOn, nil
 }
 
 func (s *InternalVMwareSource) PowerOnVM(ctx context.Context, vmLocation string) error {

@@ -6,6 +6,7 @@ export interface Placement {
   target_project: string;
   storage_pools: Record<string, string>;
   networks: Record<string, NetworkPlacement>;
+  running: boolean;
 }
 
 export interface QueueEntry {

@@ -32,14 +32,9 @@ export const deleteQueue = (uuid: string): Promise<APIResponse<object>> => {
 
 export const cancelQueue = (
   uuid: string,
-  force: boolean,
   cleanup: boolean,
 ): Promise<APIResponse<null>> => {
   const params = new URLSearchParams();
-  if (force) {
-    params.set("force", "1");
-  }
-
   if (cleanup) {
     params.set("cleanup", "1");
   }

@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg migration_test -out instance_service_mock_gen_test.go -rm . InstanceService
@@ -23,6 +25,7 @@ type InstanceService interface {
 	GetBatchesByUUID(ctx context.Context, id uuid.UUID) (Batches, error)
 
 	Update(ctx context.Context, instance *Instance, allowWhileMigrating bool) error
+	UpdateOverride(ctx context.Context, id uuid.UUID, override api.InstanceOverride) error
 	ResetBackgroundImport(ctx context.Context, instance *Instance) error
 	SetBackgroundImportVerified(ctx context.Context, id uuid.UUID, hasSupport bool, disks []string) (*Instance, error)
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
@@ -51,6 +54,9 @@ type InstanceRepo interface {
 	GetByUUID(ctx context.Context, id uuid.UUID) (*Instance, error)
 	Update(ctx context.Context, instance Instance) error
 	DeleteByUUID(ctx context.Context, id uuid.UUID) error
+
+	GetQueueEntryByUUID(ctx context.Context, id uuid.UUID) (*QueueEntry, error)
+	UpdateQueueEntry(ctx context.Context, entry QueueEntry) error
 
 	RemoveFromQueue(ctx context.Context, id uuid.UUID) error
 }

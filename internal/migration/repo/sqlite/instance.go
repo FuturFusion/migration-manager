@@ -85,3 +85,15 @@ func (i instance) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
 func (i instance) RemoveFromQueue(ctx context.Context, id uuid.UUID) error {
 	return entities.DeleteQueueEntry(ctx, transaction.GetDBTX(ctx, i.db), id)
 }
+
+// GetQueueEntryByUUID implements migration.InstanceRepo.
+func (i *instance) GetQueueEntryByUUID(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, error) {
+	return entities.GetQueueEntry(ctx, transaction.GetDBTX(ctx, i.db), id)
+}
+
+// UpdateQueueEntry implements migration.InstanceRepo.
+func (i *instance) UpdateQueueEntry(ctx context.Context, entry migration.QueueEntry) error {
+	return transaction.ForceTx(ctx, transaction.GetDBTX(ctx, i.db), func(ctx context.Context, tx transaction.TX) error {
+		return entities.UpdateQueueEntry(ctx, tx, entry.InstanceUUID, entry)
+	})
+}

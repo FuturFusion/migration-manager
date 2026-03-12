@@ -73,7 +73,59 @@ func workerCommandPost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	workerCommand, err := d.queue.NewWorkerCommandByInstanceUUID(r.Context(), instanceUUID)
+	var workerCommand migration.WorkerCommand
+	err = transaction.Do(r.Context(), func(ctx context.Context) error {
+		var err error
+		workerCommand, err = d.queue.NewWorkerCommandByInstanceUUID(r.Context(), instanceUUID)
+		if err != nil {
+			return err
+		}
+
+		// If we are moving into final import to shut down the VM, fetch the power state one last time.
+		if workerCommand.Command == api.WORKERCOMMAND_FINALIZE_IMPORT {
+			inst, err := d.instance.GetByUUID(ctx, instanceUUID)
+			if err != nil {
+				return err
+			}
+
+			// If the instance has overridden power state, we can skip checking power state.
+			if inst.Overrides.StartedAfterMigration || inst.Overrides.StoppedAfterMigration {
+				return nil
+			}
+
+			q, err := d.queue.GetByInstanceUUID(ctx, instanceUUID)
+			if err != nil {
+				return err
+			}
+
+			s, err := source.NewVMSource(workerCommand.Source.ToAPI())
+			if err != nil {
+				return err
+			}
+
+			ctx, cancel := context.WithTimeout(ctx, s.Timeout())
+			defer cancel()
+			err = s.Connect(ctx)
+			if err != nil {
+				return err
+			}
+
+			running, err := s.IsRunning(ctx, inst.Properties.Location)
+			if err != nil {
+				return err
+			}
+
+			if running && !q.Placement.Running {
+				q.Placement.Running = running
+				_, err = d.queue.UpdatePlacementByUUID(ctx, instanceUUID, q.Placement)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
 		return response.SmartError(err)
 	}
@@ -241,7 +293,7 @@ func workerUpdatePost(d *Daemon, r *http.Request) response.Response {
 
 		// Power on the source VM if it was initially running.
 		if updatedEntry.Placement.Running {
-			is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+			is, err := source.NewVMSource(src.ToAPI())
 			if err != nil {
 				return response.SmartError(err)
 			}

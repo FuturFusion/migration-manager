@@ -474,6 +474,16 @@ definitions:
                 example: "24.04"
                 type: string
                 x-go-name: OSVersion
+            started_after_migration:
+                description: If true, after migration the associated target VM will be started.
+                example: true
+                type: boolean
+                x-go-name: StartedAfterMigration
+            stopped_after_migration:
+                description: If true, after migration the associated target VM will be left stopped.
+                example: true
+                type: boolean
+                x-go-name: StoppedAfterMigration
         title: InstanceOverride defines a limited set of instance values that can be overridden as part of the migration process.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
@@ -2439,11 +2449,6 @@ paths:
                   example: "1"
                   in: query
                   name: cleanup
-                  type: string
-                - description: If cleanup=1, whether to cleanup the target instance even if the queue entry was late in the migration process.
-                  example: "1"
-                  in: query
-                  name: force
                   type: string
             produces:
                 - application/json

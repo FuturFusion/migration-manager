@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -24,8 +25,8 @@ import (
 var (
 	testSource = migration.Source{
 		Name:       "TestSource",
-		SourceType: api.SOURCETYPE_COMMON,
-		Properties: []byte(`{}`),
+		SourceType: api.SOURCETYPE_VMWARE,
+		Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass"}`),
 		EndpointFunc: func(t api.Source) (migration.SourceEndpoint, error) {
 			return &endpointMock.SourceEndpointMock{
 				ConnectFunc: func(ctx context.Context) error {
@@ -110,7 +111,7 @@ var (
 			TPM:        false,
 		},
 		Source:     "TestSource",
-		SourceType: api.SOURCETYPE_COMMON,
+		SourceType: api.SOURCETYPE_VMWARE,
 	}
 
 	instanceBUUID = uuid.Must(uuid.NewRandom())
@@ -152,7 +153,7 @@ var (
 			TPM:        true,
 		},
 		Source:     "TestSource",
-		SourceType: api.SOURCETYPE_COMMON,
+		SourceType: api.SOURCETYPE_VMWARE,
 	}
 
 	instanceCUUID = uuid.Must(uuid.NewRandom())
@@ -187,7 +188,7 @@ var (
 			TPM:        false,
 		},
 		Source:     "TestSource",
-		SourceType: api.SOURCETYPE_COMMON,
+		SourceType: api.SOURCETYPE_VMWARE,
 	}
 
 	qA = migration.QueueEntry{

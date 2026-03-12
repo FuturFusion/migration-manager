@@ -221,13 +221,11 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		Properties: apiSrc.Properties,
 		EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
 			switch s.SourceType {
-			case api.SOURCETYPE_VMWARE:
-				return source.NewInternalVMwareSourceFrom(s)
 			case api.SOURCETYPE_NSX:
 				return source.NewInternalNSXSourceFrom(s)
+			default:
+				return source.NewVMSource(s)
 			}
-
-			return nil, fmt.Errorf("Unknown source type: %q", s.SourceType)
 		},
 	})
 	if err != nil {
@@ -440,13 +438,11 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		Properties: apiSrc.Properties,
 		EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
 			switch s.SourceType {
-			case api.SOURCETYPE_VMWARE:
-				return source.NewInternalVMwareSourceFrom(s)
 			case api.SOURCETYPE_NSX:
 				return source.NewInternalNSXSourceFrom(s)
+			default:
+				return source.NewVMSource(s)
 			}
-
-			return nil, fmt.Errorf("Unknown source type: %q", s.SourceType)
 		},
 	}
 

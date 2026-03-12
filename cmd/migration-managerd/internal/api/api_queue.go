@@ -362,11 +362,6 @@ func queueDelete(d *Daemon, r *http.Request) response.Response {
 //	    description: Whether to cleanup the target instance.
 //	    type: string
 //	    example: "1"
-//	  - in: query
-//	    name: force
-//	    description: If cleanup=1, whether to cleanup the target instance even if the queue entry was late in the migration process.
-//	    type: string
-//	    example: "1"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -388,7 +383,6 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 	}
 
 	cleanup := r.FormValue("cleanup") == "1"
-	force := r.FormValue("force") == "1"
 
 	var src *migration.Source
 	var location string
@@ -411,10 +405,6 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 			if err != nil {
 				return err
 			}
-		}
-
-		if begunFinalSteps {
-			cleanup = cleanup && force
 		}
 
 		if cleanup && q.Placement.TargetName != "" {
@@ -451,14 +441,14 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 			return response.SmartError(err)
 		}
 
-		err = t.CleanupVM(ctx, apiQueue.InstanceName, !force)
+		err = t.CleanupVM(ctx, apiQueue.InstanceName, false)
 		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
 			return response.SmartError(err)
 		}
 	}
 
 	if src != nil {
-		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		is, err := source.NewVMSource(src.ToAPI())
 		if err != nil {
 			return response.SmartError(err)
 		}

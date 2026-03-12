@@ -51,8 +51,14 @@ var _ Source = &SourceMock{}
 //			IsConnectedFunc: func() bool {
 //				panic("mock out the IsConnected method")
 //			},
+//			IsRunningFunc: func(ctx context.Context, vmName string) (bool, error) {
+//				panic("mock out the IsRunning method")
+//			},
 //			PowerOffVMFunc: func(ctx context.Context, vmName string) error {
 //				panic("mock out the PowerOffVM method")
+//			},
+//			PowerOnVMFunc: func(ctx context.Context, vmName string) error {
+//				panic("mock out the PowerOnVM method")
 //			},
 //			TimeoutFunc: func() time.Duration {
 //				panic("mock out the Timeout method")
@@ -97,8 +103,14 @@ type SourceMock struct {
 	// IsConnectedFunc mocks the IsConnected method.
 	IsConnectedFunc func() bool
 
+	// IsRunningFunc mocks the IsRunning method.
+	IsRunningFunc func(ctx context.Context, vmName string) (bool, error)
+
 	// PowerOffVMFunc mocks the PowerOffVM method.
 	PowerOffVMFunc func(ctx context.Context, vmName string) error
+
+	// PowerOnVMFunc mocks the PowerOnVM method.
+	PowerOnVMFunc func(ctx context.Context, vmName string) error
 
 	// TimeoutFunc mocks the Timeout method.
 	TimeoutFunc func() time.Duration
@@ -166,8 +178,22 @@ type SourceMock struct {
 		// IsConnected holds details about calls to the IsConnected method.
 		IsConnected []struct {
 		}
+		// IsRunning holds details about calls to the IsRunning method.
+		IsRunning []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// VmName is the vmName argument value.
+			VmName string
+		}
 		// PowerOffVM holds details about calls to the PowerOffVM method.
 		PowerOffVM []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// VmName is the vmName argument value.
+			VmName string
+		}
+		// PowerOnVM holds details about calls to the PowerOnVM method.
+		PowerOnVM []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
 			// VmName is the vmName argument value.
@@ -198,7 +224,9 @@ type SourceMock struct {
 	lockGetName                       sync.RWMutex
 	lockImportDisks                   sync.RWMutex
 	lockIsConnected                   sync.RWMutex
+	lockIsRunning                     sync.RWMutex
 	lockPowerOffVM                    sync.RWMutex
+	lockPowerOnVM                     sync.RWMutex
 	lockTimeout                       sync.RWMutex
 	lockVerifyBackgroundImport        sync.RWMutex
 	lockWithAdditionalRootCertificate sync.RWMutex
@@ -509,6 +537,42 @@ func (mock *SourceMock) IsConnectedCalls() []struct {
 	return calls
 }
 
+// IsRunning calls IsRunningFunc.
+func (mock *SourceMock) IsRunning(ctx context.Context, vmName string) (bool, error) {
+	if mock.IsRunningFunc == nil {
+		panic("SourceMock.IsRunningFunc: method is nil but Source.IsRunning was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		VmName string
+	}{
+		Ctx:    ctx,
+		VmName: vmName,
+	}
+	mock.lockIsRunning.Lock()
+	mock.calls.IsRunning = append(mock.calls.IsRunning, callInfo)
+	mock.lockIsRunning.Unlock()
+	return mock.IsRunningFunc(ctx, vmName)
+}
+
+// IsRunningCalls gets all the calls that were made to IsRunning.
+// Check the length with:
+//
+//	len(mockedSource.IsRunningCalls())
+func (mock *SourceMock) IsRunningCalls() []struct {
+	Ctx    context.Context
+	VmName string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		VmName string
+	}
+	mock.lockIsRunning.RLock()
+	calls = mock.calls.IsRunning
+	mock.lockIsRunning.RUnlock()
+	return calls
+}
+
 // PowerOffVM calls PowerOffVMFunc.
 func (mock *SourceMock) PowerOffVM(ctx context.Context, vmName string) error {
 	if mock.PowerOffVMFunc == nil {
@@ -542,6 +606,42 @@ func (mock *SourceMock) PowerOffVMCalls() []struct {
 	mock.lockPowerOffVM.RLock()
 	calls = mock.calls.PowerOffVM
 	mock.lockPowerOffVM.RUnlock()
+	return calls
+}
+
+// PowerOnVM calls PowerOnVMFunc.
+func (mock *SourceMock) PowerOnVM(ctx context.Context, vmName string) error {
+	if mock.PowerOnVMFunc == nil {
+		panic("SourceMock.PowerOnVMFunc: method is nil but Source.PowerOnVM was just called")
+	}
+	callInfo := struct {
+		Ctx    context.Context
+		VmName string
+	}{
+		Ctx:    ctx,
+		VmName: vmName,
+	}
+	mock.lockPowerOnVM.Lock()
+	mock.calls.PowerOnVM = append(mock.calls.PowerOnVM, callInfo)
+	mock.lockPowerOnVM.Unlock()
+	return mock.PowerOnVMFunc(ctx, vmName)
+}
+
+// PowerOnVMCalls gets all the calls that were made to PowerOnVM.
+// Check the length with:
+//
+//	len(mockedSource.PowerOnVMCalls())
+func (mock *SourceMock) PowerOnVMCalls() []struct {
+	Ctx    context.Context
+	VmName string
+} {
+	var calls []struct {
+		Ctx    context.Context
+		VmName string
+	}
+	mock.lockPowerOnVM.RLock()
+	calls = mock.calls.PowerOnVM
+	mock.lockPowerOnVM.RUnlock()
 	return calls
 }
 

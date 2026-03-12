@@ -17,8 +17,8 @@ import (
 )
 
 func TestSourceDatabaseActions(t *testing.T) {
-	commonSourceA := migration.Source{Name: "CommonSourceA", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
-	commonSourceB := migration.Source{Name: "CommonSourceB", SourceType: api.SOURCETYPE_COMMON, Properties: []byte(`{}`)}
+	commonSourceA := migration.Source{Name: "CommonSourceA", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte(`{}`)}
+	commonSourceB := migration.Source{Name: "CommonSourceB", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte(`{}`)}
 	vmwareSourceA := newVMwareSource("vmware_source", "", "endpoint_url", "user", "pass")
 	vmwareSourceB := newVMwareSource("vmware_source2", "someFingerprint", "endpoint_ip", "another_user", "pass")
 

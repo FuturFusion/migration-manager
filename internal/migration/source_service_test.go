@@ -25,23 +25,6 @@ func TestSourceService_Create(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success - common",
-			source: migration.Source{
-				ID:         1,
-				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
-			},
-			repoCreateSource: migration.Source{
-				ID:         1,
-				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
-			},
-
-			assertErr: require.NoError,
-		},
-		{
 			name: "success - VMware",
 			source: migration.Source{
 				ID:         1,
@@ -119,7 +102,7 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         -1, // invalid
 				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
+				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{}`),
 			},
 
@@ -133,7 +116,7 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "", // empty
-				SourceType: api.SOURCETYPE_COMMON,
+				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{}`),
 			},
 
@@ -161,22 +144,8 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
+				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: nil, // nil
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr migration.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-		},
-		{
-			name: "error - common properties invalid json",
-			source: migration.Source{
-				ID:         1,
-				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{`), // invalid json
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -260,8 +229,8 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass"}`),
 			},
 			repoCreateErr: boom.Error,
 
@@ -480,17 +449,6 @@ func TestSourceService_UpdateByID(t *testing.T) {
 		assertErr require.ErrorAssertionFunc
 	}{
 		{
-			name: "success - common",
-			source: migration.Source{
-				ID:         1,
-				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
-			},
-
-			assertErr: require.NoError,
-		},
-		{
 			name: "success - VMware",
 			source: migration.Source{
 				ID:         1,
@@ -507,7 +465,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         -1, // invalid
 				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
+				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{}`),
 			},
 
@@ -521,7 +479,7 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "", // empty
-				SourceType: api.SOURCETYPE_COMMON,
+				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: json.RawMessage(`{}`),
 			},
 
@@ -549,22 +507,8 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
+				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: nil, // nil
-			},
-
-			assertErr: func(tt require.TestingT, err error, a ...any) {
-				var verr migration.ErrValidation
-				require.ErrorAs(tt, err, &verr, a...)
-			},
-		},
-		{
-			name: "error - common properties invalid json",
-			source: migration.Source{
-				ID:         1,
-				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{`), // invalid json
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -648,8 +592,8 @@ func TestSourceService_UpdateByID(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				SourceType: api.SOURCETYPE_COMMON,
-				Properties: json.RawMessage(`{}`),
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass"}`),
 			},
 			repoUpdateErr: boom.Error,
 

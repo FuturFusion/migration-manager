@@ -53,6 +53,10 @@ func (i Instance) Validate() error {
 		}
 	}
 
+	if i.Overrides.StartedAfterMigration && i.Overrides.StoppedAfterMigration {
+		return NewValidationErrf("Invalid instance override, ambiguous post-migration power state")
+	}
+
 	for _, nic := range i.Properties.NICs {
 		if nic.UUID == uuid.Nil {
 			return NewValidationErrf("Instance NIC %q has empty UUID", nic.Location)

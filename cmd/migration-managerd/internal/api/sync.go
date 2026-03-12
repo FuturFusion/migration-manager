@@ -396,7 +396,7 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 				}
 			}
 
-			vmwareSrc, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+			vmwareSrc, err := source.NewVMSource(src.ToAPI())
 			if err != nil {
 				return fmt.Errorf("Failed to convert source %q to %q source: %w", src.Name, src.SourceType, err)
 			}
@@ -406,7 +406,12 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 				return fmt.Errorf("Failed to connect to source %q: %w", src.Name, err)
 			}
 
-			nsxIP, err = vmwareSrc.GetNSXManagerIP(timeoutCtx)
+			internalSrc, ok := vmwareSrc.(*source.InternalVMwareSource)
+			if !ok {
+				return fmt.Errorf("Invalid underlying source %q type %T", src.Name, vmwareSrc)
+			}
+
+			nsxIP, err = internalSrc.GetNSXManagerIP(timeoutCtx)
 			if err != nil {
 				return fmt.Errorf("Failed to look for NSX Managers for source %q: %w", src.Name, err)
 			}
@@ -933,7 +938,7 @@ func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSource
 // fetchVMWareSourceData connects to a VMWare source and returns the resources we care about, keyed by their unique identifiers.
 func fetchVMWareSourceData(ctx context.Context, src migration.Source) (map[string]migration.Network, map[uuid.UUID]migration.Instance, migration.Warnings, error) {
 	slog.Debug("Fetching VMware data for source", slog.String("source", src.Name))
-	s, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+	s, err := source.NewVMSource(src.ToAPI())
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("Failed to create VMwareSource from source: %w", err)
 	}

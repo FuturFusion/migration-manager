@@ -261,6 +261,26 @@ func (_d InstanceRepoWithSlog) GetByUUID(ctx context.Context, id uuid.UUID) (ip1
 	return _d._base.GetByUUID(ctx, id)
 }
 
+// GetQueueEntryByUUID implements _sourceMigration.InstanceRepo
+func (_d InstanceRepoWithSlog) GetQueueEntryByUUID(ctx context.Context, id uuid.UUID) (qp1 *_sourceMigration.QueueEntry, err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("id", id),
+	).Debug("InstanceRepoWithSlog: calling GetQueueEntryByUUID")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("qp1", qp1),
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method GetQueueEntryByUUID returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method GetQueueEntryByUUID finished")
+		}
+	}()
+	return _d._base.GetQueueEntryByUUID(ctx, id)
+}
+
 // RemoveFromQueue implements _sourceMigration.InstanceRepo
 func (_d InstanceRepoWithSlog) RemoveFromQueue(ctx context.Context, id uuid.UUID) (err error) {
 	_d._log.With(
@@ -297,4 +317,23 @@ func (_d InstanceRepoWithSlog) Update(ctx context.Context, instance _sourceMigra
 		}
 	}()
 	return _d._base.Update(ctx, instance)
+}
+
+// UpdateQueueEntry implements _sourceMigration.InstanceRepo
+func (_d InstanceRepoWithSlog) UpdateQueueEntry(ctx context.Context, entry _sourceMigration.QueueEntry) (err error) {
+	_d._log.With(
+		slog.Any("ctx", ctx),
+		slog.Any("entry", entry),
+	).Debug("InstanceRepoWithSlog: calling UpdateQueueEntry")
+	defer func() {
+		log := _d._log.With(
+			slog.Any("err", err),
+		)
+		if err != nil {
+			log.Error("InstanceRepoWithSlog: method UpdateQueueEntry returned an error")
+		} else {
+			log.Debug("InstanceRepoWithSlog: method UpdateQueueEntry finished")
+		}
+	}()
+	return _d._base.UpdateQueueEntry(ctx, entry)
 }

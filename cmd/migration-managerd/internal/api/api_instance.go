@@ -348,6 +348,10 @@ func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
+	// Exclusively grab the worker lock so migration actions don't interfere.
+	workerLock.Lock()
+	defer workerLock.Unlock()
+
 	UUIDString := r.PathValue("uuid")
 
 	UUID, err := uuid.Parse(UUIDString)
@@ -385,7 +389,7 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 	override.LastUpdate = time.Now().UTC()
 	currentInstance.Overrides = override
 
-	err = d.instance.Update(ctx, currentInstance, false)
+	err = d.instance.UpdateOverride(ctx, UUID, override)
 	if err != nil {
 		return response.SmartError(fmt.Errorf("Failed updating override for instance %q: %w", UUID, err))
 	}
@@ -420,6 +424,10 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 //	  "500":
 //	    $ref: "#/responses/InternalServerError"
 func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
+	// Exclusively grab the worker lock so migration actions don't interfere.
+	workerLock.Lock()
+	defer workerLock.Unlock()
+
 	uuidString := r.PathValue("uuid")
 
 	instanceUUID, err := uuid.Parse(uuidString)
@@ -438,7 +446,7 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 
 		apiInstance = inst.ToAPI()
 
-		return d.instance.Update(ctx, inst, false)
+		return d.instance.UpdateOverride(ctx, instanceUUID, api.InstanceOverride{})
 	})
 	if err != nil {
 		return response.SmartError(err)
@@ -487,7 +495,7 @@ func instanceResetBackgroundImport(d *Daemon, r *http.Request) response.Response
 			return err
 		}
 
-		is, err := source.NewInternalVMwareSourceFrom(src.ToAPI())
+		is, err := source.NewVMSource(src.ToAPI())
 		if err != nil {
 			return err
 		}

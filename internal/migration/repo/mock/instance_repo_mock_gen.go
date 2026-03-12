@@ -57,11 +57,17 @@ var _ migration.InstanceRepo = &InstanceRepoMock{}
 //			GetByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.Instance, error) {
 //				panic("mock out the GetByUUID method")
 //			},
+//			GetQueueEntryByUUIDFunc: func(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, error) {
+//				panic("mock out the GetQueueEntryByUUID method")
+//			},
 //			RemoveFromQueueFunc: func(ctx context.Context, id uuid.UUID) error {
 //				panic("mock out the RemoveFromQueue method")
 //			},
 //			UpdateFunc: func(ctx context.Context, instance migration.Instance) error {
 //				panic("mock out the Update method")
+//			},
+//			UpdateQueueEntryFunc: func(ctx context.Context, entry migration.QueueEntry) error {
+//				panic("mock out the UpdateQueueEntry method")
 //			},
 //		}
 //
@@ -106,11 +112,17 @@ type InstanceRepoMock struct {
 	// GetByUUIDFunc mocks the GetByUUID method.
 	GetByUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.Instance, error)
 
+	// GetQueueEntryByUUIDFunc mocks the GetQueueEntryByUUID method.
+	GetQueueEntryByUUIDFunc func(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, error)
+
 	// RemoveFromQueueFunc mocks the RemoveFromQueue method.
 	RemoveFromQueueFunc func(ctx context.Context, id uuid.UUID) error
 
 	// UpdateFunc mocks the Update method.
 	UpdateFunc func(ctx context.Context, instance migration.Instance) error
+
+	// UpdateQueueEntryFunc mocks the UpdateQueueEntry method.
+	UpdateQueueEntryFunc func(ctx context.Context, entry migration.QueueEntry) error
 
 	// calls tracks calls to the methods.
 	calls struct {
@@ -190,6 +202,13 @@ type InstanceRepoMock struct {
 			// ID is the id argument value.
 			ID uuid.UUID
 		}
+		// GetQueueEntryByUUID holds details about calls to the GetQueueEntryByUUID method.
+		GetQueueEntryByUUID []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
+		}
 		// RemoveFromQueue holds details about calls to the RemoveFromQueue method.
 		RemoveFromQueue []struct {
 			// Ctx is the ctx argument value.
@@ -204,6 +223,13 @@ type InstanceRepoMock struct {
 			// Instance is the instance argument value.
 			Instance migration.Instance
 		}
+		// UpdateQueueEntry holds details about calls to the UpdateQueueEntry method.
+		UpdateQueueEntry []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Entry is the entry argument value.
+			Entry migration.QueueEntry
+		}
 	}
 	lockCreate                 sync.RWMutex
 	lockDeleteByUUID           sync.RWMutex
@@ -217,8 +243,10 @@ type InstanceRepoMock struct {
 	lockGetAllUnassigned       sync.RWMutex
 	lockGetBatchesByUUID       sync.RWMutex
 	lockGetByUUID              sync.RWMutex
+	lockGetQueueEntryByUUID    sync.RWMutex
 	lockRemoveFromQueue        sync.RWMutex
 	lockUpdate                 sync.RWMutex
+	lockUpdateQueueEntry       sync.RWMutex
 }
 
 // Create calls CreateFunc.
@@ -637,6 +665,42 @@ func (mock *InstanceRepoMock) GetByUUIDCalls() []struct {
 	return calls
 }
 
+// GetQueueEntryByUUID calls GetQueueEntryByUUIDFunc.
+func (mock *InstanceRepoMock) GetQueueEntryByUUID(ctx context.Context, id uuid.UUID) (*migration.QueueEntry, error) {
+	if mock.GetQueueEntryByUUIDFunc == nil {
+		panic("InstanceRepoMock.GetQueueEntryByUUIDFunc: method is nil but InstanceRepo.GetQueueEntryByUUID was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockGetQueueEntryByUUID.Lock()
+	mock.calls.GetQueueEntryByUUID = append(mock.calls.GetQueueEntryByUUID, callInfo)
+	mock.lockGetQueueEntryByUUID.Unlock()
+	return mock.GetQueueEntryByUUIDFunc(ctx, id)
+}
+
+// GetQueueEntryByUUIDCalls gets all the calls that were made to GetQueueEntryByUUID.
+// Check the length with:
+//
+//	len(mockedInstanceRepo.GetQueueEntryByUUIDCalls())
+func (mock *InstanceRepoMock) GetQueueEntryByUUIDCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockGetQueueEntryByUUID.RLock()
+	calls = mock.calls.GetQueueEntryByUUID
+	mock.lockGetQueueEntryByUUID.RUnlock()
+	return calls
+}
+
 // RemoveFromQueue calls RemoveFromQueueFunc.
 func (mock *InstanceRepoMock) RemoveFromQueue(ctx context.Context, id uuid.UUID) error {
 	if mock.RemoveFromQueueFunc == nil {
@@ -706,5 +770,41 @@ func (mock *InstanceRepoMock) UpdateCalls() []struct {
 	mock.lockUpdate.RLock()
 	calls = mock.calls.Update
 	mock.lockUpdate.RUnlock()
+	return calls
+}
+
+// UpdateQueueEntry calls UpdateQueueEntryFunc.
+func (mock *InstanceRepoMock) UpdateQueueEntry(ctx context.Context, entry migration.QueueEntry) error {
+	if mock.UpdateQueueEntryFunc == nil {
+		panic("InstanceRepoMock.UpdateQueueEntryFunc: method is nil but InstanceRepo.UpdateQueueEntry was just called")
+	}
+	callInfo := struct {
+		Ctx   context.Context
+		Entry migration.QueueEntry
+	}{
+		Ctx:   ctx,
+		Entry: entry,
+	}
+	mock.lockUpdateQueueEntry.Lock()
+	mock.calls.UpdateQueueEntry = append(mock.calls.UpdateQueueEntry, callInfo)
+	mock.lockUpdateQueueEntry.Unlock()
+	return mock.UpdateQueueEntryFunc(ctx, entry)
+}
+
+// UpdateQueueEntryCalls gets all the calls that were made to UpdateQueueEntry.
+// Check the length with:
+//
+//	len(mockedInstanceRepo.UpdateQueueEntryCalls())
+func (mock *InstanceRepoMock) UpdateQueueEntryCalls() []struct {
+	Ctx   context.Context
+	Entry migration.QueueEntry
+} {
+	var calls []struct {
+		Ctx   context.Context
+		Entry migration.QueueEntry
+	}
+	mock.lockUpdateQueueEntry.RLock()
+	calls = mock.calls.UpdateQueueEntry
+	mock.lockUpdateQueueEntry.RUnlock()
 	return calls
 }

@@ -66,6 +66,8 @@ export interface InstanceOverride {
   config: Record<string, string>;
   os: string;
   os_version: string;
+  started_after_migration: boolean;
+  stopped_after_migration: boolean;
 }
 
 export interface Instance {

@@ -101,6 +101,12 @@ const QueueOverview = () => {
             <pre>{JSON.stringify(queue?.placement.networks, null, 2)}</pre>
           </div>
         </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">Power state</div>
+          <div className="col-10 detail-table-cell">
+            <pre>{queue?.placement.running ? "Started" : "Stopped"}</pre>
+          </div>
+        </div>
       </div>
     </>
   );

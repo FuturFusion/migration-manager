@@ -72,8 +72,16 @@ type Source interface {
 	// Returns an error if there is a problem importing the disk(s).
 	ImportDisks(ctx context.Context, vmName string, sdkPath string, disks []api.InstancePropertiesDisk, statusCallback func(string, bool)) error
 
+	// IsRunning returns whether the VM is running.
+	IsRunning(ctx context.Context, vmName string) (bool, error)
+
 	// Powers off a VM.
 	//
 	// Returns an error if there was a problem shutting down the VM.
 	PowerOffVM(ctx context.Context, vmName string) error
+
+	// Powers on a VM.
+	//
+	// Returns an error if there was a problem starting the VM.
+	PowerOnVM(ctx context.Context, vmName string) error
 }
