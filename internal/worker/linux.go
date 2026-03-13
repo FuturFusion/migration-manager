@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -51,38 +50,9 @@ type LVSOutput struct {
 
 const chrootMountPath string = "/run/mount/target/"
 
-func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osName string, dryRun bool) error {
+func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, distro api.Distro, distroVersion string, dryRun bool) error {
 	// Get the disto's major version, if possible.
-	majorVersion := -1
-	// VMware API doesn't distinguish openSUSE and Ubuntu versions.
-	if !strings.Contains(strings.ToLower(osName), "opensuse") && !strings.Contains(strings.ToLower(osName), "ubuntu") {
-		majorVersionRegex := regexp.MustCompile(`^\w+?(\d+)(_64)?$`)
-		matches := majorVersionRegex.FindStringSubmatch(osName)
-		if len(matches) > 1 {
-			majorVersion, _ = strconv.Atoi(majorVersionRegex.FindStringSubmatch(osName)[1])
-		}
-	}
-
-	distro := ""
-	if strings.Contains(strings.ToLower(osName), "centos") {
-		distro = "CentOS"
-	} else if strings.Contains(strings.ToLower(osName), "debian") {
-		distro = "Debian"
-	} else if strings.Contains(strings.ToLower(osName), "opensuse") {
-		distro = "openSUSE"
-	} else if strings.Contains(strings.ToLower(osName), "oracle") {
-		distro = "Oracle"
-	} else if slices.ContainsFunc([]string{"rhel", "redhat", "red-hat", "red hat"}, func(s string) bool {
-		return strings.Contains(strings.ToLower(osName), s)
-	}) {
-		distro = "RHEL"
-	} else if strings.Contains(strings.ToLower(osName), "sles") {
-		distro = "SUSE"
-	} else if strings.Contains(strings.ToLower(osName), "ubuntu") {
-		distro = "Ubuntu"
-	}
-
-	if distro == "" {
+	if distro == api.DISTRO_OTHER {
 		slog.Info("Could not determine Linux distribution, not performing any post-migration actions")
 		return nil
 	}
@@ -251,27 +221,46 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osNa
 		return err
 	}
 
-	// Remove any open-vm-tools packing that might be installed.
-	if internalUtil.IsDebianOrDerivative(distro) {
+	switch distro {
+	case api.DISTRO_DEBIAN, api.DISTRO_UBUNTU:
 		err := runScriptInChroot("debian-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
-	} else if internalUtil.IsRHELOrDerivative(distro) {
+
+	case api.DISTRO_CENTOS, api.DISTRO_ORACLE, api.DISTRO_RHEL:
 		err := runScriptInChroot("redhat-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
-	} else if internalUtil.IsSUSEOrDerivative(distro) {
+
+		err = runScriptInChroot("dracut-add-virtio-drivers.sh")
+		if err != nil {
+			return err
+		}
+
+		if distroVersion != "" {
+			version, err := strconv.Atoi(distroVersion)
+			if err != nil {
+				return fmt.Errorf("Failed to parse distro version %q for distro %q: %w", distroVersion, distro, err)
+			}
+
+			// Setup incus-agent service override for older versions of RHEL.
+			if version <= 7 {
+				err := runScriptInChroot("add-incus-agent-override-for-old-systemd.sh")
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+	case api.DISTRO_SUSE:
 		err := runScriptInChroot("suse-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
-	}
 
-	// Add the virtio drivers if needed.
-	if internalUtil.IsRHELOrDerivative(distro) || internalUtil.IsSUSEOrDerivative(distro) {
-		err := runScriptInChroot("dracut-add-virtio-drivers.sh")
+		err = runScriptInChroot("dracut-add-virtio-drivers.sh")
 		if err != nil {
 			return err
 		}
@@ -300,14 +289,6 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, osNa
 
 		// Setup udev rules to create network device aliases.
 		err = runScriptInChroot("add-udev-network-rules.sh", string(out))
-		if err != nil {
-			return err
-		}
-	}
-
-	// Setup incus-agent service override for older versions of RHEL.
-	if internalUtil.IsRHELOrDerivative(distro) && majorVersion <= 7 {
-		err := runScriptInChroot("add-incus-agent-override-for-old-systemd.sh")
 		if err != nil {
 			return err
 		}

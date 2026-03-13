@@ -134,9 +134,9 @@ func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error
 	return err
 }
 
-func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture, isoFile string, dryRun bool) error {
+func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitecture, isoFile string, dryRun bool) error {
 	slog.Info("Preparing to inject Windows drivers into VM")
-	windowsVersion, err := internalUtil.MapWindowsVersionToAbbrev(osVersion)
+	versionCode, err := internalUtil.MapWindowsVersionToAbbrev(distroVersion)
 	if err != nil {
 		return err
 	}
@@ -315,7 +315,7 @@ func WindowsInjectDrivers(ctx context.Context, osVersion string, osArchitecture,
 	}
 
 	// Finally get around to injecting the drivers.
-	err = injectDriversHelper(ctx, windowsVersion, osArchitecture, recoveryExists)
+	err = injectDriversHelper(ctx, versionCode, osArchitecture, recoveryExists)
 	if err != nil {
 		return err
 	}
