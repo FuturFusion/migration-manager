@@ -187,9 +187,9 @@ func (s instanceService) UpdateOverride(ctx context.Context, id uuid.UUID, newOv
 		// If a queue entry exists, disallow modifying fields that we use to determine worker config, unless the queue entry has been canceled.
 		if entry.MigrationStatus != api.MIGRATIONSTATUS_CANCELED {
 			if oldOverrides.Name != newOverrides.Name ||
-				oldOverrides.Description != newOverrides.Description ||
-				oldOverrides.OS != newOverrides.OS ||
-				oldOverrides.OSVersion != newOverrides.OSVersion ||
+				oldOverrides.OSType != newOverrides.OSType ||
+				oldOverrides.Distribution != newOverrides.Distribution ||
+				oldOverrides.DistributionVersion != newOverrides.DistributionVersion ||
 				oldOverrides.Architecture != newOverrides.Architecture {
 				return fmt.Errorf("Cannot override OS information for instance %q after migration has started", instance.UUID)
 			}

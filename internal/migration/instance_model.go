@@ -202,6 +202,10 @@ func (i *Instance) GetOSType() api.OSType {
 	props := i.Properties
 	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 
+	if i.Overrides.OSType != "" {
+		return i.Overrides.OSType
+	}
+
 	if strings.HasPrefix(strings.ToLower(props.OS), "win") {
 		return api.OSTYPE_WINDOWS
 	}
@@ -272,6 +276,14 @@ func (i *Instance) GetDistribution() (api.Distro, string) {
 				}
 			}
 		}
+	}
+
+	if i.Overrides.Distribution != "" {
+		distro = i.Overrides.Distribution
+	}
+
+	if i.Overrides.DistributionVersion != "" {
+		distroVersion = i.Overrides.DistributionVersion
 	}
 
 	return distro, distroVersion

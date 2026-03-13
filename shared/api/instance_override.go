@@ -19,6 +19,18 @@ type InstanceOverride struct {
 	// Example: "Manually tweak number of CPUs"
 	Comment string `json:"comment" yaml:"comment"`
 
+	// OS type used for specific post-migration handling.
+	// Example: linux
+	OSType OSType `json:"os_type" yaml:"os_type"`
+
+	// Distribution name used for specific post-migration handling.
+	// Example: RHEL
+	Distribution Distro `json:"distribution" yaml:"distribution"`
+
+	// Distribution version used for specific post-migration handling.
+	// Example: 7
+	DistributionVersion string `json:"distribution_version" yaml:"distribution_version"`
+
 	// If true, migration of this instance will be disabled.
 	// Example: true
 	DisableMigration bool `json:"disable_migration" yaml:"disable_migration"`
