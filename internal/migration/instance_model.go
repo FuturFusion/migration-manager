@@ -241,20 +241,12 @@ func (i *Instance) GetDistribution() (api.Distro, string) {
 
 		case api.OSTYPE_LINUX:
 			// Get the disto's major version, if possible.
-			// VMware API doesn't distinguish openSUSE and Ubuntu versions.
-			if !strings.Contains(strings.ToLower(osVersion), "opensuse") && !strings.Contains(strings.ToLower(osVersion), "ubuntu") {
-				majorVersionRegex := regexp.MustCompile(`^\w+?(\d+)(_64)?$`)
-				matches := majorVersionRegex.FindStringSubmatch(osVersion)
-				if len(matches) > 1 {
-					distroVersion = majorVersionRegex.FindStringSubmatch(osVersion)[1]
-				}
-			}
-
+			versionRegex := regexp.MustCompile(`^[\w /]+?(\d+)(\.\d+)?( \(\w+\))?$`)
 			if strings.Contains(strings.ToLower(osVersion), "centos") {
 				distro = api.DISTRO_CENTOS
 			} else if strings.Contains(strings.ToLower(osVersion), "debian") {
 				distro = api.DISTRO_DEBIAN
-			} else if strings.Contains(strings.ToLower(osVersion), "opensuse") || strings.Contains(strings.ToLower(osVersion), "sles") {
+			} else if strings.Contains(strings.ToLower(osVersion), "opensuse") || strings.HasPrefix(strings.ToLower(osVersion), "suse") || strings.Contains(strings.ToLower(osVersion), "sles") {
 				distro = api.DISTRO_SUSE
 			} else if strings.Contains(strings.ToLower(osVersion), "oracle") {
 				distro = api.DISTRO_ORACLE
@@ -263,16 +255,21 @@ func (i *Instance) GetDistribution() (api.Distro, string) {
 			}) {
 				distro = api.DISTRO_RHEL
 			} else if strings.Contains(strings.ToLower(osVersion), "ubuntu") {
+				// For Ubuntu, try to parse the whole YY.MM version.
+				versionRegex = regexp.MustCompile(`^[\w ]+?(\d+\.\d+)?(\.\d+)?( LTS)?$`)
 				distro = api.DISTRO_UBUNTU
 			}
 
-			if distro == api.DISTRO_CENTOS || distro == api.DISTRO_ORACLE || distro == api.DISTRO_RHEL {
-				if distroVersion != "" {
-					_, err := strconv.Atoi(distroVersion)
-					if err != nil {
-						slog.Error("Failed to parse distribution version", slog.String("version", distroVersion), slog.String("distro", string(distro)))
-						distroVersion = ""
-					}
+			matches := versionRegex.FindStringSubmatch(osVersion)
+			if len(matches) > 1 {
+				distroVersion = versionRegex.FindStringSubmatch(osVersion)[1]
+			}
+
+			if distro != api.DISTRO_UBUNTU && distroVersion != "" {
+				_, err := strconv.Atoi(distroVersion)
+				if err != nil {
+					slog.Warn("Failed to parse distribution version", slog.String("version", distroVersion), slog.String("distro", string(distro)))
+					distroVersion = ""
 				}
 			}
 		}
