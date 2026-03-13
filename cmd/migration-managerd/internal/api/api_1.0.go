@@ -39,6 +39,7 @@ var api10 = []APIEndpoint{
 	queueRootCmd,
 	queueCmd,
 	sourceCmd,
+	sourceDumpCmd,
 	sourceSyncCmd,
 	sourcesCmd,
 	systemBackupCmd,

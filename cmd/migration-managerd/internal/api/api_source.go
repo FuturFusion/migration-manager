@@ -40,6 +40,12 @@ var sourceSyncCmd = APIEndpoint{
 	Post: APIEndpointAction{Handler: sourceSyncPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
 }
 
+var sourceDumpCmd = APIEndpoint{
+	Path: "sources/{name}/:dump",
+
+	Post: APIEndpointAction{Handler: sourceDumpPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
+}
+
 // swagger:operation GET /1.0/sources sources sources_get
 //
 //	Get the sources
@@ -514,6 +520,58 @@ func sourceSyncPost(d *Daemon, r *http.Request) response.Response {
 	}
 
 	d.logHandler.SendLifecycle(r.Context(), event.NewSourceEvent(event.SourceSynced, r, src.ToAPI(), src.Name))
+
+	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/sources/{name}/:dump sources source_dump
+//
+//	Dump source data
+//
+//	Dump raw VM properties from the source into the cache directory.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    $ref: "#/responses/EmptySyncResponse"
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func sourceDumpPost(d *Daemon, r *http.Request) response.Response {
+	name := r.PathValue("name")
+
+	src, err := d.source.GetByName(r.Context(), name)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	status := src.GetExternalConnectivityStatus()
+	if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		return response.SmartError(fmt.Errorf("Cannot dump source %q with connectivity status %q", src.Name, status))
+	}
+
+	s, err := source.NewVMSource(src.ToAPI())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), s.Timeout())
+	defer cancel()
+
+	err = s.Connect(ctx)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	err = s.Dump(ctx)
+	if err != nil {
+		return response.SmartError(err)
+	}
 
 	return response.EmptySyncResponse
 }
