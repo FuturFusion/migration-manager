@@ -66,6 +66,45 @@ func (i Instance) Validate() error {
 		}
 	}
 
+	osType := i.GetOSType()
+	err := api.ValidateOSType(string(osType))
+	if err != nil {
+		return NewValidationErrf("Invalid instance OS type %q: %v", osType, err)
+	}
+
+	distro, version := i.GetDistribution()
+	err = api.ValidateDistribution(string(distro))
+	if err != nil {
+		return NewValidationErrf("Invalid instance OS distribution %q: %v", distro, err)
+	}
+
+	switch osType {
+	case api.OSTYPE_FORTIGATE:
+		if distro != api.DISTRO_OTHER {
+			return NewValidationErrf("FortiGate distribution must be %q, not %q", api.DISTRO_OTHER, distro)
+		}
+
+	case api.OSTYPE_LINUX:
+		if version != "" {
+			if distro == api.DISTRO_RHEL || distro == api.DISTRO_ORACLE || distro == api.DISTRO_CENTOS {
+				_, err := strconv.Atoi(version)
+				if err != nil {
+					return NewValidationErrf("Failed to parse distribution version %q for %q: %v", version, distro, err)
+				}
+			}
+		}
+
+	case api.OSTYPE_WINDOWS:
+		if distro != api.DISTRO_OTHER {
+			return NewValidationErrf("Windows distribution must be %q, not %q", api.DISTRO_OTHER, distro)
+		}
+
+		err := util.ValidateWindowsVersion(version)
+		if err != nil {
+			return NewValidationErrf("Windows distribution version %q is invalid: %v", version, err)
+		}
+	}
+
 	return nil
 }
 
