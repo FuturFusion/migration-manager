@@ -57,30 +57,6 @@ const InstanceOverview = () => {
           <div className="col-10 detail-table-cell">{instance.location}</div>
         </div>
         <div className="row">
-          <div className="col-2 detail-table-header">OS</div>
-          <div className="col-10 detail-table-cell">
-            <ItemOverride
-              original={instance.os}
-              override={instance.overrides && instance.overrides.os}
-              showOverride={
-                hasOverride(instance) && instance.overrides.os !== ""
-              }
-            />
-          </div>
-        </div>
-        <div className="row">
-          <div className="col-2 detail-table-header">OS version</div>
-          <div className="col-10 detail-table-cell">
-            <ItemOverride
-              original={instance.os_version}
-              override={instance.overrides && instance.overrides.os_version}
-              showOverride={
-                hasOverride(instance) && instance.overrides.os_version !== ""
-              }
-            />
-          </div>
-        </div>
-        <div className="row">
           <div className="col-2 detail-table-header">Name</div>
           <div className="col-10 detail-table-cell">
             <ItemOverride
@@ -91,6 +67,51 @@ const InstanceOverview = () => {
               }
             />
           </div>
+        </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">OS Type</div>
+          <div className="col-10 detail-table-cell">
+            <ItemOverride
+              original={instance.os_type}
+              override={instance.overrides && instance.overrides.os_type}
+              showOverride={
+                hasOverride(instance) &&
+                instance.overrides.os_type.toString() != ""
+              }
+            />
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">OS Distribution</div>
+          <div className="col-10 detail-table-cell">
+            <ItemOverride
+              original={instance.distribution}
+              override={instance.overrides && instance.overrides.distribution}
+              showOverride={
+                hasOverride(instance) &&
+                instance.overrides.distribution.toString() != ""
+              }
+            />
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">OS Version</div>
+          <div className="col-10 detail-table-cell">
+            <ItemOverride
+              original={instance.distribution_version}
+              override={
+                instance.overrides && instance.overrides.distribution_version
+              }
+              showOverride={
+                hasOverride(instance) &&
+                instance.overrides.distribution_version != ""
+              }
+            />
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">OS Description</div>
+          <div className="col-10 detail-table-cell">{instance.os_version}</div>
         </div>
         <div className="row">
           <div className="col-2 detail-table-header">CPU</div>

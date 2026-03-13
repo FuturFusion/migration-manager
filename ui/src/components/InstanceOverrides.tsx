@@ -18,6 +18,9 @@ import {
   bytesToHumanReadable,
   hasOverride,
   humanReadableToBytes,
+  OSType,
+  Distribution,
+  WindowsVersion,
 } from "util/instance";
 
 const InstanceOverrides: FC = () => {
@@ -47,8 +50,9 @@ const InstanceOverrides: FC = () => {
     cpus: 0,
     memory: "",
     config: {},
-    os: "",
-    os_version: "",
+    os_type: instance?.os_type,
+    distribution: instance?.distribution,
+    distribution_version: instance?.distribution_version,
     started_after_migration: "false",
     stopped_after_migration: "false",
   };
@@ -63,8 +67,9 @@ const InstanceOverrides: FC = () => {
       cpus: overrides.cpus,
       memory: bytesToHumanReadable(overrides.memory),
       config: overrides.config,
-      os: overrides.os,
-      os_version: overrides.os_version,
+      os_type: overrides.os_type,
+      distribution: overrides.distribution,
+      distribution_version: overrides.distribution_version,
       started_after_migration: overrides.started_after_migration.toString(),
       stopped_after_migration: overrides.stopped_after_migration.toString(),
     };
@@ -120,14 +125,13 @@ const InstanceOverrides: FC = () => {
         disable_migration: values.disable_migration == "true",
         ignore_restrictions: values.ignore_restrictions == "true",
         comment: values.comment,
-        properties: {
-          name: values.name,
-          memory: memoryInBytes,
-          cpus: values.cpus,
-          config: values.config,
-          os: values.os,
-          os_version: values.os_version,
-        },
+        name: values.name,
+        memory: memoryInBytes,
+        cpus: values.cpus,
+        config: values.config,
+        os_type: values.os_type,
+        distribution: values.distribution,
+        distribution_version: values.distribution_version,
         started_after_migration: values.started_after_migration == "true",
         stopped_after_migration: values.stopped_after_migration == "true",
       };
@@ -270,32 +274,92 @@ const InstanceOverrides: FC = () => {
             {formik.errors.memory}
           </Form.Control.Feedback>
         </Form.Group>
-        <Form.Group className="mb-3" controlId="os">
-          <Form.Label>OS</Form.Label>
-          <Form.Control
-            type="text"
-            name="os"
-            value={formik.values.os}
-            onChange={formik.handleChange}
+        <Form.Group className="mb-3" controlId="os_type">
+          <Form.Label>OS Type</Form.Label>
+          <Form.Select
+            name="os_type"
+            value={formik.values.os_type}
+            onChange={(e) => {
+              formik.setFieldValue("distribution", Distribution.Other);
+              const version =
+                (e.target.value as OSType) === OSType.Windows
+                  ? WindowsVersion.W11.toString()
+                  : instance?.distribution_version;
+              formik.setFieldValue("distribution_version", version);
+              formik.handleChange(e);
+            }}
             onBlur={formik.handleBlur}
-            isInvalid={!!formik.errors.os && formik.touched.os}
-          />
+            isInvalid={!!formik.errors.os_type && formik.touched.os_type}
+          >
+            {Object.values(OSType).map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </Form.Select>
           <Form.Control.Feedback type="invalid">
-            {formik.errors.os}
+            {formik.errors.os_type}
           </Form.Control.Feedback>
         </Form.Group>
-        <Form.Group className="mb-3" controlId="os_version">
-          <Form.Label>OS Version</Form.Label>
-          <Form.Control
-            type="text"
-            name="os_version"
-            value={formik.values.os_version}
+        <Form.Group className="mb-3" controlId="distribution">
+          <Form.Label>OS distribution</Form.Label>
+          <Form.Select
+            name="distribution"
+            value={formik.values.distribution}
             onChange={formik.handleChange}
             onBlur={formik.handleBlur}
-            isInvalid={!!formik.errors.os_version && formik.touched.os_version}
-          />
+            isInvalid={
+              !!formik.errors.distribution && formik.touched.distribution
+            }
+            disabled={(formik.values.os_type as OSType) === OSType.Windows}
+          >
+            {Object.values(Distribution).map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </Form.Select>
           <Form.Control.Feedback type="invalid">
-            {formik.errors.os_version}
+            {formik.errors.distribution}
+          </Form.Control.Feedback>
+        </Form.Group>
+        <Form.Group className="mb-3" controlId="distribution_version">
+          <Form.Label>OS version</Form.Label>
+          {
+            // Use a selection form for Windows, otherwise plain text entry.
+            (formik.values.os_type as OSType) == OSType.Windows ? (
+              <Form.Select
+                name="distribution_version"
+                value={formik.values.distribution_version}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                isInvalid={
+                  !!formik.errors.distribution &&
+                  formik.touched.distribution_version
+                }
+              >
+                {Object.values(WindowsVersion).map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </Form.Select>
+            ) : (
+              <Form.Control
+                type="text"
+                name="distribution_version"
+                value={formik.values.distribution_version}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                isInvalid={
+                  !!formik.errors.distribution_version &&
+                  formik.touched.distribution_version
+                }
+              />
+            )
+          }
+          <Form.Control.Feedback type="invalid">
+            {formik.errors.distribution_version}
           </Form.Control.Feedback>
         </Form.Group>
         <Form.Group className="mb-3" controlId="started_after_migration">
