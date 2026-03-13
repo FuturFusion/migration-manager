@@ -36,6 +36,9 @@ var _ Source = &SourceMock{}
 //			DoBasicConnectivityCheckFunc: func() (api.ExternalConnectivityStatus, *x509.Certificate) {
 //				panic("mock out the DoBasicConnectivityCheck method")
 //			},
+//			DumpFunc: func(ctx context.Context) error {
+//				panic("mock out the Dump method")
+//			},
 //			GetAllVMsFunc: func(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error) {
 //				panic("mock out the GetAllVMs method")
 //			},
@@ -87,6 +90,9 @@ type SourceMock struct {
 
 	// DoBasicConnectivityCheckFunc mocks the DoBasicConnectivityCheck method.
 	DoBasicConnectivityCheckFunc func() (api.ExternalConnectivityStatus, *x509.Certificate)
+
+	// DumpFunc mocks the Dump method.
+	DumpFunc func(ctx context.Context) error
 
 	// GetAllVMsFunc mocks the GetAllVMs method.
 	GetAllVMsFunc func(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error)
@@ -144,6 +150,11 @@ type SourceMock struct {
 		}
 		// DoBasicConnectivityCheck holds details about calls to the DoBasicConnectivityCheck method.
 		DoBasicConnectivityCheck []struct {
+		}
+		// Dump holds details about calls to the Dump method.
+		Dump []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
 		}
 		// GetAllVMs holds details about calls to the GetAllVMs method.
 		GetAllVMs []struct {
@@ -219,6 +230,7 @@ type SourceMock struct {
 	lockDeleteVMSnapshot              sync.RWMutex
 	lockDisconnect                    sync.RWMutex
 	lockDoBasicConnectivityCheck      sync.RWMutex
+	lockDump                          sync.RWMutex
 	lockGetAllVMs                     sync.RWMutex
 	lockGetBackgroundImport           sync.RWMutex
 	lockGetName                       sync.RWMutex
@@ -360,6 +372,38 @@ func (mock *SourceMock) DoBasicConnectivityCheckCalls() []struct {
 	mock.lockDoBasicConnectivityCheck.RLock()
 	calls = mock.calls.DoBasicConnectivityCheck
 	mock.lockDoBasicConnectivityCheck.RUnlock()
+	return calls
+}
+
+// Dump calls DumpFunc.
+func (mock *SourceMock) Dump(ctx context.Context) error {
+	if mock.DumpFunc == nil {
+		panic("SourceMock.DumpFunc: method is nil but Source.Dump was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+	}{
+		Ctx: ctx,
+	}
+	mock.lockDump.Lock()
+	mock.calls.Dump = append(mock.calls.Dump, callInfo)
+	mock.lockDump.Unlock()
+	return mock.DumpFunc(ctx)
+}
+
+// DumpCalls gets all the calls that were made to Dump.
+// Check the length with:
+//
+//	len(mockedSource.DumpCalls())
+func (mock *SourceMock) DumpCalls() []struct {
+	Ctx context.Context
+} {
+	var calls []struct {
+		Ctx context.Context
+	}
+	mock.lockDump.RLock()
+	calls = mock.calls.Dump
+	mock.lockDump.RUnlock()
 	return calls
 }
 
