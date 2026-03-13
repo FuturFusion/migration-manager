@@ -28,7 +28,7 @@ type QueueService interface {
 	UpdatePlacementByUUID(ctx context.Context, id uuid.UUID, placement api.Placement) (*QueueEntry, error)
 
 	NewWorkerCommandByInstanceUUID(ctx context.Context, id uuid.UUID) (WorkerCommand, error)
-	ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (QueueEntry, error)
+	ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResp api.WorkerResponse) (QueueEntry, error)
 	GetNextWindow(ctx context.Context, q QueueEntry) (*Window, error)
 }
 
