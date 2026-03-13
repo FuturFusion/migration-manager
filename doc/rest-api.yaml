@@ -279,6 +279,9 @@ definitions:
     BatchStatusType:
         type: string
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    Distro:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
     Duration:
         title: Duration is a wrapper around time.Duration for easy json parsing.
         type: object
@@ -321,6 +324,13 @@ definitions:
                     $ref: '#/definitions/InstancePropertiesDisk'
                 type: array
                 x-go-name: Disks
+            distribution:
+                $ref: '#/definitions/Distro'
+            distribution_version:
+                description: Distribution version used for specific post-migration handling.
+                example: "7"
+                type: string
+                x-go-name: DistributionVersion
             last_update_from_source:
                 description: Last synced update from the source.
                 example: "2025-01-01 01:00:00"
@@ -359,11 +369,13 @@ definitions:
                 example: Ubuntu
                 type: string
                 x-go-name: OS
-            os_version:
+            os_description:
                 description: OS version of the Instance.
                 example: "24.04"
                 type: string
-                x-go-name: OSVersion
+                x-go-name: OSDescription
+            os_type:
+                $ref: '#/definitions/OSType'
             overrides:
                 $ref: '#/definitions/InstanceOverride'
             running:
@@ -432,16 +444,18 @@ definitions:
                 format: int64
                 type: integer
                 x-go-name: CPUs
-            description:
-                description: Description of the Instance.
-                example: Windows Server 2025
-                type: string
-                x-go-name: Description
             disable_migration:
                 description: If true, migration of this instance will be disabled.
                 example: true
                 type: boolean
                 x-go-name: DisableMigration
+            distribution:
+                $ref: '#/definitions/Distro'
+            distribution_version:
+                description: Distribution version used for specific post-migration handling.
+                example: "7"
+                type: string
+                x-go-name: DistributionVersion
             ignore_restrictions:
                 description: If true, restrictions that put the VM in a blocked state, preventing migration, will be ignored.
                 example: true
@@ -464,16 +478,8 @@ definitions:
                 example: myVM
                 type: string
                 x-go-name: Name
-            os:
-                description: OS name of the Instance.
-                example: Ubuntu
-                type: string
-                x-go-name: OS
-            os_version:
-                description: OS version of the Instance.
-                example: "24.04"
-                type: string
-                x-go-name: OSVersion
+            os_type:
+                $ref: '#/definitions/OSType'
             started_after_migration:
                 description: If true, after migration the associated target VM will be started.
                 example: true
@@ -554,11 +560,11 @@ definitions:
                 example: Ubuntu
                 type: string
                 x-go-name: OS
-            os_version:
+            os_description:
                 description: OS version of the Instance.
                 example: "24.04"
                 type: string
-                x-go-name: OSVersion
+                x-go-name: OSDescription
             running:
                 description: Whether the Instance was running when the sync was performed.
                 example: true
@@ -613,11 +619,6 @@ definitions:
                 format: int64
                 type: integer
                 x-go-name: CPUs
-            description:
-                description: Description of the Instance.
-                example: Windows Server 2025
-                type: string
-                x-go-name: Description
             memory:
                 description: Memory in bytes assigned to the Instance.
                 example: 1073741824
@@ -629,16 +630,6 @@ definitions:
                 example: myVM
                 type: string
                 x-go-name: Name
-            os:
-                description: OS name of the Instance.
-                example: Ubuntu
-                type: string
-                x-go-name: OS
-            os_version:
-                description: OS version of the Instance.
-                example: "24.04"
-                type: string
-                x-go-name: OSVersion
         title: InstancePropertiesConfigurable are the configurable properties of an instance.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
