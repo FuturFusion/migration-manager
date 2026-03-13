@@ -83,13 +83,13 @@ var (
 		LastUpdateFromSource: time.Now().UTC(),
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
-				Description:  "annotation",
 				CPUs:         2,
 				Memory:       4294967296,
-				OS:           "Ubuntu",
-				OSVersion:    "24.04",
 				Architecture: "x86_64",
 			},
+			Description:      "annotation",
+			OS:               "Ubuntu",
+			OSVersion:        "24.04",
 			Location:         "/path/UbuntuVM",
 			BackgroundImport: true,
 			Disks: []api.InstancePropertiesDisk{
@@ -120,13 +120,13 @@ var (
 		LastUpdateFromSource: time.Now().UTC(),
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
-				Description:  "annotation",
 				CPUs:         2,
 				Memory:       4294967296,
-				OS:           "Windows",
-				OSVersion:    "11",
 				Architecture: "x86_64",
 			},
+			Description:      "annotation",
+			OS:               "Windows",
+			OSVersion:        "11",
 			Location:         "/path/WindowsVM",
 			BackgroundImport: false,
 			Disks: []api.InstancePropertiesDisk{
@@ -162,13 +162,13 @@ var (
 		LastUpdateFromSource: time.Now().UTC(),
 		Properties: api.InstanceProperties{
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
-				Description:  "annotation",
 				CPUs:         4,
 				Memory:       4294967296,
-				OS:           "Debian",
-				OSVersion:    "bookworm",
 				Architecture: "arm64",
 			},
+			Description:      "annotation",
+			OS:               "Debian",
+			OSVersion:        "bookworm",
 			Location:         "/path/DebianVM",
 			BackgroundImport: true,
 			Disks: []api.InstancePropertiesDisk{

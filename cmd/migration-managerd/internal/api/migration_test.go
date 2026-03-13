@@ -32,10 +32,12 @@ type uuidCache map[string]uuid.UUID
 // - nics are a map of nic index to the nic's IPv4 address.
 func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int]string, osType api.OSType, ignoreRestrictions bool) migration.Instance {
 	osName := "test_os"
+	osVersion := "test_os_version"
 	description := "description for " + name
 	switch osType {
 	case api.OSTYPE_WINDOWS:
 		osName = "windows"
+		osVersion = "Windows Server 2025"
 	case api.OSTYPE_FORTIGATE:
 		description = "FortiGate ..."
 	}
@@ -51,13 +53,13 @@ func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int
 			IgnoreRestrictions: ignoreRestrictions,
 		},
 		Properties: api.InstanceProperties{
+			Description: description,
+			OS:          osName,
+			OSVersion:   osVersion,
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
-				Description:  description,
 				CPUs:         1,
 				Memory:       1024 * 1024 * 1024,
 				Config:       map[string]string{},
-				OS:           osName,
-				OSVersion:    "test_os_version",
 				Architecture: "x86_64",
 				Name:         name,
 			},

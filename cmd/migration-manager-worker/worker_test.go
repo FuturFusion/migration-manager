@@ -32,9 +32,10 @@ const uuidA = "ced6491e-b614-11ef-a01b-677fcc190026"
 var errGracefulEndOfTest = fmt.Errorf("graceful end of test")
 
 type instanceDetails struct {
-	Location  string
-	OS        string
-	OSVersion string
+	Location      string
+	OSType        api.OSType
+	Distro        api.Distro
+	DistroVersion string
 }
 
 func TestNewWorker(t *testing.T) {
@@ -289,8 +290,9 @@ func TestRun(t *testing.T) {
 				workerCommandResponse(api.WORKERCOMMAND_IDLE, true),
 			},
 			instanceSpec: instanceDetails{
-				OS:        "Windows",
-				OSVersion: "invalid",
+				OSType:        api.OSTYPE_WINDOWS,
+				Distro:        api.DISTRO_OTHER,
+				DistroVersion: "invalid",
 			},
 
 			wantWorkerResponses: []api.WorkerResponseType{
@@ -524,17 +526,13 @@ func TestRun(t *testing.T) {
 func workerCommandResponse(command api.WorkerCommandType, signalEndOfTest bool) func(instanceSpec instanceDetails, cancel context.CancelCauseFunc, w http.ResponseWriter, r *http.Request) {
 	return func(instanceSpec instanceDetails, cancel context.CancelCauseFunc, w http.ResponseWriter, r *http.Request) {
 		cmd := api.WorkerCommand{
-			Command:      command,
-			OS:           instanceSpec.OS,
-			OSVersion:    instanceSpec.OSVersion,
-			OSType:       api.OSTYPE_LINUX,
-			Location:     instanceSpec.Location,
-			Architecture: "x86_64",
-			SourceType:   api.SOURCETYPE_VMWARE,
-		}
-
-		if strings.Contains(strings.ToLower(cmd.OS), "windows") {
-			cmd.OSType = api.OSTYPE_WINDOWS
+			Command:             command,
+			OSType:              instanceSpec.OSType,
+			Distribution:        instanceSpec.Distro,
+			DistributionVersion: instanceSpec.DistroVersion,
+			Location:            instanceSpec.Location,
+			Architecture:        "x86_64",
+			SourceType:          api.SOURCETYPE_VMWARE,
 		}
 
 		metadata, err := json.Marshal(cmd)
