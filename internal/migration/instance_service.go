@@ -2,13 +2,12 @@ package migration
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"net/http"
 	"slices"
 	"time"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -171,11 +170,12 @@ func (s instanceService) UpdateOverride(ctx context.Context, id uuid.UUID, newOv
 		}
 
 		entry, err := s.repo.GetQueueEntryByUUID(ctx, id)
-		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+		if err != nil && !errors.Is(err, ErrNotFound) {
 			return err
 		}
 
 		if entry == nil {
+			instance.Overrides = newOverrides
 			return s.Update(ctx, instance, false)
 		}
 
