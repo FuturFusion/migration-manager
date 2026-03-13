@@ -340,7 +340,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 
 	// Handle RHEL (and derivative) specific completion steps.
 	distro, _ := i.GetDistribution()
-	if distro == api.DISTRO_CENTOS || distro == api.DISTRO_RHEL || distro == api.DISTRO_ORACLE || i.GetOSType() == api.OSTYPE_WINDOWS {
+	if distro.IsRHELDerivative() || i.GetOSType() == api.OSTYPE_WINDOWS {
 		// RHEL7+ don't support 9p, so make agent config available via cdrom.
 		apiDef.Devices["agent"] = map[string]string{
 			"type":   "disk",
