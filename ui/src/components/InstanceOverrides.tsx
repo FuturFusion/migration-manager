@@ -311,13 +311,27 @@ const InstanceOverrides: FC = () => {
             isInvalid={
               !!formik.errors.distribution && formik.touched.distribution
             }
-            disabled={(formik.values.os_type as OSType) === OSType.Windows}
+            disabled={
+              (formik.values.os_type as OSType) === OSType.Windows ||
+              (formik.values.os_type as OSType) === OSType.Fortigate
+            }
           >
-            {Object.values(Distribution).map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
+            {Object.values(Distribution)
+              .filter((value) => {
+                if ((formik.values.os_type as OSType) === OSType.BSD) {
+                  return (
+                    value === Distribution.Other ||
+                    value === Distribution.FreeBSD
+                  );
+                }
+
+                return value !== Distribution.FreeBSD;
+              })
+              .map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
           </Form.Select>
           <Form.Control.Feedback type="invalid">
             {formik.errors.distribution}

@@ -4,6 +4,7 @@ import { formatDate } from "util/date";
 export enum OSType {
   Fortigate = "fortigate",
   Linux = "linux",
+  BSD = "bsd",
   Windows = "windows",
 }
 
@@ -14,12 +15,20 @@ export enum Distribution {
   CentOS = "centos",
   RHEL = "rhel",
   SUSE = "suse",
+  Rocky = "rocky",
+  Amazon = "amazon",
+  Fedora = "fedora",
+  FreeBSD = "freebsd",
   Other = "other",
 }
 
 export enum WindowsVersion {
   W10 = "10",
   W11 = "11",
+  W2008 = "Server 2008",
+  W2008R2 = "Server 2008 R2",
+  W2012 = "Server 2012",
+  W2012R2 = "Server 2012 R2",
   W2016 = "Server 2016",
   W2019 = "Server 2019",
   W2022 = "Server 2022",
