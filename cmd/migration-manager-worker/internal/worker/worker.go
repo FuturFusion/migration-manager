@@ -43,11 +43,12 @@ type Worker struct {
 	lastUpdate          time.Time
 	idleSleep           time.Duration
 	lastArtifactUpdates map[uuid.UUID]time.Time
+	logFile             string
 }
 
 type WorkerOption func(*Worker) error
 
-func NewWorker(ctx context.Context, client *http.Client, opts ...WorkerOption) (*Worker, error) {
+func NewWorker(ctx context.Context, client *http.Client, logFile string, opts ...WorkerOption) (*Worker, error) {
 	// Parse the provided URL for the migration manager endpoint.
 
 	endpoint, err := getIncusConfig(ctx, client, "user.migration.endpoint")
@@ -84,6 +85,7 @@ func NewWorker(ctx context.Context, client *http.Client, opts ...WorkerOption) (
 		lastUpdate:          time.Now().UTC(),
 		idleSleep:           10 * time.Second,
 		lastArtifactUpdates: map[uuid.UUID]time.Time{},
+		logFile:             logFile,
 	}
 
 	for _, opt := range opts {
@@ -398,8 +400,12 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusMess
 
 func (w *Worker) sendErrorResponse(err error) {
 	slog.Error("worker error", logger.Err(err))
-	resp := api.WorkerResponse{Status: api.WORKERRESPONSE_FAILED, StatusMessage: err.Error()}
+	b, err2 := os.ReadFile(w.logFile)
+	if err2 != nil && !os.IsNotExist(err2) {
+		slog.Error("Failed to read log file", slog.String("file", w.logFile), slog.Any("error", err2))
+	}
 
+	resp := api.WorkerResponse{Status: api.WORKERRESPONSE_FAILED, StatusMessage: err.Error(), Metadata: b}
 	content, err := json.Marshal(resp)
 	if err != nil {
 		slog.Error("Failed to send error back to migration manager", logger.Err(err))
