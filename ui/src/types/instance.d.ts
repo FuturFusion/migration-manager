@@ -103,7 +103,7 @@ export interface InstanceOverrideFormValues {
   config: Record<string, string>;
 }
 
-type OSType = "linux" | "windows" | "fortigate";
+type OSType = "bsd" | "linux" | "windows" | "fortigate";
 type Distribution =
   | "debian"
   | "ubuntu"
@@ -111,4 +111,8 @@ type Distribution =
   | "centos"
   | "rhel"
   | "suse"
+  | "rocky"
+  | "amazon"
+  | "fedora"
+  | "freebsd"
   | "other";

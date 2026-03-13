@@ -363,7 +363,7 @@ func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitect
 	}
 
 	// Re-assign network configs to the new NIC if we have MACs.
-	if len(hwAddrs) > 0 {
+	if len(hwAddrs) > 0 && internalUtil.SupportsNetworkAssignment(versionCode) {
 		err = injectScript("virtio-assign-netcfg.ps1", filepath.Join(windowsMainMountPath, "migration-manager-virtio-assign-netcfg.ps1"), false)
 		if err != nil {
 			return err

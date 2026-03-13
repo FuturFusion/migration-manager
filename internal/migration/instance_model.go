@@ -73,7 +73,7 @@ func (i Instance) Validate() error {
 	}
 
 	distro, version := i.GetDistribution()
-	err = api.ValidateDistribution(string(distro))
+	err = api.ValidateDistribution(osType, string(distro))
 	if err != nil {
 		return NewValidationErrf("Invalid instance OS distribution %q: %v", distro, err)
 	}
@@ -85,12 +85,10 @@ func (i Instance) Validate() error {
 		}
 
 	case api.OSTYPE_LINUX:
-		if version != "" {
-			if distro == api.DISTRO_RHEL || distro == api.DISTRO_ORACLE || distro == api.DISTRO_CENTOS {
-				_, err := strconv.Atoi(version)
-				if err != nil {
-					return NewValidationErrf("Failed to parse distribution version %q for %q: %v", version, distro, err)
-				}
+		if version != "" && distro != api.DISTRO_UBUNTU {
+			_, err := strconv.Atoi(version)
+			if err != nil {
+				return NewValidationErrf("Failed to parse distribution version %q for %q: %v", version, distro, err)
 			}
 		}
 
@@ -215,6 +213,10 @@ func (i *Instance) GetOSType() api.OSType {
 		return api.OSTYPE_FORTIGATE
 	}
 
+	if strings.Contains(strings.ToLower(props.OS), "bsd") {
+		return api.OSTYPE_BSD
+	}
+
 	return api.OSTYPE_LINUX
 }
 
@@ -240,6 +242,11 @@ func (i *Instance) GetDistribution() (api.Distro, string) {
 				slog.Error("Unable to determine windows version", slog.Any("error", err))
 			}
 
+		case api.OSTYPE_BSD:
+			if strings.Contains(strings.ToLower(osVersion), "freebsd") {
+				distro = api.DISTRO_FREEBSD
+			}
+
 		case api.OSTYPE_LINUX:
 			// Get the disto's major version, if possible.
 			versionRegex := regexp.MustCompile(`^[\w /]+?(\d+)(\.\d+)?( \(\w+\))?$`)
@@ -251,6 +258,12 @@ func (i *Instance) GetDistribution() (api.Distro, string) {
 				distro = api.DISTRO_SUSE
 			} else if strings.Contains(strings.ToLower(osVersion), "oracle") {
 				distro = api.DISTRO_ORACLE
+			} else if strings.Contains(strings.ToLower(osVersion), "rocky") {
+				distro = api.DISTRO_ROCKY
+			} else if strings.Contains(strings.ToLower(osVersion), "amazon") {
+				distro = api.DISTRO_AMZN
+			} else if strings.Contains(strings.ToLower(osVersion), "fedora") {
+				distro = api.DISTRO_FEDORA
 			} else if slices.ContainsFunc([]string{"rhel", "redhat", "red-hat", "red hat"}, func(s string) bool {
 				return strings.Contains(strings.ToLower(osVersion), s)
 			}) {
