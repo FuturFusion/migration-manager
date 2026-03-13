@@ -336,15 +336,17 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 
 		instance.Properties.Apply(instance.Overrides.InstancePropertiesConfigurable)
 		// Setup the default "idle" command
+
+		distro, distroVersion := instance.GetDistribution()
 		workerCommand = WorkerCommand{
-			Command:      api.WORKERCOMMAND_IDLE,
-			Location:     instance.Properties.Location,
-			SourceType:   source.SourceType,
-			Source:       *source,
-			OS:           instance.Properties.OS,
-			OSVersion:    instance.Properties.OSVersion,
-			Architecture: instance.GetArchitecture(),
-			OSType:       instance.GetOSType(),
+			Command:       api.WORKERCOMMAND_IDLE,
+			Location:      instance.Properties.Location,
+			SourceType:    source.SourceType,
+			Source:        *source,
+			Architecture:  instance.GetArchitecture(),
+			OSType:        instance.GetOSType(),
+			Distro:        distro,
+			DistroVersion: distroVersion,
 		}
 
 		// If the last worker response was RUNNING, then skip validation and just send the response it wants.

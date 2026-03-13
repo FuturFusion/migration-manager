@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/lxc/incus/v6/shared/osarch"
 	"github.com/lxc/incus/v6/shared/validate"
 
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -169,6 +172,70 @@ func (i *Instance) GetOSType() api.OSType {
 	}
 
 	return api.OSTYPE_LINUX
+}
+
+// GetDistribution returns the distribution and version for the OS type.
+func (i *Instance) GetDistribution() (api.Distro, string) {
+	props := i.Properties
+	props.Apply(i.Overrides.InstancePropertiesConfigurable)
+	osVersion := props.OSVersion
+
+	distroVersion := ""
+	distro := api.DISTRO_OTHER
+
+	osType := i.GetOSType()
+	switch i.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		switch osType {
+		case api.OSTYPE_FORTIGATE:
+		case api.OSTYPE_WINDOWS:
+			var err error
+			distroVersion, err = util.ToWindowsVersion(osVersion)
+			if err != nil {
+				distroVersion = ""
+				slog.Error("Unable to determine windows version", slog.Any("error", err))
+			}
+
+		case api.OSTYPE_LINUX:
+			// Get the disto's major version, if possible.
+			// VMware API doesn't distinguish openSUSE and Ubuntu versions.
+			if !strings.Contains(strings.ToLower(osVersion), "opensuse") && !strings.Contains(strings.ToLower(osVersion), "ubuntu") {
+				majorVersionRegex := regexp.MustCompile(`^\w+?(\d+)(_64)?$`)
+				matches := majorVersionRegex.FindStringSubmatch(osVersion)
+				if len(matches) > 1 {
+					distroVersion = majorVersionRegex.FindStringSubmatch(osVersion)[1]
+				}
+			}
+
+			if strings.Contains(strings.ToLower(osVersion), "centos") {
+				distro = api.DISTRO_CENTOS
+			} else if strings.Contains(strings.ToLower(osVersion), "debian") {
+				distro = api.DISTRO_DEBIAN
+			} else if strings.Contains(strings.ToLower(osVersion), "opensuse") || strings.Contains(strings.ToLower(osVersion), "sles") {
+				distro = api.DISTRO_SUSE
+			} else if strings.Contains(strings.ToLower(osVersion), "oracle") {
+				distro = api.DISTRO_ORACLE
+			} else if slices.ContainsFunc([]string{"rhel", "redhat", "red-hat", "red hat"}, func(s string) bool {
+				return strings.Contains(strings.ToLower(osVersion), s)
+			}) {
+				distro = api.DISTRO_RHEL
+			} else if strings.Contains(strings.ToLower(osVersion), "ubuntu") {
+				distro = api.DISTRO_UBUNTU
+			}
+
+			if distro == api.DISTRO_CENTOS || distro == api.DISTRO_ORACLE || distro == api.DISTRO_RHEL {
+				if distroVersion != "" {
+					_, err := strconv.Atoi(distroVersion)
+					if err != nil {
+						slog.Error("Failed to parse distribution version", slog.String("version", distroVersion), slog.String("distro", string(distro)))
+						distroVersion = ""
+					}
+				}
+			}
+		}
+	}
+
+	return distro, distroVersion
 }
 
 func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
@@ -441,12 +508,16 @@ func (i Instance) CompileIncludeExpression(expression string, locationAlias bool
 type Instances []Instance
 
 func (i Instance) ToAPI() api.Instance {
+	distro, distroVersion := i.GetDistribution()
 	apiInst := api.Instance{
 		Source:               i.Source,
 		SourceType:           i.SourceType,
 		LastUpdateFromSource: i.LastUpdateFromSource,
 		InstanceProperties:   i.Properties,
 		Overrides:            i.Overrides,
+		OSType:               i.GetOSType(),
+		Distribution:         distro,
+		DistributionVersion:  distroVersion,
 	}
 
 	return apiInst
