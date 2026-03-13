@@ -30,10 +30,11 @@ import (
 type Task string
 
 const (
-	SyncTask       Task = "sync"
-	ImportTask     Task = "import"
-	PostImportTask Task = "post-import"
-	ACMEUpdateTask Task = "acme-update"
+	SyncTask         Task = "sync"
+	ImportTask       Task = "import"
+	PostImportTask   Task = "post-import"
+	ACMEUpdateTask   Task = "acme-update"
+	CacheCleanupTask Task = "cache-cleanup"
 )
 
 func (d *Daemon) runPeriodicTask(ctx context.Context, task Task, f func(context.Context) error, interval time.Duration) {

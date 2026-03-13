@@ -115,7 +115,24 @@ func allowPermission(objectType auth.ObjectType, entitlement auth.Entitlement) f
 }
 
 // cleanupCacheDir removes extraneous files from the Migration Manager cache directory.
-func (d *Daemon) cleanupCacheDir() error {
+func (d *Daemon) cleanupCacheDir(ctx context.Context) error {
+	if d.queue != nil {
+		var qs migration.QueueEntries
+		err := transaction.Do(ctx, func(ctx context.Context) error {
+			var err error
+			qs, err = d.queue.GetAll(ctx)
+			return err
+		})
+		if err != nil {
+			return err
+		}
+
+		if slices.ContainsFunc(qs, func(q migration.QueueEntry) bool { return q.StatusBeforePlacement() }) {
+			slog.Info("Skipping cache cleanup, migration in progress")
+			return nil
+		}
+	}
+
 	files, err := filepath.Glob(filepath.Join(d.os.CacheDir, sys.WorkerImageBuildPrefix+"*"))
 	if err != nil {
 		return err
@@ -183,7 +200,7 @@ func (d *Daemon) Start() error {
 
 	d.setLogLevel(true, cfg.Settings.LogLevel)
 
-	err = d.cleanupCacheDir()
+	err = d.cleanupCacheDir(d.ShutdownCtx)
 	if err != nil {
 		return err
 	}
@@ -300,6 +317,7 @@ func (d *Daemon) Start() error {
 	}, 10*time.Second)
 
 	d.runPeriodicTask(d.ShutdownCtx, PostImportTask, d.finalizeCompleteInstances, 10*time.Second)
+	d.runPeriodicTask(d.ShutdownCtx, CacheCleanupTask, d.cleanupCacheDir, 24*time.Hour)
 
 	select {
 	case <-errgroupCtx.Done():
