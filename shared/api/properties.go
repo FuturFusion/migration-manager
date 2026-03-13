@@ -33,7 +33,7 @@ type InstanceProperties struct {
 
 	// OS version of the Instance.
 	// Example: 24.04
-	OSVersion string `json:"os_version" yaml:"os_version" expr:"os_version"`
+	OSDescription string `json:"os_description" yaml:"os_description" expr:"os_description"`
 
 	// Whether the Instance has secure-boot enabled.
 	// Example: true

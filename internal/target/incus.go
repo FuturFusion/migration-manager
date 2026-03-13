@@ -439,8 +439,8 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 				instance.Config[info.Key] = p.OS
 			}
 
-		case properties.InstanceOSVersion:
-			instance.Config[info.Key] = p.OSVersion
+		case properties.InstanceOSDescription:
+			instance.Config[info.Key] = p.OSDescription
 		}
 	}
 

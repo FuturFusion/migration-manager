@@ -111,7 +111,13 @@ const InstanceOverview = () => {
         </div>
         <div className="row">
           <div className="col-2 detail-table-header">OS Description</div>
-          <div className="col-10 detail-table-cell">{instance.os_version}</div>
+          <div className="col-10 detail-table-cell">
+            {instance.os_description}
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-2 detail-table-header">OS Name</div>
+          <div className="col-10 detail-table-cell">{instance.os}</div>
         </div>
         <div className="row">
           <div className="col-2 detail-table-header">CPU</div>

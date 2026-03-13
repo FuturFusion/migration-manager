@@ -179,9 +179,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source:     "one",
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "Ubuntu 24.04",
+					Location:      "/some/instance/A",
+					OS:            "ubuntu",
+					OSDescription: "Ubuntu 24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -226,9 +226,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source:     "one",
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "Ubuntu 24.04",
+					Location:      "/some/instance/A",
+					OS:            "ubuntu",
+					OSDescription: "Ubuntu 24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -274,9 +274,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source:     "one",
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "Ubuntu 24.04",
+					Location:      "/some/instance/A",
+					OS:            "ubuntu",
+					OSDescription: "Ubuntu 24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -321,9 +321,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source:     "one",
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "Ubuntu 24.04",
+					Location:      "/some/instance/A",
+					OS:            "ubuntu",
+					OSDescription: "Ubuntu 24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -366,9 +366,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source:     "one",
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "Ubuntu 24.04",
+					Location:      "/some/instance/A",
+					OS:            "ubuntu",
+					OSDescription: "Ubuntu 24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -413,9 +413,9 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Source:     "one",
 				SourceType: api.SOURCETYPE_VMWARE,
 				Properties: api.InstanceProperties{
-					Location:  "/some/instance/A",
-					OS:        "ubuntu",
-					OSVersion: "Ubuntu 24.04",
+					Location:      "/some/instance/A",
+					OS:            "ubuntu",
+					OSDescription: "Ubuntu 24.04",
 				},
 			},
 			sourceSvcGetByIDSource: migration.Source{
@@ -457,7 +457,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
-					OSVersion:        "Ubuntu 24.04",
+					OSDescription:    "Ubuntu 24.04",
 					BackgroundImport: true,
 				},
 			},
@@ -505,7 +505,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
-					OSVersion:        "Ubuntu 24.04",
+					OSDescription:    "Ubuntu 24.04",
 					BackgroundImport: true,
 				},
 			},
@@ -554,7 +554,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
-					OSVersion:        "Ubuntu 24.04",
+					OSDescription:    "Ubuntu 24.04",
 					BackgroundImport: false,
 				},
 			},
@@ -603,7 +603,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
-					OSVersion:        "Ubuntu 24.04",
+					OSDescription:    "Ubuntu 24.04",
 					BackgroundImport: true,
 				},
 			},
@@ -652,7 +652,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
-					OSVersion:        "Ubuntu 24.04",
+					OSDescription:    "Ubuntu 24.04",
 					BackgroundImport: false,
 				},
 			},
@@ -705,7 +705,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
-					OSVersion:        "Ubuntu 24.04",
+					OSDescription:    "Ubuntu 24.04",
 					BackgroundImport: true,
 				},
 			},
@@ -753,7 +753,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
-					OSVersion:        "Ubuntu 24.04",
+					OSDescription:    "Ubuntu 24.04",
 					BackgroundImport: true,
 				},
 			},
@@ -801,7 +801,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
-					OSVersion:        "Ubuntu 24.04",
+					OSDescription:    "Ubuntu 24.04",
 					BackgroundImport: true,
 				},
 			},
@@ -849,7 +849,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
-					OSVersion:        "Ubuntu 24.04",
+					OSDescription:    "Ubuntu 24.04",
 					BackgroundImport: true,
 				},
 			},
@@ -908,7 +908,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:                       "/some/instance/A",
 					OS:                             "ubuntu",
-					OSVersion:                      "Ubuntu 24.04",
+					OSDescription:                  "Ubuntu 24.04",
 					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "A"},
 				},
 			},
@@ -934,7 +934,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:                       "/some/instance/A",
 					OS:                             "ubuntu",
-					OSVersion:                      "Ubuntu 24.04",
+					OSDescription:                  "Ubuntu 24.04",
 					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "A"},
 				},
 			},
@@ -959,7 +959,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:                       "/some/instance/A",
 					OS:                             "ubuntu",
-					OSVersion:                      "Ubuntu 24.04",
+					OSDescription:                  "Ubuntu 24.04",
 					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "A"},
 				},
 			},
@@ -985,7 +985,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:                       "/some/instance/A",
 					OS:                             "ubuntu",
-					OSVersion:                      "Ubuntu 24.04",
+					OSDescription:                  "Ubuntu 24.04",
 					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "A"},
 				},
 			},
@@ -1024,7 +1024,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				Properties: api.InstanceProperties{
 					Location:         "/some/instance/A",
 					OS:               "ubuntu",
-					OSVersion:        "Ubuntu 24.04",
+					OSDescription:    "Ubuntu 24.04",
 					BackgroundImport: true,
 				},
 			},

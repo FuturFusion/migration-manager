@@ -31,7 +31,7 @@ export interface InstanceProperties {
   memory: number;
   config: Record<string, string>;
   os: string;
-  os_version: string;
+  os_description: string;
   location: string;
   secure_boot: boolean;
   legacy_boot: boolean;
@@ -78,7 +78,7 @@ export interface Instance {
   memory: number;
   config: Record<string, string>;
   os: string;
-  os_version: string;
+  os_description: string;
   location: string;
   secure_boot: boolean;
   legacy_boot: boolean;

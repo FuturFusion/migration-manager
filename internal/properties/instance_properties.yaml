@@ -39,8 +39,8 @@
             type: config
             key: image.os
 
-- name: os_version
-  description: OS version name
+- name: os_description
+  description: OS description
   source:
       vmware:
           8.0:

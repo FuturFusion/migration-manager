@@ -542,7 +542,7 @@ func TestGetProperties(t *testing.T) {
 			require.Equal(t, int64(c.expectedMemory)*1024*1024, props.Memory)
 			require.Equal(t, int64(c.expectedCPUs), props.CPUs)
 			require.Equal(t, "os", props.OS)
-			require.Equal(t, "os version", props.OSVersion)
+			require.Equal(t, "os version", props.OSDescription)
 			require.Equal(t, c.expectedDescription, props.Description)
 			require.LessOrEqual(t, c.numDisks, len(props.Disks))
 			require.LessOrEqual(t, c.numNICs, len(props.NICs))

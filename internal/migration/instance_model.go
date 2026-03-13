@@ -125,8 +125,9 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 		return fmt.Errorf("Instance name %q is not a valid hostname: %w", props.Name, err)
 	}
 
-	if props.OS == "" || props.OSVersion == "" {
-		if !overrides.AllowUnknownOS {
+	if props.OS == "" || props.OSDescription == "" {
+		osOverridden := i.Overrides.Distribution != "" || i.Overrides.OSType != ""
+		if !overrides.AllowUnknownOS && !osOverridden {
 			return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
 		}
 	}
@@ -221,7 +222,7 @@ func (i *Instance) GetOSType() api.OSType {
 func (i *Instance) GetDistribution() (api.Distro, string) {
 	props := i.Properties
 	props.Apply(i.Overrides.InstancePropertiesConfigurable)
-	osVersion := props.OSVersion
+	osVersion := props.OSDescription
 
 	distroVersion := ""
 	distro := api.DISTRO_OTHER
@@ -343,9 +344,9 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 		instanceUpdated = true
 	}
 
-	if inst.Properties.OSVersion != srcInst.Properties.OSVersion && srcInst.Properties.OSVersion != "" {
-		log.Debug("Instance os version changed", slog.String("new", srcInst.Properties.OSVersion), slog.String("old", inst.Properties.OSVersion))
-		inst.Properties.OSVersion = srcInst.Properties.OSVersion
+	if inst.Properties.OSDescription != srcInst.Properties.OSDescription && srcInst.Properties.OSDescription != "" {
+		log.Debug("Instance os version changed", slog.String("new", srcInst.Properties.OSDescription), slog.String("old", inst.Properties.OSDescription))
+		inst.Properties.OSDescription = srcInst.Properties.OSDescription
 		instanceUpdated = true
 	}
 

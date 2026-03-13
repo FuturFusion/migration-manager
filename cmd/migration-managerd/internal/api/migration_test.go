@@ -53,9 +53,9 @@ func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int
 			IgnoreRestrictions: ignoreRestrictions,
 		},
 		Properties: api.InstanceProperties{
-			Description: description,
-			OS:          osName,
-			OSVersion:   osVersion,
+			Description:   description,
+			OS:            osName,
+			OSDescription: osVersion,
 			InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
 				CPUs:         1,
 				Memory:       1024 * 1024 * 1024,

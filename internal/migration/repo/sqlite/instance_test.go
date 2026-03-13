@@ -89,7 +89,7 @@ var (
 			},
 			Description:      "annotation",
 			OS:               "Ubuntu",
-			OSVersion:        "24.04",
+			OSDescription:    "24.04",
 			Location:         "/path/UbuntuVM",
 			BackgroundImport: true,
 			Disks: []api.InstancePropertiesDisk{
@@ -126,7 +126,7 @@ var (
 			},
 			Description:      "annotation",
 			OS:               "Windows",
-			OSVersion:        "11",
+			OSDescription:    "11",
 			Location:         "/path/WindowsVM",
 			BackgroundImport: false,
 			Disks: []api.InstancePropertiesDisk{
@@ -168,7 +168,7 @@ var (
 			},
 			Description:      "annotation",
 			OS:               "Debian",
-			OSVersion:        "bookworm",
+			OSDescription:    "bookworm",
 			Location:         "/path/DebianVM",
 			BackgroundImport: true,
 			Disks: []api.InstancePropertiesDisk{
