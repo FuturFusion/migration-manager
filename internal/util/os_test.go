@@ -20,6 +20,26 @@ func TestMapWindowsVersionToAbbrevSuccess(t *testing.T) {
 			want: "w11",
 		},
 		{
+			name: "Windows Server 2008",
+			want: "2k8",
+		},
+		{
+			name: "Windows Server 2008 R2 (64 bit)",
+			want: "2k8r2",
+		},
+		{
+			name: "Windows Server 2012",
+			want: "2k12",
+		},
+		{
+			name: "Windows Server 2012 R2",
+			want: "2k12r2",
+		},
+		{
+			name: "Windows Server 2016",
+			want: "2k16",
+		},
+		{
 			name: "Windows Server 2019",
 			want: "2k19",
 		},
@@ -142,9 +162,6 @@ func TestMapWindowsVersionToAbbrevNotSupported(t *testing.T) {
 		},
 		{
 			name: "Windows 7",
-		},
-		{
-			name: "Windows Server 2008 R2 (64 bit)",
 		},
 		{
 			name: "Windows 8 (64 bit)",
