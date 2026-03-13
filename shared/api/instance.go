@@ -4,14 +4,6 @@ import (
 	"time"
 )
 
-type OSType string
-
-const (
-	OSTYPE_WINDOWS   OSType = "windows"
-	OSTYPE_LINUX     OSType = "linux"
-	OSTYPE_FORTIGATE OSType = "fortigate"
-)
-
 // Instance defines a VM instance to be migrated.
 //
 // swagger:model
@@ -25,6 +17,18 @@ type Instance struct {
 	// The source type of the Instance's source.
 	// Example: vmware
 	SourceType SourceType `json:"source_type" yaml:"source_type"`
+
+	// OS type used for specific post-migration handling.
+	// Example: linux
+	OSType OSType `json:"os_type" yaml:"os_type"`
+
+	// Distribution name used for specific post-migration handling.
+	// Example: RHEL
+	Distribution Distro `json:"distribution"         yaml:"distribution"`
+
+	// Distribution version used for specific post-migration handling.
+	// Example: 7
+	DistributionVersion string `json:"distribution_version" yaml:"distribution_version"`
 
 	// Last synced update from the source.
 	// Example: 2025-01-01 01:00:00
@@ -46,6 +50,9 @@ func (i Instance) GetName() string {
 type InstanceFilterable struct {
 	InstanceProperties
 
+	OSType               OSType    `json:"os_type"                 yaml:"os_type"                 expr:"os_type"`
+	Distribution         Distro    `json:"distribution"            yaml:"distribution"            expr:"distribution"`
+	DistributionVersion  string    `json:"distribution_version"    yaml:"distribution_version"    expr:"distribution_version"`
 	Source               string    `json:"source"                  yaml:"source"                  expr:"source"`
 	SourceType           string    `json:"source_type"             yaml:"source_type"             expr:"source_type"`
 	LastUpdateFromSource time.Time `json:"last_update_from_source" yaml:"last_update_from_source" expr:"last_update_from_source"`
@@ -59,6 +66,9 @@ func (i Instance) ToFilterable() InstanceFilterable {
 		InstanceProperties:   props,
 		Source:               i.Source,
 		SourceType:           string(i.SourceType),
+		OSType:               i.OSType,
+		Distribution:         i.Distribution,
+		DistributionVersion:  i.DistributionVersion,
 		LastUpdateFromSource: i.LastUpdateFromSource,
 	}
 }

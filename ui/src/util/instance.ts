@@ -7,6 +7,25 @@ export enum OSType {
   Windows = "windows",
 }
 
+export enum Distribution {
+  Debian = "debian",
+  Ubuntu = "ubuntu",
+  Oracle = "oracle",
+  CentOS = "centos",
+  RHEL = "rhel",
+  SUSE = "suse",
+  Other = "other",
+}
+
+export enum WindowsVersion {
+  W10 = "10",
+  W11 = "11",
+  W2016 = "Server 2016",
+  W2019 = "Server 2019",
+  W2022 = "Server 2022",
+  W2025 = "Server 2025",
+}
+
 export const hasOverride = (item: Instance | undefined) => {
   if (!item) {
     return false;
@@ -18,6 +37,12 @@ export const hasOverride = (item: Instance | undefined) => {
 
   return false;
 };
+
+export function osName(osType: OSType, distro: Distribution): string {
+  return osType == OSType.Windows
+    ? osType.toString()
+    : osType.toString() + " (" + distro.toString() + ")";
+}
 
 export function bytesToHumanReadable(
   bytes: number,

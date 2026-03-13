@@ -290,7 +290,7 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand, dry
 			return err
 		}
 
-		err = worker.WindowsInjectDrivers(ctx, cmd.OSVersion, cmd.Architecture, file, dryRun)
+		err = worker.WindowsInjectDrivers(ctx, cmd.DistributionVersion, cmd.Architecture, file, dryRun)
 		if err != nil {
 			return err
 		}
@@ -312,7 +312,7 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand, dry
 		}
 
 	case api.OSTYPE_LINUX:
-		err := worker.LinuxDoPostMigrationConfig(ctx, instance, cmd.OS, dryRun)
+		err := worker.LinuxDoPostMigrationConfig(ctx, instance, cmd.Distribution, cmd.DistributionVersion, dryRun)
 		if err != nil {
 			return err
 		}

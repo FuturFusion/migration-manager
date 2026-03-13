@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"slices"
 	"strings"
 
 	"github.com/lxc/incus/v6/shared/subprocess"
@@ -48,20 +47,6 @@ func ScanPartitions(device string) (LSBLKOutput, error) {
 	}
 
 	return ret, nil
-}
-
-func IsDebianOrDerivative(osString string) bool {
-	return strings.Contains(strings.ToLower(osString), "debian") || strings.Contains(strings.ToLower(osString), "ubuntu")
-}
-
-func IsRHELOrDerivative(osString string) bool {
-	return strings.Contains(strings.ToLower(osString), "centos") || strings.Contains(strings.ToLower(osString), "oracle") || slices.ContainsFunc([]string{"rhel", "redhat", "red-hat", "red hat"}, func(s string) bool {
-		return strings.Contains(strings.ToLower(osString), s)
-	})
-}
-
-func IsSUSEOrDerivative(osString string) bool {
-	return strings.Contains(strings.ToLower(osString), "suse") || strings.Contains(strings.ToLower(osString), "opensuse")
 }
 
 // FindDisk returns the associated root device path and device path from lsblk, for the given device path, name, or UUID.

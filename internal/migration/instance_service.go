@@ -2,13 +2,12 @@ package migration
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"net/http"
 	"slices"
 	"time"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -171,11 +170,12 @@ func (s instanceService) UpdateOverride(ctx context.Context, id uuid.UUID, newOv
 		}
 
 		entry, err := s.repo.GetQueueEntryByUUID(ctx, id)
-		if err != nil && !incusAPI.StatusErrorCheck(err, http.StatusNotFound) {
+		if err != nil && !errors.Is(err, ErrNotFound) {
 			return err
 		}
 
 		if entry == nil {
+			instance.Overrides = newOverrides
 			return s.Update(ctx, instance, false)
 		}
 
@@ -187,9 +187,9 @@ func (s instanceService) UpdateOverride(ctx context.Context, id uuid.UUID, newOv
 		// If a queue entry exists, disallow modifying fields that we use to determine worker config, unless the queue entry has been canceled.
 		if entry.MigrationStatus != api.MIGRATIONSTATUS_CANCELED {
 			if oldOverrides.Name != newOverrides.Name ||
-				oldOverrides.Description != newOverrides.Description ||
-				oldOverrides.OS != newOverrides.OS ||
-				oldOverrides.OSVersion != newOverrides.OSVersion ||
+				oldOverrides.OSType != newOverrides.OSType ||
+				oldOverrides.Distribution != newOverrides.Distribution ||
+				oldOverrides.DistributionVersion != newOverrides.DistributionVersion ||
 				oldOverrides.Architecture != newOverrides.Architecture {
 				return fmt.Errorf("Cannot override OS information for instance %q after migration has started", instance.UUID)
 			}

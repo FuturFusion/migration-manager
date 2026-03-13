@@ -31,7 +31,7 @@ export interface InstanceProperties {
   memory: number;
   config: Record<string, string>;
   os: string;
-  os_version: string;
+  os_description: string;
   location: string;
   secure_boot: boolean;
   legacy_boot: boolean;
@@ -46,12 +46,9 @@ export interface InstanceProperties {
 
 export interface InstancePropertiesConfigurable {
   name: string;
-  description: string;
   cpus: number;
   memory: number;
   config: Record<string, string>;
-  os: string;
-  os_version: string;
 }
 
 export interface InstanceOverride {
@@ -60,12 +57,12 @@ export interface InstanceOverride {
   disable_migration: boolean;
   ignore_restrictions: boolean;
   name: string;
-  description: string;
   cpus: number;
   memory: number;
   config: Record<string, string>;
-  os: string;
-  os_version: string;
+  distribution: Distribution;
+  distribution_version: string;
+  os_type: OSType;
   started_after_migration: boolean;
   stopped_after_migration: boolean;
 }
@@ -81,7 +78,7 @@ export interface Instance {
   memory: number;
   config: Record<string, string>;
   os: string;
-  os_version: string;
+  os_description: string;
   location: string;
   secure_boot: boolean;
   legacy_boot: boolean;
@@ -89,6 +86,9 @@ export interface Instance {
   running: boolean;
   background_import: boolean;
   architecture: string;
+  distribution: Distribution;
+  distribution_version: string;
+  os_type: OSType;
   nics: InstancePropertiesNIC[];
   disks: InstancePropertiesDisk[];
   snapshots: InstanceSnapshotInfo[];
@@ -102,3 +102,13 @@ export interface InstanceOverrideFormValues {
   memory: string;
   config: Record<string, string>;
 }
+
+type OSType = "linux" | "windows" | "fortigate";
+type Distribution =
+  | "debian"
+  | "ubuntu"
+  | "oracle"
+  | "centos"
+  | "rhel"
+  | "suse"
+  | "other";

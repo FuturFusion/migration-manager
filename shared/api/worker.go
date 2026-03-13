@@ -40,17 +40,17 @@ type WorkerCommand struct {
 	// Source for the worker to fetch VM metadata and/or disk from.
 	Source json.RawMessage `json:"source" yaml:"source"`
 
-	// The name of the operating system
-	// Example: Ubuntu
-	OS string `json:"os" yaml:"os"`
-
-	// The version of the operating system
-	// Example: 24.04
-	OSVersion string `json:"os_version" yaml:"os_version"`
-
 	// Operating system type
 	// Example: linux
 	OSType OSType `json:"os_type" yaml:"os_type"`
+
+	// Distribution name used for specific post-migration handling.
+	// Example: "RHEL"
+	Distribution Distro `json:"distribution" yaml:"distribution"`
+
+	// Distribution version used for specific post-migration handling.
+	// Example: 7
+	DistributionVersion string `json:"distribution_version" yaml:"distribution_version"`
 
 	// Architecture of the instance
 	// Example: x86_64

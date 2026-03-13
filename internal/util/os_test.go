@@ -47,7 +47,10 @@ func TestMapWindowsVersionToAbbrevSuccess(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := util.MapWindowsVersionToAbbrev(tc.name)
+			v, err := util.ToWindowsVersion(tc.name)
+			require.NoError(t, err)
+			require.NoError(t, util.ValidateWindowsVersion(v))
+			got, err := util.MapWindowsVersionToAbbrev(v)
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
 		})
@@ -156,8 +159,9 @@ func TestMapWindowsVersionToAbbrevNotSupported(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := util.MapWindowsVersionToAbbrev(tc.name)
+			v, err := util.ToWindowsVersion(tc.name)
 			require.Error(t, err)
+			require.Error(t, util.ValidateWindowsVersion(v))
 		})
 	}
 }

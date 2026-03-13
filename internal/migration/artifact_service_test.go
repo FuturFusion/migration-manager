@@ -205,7 +205,7 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 					Files:        []string{"virtio-win.iso"},
 				},
 			},
-			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "Windows", Architecture: "x86_64"}}},
+			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{OS: "Windows", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Architecture: "x86_64"}}},
 		},
 		{
 			name:      "success - windoww from vmware (sdk,virtio-win) alt arch name",
@@ -220,7 +220,7 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 					Files:        []string{"virtio-win.iso"},
 				},
 			},
-			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "Windows", Architecture: "x86_64"}}},
+			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{OS: "Windows", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Architecture: "x86_64"}}},
 		},
 		{
 			name:      "success - fortigate from vmware (sdk,kvm-img)",
@@ -236,7 +236,8 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 				},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{
-				InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Description: "FortiGate", Architecture: "x86_64"},
+				Description:                    "FortiGate",
+				InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Architecture: "x86_64"},
 			}},
 		},
 		{
@@ -249,7 +250,8 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 				},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{
-				InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Description: "FortiGate", Architecture: "x86_64"},
+				Description:                    "FortiGate",
+				InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Architecture: "x86_64"},
 			}},
 		},
 		{
@@ -266,7 +268,8 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 				},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{
-				InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Description: "FortiGate", Architecture: "aarch64"},
+				Description:                    "FortiGate",
+				InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Architecture: "aarch64"},
 			}},
 		},
 		{
@@ -277,7 +280,8 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 				{ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_OSIMAGE, ArtifactPut: api.ArtifactPut{OS: api.OSTYPE_FORTIGATE, Architectures: []string{"x86_64"}}}},
 			},
 			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{
-				InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Description: "FortiGate", Architecture: "x86_64"},
+				Description:                    "FortiGate",
+				InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Architecture: "x86_64"},
 			}},
 		},
 		{
@@ -289,7 +293,7 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 					Files:        []string{"virtio-win.iso"},
 				},
 			},
-			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "Windows", Architecture: "x86_64"}}},
+			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{OS: "Windows", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Architecture: "x86_64"}}},
 		},
 		{
 			name:      "error - windows from vmware (virtio-win architecture doesnt match)",
@@ -304,13 +308,13 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 					Files:        []string{"virtio-win.iso"},
 				},
 			},
-			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "Windows", Architecture: "aarch64"}}},
+			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{OS: "Windows", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Architecture: "aarch64"}}},
 		},
 		{
 			name:      "error - windows from vmware (no artifacts)",
 			assertErr: require.Error,
 			artifacts: []api.Artifact{},
-			instance:  migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "Windows", Architecture: "x86_64"}}},
+			instance:  migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{OS: "Windows", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Architecture: "x86_64"}}},
 		},
 		{
 			name:      "error - windows from vmware (empty matching artifacts)",
@@ -319,7 +323,7 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 				{ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_SDK, ArtifactPut: api.ArtifactPut{SourceType: api.SOURCETYPE_VMWARE}}},
 				{ArtifactPost: api.ArtifactPost{Type: api.ARTIFACTTYPE_OSIMAGE, ArtifactPut: api.ArtifactPut{OS: api.OSTYPE_WINDOWS, Architectures: []string{"x86_64"}}}},
 			},
-			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{OS: "Windows", Architecture: "x86_64"}}},
+			instance: migration.Instance{SourceType: api.SOURCETYPE_VMWARE, Properties: api.InstanceProperties{OS: "Windows", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Architecture: "x86_64"}}},
 		},
 		{
 			name:      "error - linux from vmware (no sdk)",

@@ -738,7 +738,7 @@ func (d *Daemon) syncInstancesFromSource(ctx context.Context, sourceName string,
 		log.Debug("Comparing instance")
 
 		instanceIncomplete := false
-		if srcInst.Properties.Architecture == "" || srcInst.Properties.OS == "" || srcInst.Properties.OSVersion == "" {
+		if srcInst.Properties.Architecture == "" || srcInst.Properties.OS == "" || srcInst.Properties.OSDescription == "" {
 			instanceIncomplete = true
 		}
 

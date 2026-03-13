@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/lxc/incus/v6/shared/osarch"
 	"github.com/lxc/incus/v6/shared/validate"
 
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -63,6 +66,45 @@ func (i Instance) Validate() error {
 		}
 	}
 
+	osType := i.GetOSType()
+	err := api.ValidateOSType(string(osType))
+	if err != nil {
+		return NewValidationErrf("Invalid instance OS type %q: %v", osType, err)
+	}
+
+	distro, version := i.GetDistribution()
+	err = api.ValidateDistribution(string(distro))
+	if err != nil {
+		return NewValidationErrf("Invalid instance OS distribution %q: %v", distro, err)
+	}
+
+	switch osType {
+	case api.OSTYPE_FORTIGATE:
+		if distro != api.DISTRO_OTHER {
+			return NewValidationErrf("FortiGate distribution must be %q, not %q", api.DISTRO_OTHER, distro)
+		}
+
+	case api.OSTYPE_LINUX:
+		if version != "" {
+			if distro == api.DISTRO_RHEL || distro == api.DISTRO_ORACLE || distro == api.DISTRO_CENTOS {
+				_, err := strconv.Atoi(version)
+				if err != nil {
+					return NewValidationErrf("Failed to parse distribution version %q for %q: %v", version, distro, err)
+				}
+			}
+		}
+
+	case api.OSTYPE_WINDOWS:
+		if distro != api.DISTRO_OTHER {
+			return NewValidationErrf("Windows distribution must be %q, not %q", api.DISTRO_OTHER, distro)
+		}
+
+		err := util.ValidateWindowsVersion(version)
+		if err != nil {
+			return NewValidationErrf("Windows distribution version %q is invalid: %v", version, err)
+		}
+	}
+
 	return nil
 }
 
@@ -83,8 +125,9 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 		return fmt.Errorf("Instance name %q is not a valid hostname: %w", props.Name, err)
 	}
 
-	if props.OS == "" || props.OSVersion == "" {
-		if !overrides.AllowUnknownOS {
+	if props.OS == "" || props.OSDescription == "" {
+		osOverridden := i.Overrides.Distribution != "" || i.Overrides.OSType != ""
+		if !overrides.AllowUnknownOS && !osOverridden {
 			return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
 		}
 	}
@@ -160,6 +203,10 @@ func (i *Instance) GetOSType() api.OSType {
 	props := i.Properties
 	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 
+	if i.Overrides.OSType != "" {
+		return i.Overrides.OSType
+	}
+
 	if strings.HasPrefix(strings.ToLower(props.OS), "win") {
 		return api.OSTYPE_WINDOWS
 	}
@@ -169,6 +216,75 @@ func (i *Instance) GetOSType() api.OSType {
 	}
 
 	return api.OSTYPE_LINUX
+}
+
+// GetDistribution returns the distribution and version for the OS type.
+func (i *Instance) GetDistribution() (api.Distro, string) {
+	props := i.Properties
+	props.Apply(i.Overrides.InstancePropertiesConfigurable)
+	osVersion := props.OSDescription
+
+	distroVersion := ""
+	distro := api.DISTRO_OTHER
+
+	osType := i.GetOSType()
+	switch i.SourceType {
+	case api.SOURCETYPE_VMWARE:
+		switch osType {
+		case api.OSTYPE_FORTIGATE:
+		case api.OSTYPE_WINDOWS:
+			var err error
+			distroVersion, err = util.ToWindowsVersion(osVersion)
+			if err != nil {
+				distroVersion = ""
+				slog.Error("Unable to determine windows version", slog.Any("error", err))
+			}
+
+		case api.OSTYPE_LINUX:
+			// Get the disto's major version, if possible.
+			versionRegex := regexp.MustCompile(`^[\w /]+?(\d+)(\.\d+)?( \(\w+\))?$`)
+			if strings.Contains(strings.ToLower(osVersion), "centos") {
+				distro = api.DISTRO_CENTOS
+			} else if strings.Contains(strings.ToLower(osVersion), "debian") {
+				distro = api.DISTRO_DEBIAN
+			} else if strings.Contains(strings.ToLower(osVersion), "opensuse") || strings.HasPrefix(strings.ToLower(osVersion), "suse") || strings.Contains(strings.ToLower(osVersion), "sles") {
+				distro = api.DISTRO_SUSE
+			} else if strings.Contains(strings.ToLower(osVersion), "oracle") {
+				distro = api.DISTRO_ORACLE
+			} else if slices.ContainsFunc([]string{"rhel", "redhat", "red-hat", "red hat"}, func(s string) bool {
+				return strings.Contains(strings.ToLower(osVersion), s)
+			}) {
+				distro = api.DISTRO_RHEL
+			} else if strings.Contains(strings.ToLower(osVersion), "ubuntu") {
+				// For Ubuntu, try to parse the whole YY.MM version.
+				versionRegex = regexp.MustCompile(`^[\w ]+?(\d+\.\d+)?(\.\d+)?( LTS)?$`)
+				distro = api.DISTRO_UBUNTU
+			}
+
+			matches := versionRegex.FindStringSubmatch(osVersion)
+			if len(matches) > 1 {
+				distroVersion = versionRegex.FindStringSubmatch(osVersion)[1]
+			}
+
+			if distro != api.DISTRO_UBUNTU && distroVersion != "" {
+				_, err := strconv.Atoi(distroVersion)
+				if err != nil {
+					slog.Warn("Failed to parse distribution version", slog.String("version", distroVersion), slog.String("distro", string(distro)))
+					distroVersion = ""
+				}
+			}
+		}
+	}
+
+	if i.Overrides.Distribution != "" {
+		distro = i.Overrides.Distribution
+	}
+
+	if i.Overrides.DistributionVersion != "" {
+		distroVersion = i.Overrides.DistributionVersion
+	}
+
+	return distro, distroVersion
 }
 
 func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
@@ -228,9 +344,9 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 		instanceUpdated = true
 	}
 
-	if inst.Properties.OSVersion != srcInst.Properties.OSVersion && srcInst.Properties.OSVersion != "" {
-		log.Debug("Instance os version changed", slog.String("new", srcInst.Properties.OSVersion), slog.String("old", inst.Properties.OSVersion))
-		inst.Properties.OSVersion = srcInst.Properties.OSVersion
+	if inst.Properties.OSDescription != srcInst.Properties.OSDescription && srcInst.Properties.OSDescription != "" {
+		log.Debug("Instance os version changed", slog.String("new", srcInst.Properties.OSDescription), slog.String("old", inst.Properties.OSDescription))
+		inst.Properties.OSDescription = srcInst.Properties.OSDescription
 		instanceUpdated = true
 	}
 
@@ -441,12 +557,16 @@ func (i Instance) CompileIncludeExpression(expression string, locationAlias bool
 type Instances []Instance
 
 func (i Instance) ToAPI() api.Instance {
+	distro, distroVersion := i.GetDistribution()
 	apiInst := api.Instance{
 		Source:               i.Source,
 		SourceType:           i.SourceType,
 		LastUpdateFromSource: i.LastUpdateFromSource,
 		InstanceProperties:   i.Properties,
 		Overrides:            i.Overrides,
+		OSType:               i.GetOSType(),
+		Distribution:         distro,
+		DistributionVersion:  distroVersion,
 	}
 
 	return apiInst

@@ -4,7 +4,13 @@ import DataTable from "components/DataTable.tsx";
 import InstanceActions from "components/InstanceActions";
 import ItemOverride from "components/ItemOverride";
 import { Instance } from "types/instance";
-import { bytesToHumanReadable, hasOverride } from "util/instance";
+import {
+  osName,
+  bytesToHumanReadable,
+  hasOverride,
+  Distribution,
+  OSType,
+} from "util/instance";
 
 interface Props {
   instances: Instance[];
@@ -25,7 +31,7 @@ const InstanceDataTable: FC<Props> = ({ instances, isLoading, error }) => {
     );
   }
 
-  const headers = ["Source", "Location", "OS version", "CPU", "Memory", ""];
+  const headers = ["Source", "Location", "OS", "Version", "CPU", "Memory", ""];
   const rows = instances.map((item) => {
     const className =
       item.overrides?.disable_migration === true ? "item-deleted" : "";
@@ -52,8 +58,49 @@ const InstanceDataTable: FC<Props> = ({ instances, isLoading, error }) => {
           class: className,
         },
         {
-          content: item.os_version,
-          sortKey: item.os_version,
+          content: (
+            <ItemOverride
+              original={osName(
+                item.os_type as OSType,
+                item.distribution as Distribution,
+              )}
+              override={
+                item.overrides &&
+                osName(
+                  (item.overrides.os_type ?? item.os_type) as OSType,
+                  (item.overrides.distribution ??
+                    item.distribution) as Distribution,
+                )
+              }
+              showOverride={
+                isOverrideDefined &&
+                (item.overrides.os_type.toString() !== "" ||
+                  item.overrides.distribution.toString() !== "")
+              }
+            />
+          ),
+          sortKey:
+            isOverrideDefined && item.overrides.os_type.toString() !== ""
+              ? item.overrides.os_type
+              : item.os_type,
+          class: className,
+        },
+        {
+          content: (
+            <ItemOverride
+              original={item.distribution_version}
+              override={item.overrides && item.overrides.distribution_version}
+              showOverride={
+                isOverrideDefined &&
+                item.overrides.distribution_version.toString() !== ""
+              }
+            />
+          ),
+          sortKey:
+            isOverrideDefined &&
+            item.overrides.distribution_version.toString() !== ""
+              ? item.overrides.distribution_version
+              : item.distribution_version,
           class: className,
         },
         {

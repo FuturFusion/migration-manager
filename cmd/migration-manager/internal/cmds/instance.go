@@ -95,9 +95,9 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	// Render the table.
-	header := []string{"UUID", "Source", "Location", "OS Version", "CPUs", "Memory", "Background Import", "Migration Disabled", "Running", "Last Update from Source"}
+	header := []string{"UUID", "Source", "Location", "OS Type", "Distro", "Version", "CPUs", "Memory", "Background Import", "Migration Disabled", "Running", "Last Update from Source"}
 	if c.flagVerbose {
-		header = []string{"UUID", "Location", "Description", "Source", "Last Update from Source", "Architecture", "OS", "OS Version", "Disks", "NICs", "CPUs", "Memory", "Legacy Boot", "Secure Boot", "TPM", "Background Import", "Migration Disabled", "Running"}
+		header = []string{"UUID", "Location", "Description", "Source", "Last Update from Source", "Architecture", "OS Type", "Distro", "Version", "OS Name", "OS Description", "Disks", "NICs", "CPUs", "Memory", "Legacy Boot", "Secure Boot", "TPM", "Background Import", "Migration Disabled", "Running"}
 	}
 
 	data := [][]string{}
@@ -106,7 +106,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 		props := i.InstanceProperties
 		props.Apply(i.Overrides.InstancePropertiesConfigurable)
 
-		row := []string{props.UUID.String(), i.Source, props.Location, props.OSVersion, strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.BackgroundImport), strconv.FormatBool(i.Overrides.DisableMigration), strconv.FormatBool(i.Running), i.LastUpdateFromSource.String()}
+		row := []string{props.UUID.String(), i.Source, props.Location, string(i.OSType), string(i.Distribution), i.DistributionVersion, strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.BackgroundImport), strconv.FormatBool(i.Overrides.DisableMigration), strconv.FormatBool(i.Running), i.LastUpdateFromSource.String()}
 
 		if c.flagVerbose {
 			disks := []string{}
@@ -119,7 +119,7 @@ func (c *cmdInstanceList) Run(cmd *cobra.Command, args []string) error {
 				nics = append(nics, nic.HardwareAddress+" ("+nic.Location+", "+nic.SourceSpecificID+")")
 			}
 
-			row = []string{props.UUID.String(), props.Location, props.Description, i.Source, i.LastUpdateFromSource.String(), props.Architecture, props.OS, props.OSVersion, strings.Join(disks, "\n"), strings.Join(nics, "\n"), strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.LegacyBoot), strconv.FormatBool(props.SecureBoot), strconv.FormatBool(props.TPM), strconv.FormatBool(props.BackgroundImport), strconv.FormatBool(i.Overrides.DisableMigration), strconv.FormatBool(props.Running)}
+			row = []string{props.UUID.String(), props.Location, props.Description, i.Source, i.LastUpdateFromSource.String(), props.Architecture, string(i.OSType), string(i.Distribution), i.DistributionVersion, props.OS, props.OSDescription, strings.Join(disks, "\n"), strings.Join(nics, "\n"), strconv.Itoa(int(props.CPUs)), units.GetByteSizeStringIEC(props.Memory, 2), strconv.FormatBool(props.LegacyBoot), strconv.FormatBool(props.SecureBoot), strconv.FormatBool(props.TPM), strconv.FormatBool(props.BackgroundImport), strconv.FormatBool(i.Overrides.DisableMigration), strconv.FormatBool(props.Running)}
 		}
 
 		data = append(data, row)

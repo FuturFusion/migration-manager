@@ -1775,10 +1775,10 @@ func TestInternalBatch_InstanceMatchesCriteria(t *testing.T) {
 
 			instance := migration.Instance{
 				Properties: api.InstanceProperties{
+					OS: "Ubuntu 22.04",
 					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{
 						CPUs:   2,
 						Memory: 1024 * 1024 * 1024 * 4,
-						OS:     "Ubuntu 22.04",
 						Name:   "c",
 					},
 					Location: "/a/b/c",

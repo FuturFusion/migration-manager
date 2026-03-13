@@ -23,6 +23,18 @@ type InstanceProperties struct {
 	// Example: /path/to/instance_name
 	Location string `json:"location" yaml:"location" expr:"location"`
 
+	// Description of the Instance.
+	// Example: Windows Server 2025
+	Description string `json:"description" yaml:"description" expr:"description"`
+
+	// OS name of the Instance.
+	// Example: Ubuntu
+	OS string `json:"os" yaml:"os" expr:"os"`
+
+	// OS version of the Instance.
+	// Example: 24.04
+	OSDescription string `json:"os_description" yaml:"os_description" expr:"os_description"`
+
 	// Whether the Instance has secure-boot enabled.
 	// Example: true
 	SecureBoot bool `json:"secure_boot" yaml:"secure_boot" expr:"secure_boot"`
@@ -59,10 +71,6 @@ type InstancePropertiesConfigurable struct {
 	// Example: myVM
 	Name string `json:"name" yaml:"name" expr:"name"`
 
-	// Description of the Instance.
-	// Example: Windows Server 2025
-	Description string `json:"description" yaml:"description" expr:"description"`
-
 	// Number of CPUs assigned to the Instance.
 	// Example: 4
 	CPUs int64 `json:"cpus" yaml:"cpus" expr:"cpus"`
@@ -73,14 +81,6 @@ type InstancePropertiesConfigurable struct {
 
 	// Additional configuration of the Instance.
 	Config map[string]string `json:"config" yaml:"config" expr:"config"`
-
-	// OS name of the Instance.
-	// Example: Ubuntu
-	OS string `json:"os" yaml:"os" expr:"os"`
-
-	// OS version of the Instance.
-	// Example: 24.04
-	OSVersion string `json:"os_version" yaml:"os_version" expr:"os_version"`
 
 	// Architecture of the Instance.
 	// Example: x86_64
@@ -158,18 +158,6 @@ func (i InstanceProperties) SupportsBackgroundImport() bool {
 func (i *InstanceProperties) Apply(cfg InstancePropertiesConfigurable) {
 	if cfg.Name != "" {
 		i.Name = cfg.Name
-	}
-
-	if cfg.Description != "" {
-		i.Description = cfg.Description
-	}
-
-	if cfg.OS != "" {
-		i.OS = cfg.OS
-	}
-
-	if cfg.OSVersion != "" {
-		i.OSVersion = cfg.OSVersion
 	}
 
 	if cfg.Architecture != "" {
