@@ -84,4 +84,7 @@ type Source interface {
 	//
 	// Returns an error if there was a problem starting the VM.
 	PowerOnVM(ctx context.Context, vmName string) error
+
+	// Dump source data.
+	Dump(ctx context.Context) error
 }
