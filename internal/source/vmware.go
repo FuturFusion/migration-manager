@@ -417,9 +417,9 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 	}
 
 	if inst.GetOSType() == api.OSTYPE_WINDOWS {
-		_, err := util.MapWindowsVersionToAbbrev(inst.Properties.OSVersion)
+		_, err := util.ToWindowsVersion(inst.Properties.OSVersion)
 		if err != nil {
-			return nil, api.InstanceImportFailed, fmt.Errorf("Failed to determine OS version for Windows VM %q: %w", inst.Properties.Location, err)
+			return nil, api.InstanceImportFailed, fmt.Errorf("Failed to determine OS distribution version %q for Windows VM %q: %w", inst.Properties.OSVersion, inst.Properties.Location, err)
 		}
 	}
 
