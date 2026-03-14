@@ -150,12 +150,17 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 			return fmt.Errorf("Failed to parse %q source %q: %w", src.SourceType, src.Name, err)
 		}
 
-		err = is.Connect(ctx)
+		slog.Info("Verifying background import support")
+		timeoutCtx, cancel := context.WithTimeout(ctx, is.Timeout())
+
+		err = is.Connect(timeoutCtx)
 		if err != nil {
+			cancel()
 			return fmt.Errorf("Failed to connect to %q source %q: %w", src.SourceType, src.Name, err)
 		}
 
-		verifiedVMs, err := is.VerifyBackgroundImport(ctx, instances)
+		verifiedVMs, err := is.VerifyBackgroundImport(timeoutCtx, instances)
+		cancel()
 		if err != nil {
 			return fmt.Errorf("Failed to verify VM background import support for source %q: %w", srcName, err)
 		}
@@ -180,6 +185,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 		// Block all entries if we failed to validate the filesystem.
 		if blockedInstances[q.InstanceUUID] != "" {
 			if q.MigrationStatusMessage != blockedInstances[q.InstanceUUID] {
+				slog.Warn("Instance has been blocked from migration", slog.String("location", state[q.BatchName].Instances[q.InstanceUUID].Properties.Location), slog.String("reason", blockedInstances[q.InstanceUUID]))
 				_, err := d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_BLOCKED, blockedInstances[q.InstanceUUID], q.ImportStage, q.GetWindowName())
 				if err != nil {
 					return fmt.Errorf("Failed to unblock queue entry %q: %w", q.InstanceUUID, err)
@@ -207,6 +213,7 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 
 		// If we passed every check, and the old status was Blocked, then unblock the queue entry.
 		if q.MigrationStatus == api.MIGRATIONSTATUS_BLOCKED {
+			slog.Warn("Instance is unblocked", slog.String("location", inst.Properties.Location))
 			_, err = d.queue.UpdateStatusByUUID(ctx, inst.UUID, api.MIGRATIONSTATUS_WAITING, "Instance has been unblocked", q.ImportStage, q.GetWindowName())
 			if err != nil {
 				return fmt.Errorf("Failed to unblock queue entry for %q: %w", inst.Properties.Location, err)
@@ -257,6 +264,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 			return nil
 		}
 
+		slog.Info("Beginning import checks", slog.Int("batches", len(migrationState)))
 		// Get all networks so we can determine the target network if not overridden via scriptlet.
 		allNetworks, err = d.network.GetAll(ctx)
 		if err != nil {
@@ -276,12 +284,16 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				return err
 			}
 
+			slog.Info("Fetching target details for placement determination", slog.String("target", it.GetName()))
+			ctx, cancel := context.WithTimeout(ctx, it.Timeout())
 			err = it.Connect(ctx)
 			if err != nil {
+				cancel()
 				return err
 			}
 
 			info, err := it.GetDetails(ctx)
+			cancel()
 			if err != nil {
 				return err
 			}
