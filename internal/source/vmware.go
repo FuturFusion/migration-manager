@@ -537,6 +537,93 @@ func (s *InternalVMwareSource) getAllNetworks(ctx context.Context, networkLocati
 	return networksInUse, nil
 }
 
+func (s *InternalVMwareSource) Dump(ctx context.Context) error {
+	log := slog.With(slog.String("source", s.Name))
+
+	dumpDir := util.CachePath(s.Name + "_dump")
+	err := os.RemoveAll(dumpDir)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(dumpDir, 0o755)
+	if err != nil {
+		return err
+	}
+
+	finder := find.NewFinder(s.govmomiClient.Client)
+	paths := []string{"/..."}
+
+	if len(s.Datacenters) > 0 {
+		paths = s.Datacenters
+	}
+
+	vmRefs := []*object.VirtualMachine{}
+	for _, p := range paths {
+		var notFoundErr *find.NotFoundError
+		log.Debug("Fetching VMs from source")
+		pathVMs, err := finder.VirtualMachineList(ctx, p)
+		if err != nil {
+			if !errors.As(err, &notFoundErr) {
+				return err
+			}
+
+			log.Warn("Registered source has no VMs in path", slog.String("path", p))
+		}
+
+		vmRefs = append(vmRefs, pathVMs...)
+	}
+
+	if len(vmRefs) == 0 {
+		return fmt.Errorf("No VMs found on the source")
+	}
+
+	for _, vm := range vmRefs {
+		log := slog.With(slog.String("location", vm.InventoryPath), slog.String("source", s.Name))
+		// Ignore any vCLS instances.
+		if strings.HasPrefix(vm.Name(), "vCLS-") {
+			log.Info("Ignoring vCLS tagged VM")
+			continue
+		}
+
+		ctx, cancel := context.WithTimeout(ctx, s.SyncTimeout.Duration)
+		var vmProperties mo.VirtualMachine
+		cancel()
+		err := vm.Properties(ctx, vm.Reference(), []string{}, &vmProperties)
+		if err != nil {
+			return fmt.Errorf("Failed to fetch VMware properties for VM %q: %w", vm.InventoryPath, err)
+		}
+
+		// If a VM has no configuration, then it's just a stub, so skip it.
+		if vmProperties.Config == nil {
+			log.Info("Skipping VM with no configuration")
+			continue
+		}
+
+		// Skip VM templates.
+		if vmProperties.Config.Template {
+			log.Info("Skipping VM template")
+			continue
+		}
+
+		b, err := json.Marshal(vmProperties)
+		if err != nil {
+			log.Error("Failed to parse VM properties", slog.Any("error", err))
+			continue
+		}
+
+		// Dump the VM properties to the cache dir on errors.
+		fileName := filepath.Join(dumpDir, strings.ReplaceAll(vm.InventoryPath, "/", "_"))
+		err = os.WriteFile(fileName, b, 0o644)
+		if err != nil {
+			log.Error("Failed to write VM properties", slog.Any("error", err))
+			continue
+		}
+	}
+
+	return nil
+}
+
 // GetBackgroundImport returns the background import support property of an instance by its UUID.
 func (s *InternalVMwareSource) GetBackgroundImport(ctx context.Context, instUUID uuid.UUID) (bool, error) {
 	obj, err := object.NewSearchIndex(s.govmomiClient.Client).FindByUuid(ctx, nil, instUUID.String(), true, ptr.To(true))

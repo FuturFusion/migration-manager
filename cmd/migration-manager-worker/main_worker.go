@@ -51,7 +51,7 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 	}
 
 	client := internalUtil.UnixHTTPClient("/dev/incus/sock")
-	w, err := worker.NewWorker(cmd.Context(), client)
+	w, err := worker.NewWorker(cmd.Context(), client, c.global.flagLogFile)
 	if err != nil {
 		return err
 	}

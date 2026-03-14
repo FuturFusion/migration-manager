@@ -1334,7 +1334,12 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 			queueSvc := migration.NewQueueService(repo, batchSvc, instanceSvc, sourceSvc, targetSvc, nil)
 
 			// Run test
-			_, err := queueSvc.ProcessWorkerUpdate(context.Background(), tc.uuidArg, tc.workerResponseTypeArg, tc.statusStringArg)
+			resp := api.WorkerResponse{
+				Status:        tc.workerResponseTypeArg,
+				StatusMessage: tc.statusStringArg,
+			}
+
+			_, err := queueSvc.ProcessWorkerUpdate(context.Background(), tc.uuidArg, resp)
 
 			// Assert
 			tc.assertErr(t, err)

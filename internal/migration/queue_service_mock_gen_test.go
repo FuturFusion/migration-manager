@@ -58,7 +58,7 @@ var _ migration.QueueService = &QueueServiceMock{}
 //			NewWorkerCommandByInstanceUUIDFunc: func(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error) {
 //				panic("mock out the NewWorkerCommandByInstanceUUID method")
 //			},
-//			ProcessWorkerUpdateFunc: func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.QueueEntry, error) {
+//			ProcessWorkerUpdateFunc: func(ctx context.Context, id uuid.UUID, workerResp api.WorkerResponse) (migration.QueueEntry, error) {
 //				panic("mock out the ProcessWorkerUpdate method")
 //			},
 //			RetryByUUIDFunc: func(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) (*migration.QueueEntry, error) {
@@ -117,7 +117,7 @@ type QueueServiceMock struct {
 	NewWorkerCommandByInstanceUUIDFunc func(ctx context.Context, id uuid.UUID) (migration.WorkerCommand, error)
 
 	// ProcessWorkerUpdateFunc mocks the ProcessWorkerUpdate method.
-	ProcessWorkerUpdateFunc func(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.QueueEntry, error)
+	ProcessWorkerUpdateFunc func(ctx context.Context, id uuid.UUID, workerResp api.WorkerResponse) (migration.QueueEntry, error)
 
 	// RetryByUUIDFunc mocks the RetryByUUID method.
 	RetryByUUIDFunc func(ctx context.Context, id uuid.UUID, networkSvc migration.NetworkService) (*migration.QueueEntry, error)
@@ -225,10 +225,8 @@ type QueueServiceMock struct {
 			Ctx context.Context
 			// ID is the id argument value.
 			ID uuid.UUID
-			// WorkerResponseTypeArg is the workerResponseTypeArg argument value.
-			WorkerResponseTypeArg api.WorkerResponseType
-			// StatusMessage is the statusMessage argument value.
-			StatusMessage string
+			// WorkerResp is the workerResp argument value.
+			WorkerResp api.WorkerResponse
 		}
 		// RetryByUUID holds details about calls to the RetryByUUID method.
 		RetryByUUID []struct {
@@ -727,25 +725,23 @@ func (mock *QueueServiceMock) NewWorkerCommandByInstanceUUIDCalls() []struct {
 }
 
 // ProcessWorkerUpdate calls ProcessWorkerUpdateFunc.
-func (mock *QueueServiceMock) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseTypeArg api.WorkerResponseType, statusMessage string) (migration.QueueEntry, error) {
+func (mock *QueueServiceMock) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResp api.WorkerResponse) (migration.QueueEntry, error) {
 	if mock.ProcessWorkerUpdateFunc == nil {
 		panic("QueueServiceMock.ProcessWorkerUpdateFunc: method is nil but QueueService.ProcessWorkerUpdate was just called")
 	}
 	callInfo := struct {
-		Ctx                   context.Context
-		ID                    uuid.UUID
-		WorkerResponseTypeArg api.WorkerResponseType
-		StatusMessage         string
+		Ctx        context.Context
+		ID         uuid.UUID
+		WorkerResp api.WorkerResponse
 	}{
-		Ctx:                   ctx,
-		ID:                    id,
-		WorkerResponseTypeArg: workerResponseTypeArg,
-		StatusMessage:         statusMessage,
+		Ctx:        ctx,
+		ID:         id,
+		WorkerResp: workerResp,
 	}
 	mock.lockProcessWorkerUpdate.Lock()
 	mock.calls.ProcessWorkerUpdate = append(mock.calls.ProcessWorkerUpdate, callInfo)
 	mock.lockProcessWorkerUpdate.Unlock()
-	return mock.ProcessWorkerUpdateFunc(ctx, id, workerResponseTypeArg, statusMessage)
+	return mock.ProcessWorkerUpdateFunc(ctx, id, workerResp)
 }
 
 // ProcessWorkerUpdateCalls gets all the calls that were made to ProcessWorkerUpdate.
@@ -753,16 +749,14 @@ func (mock *QueueServiceMock) ProcessWorkerUpdate(ctx context.Context, id uuid.U
 //
 //	len(mockedQueueService.ProcessWorkerUpdateCalls())
 func (mock *QueueServiceMock) ProcessWorkerUpdateCalls() []struct {
-	Ctx                   context.Context
-	ID                    uuid.UUID
-	WorkerResponseTypeArg api.WorkerResponseType
-	StatusMessage         string
+	Ctx        context.Context
+	ID         uuid.UUID
+	WorkerResp api.WorkerResponse
 } {
 	var calls []struct {
-		Ctx                   context.Context
-		ID                    uuid.UUID
-		WorkerResponseTypeArg api.WorkerResponseType
-		StatusMessage         string
+		Ctx        context.Context
+		ID         uuid.UUID
+		WorkerResp api.WorkerResponse
 	}
 	mock.lockProcessWorkerUpdate.RLock()
 	calls = mock.calls.ProcessWorkerUpdate

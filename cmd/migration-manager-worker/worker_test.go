@@ -91,7 +91,7 @@ func TestNewWorker(t *testing.T) {
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := worker.NewWorker(context.Background(), client)
+			_, err := worker.NewWorker(context.Background(), client, "/tmp/foo")
 			tc.assertErr(t, err)
 		})
 
@@ -486,6 +486,7 @@ func TestRun(t *testing.T) {
 
 			worker, err := worker.NewWorker(context.Background(), client,
 				// Inject source into worker.
+				"/tmp/foo",
 				worker.WithSource(source),
 				// No need to wait for a long time during tests.
 				worker.WithIdleSleep(1*time.Microsecond),

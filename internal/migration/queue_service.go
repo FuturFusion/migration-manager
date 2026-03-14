@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"slices"
 	"sync"
 	"time"
@@ -15,6 +16,7 @@ import (
 	incusAPI "github.com/lxc/incus/v6/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -507,7 +509,7 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 	return workerCommand, nil
 }
 
-func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResponseType api.WorkerResponseType, statusMessage string) (QueueEntry, error) {
+func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, workerResp api.WorkerResponse) (QueueEntry, error) {
 	var entry *QueueEntry
 
 	err := transaction.Do(ctx, func(ctx context.Context) error {
@@ -524,9 +526,9 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 		}
 
 		// Process the response.
-		switch workerResponseType {
+		switch workerResp.Status {
 		case api.WORKERRESPONSE_RUNNING:
-			entry.MigrationStatusMessage = statusMessage
+			entry.MigrationStatusMessage = workerResp.StatusMessage
 
 		case api.WORKERRESPONSE_SUCCESS:
 			switch entry.MigrationStatus {
@@ -547,11 +549,17 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 			}
 
 		case api.WORKERRESPONSE_FAILED:
+			if entry.MigrationStatus != api.MIGRATIONSTATUS_ERROR && workerResp.Metadata != nil {
+				err := os.WriteFile(util.CachePath(fmt.Sprintf("worker_log_%s", time.Now().Format(time.RFC3339))), workerResp.Metadata, 0o644)
+				if err != nil {
+					slog.Error("Failed to write worker log", slog.Any("error", err))
+				}
+			}
 			entry.MigrationStatus = api.MIGRATIONSTATUS_ERROR
-			entry.MigrationStatusMessage = statusMessage
+			entry.MigrationStatusMessage = workerResp.StatusMessage
 		}
 
-		if workerResponseType != api.WORKERRESPONSE_RUNNING {
+		if workerResp.Status != api.WORKERRESPONSE_RUNNING {
 			instance, err := s.instance.GetByUUID(ctx, id)
 			if err != nil {
 				return fmt.Errorf("Failed to get instance %q: %w", id, err)
@@ -563,7 +571,7 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 
 		// Update instance in the database.
 		uuid := entry.InstanceUUID
-		entry.LastWorkerStatus = workerResponseType
+		entry.LastWorkerStatus = workerResp.Status
 		err = s.Update(ctx, entry)
 		if err != nil {
 			return fmt.Errorf("Failed updating instance '%s': %w", uuid, err)

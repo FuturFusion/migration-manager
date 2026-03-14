@@ -221,7 +221,7 @@ func workerUpdatePost(d *Daemon, r *http.Request) response.Response {
 		return response.BadRequest(err)
 	}
 
-	updatedEntry, err := d.queue.ProcessWorkerUpdate(r.Context(), instanceUUID, resp.Status, resp.StatusMessage)
+	updatedEntry, err := d.queue.ProcessWorkerUpdate(r.Context(), instanceUUID, resp)
 	if err != nil {
 		return response.SmartError(err)
 	}

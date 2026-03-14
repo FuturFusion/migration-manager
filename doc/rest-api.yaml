@@ -2675,6 +2675,24 @@ paths:
             summary: Update the source
             tags:
                 - sources
+    /1.0/sources/{name}/:dump:
+        post:
+            description: Dump raw VM properties from the source into the cache directory.
+            operationId: source_dump
+            produces:
+                - application/json
+            responses:
+                "200":
+                    $ref: '#/responses/EmptySyncResponse'
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Dump source data
+            tags:
+                - sources
     /1.0/sources/{name}/:sync:
         post:
             description: Perform a sync to fetch new source data from a specified source.
