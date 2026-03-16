@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -48,7 +49,7 @@ func init() {
 	_ = pongo2.RegisterFilter("toHex", toHex)
 }
 
-func DetermineWindowsPartitions() (mainParent string, base string, recoveryParent string, recovery string, ok bool, err error) {
+func DetermineWindowsPartitions(code string) (mainParent string, base string, recoveryParent string, recovery string, ok bool, err error) {
 	partitions, err := internalUtil.ScanPartitions("")
 	if err != nil {
 		return "", "", "", "", false, err
@@ -71,12 +72,46 @@ func DetermineWindowsPartitions() (mainParent string, base string, recoveryParen
 	}
 
 	if base == "" || mainParent == "" {
-		b, err := json.Marshal(partitions)
-		if err != nil {
-			return "", "", "", "", false, err
+		// Windows 2008 and 2012 don't have partition labels, so instead we'll pick the first partition with a Windows and Users directory.
+		if strings.HasPrefix(code, "2k8") || strings.HasPrefix(code, "2k12") {
+			idx := slices.IndexFunc(partitions.BlockDevices, func(p internalUtil.LSBLKFields) bool { return p.Serial == "incus_root" })
+			if idx >= 0 {
+				for _, child := range partitions.BlockDevices[idx].Children {
+					if child.PartLabel != "" || child.PartTypeName != "" {
+						continue
+					}
+
+					list, err := subprocess.RunCommand("ntfsls", "/dev/"+child.Name)
+					if err != nil {
+						slog.Error("Failed to list NTFS files on partition", slog.String("partition", child.Name), slog.Any("error", err))
+						continue
+					}
+
+					sc := bufio.NewScanner(strings.NewReader(list))
+					var matches int
+					for sc.Scan() {
+						if sc.Text() == "Windows" || sc.Text() == "Users" || sc.Text() == "Program Files" {
+							matches++
+						}
+					}
+
+					if matches == 3 {
+						base = child.Name
+						mainParent = child.PKName
+						break
+					}
+				}
+			}
 		}
 
-		return "", "", "", "", false, fmt.Errorf("Could not determine partitions: %v", string(b))
+		if base == "" || mainParent == "" {
+			b, err := json.Marshal(partitions)
+			if err != nil {
+				return "", "", "", "", false, err
+			}
+
+			return "", "", "", "", false, fmt.Errorf("Could not determine partitions: %v", string(b))
+		}
 	}
 
 	if recovery == "" || recoveryParent == "" {
@@ -148,7 +183,7 @@ func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitect
 
 	defer func() { _ = cleanupClones() }()
 
-	mainParent, mainPartition, recoveryParent, recoveryPartition, recoveryExists, err := DetermineWindowsPartitions()
+	mainParent, mainPartition, recoveryParent, recoveryPartition, recoveryExists, err := DetermineWindowsPartitions(versionCode)
 	if err != nil {
 		return err
 	}
