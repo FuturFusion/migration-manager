@@ -496,14 +496,14 @@ func getBTRFSTopSubvol(partition string) (string, error) {
 	defer func() { _ = DoUnmount(chrootMountPath) }()
 
 	// Get the subvolumes.
-	output, err := subprocess.RunCommand("btrfs", "subvolume", "list", chrootMountPath)
+	output, err := subprocess.RunCommand("btrfs", "subvolume", "get-default", chrootMountPath)
 	if err != nil {
 		return "", err
 	}
 
 	// Get the top level subvolume.
-	submatch := regexp.MustCompile(` top level 5 path (.+)`).FindStringSubmatch(output)
-	if submatch != nil {
+	submatch := regexp.MustCompile(`ID \d+ gen \d+ top level \d+ path (.+)`).FindStringSubmatch(output)
+	if len(submatch) > 1 {
 		return submatch[1], nil
 	}
 
