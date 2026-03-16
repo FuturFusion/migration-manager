@@ -20,6 +20,11 @@ var windowsVersions = map[string]string{
 	"Server 2025":    "2k25",
 }
 
+var windowsAliases = map[string][]string{
+	"Server 2008 R2": {"Server R2 2008"},
+	"Server 2012 R2": {"Server R2 2012"},
+}
+
 // ToWindowsVersion returns the windows version for the given OS description.
 func ToWindowsVersion(desc string) (string, error) {
 	for v := range windowsVersions {
@@ -34,6 +39,15 @@ func ToWindowsVersion(desc string) (string, error) {
 
 		if strings.Contains(desc, compare) {
 			return v, nil
+		}
+
+		aliases, ok := windowsAliases[v]
+		if ok {
+			for _, alias := range aliases {
+				if strings.Contains(desc, alias) {
+					return v, nil
+				}
+			}
 		}
 	}
 
