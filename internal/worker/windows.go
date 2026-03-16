@@ -301,7 +301,8 @@ func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitect
 
 		defer func() { _ = DoUnmount(bitLockerMountPath) }()
 
-		err = DoMount(filepath.Join(bitLockerMountPath, "dislocker-file"), windowsMainMountPath, nil)
+		// Sometimes mount gets confused and tries to mount as ext4, so explicitly set ntfs-3g.
+		err = DoMount(filepath.Join(bitLockerMountPath, "dislocker-file"), windowsMainMountPath, []string{"-o", "loop", "-t", "ntfs-3g"})
 		if err != nil {
 			return err
 		}
