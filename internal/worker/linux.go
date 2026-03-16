@@ -215,10 +215,26 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, mnt["path"])) }() //nolint: revive
 	}
 
-	// Install incus-agent into the VM.
-	err = runScriptInChroot("install-incus-agent.sh")
-	if err != nil {
-		return err
+	var versionInt int
+	if distro != api.DISTRO_UBUNTU && distroVersion != "" {
+		versionInt, err = strconv.Atoi(distroVersion)
+		if err != nil {
+			return fmt.Errorf("Failed to parse distro version %q for distro %q: %w", distroVersion, distro, err)
+		}
+	}
+
+	var noAgent bool
+	switch distro {
+	case api.DISTRO_DEBIAN:
+		noAgent = versionInt > 0 && versionInt < 8
+	}
+
+	if !noAgent {
+		// Install incus-agent into the VM.
+		err = runScriptInChroot("install-incus-agent.sh")
+		if err != nil {
+			return err
+		}
 	}
 
 	switch distro {
@@ -240,13 +256,8 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		}
 
 		if distroVersion != "" {
-			version, err := strconv.Atoi(distroVersion)
-			if err != nil {
-				return fmt.Errorf("Failed to parse distro version %q for distro %q: %w", distroVersion, distro, err)
-			}
-
 			// Setup incus-agent service override for older versions of RHEL.
-			if version <= 7 {
+			if versionInt > 0 && versionInt <= 7 {
 				err := runScriptInChroot("add-incus-agent-override-for-old-systemd.sh")
 				if err != nil {
 					return err
