@@ -232,6 +232,12 @@ EOF
 
 echo "Removing controller 002 system drivers"
 cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
+[ControlSet002]
+
+[ControlSet002\Control]
+
+[ControlSet002\Control\Class]
+
 $(hivexregedit --export --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM" 'ControlSet002\Control\Class' --unsafe-printable-strings |  awk '/^\[/ { s=$0 } /"DriverDesc"=.*VMware (SVGA|.*Pointing|VMCI).*"/ { print s }' | sed -e's/^\[/[-/')
 EOF
 
@@ -242,6 +248,8 @@ EOF
 
 echo "Removing controller 002 system device enumerations"
 cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
+[ControlSet002\Enum]
+
 $(hivexregedit --export --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM" 'ControlSet002\Enum' --unsafe-printable-strings |  awk '/^\[/ { s=$0 } /"DeviceDesc"=.*VMware (SVGA|.*Pointing|VMCI).*"/ { print s }' | sed -e's/^\[/[-/')
 EOF
 
@@ -267,16 +275,15 @@ fi
 
 ## DRIVERS ##
 
+if test -e "${hive_dir}/DRIVERS" ; then
+  echo "Removing driver records"
+  driver_pkgs="$(hivexregedit --export --prefix 'HKLM\DRIVERS' "${hive_dir}/DRIVERS" 'DriverDatabase\DriverPackages'  --unsafe-printable-strings \
+    | awk '/^\[/ {s=$0} ; /"OemPath"=str\(1\):".*\\Program Files\\Common Files\\VMware\\Drivers\\.*"/ { print s }')"
 
+  driver_tags="$(printf "%s" "${driver_pkgs}" | cut -d"\\" -f5 | sed -e 's/\]$//')"
 
-echo "Removing driver records"
-driver_pkgs="$(hivexregedit --export --prefix 'HKLM\DRIVERS' "${hive_dir}/DRIVERS" 'DriverDatabase\DriverPackages'  --unsafe-printable-strings \
-  | awk '/^\[/ {s=$0} ; /"OemPath"=str\(1\):".*\\Program Files\\Common Files\\VMware\\Drivers\\.*"/ { print s }')"
-
-driver_tags="$(printf "%s" "${driver_pkgs}" | cut -d"\\" -f5 | sed -e 's/\]$//')"
-
-echo "Removing driver inf records"
-cat << EOF | hivexregedit --merge --prefix 'HKLM\DRIVERS' "${hive_dir}/DRIVERS"
+  echo "Removing driver inf records"
+  cat << EOF | hivexregedit --merge --prefix 'HKLM\DRIVERS' "${hive_dir}/DRIVERS"
 $(printf "%s" "${driver_pkgs}" | sed -e 's/^\[/[-/')
 $(for tag in ${driver_tags} ; do
  hivexregedit --export --prefix 'HKLM\DRIVERS' "${hive_dir}/DRIVERS" 'DriverDatabase\DriverInfFiles'  --unsafe-printable-strings \
@@ -284,6 +291,8 @@ $(for tag in ${driver_tags} ; do
    | sed -e 's/^\[/[-/'
 done)
 EOF
+
+fi
 
 
 

@@ -3,5 +3,12 @@
 set -e
 
 # Purge VMware tools from the target system.
-apt-get purge -y open-vm-tools open-vm-tools-desktop
+if dpkg -l | grep -q "open-vm-tools-desktop" ; then
+  apt-get purge -y open-vm-tools-desktop
+fi
+
+if dpkg -l | grep -q "open-vm-tools" ; then
+  apt-get purge -y open-vm-tools
+fi
+
 apt-get autopurge -y
