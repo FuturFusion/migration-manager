@@ -77,7 +77,7 @@ func DetermineWindowsPartitions(code string) (mainParent string, base string, re
 			idx := slices.IndexFunc(partitions.BlockDevices, func(p internalUtil.LSBLKFields) bool { return p.Serial == "incus_root" })
 			if idx >= 0 {
 				for _, child := range partitions.BlockDevices[idx].Children {
-					if child.PartLabel != "" || child.PartTypeName != "" {
+					if child.PartLabel != "" {
 						continue
 					}
 

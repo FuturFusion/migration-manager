@@ -24,10 +24,12 @@ fi
 # Disable Virtualization Based Security.
 cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
 [ControlSet001\Control]
+
 [ControlSet001\Control\Lsa]
 "LsaCfgFlags"=dword:00000000
 
 [ControlSet002\Control]
+
 [ControlSet002\Control\Lsa]
 "LsaCfgFlags"=dword:00000000
 EOF
