@@ -8,6 +8,7 @@ import (
 	"github.com/lxc/incus/v6/shared/osarch"
 	"golang.org/x/mod/semver"
 
+	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -49,8 +50,11 @@ func (a Artifact) Validate() error {
 
 		switch a.Properties.OS {
 		case api.OSTYPE_WINDOWS:
-			if len(a.Properties.Versions) > 0 {
-				return NewValidationErrf("Artifact for OS %q does not support versions", a.Properties.OS)
+			for _, v := range a.Properties.Versions {
+				err := util.ValidateWindowsVersion(v)
+				if err != nil {
+					return NewValidationErrf("Artifact version is invalid for OS %q: %v", a.Properties.OS, err)
+				}
 			}
 
 		default:

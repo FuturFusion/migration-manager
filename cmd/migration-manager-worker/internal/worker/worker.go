@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -660,7 +661,7 @@ func (w *Worker) matchDriverArtifact(artifacts []api.Artifact, cmd api.WorkerCom
 	var artifact *api.Artifact
 	for _, a := range artifacts {
 		match := a.Type == api.ARTIFACTTYPE_DRIVER && a.OS == cmd.OSType && util.MatchArchitecture(a.Architectures, cmd.Architecture) == nil
-		if match {
+		if match && (len(a.Versions) == 0 || slices.Contains(a.Versions, cmd.DistributionVersion)) {
 			artifact = &a
 			break
 		}
