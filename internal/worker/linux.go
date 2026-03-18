@@ -237,14 +237,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		}
 	}
 
-	switch distro {
-	case api.DISTRO_DEBIAN, api.DISTRO_UBUNTU:
-		err := runScriptInChroot("debian-purge-open-vm-tools.sh")
-		if err != nil {
-			return err
-		}
-
-	case api.DISTRO_CENTOS, api.DISTRO_ORACLE, api.DISTRO_RHEL:
+	if distro.IsRHELDerivative() {
 		err := runScriptInChroot("redhat-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
@@ -263,6 +256,14 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 					return err
 				}
 			}
+		}
+	}
+
+	switch distro {
+	case api.DISTRO_DEBIAN, api.DISTRO_UBUNTU:
+		err := runScriptInChroot("debian-purge-open-vm-tools.sh")
+		if err != nil {
+			return err
 		}
 
 	case api.DISTRO_SUSE:
