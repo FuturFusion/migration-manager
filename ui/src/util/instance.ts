@@ -25,6 +25,7 @@ export enum Distribution {
 export enum WindowsVersion {
   W10 = "10",
   W11 = "11",
+  W2003 = "Server 2003",
   W2008 = "Server 2008",
   W2008R2 = "Server 2008 R2",
   W2012 = "Server 2012",
