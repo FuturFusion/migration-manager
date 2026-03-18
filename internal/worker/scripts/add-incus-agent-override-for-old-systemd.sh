@@ -11,13 +11,14 @@ cat <<EOF > /etc/systemd/system/incus-agent.service.d/override.conf
 WorkingDirectory=
 ExecStart=
 ExecStart=/bin/sh -c "cd /run/incus_agent/; exec ./incus-agent"
+Type=
+Type=simple
 EOF
 
 # Older SELinux causes errors with Type=notify, so make systemd_notify_t more permissive.
 # The abstract unix socket is also unlabeled, so we need to allow initrc communication explicitly.
 if getenforce >/dev/null 2>&1 ; then
   cat > /tmp/incus_agent.cil << EOF
-(allow systemd_notify_t kernel_t (unix_dgram_socket (sendto)))
 (allow initrc_t unlabeled_t (socket (getopt read write ioctl)))
 EOF
 
