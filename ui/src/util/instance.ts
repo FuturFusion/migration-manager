@@ -9,16 +9,16 @@ export enum OSType {
 }
 
 export enum Distribution {
-  Debian = "debian",
-  Ubuntu = "ubuntu",
-  Oracle = "oracle",
-  CentOS = "centos",
-  RHEL = "rhel",
-  SUSE = "suse",
-  Rocky = "rocky",
   Amazon = "amazon",
+  CentOS = "centos",
+  Debian = "debian",
   Fedora = "fedora",
   FreeBSD = "freebsd",
+  Oracle = "oracle",
+  RHEL = "rhel",
+  Rocky = "rocky",
+  SUSE = "suse",
+  Ubuntu = "ubuntu",
   Other = "other",
 }
 
