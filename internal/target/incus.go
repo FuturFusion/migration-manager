@@ -367,6 +367,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	}
 
 	if i.Properties.TPM {
+		apiDef.Config["migration.stateful"] = "false"
 		apiDef.Devices["vtpm"] = map[string]string{
 			"type": "tpm",
 			"path": "/dev/tpm0",
