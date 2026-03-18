@@ -412,6 +412,8 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 				if nic.IPv6Address == "" && oldNIC.IPv6Address != "" {
 					nic.IPv6Address = oldNIC.IPv6Address
 				}
+
+				nic.UUID = oldNIC.UUID
 			}
 
 			newNics[i] = nic
@@ -420,7 +422,7 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 		if !slices.Equal(inst.Properties.NICs, newNics) {
 			log.Debug("Instance nics changed")
 			instanceUpdated = true
-			inst.Properties.NICs = srcInst.Properties.NICs
+			inst.Properties.NICs = newNics
 		}
 	}
 
