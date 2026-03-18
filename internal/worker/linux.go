@@ -414,7 +414,7 @@ func runScriptInChroot(scriptName string, args ...string) error {
 	cmd := make([]string, 0, len(args)+2)
 	cmd = append(cmd, chrootMountPath, filepath.Join("/", scriptName))
 	cmd = append(cmd, args...)
-	_, err = subprocess.RunCommand("chroot", cmd...)
+	_, _, err = subprocess.RunCommandSplit(context.TODO(), []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}, nil, "chroot", cmd...)
 	return err
 }
 
