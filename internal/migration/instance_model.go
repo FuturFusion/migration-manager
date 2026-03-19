@@ -85,10 +85,24 @@ func (i Instance) Validate() error {
 		}
 
 	case api.OSTYPE_LINUX:
-		if version != "" && distro != api.DISTRO_UBUNTU {
-			_, err := strconv.Atoi(version)
+		switch distro {
+		case api.DISTRO_UBUNTU:
+			err := util.ValidateUbuntuVersion(version)
 			if err != nil {
 				return NewValidationErrf("Failed to parse distribution version %q for %q: %v", version, distro, err)
+			}
+
+		case api.DISTRO_OTHER:
+			if version != "" {
+				return NewValidationErrf("Cannot set a version for %q (%q)", osType, distro)
+			}
+
+		default:
+			if version != "" {
+				_, err := strconv.Atoi(version)
+				if err != nil {
+					return NewValidationErrf("Failed to parse distribution version %q for %q: %v", version, distro, err)
+				}
 			}
 		}
 
@@ -239,7 +253,9 @@ func (i *Instance) GetDistribution() (api.Distro, string) {
 			distroVersion, err = util.ToWindowsVersion(osVersion)
 			if err != nil {
 				distroVersion = ""
-				slog.Error("Unable to determine windows version", slog.Any("error", err))
+				if i.Overrides.DistributionVersion == "" {
+					slog.Error("Unable to determine windows version", slog.Any("error", err), slog.String("location", i.Properties.Location), slog.String("version", osVersion))
+				}
 			}
 
 		case api.OSTYPE_BSD:
@@ -274,15 +290,29 @@ func (i *Instance) GetDistribution() (api.Distro, string) {
 				distro = api.DISTRO_UBUNTU
 			}
 
-			matches := versionRegex.FindStringSubmatch(osVersion)
-			if len(matches) > 1 {
-				distroVersion = versionRegex.FindStringSubmatch(osVersion)[1]
+			if distro != api.DISTRO_OTHER {
+				matches := versionRegex.FindStringSubmatch(osVersion)
+				if len(matches) > 1 {
+					distroVersion = versionRegex.FindStringSubmatch(osVersion)[1]
+				}
 			}
 
-			if distro != api.DISTRO_UBUNTU && distroVersion != "" {
-				_, err := strconv.Atoi(distroVersion)
+			if distroVersion != "" {
+				var err error
+				switch distro {
+				case api.DISTRO_UBUNTU:
+					err = util.ValidateUbuntuVersion(distroVersion)
+				case api.DISTRO_OTHER:
+					distroVersion = ""
+				default:
+					_, err = strconv.Atoi(distroVersion)
+				}
+
 				if err != nil {
-					slog.Warn("Failed to parse distribution version", slog.String("version", distroVersion), slog.String("distro", string(distro)))
+					if i.Overrides.DistributionVersion == "" {
+						slog.Warn("Failed to parse distribution version", slog.String("version", distroVersion), slog.String("distro", string(distro)), slog.String("location", i.Properties.Location))
+					}
+
 					distroVersion = ""
 				}
 			}
