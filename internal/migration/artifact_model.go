@@ -121,6 +121,47 @@ func (a Artifact) Validate() error {
 	return nil
 }
 
+func (a Artifact) CollidesWith(arts Artifacts) error {
+	archMap := map[string]bool{}
+	verMap := map[string]bool{}
+
+	for _, ver := range a.Properties.Versions {
+		verMap[ver] = true
+	}
+
+	for _, arch := range a.Properties.Architectures {
+		archMap[arch] = true
+	}
+
+	for _, art := range arts {
+		if a.Properties.OS != art.Properties.OS || a.Properties.SourceType != art.Properties.SourceType || a.Type != art.Type {
+			continue
+		}
+
+		archCollides := len(art.Properties.Architectures) == 0 && len(archMap) == 0
+		verCollides := len(art.Properties.Versions) == 0 && len(verMap) == 0
+		for _, arch := range art.Properties.Architectures {
+			if archMap[arch] {
+				archCollides = true
+				break
+			}
+		}
+
+		for _, ver := range art.Properties.Versions {
+			if verMap[ver] {
+				verCollides = true
+				break
+			}
+		}
+
+		if archCollides && verCollides {
+			return fmt.Errorf("Artifact architecture or version collides with another artifact: %q", art.UUID)
+		}
+	}
+
+	return nil
+}
+
 func (a Artifact) ToAPI() api.Artifact {
 	return api.Artifact{
 		ArtifactPost: api.ArtifactPost{

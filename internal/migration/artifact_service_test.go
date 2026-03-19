@@ -163,6 +163,9 @@ func TestArtifact_Create(t *testing.T) {
 				CreateFunc: func(ctx context.Context, artifact migration.Artifact) (int64, error) {
 					return -1, nil
 				},
+				GetAllByTypeFunc: func(ctx context.Context, artType api.ArtifactType) (migration.Artifacts, error) {
+					return nil, nil
+				},
 			}
 
 			artifactSvc := migration.NewArtifactService(repo, &sys.OS{})
@@ -365,6 +368,154 @@ func TestArtifact_HasRequiredArtifactsForInstance(t *testing.T) {
 			}
 
 			tc.assertErr(t, artifactSvc.HasRequiredArtifactsForInstance(artifacts, tc.instance))
+		})
+	}
+}
+
+func TestArtifact_collidesWith(t *testing.T) {
+	art := func(v []string, a []string, t api.ArtifactType, o api.OSType, s api.SourceType) migration.Artifact {
+		return migration.Artifact{
+			UUID: uuid.New(),
+			Type: t,
+			Properties: api.ArtifactPut{
+				OS:            o,
+				Architectures: a,
+				Versions:      v,
+				SourceType:    s,
+			},
+		}
+	}
+	cases := []struct {
+		name      string
+		existing  migration.Artifacts
+		artifact  migration.Artifact
+		assertErr require.ErrorAssertionFunc
+	}{
+		{
+			name:      "success - empty list",
+			existing:  migration.Artifacts{},
+			artifact:  art(nil, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - existing artifact is specific",
+			existing: migration.Artifacts{
+				art([]string{"v1"}, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+				art(nil, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+				art([]string{"v1"}, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+				art([]string{"v1"}, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+
+				art([]string{"v2"}, []string{"a2"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			},
+
+			artifact:  art(nil, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - new artifact is specific (arch)",
+			existing: migration.Artifacts{
+				art(nil, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+				art([]string{"v1"}, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+				art([]string{"v1"}, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+
+				art(nil, []string{"a1"}, api.ARTIFACTTYPE_OSIMAGE, api.OSTYPE_FORTIGATE, ""),
+				art(nil, []string{"a1"}, api.ARTIFACTTYPE_SDK, "", api.SOURCETYPE_VMWARE),
+			},
+
+			artifact:  art([]string{}, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - new artifact is specific (version)",
+			existing: migration.Artifacts{
+				art(nil, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+				art(nil, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+				art([]string{"v1"}, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+
+				art([]string{"v1"}, nil, api.ARTIFACTTYPE_OSIMAGE, api.OSTYPE_FORTIGATE, ""),
+				art([]string{"v1"}, nil, api.ARTIFACTTYPE_SDK, "", api.SOURCETYPE_VMWARE),
+			},
+
+			artifact:  art([]string{"v1"}, []string{}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.NoError,
+		},
+		{
+			name: "success - new artifact is specific (both)",
+			existing: migration.Artifacts{
+				art(nil, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+				art(nil, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+				art([]string{"v1"}, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+
+				art([]string{"v1"}, nil, api.ARTIFACTTYPE_OSIMAGE, api.OSTYPE_FORTIGATE, ""),
+				art([]string{"v1"}, nil, api.ARTIFACTTYPE_SDK, "", api.SOURCETYPE_VMWARE),
+			},
+
+			artifact:  art([]string{"v1"}, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.NoError,
+		},
+		//
+		// Errors
+		//
+		{
+			name: "error - new artifact collides (empty)",
+			existing: migration.Artifacts{
+				art(nil, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			},
+
+			artifact:  art(nil, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.Error,
+		},
+		{
+			name: "error - new artifact collides (version)",
+			existing: migration.Artifacts{
+				art([]string{"v1"}, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			},
+
+			artifact:  art([]string{"v1"}, nil, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.Error,
+		},
+		{
+			name: "error - new artifact collides (arch)",
+			existing: migration.Artifacts{
+				art(nil, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			},
+
+			artifact:  art(nil, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.Error,
+		},
+		{
+			name: "error - new artifact collides",
+			existing: migration.Artifacts{
+				art([]string{"v1"}, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			},
+
+			artifact:  art([]string{"v1"}, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.Error,
+		},
+		{
+			name: "error - new artifact collides (existing multi)",
+			existing: migration.Artifacts{
+				art([]string{"v1", "v2"}, []string{"a1", "a2"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			},
+
+			artifact:  art([]string{"v1"}, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.Error,
+		},
+		{
+			name: "error - new artifact collides (new multi)",
+			existing: migration.Artifacts{
+				art([]string{"v1"}, []string{"a1"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			},
+
+			artifact:  art([]string{"v1", "v2"}, []string{"a1", "a2"}, api.ARTIFACTTYPE_DRIVER, api.OSTYPE_WINDOWS, ""),
+			assertErr: require.Error,
+		},
+	}
+
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Logf("\n\nTEST %02d: %s\n\n", i, tc.name)
+			tc.assertErr(t, tc.artifact.CollidesWith(tc.existing))
 		})
 	}
 }
