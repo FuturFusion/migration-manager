@@ -343,6 +343,19 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		}
 	}
 
+	if i.GetOSType() == api.OSTYPE_WINDOWS {
+		_, v := i.GetDistribution()
+		code, err := util.MapWindowsVersionToAbbrev(v)
+		if err != nil {
+			return fmt.Errorf("Failed to check post-migration Windows version: %w", err)
+		}
+
+		// 2k3 does not support vioscsi.
+		if code == "2k3" {
+			apiDef.Devices["root"]["io.bus"] = "virtio-blk"
+		}
+	}
+
 	// Set the instance's UUID copied from the source.
 	apiDef.Config["volatile.uuid"] = props.UUID.String()
 	apiDef.Config["volatile.uuid.generation"] = props.UUID.String()
