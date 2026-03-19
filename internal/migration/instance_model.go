@@ -221,7 +221,14 @@ func (i *Instance) GetOSType(applyOverrides bool) api.OSType {
 		}
 	}
 
-	if strings.HasPrefix(strings.ToLower(props.OS), "win") {
+	osName := props.OS
+	if osName == "" {
+		osName = props.OSTemplate
+
+		slog.Warn("Instance does not report OS description from guest agent, using original OS template", slog.String("location", i.Properties.Location), slog.String("template", osName))
+	}
+
+	if strings.Contains(strings.ToLower(osName), "windows") {
 		return api.OSTYPE_WINDOWS
 	}
 
@@ -229,7 +236,7 @@ func (i *Instance) GetOSType(applyOverrides bool) api.OSType {
 		return api.OSTYPE_FORTIGATE
 	}
 
-	if strings.Contains(strings.ToLower(props.OS), "bsd") {
+	if strings.Contains(strings.ToLower(osName), "bsd") {
 		return api.OSTYPE_BSD
 	}
 
@@ -241,6 +248,11 @@ func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
 	props := i.Properties
 	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 	osVersion := props.OSDescription
+
+	if osVersion == "" {
+		osVersion = props.OSTemplate
+		slog.Warn("Instance does not report OS description from guest agent, using original OS template", slog.String("location", i.Properties.Location), slog.String("template", osVersion))
+	}
 
 	distroVersion := ""
 	distro := api.DISTRO_OTHER
@@ -267,7 +279,7 @@ func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
 
 		case api.OSTYPE_LINUX:
 			// Get the disto's major version, if possible.
-			versionRegex := regexp.MustCompile(`^[\w /]+?(\d+)(\.\d+)?( \([\w /]+\))?$`)
+			versionRegex := regexp.MustCompile(`^[\w /]+?(\d+)(\.\d+)?(\.\d+)?( \([\w /]+\))?( \(64-bit\))?$`)
 			if strings.Contains(strings.ToLower(osVersion), "centos") {
 				distro = api.DISTRO_CENTOS
 			} else if strings.Contains(strings.ToLower(osVersion), "debian") {
@@ -388,6 +400,12 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 	if inst.Properties.OSDescription != srcInst.Properties.OSDescription && srcInst.Properties.OSDescription != "" {
 		log.Debug("Instance os version changed", slog.String("new", srcInst.Properties.OSDescription), slog.String("old", inst.Properties.OSDescription))
 		inst.Properties.OSDescription = srcInst.Properties.OSDescription
+		instanceUpdated = true
+	}
+
+	if inst.Properties.OSTemplate != srcInst.Properties.OSTemplate && srcInst.Properties.OSTemplate != "" {
+		log.Debug("Instance os template changed", slog.String("new", srcInst.Properties.OSTemplate), slog.String("old", inst.Properties.OSTemplate))
+		inst.Properties.OSTemplate = srcInst.Properties.OSTemplate
 		instanceUpdated = true
 	}
 

@@ -26,6 +26,8 @@ const (
 	InstanceOS
 	// InstanceOSDescription is the property name for the OS version of the instance.
 	InstanceOSDescription
+	// InstanceOSTemplate is the property name for the OS template of the instance.
+	InstanceOSTemplate
 	// InstanceLegacyBoot is the property name for whether the instance uses legacy boot.
 	InstanceLegacyBoot
 	// InstanceSecureBoot is the property name for whether the instance uses secure boot.
@@ -87,6 +89,8 @@ func (n Name) String() string {
 		return "os"
 	case InstanceOSDescription:
 		return "os_description"
+	case InstanceOSTemplate:
+		return "os_template"
 	case InstanceSecureBoot:
 		return "secure_boot"
 	case InstanceTPM:
@@ -137,6 +141,8 @@ func ParseInstanceProperty(s string) (Name, error) {
 		return InstanceConfig, nil
 	case InstanceDescription.String():
 		return InstanceDescription, nil
+	case InstanceDescription.String():
+		return InstanceDescription, nil
 	case InstanceDisks.String():
 		return InstanceDisks, nil
 	case InstanceLegacyBoot.String():
@@ -153,6 +159,8 @@ func ParseInstanceProperty(s string) (Name, error) {
 		return InstanceOS, nil
 	case InstanceOSDescription.String():
 		return InstanceOSDescription, nil
+	case InstanceOSTemplate.String():
+		return InstanceOSTemplate, nil
 	case InstanceSecureBoot.String():
 		return InstanceSecureBoot, nil
 	case InstanceSnapshots.String():
@@ -222,6 +230,7 @@ func allInstanceProperties() []Name {
 		InstanceMemory,
 		InstanceOS,
 		InstanceOSDescription,
+		InstanceOSTemplate,
 		InstanceLegacyBoot,
 		InstanceSecureBoot,
 		InstanceTPM,

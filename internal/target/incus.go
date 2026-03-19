@@ -444,17 +444,19 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 		case properties.InstanceDescription:
 			instance.Config[info.Key] = p.Description
 			instance.Description = p.Description
-		case properties.InstanceOS:
-			if osType == api.OSTYPE_WINDOWS {
-				instance.Config[info.Key] = "win-prepare"
-				instance.Config["user.migration.os"] = "Windows"
-			} else {
-				instance.Config[info.Key] = string(osType)
-			}
-
 		case properties.InstanceOSDescription:
 			instance.Config[info.Key] = p.OSDescription
+			if p.OSDescription == "" {
+				instance.Config[info.Key] = p.OSTemplate
+			}
 		}
+	}
+
+	if osType == api.OSTYPE_WINDOWS {
+		instance.Config["image.os"] = "win-prepare"
+		instance.Config["user.migration.os"] = "Windows"
+	} else {
+		instance.Config["image.os"] = string(osType)
 	}
 
 	// Fallback to x86_64 if no architecture property was found.
@@ -550,12 +552,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	ret.Config["user.migration.endpoint"] = endpoint
 	ret.Config["user.migration.uuid"] = instanceDef.UUID.String()
 
-	info, err := defs.Get(properties.InstanceOS)
-	if err != nil {
-		return incusAPI.InstancesPost{}, err
-	}
-
-	if ret.Config[info.Key] == "win-prepare" {
+	if ret.Config["image.os"] == "win-prepare" {
 		// Set some additional QEMU options.
 		ret.Config["raw.qemu"] = "-device intel-hda -device hda-duplex -audio spice"
 	}
