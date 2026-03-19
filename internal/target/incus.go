@@ -334,8 +334,8 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	}
 
 	// Handle RHEL (and derivative) specific completion steps.
-	distro, _ := i.GetDistribution()
-	if distro.IsRHELDerivative() || i.GetOSType() == api.OSTYPE_WINDOWS {
+	distro, _ := i.GetDistribution(true)
+	if distro.IsRHELDerivative() || i.GetOSType(true) == api.OSTYPE_WINDOWS {
 		// RHEL7+ don't support 9p, so make agent config available via cdrom.
 		apiDef.Devices["agent"] = map[string]string{
 			"type":   "disk",
@@ -343,8 +343,8 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		}
 	}
 
-	if i.GetOSType() == api.OSTYPE_WINDOWS {
-		_, v := i.GetDistribution()
+	if i.GetOSType(true) == api.OSTYPE_WINDOWS {
+		_, v := i.GetDistribution(true)
 		code, err := util.MapWindowsVersionToAbbrev(v)
 		if err != nil {
 			return fmt.Errorf("Failed to check post-migration Windows version: %w", err)
@@ -421,7 +421,7 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 
 	p := inst.Properties
 	p.Apply(inst.Overrides.InstancePropertiesConfigurable)
-	osType := inst.GetOSType()
+	osType := inst.GetOSType(true)
 
 	instance.Config = map[string]string{}
 	for name, info := range defs.GetAll() {

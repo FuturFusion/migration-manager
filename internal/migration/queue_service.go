@@ -339,14 +339,14 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		instance.Properties.Apply(instance.Overrides.InstancePropertiesConfigurable)
 		// Setup the default "idle" command
 
-		distro, distroVersion := instance.GetDistribution()
+		distro, distroVersion := instance.GetDistribution(true)
 		workerCommand = WorkerCommand{
 			Command:       api.WORKERCOMMAND_IDLE,
 			Location:      instance.Properties.Location,
 			SourceType:    source.SourceType,
 			Source:        *source,
 			Architecture:  instance.GetArchitecture(),
-			OSType:        instance.GetOSType(),
+			OSType:        instance.GetOSType(true),
 			Distro:        distro,
 			DistroVersion: distroVersion,
 		}

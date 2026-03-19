@@ -66,13 +66,13 @@ func (i Instance) Validate() error {
 		}
 	}
 
-	osType := i.GetOSType()
+	osType := i.GetOSType(true)
 	err := api.ValidateOSType(string(osType))
 	if err != nil {
 		return NewValidationErrf("Invalid instance OS type %q: %v", osType, err)
 	}
 
-	distro, version := i.GetDistribution()
+	distro, version := i.GetDistribution(true)
 	err = api.ValidateDistribution(osType, string(distro))
 	if err != nil {
 		return NewValidationErrf("Invalid instance OS distribution %q: %v", distro, err)
@@ -211,12 +211,14 @@ func (i Instance) NeedsBackgroundImportVerification() bool {
 }
 
 // GetOSType returns the OS type, as determined from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
-func (i *Instance) GetOSType() api.OSType {
+func (i *Instance) GetOSType(applyOverrides bool) api.OSType {
 	props := i.Properties
-	props.Apply(i.Overrides.InstancePropertiesConfigurable)
+	if applyOverrides {
+		props.Apply(i.Overrides.InstancePropertiesConfigurable)
 
-	if i.Overrides.OSType != "" {
-		return i.Overrides.OSType
+		if i.Overrides.OSType != "" {
+			return i.Overrides.OSType
+		}
 	}
 
 	if strings.HasPrefix(strings.ToLower(props.OS), "win") {
@@ -235,7 +237,7 @@ func (i *Instance) GetOSType() api.OSType {
 }
 
 // GetDistribution returns the distribution and version for the OS type.
-func (i *Instance) GetDistribution() (api.Distro, string) {
+func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
 	props := i.Properties
 	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 	osVersion := props.OSDescription
@@ -243,7 +245,7 @@ func (i *Instance) GetDistribution() (api.Distro, string) {
 	distroVersion := ""
 	distro := api.DISTRO_OTHER
 
-	osType := i.GetOSType()
+	osType := i.GetOSType(applyOverrides)
 	switch i.SourceType {
 	case api.SOURCETYPE_VMWARE:
 		switch osType {
@@ -319,12 +321,14 @@ func (i *Instance) GetDistribution() (api.Distro, string) {
 		}
 	}
 
-	if i.Overrides.Distribution != "" {
-		distro = i.Overrides.Distribution
-	}
+	if applyOverrides {
+		if i.Overrides.Distribution != "" {
+			distro = i.Overrides.Distribution
+		}
 
-	if i.Overrides.DistributionVersion != "" {
-		distroVersion = i.Overrides.DistributionVersion
+		if i.Overrides.DistributionVersion != "" {
+			distroVersion = i.Overrides.DistributionVersion
+		}
 	}
 
 	return distro, distroVersion
@@ -609,14 +613,14 @@ func (i Instance) CompileIncludeExpression(expression string, locationAlias bool
 type Instances []Instance
 
 func (i Instance) ToAPI() api.Instance {
-	distro, distroVersion := i.GetDistribution()
+	distro, distroVersion := i.GetDistribution(false)
 	apiInst := api.Instance{
 		Source:               i.Source,
 		SourceType:           i.SourceType,
 		LastUpdateFromSource: i.LastUpdateFromSource,
 		InstanceProperties:   i.Properties,
 		Overrides:            i.Overrides,
-		OSType:               i.GetOSType(),
+		OSType:               i.GetOSType(false),
 		Distribution:         distro,
 		DistributionVersion:  distroVersion,
 	}

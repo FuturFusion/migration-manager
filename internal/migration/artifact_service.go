@@ -144,7 +144,7 @@ func (a artifactService) WriteFile(id uuid.UUID, fileName string, reader io.Read
 
 // HasRequiredArtifactsForInstance returns whether the given set of artifacts contains the required subset for the instance.
 func (a artifactService) HasRequiredArtifactsForInstance(artifacts Artifacts, inst Instance) error {
-	osType := inst.GetOSType()
+	osType := inst.GetOSType(true)
 
 	var sdkArtifactExists bool
 	var osArtifactExists bool
