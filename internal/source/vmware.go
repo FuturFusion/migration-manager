@@ -189,6 +189,11 @@ func (s *InternalVMwareSource) GetNSXManagerIP(ctx context.Context) (string, err
 	return managerIP, nil
 }
 
+func IsVMwareNotFoundErr(err error) bool {
+	var notFoundErr *find.NotFoundError
+	return err != nil && errors.As(err, &notFoundErr)
+}
+
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error) {
 	log := slog.With(slog.String("source", s.Name))
 	vms := migration.Instances{}
