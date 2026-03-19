@@ -37,7 +37,16 @@ func (a artifactService) Create(ctx context.Context, artifact Artifact) (Artifac
 	}
 
 	err = transaction.Do(ctx, func(ctx context.Context) error {
-		var err error
+		arts, err := a.repo.GetAllByType(ctx, artifact.Type)
+		if err != nil {
+			return err
+		}
+
+		err = artifact.CollidesWith(arts)
+		if err != nil {
+			return err
+		}
+
 		artifact.ID, err = a.repo.Create(ctx, artifact)
 		if err != nil {
 			return fmt.Errorf("Failed to create artifact: %w", err)
@@ -113,7 +122,19 @@ func (a artifactService) Update(ctx context.Context, id uuid.UUID, artifact *Art
 		return err
 	}
 
-	return a.repo.Update(ctx, id, artifact)
+	return transaction.Do(ctx, func(ctx context.Context) error {
+		arts, err := a.repo.GetAllByType(ctx, artifact.Type)
+		if err != nil {
+			return err
+		}
+
+		err = artifact.CollidesWith(arts)
+		if err != nil {
+			return err
+		}
+
+		return a.repo.Update(ctx, id, artifact)
+	})
 }
 
 // WriteFile writes the file into the directory contained in a tarball at ArtifactDir/{uuid}.tar.gz.

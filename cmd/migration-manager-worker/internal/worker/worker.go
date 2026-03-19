@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -657,20 +658,34 @@ func (w *Worker) matchSourceArtifact(artifacts []api.Artifact, cmd api.WorkerCom
 }
 
 func (w *Worker) matchDriverArtifact(artifacts []api.Artifact, cmd api.WorkerCommand) (*api.Artifact, error) {
-	var artifact *api.Artifact
+	var matchingArtifact *api.Artifact
 	for _, a := range artifacts {
 		match := a.Type == api.ARTIFACTTYPE_DRIVER && a.OS == cmd.OSType && util.MatchArchitecture(a.Architectures, cmd.Architecture) == nil
-		if match {
-			artifact = &a
-			break
+		if match && (len(a.Versions) == 0 || slices.Contains(a.Versions, cmd.DistributionVersion)) {
+			if matchingArtifact == nil {
+				matchingArtifact = &a
+				// Keep looking for a more precise match if no version is specified.
+				if len(matchingArtifact.Versions) > 0 {
+					break
+				} else {
+					continue
+				}
+			}
+
+			// If the another artifact matches more precisely to the version, use that instead.
+			if len(matchingArtifact.Versions) == 0 && slices.Contains(a.Versions, cmd.DistributionVersion) {
+				matchingArtifact = &a
+				break
+			}
 		}
 	}
 
-	if artifact == nil {
+	if matchingArtifact == nil {
 		return nil, fmt.Errorf("Failed to find a matching artifact for %q architecture %q", cmd.OSType, cmd.Architecture)
 	}
 
-	return artifact, nil
+	slog.Info("Using driver artifact", slog.String("uuid", matchingArtifact.UUID.String()), slog.String("ver", cmd.DistributionVersion), slog.Int("len", len(artifacts)))
+	return matchingArtifact, nil
 }
 
 func (w *Worker) matchImageArtifact(artifacts []api.Artifact, cmd api.WorkerCommand, osVersion string) (*api.Artifact, error) {

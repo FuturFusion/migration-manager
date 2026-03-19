@@ -249,7 +249,7 @@ func (i *Instance) GetDistribution() (api.Distro, string) {
 
 		case api.OSTYPE_LINUX:
 			// Get the disto's major version, if possible.
-			versionRegex := regexp.MustCompile(`^[\w /]+?(\d+)(\.\d+)?( \(\w+\))?$`)
+			versionRegex := regexp.MustCompile(`^[\w /]+?(\d+)(\.\d+)?( \([\w /]+\))?$`)
 			if strings.Contains(strings.ToLower(osVersion), "centos") {
 				distro = api.DISTRO_CENTOS
 			} else if strings.Contains(strings.ToLower(osVersion), "debian") {
@@ -326,12 +326,6 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 		instanceUpdated = true
 	}
 
-	if inst.Properties.BackgroundImport != srcInst.Properties.BackgroundImport {
-		log.Debug("Instance background import changed", slog.Bool("new", srcInst.Properties.BackgroundImport), slog.Bool("old", inst.Properties.BackgroundImport))
-		inst.Properties.BackgroundImport = srcInst.Properties.BackgroundImport
-		instanceUpdated = true
-	}
-
 	if inst.Properties.Description != srcInst.Properties.Description {
 		log.Debug("Instance description changed", slog.String("new", srcInst.Properties.Description), slog.String("old", inst.Properties.Description))
 		inst.Properties.Description = srcInst.Properties.Description
@@ -364,27 +358,40 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 	}
 
 	if !slices.Equal(inst.Properties.Disks, srcInst.Properties.Disks) {
-		oldDisks := map[string]api.InstancePropertiesDisk{}
-		for _, d := range inst.Properties.Disks {
-			oldDisks[d.Name] = d
-		}
-
-		// Preserve background import verification.
-		newDisks := make([]api.InstancePropertiesDisk, len(srcInst.Properties.Disks))
-		for i, newDisk := range srcInst.Properties.Disks {
-			oldDisk, ok := oldDisks[newDisk.Name]
-			if ok {
-				newDisk.BackgroundImportVerified = oldDisk.BackgroundImportVerified
+		// If background import status has not changed on the source, preserve verification for all known disks.
+		if inst.Properties.BackgroundImport == srcInst.Properties.BackgroundImport {
+			oldDisks := map[string]api.InstancePropertiesDisk{}
+			for _, d := range inst.Properties.Disks {
+				oldDisks[d.Name] = d
 			}
 
-			newDisks[i] = newDisk
-		}
+			// Preserve background import verification.
+			newDisks := make([]api.InstancePropertiesDisk, len(srcInst.Properties.Disks))
+			for i, newDisk := range srcInst.Properties.Disks {
+				oldDisk, ok := oldDisks[newDisk.Name]
+				if ok {
+					newDisk.BackgroundImportVerified = oldDisk.BackgroundImportVerified
+				}
 
-		if !slices.Equal(inst.Properties.Disks, newDisks) {
+				newDisks[i] = newDisk
+			}
+
+			if !slices.Equal(inst.Properties.Disks, newDisks) {
+				log.Debug("Instance disks changed")
+				inst.Properties.Disks = newDisks
+				instanceUpdated = true
+			}
+		} else {
 			log.Debug("Instance disks changed")
-			inst.Properties.Disks = newDisks
+			inst.Properties.Disks = srcInst.Properties.Disks
 			instanceUpdated = true
 		}
+	}
+
+	if inst.Properties.BackgroundImport != srcInst.Properties.BackgroundImport {
+		log.Debug("Instance background import changed", slog.Bool("new", srcInst.Properties.BackgroundImport), slog.Bool("old", inst.Properties.BackgroundImport))
+		inst.Properties.BackgroundImport = srcInst.Properties.BackgroundImport
+		instanceUpdated = true
 	}
 
 	if !slices.Equal(inst.Properties.NICs, srcInst.Properties.NICs) {
@@ -405,6 +412,8 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 				if nic.IPv6Address == "" && oldNIC.IPv6Address != "" {
 					nic.IPv6Address = oldNIC.IPv6Address
 				}
+
+				nic.UUID = oldNIC.UUID
 			}
 
 			newNics[i] = nic
@@ -413,7 +422,7 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 		if !slices.Equal(inst.Properties.NICs, newNics) {
 			log.Debug("Instance nics changed")
 			instanceUpdated = true
-			inst.Properties.NICs = srcInst.Properties.NICs
+			inst.Properties.NICs = newNics
 		}
 	}
 

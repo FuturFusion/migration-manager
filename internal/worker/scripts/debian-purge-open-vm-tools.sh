@@ -11,4 +11,4 @@ if dpkg -l | grep -q "open-vm-tools" ; then
   apt-get purge -y open-vm-tools
 fi
 
-apt-get autopurge -y
+apt-get autoremove --purge -y

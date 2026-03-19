@@ -237,14 +237,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		}
 	}
 
-	switch distro {
-	case api.DISTRO_DEBIAN, api.DISTRO_UBUNTU:
-		err := runScriptInChroot("debian-purge-open-vm-tools.sh")
-		if err != nil {
-			return err
-		}
-
-	case api.DISTRO_CENTOS, api.DISTRO_ORACLE, api.DISTRO_RHEL:
+	if distro.IsRHELDerivative() {
 		err := runScriptInChroot("redhat-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
@@ -263,6 +256,14 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 					return err
 				}
 			}
+		}
+	}
+
+	switch distro {
+	case api.DISTRO_DEBIAN, api.DISTRO_UBUNTU:
+		err := runScriptInChroot("debian-purge-open-vm-tools.sh")
+		if err != nil {
+			return err
 		}
 
 	case api.DISTRO_SUSE:
@@ -414,7 +415,7 @@ func runScriptInChroot(scriptName string, args ...string) error {
 	cmd := make([]string, 0, len(args)+2)
 	cmd = append(cmd, chrootMountPath, filepath.Join("/", scriptName))
 	cmd = append(cmd, args...)
-	_, err = subprocess.RunCommand("chroot", cmd...)
+	_, _, err = subprocess.RunCommandSplit(context.TODO(), []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}, nil, "chroot", cmd...)
 	return err
 }
 

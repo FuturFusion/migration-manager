@@ -318,15 +318,10 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	delete(apiDef.Devices, util.WorkerVolume(i.GetArchitecture()))
 	apiDef.Profiles = []string{"default"}
 
-	osInfo, err := defs.Get(properties.InstanceOS)
-	if err != nil {
-		return err
-	}
-
 	// Handle Windows-specific completion steps.
-	if apiDef.Config[osInfo.Key] == "win-prepare" {
+	if apiDef.Config["image.os"] == "win-prepare" {
 		// Fixup the OS name.
-		apiDef.Config[osInfo.Key] = apiDef.Config["user.migration.os"]
+		apiDef.Config["image.os"] = apiDef.Config["user.migration.os"]
 	}
 
 	if !util.InTestingMode() {
@@ -367,6 +362,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	}
 
 	if i.Properties.TPM {
+		apiDef.Config["migration.stateful"] = "false"
 		apiDef.Devices["vtpm"] = map[string]string{
 			"type": "tpm",
 			"path": "/dev/tpm0",
@@ -404,11 +400,15 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	return nil
 }
 
-func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesPost, p api.InstanceProperties, storagePool string, defs properties.RawPropertySet[api.TargetType]) (incusAPI.InstancesPost, error) {
+func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesPost, inst migration.Instance, storagePool string, defs properties.RawPropertySet[api.TargetType]) (incusAPI.InstancesPost, error) {
 	diskDefs, err := defs.GetSubProperties(properties.InstanceDisks)
 	if err != nil {
 		return incusAPI.InstancesPost{}, err
 	}
+
+	p := inst.Properties
+	p.Apply(inst.Overrides.InstancePropertiesConfigurable)
+	osType := inst.GetOSType()
 
 	instance.Config = map[string]string{}
 	for name, info := range defs.GetAll() {
@@ -432,11 +432,11 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 			instance.Config[info.Key] = p.Description
 			instance.Description = p.Description
 		case properties.InstanceOS:
-			if strings.Contains(strings.ToLower(p.OS), "windows") {
+			if osType == api.OSTYPE_WINDOWS {
 				instance.Config[info.Key] = "win-prepare"
-				instance.Config["user.migration.os"] = p.OS
+				instance.Config["user.migration.os"] = "Windows"
 			} else {
-				instance.Config[info.Key] = p.OS
+				instance.Config[info.Key] = string(osType)
 			}
 
 		case properties.InstanceOSDescription:
@@ -513,7 +513,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	}
 
 	rootDisk := instanceDef.Properties.Disks[0]
-	ret, err = t.fillInitialProperties(ret, props, q.Placement.StoragePools[rootDisk.Name], defs)
+	ret, err = t.fillInitialProperties(ret, instanceDef, q.Placement.StoragePools[rootDisk.Name], defs)
 	if err != nil {
 		return incusAPI.InstancesPost{}, err
 	}
