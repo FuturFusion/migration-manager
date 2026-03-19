@@ -298,6 +298,10 @@ func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
 				return strings.Contains(strings.ToLower(osVersion), s)
 			}) {
 				distro = api.DISTRO_RHEL
+			} else if slices.ContainsFunc([]string{"archlinux", "arch linux", "arch-linux"}, func(s string) bool {
+				return strings.Contains(strings.ToLower(osVersion), s)
+			}) {
+				distro = api.DISTRO_ARCH
 			} else if strings.Contains(strings.ToLower(osVersion), "ubuntu") {
 				// For Ubuntu, try to parse the whole YY.MM version.
 				versionRegex = regexp.MustCompile(`^[\w ]+?(\d+\.\d+)?(\.\d+)?( LTS)?$`)
