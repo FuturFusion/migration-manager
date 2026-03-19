@@ -356,58 +356,60 @@ func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitect
 		return err
 	}
 
-	// Disable VM tools.
-	err = injectScript("hivex-disable-vm-tools.sh", filepath.Join("/tmp", "hivex-disable-vm-tools.sh"), true)
-	if err != nil {
-		return err
-	}
-
-	// Run CPU hotplug workarounds.
-	err = injectScript("hivex-cpu-hotplug-compat.sh", filepath.Join("/tmp", "hivex-cpu-hotplug-compat.sh"), true)
-	if err != nil {
-		return err
-	}
-
-	// Add the first-boot script.
-	err = injectScript("first-boot.ps1", filepath.Join(windowsMainMountPath, "migration-manager-first-boot.ps1"), false)
-	if err != nil {
-		return err
-	}
-
-	// Inject the service for the first-boot script.
-	err = injectScript("hivex-first-boot.sh", filepath.Join("/tmp", "hivex-first-boot.sh"), true)
-	if err != nil {
-		return err
-	}
-
-	mountIDs, err := GetWindowsMounts(windowsMainMountPath)
-	if err != nil {
-		return err
-	}
-
-	if len(mountIDs) > 0 {
-		err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration_manager_disk_ids"), []byte(mountIDs), 0o755)
+	if versionCode != "2k3" {
+		// Disable VM tools.
+		err = injectScript("hivex-disable-vm-tools.sh", filepath.Join("/tmp", "hivex-disable-vm-tools.sh"), true)
 		if err != nil {
 			return err
 		}
 
-		// Add the first-boot script for disk reassignment.
-		err = injectScript("virtio-assign-diskcfg.ps1", filepath.Join(windowsMainMountPath, "migration-manager-virtio-assign-diskcfg.ps1"), false)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Re-assign network configs to the new NIC if we have MACs.
-	if len(hwAddrs) > 0 && internalUtil.SupportsNetworkAssignment(versionCode) {
-		err = injectScript("virtio-assign-netcfg.ps1", filepath.Join(windowsMainMountPath, "migration-manager-virtio-assign-netcfg.ps1"), false)
+		// Run CPU hotplug workarounds.
+		err = injectScript("hivex-cpu-hotplug-compat.sh", filepath.Join("/tmp", "hivex-cpu-hotplug-compat.sh"), true)
 		if err != nil {
 			return err
 		}
 
-		err = injectScript("hivex-assign-netcfg.sh", filepath.Join("/tmp", "hivex-assign-netcfg.sh"), true, hwAddrs...)
+		// Add the first-boot script.
+		err = injectScript("first-boot.ps1", filepath.Join(windowsMainMountPath, "migration-manager-first-boot.ps1"), false)
 		if err != nil {
 			return err
+		}
+
+		// Inject the service for the first-boot script.
+		err = injectScript("hivex-first-boot.sh", filepath.Join("/tmp", "hivex-first-boot.sh"), true)
+		if err != nil {
+			return err
+		}
+
+		mountIDs, err := GetWindowsMounts(windowsMainMountPath)
+		if err != nil {
+			return err
+		}
+
+		if len(mountIDs) > 0 {
+			err = os.WriteFile(filepath.Join(windowsMainMountPath, "migration_manager_disk_ids"), []byte(mountIDs), 0o755)
+			if err != nil {
+				return err
+			}
+
+			// Add the first-boot script for disk reassignment.
+			err = injectScript("virtio-assign-diskcfg.ps1", filepath.Join(windowsMainMountPath, "migration-manager-virtio-assign-diskcfg.ps1"), false)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Re-assign network configs to the new NIC if we have MACs.
+		if len(hwAddrs) > 0 && internalUtil.SupportsNetworkAssignment(versionCode) {
+			err = injectScript("virtio-assign-netcfg.ps1", filepath.Join(windowsMainMountPath, "migration-manager-virtio-assign-netcfg.ps1"), false)
+			if err != nil {
+				return err
+			}
+
+			err = injectScript("hivex-assign-netcfg.sh", filepath.Join("/tmp", "hivex-assign-netcfg.sh"), true, hwAddrs...)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
