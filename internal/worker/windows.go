@@ -19,8 +19,8 @@ import (
 
 	"github.com/Microsoft/go-winio/pkg/guid"
 	"github.com/flosch/pongo2/v4"
-	"github.com/lxc/distrobuilder/shared"
-	"github.com/lxc/distrobuilder/windows"
+	"github.com/lxc/distrobuilder/v3/shared"
+	"github.com/lxc/distrobuilder/v3/windows"
 	"github.com/lxc/incus/v6/shared/api"
 	"github.com/lxc/incus/v6/shared/subprocess"
 	"github.com/lxc/incus/v6/shared/util"
