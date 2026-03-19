@@ -383,7 +383,7 @@ func determineRootPartition(looksLikeRootPartition func(partition string, opts [
 					return "", "", PARTITION_TYPE_UNKNOWN, nil, err
 				}
 
-				opts := []string{"-o", fmt.Sprintf("subvol=%s", btrfsSubvol)}
+				opts := []string{"-o", btrfsSubvol}
 				if looksLikeRootPartition(partition, opts) {
 					return parent, partition, PARTITION_TYPE_PLAIN, opts, nil
 				}
@@ -505,7 +505,12 @@ func getBTRFSTopSubvol(partition string) (string, error) {
 	// Get the top level subvolume.
 	submatch := regexp.MustCompile(`ID \d+ gen \d+ top level \d+ path (.+)`).FindStringSubmatch(output)
 	if len(submatch) > 1 {
-		return submatch[1], nil
+		return "subvol=" + submatch[1], nil
+	}
+
+	submatch = regexp.MustCompile(`ID (\d+) \(FS_TREE\)`).FindStringSubmatch(output)
+	if len(submatch) > 1 {
+		return "subvolid=" + submatch[1], nil
 	}
 
 	return "", fmt.Errorf("Unable to determine top level subvolume for partition %s", partition)
