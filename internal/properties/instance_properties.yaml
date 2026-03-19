@@ -72,7 +72,7 @@
       vmware:
           8.0:
               type: property
-              key: capability.secureBootSupported
+              key: config.bootOptions.efiSecureBootEnabled
   target:
       incus:
           6.0:
