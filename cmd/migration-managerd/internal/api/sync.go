@@ -759,7 +759,7 @@ func (d *Daemon) syncInstancesFromSource(ctx context.Context, sourceName string,
 			inst.LastUpdateFromSource = srcInst.LastUpdateFromSource
 			err := i.Update(ctx, &inst, false)
 			if err != nil && !errors.Is(err, migration.ErrOperationNotPermitted) {
-				return nil, fmt.Errorf("Failed to update instance: %w", err)
+				return nil, fmt.Errorf("Failed to update instance %q: %w", inst.Properties.Location, err)
 			}
 
 			if err != nil {
