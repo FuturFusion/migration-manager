@@ -26,6 +26,15 @@ var windowsAliases = map[string][]string{
 	"Server 2012 R2": {"Server R2 2012"},
 }
 
+// WindowsDirectory returns the path to the C:\Windows directory for the given version code.
+func WindowsDirectory(code string) string {
+	if code == "2k3" {
+		return "WINDOWS"
+	}
+
+	return "Windows"
+}
+
 // ToWindowsVersion returns the windows version for the given OS description.
 func ToWindowsVersion(desc string) (string, error) {
 	for v := range windowsVersions {
