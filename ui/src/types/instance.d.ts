@@ -105,14 +105,14 @@ export interface InstanceOverrideFormValues {
 
 type OSType = "bsd" | "linux" | "windows" | "fortigate";
 type Distribution =
-  | "debian"
-  | "ubuntu"
-  | "oracle"
-  | "centos"
-  | "rhel"
-  | "suse"
-  | "rocky"
   | "amazon"
+  | "centos"
+  | "debian"
   | "fedora"
   | "freebsd"
+  | "oracle"
+  | "rhel"
+  | "rocky"
+  | "suse"
+  | "ubuntu"
   | "other";

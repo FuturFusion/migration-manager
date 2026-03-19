@@ -9,22 +9,23 @@ export enum OSType {
 }
 
 export enum Distribution {
-  Debian = "debian",
-  Ubuntu = "ubuntu",
-  Oracle = "oracle",
-  CentOS = "centos",
-  RHEL = "rhel",
-  SUSE = "suse",
-  Rocky = "rocky",
   Amazon = "amazon",
+  CentOS = "centos",
+  Debian = "debian",
   Fedora = "fedora",
   FreeBSD = "freebsd",
+  Oracle = "oracle",
+  RHEL = "rhel",
+  Rocky = "rocky",
+  SUSE = "suse",
+  Ubuntu = "ubuntu",
   Other = "other",
 }
 
 export enum WindowsVersion {
   W10 = "10",
   W11 = "11",
+  W2003 = "Server 2003",
   W2008 = "Server 2008",
   W2008R2 = "Server 2008 R2",
   W2012 = "Server 2012",

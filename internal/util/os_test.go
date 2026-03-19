@@ -24,6 +24,10 @@ func TestMapWindowsVersionToAbbrevSuccess(t *testing.T) {
 			want: "2k8",
 		},
 		{
+			name: "Windows Server 2003",
+			want: "2k3",
+		},
+		{
 			name: "Windows Server 2008 R2 (64 bit)",
 			want: "2k8r2",
 		},
@@ -126,27 +130,6 @@ func TestMapWindowsVersionToAbbrevNotSupported(t *testing.T) {
 		},
 		{
 			name: "Windows Small Business Server 2003",
-		},
-		{
-			name: "Windows Server 2003, Datacenter Edition (64 bit)",
-		},
-		{
-			name: "Windows Server 2003, Datacenter Edition",
-		},
-		{
-			name: "Windows Server 2003, Enterprise Edition (64 bit)",
-		},
-		{
-			name: "Windows Server 2003, Enterprise Edition",
-		},
-		{
-			name: "Windows Server 2003, Standard Edition (64 bit)",
-		},
-		{
-			name: "Windows Server 2003, Standard Edition",
-		},
-		{
-			name: "Windows Server 2003, Web Edition",
 		},
 		{
 			name: "Windows XP Home Edition",

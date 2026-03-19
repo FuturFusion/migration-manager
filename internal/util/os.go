@@ -10,6 +10,7 @@ import (
 var windowsVersions = map[string]string{
 	"10":             "w10",
 	"11":             "w11",
+	"Server 2003":    "2k3",
 	"Server 2008":    "2k8",
 	"Server 2008 R2": "2k8r2",
 	"Server 2012":    "2k12",
@@ -78,5 +79,5 @@ func ValidateWindowsVersion(v string) error {
 // Windows 10 and up keeps a history of MAC addresses to network config GUIDs in the registry.
 // Earlier Windows versions do not have this feature and thus we can't determine which NIC should be assigned to which network config post-migration.
 func SupportsNetworkAssignment(code string) bool {
-	return !strings.HasPrefix(code, "2k8") && !strings.HasPrefix(code, "2k12")
+	return !strings.HasPrefix(code, "2k3") && !strings.HasPrefix(code, "2k8") && !strings.HasPrefix(code, "2k12")
 }
