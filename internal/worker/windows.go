@@ -90,12 +90,12 @@ func DetermineWindowsPartitions(code string) (mainParent string, base string, re
 					sc := bufio.NewScanner(strings.NewReader(list))
 					var matches int
 					for sc.Scan() {
-						if sc.Text() == "Windows" || sc.Text() == "Users" || sc.Text() == "Program Files" {
+						if sc.Text() == "Windows" || sc.Text() == "Program Files" {
 							matches++
 						}
 					}
 
-					if matches == 3 {
+					if matches == 2 {
 						base = child.Name
 						mainParent = child.PKName
 						break
