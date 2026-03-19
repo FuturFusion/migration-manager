@@ -593,8 +593,8 @@ func (s *InternalVMwareSource) Dump(ctx context.Context) error {
 
 		ctx, cancel := context.WithTimeout(ctx, s.SyncTimeout.Duration)
 		var vmProperties mo.VirtualMachine
-		cancel()
 		err := vm.Properties(ctx, vm.Reference(), []string{}, &vmProperties)
+		cancel()
 		if err != nil {
 			return fmt.Errorf("Failed to fetch VMware properties for VM %q: %w", vm.InventoryPath, err)
 		}
