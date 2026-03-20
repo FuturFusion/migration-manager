@@ -383,8 +383,8 @@ github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 h1:SOEGU9fKiNWd/HOJuq
 github.com/lann/builder v0.0.0-20180802200727-47ae307949d0/go.mod h1:dXGbAdH5GtBTC4WfIxhKZfyBF/HBFgRZSWwZ9g/He9o=
 github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 h1:P6pPBnrTSX3DEVR4fDembhRWSsG5rVo6hYhAB/ADZrk=
 github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0/go.mod h1:vmVJ0l/dxyfGW6FmdpVm2joNMFikkuWg0EoCKLGUMNw=
-github.com/lxc/distrobuilder/v3 v3.3.2-0.20260319010925-f5ecd07043cd h1:4fJD2KoUiP+iQPCFJ0QOh/qtzh7KzW2ci9cnPE7Gwzw=
-github.com/lxc/distrobuilder/v3 v3.3.2-0.20260319010925-f5ecd07043cd/go.mod h1:ZcIe6WsvX5vt7cdzu7a5tqRi8v6DX1+9+EmsREbW7L4=
+github.com/lxc/distrobuilder/v3 v3.3.2-0.20260320004136-08f5e47cc4cb h1:zvv6XfIMolkHVsYu3TjiY5mFScxaQhzEtbUFW/Lw3r4=
+github.com/lxc/distrobuilder/v3 v3.3.2-0.20260320004136-08f5e47cc4cb/go.mod h1:ZcIe6WsvX5vt7cdzu7a5tqRi8v6DX1+9+EmsREbW7L4=
 github.com/lxc/incus-os/incus-osd v0.0.0-20260122192122-a0476ad64f2f h1:Kh5qu0fSf0z5RcK6Fma7PWc+mWnUWtGWg1AlKBzp6SE=
 github.com/lxc/incus-os/incus-osd v0.0.0-20260122192122-a0476ad64f2f/go.mod h1:vGT4mSawLYaiNV0uFeXWXSHFI/iM1vyNSFtH9g5zrlg=
 github.com/lxc/incus/v6 v6.21.0 h1:nfcHeVe5uaqy/OO+xCBYgJebAji9p3KlGcal8fYYOlk=
