@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -24,6 +25,15 @@ var windowsVersions = map[string]string{
 var windowsAliases = map[string][]string{
 	"Server 2008 R2": {"Server R2 2008"},
 	"Server 2012 R2": {"Server R2 2012"},
+}
+
+// WindowsDirectory returns the path to the C:\Windows directory for the given version code.
+func WindowsDirectory(code string) string {
+	if code == "2k3" {
+		return "WINDOWS"
+	}
+
+	return "Windows"
 }
 
 // ToWindowsVersion returns the windows version for the given OS description.
@@ -80,4 +90,26 @@ func ValidateWindowsVersion(v string) error {
 // Earlier Windows versions do not have this feature and thus we can't determine which NIC should be assigned to which network config post-migration.
 func SupportsNetworkAssignment(code string) bool {
 	return !strings.HasPrefix(code, "2k3") && !strings.HasPrefix(code, "2k8") && !strings.HasPrefix(code, "2k12")
+}
+
+// ValidateUbuntuVersion validates that the version is empty or of format YY.MM.
+func ValidateUbuntuVersion(version string) error {
+	if version == "" {
+		return nil
+	}
+
+	parts := strings.Split(version, ".")
+
+	if len(parts) != 2 || len(parts[0]) != 2 || len(parts[1]) != 2 {
+		return fmt.Errorf("Invalid version format %q, expected YY.MM", version)
+	}
+
+	for _, part := range parts {
+		_, err := strconv.Atoi(part)
+		if err != nil {
+			return fmt.Errorf("Invalid version format %q, expected YY.MM: %w", version, err)
+		}
+	}
+
+	return nil
 }

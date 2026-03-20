@@ -106,6 +106,7 @@ export interface InstanceOverrideFormValues {
 type OSType = "bsd" | "linux" | "windows" | "fortigate";
 type Distribution =
   | "amazon"
+  | "arch"
   | "centos"
   | "debian"
   | "fedora"

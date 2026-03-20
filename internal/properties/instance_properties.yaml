@@ -25,6 +25,14 @@
             type: config
             key: limits.memory
 
+- name: os_template
+  description: OS template the VM was created with
+  source:
+      vmware:
+          8.0:
+            type: property
+            key: config.guestFullName
+
 - name: os
   description: OS name
   source:
@@ -33,11 +41,6 @@
             # VMware appends Guest to the end of the OS name, so we remove it.
             type: guest_info
             key: guestInfo.detailed.data
-  target:
-      incus:
-          6.0:
-            type: config
-            key: image.os
 
 - name: os_description
   description: OS description
@@ -72,7 +75,7 @@
       vmware:
           8.0:
               type: property
-              key: capability.secureBootSupported
+              key: config.bootOptions.efiSecureBootEnabled
   target:
       incus:
           6.0:

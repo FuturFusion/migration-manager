@@ -189,6 +189,11 @@ func (s *InternalVMwareSource) GetNSXManagerIP(ctx context.Context) (string, err
 	return managerIP, nil
 }
 
+func IsVMwareNotFoundErr(err error) bool {
+	var notFoundErr *find.NotFoundError
+	return err != nil && errors.As(err, &notFoundErr)
+}
+
 func (s *InternalVMwareSource) GetAllVMs(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error) {
 	log := slog.With(slog.String("source", s.Name))
 	vms := migration.Instances{}
@@ -416,8 +421,13 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 		Properties:           *vmProps,
 	}
 
-	if inst.GetOSType() == api.OSTYPE_WINDOWS {
-		_, err := util.ToWindowsVersion(inst.Properties.OSDescription)
+	if inst.GetOSType(false) == api.OSTYPE_WINDOWS {
+		osVer := inst.Properties.OSDescription
+		if osVer == "" {
+			osVer = inst.Properties.OSTemplate
+		}
+
+		_, err := util.ToWindowsVersion(osVer)
 		if err != nil {
 			return nil, api.InstanceImportFailed, fmt.Errorf("Failed to determine OS distribution version %q for Windows VM %q: %w", inst.Properties.OSDescription, inst.Properties.Location, err)
 		}
@@ -588,8 +598,8 @@ func (s *InternalVMwareSource) Dump(ctx context.Context) error {
 
 		ctx, cancel := context.WithTimeout(ctx, s.SyncTimeout.Duration)
 		var vmProperties mo.VirtualMachine
-		cancel()
 		err := vm.Properties(ctx, vm.Reference(), []string{}, &vmProperties)
+		cancel()
 		if err != nil {
 			return fmt.Errorf("Failed to fetch VMware properties for VM %q: %w", vm.InventoryPath, err)
 		}

@@ -446,15 +446,17 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "success",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 
 			assertErr: require.NoError,
@@ -463,17 +465,19 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "success - can edit if in a batch, but already disabled",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 				Overrides:  api.InstanceOverride{DisableMigration: true, Comment: "edited instance"},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 				Overrides:  api.InstanceOverride{DisableMigration: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			instanceSvcGetBatchesByUUID: migration.Batches{{}},
 
@@ -483,17 +487,19 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "success - can edit and enable if in a running batch, but already disabled",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 				Overrides:  api.InstanceOverride{Comment: "edited instance"},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 				Overrides:  api.InstanceOverride{DisableMigration: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			instanceSvcGetBatchesByUUID: migration.Batches{{Status: api.BATCHSTATUS_RUNNING}},
 
@@ -503,16 +509,18 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "success - can disable if in non-running batches",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 				Overrides:  api.InstanceOverride{DisableMigration: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			instanceSvcGetBatchesByUUID: migration.Batches{{Status: api.BATCHSTATUS_DEFINED}},
 
@@ -522,17 +530,19 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "success - can edit if in a non-running batch",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 				Overrides:  api.InstanceOverride{Comment: "edited instance"},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 				Overrides:  api.InstanceOverride{Comment: "edited instance"},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			instanceSvcGetBatchesByUUID: migration.Batches{{Status: api.BATCHSTATUS_DEFINED}},
 
@@ -542,16 +552,18 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - cannot edit if in a running batch",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 				Overrides:  api.InstanceOverride{Comment: "edited instance"},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			instanceSvcGetBatchesByUUID: migration.Batches{{Status: api.BATCHSTATUS_RUNNING}},
 
@@ -561,9 +573,10 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - invalid UUID",
 			instance: migration.Instance{
 				UUID:       uuid.Nil, // invalid
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -576,7 +589,8 @@ func TestInstanceService_Update(t *testing.T) {
 			instance: migration.Instance{
 				UUID: uuidA,
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 
 			assertErr: func(tt require.TestingT, err error, a ...any) {
@@ -588,7 +602,7 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - invalid source",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 
 				Source: "",
 			},
@@ -602,9 +616,10 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - repo.GetByUUID",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			repoGetByUUIDErr: boom.Error,
 
@@ -614,16 +629,18 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - can't disable, already assigned to running batch",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 				Overrides:  api.InstanceOverride{DisableMigration: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			instanceSvcGetBatchesByUUID: migration.Batches{
 				{Status: api.BATCHSTATUS_RUNNING},
@@ -637,15 +654,17 @@ func TestInstanceService_Update(t *testing.T) {
 			name: "error - repo.Update",
 			instance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 
-				Source: "one",
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
 			},
 			repoUpdateErr: boom.Error,
 
@@ -727,7 +746,9 @@ func TestInstanceService_DeleteByUUID(t *testing.T) {
 			uuidArg: uuidA,
 			repoGetByUUIDInstance: migration.Instance{
 				UUID:       uuidA,
-				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "os_version", BackgroundImport: true},
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: api.InstanceProperties{Location: "/inventory/path", InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "path", Architecture: "x86_64"}, OS: "os", OSDescription: "Debian", BackgroundImport: true},
 			},
 			instanceSvcGetBatchesByUUID: migration.Batches{{}},
 

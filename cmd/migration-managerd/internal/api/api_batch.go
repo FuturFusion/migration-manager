@@ -884,7 +884,7 @@ func batchResetPost(d *Daemon, r *http.Request) response.Response {
 
 				err = is.PowerOnVM(ctx, inst.Properties.Location)
 				cancel()
-				if err != nil {
+				if err != nil && !source.IsVMwareNotFoundErr(err) {
 					return err
 				}
 			}

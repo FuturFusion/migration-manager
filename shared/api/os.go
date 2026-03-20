@@ -16,6 +16,7 @@ const (
 type Distro string
 
 const (
+	DISTRO_ARCH    Distro = "arch"
 	DISTRO_DEBIAN  Distro = "debian"
 	DISTRO_UBUNTU  Distro = "ubuntu"
 	DISTRO_ORACLE  Distro = "oracle"
@@ -53,6 +54,7 @@ func ValidateOSType(os string) error {
 
 func ValidateDistribution(osType OSType, distro string) error {
 	switch Distro(distro) {
+	case DISTRO_ARCH:
 	case DISTRO_AMZN:
 	case DISTRO_CENTOS:
 	case DISTRO_DEBIAN:

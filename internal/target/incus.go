@@ -334,8 +334,9 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	}
 
 	// Handle RHEL (and derivative) specific completion steps.
-	distro, _ := i.GetDistribution()
-	if distro.IsRHELDerivative() || i.GetOSType() == api.OSTYPE_WINDOWS {
+	osType := i.GetOSType(true)
+	distro, distroVer := i.GetDistribution(true)
+	if distro.IsRHELDerivative() || osType == api.OSTYPE_WINDOWS {
 		// RHEL7+ don't support 9p, so make agent config available via cdrom.
 		apiDef.Devices["agent"] = map[string]string{
 			"type":   "disk",
@@ -343,16 +344,28 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		}
 	}
 
-	if i.GetOSType() == api.OSTYPE_WINDOWS {
-		_, v := i.GetDistribution()
-		code, err := util.MapWindowsVersionToAbbrev(v)
+	switch osType {
+	case api.OSTYPE_WINDOWS:
+		code, err := util.MapWindowsVersionToAbbrev(distroVer)
 		if err != nil {
-			return fmt.Errorf("Failed to check post-migration Windows version: %w", err)
+			return fmt.Errorf("Failed to check %q post-migration Windows version: %w", i.Properties.Location, err)
 		}
 
 		// 2k3 does not support vioscsi.
 		if code == "2k3" {
 			apiDef.Devices["root"]["io.bus"] = "virtio-blk"
+		}
+
+	case api.OSTYPE_LINUX:
+		if distro == api.DISTRO_DEBIAN && distroVer != "" {
+			v, err := strconv.Atoi(distroVer)
+			if err != nil {
+				return fmt.Errorf("Failed to check %q post-migration Debian version: %w", i.Properties.Location, err)
+			}
+
+			if v <= 5 {
+				apiDef.Devices["root"]["io.bus"] = "virtio-blk"
+			}
 		}
 	}
 
@@ -421,7 +434,7 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 
 	p := inst.Properties
 	p.Apply(inst.Overrides.InstancePropertiesConfigurable)
-	osType := inst.GetOSType()
+	osType := inst.GetOSType(true)
 
 	instance.Config = map[string]string{}
 	for name, info := range defs.GetAll() {
@@ -444,17 +457,19 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 		case properties.InstanceDescription:
 			instance.Config[info.Key] = p.Description
 			instance.Description = p.Description
-		case properties.InstanceOS:
-			if osType == api.OSTYPE_WINDOWS {
-				instance.Config[info.Key] = "win-prepare"
-				instance.Config["user.migration.os"] = "Windows"
-			} else {
-				instance.Config[info.Key] = string(osType)
-			}
-
 		case properties.InstanceOSDescription:
 			instance.Config[info.Key] = p.OSDescription
+			if p.OSDescription == "" {
+				instance.Config[info.Key] = p.OSTemplate
+			}
 		}
+	}
+
+	if osType == api.OSTYPE_WINDOWS {
+		instance.Config["image.os"] = "win-prepare"
+		instance.Config["user.migration.os"] = "Windows"
+	} else {
+		instance.Config["image.os"] = string(osType)
 	}
 
 	// Fallback to x86_64 if no architecture property was found.
@@ -550,12 +565,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	ret.Config["user.migration.endpoint"] = endpoint
 	ret.Config["user.migration.uuid"] = instanceDef.UUID.String()
 
-	info, err := defs.Get(properties.InstanceOS)
-	if err != nil {
-		return incusAPI.InstancesPost{}, err
-	}
-
-	if ret.Config[info.Key] == "win-prepare" {
+	if ret.Config["image.os"] == "win-prepare" {
 		// Set some additional QEMU options.
 		ret.Config["raw.qemu"] = "-device intel-hda -device hda-duplex -audio spice"
 	}

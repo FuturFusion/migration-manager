@@ -61,6 +61,7 @@ func TestGetProperties(t *testing.T) {
 		expectedSecureBoot       bool
 		expectedRunning          bool
 
+		expectedOSTemplate   string
 		expectedDiskName     string
 		expectedDiskShared   string
 		expectedDiskCapacity int64
@@ -94,6 +95,7 @@ func TestGetProperties(t *testing.T) {
 			expectedDiskCapacity:     2147483648,
 			expectedNetwork:          "network",
 			expectedNetworkID:        "network-123",
+			expectedOSTemplate:       "os template",
 			expectedMac:              "mac",
 			expectedMemory:           2048,
 			expectedRunning:          true,
@@ -430,6 +432,10 @@ func TestGetProperties(t *testing.T) {
 					NumCPU: c.expectedCPUs,
 					Device: []types.BaseVirtualDevice{},
 				},
+				BootOptions: &types.VirtualMachineBootOptions{
+					EfiSecureBootEnabled: ptr.To(c.expectedSecureBoot),
+				},
+				GuestFullName: c.expectedOSTemplate,
 			},
 			Summary: types.VirtualMachineSummary{
 				Config: types.VirtualMachineConfigSummary{
@@ -543,6 +549,7 @@ func TestGetProperties(t *testing.T) {
 			require.Equal(t, int64(c.expectedCPUs), props.CPUs)
 			require.Equal(t, "os", props.OS)
 			require.Equal(t, "os version", props.OSDescription)
+			require.Equal(t, c.expectedOSTemplate, props.OSTemplate)
 			require.Equal(t, c.expectedDescription, props.Description)
 			require.LessOrEqual(t, c.numDisks, len(props.Disks))
 			require.LessOrEqual(t, c.numNICs, len(props.NICs))

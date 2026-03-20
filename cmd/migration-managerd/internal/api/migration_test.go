@@ -31,8 +31,8 @@ type uuidCache map[string]uuid.UUID
 // - disks are a map of disk index to whether the disk is supported.
 // - nics are a map of nic index to the nic's IPv4 address.
 func (u uuidCache) newTestInstance(name string, disks map[int]bool, nics map[int]string, osType api.OSType, ignoreRestrictions bool) migration.Instance {
-	osName := "test_os"
-	osVersion := "test_os_version"
+	osName := "linux"
+	osVersion := "Debian"
 	description := "description for " + name
 	switch osType {
 	case api.OSTYPE_WINDOWS:

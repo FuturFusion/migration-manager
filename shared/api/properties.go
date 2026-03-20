@@ -35,6 +35,10 @@ type InstanceProperties struct {
 	// Example: 24.04
 	OSDescription string `json:"os_description" yaml:"os_description" expr:"os_description"`
 
+	// OS template of the Instance.
+	// Example: Ubuntu Linux
+	OSTemplate string `json:"os_template" yaml:"os_template" expr:"os_template"`
+
 	// Whether the Instance has secure-boot enabled.
 	// Example: true
 	SecureBoot bool `json:"secure_boot" yaml:"secure_boot" expr:"secure_boot"`

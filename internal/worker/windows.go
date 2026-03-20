@@ -90,12 +90,12 @@ func DetermineWindowsPartitions(code string) (mainParent string, base string, re
 					sc := bufio.NewScanner(strings.NewReader(list))
 					var matches int
 					for sc.Scan() {
-						if sc.Text() == "Windows" || sc.Text() == "Users" || sc.Text() == "Program Files" {
+						if sc.Text() == internalUtil.WindowsDirectory(code) || sc.Text() == "Program Files" {
 							matches++
 						}
 					}
 
-					if matches == 3 {
+					if matches == 2 {
 						base = child.Name
 						mainParent = child.PKName
 						break
@@ -331,7 +331,8 @@ func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitect
 
 	// ntfs-3g is a FUSE-backed file system; the newly mounted file systems might not be ready right away, so wait until they are.
 	mountCheckTries := 0
-	for !util.PathExists(filepath.Join(windowsMainMountPath, "Windows")) || (recoveryExists && !util.PathExists(filepath.Join(windowsRecoveryMountPath, "Recovery"))) {
+
+	for !util.PathExists(filepath.Join(windowsMainMountPath, internalUtil.WindowsDirectory(versionCode))) || (recoveryExists && !util.PathExists(filepath.Join(windowsRecoveryMountPath, "Recovery"))) {
 		maxTries := 100
 		interval := 100 * time.Millisecond
 		if dryRun {

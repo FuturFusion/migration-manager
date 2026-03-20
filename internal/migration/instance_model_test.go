@@ -19,7 +19,7 @@ func TestInstance_GetOSType(t *testing.T) {
 		{
 			name: "windows",
 			instance: migration.Instance{
-				Properties: api.InstanceProperties{OS: "winXPProGuest"},
+				Properties: api.InstanceProperties{OS: "Something Windows Something"},
 			},
 
 			want: api.OSTYPE_WINDOWS,
@@ -36,7 +36,7 @@ func TestInstance_GetOSType(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := tc.instance.GetOSType()
+			got := tc.instance.GetOSType(true)
 
 			require.Equal(t, tc.want, got)
 		})
