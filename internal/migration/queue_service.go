@@ -550,7 +550,12 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 
 		case api.WORKERRESPONSE_FAILED:
 			if entry.MigrationStatus != api.MIGRATIONSTATUS_ERROR && workerResp.Metadata != nil {
-				err := os.WriteFile(util.CachePath(fmt.Sprintf("worker_log_%s", time.Now().Format(time.RFC3339))), workerResp.Metadata, 0o644)
+				instance, err := s.instance.GetByUUID(ctx, id)
+				if err != nil {
+					return fmt.Errorf("Failed to get instance %q: %w", id, err)
+				}
+
+				err = os.WriteFile(util.CachePath(fmt.Sprintf("worker_%s_%s_%s", instance.Source, instance.GetName(), time.Now().Format(time.RFC3339))), workerResp.Metadata, 0o644)
 				if err != nil {
 					slog.Error("Failed to write worker log", slog.Any("error", err))
 				}
