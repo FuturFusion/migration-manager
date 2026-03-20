@@ -137,7 +137,12 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 		return fmt.Errorf("Instance name %q is not a valid hostname: %w", props.Name, err)
 	}
 
-	if props.OS == "" || props.OSDescription == "" {
+	osType := i.GetOSType(false)
+	distro, _ := i.GetDistribution(false)
+
+	fmt.Println(osType, distro)
+
+	if osType == api.OSTYPE_LINUX && distro == api.DISTRO_OTHER {
 		osOverridden := i.Overrides.Distribution != "" || i.Overrides.OSType != ""
 		if !overrides.AllowUnknownOS && !osOverridden {
 			return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
