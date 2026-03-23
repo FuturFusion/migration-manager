@@ -1,10 +1,13 @@
 package worker
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -341,14 +344,27 @@ func injectScript(scriptName string, finalPath string, run bool, args ...string)
 	}
 
 	if run {
-		cmd := make([]string, 0, len(args)+1)
-		cmd = append(cmd, finalPath)
-		cmd = append(cmd, args...)
+		cmdArgs := make([]string, 0, len(args)+1)
+		cmdArgs = append(cmdArgs, finalPath)
+		cmdArgs = append(cmdArgs, args...)
 
-		slog.Debug("Running script", slog.String("script", scriptName), slog.Any("args", cmd))
-		_, err = subprocess.RunCommand("/bin/sh", cmd...)
+		slog.Debug("Running script", slog.String("script", scriptName), slog.Any("args", cmdArgs))
+
+		logFile, _ := strings.CutSuffix(scriptName, ".sh")
+		cmd := exec.CommandContext(context.TODO(), "/bin/sh", cmdArgs...)
+		f, err := os.Create(filepath.Join("/tmp", logDir, logFile+".log"))
 		if err != nil {
-			return fmt.Errorf("Failed to run %q: %w", scriptName, err)
+			return err
+		}
+
+		defer f.Close()
+
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = io.MultiWriter(f, &stdout)
+		cmd.Stderr = io.MultiWriter(f, &stderr)
+		err = cmd.Run()
+		if err != nil {
+			return fmt.Errorf("Failed to run %q: %w", scriptName, subprocess.NewRunError("/bin/sh", cmdArgs, err, &stdout, &stderr))
 		}
 	}
 
