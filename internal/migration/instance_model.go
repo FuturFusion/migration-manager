@@ -284,7 +284,7 @@ func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
 
 		case api.OSTYPE_LINUX:
 			// Get the disto's major version, if possible.
-			versionRegex := regexp.MustCompile(`^[\w /]+?(\d+)(\.\d+)?(\.\d+)?( \([\w /]+\))?( \(64-bit\))?$`)
+			versionRegex := regexp.MustCompile(`^[\w /]+?(\d+)(\.\d+)?(\.\d+)?( \([\w /]+\))?( \(64-bit\))?`)
 			if strings.Contains(strings.ToLower(osVersion), "centos") {
 				distro = api.DISTRO_CENTOS
 			} else if strings.Contains(strings.ToLower(osVersion), "debian") {
