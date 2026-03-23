@@ -2,6 +2,7 @@ package worker
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -48,9 +50,23 @@ type LVSOutput struct {
 	} `json:"report"`
 }
 
-const chrootMountPath string = "/run/mount/target/"
+const (
+	chrootMountPath string = "/run/mount/target/"
+	logDir          string = "migration-manager"
+)
 
 func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, distro api.Distro, distroVersion string, dryRun bool) error {
+	// Clear any existing logs from a previousr run.
+	err := os.RemoveAll(filepath.Join("/tmp", logDir))
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(filepath.Join("/tmp", logDir), 0o755)
+	if err != nil {
+		return err
+	}
+
 	// Get the disto's major version, if possible.
 	if distro == api.DISTRO_OTHER {
 		slog.Info("Could not determine Linux distribution, not performing any post-migration actions")
@@ -59,7 +75,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 
 	slog.Info("Preparing to perform post-migration configuration of VM")
 
-	err := cleanupClones()
+	err = cleanupClones()
 	if err != nil {
 		return fmt.Errorf("Failed to attempt cleanup of stale clone state")
 	}
@@ -223,18 +239,10 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		}
 	}
 
-	var noAgent bool
-	switch distro {
-	case api.DISTRO_DEBIAN:
-		noAgent = versionInt > 0 && versionInt < 8
-	}
-
-	if !noAgent {
-		// Install incus-agent into the VM.
-		err = runScriptInChroot("install-incus-agent.sh")
-		if err != nil {
-			return err
-		}
+	// Install incus-agent into the VM.
+	err = runScriptInChroot("install-incus-agent.sh")
+	if err != nil {
+		return err
 	}
 
 	if distro.IsRHELDerivative() {
@@ -308,6 +316,15 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 
 	if !instance.LegacyBoot {
 		err := runScriptInChroot("reinstall-grub-uefi.sh")
+		if err != nil {
+			return err
+		}
+	}
+
+	if !dryRun {
+		srcDir := filepath.Join("/tmp", logDir)
+		tgtDir := filepath.Join(chrootMountPath, "var/log", logDir)
+		err = internalUtil.DirCopy(srcDir, tgtDir)
 		if err != nil {
 			return err
 		}
@@ -397,6 +414,9 @@ func determineRootPartition(looksLikeRootPartition func(partition string, opts [
 }
 
 func runScriptInChroot(scriptName string, args ...string) error {
+	logFile, _ := strings.CutSuffix(scriptName, ".sh")
+
+	slog.Info("Executing script", slog.String("command", strings.Join(append([]string{scriptName}, args...), " ")))
 	// Get the embedded script's contents.
 	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
 	if err != nil {
@@ -412,11 +432,28 @@ func runScriptInChroot(scriptName string, args ...string) error {
 	defer func() { _ = os.Remove(filepath.Join(chrootMountPath, scriptName)) }()
 
 	// Run the script within the chroot.
-	cmd := make([]string, 0, len(args)+2)
-	cmd = append(cmd, chrootMountPath, filepath.Join("/", scriptName))
-	cmd = append(cmd, args...)
-	_, _, err = subprocess.RunCommandSplit(context.TODO(), []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}, nil, "chroot", cmd...)
-	return err
+	cmdArgs := make([]string, 0, len(args)+2)
+	cmdArgs = append(cmdArgs, chrootMountPath, filepath.Join("/", scriptName))
+	cmdArgs = append(cmdArgs, args...)
+
+	cmd := exec.CommandContext(context.TODO(), "chroot", cmdArgs...)
+	cmd.Env = []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
+	f, err := os.Create(filepath.Join("/tmp", logDir, logFile+".log"))
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = io.MultiWriter(f, &stdout)
+	cmd.Stderr = io.MultiWriter(f, &stderr)
+	err = cmd.Run()
+	if err != nil {
+		return subprocess.NewRunError("chroot", cmdArgs, err, &stdout, &stderr)
+	}
+
+	return nil
 }
 
 func scanVGs() (LVSOutput, error) {
@@ -449,6 +486,11 @@ func scanPVs() (LVSOutput, error) {
 	return ret, nil
 }
 
+func isRootFS(base string) bool {
+	// If /usr/ and /etc/ exist, this is probably the root partition.
+	return util.PathExists(filepath.Join(base, "usr")) && util.PathExists(filepath.Join(base, "etc"))
+}
+
 func looksLikeLinuxRootPartition(partition string, opts []string) bool {
 	// Mount the potential root partition.
 	err := DoMount(partition, chrootMountPath, opts)
@@ -458,8 +500,7 @@ func looksLikeLinuxRootPartition(partition string, opts []string) bool {
 
 	defer func() { _ = DoUnmount(chrootMountPath) }()
 
-	// If /usr/ and /etc/ exist, this is probably the root partition.
-	return util.PathExists(filepath.Join(chrootMountPath, "usr")) && util.PathExists(filepath.Join(chrootMountPath, "etc"))
+	return isRootFS(chrootMountPath)
 }
 
 func getAdditionalMounts() []map[string]string {
@@ -510,7 +551,33 @@ func getBTRFSTopSubvol(partition string) (string, error) {
 
 	submatch = regexp.MustCompile(`ID (\d+) \(FS_TREE\)`).FindStringSubmatch(output)
 	if len(submatch) > 1 {
-		return "subvolid=" + submatch[1], nil
+		subvolid := submatch[1]
+		output, err := subprocess.RunCommand("btrfs", "subvolume", "list", chrootMountPath)
+		if err != nil {
+			return "", err
+		}
+
+		err = DoUnmount(chrootMountPath)
+		if err != nil {
+			return "", err
+		}
+
+		err = DoMount(partition, chrootMountPath, []string{"-o", "subvolid=" + subvolid})
+		if err != nil {
+			return "", err
+		}
+
+		sc := bufio.NewScanner(strings.NewReader(output))
+		for sc.Scan() {
+			submatch := regexp.MustCompile(`ID \d+ gen \d+ top level ` + subvolid + ` path (.+)`).FindStringSubmatch(sc.Text())
+			if len(submatch) <= 1 {
+				continue
+			}
+
+			if isRootFS(filepath.Join(chrootMountPath, submatch[1])) {
+				return "subvol=" + submatch[1], nil
+			}
+		}
 	}
 
 	return "", fmt.Errorf("Unable to determine top level subvolume for partition %s", partition)
