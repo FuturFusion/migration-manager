@@ -1109,6 +1109,15 @@ func createIncusBackup(ctx context.Context, backupPath string, imagePath string,
 		return err
 	}
 
+	volCfg := map[string]string{
+		"size":            fmt.Sprintf("%dB", imgInfo.Size()),
+		"security.shared": "true",
+	}
+
+	if pool.Driver == "lvmcluster" {
+		volCfg["block.type"] = "raw"
+	}
+
 	// Create the backup index file.
 	index := backupIndexFile{
 		Name:    volumeName,
@@ -1118,10 +1127,7 @@ func createIncusBackup(ctx context.Context, backupPath string, imagePath string,
 		Config: map[string]any{
 			"volume": incusAPI.StorageVolume{
 				StorageVolumePut: incusAPI.StorageVolumePut{
-					Config: map[string]string{
-						"size":            fmt.Sprintf("%dB", imgInfo.Size()),
-						"security.shared": "true",
-					},
+					Config:      volCfg,
 					Description: "Temporary image for the migration-manager worker",
 				},
 				Name:        volumeName,
