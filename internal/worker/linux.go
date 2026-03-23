@@ -397,6 +397,7 @@ func determineRootPartition(looksLikeRootPartition func(partition string, opts [
 }
 
 func runScriptInChroot(scriptName string, args ...string) error {
+	slog.Info("Executing script", slog.String("command", strings.Join(append([]string{scriptName}, args...), " ")))
 	// Get the embedded script's contents.
 	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
 	if err != nil {
@@ -449,6 +450,11 @@ func scanPVs() (LVSOutput, error) {
 	return ret, nil
 }
 
+func isRootFS(base string) bool {
+	// If /usr/ and /etc/ exist, this is probably the root partition.
+	return util.PathExists(filepath.Join(base, "usr")) && util.PathExists(filepath.Join(base, "etc"))
+}
+
 func looksLikeLinuxRootPartition(partition string, opts []string) bool {
 	// Mount the potential root partition.
 	err := DoMount(partition, chrootMountPath, opts)
@@ -458,8 +464,7 @@ func looksLikeLinuxRootPartition(partition string, opts []string) bool {
 
 	defer func() { _ = DoUnmount(chrootMountPath) }()
 
-	// If /usr/ and /etc/ exist, this is probably the root partition.
-	return util.PathExists(filepath.Join(chrootMountPath, "usr")) && util.PathExists(filepath.Join(chrootMountPath, "etc"))
+	return isRootFS(chrootMountPath)
 }
 
 func getAdditionalMounts() []map[string]string {
@@ -510,7 +515,33 @@ func getBTRFSTopSubvol(partition string) (string, error) {
 
 	submatch = regexp.MustCompile(`ID (\d+) \(FS_TREE\)`).FindStringSubmatch(output)
 	if len(submatch) > 1 {
-		return "subvolid=" + submatch[1], nil
+		subvolid := submatch[1]
+		output, err := subprocess.RunCommand("btrfs", "subvolume", "list", chrootMountPath)
+		if err != nil {
+			return "", err
+		}
+
+		err = DoUnmount(chrootMountPath)
+		if err != nil {
+			return "", err
+		}
+
+		err = DoMount(partition, chrootMountPath, []string{"-o", "subvolid=" + subvolid})
+		if err != nil {
+			return "", err
+		}
+
+		sc := bufio.NewScanner(strings.NewReader(output))
+		for sc.Scan() {
+			submatch := regexp.MustCompile(`ID \d+ gen \d+ top level ` + subvolid + ` path (.+)`).FindStringSubmatch(sc.Text())
+			if len(submatch) <= 1 {
+				continue
+			}
+
+			if isRootFS(filepath.Join(chrootMountPath, submatch[1])) {
+				return "subvol=" + submatch[1], nil
+			}
+		}
 	}
 
 	return "", fmt.Errorf("Unable to determine top level subvolume for partition %s", partition)
