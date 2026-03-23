@@ -5,6 +5,8 @@ set -e
 mount_dir="/run/mount/win_main"
 hive_dir="${mount_dir}/Windows/System32/config"
 
+echo "Cleaning up VMware tools"
+
 # No VMware tools, nothing to do.
 if ! test -e "${mount_dir}/Program Files/VMware/VMware Tools" ; then
   echo "VMware tools were not found"
@@ -327,3 +329,5 @@ rm -rf "${mount_dir}/ProgramData/VMware/VMware Tools"
 rm -rf "${mount_dir}/ProgramData/VMware/VMware VGAuth"
 rm -rf "${mount_dir}/Program Files/Common Files/VMware/Drivers"
 rm -rf "${mount_dir}/Program Files/Common Files/VMware/InstallerCache"
+
+echo "VMware Tools successfully cleaned up"

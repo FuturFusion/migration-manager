@@ -5,6 +5,8 @@ set -e
 mount_dir="/run/mount/win_main"
 hive_dir="${mount_dir}/Windows/System32/config/SYSTEM"
 
+echo "Setting up first-boot service"
+
 # Get the current control set before it's loaded.
 control_set_num="$(hivexregedit --export --prefix='HKEY_LOCAL_MACHINE\SYSTEM' "${hive_dir}" 'Select' | grep -io '^"Current"=dword:[0-9a-f]*' | cut -d':' -f2 | sed -e 's/^0*//')"
 
@@ -13,6 +15,8 @@ if ! echo "${control_set_num}" | grep -qE "^[0-9]+$" ; then
 fi
 
 control_set="$(printf "ControlSet%03d" "${control_set_num}")"
+
+echo "Using control set ${control_set}"
 
 # Create a service that runs before any user boots. For some reason, we can't run powershell.exe directly here, it has to be called from cmd.exe.
 cat << EOF | hivexregedit --merge --prefix 'HKEY_LOCAL_MACHINE\SYSTEM' "${hive_dir}"

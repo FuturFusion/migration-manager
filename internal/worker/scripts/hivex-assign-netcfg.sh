@@ -7,8 +7,11 @@ hive_dir="${mount_dir}/Windows/System32/config/SYSTEM"
 old_guid_file="${mount_dir}/migration_manager_old_guids"
 nics_file="${mount_dir}/migration_manager_nics"
 
+echo "Setting up first-boot network reassignment script"
+
 # Just exit if no MACs provided.
 if [ 0 = ${#} ]; then
+  echo "No MACs supplied, exiting"
   exit 0
 fi
 
@@ -21,6 +24,8 @@ fi
 
 control_set="$(printf "ControlSet%03d" "${control_set_num}")"
 
+echo "Using control set ${control_set}"
+
 # Record each mapping of MAC to InstanceGUID because we can't tell which NIC is which after booting. (And also reading networksetup2 requires elevated privileges).
 # shellcheck disable=1003
 hivexregedit --export --prefix 'hklm\system' "${hive_dir}" "${control_set}\control\networksetup2\interfaces" --max-depth 3 \
@@ -32,6 +37,7 @@ hivexregedit --export --prefix 'hklm\system' "${hive_dir}" "${control_set}\contr
 
 # If we can't find any MACs, then exit.
 if [ "$(wc -l /tmp/macs_to_guids)" = 0 ]; then
+  echo "No GUID records found, exiting"
   exit 0
 fi
 
@@ -39,11 +45,14 @@ fi
 rm -rf "${old_guid_file}" "${nics_file}"
 
 for mac in "${@}" ; do
+  echo "  Checking mac ${mac}"
+
   # Grab the previous GUID for this MAC.
   mac="$(printf "%s" "${mac}" | tr '[:upper:]' '[:lower:]')"
   mapping="$(grep "^${mac}" -B1 --no-group-separator /tmp/macs_to_guids | head -2)"
 
   if [ -z "${mapping}" ] ; then
+    echo "  Mac ${mac} not found in GUID mappings"
     continue
   fi
 
@@ -52,8 +61,11 @@ for mac in "${@}" ; do
   mac="$(printf "%s" "${mac}" | tr '[:lower:]' '[:upper:]' | sed -e 's/:/-/g')"
 
   if [ -z "${old_guid}" ] || [ -z "${mac}" ]; then
+    echo "  Unexpected GUID mapping format: ${mapping}"
     exit 1
   fi
+
+  echo "  MAC: ${mac} GUID: ${old_guid}"
 
   echo "${old_guid}" >> "${old_guid_file}"
   echo "${mac}" >> "${nics_file}"

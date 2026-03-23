@@ -2,6 +2,8 @@
 
 set -e
 
+echo "Running Windows CPU-hotplug compatibility patches"
+
 mount_dir="/run/mount/win_main"
 hive_dir="${mount_dir}/Windows/System32/config"
 
@@ -13,13 +15,19 @@ remove_key="$(hivexregedit --export --prefix 'hklm\system' "${hive_dir}/SYSTEM" 
 # Only perform the ACPI removal if the key is found.
 # See: https://forum.proxmox.com/threads/windows-2016-cpu-hot-plug-support.42302/
 if [ -n "${remove_key}" ]; then
+  echo "Removing invalid ACPI hidinterrupt.inf entry"
   cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
 [-DriverDatabase\DeviceIds\ACPI\ACPI0010]
 
 ${remove_key}
 
 EOF
+else
+  echo "Invalid ACPI hidinterrupt.inf entry not found, assuming Windows is patched"
 fi
+
+
+echo "Disabling VBS auto-start"
 
 # Disable Virtualization Based Security.
 cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
