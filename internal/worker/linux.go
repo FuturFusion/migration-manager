@@ -2,6 +2,7 @@ package worker
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -48,9 +50,23 @@ type LVSOutput struct {
 	} `json:"report"`
 }
 
-const chrootMountPath string = "/run/mount/target/"
+const (
+	chrootMountPath string = "/run/mount/target/"
+	logDir          string = "migration-manager"
+)
 
 func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, distro api.Distro, distroVersion string, dryRun bool) error {
+	// Clear any existing logs from a previousr run.
+	err := os.RemoveAll(filepath.Join("/tmp", logDir))
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(filepath.Join("/tmp", logDir), 0o755)
+	if err != nil {
+		return err
+	}
+
 	// Get the disto's major version, if possible.
 	if distro == api.DISTRO_OTHER {
 		slog.Info("Could not determine Linux distribution, not performing any post-migration actions")
@@ -59,7 +75,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 
 	slog.Info("Preparing to perform post-migration configuration of VM")
 
-	err := cleanupClones()
+	err = cleanupClones()
 	if err != nil {
 		return fmt.Errorf("Failed to attempt cleanup of stale clone state")
 	}
@@ -305,6 +321,15 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		}
 	}
 
+	if !dryRun {
+		srcDir := filepath.Join("/tmp", logDir)
+		tgtDir := filepath.Join(chrootMountPath, "var/log", logDir)
+		err = internalUtil.DirCopy(srcDir, tgtDir)
+		if err != nil {
+			return err
+		}
+	}
+
 	slog.Info("Post-migration configuration complete!")
 	return nil
 }
@@ -389,6 +414,8 @@ func determineRootPartition(looksLikeRootPartition func(partition string, opts [
 }
 
 func runScriptInChroot(scriptName string, args ...string) error {
+	logFile, _ := strings.CutSuffix(scriptName, ".sh")
+
 	slog.Info("Executing script", slog.String("command", strings.Join(append([]string{scriptName}, args...), " ")))
 	// Get the embedded script's contents.
 	script, err := embeddedScripts.ReadFile(filepath.Join("scripts/", scriptName))
@@ -405,11 +432,28 @@ func runScriptInChroot(scriptName string, args ...string) error {
 	defer func() { _ = os.Remove(filepath.Join(chrootMountPath, scriptName)) }()
 
 	// Run the script within the chroot.
-	cmd := make([]string, 0, len(args)+2)
-	cmd = append(cmd, chrootMountPath, filepath.Join("/", scriptName))
-	cmd = append(cmd, args...)
-	_, _, err = subprocess.RunCommandSplit(context.TODO(), []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}, nil, "chroot", cmd...)
-	return err
+	cmdArgs := make([]string, 0, len(args)+2)
+	cmdArgs = append(cmdArgs, chrootMountPath, filepath.Join("/", scriptName))
+	cmdArgs = append(cmdArgs, args...)
+
+	cmd := exec.CommandContext(context.TODO(), "chroot", cmdArgs...)
+	cmd.Env = []string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}
+	f, err := os.Create(filepath.Join("/tmp", logDir, logFile+".log"))
+	if err != nil {
+		return err
+	}
+
+	defer f.Close()
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = io.MultiWriter(f, &stdout)
+	cmd.Stderr = io.MultiWriter(f, &stderr)
+	err = cmd.Run()
+	if err != nil {
+		return subprocess.NewRunError("chroot", cmdArgs, err, &stdout, &stderr)
+	}
+
+	return nil
 }
 
 func scanVGs() (LVSOutput, error) {

@@ -3,8 +3,11 @@
 package util
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"syscall"
 
 	"github.com/lxc/incus/v6/shared/util"
@@ -70,6 +73,58 @@ func FileCopy(source string, dest string) error {
 	}
 
 	return d.Close()
+}
+
+// DirCopy copies a directory recursively, overwriting the target if it exists.
+func DirCopy(source string, dest string) error {
+	// Get info about source.
+	info, err := os.Stat(source)
+	if err != nil {
+		return fmt.Errorf("failed to get source directory info: %w", err)
+	}
+
+	if !info.IsDir() {
+		return errors.New("source is not a directory")
+	}
+
+	// Remove dest if it already exists.
+	if util.PathExists(dest) {
+		err := os.RemoveAll(dest)
+		if err != nil {
+			return fmt.Errorf("failed to remove destination directory %s: %w", dest, err)
+		}
+	}
+
+	// Create dest.
+	err = os.MkdirAll(dest, info.Mode())
+	if err != nil {
+		return fmt.Errorf("failed to create destination directory %s: %w", dest, err)
+	}
+
+	// Copy all files.
+	entries, err := os.ReadDir(source)
+	if err != nil {
+		return fmt.Errorf("failed to read source directory %s: %w", source, err)
+	}
+
+	for _, entry := range entries {
+		sourcePath := filepath.Join(source, entry.Name())
+		destPath := filepath.Join(dest, entry.Name())
+
+		if entry.IsDir() {
+			err := DirCopy(sourcePath, destPath)
+			if err != nil {
+				return fmt.Errorf("failed to copy sub-directory from %s to %s: %w", sourcePath, destPath, err)
+			}
+		} else {
+			err := FileCopy(sourcePath, destPath)
+			if err != nil {
+				return fmt.Errorf("failed to copy file from %s to %s: %w", sourcePath, destPath, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func GetOwnerMode(fInfo os.FileInfo) (os.FileMode, int, int) {
