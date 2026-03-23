@@ -223,18 +223,10 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		}
 	}
 
-	var noAgent bool
-	switch distro {
-	case api.DISTRO_DEBIAN:
-		noAgent = versionInt > 0 && versionInt < 8
-	}
-
-	if !noAgent {
-		// Install incus-agent into the VM.
-		err = runScriptInChroot("install-incus-agent.sh")
-		if err != nil {
-			return err
-		}
+	// Install incus-agent into the VM.
+	err = runScriptInChroot("install-incus-agent.sh")
+	if err != nil {
+		return err
 	}
 
 	if distro.IsRHELDerivative() {

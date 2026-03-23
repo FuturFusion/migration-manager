@@ -2,6 +2,11 @@
 
 set -e
 
+# Skip setup if systemd is not supported.
+if ! systemctl > /dev/null 2>&1 ; then
+  exit 0
+fi
+
 # Mask the lxd-agent service.
 if systemctl list-unit-files --type=service | grep -q "lxd-agent.service" ; then
   systemctl mask lxd-agent.service
