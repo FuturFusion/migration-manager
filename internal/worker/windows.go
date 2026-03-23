@@ -171,6 +171,17 @@ func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error
 
 func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitecture, isoFile string, dryRun bool) error {
 	slog.Info("Preparing to inject Windows drivers into VM")
+	// Clear any existing logs from a previousr run.
+	err := os.RemoveAll(filepath.Join("/tmp", logDir))
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(filepath.Join("/tmp", logDir), 0o755)
+	if err != nil {
+		return err
+	}
+
 	versionCode, err := internalUtil.MapWindowsVersionToAbbrev(distroVersion)
 	if err != nil {
 		return err
@@ -411,6 +422,15 @@ func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitect
 			if err != nil {
 				return err
 			}
+		}
+	}
+
+	if !dryRun {
+		srcDir := filepath.Join("/tmp", logDir)
+		tgtDir := filepath.Join(windowsMainMountPath, "AppData", logDir)
+		err = internalUtil.DirCopy(srcDir, tgtDir)
+		if err != nil {
+			return err
 		}
 	}
 

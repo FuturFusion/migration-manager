@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
+write-output "Starting Drive letter reassignment"
+
 # Delete the script file before continuing any further.
 remove-item "C:\migration-manager-virtio-assign-diskcfg.ps1"
 
@@ -12,17 +14,22 @@ remove-item "C:\migration_manager_disk_ids"
 $disks = @()
 $ids | foreach-object {
   $id = $_
+
+  write-output ("  Checking ID {0}" -f $id)
   if ($id -match '^{') {
     # GPT
     $part = get-partition | where-object { $_.guid -eq $id }
     $disk = get-disk -number $part.disknumber
     $disks += $disk
+
+    write-output ("  Matching GPT Disk: {0} Part: {1}" -f $disk.number, $part.disknumber)
   } else {
     # MBR
     $disk = get-disk | where-object { $_.signature -eq $id }
     $disks += $disk
-  }
 
+    write-output ("  Matching MBR Disk: {0}" -f $disk.number)
+  }
 }
 
 # Bring online each disk that had a drive letter assigned in the previous boot.
