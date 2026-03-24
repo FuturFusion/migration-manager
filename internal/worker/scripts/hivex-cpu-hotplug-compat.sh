@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -ex
 
 echo "Running Windows CPU-hotplug compatibility patches"
 

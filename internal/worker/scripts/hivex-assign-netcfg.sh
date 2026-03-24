@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e
+set -ex
 
 mount_dir="/run/mount/win_main"
 hive_dir="${mount_dir}/Windows/System32/config/SYSTEM"

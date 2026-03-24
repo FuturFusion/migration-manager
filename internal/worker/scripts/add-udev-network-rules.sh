@@ -15,6 +15,7 @@ fi
 hwaddrs="${1}"
 
 process_devs () {
+    echo "Applying network udev rules"
     set -e
     _device_num=1
     for mac in ${hwaddrs} ; do
@@ -30,6 +31,7 @@ process_devs () {
           continue
         fi
 
+        echo "Applying: ${line}"
         echo "${line}" >> "${conf_file}"
         _device_num=$((_device_num + 1))
     done
