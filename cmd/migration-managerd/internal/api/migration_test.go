@@ -653,8 +653,11 @@ def placement(instance, batch):
 						tgt := target.InternalIncusTarget{InternalTarget: target.NewInternalTarget(t, "6.0")}
 						return tgt.CreateVMDefinition(instanceDef, usedNetworks, q, fingerprint, endpoint, targeNetwork)
 					},
-					CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
-						return func() { ranCleanup = true }, nil
+					CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error) {
+						return func(_ context.Context) error { return nil }, func() { ranCleanup = true }, nil
+					},
+					SetupVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement) error {
+						return nil
 					},
 					GetDetailsFunc: func(ctx context.Context) (*target.IncusDetails, error) {
 						for _, tgt := range tc.targetDetails {

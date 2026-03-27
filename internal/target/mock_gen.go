@@ -35,7 +35,7 @@ var _ Target = &TargetMock{}
 //			ConnectFunc: func(ctx context.Context) error {
 //				panic("mock out the Connect method")
 //			},
-//			CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
+//			CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error) {
 //				panic("mock out the CreateNewVM method")
 //			},
 //			CreateStoragePoolVolumeFromBackupFunc: func(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) error {
@@ -95,6 +95,9 @@ var _ Target = &TargetMock{}
 //			SetProjectFunc: func(project string) error {
 //				panic("mock out the SetProject method")
 //			},
+//			SetupVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement) error {
+//				panic("mock out the SetupVM method")
+//			},
 //			StartVMFunc: func(ctx context.Context, name string) error {
 //				panic("mock out the StartVM method")
 //			},
@@ -127,7 +130,7 @@ type TargetMock struct {
 	ConnectFunc func(ctx context.Context) error
 
 	// CreateNewVMFunc mocks the CreateNewVM method.
-	CreateNewVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error)
+	CreateNewVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error)
 
 	// CreateStoragePoolVolumeFromBackupFunc mocks the CreateStoragePoolVolumeFromBackup method.
 	CreateStoragePoolVolumeFromBackupFunc func(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) error
@@ -185,6 +188,9 @@ type TargetMock struct {
 
 	// SetProjectFunc mocks the SetProject method.
 	SetProjectFunc func(project string) error
+
+	// SetupVMFunc mocks the SetupVM method.
+	SetupVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement) error
 
 	// StartVMFunc mocks the StartVM method.
 	StartVMFunc func(ctx context.Context, name string) error
@@ -356,6 +362,17 @@ type TargetMock struct {
 			// Project is the project argument value.
 			Project string
 		}
+		// SetupVM holds details about calls to the SetupVM method.
+		SetupVM []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// InstDef is the instDef argument value.
+			InstDef migration.Instance
+			// ApiDef is the apiDef argument value.
+			ApiDef incusAPI.InstancesPost
+			// Placement is the placement argument value.
+			Placement api.Placement
+		}
 		// StartVM holds details about calls to the StartVM method.
 		StartVM []struct {
 			// Ctx is the ctx argument value.
@@ -413,6 +430,7 @@ type TargetMock struct {
 	lockSetClientTLSCredentials           sync.RWMutex
 	lockSetPostMigrationVMConfig          sync.RWMutex
 	lockSetProject                        sync.RWMutex
+	lockSetupVM                           sync.RWMutex
 	lockStartVM                           sync.RWMutex
 	lockStopVM                            sync.RWMutex
 	lockTimeout                           sync.RWMutex
@@ -529,7 +547,7 @@ func (mock *TargetMock) ConnectCalls() []struct {
 }
 
 // CreateNewVM calls CreateNewVMFunc.
-func (mock *TargetMock) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
+func (mock *TargetMock) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error) {
 	if mock.CreateNewVMFunc == nil {
 		panic("TargetMock.CreateNewVMFunc: method is nil but Target.CreateNewVM was just called")
 	}
@@ -1223,6 +1241,50 @@ func (mock *TargetMock) SetProjectCalls() []struct {
 	mock.lockSetProject.RLock()
 	calls = mock.calls.SetProject
 	mock.lockSetProject.RUnlock()
+	return calls
+}
+
+// SetupVM calls SetupVMFunc.
+func (mock *TargetMock) SetupVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement) error {
+	if mock.SetupVMFunc == nil {
+		panic("TargetMock.SetupVMFunc: method is nil but Target.SetupVM was just called")
+	}
+	callInfo := struct {
+		Ctx       context.Context
+		InstDef   migration.Instance
+		ApiDef    incusAPI.InstancesPost
+		Placement api.Placement
+	}{
+		Ctx:       ctx,
+		InstDef:   instDef,
+		ApiDef:    apiDef,
+		Placement: placement,
+	}
+	mock.lockSetupVM.Lock()
+	mock.calls.SetupVM = append(mock.calls.SetupVM, callInfo)
+	mock.lockSetupVM.Unlock()
+	return mock.SetupVMFunc(ctx, instDef, apiDef, placement)
+}
+
+// SetupVMCalls gets all the calls that were made to SetupVM.
+// Check the length with:
+//
+//	len(mockedTarget.SetupVMCalls())
+func (mock *TargetMock) SetupVMCalls() []struct {
+	Ctx       context.Context
+	InstDef   migration.Instance
+	ApiDef    incusAPI.InstancesPost
+	Placement api.Placement
+} {
+	var calls []struct {
+		Ctx       context.Context
+		InstDef   migration.Instance
+		ApiDef    incusAPI.InstancesPost
+		Placement api.Placement
+	}
+	mock.lockSetupVM.RLock()
+	calls = mock.calls.SetupVM
+	mock.lockSetupVM.RUnlock()
 	return calls
 }
 
