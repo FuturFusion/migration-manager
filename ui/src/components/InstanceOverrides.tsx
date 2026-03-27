@@ -129,8 +129,11 @@ const InstanceOverrides: FC = () => {
         memory: memoryInBytes,
         cpus: values.cpus,
         config: values.config,
-        os_type: values.os_type,
-        distribution: values.distribution,
+        os_type: values.os_type != instance?.os_type ? values.os_type : "",
+        distribution:
+          values.distribution != instance?.distribution
+            ? values.distribution
+            : "",
         distribution_version: values.distribution_version,
         started_after_migration: values.started_after_migration == "true",
         stopped_after_migration: values.stopped_after_migration == "true",
