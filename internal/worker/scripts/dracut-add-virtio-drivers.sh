@@ -40,7 +40,7 @@ else
 
   modules="$(echo "${modules}" |cut -d'"' -f1-2) virtio virtio_blk virtio_net virtio_pci\""
   sed -e "s/^INITRD_MODULES=.*/${modules}/" -i /etc/sysconfig/kernel
-  if ! mkinitrd -f ; then
+  if ! mkinitrd ; then
     echo "Fallback to explicit mkinitrd"
     for f in /lib/modules/* ; do
       version="$(basename "${f}")"
