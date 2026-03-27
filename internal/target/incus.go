@@ -92,11 +92,12 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	}
 
 	t.incusConnectionArgs = &incus.ConnectionArgs{
-		AuthType:      authType,
-		TLSClientKey:  t.TLSClientKey,
-		TLSClientCert: t.TLSClientCert,
-		OIDCTokens:    t.OIDCTokens,
-		Proxy:         func(r *http.Request) (*url.URL, error) { return nil, nil },
+		AuthType:           authType,
+		TLSClientKey:       t.TLSClientKey,
+		TLSClientCert:      t.TLSClientCert,
+		OIDCTokens:         t.OIDCTokens,
+		OIDCNonInteractive: true,
+		Proxy:              func(r *http.Request) (*url.URL, error) { return nil, nil },
 	}
 
 	var serverCert *x509.Certificate
