@@ -349,7 +349,7 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	if !hasVioNet {
 		for name, dev := range apiDef.Devices {
 			if dev["type"] == "nic" {
-				// dev["io.bus"] = "usb"
+				dev["io.bus"] = "usb"
 				apiDef.Devices[name] = dev
 			}
 		}
