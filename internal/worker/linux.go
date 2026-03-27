@@ -189,6 +189,22 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 
 	defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "sys")) }()
 
+	// Sometimes resolv.conf is a symlink to /run/... which wouldn't exist in a chroot.'
+	_, err = os.Stat(filepath.Join(chrootMountPath, "etc", "resolv.conf"))
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("Failed to parse resolv.conf: %w", err)
+	}
+
+	if err != nil {
+		slog.Info("Bind-mounting /etc/resolv.conf")
+		err = DoMount("/etc/resolv.conf", filepath.Join(chrootMountPath, "etc", "resolv.conf"), []string{"-o", "bind"})
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "etc", "resolv.conf")) }()
+	}
+
 	// Mount additional file systems, such as /var/ on a different partition.
 	for _, mnt := range getAdditionalMounts() {
 		opts := []string{}
