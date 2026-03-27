@@ -131,14 +131,16 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
           setShowDeleteModal(true);
         }}
       />
-      <MdBuildCircle
-        title="Resolve"
-        size={25}
-        style={resolveStyle}
-        onClick={() => {
-          onResolve();
-        }}
-      />
+      {queueEntry?.migration_status == "Conflict" && (
+        <MdBuildCircle
+          title="Resolve"
+          size={25}
+          style={resolveStyle}
+          onClick={() => {
+            onResolve();
+          }}
+        />
+      )}
       <ModalWindow
         show={showDeleteModal}
         handleClose={() => setShowDeleteModal(false)}
