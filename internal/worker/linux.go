@@ -261,7 +261,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		return err
 	}
 
-	if distro.IsRHELDerivative() {
+	if distro.IsRHELDerivative() && distro != api.DISTRO_AMZN {
 		err := runScriptInChroot("redhat-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
@@ -279,6 +279,15 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 				if err != nil {
 					return err
 				}
+			}
+		}
+	}
+
+	if distro == api.DISTRO_DEBIAN {
+		if distroVersion != "" && versionInt <= 8 {
+			err := runScriptInChroot("add-incus-agent-override-for-old-systemd.sh")
+			if err != nil {
+				return err
 			}
 		}
 	}
@@ -661,7 +670,7 @@ func getRequiredMounts(partFunc func(string, []string) bool) (map[string]mountIn
 
 		parent, path, err := lsblk.FindDisk(dev)
 		if err != nil {
-			return nil, fmt.Errorf("Unknown disk %q", mnt["device"])
+			return nil, fmt.Errorf("Unknown disk %q: %w", mnt["device"], err)
 		}
 
 		partType := PARTITION_TYPE_PLAIN
