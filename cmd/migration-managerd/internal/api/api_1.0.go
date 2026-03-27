@@ -28,6 +28,8 @@ var api10 = []APIEndpoint{
 	instanceCmd,
 	instanceOverrideCmd,
 	instanceResetBackgroundImportCmd,
+	instanceEnableBackgroundImportCmd,
+	instancePowerCmd,
 	instancesCmd,
 	networkCmd,
 	networkInstancesCmd,

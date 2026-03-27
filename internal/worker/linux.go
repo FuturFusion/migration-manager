@@ -189,6 +189,22 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 
 	defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "sys")) }()
 
+	// Sometimes resolv.conf is a symlink to /run/... which wouldn't exist in a chroot.'
+	_, err = os.Stat(filepath.Join(chrootMountPath, "etc", "resolv.conf"))
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("Failed to parse resolv.conf: %w", err)
+	}
+
+	if err != nil {
+		slog.Info("Bind-mounting /etc/resolv.conf")
+		err = DoMount("/etc/resolv.conf", filepath.Join(chrootMountPath, "etc", "resolv.conf"), []string{"-o", "bind"})
+		if err != nil {
+			return err
+		}
+
+		defer func() { _ = DoUnmount(filepath.Join(chrootMountPath, "etc", "resolv.conf")) }()
+	}
+
 	// Mount additional file systems, such as /var/ on a different partition.
 	for _, mnt := range getAdditionalMounts() {
 		opts := []string{}
@@ -245,7 +261,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		return err
 	}
 
-	if distro.IsRHELDerivative() {
+	if distro.IsRHELDerivative() && distro != api.DISTRO_AMZN {
 		err := runScriptInChroot("redhat-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
@@ -263,6 +279,15 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 				if err != nil {
 					return err
 				}
+			}
+		}
+	}
+
+	if distro == api.DISTRO_DEBIAN {
+		if distroVersion != "" && versionInt <= 8 {
+			err := runScriptInChroot("add-incus-agent-override-for-old-systemd.sh")
+			if err != nil {
+				return err
 			}
 		}
 	}
@@ -645,7 +670,7 @@ func getRequiredMounts(partFunc func(string, []string) bool) (map[string]mountIn
 
 		parent, path, err := lsblk.FindDisk(dev)
 		if err != nil {
-			return nil, fmt.Errorf("Unknown disk %q", mnt["device"])
+			return nil, fmt.Errorf("Unknown disk %q: %w", mnt["device"], err)
 		}
 
 		partType := PARTITION_TYPE_PLAIN

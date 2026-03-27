@@ -31,7 +31,7 @@ type LSBLKOutput struct {
 
 func ScanPartitions(device string) (LSBLKOutput, error) {
 	ret := LSBLKOutput{}
-	args := []string{"-J", "-o", "NAME,UUID,SIZE,FSTYPE,PARTLABEL,PARTTYPENAME,SERIAL,PKNAME,PARTN,PATH"}
+	args := []string{"-J", "-o", "NAME,UUID,SIZE,SERIAL,FSTYPE,PARTLABEL,PARTTYPENAME,PKNAME,PARTN,PATH,LABEL"}
 	if device != "" {
 		args = append(args, device)
 	}

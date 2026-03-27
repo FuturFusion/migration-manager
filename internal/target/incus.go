@@ -336,37 +336,33 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	// Handle RHEL (and derivative) specific completion steps.
 	osType := i.GetOSType(true)
 	distro, distroVer := i.GetDistribution(true)
-	if distro.IsRHELDerivative() || osType == api.OSTYPE_WINDOWS {
-		// RHEL7+ don't support 9p, so make agent config available via cdrom.
+	hasVioSCSI, hasVioNet, has9p, hasCPU, err := util.GetOSCompatibility(osType, distro, distroVer)
+	if err != nil {
+		return fmt.Errorf("Failed to check %q OS version for post-migration configuration: %w", i.Properties.Location, err)
+	}
+
+	if !hasVioSCSI {
+		apiDef.Devices["root"]["io.bus"] = "virtio-blk"
+	}
+
+	if !hasVioNet {
+		for name, dev := range apiDef.Devices {
+			if dev["type"] == "nic" {
+				// dev["io.bus"] = "usb"
+				apiDef.Devices[name] = dev
+			}
+		}
+	}
+
+	if !has9p {
 		apiDef.Devices["agent"] = map[string]string{
 			"type":   "disk",
 			"source": "agent:config",
 		}
 	}
 
-	switch osType {
-	case api.OSTYPE_WINDOWS:
-		code, err := util.MapWindowsVersionToAbbrev(distroVer)
-		if err != nil {
-			return fmt.Errorf("Failed to check %q post-migration Windows version: %w", i.Properties.Location, err)
-		}
-
-		// 2k3 does not support vioscsi.
-		if code == "2k3" {
-			apiDef.Devices["root"]["io.bus"] = "virtio-blk"
-		}
-
-	case api.OSTYPE_LINUX:
-		if distro == api.DISTRO_DEBIAN && distroVer != "" {
-			v, err := strconv.Atoi(distroVer)
-			if err != nil {
-				return fmt.Errorf("Failed to check %q post-migration Debian version: %w", i.Properties.Location, err)
-			}
-
-			if v <= 5 {
-				apiDef.Devices["root"]["io.bus"] = "virtio-blk"
-			}
-		}
+	if !hasCPU {
+		apiDef.Config["raw.qemu"] = "-cpu qemu64,phys-bits=48"
 	}
 
 	// Set the instance's UUID copied from the source.
@@ -590,12 +586,12 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	return ret, nil
 }
 
-func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
+func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
 	if len(instDef.Properties.Disks) < 1 {
-		return nil, fmt.Errorf("Instance %q has no disks", instDef.Properties.Location)
+		return nil, nil, fmt.Errorf("Instance %q has no disks", instDef.Properties.Location)
 	}
 
 	rootPool := placement.StoragePools[instDef.Properties.Disks[0].Name]
@@ -612,28 +608,27 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 	// Create the instance.
 	op, err := t.incusClient.CreateInstance(apiDef)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	reverter.Add(func() {
-		err = t.CleanupVM(context.Background(), apiDef.Name, true)
+	cleanup := func() {
+		err := t.CleanupVM(context.Background(), apiDef.Name, true)
 		if err != nil {
 			slog.Error("Failed to clean up instance after error", slog.String("name", apiDef.Name), slog.Any("error", err))
 		}
-	})
-
-	err = op.WaitContext(ctx)
-	if err != nil {
-		return nil, err
 	}
 
+	return op.WaitContext, cleanup, nil
+}
+
+func (t *InternalIncusTarget) SetupVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement) error {
 	props := instDef.Properties
 	props.Apply(instDef.Overrides.InstancePropertiesConfigurable)
 	// After the scheduler places the instance, get its target and create storage volumes on that member.
 	if len(props.Disks) > 1 {
 		instInfo, etag, err := t.incusClient.GetInstance(apiDef.Name)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		tgtClient := t.incusClient.UseTarget(instInfo.Location)
@@ -663,7 +658,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 				ContentType: "block",
 			})
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 			instInfo.Devices[diskKey] = map[string]string{}
@@ -678,20 +673,16 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 		apiDef.Start = true
 		op, err := tgtClient.UpdateInstance(instInfo.Name, instInfo.InstancePut, etag)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		err = op.WaitContext(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	cleanup := reverter.Clone().Fail
-
-	reverter.Success()
-
-	return cleanup, nil
+	return nil
 }
 
 // CleanupVM fully deletes the VM and all of its volumes.

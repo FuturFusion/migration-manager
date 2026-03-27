@@ -1,9 +1,10 @@
 #!/bin/sh
 
-set -e
+set -ex
 
 # Skip setup if systemd is not supported.
-if ! systemctl > /dev/null 2>&1 ; then
+if ! which systemctl > /dev/null 2>&1 ; then
+  echo "Skipping agent setup due to missing systemctl"
   exit 0
 fi
 
@@ -14,6 +15,7 @@ fi
 
 # If the incus agent already exists then there's nothing we need to do.
 if systemctl list-unit-files --type=service | grep -q "incus-agent.service" ; then
+  echo "Incus agent exists, exiting"
   exit 0
 fi
 

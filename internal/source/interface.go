@@ -41,8 +41,6 @@ type Source interface {
 	// Timeout for connections to the source.
 	Timeout() time.Duration
 
-	// -----------------------------------------------
-
 	// Returns the human-readable name for this source.
 	GetName() string
 
@@ -52,12 +50,6 @@ type Source interface {
 	//
 	// Returns an error if there is a problem fetching VMs or their properties.
 	GetAllVMs(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error)
-
-	// VerifyBackgroundImport checks each supported disk for each VM to verify whether background import is supported, returning the list of UUIDs that fail the check.
-	VerifyBackgroundImport(ctx context.Context, instances migration.Instances) (migration.Instances, error)
-
-	// GetBackgroundImport returns the background import support property of an instance by its UUID.
-	GetBackgroundImport(ctx context.Context, instUUID uuid.UUID) (bool, error)
 
 	// Deletes a given snapshot, if it exists, from the specified VM.
 	//
@@ -87,4 +79,15 @@ type Source interface {
 
 	// Dump source data.
 	Dump(ctx context.Context) error
+
+	// -----------------------------------------------
+
+	// VerifyBackgroundImport checks each supported disk for each VM to verify whether background import is supported, returning the list of UUIDs that fail the check.
+	VerifyBackgroundImport(ctx context.Context, instances migration.Instances) (migration.Instances, error)
+
+	// GetBackgroundImport returns the background import support property of an instance by its UUID.
+	GetBackgroundImport(ctx context.Context, instUUID uuid.UUID) (bool, error)
+
+	// EnableBackgroundImport enables background import support for the instance by its UUID.
+	EnableBackgroundImport(ctx context.Context, instUUID uuid.UUID) error
 }

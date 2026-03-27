@@ -577,6 +577,9 @@ func (d *Daemon) ensureISOImagesExistInStoragePool(ctx context.Context, instance
 	return nil
 }
 
+// vmCreateLock is a lock to allow serialized creation of VMs, to get around Incus placement issues. This set of locks is keyed by target name.
+var vmCreateLock util.IDLock[string] = util.NewIDLock[string]()
+
 // Concurrently create target VMs for each instance record.
 // Any instance that fails the migration has its state set to ERROR.
 // - cleanupInstances determines whether a target VM should be deleted if it encounters an error.
@@ -658,7 +661,10 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 		return fmt.Errorf("Failed to create instance definition: %w", err)
 	}
 
-	cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, q.Placement, util.WorkerVolume(inst.GetArchitecture()))
+	// Add a lock for this particular target, so each instance create operation on it is processed serially.
+	vmCreateLock.Lock(t.Name)
+	op, cleanup, err := it.CreateNewVM(timeoutCtx, inst, instanceDef, q.Placement, util.WorkerVolume(inst.GetArchitecture()))
+	vmCreateLock.Unlock(t.Name)
 	if err != nil {
 		return fmt.Errorf("Failed to create new instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
 	}
@@ -668,6 +674,16 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 			slog.Error("Cleaning up new instance after failure", slog.String("revert", "instance cleanup"), slog.Any("error", err))
 			cleanup()
 		})
+	}
+
+	err = op(timeoutCtx)
+	if err != nil {
+		return fmt.Errorf("Failed to wait for create operation for instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
+	}
+
+	err = it.SetupVM(timeoutCtx, inst, instanceDef, q.Placement)
+	if err != nil {
+		return fmt.Errorf("Failed to setup instance %q on migration target %q: %w", instanceDef.Name, it.GetName(), err)
 	}
 
 	var window migration.Window

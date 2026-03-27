@@ -60,3 +60,29 @@ export const resetBackgroundImport = (
       .catch(reject);
   });
 };
+
+export const enableBackgroundImport = (
+  uuid: string,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    fetch(`/1.0/instances/${uuid}/:enable-background-import`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then(resolve)
+      .catch(reject);
+  });
+};
+
+export const changePowerState = (
+  uuid: string,
+  on: boolean,
+): Promise<APIResponse<null>> => {
+  return new Promise((resolve, reject) => {
+    const state = on ? "on" : "off";
+    fetch(`/1.0/instances/${uuid}/:power?state=${state}`, { method: "POST" })
+      .then((response) => response.json())
+      .then(resolve)
+      .catch(reject);
+  });
+};

@@ -9,6 +9,7 @@ export enum OSType {
 }
 
 export enum Distribution {
+  AlmaLinux = "alma",
   Amazon = "amazon",
   ArchLinux = "arch",
   CentOS = "centos",

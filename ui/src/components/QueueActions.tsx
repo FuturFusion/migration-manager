@@ -1,9 +1,8 @@
 import { FC, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { MdBuildCircle, MdOutlineDelete, MdSync } from "react-icons/md";
+import { MdBuildCircle, MdOutlineDelete } from "react-icons/md";
 import { RiResetLeftLine } from "react-icons/ri";
 import { Button } from "react-bootstrap";
-import { resetBackgroundImport } from "api/instances";
 import { deleteQueue, resolveQueue, retryQueue } from "api/queue";
 import ModalWindow from "components/ModalWindow";
 import QueueCancelBtn from "components/QueueCancelBtn";
@@ -35,11 +34,6 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
     cursor: "pointer",
     color:
       canRetryQueueEntry(queueEntry) && !opInprogress ? "grey" : "lightgrey",
-  };
-
-  const resetStyle = {
-    cursor: "pointer",
-    color: !opInprogress ? "grey" : "lightgrey",
   };
 
   const resolveStyle = {
@@ -114,28 +108,6 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
       });
   };
 
-  const onResetBackgroundImport = () => {
-    if (opInprogress) {
-      return;
-    }
-
-    setOpInprogress(true);
-    resetBackgroundImport(queueEntry.instance_uuid)
-      .then((response) => {
-        setOpInprogress(false);
-        if (response.error_code == 0) {
-          notify.success(`Queue entry ${queueEntry.instance_uuid} reset`);
-          queryClient.invalidateQueries({ queryKey: ["queue"] });
-          return;
-        }
-        notify.error(response.error);
-      })
-      .catch((e) => {
-        setOpInprogress(false);
-        notify.error(`Error during queue entry reset: ${e}`);
-      });
-  };
-
   return (
     <div>
       <QueueCancelBtn queueEntry={queueEntry} />
@@ -157,14 +129,6 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
           }
 
           setShowDeleteModal(true);
-        }}
-      />
-      <MdSync
-        title="Reset background import"
-        size={25}
-        style={resetStyle}
-        onClick={() => {
-          onResetBackgroundImport();
         }}
       />
       <MdBuildCircle

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -71,4 +72,22 @@ func (i Instance) ToFilterable() InstanceFilterable {
 		DistributionVersion:  i.DistributionVersion,
 		LastUpdateFromSource: i.LastUpdateFromSource,
 	}
+}
+
+type PowerState string
+
+const (
+	PowerStateOn  PowerState = "on"
+	PowerStateOff PowerState = "off"
+)
+
+func ValidatePowerState(p string) error {
+	switch PowerState(p) {
+	case PowerStateOff:
+	case PowerStateOn:
+	default:
+		return fmt.Errorf("Unknown power state %q", p)
+	}
+
+	return nil
 }

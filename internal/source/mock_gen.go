@@ -39,6 +39,9 @@ var _ Source = &SourceMock{}
 //			DumpFunc: func(ctx context.Context) error {
 //				panic("mock out the Dump method")
 //			},
+//			EnableBackgroundImportFunc: func(ctx context.Context, instUUID uuid.UUID) error {
+//				panic("mock out the EnableBackgroundImport method")
+//			},
 //			GetAllVMsFunc: func(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error) {
 //				panic("mock out the GetAllVMs method")
 //			},
@@ -93,6 +96,9 @@ type SourceMock struct {
 
 	// DumpFunc mocks the Dump method.
 	DumpFunc func(ctx context.Context) error
+
+	// EnableBackgroundImportFunc mocks the EnableBackgroundImport method.
+	EnableBackgroundImportFunc func(ctx context.Context, instUUID uuid.UUID) error
 
 	// GetAllVMsFunc mocks the GetAllVMs method.
 	GetAllVMsFunc func(ctx context.Context, sourceSpecificIDs ...string) (migration.Instances, migration.Networks, migration.Warnings, error)
@@ -155,6 +161,13 @@ type SourceMock struct {
 		Dump []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+		}
+		// EnableBackgroundImport holds details about calls to the EnableBackgroundImport method.
+		EnableBackgroundImport []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// InstUUID is the instUUID argument value.
+			InstUUID uuid.UUID
 		}
 		// GetAllVMs holds details about calls to the GetAllVMs method.
 		GetAllVMs []struct {
@@ -231,6 +244,7 @@ type SourceMock struct {
 	lockDisconnect                    sync.RWMutex
 	lockDoBasicConnectivityCheck      sync.RWMutex
 	lockDump                          sync.RWMutex
+	lockEnableBackgroundImport        sync.RWMutex
 	lockGetAllVMs                     sync.RWMutex
 	lockGetBackgroundImport           sync.RWMutex
 	lockGetName                       sync.RWMutex
@@ -404,6 +418,42 @@ func (mock *SourceMock) DumpCalls() []struct {
 	mock.lockDump.RLock()
 	calls = mock.calls.Dump
 	mock.lockDump.RUnlock()
+	return calls
+}
+
+// EnableBackgroundImport calls EnableBackgroundImportFunc.
+func (mock *SourceMock) EnableBackgroundImport(ctx context.Context, instUUID uuid.UUID) error {
+	if mock.EnableBackgroundImportFunc == nil {
+		panic("SourceMock.EnableBackgroundImportFunc: method is nil but Source.EnableBackgroundImport was just called")
+	}
+	callInfo := struct {
+		Ctx      context.Context
+		InstUUID uuid.UUID
+	}{
+		Ctx:      ctx,
+		InstUUID: instUUID,
+	}
+	mock.lockEnableBackgroundImport.Lock()
+	mock.calls.EnableBackgroundImport = append(mock.calls.EnableBackgroundImport, callInfo)
+	mock.lockEnableBackgroundImport.Unlock()
+	return mock.EnableBackgroundImportFunc(ctx, instUUID)
+}
+
+// EnableBackgroundImportCalls gets all the calls that were made to EnableBackgroundImport.
+// Check the length with:
+//
+//	len(mockedSource.EnableBackgroundImportCalls())
+func (mock *SourceMock) EnableBackgroundImportCalls() []struct {
+	Ctx      context.Context
+	InstUUID uuid.UUID
+} {
+	var calls []struct {
+		Ctx      context.Context
+		InstUUID uuid.UUID
+	}
+	mock.lockEnableBackgroundImport.RLock()
+	calls = mock.calls.EnableBackgroundImport
+	mock.lockEnableBackgroundImport.RUnlock()
 	return calls
 }
 

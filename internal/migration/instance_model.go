@@ -140,8 +140,6 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 	osType := i.GetOSType(false)
 	distro, _ := i.GetDistribution(false)
 
-	fmt.Println(osType, distro)
-
 	if osType == api.OSTYPE_LINUX && distro == api.DISTRO_OTHER {
 		osOverridden := i.Overrides.Distribution != "" || i.Overrides.OSType != ""
 		if !overrides.AllowUnknownOS && !osOverridden {
@@ -297,6 +295,8 @@ func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
 				distro = api.DISTRO_ROCKY
 			} else if strings.Contains(strings.ToLower(osVersion), "amazon") {
 				distro = api.DISTRO_AMZN
+			} else if strings.Contains(strings.ToLower(osVersion), "alma") {
+				distro = api.DISTRO_ALMA
 			} else if strings.Contains(strings.ToLower(osVersion), "fedora") {
 				distro = api.DISTRO_FEDORA
 			} else if slices.ContainsFunc([]string{"rhel", "redhat", "red-hat", "red hat"}, func(s string) bool {

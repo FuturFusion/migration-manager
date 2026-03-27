@@ -634,6 +634,156 @@ func (s *InternalVMwareSource) Dump(ctx context.Context) error {
 	return nil
 }
 
+// EnableBackgroundImport powers off the VM, deletes all snapshots, then turns on change tracking and powers back on the VM, if it was initially powered on.
+func (s *InternalVMwareSource) EnableBackgroundImport(ctx context.Context, instUUID uuid.UUID) error {
+	log := slog.With(slog.String("method", "EnableBackgroundImport"), slog.String("uuid", instUUID.String()))
+
+	obj, err := object.NewSearchIndex(s.govmomiClient.Client).FindByUuid(ctx, nil, instUUID.String(), true, ptr.To(true))
+	if err != nil {
+		return err
+	}
+
+	vm, ok := obj.(*object.VirtualMachine)
+	if !ok {
+		return fmt.Errorf("Object with UUID %q is not a virtual machine", instUUID)
+	}
+
+	var props mo.VirtualMachine
+	err = vm.Properties(ctx, vm.Reference(), []string{}, &props)
+	if err != nil {
+		return fmt.Errorf("Failed to fetch VMware properties for VM %q: %w", instUUID, err)
+	}
+
+	if props.Config == nil || props.Config.Template {
+		log.Debug("Skipping template")
+		return nil
+	}
+
+	log.Debug("Powering Off VM")
+	err = s.powerOffVM(ctx, vm)
+	if err != nil {
+		return fmt.Errorf("Failed to power off VM %q: %w", instUUID, err)
+	}
+
+	// Compile keys for every supported disk on every controller.
+	controllerKeys := []string{}
+	for _, dev := range props.Config.Hardware.Device {
+		disk, ok := dev.(*types.VirtualDisk)
+		if !ok {
+			continue
+		}
+
+		diskName, _, err := vmware.IsSupportedDisk(disk)
+		if err != nil {
+			log.Info("Skipping unsupported disk", slog.String("disk", diskName), slog.Any("error", err))
+			continue
+		}
+
+		key := disk.ControllerKey
+		y := disk.UnitNumber
+		if y == nil {
+			log.Warn("Skipping disk with no unit number", slog.String("disk", diskName))
+			continue
+		}
+
+		var x *int32
+		for _, dev := range props.Config.Hardware.Device {
+			if dev.GetVirtualDevice().Key != key {
+				continue
+			}
+
+			var ctl types.VirtualController
+			switch d := dev.(type) {
+			case *types.VirtualLsiLogicController:
+				ctl = d.VirtualController
+			case *types.VirtualLsiLogicSASController:
+				ctl = d.VirtualController
+			case *types.VirtualSCSIController:
+				ctl = d.VirtualController
+			case *types.ParaVirtualSCSIController:
+				ctl = d.VirtualController
+			default:
+				log.Warn("Skipping unknown controller type", slog.String("type", fmt.Sprintf("%T", d)))
+				continue
+			}
+
+			if ctl.Key == key {
+				x = &ctl.BusNumber
+				break
+			}
+		}
+
+		if x == nil {
+			log.Warn("Unable to determine disk controller")
+			continue
+		}
+
+		newKey := fmt.Sprintf("scsi%d:%d.ctkEnabled", *x, *y)
+		controllerKeys = append(controllerKeys, newKey)
+	}
+
+	if len(controllerKeys) == 0 {
+		log.Info("Unable to determine if any disks are eligible for change tracking")
+		return nil
+	}
+
+	log.Debug("Removing all existing snapshots")
+	t, err := vm.RemoveAllSnapshot(ctx, ptr.To(true))
+	if err != nil {
+		return fmt.Errorf("Failed to remove all existing snapshots for VM %q: %w", instUUID, err)
+	}
+
+	err = t.Wait(ctx)
+	if err != nil {
+		return fmt.Errorf("Failed to wait for snapshot removal task for VM %q: %w", instUUID, err)
+	}
+
+	newCfg := []types.BaseOptionValue{}
+	for _, cfg := range props.Config.ExtraConfig {
+		if strings.HasSuffix(cfg.GetOptionValue().Key, "ctkEnabled") {
+			log.Debug("Disabling existing key", slog.String("key", cfg.GetOptionValue().Key))
+			newCfg = append(newCfg, &types.OptionValue{Key: cfg.GetOptionValue().Key, Value: "FALSE"})
+		}
+	}
+
+	// Apply the disabled config on its own in case VMware does anything special internally to disable &re-enable ctk.
+	if len(newCfg) > 0 {
+		task, err := vm.Reconfigure(ctx, types.VirtualMachineConfigSpec{ExtraConfig: newCfg})
+		if err != nil {
+			return err
+		}
+
+		err = task.Wait(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	controllerKeys = append(controllerKeys, "ctkEnabled")
+	newCfg = []types.BaseOptionValue{}
+	for _, c := range controllerKeys {
+		log.Debug("Applying new key", slog.String("key", c))
+		newCfg = append(newCfg, &types.OptionValue{Key: c, Value: "TRUE"})
+	}
+
+	task, err := vm.Reconfigure(ctx, types.VirtualMachineConfigSpec{ExtraConfig: newCfg})
+	if err != nil {
+		return err
+	}
+
+	err = task.Wait(ctx)
+	if err != nil {
+		return err
+	}
+
+	if props.Summary.Runtime.PowerState == types.VirtualMachinePowerStatePoweredOn {
+		log.Debug("Powering on VM")
+		return s.powerOnVM(ctx, vm)
+	}
+
+	return nil
+}
+
 // GetBackgroundImport returns the background import support property of an instance by its UUID.
 func (s *InternalVMwareSource) GetBackgroundImport(ctx context.Context, instUUID uuid.UUID) (bool, error) {
 	obj, err := object.NewSearchIndex(s.govmomiClient.Client).FindByUuid(ctx, nil, instUUID.String(), true, ptr.To(true))
@@ -822,6 +972,10 @@ func (s *InternalVMwareSource) PowerOnVM(ctx context.Context, vmLocation string)
 		return err
 	}
 
+	return s.powerOnVM(ctx, vm)
+}
+
+func (s *InternalVMwareSource) powerOnVM(ctx context.Context, vm *object.VirtualMachine) error {
 	// Get the VM's current power state.
 	state, err := vm.PowerState(ctx)
 	if err != nil {
@@ -873,6 +1027,10 @@ func (s *InternalVMwareSource) PowerOffVM(ctx context.Context, vmName string) er
 		return err
 	}
 
+	return s.powerOffVM(ctx, vm)
+}
+
+func (s *InternalVMwareSource) powerOffVM(ctx context.Context, vm *object.VirtualMachine) error {
 	// Get the VM's current power state.
 	state, err := vm.PowerState(ctx)
 	if err != nil {

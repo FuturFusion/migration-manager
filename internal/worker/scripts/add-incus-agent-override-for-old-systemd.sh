@@ -1,8 +1,9 @@
 #!/bin/sh
 
-set -e
+set -ex
 
-if ! systemctl > /dev/null 2>&1 ; then
+if ! which systemctl > /dev/null 2>&1 ; then
+  echo "Skipping agent setup due to missing systemctl"
   exit 0
 fi
 

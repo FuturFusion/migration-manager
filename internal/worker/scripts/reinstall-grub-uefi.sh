@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -ex
 
 efi="$(find /boot -iname \*bootx64.efi)"
 if [ -z "${efi}" ]; then

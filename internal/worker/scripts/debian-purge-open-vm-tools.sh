@@ -1,6 +1,6 @@
 #!/bin/sh
 
-set -e
+set -ex
 
 # Purge VMware tools from the target system.
 if dpkg -l | grep -q "open-vm-tools-desktop" ; then

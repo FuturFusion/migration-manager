@@ -16,6 +16,7 @@ const (
 type Distro string
 
 const (
+	DISTRO_ALMA    Distro = "alma"
 	DISTRO_ARCH    Distro = "arch"
 	DISTRO_DEBIAN  Distro = "debian"
 	DISTRO_UBUNTU  Distro = "ubuntu"
@@ -32,7 +33,7 @@ const (
 
 func (d Distro) IsRHELDerivative() bool {
 	switch d {
-	case DISTRO_CENTOS, DISTRO_ORACLE, DISTRO_RHEL, DISTRO_ROCKY, DISTRO_FEDORA, DISTRO_AMZN:
+	case DISTRO_CENTOS, DISTRO_ORACLE, DISTRO_RHEL, DISTRO_ROCKY, DISTRO_FEDORA, DISTRO_AMZN, DISTRO_ALMA:
 		return true
 	default:
 		return false
@@ -54,6 +55,7 @@ func ValidateOSType(os string) error {
 
 func ValidateDistribution(osType OSType, distro string) error {
 	switch Distro(distro) {
+	case DISTRO_ALMA:
 	case DISTRO_ARCH:
 	case DISTRO_AMZN:
 	case DISTRO_CENTOS:
