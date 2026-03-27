@@ -82,7 +82,10 @@ type Target interface {
 	CreateVMDefinition(instanceDef migration.Instance, usedNetworks migration.Networks, q migration.QueueEntry, fingerprint string, endpoint string, targetNetwork api.MigrationNetworkPlacement) (incusAPI.InstancesPost, error)
 
 	// Creates a new VM from the pre-populated API definition.
-	CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error)
+	CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error)
+
+	// Creates a new VM from the pre-populated API definition.
+	SetupVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement) error
 
 	// Deletes a VM.
 	DeleteVM(ctx context.Context, name string) error

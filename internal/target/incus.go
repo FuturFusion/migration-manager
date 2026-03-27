@@ -586,12 +586,12 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	return ret, nil
 }
 
-func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(), error) {
+func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
 	if len(instDef.Properties.Disks) < 1 {
-		return nil, fmt.Errorf("Instance %q has no disks", instDef.Properties.Location)
+		return nil, nil, fmt.Errorf("Instance %q has no disks", instDef.Properties.Location)
 	}
 
 	rootPool := placement.StoragePools[instDef.Properties.Disks[0].Name]
@@ -608,28 +608,27 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 	// Create the instance.
 	op, err := t.incusClient.CreateInstance(apiDef)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	reverter.Add(func() {
-		err = t.CleanupVM(context.Background(), apiDef.Name, true)
+	cleanup := func() {
+		err := t.CleanupVM(context.Background(), apiDef.Name, true)
 		if err != nil {
 			slog.Error("Failed to clean up instance after error", slog.String("name", apiDef.Name), slog.Any("error", err))
 		}
-	})
-
-	err = op.WaitContext(ctx)
-	if err != nil {
-		return nil, err
 	}
 
+	return op.WaitContext, cleanup, nil
+}
+
+func (t *InternalIncusTarget) SetupVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement) error {
 	props := instDef.Properties
 	props.Apply(instDef.Overrides.InstancePropertiesConfigurable)
 	// After the scheduler places the instance, get its target and create storage volumes on that member.
 	if len(props.Disks) > 1 {
 		instInfo, etag, err := t.incusClient.GetInstance(apiDef.Name)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		tgtClient := t.incusClient.UseTarget(instInfo.Location)
@@ -659,7 +658,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 				ContentType: "block",
 			})
 			if err != nil {
-				return nil, err
+				return err
 			}
 
 			instInfo.Devices[diskKey] = map[string]string{}
@@ -674,20 +673,16 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 		apiDef.Start = true
 		op, err := tgtClient.UpdateInstance(instInfo.Name, instInfo.InstancePut, etag)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		err = op.WaitContext(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	cleanup := reverter.Clone().Fail
-
-	reverter.Success()
-
-	return cleanup, nil
+	return nil
 }
 
 // CleanupVM fully deletes the VM and all of its volumes.
