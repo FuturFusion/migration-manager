@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
 // Supported windows versions, with matching distrobuilder abbreviations.
@@ -112,4 +114,65 @@ func ValidateUbuntuVersion(version string) error {
 	}
 
 	return nil
+}
+
+func GetOSCompatibility(osType api.OSType, distro api.Distro, distroVersion string) (supportsSCSI bool, supportsNet bool, supports9p bool, supportsCPU bool, err error) {
+	// Assume full support by default.
+	supportsSCSI = true
+	supportsNet = true
+	supports9p = true
+	supportsCPU = true
+
+	switch osType {
+	case api.OSTYPE_BSD:
+	case api.OSTYPE_FORTIGATE:
+	case api.OSTYPE_LINUX:
+		var v int
+		if distroVersion != "" && distro != api.DISTRO_UBUNTU {
+			v, err = strconv.Atoi(distroVersion)
+			if err != nil {
+				return false, false, false, false, fmt.Errorf("Failed to check for virtio support with invalid OS %s (%s) version %s", osType, distro, distroVersion)
+			}
+		}
+
+		if v == 0 {
+			return //nolint: revive,nakedret
+		}
+
+		switch distro {
+		case api.DISTRO_ARCH, api.DISTRO_OTHER:
+			// Treat other versions as fully supported.
+		case api.DISTRO_AMZN, api.DISTRO_FEDORA:
+			// Fedora and Amazon have non-standard versioning.
+			supports9p = false
+		case api.DISTRO_UBUNTU:
+			supportsCPU = distroVersion == "" || !strings.HasPrefix(distroVersion, "14.")
+		case api.DISTRO_SUSE:
+			// TODO: Verify this.
+			supportsSCSI = v >= 10
+			supportsNet = v >= 10
+		case api.DISTRO_DEBIAN:
+			supportsSCSI = v >= 6
+			supportsNet = v >= 6
+			supports9p = v >= 9
+			supportsCPU = v <= 5 || v >= 10
+		default:
+			if distro.IsRHELDerivative() {
+				supportsSCSI = v >= 6
+				supportsNet = v >= 7
+				supportsCPU = distro != api.DISTRO_ORACLE || v >= 7
+				supports9p = false
+			}
+		}
+	case api.OSTYPE_WINDOWS:
+		code, err := MapWindowsVersionToAbbrev(distroVersion)
+		if err != nil {
+			return false, false, false, false, fmt.Errorf("Failed to check for Windows virtio support: %w", err)
+		}
+
+		supportsSCSI = code != "2k3"
+		supports9p = false
+	}
+
+	return //nolint: revive,nakedret
 }

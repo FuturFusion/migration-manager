@@ -336,37 +336,33 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	// Handle RHEL (and derivative) specific completion steps.
 	osType := i.GetOSType(true)
 	distro, distroVer := i.GetDistribution(true)
-	if distro.IsRHELDerivative() || osType == api.OSTYPE_WINDOWS {
-		// RHEL7+ don't support 9p, so make agent config available via cdrom.
+	hasVioSCSI, hasVioNet, has9p, hasCPU, err := util.GetOSCompatibility(osType, distro, distroVer)
+	if err != nil {
+		return fmt.Errorf("Failed to check %q OS version for post-migration configuration: %w", i.Properties.Location, err)
+	}
+
+	if !hasVioSCSI {
+		apiDef.Devices["root"]["io.bus"] = "virtio-blk"
+	}
+
+	if !hasVioNet {
+		for name, dev := range apiDef.Devices {
+			if dev["type"] == "nic" {
+				// dev["io.bus"] = "usb"
+				apiDef.Devices[name] = dev
+			}
+		}
+	}
+
+	if !has9p {
 		apiDef.Devices["agent"] = map[string]string{
 			"type":   "disk",
 			"source": "agent:config",
 		}
 	}
 
-	switch osType {
-	case api.OSTYPE_WINDOWS:
-		code, err := util.MapWindowsVersionToAbbrev(distroVer)
-		if err != nil {
-			return fmt.Errorf("Failed to check %q post-migration Windows version: %w", i.Properties.Location, err)
-		}
-
-		// 2k3 does not support vioscsi.
-		if code == "2k3" {
-			apiDef.Devices["root"]["io.bus"] = "virtio-blk"
-		}
-
-	case api.OSTYPE_LINUX:
-		if distro == api.DISTRO_DEBIAN && distroVer != "" {
-			v, err := strconv.Atoi(distroVer)
-			if err != nil {
-				return fmt.Errorf("Failed to check %q post-migration Debian version: %w", i.Properties.Location, err)
-			}
-
-			if v <= 5 {
-				apiDef.Devices["root"]["io.bus"] = "virtio-blk"
-			}
-		}
+	if !hasCPU {
+		apiDef.Config["raw.qemu"] = "-cpu qemu64,phys-bits=48"
 	}
 
 	// Set the instance's UUID copied from the source.
