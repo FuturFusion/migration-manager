@@ -47,7 +47,7 @@ NETWORKMANAGER_DEVS=$(grep -P -h -o "(?<=interface-name\=).*" /etc/NetworkManage
 NET_INTERFACES_DEVS=$(grep -P -o "(?<=iface ).*(?= inet)" /etc/network/interfaces | sort | uniq | grep -v "^lo$")
 NET_SYSTEMD_DEVS=$(grep "^Name=" /etc/systemd/network/10-cloud-init-*.network | cut -d'=' -f2)
 # shellcheck disable=SC2046,SC3009
-NET_SCRIPTS_DEVS=$(basename -a $(find /etc/sysconfig/network{,-scripts}/ifcfg-* -exec grep -l '^ONBOOT=yes' {} +) | grep -P -o "(?<=ifcfg-).*" | sort | uniq | grep -v "lo$" | grep -v "\.bak$")
+NET_SCRIPTS_DEVS=$(basename -a $(find /etc/sysconfig/network{,-scripts}/ifcfg-* -exec grep -L '^ONBOOT="\?no' {} +) | grep -P -o "(?<=ifcfg-).*" | sort | uniq | grep -v "lo$" | grep -v "\.bak$")
 
 if   [ ${#NETPLAN_DEVS} -gt 0 ]; then
     echo "Processing netplan devs: [${NETPLAN_DEVS}]"
