@@ -1,5 +1,7 @@
 import { useNavigate, useParams } from "react-router";
 import QueueOverview from "components/QueueOverview";
+import InstanceOverview from "components/InstanceOverview";
+import InstanceOverrides from "components/InstanceOverrides";
 import TabView from "components/TabView";
 
 const QueueDetail = () => {
@@ -11,6 +13,16 @@ const QueueDetail = () => {
       key: "overview",
       title: "Overview",
       content: <QueueOverview />,
+    },
+    {
+      key: "instance",
+      title: "Instance",
+      content: <InstanceOverview />,
+    },
+    {
+      key: "overrides",
+      title: "Overrides",
+      content: <InstanceOverrides />,
     },
   ];
 
