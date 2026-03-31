@@ -729,12 +729,30 @@ func (t *InternalIncusTarget) CleanupVM(ctx context.Context, name string, requir
 		return fmt.Errorf("Failed to wait for delete operation for instance %q: %w", name, err)
 	}
 
-	tgtClient := t.incusClient.UseTarget(instInfo.Location)
+	volsByPool := map[string]map[string]bool{}
 	for _, dev := range instInfo.Devices {
-		if dev["type"] == "disk" && dev["user.migration_source"] != "" && dev["source"] != "" {
-			err := tgtClient.DeleteStoragePoolVolume(dev["pool"], "custom", dev["source"])
-			if err != nil {
-				return fmt.Errorf("Failed to delete instance %q storage volume %q on pool %q: %w", name, dev["source"], dev["pool"], err)
+		if dev["type"] == "disk" && dev["user.migration_source"] != "" && dev["source"] != "" && dev["pool"] != "" {
+			if volsByPool[dev["pool"]] == nil {
+				volsByPool[dev["pool"]] = map[string]bool{}
+			}
+
+			volsByPool[dev["pool"]][dev["source"]] = true
+		}
+	}
+
+	tgtClient := t.incusClient.UseTarget(instInfo.Location)
+	for pool, volsByName := range volsByPool {
+		volNames, err := tgtClient.GetStoragePoolVolumeNames(pool)
+		if err != nil {
+			return fmt.Errorf("Failed to find %q volumes for instance %q: %w", pool, name, err)
+		}
+
+		for _, vol := range volNames {
+			if volsByName[vol] {
+				err := tgtClient.DeleteStoragePoolVolume(pool, "custom", vol)
+				if err != nil {
+					return fmt.Errorf("Failed to delete instance %q storage volume %q on pool %q: %w", name, vol, pool, err)
+				}
 			}
 		}
 	}
