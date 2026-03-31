@@ -134,7 +134,10 @@ const InstanceOverrides: FC = () => {
           values.distribution != instance?.distribution
             ? values.distribution
             : "",
-        distribution_version: values.distribution_version,
+        distribution_version:
+          values.distribution_version != instance?.distribution_version
+            ? values.distribution_version
+            : "",
         started_after_migration: values.started_after_migration == "true",
         stopped_after_migration: values.stopped_after_migration == "true",
       };
