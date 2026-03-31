@@ -634,7 +634,8 @@ func (t *InternalIncusTarget) SetupVM(ctx context.Context, instDef migration.Ins
 
 		tgtClient := t.incusClient.UseTarget(instInfo.Location)
 		defaultDiskDef := map[string]string{
-			"type": "disk",
+			"type":      "disk",
+			"dependent": "true",
 		}
 
 		// Create volumes for the remaining disks.
