@@ -342,17 +342,24 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 		return fmt.Errorf("Failed to check %q OS version for post-migration configuration: %w", i.Properties.Location, err)
 	}
 
+	var qemuCmdline []string
+	if osType == api.OSTYPE_WINDOWS {
+		// Set some additional QEMU options.
+		qemuCmdline = append(qemuCmdline, "-device intel-hda", "-device hda-duplex", "-audio spice")
+
+		versionCode, _ := util.MapWindowsVersionToAbbrev(distroVer)
+		if versionCode == "2k3" {
+			qemuCmdline = append(qemuCmdline, "-global q35-pcihost.x-pci-hole64-fix=off")
+		}
+	}
+
 	if !hasVioSCSI {
 		apiDef.Devices["root"]["io.bus"] = "virtio-blk"
+		qemuCmdline = append(qemuCmdline, "-global virtio-blk-pci.disable-legacy=off")
 	}
 
 	if !hasVioNet {
-		for name, dev := range apiDef.Devices {
-			if dev["type"] == "nic" {
-				dev["io.bus"] = "usb"
-				apiDef.Devices[name] = dev
-			}
-		}
+		qemuCmdline = append(qemuCmdline, "-global virtio-net-pci.disable-legacy=off")
 	}
 
 	if !has9p {
@@ -363,7 +370,11 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	}
 
 	if !hasCPU {
-		apiDef.Config["raw.qemu"] = "-cpu qemu64,phys-bits=48"
+		qemuCmdline = append(qemuCmdline, "-cpu qemu64", "-m maxmem=970G")
+	}
+
+	if len(qemuCmdline) > 0 {
+		apiDef.Config["raw.qemu"] = strings.Join(qemuCmdline, " ")
 	}
 
 	// Set the instance's UUID copied from the source.
@@ -561,11 +572,6 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	ret.Config["user.migration.fingerprint"] = fingerprint
 	ret.Config["user.migration.endpoint"] = endpoint
 	ret.Config["user.migration.uuid"] = instanceDef.UUID.String()
-
-	if ret.Config["image.os"] == "win-prepare" {
-		// Set some additional QEMU options.
-		ret.Config["raw.qemu"] = "-device intel-hda -device hda-duplex -audio spice"
-	}
 
 	if targetNetwork != (api.MigrationNetworkPlacement{}) {
 		ret.Devices["eth0"] = map[string]string{"name": "eth0", "type": "nic"}
