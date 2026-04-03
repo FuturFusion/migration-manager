@@ -267,7 +267,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 			return err
 		}
 
-		err = runScriptInChroot("dracut-add-virtio-drivers.sh")
+		err = runScriptInChroot("dracut-add-virtio-drivers.sh", string(rootType))
 		if err != nil {
 			return err
 		}
@@ -305,7 +305,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 			return err
 		}
 
-		err = runScriptInChroot("dracut-add-virtio-drivers.sh")
+		err = runScriptInChroot("dracut-add-virtio-drivers.sh", string(rootType))
 		if err != nil {
 			return err
 		}
