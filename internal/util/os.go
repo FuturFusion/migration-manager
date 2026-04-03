@@ -128,10 +128,15 @@ func GetOSCompatibility(osType api.OSType, distro api.Distro, distroVersion stri
 	case api.OSTYPE_FORTIGATE:
 	case api.OSTYPE_LINUX:
 		var v int
-		if distroVersion != "" && distro != api.DISTRO_UBUNTU {
-			v, err = strconv.Atoi(distroVersion)
+		if distroVersion != "" {
+			if distro != api.DISTRO_UBUNTU {
+				v, err = strconv.Atoi(distroVersion)
+			} else {
+				v, err = strconv.Atoi(strings.Split(distroVersion, ".")[0])
+			}
+
 			if err != nil {
-				return false, false, false, false, fmt.Errorf("Failed to check for virtio support with invalid OS %s (%s) version %s", osType, distro, distroVersion)
+				return false, false, false, false, fmt.Errorf("Failed to check for virtio support with invalid OS %s (%s) version %s: %w", osType, distro, distroVersion, err)
 			}
 		}
 
@@ -146,11 +151,10 @@ func GetOSCompatibility(osType api.OSType, distro api.Distro, distroVersion stri
 			// Fedora and Amazon have non-standard versioning.
 			supports9p = false
 		case api.DISTRO_UBUNTU:
-			supportsCPU = distroVersion == "" || !strings.HasPrefix(distroVersion, "14.")
+			supportsCPU = v >= 17
 		case api.DISTRO_SUSE:
-			// TODO: Verify this.
 			supportsSCSI = v >= 10
-			supportsNet = v >= 10
+			supportsNet = v >= 11
 		case api.DISTRO_DEBIAN:
 			supportsSCSI = v >= 6
 			supportsNet = v >= 6
@@ -171,6 +175,7 @@ func GetOSCompatibility(osType api.OSType, distro api.Distro, distroVersion stri
 		}
 
 		supportsSCSI = code != "2k3"
+		supportsNet = code != "2k3"
 		supports9p = false
 	}
 
