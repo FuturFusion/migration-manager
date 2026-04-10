@@ -13,7 +13,7 @@ require (
 	github.com/gosimple/slug v1.15.0
 	github.com/hexdigest/gowrap v1.4.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
-	github.com/lxc/distrobuilder/v3 v3.3.2-0.20260320004136-08f5e47cc4cb
+	github.com/lxc/distrobuilder/v3 v3.3.2-0.20260410004922-5828176a7f61
 	github.com/lxc/incus-os/incus-osd v0.0.0-20260325232431-2a8372570b35
 	github.com/lxc/incus/v6 v6.23.1-0.20260327174201-6acde8bd711a
 	github.com/matryer/moq v0.4.0
