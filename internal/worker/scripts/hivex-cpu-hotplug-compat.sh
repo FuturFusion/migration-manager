@@ -33,15 +33,28 @@ echo "Disabling VBS auto-start"
 cat << EOF | hivexregedit --merge --prefix 'HKLM\SYSTEM' "${hive_dir}/SYSTEM"
 [ControlSet001\Control]
 
+[ControlSet001\Control\DeviceGuard]
+
+[ControlSet001\Control\DeviceGuard\Scenarios]
+
+[ControlSet001\Control\DeviceGuard\Scenarios\CredentialGuard]
+"Enabled"=dword:00000000
+
 [ControlSet001\Control\Lsa]
 "LsaCfgFlags"=dword:00000000
 
 [ControlSet002\Control]
 
+[ControlSet002\Control\DeviceGuard]
+
+[ControlSet002\Control\DeviceGuard\Scenarios]
+
+[ControlSet002\Control\DeviceGuard\Scenarios\CredentialGuard]
+"Enabled"=dword:00000000
+
 [ControlSet002\Control\Lsa]
 "LsaCfgFlags"=dword:00000000
 EOF
-
 
 cat << EOF | hivexregedit --merge --prefix 'HKLM\SOFTWARE' "${hive_dir}/SOFTWARE"
 [Policies\Microsoft\Windows\DeviceGuard]
