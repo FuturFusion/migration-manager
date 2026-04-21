@@ -396,15 +396,13 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 	// This is used so that we ensure each pool in each target is checked only once for volumes in a particular project, for a particular VM OS.
 	visitedLocations := map[string]map[string]map[string]bool{}
 	ignoredBatches := []string{}
+	var volLock sync.Mutex
 	err = util.RunConcurrentMap(migrationState, func(batchName string, state queue.MigrationState) error {
 		log := log.With(slog.String("batch", state.Batch.Name))
 		for instUUID, q := range state.QueueEntries {
 			for _, pool := range q.Placement.StoragePools {
+				volLock.Lock()
 				// for every instance in this batch, check volumes at the corresponding target, unless we did already.
-				if visitedLocations == nil {
-					visitedLocations = map[string]map[string]map[string]bool{}
-				}
-
 				if visitedLocations[q.Placement.TargetName] == nil {
 					visitedLocations[q.Placement.TargetName] = map[string]map[string]bool{}
 				}
@@ -413,9 +411,20 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 					visitedLocations[q.Placement.TargetName][q.Placement.TargetProject] = map[string]bool{}
 				}
 
-				if !visitedLocations[q.Placement.TargetName][q.Placement.TargetProject][pool] {
+				shouldCreateVol := !visitedLocations[q.Placement.TargetName][q.Placement.TargetProject][pool]
+				if shouldCreateVol {
+					visitedLocations[q.Placement.TargetName][q.Placement.TargetProject][pool] = true
+				}
+
+				volLock.Unlock()
+
+				if shouldCreateVol {
 					err := d.ensureISOImagesExistInStoragePool(ctx, state.Instances[instUUID], state.Targets[instUUID], state.Batch, pool, q.Placement.TargetProject)
 					if err != nil {
+						volLock.Lock()
+						visitedLocations[q.Placement.TargetName][q.Placement.TargetProject][pool] = false
+						volLock.Unlock()
+
 						log.Error("Failed to validate batch", logger.Err(err))
 						_, err := d.batch.UpdateStatusByName(ctx, state.Batch.Name, api.BATCHSTATUS_ERROR, err.Error())
 						if err != nil {
@@ -423,8 +432,6 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 						}
 
 						ignoredBatches = append(ignoredBatches, state.Batch.Name)
-					} else {
-						visitedLocations[q.Placement.TargetName][q.Placement.TargetProject][pool] = true
 					}
 				}
 			}
