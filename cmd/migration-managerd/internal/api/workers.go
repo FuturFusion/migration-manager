@@ -679,7 +679,32 @@ func (d *Daemon) createTargetVM(ctx context.Context, b migration.Batch, inst mig
 	if cleanupInstances {
 		reverter.Add(func() {
 			slog.Error("Cleaning up new instance after failure", slog.String("revert", "instance cleanup"), slog.Any("error", err))
-			cleanup()
+
+			// Instantiate a new client.
+			it, err := target.NewTarget(t.ToAPI())
+			if err != nil {
+				slog.Error("Failed to construct target", slog.String("name", t.Name), slog.Any("error", err))
+				return
+			}
+
+			timeoutCtx, cancel := context.WithTimeout(ctx, it.Timeout())
+			defer cancel()
+
+			// Connect to the target.
+			err = it.Connect(timeoutCtx)
+			if err != nil {
+				slog.Error("Failed to connect to target", slog.String("name", it.GetName()), slog.Any("error", err))
+				return
+			}
+
+			// Set the project.
+			err = it.SetProject(q.Placement.TargetProject)
+			if err != nil {
+				slog.Error("Failed to set project", slog.String("project", q.Placement.TargetProject), slog.String("name", it.GetName()), slog.Any("error", err))
+				return
+			}
+
+			cleanup(it)
 		})
 	}
 
