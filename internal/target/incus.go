@@ -593,7 +593,7 @@ func (t *InternalIncusTarget) CreateVMDefinition(instanceDef migration.Instance,
 	return ret, nil
 }
 
-func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error) {
+func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(t Target), error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 
@@ -618,7 +618,7 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 		return nil, nil, err
 	}
 
-	cleanup := func() {
+	cleanup := func(t Target) {
 		err := t.CleanupVM(context.Background(), apiDef.Name, true)
 		if err != nil {
 			slog.Error("Failed to clean up instance after error", slog.String("name", apiDef.Name), slog.Any("error", err))
@@ -678,7 +678,6 @@ func (t *InternalIncusTarget) SetupVM(ctx context.Context, instDef migration.Ins
 			instInfo.Devices[diskKey]["source"] = diskName
 		}
 
-		apiDef.Start = true
 		op, err := tgtClient.UpdateInstance(instInfo.Name, instInfo.InstancePut, etag)
 		if err != nil {
 			return err
