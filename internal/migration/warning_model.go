@@ -60,7 +60,7 @@ func (w Warning) Validate() error {
 	}
 
 	if w.Entity == "" {
-		return NewValidationErrf("Warning %q cannot have empty type", w.UUID)
+		return NewValidationErrf("Warning %q cannot have empty entity", w.UUID)
 	}
 
 	if w.Status == "" {
