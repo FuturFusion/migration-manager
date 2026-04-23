@@ -28,16 +28,16 @@ func (c *CmdWarning) Command() *cobra.Command {
 `
 
 	// List
-	configListCmd := cmdWarningList{global: c.Global}
-	cmd.AddCommand(configListCmd.Command())
+	warningListCmd := cmdWarningList{global: c.Global}
+	cmd.AddCommand(warningListCmd.Command())
 
 	// Show
-	configShowCmd := cmdWarningShow{global: c.Global}
-	cmd.AddCommand(configShowCmd.Command())
+	warningShowCmd := cmdWarningShow{global: c.Global}
+	cmd.AddCommand(warningShowCmd.Command())
 
 	// Acknowledge
-	configAck := cmdWarningAck{global: c.Global}
-	cmd.AddCommand(configAck.Command())
+	warningAck := cmdWarningAck{global: c.Global}
+	cmd.AddCommand(warningAck.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
