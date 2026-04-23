@@ -35,7 +35,7 @@ var _ Target = &TargetMock{}
 //			ConnectFunc: func(ctx context.Context) error {
 //				panic("mock out the Connect method")
 //			},
-//			CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error) {
+//			CreateNewVMFunc: func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(t Target), error) {
 //				panic("mock out the CreateNewVM method")
 //			},
 //			CreateStoragePoolVolumeFromBackupFunc: func(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) error {
@@ -130,7 +130,7 @@ type TargetMock struct {
 	ConnectFunc func(ctx context.Context) error
 
 	// CreateNewVMFunc mocks the CreateNewVM method.
-	CreateNewVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error)
+	CreateNewVMFunc func(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(t Target), error)
 
 	// CreateStoragePoolVolumeFromBackupFunc mocks the CreateStoragePoolVolumeFromBackup method.
 	CreateStoragePoolVolumeFromBackupFunc func(ctx context.Context, poolName string, backupFilePath string, architecture string, volumeName string) error
@@ -547,7 +547,7 @@ func (mock *TargetMock) ConnectCalls() []struct {
 }
 
 // CreateNewVM calls CreateNewVMFunc.
-func (mock *TargetMock) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(), error) {
+func (mock *TargetMock) CreateNewVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement, bootISOImage string) (func(context.Context) error, func(t Target), error) {
 	if mock.CreateNewVMFunc == nil {
 		panic("TargetMock.CreateNewVMFunc: method is nil but Target.CreateNewVM was just called")
 	}
