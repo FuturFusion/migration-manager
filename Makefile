@@ -64,7 +64,7 @@ ifeq ($(shell command -v go-licenses),)
 	(cd / ; $(GO) install -v -x github.com/google/go-licenses@latest)
 endif
 ifeq ($(shell command -v golangci-lint),)
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $$($(GO) env GOPATH)/bin
+	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $$($(GO) env GOPATH)/bin
 endif
 ifeq ($(shell command -v shellcheck),)
 	echo "Please install shellcheck"
