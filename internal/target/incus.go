@@ -91,37 +91,11 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 		authType = incusAPI.AuthenticationMethodOIDC
 	}
 
-	t.incusConnectionArgs = &incus.ConnectionArgs{
-		AuthType:           authType,
-		TLSClientKey:       t.TLSClientKey,
-		TLSClientCert:      t.TLSClientCert,
-		OIDCTokens:         t.OIDCTokens,
-		OIDCNonInteractive: true,
-		Proxy:              func(r *http.Request) (*url.URL, error) { return nil, nil },
-	}
-
-	var serverCert *x509.Certificate
 	var err error
-
-	if len(t.ServerCertificate) > 0 {
-		serverCert, err = x509.ParseCertificate(t.ServerCertificate)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Set expected TLS server certificate if configured and matches the provided trusted fingerprint.
-	if serverCert != nil && incusTLS.CertFingerprint(serverCert) == strings.ToLower(strings.ReplaceAll(t.TrustedServerCertificateFingerprint, ":", "")) {
-		t.incusConnectionArgs.TLSServerCert = api.Certificate{Certificate: serverCert}.String()
-	}
-
-	client, err := incus.ConnectIncusWithContext(ctx, t.Endpoint, t.incusConnectionArgs)
+	t.incusConnectionArgs, t.incusClient, err = t.client(ctx)
 	if err != nil {
-		t.incusConnectionArgs = nil
 		return err
 	}
-
-	t.incusClient = client
 
 	// Do a quick check to see if our authentication was accepted by the server.
 	srv, _, err := t.incusClient.GetServer()
@@ -149,6 +123,44 @@ func (t *InternalIncusTarget) Connect(ctx context.Context) error {
 	t.version = srv.Environment.ServerVersion
 	t.isConnected = true
 	return nil
+}
+
+func (t *InternalIncusTarget) client(ctx context.Context) (*incus.ConnectionArgs, incus.InstanceServer, error) {
+	authType := incusAPI.AuthenticationMethodTLS
+	if t.TLSClientKey == "" {
+		authType = incusAPI.AuthenticationMethodOIDC
+	}
+
+	incusConnectionArgs := &incus.ConnectionArgs{
+		AuthType:           authType,
+		TLSClientKey:       t.TLSClientKey,
+		TLSClientCert:      t.TLSClientCert,
+		OIDCTokens:         t.OIDCTokens,
+		OIDCNonInteractive: true,
+		Proxy:              func(r *http.Request) (*url.URL, error) { return nil, nil },
+	}
+
+	var serverCert *x509.Certificate
+	var err error
+
+	if len(t.ServerCertificate) > 0 {
+		serverCert, err = x509.ParseCertificate(t.ServerCertificate)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
+	// Set expected TLS server certificate if configured and matches the provided trusted fingerprint.
+	if serverCert != nil && incusTLS.CertFingerprint(serverCert) == strings.ToLower(strings.ReplaceAll(t.TrustedServerCertificateFingerprint, ":", "")) {
+		incusConnectionArgs.TLSServerCert = api.Certificate{Certificate: serverCert}.String()
+	}
+
+	client, err := incus.ConnectIncusWithContext(ctx, t.Endpoint, incusConnectionArgs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return incusConnectionArgs, client, nil
 }
 
 func (t *InternalIncusTarget) DoBasicConnectivityCheck() (api.ExternalConnectivityStatus, *x509.Certificate) {
@@ -629,6 +641,8 @@ func (t *InternalIncusTarget) CreateNewVM(ctx context.Context, instDef migration
 }
 
 func (t *InternalIncusTarget) SetupVM(ctx context.Context, instDef migration.Instance, apiDef incusAPI.InstancesPost, placement api.Placement) error {
+	reverter := revert.New()
+	defer reverter.Fail()
 	props := instDef.Properties
 	props.Apply(instDef.Overrides.InstancePropertiesConfigurable)
 	// After the scheduler places the instance, get its target and create storage volumes on that member.
@@ -654,6 +668,28 @@ func (t *InternalIncusTarget) SetupVM(ctx context.Context, instDef migration.Ins
 			defaultDiskDef["pool"] = storagePool
 			diskKey := fmt.Sprintf("disk%d", i+1)
 			diskName := apiDef.Name + "-" + diskKey
+
+			// Clean up storage volumes that don't get attached to an instance.
+			reverter.Add(func() {
+				log := slog.With(slog.String("volume", diskName), slog.String("pool", storagePool), slog.String("instance", instInfo.Name), slog.String("target", t.GetName()))
+				ctx, cancel := context.WithTimeout(context.Background(), t.Timeout())
+				defer cancel()
+				_, c, err := t.client(ctx)
+				if err != nil {
+					log.Error("Failed to get client", slog.Any("error", err))
+					return
+				}
+
+				c = c.UseProject(placement.TargetProject)
+				c = c.UseTarget(instInfo.Location)
+				defer c.Disconnect()
+				err = c.DeleteStoragePoolVolume(storagePool, "custom", diskName)
+				if err != nil {
+					log.Error("Failed to clean up storage volume after error", slog.Any("error", err))
+					return
+				}
+			})
+
 			err := tgtClient.CreateStoragePoolVolume(storagePool, incusAPI.StorageVolumesPost{
 				StorageVolumePut: incusAPI.StorageVolumePut{
 					Description: fmt.Sprintf("Migrated disk (%s)", disk.Name),
@@ -688,6 +724,8 @@ func (t *InternalIncusTarget) SetupVM(ctx context.Context, instDef migration.Ins
 			return err
 		}
 	}
+
+	reverter.Success()
 
 	return nil
 }
