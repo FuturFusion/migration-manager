@@ -49,7 +49,14 @@ func compareTargetVersions(tgt api.TargetType, tgtVer string, defVer string) err
 	switch tgt {
 	case api.TARGETTYPE_INCUS:
 		// Major versions must match.
-		if semver.Compare(semver.Major("v"+tgtVer), semver.Major("v"+defVer)) == 0 {
+		tgtMajor := semver.Major("v" + tgtVer)
+		defMajor := semver.Major("v" + defVer)
+		if semver.Compare(tgtMajor, defMajor) == 0 {
+			return nil
+		}
+
+		// Use v6 definitions for v7.
+		if tgtMajor == "v7" && defMajor == "v6" {
 			return nil
 		}
 
