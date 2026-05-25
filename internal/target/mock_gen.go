@@ -12,8 +12,8 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
-	incus "github.com/lxc/incus/v6/client"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
+	incus "github.com/lxc/incus/v7/client"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
 )
 
 // Ensure, that TargetMock does implement Target.

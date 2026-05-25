@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Rican7/retry/jitter"
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v7/shared/api"
 	"github.com/mattn/go-sqlite3"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"

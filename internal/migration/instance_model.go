@@ -13,8 +13,8 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
-	"github.com/lxc/incus/v6/shared/osarch"
-	"github.com/lxc/incus/v6/shared/validate"
+	"github.com/lxc/incus/v7/shared/osarch"
+	"github.com/lxc/incus/v7/shared/validate"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/shared/api"

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/lxc/incus/v6/shared/osarch"
+	"github.com/lxc/incus/v7/shared/osarch"
 )
 
 func MatchArchitecture(architectures []string, candidate string) error {

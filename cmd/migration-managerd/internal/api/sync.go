@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lxc/incus/v6/shared/osarch"
+	"github.com/lxc/incus/v7/shared/osarch"
 
 	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/logger"

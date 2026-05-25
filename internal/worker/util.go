@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/revert"
-	"github.com/lxc/incus/v6/shared/subprocess"
-	"github.com/lxc/incus/v6/shared/util"
+	"github.com/lxc/incus/v7/shared/revert"
+	"github.com/lxc/incus/v7/shared/subprocess"
+	"github.com/lxc/incus/v7/shared/util"
 
 	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
 )

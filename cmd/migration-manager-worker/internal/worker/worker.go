@@ -18,10 +18,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/cancel"
-	"github.com/lxc/incus/v6/shared/revert"
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/cancel"
+	"github.com/lxc/incus/v7/shared/revert"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sys/unix"
 

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/listener"

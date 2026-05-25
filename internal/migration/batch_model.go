@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/validate"
+	"github.com/lxc/incus/v7/shared/validate"
 
 	"github.com/FuturFusion/migration-manager/internal/scriptlet"
 	"github.com/FuturFusion/migration-manager/shared/api"

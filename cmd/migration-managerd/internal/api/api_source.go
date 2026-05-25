@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/internal/server/auth"

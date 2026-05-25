@@ -1,7 +1,7 @@
 package scriptlet
 
 import (
-	"github.com/lxc/incus/v6/shared/scriptlet"
+	"github.com/lxc/incus/v7/shared/scriptlet"
 	"go.starlark.net/starlark"
 )
 

@@ -17,8 +17,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lxc/incus/v6/shared/osarch"
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	"github.com/lxc/incus/v7/shared/osarch"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
 	"github.com/vmware/govmomi/object"

@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/revert"
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/revert"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	"github.com/FuturFusion/migration-manager/internal/migration"

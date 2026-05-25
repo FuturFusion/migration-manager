@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lxc/incus/v6/shared/subprocess"
+	"github.com/lxc/incus/v7/shared/subprocess"
 )
 
 // CreateTarball creates a tarball from a given path.

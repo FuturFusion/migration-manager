@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lxc/incus/v6/shared/revert"
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
-	incusUtil "github.com/lxc/incus/v6/shared/util"
+	"github.com/lxc/incus/v7/shared/revert"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
+	incusUtil "github.com/lxc/incus/v7/shared/util"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"

@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/lxc/incus/v6/shared/revert"
+	"github.com/lxc/incus/v7/shared/revert"
 )
 
 // WriteFile reads from the reader and writes to the given file path.

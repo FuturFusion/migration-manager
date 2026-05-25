@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v7/shared/api"
 	openfga "github.com/openfga/go-sdk"
 	"github.com/openfga/go-sdk/client"
 	"github.com/openfga/go-sdk/credentials"

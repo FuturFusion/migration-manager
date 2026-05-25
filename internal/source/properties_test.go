@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/lxc/incus/v6/shared/osarch"
+	"github.com/lxc/incus/v7/shared/osarch"
 	"github.com/stretchr/testify/require"
 	"github.com/vmware/govmomi/object"
 	"github.com/vmware/govmomi/vim25/mo"

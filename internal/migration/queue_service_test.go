@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/osarch"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/osarch"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"

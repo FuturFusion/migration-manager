@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/api"
+	"github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/server/util"
 )

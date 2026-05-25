@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/url"
 
-	"github.com/lxc/incus/v6/shared/validate"
+	"github.com/lxc/incus/v7/shared/validate"
 	"github.com/zitadel/oidc/v3/pkg/oidc"
 
 	"github.com/FuturFusion/migration-manager/shared/api"

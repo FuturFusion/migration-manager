@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	incusUtil "github.com/lxc/incus/v6/shared/util"
+	incusUtil "github.com/lxc/incus/v7/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
 )

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	incustls "github.com/lxc/incus/v6/shared/tls"
+	incustls "github.com/lxc/incus/v7/shared/tls"
 )
 
 // CheckTrustState checks whether the given client certificate is trusted

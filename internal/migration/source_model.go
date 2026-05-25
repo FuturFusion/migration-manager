@@ -8,7 +8,7 @@ import (
 	"slices"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/validate"
+	"github.com/lxc/incus/v7/shared/validate"
 
 	internalapi "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/shared/api"

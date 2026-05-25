@@ -16,7 +16,7 @@ import (
 	"net/url"
 	"time"
 
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 	"github.com/vmware/govmomi"
 	"github.com/vmware/govmomi/session"
 	"github.com/vmware/govmomi/session/keepalive"

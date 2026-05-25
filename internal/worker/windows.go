@@ -21,9 +21,9 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/lxc/distrobuilder/v3/shared"
 	"github.com/lxc/distrobuilder/v3/windows"
-	"github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/subprocess"
-	"github.com/lxc/incus/v6/shared/util"
+	"github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/subprocess"
+	"github.com/lxc/incus/v7/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	internalUtil "github.com/FuturFusion/migration-manager/internal/util"

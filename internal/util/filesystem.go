@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/lxc/incus/v6/shared/util"
+	"github.com/lxc/incus/v7/shared/util"
 )
 
 // FileCopy copies a file, overwriting the target if it exists.

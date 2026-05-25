@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	incusAPI "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/validate"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/validate"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
 )

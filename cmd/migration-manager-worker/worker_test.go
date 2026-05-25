@@ -16,8 +16,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/subprocess"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/subprocess"
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager-worker/internal/worker"
