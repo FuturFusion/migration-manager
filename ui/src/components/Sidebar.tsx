@@ -11,11 +11,13 @@ import {
   MdDescription,
   MdLogin,
   MdLogout,
+  MdOutlineDesktopWindows,
   MdOutlineSettings,
   MdWarningAmber,
 } from "react-icons/md";
 import { PiNetwork } from "react-icons/pi";
 import { useQuery } from "@tanstack/react-query";
+import { isIncusOS } from "api/os";
 import { fetchSettings } from "api/server";
 import { useAuth } from "context/authContext";
 
@@ -31,6 +33,11 @@ const Sidebar = () => {
       window.location.href = "/ui/";
     });
   };
+
+  const { data: isRunningIncusOS = false } = useQuery({
+    queryKey: ["os-check"],
+    queryFn: async () => isIncusOS(),
+  });
 
   return (
     <>
@@ -109,6 +116,13 @@ const Sidebar = () => {
                   <MdDescription /> Documentation
                 </Nav.Link>
               </li>
+              {isRunningIncusOS && (
+                <li>
+                  <Nav.Link as={Link} to="/ui/os">
+                    <MdOutlineDesktopWindows /> OS
+                  </Nav.Link>
+                </li>
+              )}
               <li>
                 <Nav.Link as={Link} to="/ui/settings">
                   <MdOutlineSettings /> Settings
