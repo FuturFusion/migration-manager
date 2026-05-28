@@ -1,6 +1,7 @@
 import type { FC } from "react";
 import { useNavigate, useParams } from "react-router";
 import TabView from "components/TabView";
+import OSActions from "components/OSActions";
 import OSOverview from "./OSOverview";
 import OSLogs from "./OSLogs";
 import OSNetwork from "./OSNetwork";
@@ -49,6 +50,7 @@ const IncusOS: FC = () => {
 
   return (
     <div className="d-flex flex-column">
+      <OSActions />
       <div className="scroll-container flex-grow-1 p-3">
         <TabView
           defaultTab="overview"
