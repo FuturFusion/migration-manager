@@ -49,3 +49,9 @@ tr.overview-table-header th {
   word-break: break-word;
   overflow-wrap: break-word;
 }
+
+.action-sep li:not(:last-child)::after {
+  content: "|";
+  margin: 0 5px;
+  color: #aaa;
+}
