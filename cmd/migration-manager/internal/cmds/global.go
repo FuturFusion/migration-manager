@@ -236,6 +236,7 @@ func (c *CmdGlobal) buildClient(requestString string) (*http.Client, *url.URL, e
 	} else {
 		u.Scheme = "http"
 		u.Host = "unix.socket"
+		u.Path, _ = strings.CutPrefix(u.Path, c.os.GetUnixSocket())
 		client = internalUtil.UnixHTTPClient(c.os.GetUnixSocket())
 	}
 
