@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"os"
 
-	"github.com/lxc/incus/v6/shared/ask"
+	"github.com/lxc/incus/v7/shared/ask"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/cmds"

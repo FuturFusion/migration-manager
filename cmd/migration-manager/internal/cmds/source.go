@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lxc/incus/v6/shared/validate"
+	"github.com/lxc/incus/v7/shared/validate"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/internal/util"

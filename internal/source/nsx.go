@@ -14,8 +14,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 
 	internalAPI "github.com/FuturFusion/migration-manager/internal/api"
 	"github.com/FuturFusion/migration-manager/internal/util"

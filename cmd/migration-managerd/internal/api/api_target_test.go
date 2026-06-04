@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
-	incusUtil "github.com/lxc/incus/v6/shared/util"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
+	incusUtil "github.com/lxc/incus/v7/shared/util"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 	"golang.org/x/sync/errgroup"

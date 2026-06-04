@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lxc/incus/v6/shared/revert"
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
-	incusUtil "github.com/lxc/incus/v6/shared/util"
+	"github.com/lxc/incus/v7/shared/revert"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
+	incusUtil "github.com/lxc/incus/v7/shared/util"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/config"
@@ -45,6 +45,7 @@ import (
 
 type Daemon struct {
 	db          *db.Node
+	dbtx        transaction.DBTX
 	os          *sys.OS
 	logHandler  *logger.Handler
 	migrationCh chan struct{}
@@ -229,15 +230,16 @@ func (d *Daemon) Start() error {
 		return err
 	}
 
-	d.artifact = migration.NewArtifactService(sqlite.NewArtifact(dbWithTransaction), d.os)
-	d.warning = migration.NewWarningService(sqlite.NewWarning(dbWithTransaction))
-	d.network = migration.NewNetworkService(sqlite.NewNetwork(dbWithTransaction))
-	d.target = migration.NewTargetService(sqlite.NewTarget(dbWithTransaction))
-	d.source = migration.NewSourceService(sqlite.NewSource(dbWithTransaction))
-	d.instance = migration.NewInstanceService(sqlite.NewInstance(dbWithTransaction))
-	d.batch = migration.NewBatchService(sqlite.NewBatch(dbWithTransaction), d.instance)
-	d.window = migration.NewWindowService(sqlite.NewMigrationWindow(dbWithTransaction))
-	d.queue = migration.NewQueueService(sqlite.NewQueue(dbWithTransaction), d.batch, d.instance, d.source, d.target, d.window)
+	d.dbtx = dbWithTransaction
+	d.artifact = migration.NewArtifactService(sqlite.NewArtifact(d.DBTX()), d.os)
+	d.warning = migration.NewWarningService(sqlite.NewWarning(d.DBTX()))
+	d.network = migration.NewNetworkService(sqlite.NewNetwork(d.DBTX()))
+	d.target = migration.NewTargetService(sqlite.NewTarget(d.DBTX()))
+	d.source = migration.NewSourceService(sqlite.NewSource(d.DBTX()))
+	d.instance = migration.NewInstanceService(sqlite.NewInstance(d.DBTX()))
+	d.batch = migration.NewBatchService(sqlite.NewBatch(d.DBTX()), d.instance)
+	d.window = migration.NewWindowService(sqlite.NewMigrationWindow(d.DBTX()))
+	d.queue = migration.NewQueueService(sqlite.NewQueue(d.DBTX()), d.batch, d.instance, d.source, d.target, d.window)
 
 	d.queueHandler = queue.NewMigrationHandler(d.batch, d.instance, d.network, d.source, d.target, d.queue, d.window)
 
@@ -377,6 +379,10 @@ func (d *Daemon) TrustedFingerprints() []string {
 	defer d.configLock.Unlock()
 
 	return d.config.Security.TrustedTLSClientCertFingerprints
+}
+
+func (d *Daemon) DBTX() transaction.DBTX {
+	return d.dbtx
 }
 
 func (d *Daemon) updateHTTPListener(address string) <-chan error {

@@ -21,9 +21,9 @@ import (
 	"github.com/flosch/pongo2/v4"
 	"github.com/lxc/distrobuilder/v3/shared"
 	"github.com/lxc/distrobuilder/v3/windows"
-	"github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/subprocess"
-	"github.com/lxc/incus/v6/shared/util"
+	"github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/subprocess"
+	"github.com/lxc/incus/v7/shared/util"
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
@@ -49,6 +49,24 @@ func init() {
 	_ = pongo2.RegisterFilter("toHex", toHex)
 }
 
+func isWindowsMainFilesystem(child internalUtil.LSBLKFields, code string) bool {
+	list, err := subprocess.RunCommand("ntfsls", "/dev/"+child.Name)
+	if err != nil {
+		slog.Error("Failed to list NTFS files on partition", slog.String("partition", child.Name), slog.Any("error", err))
+		return false
+	}
+
+	sc := bufio.NewScanner(strings.NewReader(list))
+	var matches int
+	for sc.Scan() {
+		if sc.Text() == internalUtil.WindowsDirectory(code) || sc.Text() == "Program Files" {
+			matches++
+		}
+	}
+
+	return matches == 2
+}
+
 func DetermineWindowsPartitions(code string) (mainParent string, base string, recoveryParent string, recovery string, ok bool, err error) {
 	partitions, err := internalUtil.ScanPartitions("")
 	if err != nil {
@@ -61,7 +79,7 @@ func DetermineWindowsPartitions(code string) (mainParent string, base string, re
 		}
 
 		for _, child := range dev.Children {
-			if child.PartLabel == "Basic data partition" && child.PartTypeName == "Microsoft basic data" {
+			if child.PartLabel == "Basic data partition" && child.PartTypeName == "Microsoft basic data" && isWindowsMainFilesystem(child, code) {
 				base = child.Name
 				mainParent = child.PKName
 			} else if child.PartTypeName == "Windows recovery environment" {
@@ -81,21 +99,7 @@ func DetermineWindowsPartitions(code string) (mainParent string, base string, re
 						continue
 					}
 
-					list, err := subprocess.RunCommand("ntfsls", "/dev/"+child.Name)
-					if err != nil {
-						slog.Error("Failed to list NTFS files on partition", slog.String("partition", child.Name), slog.Any("error", err))
-						continue
-					}
-
-					sc := bufio.NewScanner(strings.NewReader(list))
-					var matches int
-					for sc.Scan() {
-						if sc.Text() == internalUtil.WindowsDirectory(code) || sc.Text() == "Program Files" {
-							matches++
-						}
-					}
-
-					if matches == 2 {
+					if isWindowsMainFilesystem(child, code) {
 						base = child.Name
 						mainParent = child.PKName
 						break

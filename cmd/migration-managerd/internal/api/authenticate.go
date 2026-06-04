@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
 	tlsutil "github.com/FuturFusion/migration-manager/internal/server/util"

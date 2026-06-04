@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/lxc/incus/v6/shared/termios"
+	"github.com/lxc/incus/v7/shared/termios"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 

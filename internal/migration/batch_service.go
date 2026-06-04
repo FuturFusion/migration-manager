@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusScriptlet "github.com/lxc/incus/v6/shared/scriptlet"
+	incusScriptlet "github.com/lxc/incus/v7/shared/scriptlet"
 
 	"github.com/FuturFusion/migration-manager/internal/scriptlet"
 	"github.com/FuturFusion/migration-manager/internal/transaction"

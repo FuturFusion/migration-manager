@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/lxc/incus/v6/shared/scriptlet"
-	"github.com/lxc/incus/v6/shared/validate"
+	"github.com/lxc/incus/v7/shared/scriptlet"
+	"github.com/lxc/incus/v7/shared/validate"
 	"go.starlark.net/starlark"
 
 	"github.com/FuturFusion/migration-manager/shared/api"

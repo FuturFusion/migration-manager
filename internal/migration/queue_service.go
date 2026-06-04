@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
 
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/internal/util"

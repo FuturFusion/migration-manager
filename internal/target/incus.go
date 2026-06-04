@@ -18,11 +18,11 @@ import (
 	"strings"
 	"time"
 
-	incus "github.com/lxc/incus/v6/client"
-	incusAPI "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/osarch"
-	"github.com/lxc/incus/v6/shared/revert"
-	incusTLS "github.com/lxc/incus/v6/shared/tls"
+	incus "github.com/lxc/incus/v7/client"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/osarch"
+	"github.com/lxc/incus/v7/shared/revert"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 	"gopkg.in/yaml.v3"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"

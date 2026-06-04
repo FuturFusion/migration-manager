@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/lxc/incus/v6/shared/osarch"
+	"github.com/lxc/incus/v7/shared/osarch"
 	"golang.org/x/mod/semver"
 
 	"github.com/FuturFusion/migration-manager/internal/util"

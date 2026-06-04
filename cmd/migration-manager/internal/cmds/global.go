@@ -17,14 +17,14 @@ import (
 	"regexp"
 	"strings"
 
-	incusAPI "github.com/lxc/incus/v6/shared/api"
-	"github.com/lxc/incus/v6/shared/cancel"
-	"github.com/lxc/incus/v6/shared/ioprogress"
-	"github.com/lxc/incus/v6/shared/revert"
-	localtls "github.com/lxc/incus/v6/shared/tls"
-	"github.com/lxc/incus/v6/shared/units"
-	"github.com/lxc/incus/v6/shared/util"
-	"github.com/lxc/incus/v6/shared/validate"
+	incusAPI "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/cancel"
+	"github.com/lxc/incus/v7/shared/ioprogress"
+	"github.com/lxc/incus/v7/shared/revert"
+	localtls "github.com/lxc/incus/v7/shared/tls"
+	"github.com/lxc/incus/v7/shared/units"
+	"github.com/lxc/incus/v7/shared/util"
+	"github.com/lxc/incus/v7/shared/validate"
 	"github.com/spf13/cobra"
 
 	"github.com/FuturFusion/migration-manager/cmd/migration-manager/internal/config"
@@ -236,6 +236,7 @@ func (c *CmdGlobal) buildClient(requestString string) (*http.Client, *url.URL, e
 	} else {
 		u.Scheme = "http"
 		u.Host = "unix.socket"
+		u.Path, _ = strings.CutPrefix(u.Path, c.os.GetUnixSocket())
 		client = internalUtil.UnixHTTPClient(c.os.GetUnixSocket())
 	}
 
@@ -243,9 +244,13 @@ func (c *CmdGlobal) buildClient(requestString string) (*http.Client, *url.URL, e
 }
 
 func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, reader io.Reader) (*http.Request, *http.Client, error) {
-	requestString, err := url.JoinPath("/1.0/", endpoint)
-	if err != nil {
-		return nil, nil, err
+	requestString := endpoint
+	if !strings.HasPrefix(endpoint, "/internal/") {
+		var err error
+		requestString, err = url.JoinPath("/1.0/", endpoint)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	if query != "" {
