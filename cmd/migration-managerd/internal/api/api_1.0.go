@@ -59,6 +59,7 @@ var api10 = []APIEndpoint{
 var apiInternal = []APIEndpoint{
 	workerUpdateCmd,
 	workerCommandCmd,
+	sqlCmd,
 }
 
 // swagger:operation GET /1.0 server server_get_untrusted
