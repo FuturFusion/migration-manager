@@ -178,6 +178,11 @@ func getEntitiesSchemas(ctx context.Context, db transaction.DBTX) (map[string][2
 
 	defer func() { _ = rows.Close() }()
 
+	err = rows.Err()
+	if err != nil {
+		return nil, nil, err
+	}
+
 	tablesSchemas := make(map[string][2]string)
 	var names []string
 	for rows.Next() {
@@ -213,6 +218,11 @@ func getTableData(ctx context.Context, db transaction.DBTX, table string) ([]str
 	}
 
 	defer func() { _ = rows.Close() }()
+
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
 
 	// Get the column names.
 	columns, err := rows.Columns()

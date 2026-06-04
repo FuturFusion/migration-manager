@@ -244,9 +244,13 @@ func (c *CmdGlobal) buildClient(requestString string) (*http.Client, *url.URL, e
 }
 
 func (c *CmdGlobal) buildRequest(endpoint string, method string, query string, reader io.Reader) (*http.Request, *http.Client, error) {
-	requestString, err := url.JoinPath("/1.0/", endpoint)
-	if err != nil {
-		return nil, nil, err
+	requestString := endpoint
+	if !strings.HasPrefix(endpoint, "/internal/") {
+		var err error
+		requestString, err = url.JoinPath("/1.0/", endpoint)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
 	if query != "" {
