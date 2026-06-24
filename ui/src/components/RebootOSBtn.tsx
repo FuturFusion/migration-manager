@@ -6,7 +6,11 @@ import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 
-const RebootOSBtn: FC = () => {
+interface Props {
+  pending?: boolean;
+}
+
+const RebootOSBtn: FC<Props> = ({ pending = false }) => {
   const { notify } = useNotification();
   const [showModal, setShowModal] = useState(false);
   const [rebootInProgress, setRebootInProgress] = useState(false);
@@ -30,12 +34,13 @@ const RebootOSBtn: FC = () => {
     <>
       <MdOutlineReplay
         size={25}
-        title="Reboot server"
-        style={{ color: "grey", cursor: "pointer" }}
+        title={pending ? "Reboot required to apply update" : "Reboot server"}
+        style={{ color: pending ? "#c00" : "grey", cursor: "pointer" }}
         onClick={() => setShowModal(true)}
       />
       <ModalWindow
         show={showModal}
+        scrollable
         handleClose={() => setShowModal(false)}
         title="Reboot server"
         footer={

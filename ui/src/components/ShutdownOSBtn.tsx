@@ -35,6 +35,7 @@ const ShutdownOSBtn: FC = () => {
       />
       <ModalWindow
         show={showModal}
+        scrollable
         handleClose={() => setShowModal(false)}
         title="Power off server"
         footer={
