@@ -7,6 +7,7 @@ interface Props {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
+  scrollable?: boolean;
 }
 
 const ModalWindow: FC<Props> = ({
@@ -15,9 +16,10 @@ const ModalWindow: FC<Props> = ({
   title,
   children,
   footer,
+  scrollable,
 }) => {
   return (
-    <Modal show={show} onHide={handleClose}>
+    <Modal show={show} onHide={handleClose} scrollable={scrollable ?? false}>
       <Modal.Header closeButton>
         <Modal.Title>{title}</Modal.Title>
       </Modal.Header>

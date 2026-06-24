@@ -16,7 +16,6 @@ import Instance from "pages/Instance";
 import InstanceDetail from "pages/InstanceDetail";
 import Network from "pages/Network";
 import NetworkDetail from "pages/NetworkDetail";
-import OSServiceDetails from "pages/OSServiceDetails";
 import Settings from "pages/Settings";
 import Source from "pages/Source";
 import SourceCreate from "pages/SourceCreate";
@@ -115,10 +114,7 @@ function App() {
             />
             <Route path="/ui/os" element={<IncusOS />} />
             <Route path="/ui/os/:activeTab" element={<IncusOS />} />
-            <Route
-              path="/ui/os/services/:name"
-              element={<OSServiceDetails />}
-            />
+            <Route path="/ui/os/:activeTab/:subTab" element={<IncusOS />} />
           </Routes>
           <Notification />
         </Container>

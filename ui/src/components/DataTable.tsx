@@ -8,7 +8,7 @@ interface DataTableCol {
   class?: string;
 }
 
-interface DataTableRow {
+export interface DataTableRow {
   additional_data?: ReactNode | string;
   cols: DataTableCol[];
 }
