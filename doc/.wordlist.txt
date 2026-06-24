@@ -16,6 +16,7 @@ FuturFusion
 Furo
 github
 GitHub
+GPG
 https
 Incus
 IncusOS
@@ -24,6 +25,7 @@ IPv
 JSON
 keypair
 lang
+LLMs
 MacOS
 NIC
 NICs
