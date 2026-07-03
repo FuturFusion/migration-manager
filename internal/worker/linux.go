@@ -19,6 +19,7 @@ import (
 	"time"
 
 	incusAPI "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/osinfo"
 	"github.com/lxc/incus/v7/shared/subprocess"
 	"github.com/lxc/incus/v7/shared/util"
 
@@ -55,7 +56,7 @@ const (
 	logDir          string = "migration-manager"
 )
 
-func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, distro api.Distro, distroVersion string, dryRun bool) error {
+func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, distro osinfo.Distro, distroVersion string, dryRun bool) error {
 	// Clear any existing logs from a previousr run.
 	err := os.RemoveAll(filepath.Join("/tmp", logDir))
 	if err != nil {
@@ -68,7 +69,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 	}
 
 	// Get the disto's major version, if possible.
-	if distro == api.DISTRO_OTHER {
+	if distro == osinfo.OtherDistro {
 		slog.Info("Could not determine Linux distribution, not performing any post-migration actions")
 		return nil
 	}
@@ -248,7 +249,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 	}
 
 	var versionInt int
-	if distro != api.DISTRO_UBUNTU && distroVersion != "" {
+	if distro != osinfo.UbuntuLinux && distroVersion != "" {
 		versionInt, err = strconv.Atoi(distroVersion)
 		if err != nil {
 			return fmt.Errorf("Failed to parse distro version %q for distro %q: %w", distroVersion, distro, err)
@@ -261,7 +262,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		return err
 	}
 
-	if distro.IsRHELDerivative() && distro != api.DISTRO_AMZN {
+	if distro.IsRHELDerivative() && distro != osinfo.AmazonLinux {
 		err := runScriptInChroot("redhat-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
@@ -283,7 +284,7 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		}
 	}
 
-	if distro == api.DISTRO_DEBIAN {
+	if distro == osinfo.DebianLinux {
 		if distroVersion != "" && versionInt <= 8 {
 			err := runScriptInChroot("add-incus-agent-override-for-old-systemd.sh")
 			if err != nil {
@@ -293,13 +294,13 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 	}
 
 	switch distro {
-	case api.DISTRO_DEBIAN, api.DISTRO_UBUNTU:
+	case osinfo.DebianLinux, osinfo.UbuntuLinux:
 		err := runScriptInChroot("debian-purge-open-vm-tools.sh")
 		if err != nil {
 			return err
 		}
 
-	case api.DISTRO_SUSE:
+	case osinfo.SUSELinux:
 		err := runScriptInChroot("suse-purge-open-vm-tools.sh")
 		if err != nil {
 			return err

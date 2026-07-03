@@ -17,6 +17,7 @@ import (
 
 	"github.com/google/uuid"
 	incusAPI "github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/osinfo"
 	"github.com/lxc/incus/v7/shared/subprocess"
 	"github.com/stretchr/testify/require"
 
@@ -34,7 +35,7 @@ var errGracefulEndOfTest = fmt.Errorf("graceful end of test")
 type instanceDetails struct {
 	Location      string
 	OSType        api.OSType
-	Distro        api.Distro
+	Distro        osinfo.Distro
 	DistroVersion string
 }
 
@@ -291,7 +292,7 @@ func TestRun(t *testing.T) {
 			},
 			instanceSpec: instanceDetails{
 				OSType:        api.OSTYPE_WINDOWS,
-				Distro:        api.DISTRO_OTHER,
+				Distro:        osinfo.OtherDistro,
 				DistroVersion: "invalid",
 			},
 

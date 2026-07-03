@@ -3,9 +3,8 @@ package util_test
 import (
 	"testing"
 
+	"github.com/lxc/incus/v7/shared/osinfo"
 	"github.com/stretchr/testify/require"
-
-	"github.com/FuturFusion/migration-manager/internal/util"
 )
 
 // Windows names taken from https://dp-downloads.broadcom.com/api-content/apis/API_VWSA_001/8.0U3/html/ReferenceGuides/vim.vm.GuestOsDescriptor.GuestOsIdentifier.html
@@ -67,14 +66,50 @@ func TestMapWindowsVersionToAbbrevSuccess(t *testing.T) {
 			name: "Windows 10 Server (64 bit)",
 			want: "w10",
 		},
+		{
+			name: "Windows XP Home Edition",
+			want: "xp",
+		},
+		{
+			name: "Windows XP Professional Edition (64 bit)",
+			want: "xp",
+		},
+		{
+			name: "Windows XP Professional",
+			want: "xp",
+		},
+		{
+			name: "Windows 7 (64 bit)",
+			want: "w7",
+		},
+		{
+			name: "Windows 7",
+			want: "w7",
+		},
+		{
+			name: "Windows 8 (64 bit)",
+			want: "w8",
+		},
+		{
+			name: "Windows 8",
+			want: "w8",
+		},
+		{
+			name: "Windows 8.1",
+			want: "w8.1",
+		},
+		{
+			name: "Windows 8 Server (64 bit)",
+			want: "w8",
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			v, err := util.ToWindowsVersion(tc.name)
+			v, err := osinfo.ToWindowsVersion(tc.name)
 			require.NoError(t, err)
-			require.NoError(t, util.ValidateWindowsVersion(v))
-			got, err := util.MapWindowsVersionToAbbrev(v)
+			require.NoError(t, osinfo.ValidateWindowsVersion(v))
+			got, err := osinfo.MapWindowsVersionToAbbrev(v)
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
 		})
@@ -128,37 +163,13 @@ func TestMapWindowsVersionToAbbrevNotSupported(t *testing.T) {
 		{
 			name: "Windows Vista",
 		},
-		{
-			name: "Windows XP Home Edition",
-		},
-		{
-			name: "Windows XP Professional Edition (64 bit)",
-		},
-		{
-			name: "Windows XP Professional",
-		},
-		{
-			name: "Windows 7 (64 bit)",
-		},
-		{
-			name: "Windows 7",
-		},
-		{
-			name: "Windows 8 (64 bit)",
-		},
-		{
-			name: "Windows 8",
-		},
-		{
-			name: "Windows 8 Server (64 bit)",
-		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			v, err := util.ToWindowsVersion(tc.name)
+			v, err := osinfo.ToWindowsVersion(tc.name)
 			require.Error(t, err)
-			require.Error(t, util.ValidateWindowsVersion(v))
+			require.Error(t, osinfo.ValidateWindowsVersion(v))
 		})
 	}
 }

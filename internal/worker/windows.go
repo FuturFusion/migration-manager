@@ -22,6 +22,7 @@ import (
 	"github.com/lxc/distrobuilder/v3/shared"
 	"github.com/lxc/distrobuilder/v3/windows"
 	"github.com/lxc/incus/v7/shared/api"
+	"github.com/lxc/incus/v7/shared/osinfo"
 	"github.com/lxc/incus/v7/shared/subprocess"
 	"github.com/lxc/incus/v7/shared/util"
 
@@ -186,7 +187,7 @@ func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitect
 		return err
 	}
 
-	versionCode, err := internalUtil.MapWindowsVersionToAbbrev(distroVersion)
+	versionCode, err := osinfo.MapWindowsVersionToAbbrev(distroVersion)
 	if err != nil {
 		return err
 	}
