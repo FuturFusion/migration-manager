@@ -2,6 +2,8 @@ package api
 
 import (
 	"time"
+
+	"github.com/lxc/incus/v7/shared/osinfo"
 )
 
 // InstanceOverride defines a limited set of instance values that can be overridden as part of the migration process.
@@ -25,7 +27,7 @@ type InstanceOverride struct {
 
 	// Distribution name used for specific post-migration handling.
 	// Example: RHEL
-	Distribution Distro `json:"distribution" yaml:"distribution"`
+	Distribution osinfo.Distro `json:"distribution" yaml:"distribution"`
 
 	// Distribution version used for specific post-migration handling.
 	// Example: 7

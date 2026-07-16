@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lxc/incus/v7/shared/osinfo"
 
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
@@ -33,7 +34,7 @@ type WorkerCommand struct {
 	Location      string
 	SourceType    api.SourceType
 	Source        Source
-	Distro        api.Distro
+	Distro        osinfo.Distro
 	DistroVersion string
 	OSType        api.OSType
 	Architecture  string

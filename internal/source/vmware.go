@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v7/shared/osarch"
+	"github.com/lxc/incus/v7/shared/osinfo"
 	incusTLS "github.com/lxc/incus/v7/shared/tls"
 	"github.com/vmware/govmomi/fault"
 	"github.com/vmware/govmomi/find"
@@ -427,7 +428,7 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 			osVer = inst.Properties.OSTemplate
 		}
 
-		_, err := util.ToWindowsVersion(osVer)
+		_, err := osinfo.ToWindowsVersion(osVer)
 		if err != nil {
 			return nil, api.InstanceImportFailed, fmt.Errorf("Failed to determine OS distribution version %q for Windows VM %q: %w", inst.Properties.OSDescription, inst.Properties.Location, err)
 		}

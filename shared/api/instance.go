@@ -3,6 +3,8 @@ package api
 import (
 	"fmt"
 	"time"
+
+	"github.com/lxc/incus/v7/shared/osinfo"
 )
 
 // Instance defines a VM instance to be migrated.
@@ -25,7 +27,7 @@ type Instance struct {
 
 	// Distribution name used for specific post-migration handling.
 	// Example: RHEL
-	Distribution Distro `json:"distribution"         yaml:"distribution"`
+	Distribution osinfo.Distro `json:"distribution"         yaml:"distribution"`
 
 	// Distribution version used for specific post-migration handling.
 	// Example: 7
@@ -51,12 +53,12 @@ func (i Instance) GetName() string {
 type InstanceFilterable struct {
 	InstanceProperties
 
-	OSType               OSType    `json:"os_type"                 yaml:"os_type"                 expr:"os_type"`
-	Distribution         Distro    `json:"distribution"            yaml:"distribution"            expr:"distribution"`
-	DistributionVersion  string    `json:"distribution_version"    yaml:"distribution_version"    expr:"distribution_version"`
-	Source               string    `json:"source"                  yaml:"source"                  expr:"source"`
-	SourceType           string    `json:"source_type"             yaml:"source_type"             expr:"source_type"`
-	LastUpdateFromSource time.Time `json:"last_update_from_source" yaml:"last_update_from_source" expr:"last_update_from_source"`
+	OSType               OSType        `json:"os_type"                 yaml:"os_type"                 expr:"os_type"`
+	Distribution         osinfo.Distro `json:"distribution"            yaml:"distribution"            expr:"distribution"`
+	DistributionVersion  string        `json:"distribution_version"    yaml:"distribution_version"    expr:"distribution_version"`
+	Source               string        `json:"source"                  yaml:"source"                  expr:"source"`
+	SourceType           string        `json:"source_type"             yaml:"source_type"             expr:"source_type"`
+	LastUpdateFromSource time.Time     `json:"last_update_from_source" yaml:"last_update_from_source" expr:"last_update_from_source"`
 }
 
 func (i Instance) ToFilterable() InstanceFilterable {

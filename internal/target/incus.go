@@ -21,6 +21,7 @@ import (
 	incus "github.com/lxc/incus/v7/client"
 	incusAPI "github.com/lxc/incus/v7/shared/api"
 	"github.com/lxc/incus/v7/shared/osarch"
+	"github.com/lxc/incus/v7/shared/osinfo"
 	"github.com/lxc/incus/v7/shared/revert"
 	incusTLS "github.com/lxc/incus/v7/shared/tls"
 	"gopkg.in/yaml.v3"
@@ -331,12 +332,6 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	delete(apiDef.Devices, util.WorkerVolume(i.GetArchitecture()))
 	apiDef.Profiles = []string{"default"}
 
-	// Handle Windows-specific completion steps.
-	if apiDef.Config["image.os"] == "win-prepare" {
-		// Fixup the OS name.
-		apiDef.Config["image.os"] = apiDef.Config["user.migration.os"]
-	}
-
 	if !util.InTestingMode() {
 		// Unset user.migration keys.
 		for k := range apiDef.Config {
@@ -349,44 +344,20 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	// Handle RHEL (and derivative) specific completion steps.
 	osType := i.GetOSType(true)
 	distro, distroVer := i.GetDistribution(true)
-	hasVioSCSI, hasVioNet, has9p, hasCPU, err := util.GetOSCompatibility(osType, distro, distroVer)
-	if err != nil {
-		return fmt.Errorf("Failed to check %q OS version for post-migration configuration: %w", i.Properties.Location, err)
-	}
+	apiDef.Config["image.os"] = string(osType)
+	apiDef.Config["image.release"] = distroVer
+	supportsVioSCSI, _, _ := osinfo.GetOSQemuCompatibility(osType, distro, distroVer)
+	needsAgentDisk := (osType == api.OSTYPE_LINUX && distro.IsRHELDerivative()) || osType == api.OSTYPE_WINDOWS
 
-	var qemuCmdline []string
-	if osType == api.OSTYPE_WINDOWS {
-		// Set some additional QEMU options.
-		qemuCmdline = append(qemuCmdline, "-device intel-hda", "-device hda-duplex", "-audio spice")
-
-		versionCode, _ := util.MapWindowsVersionToAbbrev(distroVer)
-		if versionCode == "2k3" {
-			qemuCmdline = append(qemuCmdline, "-global q35-pcihost.x-pci-hole64-fix=off")
-		}
-	}
-
-	if !hasVioSCSI {
+	if !supportsVioSCSI {
 		apiDef.Devices["root"]["io.bus"] = "virtio-blk"
-		qemuCmdline = append(qemuCmdline, "-global virtio-blk-pci.disable-legacy=off")
 	}
 
-	if !hasVioNet {
-		qemuCmdline = append(qemuCmdline, "-global virtio-net-pci.disable-legacy=off")
-	}
-
-	if !has9p {
+	if needsAgentDisk {
 		apiDef.Devices["agent"] = map[string]string{
 			"type":   "disk",
 			"source": "agent:config",
 		}
-	}
-
-	if !hasCPU {
-		qemuCmdline = append(qemuCmdline, "-cpu qemu64", "-m maxmem=970G")
-	}
-
-	if len(qemuCmdline) > 0 {
-		apiDef.Config["raw.qemu"] = strings.Join(qemuCmdline, " ")
 	}
 
 	// Set the instance's UUID copied from the source.
@@ -485,12 +456,8 @@ func (t *InternalIncusTarget) fillInitialProperties(instance incusAPI.InstancesP
 		}
 	}
 
-	if osType == api.OSTYPE_WINDOWS {
-		instance.Config["image.os"] = "win-prepare"
-		instance.Config["user.migration.os"] = "Windows"
-	} else {
-		instance.Config["image.os"] = string(osType)
-	}
+	// The worker is always linux.
+	instance.Config["image.os"] = string(api.OSTYPE_LINUX)
 
 	// Fallback to x86_64 if no architecture property was found.
 	if p.Architecture == "" {

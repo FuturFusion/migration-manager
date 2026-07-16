@@ -2,6 +2,8 @@ package api
 
 import (
 	"encoding/json"
+
+	"github.com/lxc/incus/v7/shared/osinfo"
 )
 
 type WorkerCommandType int
@@ -46,7 +48,7 @@ type WorkerCommand struct {
 
 	// Distribution name used for specific post-migration handling.
 	// Example: "RHEL"
-	Distribution Distro `json:"distribution" yaml:"distribution"`
+	Distribution osinfo.Distro `json:"distribution" yaml:"distribution"`
 
 	// Distribution version used for specific post-migration handling.
 	// Example: 7

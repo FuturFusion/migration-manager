@@ -14,6 +14,7 @@ import (
 	"github.com/expr-lang/expr/vm"
 	"github.com/google/uuid"
 	"github.com/lxc/incus/v7/shared/osarch"
+	"github.com/lxc/incus/v7/shared/osinfo"
 	"github.com/lxc/incus/v7/shared/validate"
 
 	"github.com/FuturFusion/migration-manager/internal/util"
@@ -80,19 +81,19 @@ func (i Instance) Validate() error {
 
 	switch osType {
 	case api.OSTYPE_FORTIGATE:
-		if distro != api.DISTRO_OTHER {
-			return NewValidationErrf("FortiGate distribution must be %q, not %q", api.DISTRO_OTHER, distro)
+		if distro != osinfo.OtherDistro {
+			return NewValidationErrf("FortiGate distribution must be %q, not %q", osinfo.OtherDistro, distro)
 		}
 
 	case api.OSTYPE_LINUX:
 		switch distro {
-		case api.DISTRO_UBUNTU:
+		case osinfo.UbuntuLinux:
 			err := util.ValidateUbuntuVersion(version)
 			if err != nil {
 				return NewValidationErrf("Failed to parse distribution version %q for %q: %v", version, distro, err)
 			}
 
-		case api.DISTRO_OTHER:
+		case osinfo.OtherDistro:
 			if version != "" {
 				return NewValidationErrf("Cannot set a version for %q (%q)", osType, distro)
 			}
@@ -107,11 +108,11 @@ func (i Instance) Validate() error {
 		}
 
 	case api.OSTYPE_WINDOWS:
-		if distro != api.DISTRO_OTHER {
-			return NewValidationErrf("Windows distribution must be %q, not %q", api.DISTRO_OTHER, distro)
+		if distro != osinfo.OtherDistro {
+			return NewValidationErrf("Windows distribution must be %q, not %q", osinfo.OtherDistro, distro)
 		}
 
-		err := util.ValidateWindowsVersion(version)
+		err := osinfo.ValidateWindowsVersion(version)
 		if err != nil {
 			return NewValidationErrf("Windows distribution version %q is invalid: %v", version, err)
 		}
@@ -140,7 +141,7 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 	osType := i.GetOSType(false)
 	distro, _ := i.GetDistribution(false)
 
-	if osType == api.OSTYPE_LINUX && distro == api.DISTRO_OTHER {
+	if osType == api.OSTYPE_LINUX && distro == osinfo.OtherDistro {
 		osOverridden := i.Overrides.Distribution != "" || i.Overrides.OSType != ""
 		if !overrides.AllowUnknownOS && !osOverridden {
 			return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
@@ -239,15 +240,15 @@ func (i *Instance) GetOSType(applyOverrides bool) api.OSType {
 		return api.OSTYPE_FORTIGATE
 	}
 
-	if strings.Contains(strings.ToLower(osName), "bsd") {
-		return api.OSTYPE_BSD
+	if strings.Contains(strings.ToLower(osName), "freebsd") {
+		return api.OSTYPE_FREEBSD
 	}
 
 	return api.OSTYPE_LINUX
 }
 
 // GetDistribution returns the distribution and version for the OS type.
-func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
+func (i *Instance) GetDistribution(applyOverrides bool) (osinfo.Distro, string) {
 	props := i.Properties
 	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 	osVersion := props.OSDescription
@@ -258,7 +259,7 @@ func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
 	}
 
 	distroVersion := ""
-	distro := api.DISTRO_OTHER
+	distro := osinfo.OtherDistro
 
 	osType := i.GetOSType(applyOverrides)
 	switch i.SourceType {
@@ -267,7 +268,7 @@ func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
 		case api.OSTYPE_FORTIGATE:
 		case api.OSTYPE_WINDOWS:
 			var err error
-			distroVersion, err = util.ToWindowsVersion(osVersion)
+			distroVersion, err = osinfo.ToWindowsVersion(osVersion)
 			if err != nil {
 				distroVersion = ""
 				if i.Overrides.DistributionVersion == "" {
@@ -275,45 +276,18 @@ func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
 				}
 			}
 
-		case api.OSTYPE_BSD:
-			if strings.Contains(strings.ToLower(osVersion), "freebsd") {
-				distro = api.DISTRO_FREEBSD
-			}
+		case api.OSTYPE_FREEBSD:
 
 		case api.OSTYPE_LINUX:
+			distro = osinfo.DetermineLinuxDistro(osVersion)
+
 			// Get the disto's major version, if possible.
 			versionRegex := regexp.MustCompile(`^[\w /]+?(\d+)(\.\d+)?(\.\d+)?( \([\w /]+\))?( \(64-bit\))?`)
-			if strings.Contains(strings.ToLower(osVersion), "centos") {
-				distro = api.DISTRO_CENTOS
-			} else if strings.Contains(strings.ToLower(osVersion), "debian") {
-				distro = api.DISTRO_DEBIAN
-			} else if strings.Contains(strings.ToLower(osVersion), "opensuse") || strings.HasPrefix(strings.ToLower(osVersion), "suse") || strings.Contains(strings.ToLower(osVersion), "sles") {
-				distro = api.DISTRO_SUSE
-			} else if strings.Contains(strings.ToLower(osVersion), "oracle") {
-				distro = api.DISTRO_ORACLE
-			} else if strings.Contains(strings.ToLower(osVersion), "rocky") {
-				distro = api.DISTRO_ROCKY
-			} else if strings.Contains(strings.ToLower(osVersion), "amazon") {
-				distro = api.DISTRO_AMZN
-			} else if strings.Contains(strings.ToLower(osVersion), "alma") {
-				distro = api.DISTRO_ALMA
-			} else if strings.Contains(strings.ToLower(osVersion), "fedora") {
-				distro = api.DISTRO_FEDORA
-			} else if slices.ContainsFunc([]string{"rhel", "redhat", "red-hat", "red hat"}, func(s string) bool {
-				return strings.Contains(strings.ToLower(osVersion), s)
-			}) {
-				distro = api.DISTRO_RHEL
-			} else if slices.ContainsFunc([]string{"archlinux", "arch linux", "arch-linux"}, func(s string) bool {
-				return strings.Contains(strings.ToLower(osVersion), s)
-			}) {
-				distro = api.DISTRO_ARCH
-			} else if strings.Contains(strings.ToLower(osVersion), "ubuntu") {
-				// For Ubuntu, try to parse the whole YY.MM version.
+			if distro == osinfo.UbuntuLinux {
 				versionRegex = regexp.MustCompile(`^[\w ]+?(\d+\.\d+)?(\.\d+)?( LTS)?$`)
-				distro = api.DISTRO_UBUNTU
 			}
 
-			if distro != api.DISTRO_OTHER {
+			if distro != osinfo.OtherDistro {
 				matches := versionRegex.FindStringSubmatch(osVersion)
 				if len(matches) > 1 {
 					distroVersion = versionRegex.FindStringSubmatch(osVersion)[1]
@@ -323,9 +297,9 @@ func (i *Instance) GetDistribution(applyOverrides bool) (api.Distro, string) {
 			if distroVersion != "" {
 				var err error
 				switch distro {
-				case api.DISTRO_UBUNTU:
+				case osinfo.UbuntuLinux:
 					err = util.ValidateUbuntuVersion(distroVersion)
-				case api.DISTRO_OTHER:
+				case osinfo.OtherDistro:
 					distroVersion = ""
 				default:
 					_, err = strconv.Atoi(distroVersion)
