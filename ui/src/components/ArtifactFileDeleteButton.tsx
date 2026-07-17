@@ -39,7 +39,7 @@ const ArtifactFileDeleteButton: FC<Props> = ({ artifactUUID, fileName }) => {
         title="Delete"
         size="sm"
         variant="outline-secondary"
-        className="bg-white border no-hover m-2"
+        className="bg-body border no-hover m-2"
         onClick={() => setShowModal(true)}
       >
         <BsTrash />

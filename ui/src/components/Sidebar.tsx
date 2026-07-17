@@ -17,6 +17,7 @@ import {
 } from "react-icons/md";
 import { PiNetwork } from "react-icons/pi";
 import { useQuery } from "@tanstack/react-query";
+import logo from "../assets/logo.png";
 import { isIncusOS } from "api/os";
 import { fetchSettings } from "api/server";
 import { useAuth } from "context/authContext";
@@ -43,6 +44,9 @@ const Sidebar = () => {
     <>
       {/* Sidebar Navbar */}
       <Navbar bg="dark" variant="dark" className="d-flex flex-column vh-100">
+        <Navbar.Brand href="/ui/">
+          <img src={logo} alt="FuturFusion" />
+        </Navbar.Brand>
         <Navbar.Brand href="/ui/" style={{ margin: "5px 15px" }}>
           Migration Manager
         </Navbar.Brand>

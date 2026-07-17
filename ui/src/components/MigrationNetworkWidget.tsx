@@ -159,7 +159,7 @@ const MigrationNetworkWidget: FC<Props> = ({ targets, value, onChange }) => {
                     title="Delete"
                     size="sm"
                     variant="outline-secondary"
-                    className="bg-white border no-hover"
+                    className="bg-body border no-hover"
                     onClick={() => handleDelete(index)}
                   >
                     <BsTrash />
@@ -174,7 +174,7 @@ const MigrationNetworkWidget: FC<Props> = ({ targets, value, onChange }) => {
                 title="Add"
                 size="sm"
                 variant="outline-secondary"
-                className="bg-white border no-hover"
+                className="bg-body border no-hover"
                 onClick={handleAdd}
               >
                 <BsPlus />
