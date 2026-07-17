@@ -72,7 +72,7 @@ const ArtifactFiles = () => {
                     title="Download"
                     size="sm"
                     variant="outline-secondary"
-                    className="bg-white border no-hover m-2"
+                    className="bg-body border no-hover m-2"
                     onDownload={() => handleDownload(uuid || "", item)}
                     filename={item}
                     children={<BsDownload />}

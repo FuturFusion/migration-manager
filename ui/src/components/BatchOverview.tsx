@@ -68,7 +68,7 @@ const BatchOverview = () => {
         <div className="col-2 detail-table-header">Placement scriptlet</div>
         <div className="col-10 detail-table-cell">
           <pre
-            className="bg-light p-3 rounded"
+            className="bg-body-tertiary p-3 rounded"
             style={{ whiteSpace: "pre-wrap" }}
           >
             <code>{batch?.config.placement_scriptlet}</code>

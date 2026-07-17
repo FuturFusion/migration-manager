@@ -8,7 +8,7 @@ body {
 }
 
 .detail-table-header {
-  color: #00000090;
+  color: var(--bs-secondary-color);
   padding: 8px 0px;
 }
 
@@ -17,7 +17,7 @@ body {
 }
 
 tr.overview-table-header th {
-  color: #00000090;
+  color: var(--bs-secondary-color);
 }
 
 .form-container {
@@ -53,5 +53,5 @@ tr.overview-table-header th {
 .action-sep li:not(:last-child)::after {
   content: "|";
   margin: 0 5px;
-  color: #aaa;
+  color: var(--bs-secondary-color);
 }
