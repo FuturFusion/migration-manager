@@ -41,7 +41,7 @@ type Asker interface {
 	AskChoice(question string, choices []string, defaultAnswer string) (string, error)
 	AskInt(question string, minValue int64, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error)
 	AskString(question string, defaultAnswer string, validator func(string) error) (string, error)
-	AskPasswordOnce(question string) string
+	AskPasswordOnce(question string) (string, error)
 }
 
 type CmdGlobal struct {

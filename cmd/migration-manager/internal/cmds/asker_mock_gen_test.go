@@ -26,7 +26,7 @@ var _ Asker = &AskerMock{}
 //			AskIntFunc: func(question string, minValue int64, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error) {
 //				panic("mock out the AskInt method")
 //			},
-//			AskPasswordOnceFunc: func(question string) string {
+//			AskPasswordOnceFunc: func(question string) (string, error) {
 //				panic("mock out the AskPasswordOnce method")
 //			},
 //			AskStringFunc: func(question string, defaultAnswer string, validator func(string) error) (string, error) {
@@ -49,7 +49,7 @@ type AskerMock struct {
 	AskIntFunc func(question string, minValue int64, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error)
 
 	// AskPasswordOnceFunc mocks the AskPasswordOnce method.
-	AskPasswordOnceFunc func(question string) string
+	AskPasswordOnceFunc func(question string) (string, error)
 
 	// AskStringFunc mocks the AskString method.
 	AskStringFunc func(question string, defaultAnswer string, validator func(string) error) (string, error)
@@ -232,7 +232,7 @@ func (mock *AskerMock) AskIntCalls() []struct {
 }
 
 // AskPasswordOnce calls AskPasswordOnceFunc.
-func (mock *AskerMock) AskPasswordOnce(question string) string {
+func (mock *AskerMock) AskPasswordOnce(question string) (string, error) {
 	if mock.AskPasswordOnceFunc == nil {
 		panic("AskerMock.AskPasswordOnceFunc: method is nil but Asker.AskPasswordOnce was just called")
 	}

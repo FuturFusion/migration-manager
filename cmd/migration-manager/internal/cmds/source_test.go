@@ -168,8 +168,8 @@ func TestSourceAdd(t *testing.T) {
 					strIndex++
 					return out, nil
 				},
-				AskPasswordOnceFunc: func(question string) string {
-					return tc.password
+				AskPasswordOnceFunc: func(question string) (string, error) {
+					return tc.password, nil
 				},
 				AskIntFunc: func(question string, minValue, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error) {
 					return int64(tc.importLimit), nil
@@ -583,9 +583,8 @@ func TestSourceUpdate(t *testing.T) {
 				AskStringFunc: func(question string, defaultAnswer string, validate func(string) error) (string, error) {
 					return queue.Pop(t, &tc.askStringReturns)
 				},
-				AskPasswordOnceFunc: func(question string) string {
-					ret, _ := queue.Pop(t, &tc.askStringReturns)
-					return ret
+				AskPasswordOnceFunc: func(question string) (string, error) {
+					return queue.Pop(t, &tc.askStringReturns)
 				},
 				AskIntFunc: func(question string, minValue, maxValue int64, defaultAnswer string, validator func(int64) error) (int64, error) {
 					ret, _ := queue.Pop(t, &tc.askStringReturns)
