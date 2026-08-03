@@ -118,7 +118,10 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		sourcePassword := c.global.Asker.AskPasswordOnce("Please enter password for endpoint '" + sourceEndpoint + "': ")
+		sourcePassword, err := c.global.Asker.AskPasswordOnce("Please enter password for endpoint '" + sourceEndpoint + "': ")
+		if err != nil {
+			return err
+		}
 
 		var importLimit int64 = 50
 		importLimit, err = c.global.Asker.AskInt(fmt.Sprintf("How many instances can be concurrently imported? [default=%d]: ", importLimit), 0, 1024, strconv.Itoa(int(importLimit)), nil)
@@ -390,7 +393,10 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			vmwareProperties.Password = c.global.Asker.AskPasswordOnce("Password: ")
+			vmwareProperties.Password, err = c.global.Asker.AskPasswordOnce("Password: ")
+			if err != nil {
+				return err
+			}
 		}
 
 		importLimit := int64(vmwareProperties.ImportLimit)

@@ -125,7 +125,7 @@ func (w Window) Validate() error {
 	}
 
 	if w.Config.Capacity < 0 {
-		return fmt.Errorf("Window capacity %q must be greater than 0", w.Config.Capacity)
+		return fmt.Errorf("Window capacity %d must be greater than 0", w.Config.Capacity)
 	}
 
 	return nil

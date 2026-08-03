@@ -137,7 +137,8 @@ update-openfga:
 update-gomod:
 	$(GO) get -t -v -u ./...
 	$(GO) get github.com/go-jose/go-jose/v4@v4.0.5
-	$(GO) mod tidy --go=1.25.6
+	$(GO) get github.com/matryer/moq@v0.6.0
+	$(GO) mod tidy --go=1.25.12
 	$(GO) get toolchain@none
 
 .PHONY: update-api
