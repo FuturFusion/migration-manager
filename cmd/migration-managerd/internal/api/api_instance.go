@@ -14,6 +14,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/server/auth"
 	"github.com/FuturFusion/migration-manager/internal/server/response"
 	"github.com/FuturFusion/migration-manager/internal/server/util"
+	"github.com/FuturFusion/migration-manager/internal/source"
 	"github.com/FuturFusion/migration-manager/internal/transaction"
 	"github.com/FuturFusion/migration-manager/shared/api"
 	"github.com/FuturFusion/migration-manager/shared/api/event"
@@ -37,6 +38,12 @@ var instanceOverrideCmd = APIEndpoint{
 	Delete: APIEndpointAction{Handler: instanceOverrideDelete, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanDelete)},
 	Get:    APIEndpointAction{Handler: instanceOverrideGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 	Put:    APIEndpointAction{Handler: instanceOverridePut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
+}
+
+var instanceDumpCmd = APIEndpoint{
+	Path: "instances/{uuid}/:dump",
+
+	Post: APIEndpointAction{Handler: instanceDumpPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
 }
 
 // swagger:operation GET /1.0/instances instances instances_get
@@ -448,4 +455,87 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 	d.logHandler.SendLifecycle(r.Context(), event.NewInstanceEvent(event.InstanceOverrideModified, r, apiInstance, apiInstance.UUID))
 
 	return response.EmptySyncResponse
+}
+
+// swagger:operation POST /1.0/instances/{uuid}/:dump instances instance_dump
+//
+//	Dump raw VM instance properties
+//
+//	Dump the raw VMware properties for a single instance.
+//
+//	---
+//	produces:
+//	  - application/json
+//	responses:
+//	  "200":
+//	    description: Raw VMware VM properties
+//	    schema:
+//	      type: object
+//	      description: Sync response
+//	      properties:
+//	        type:
+//	          type: string
+//	          description: Response type
+//	          example: sync
+//	        status:
+//	          type: string
+//	          description: Status description
+//	          example: Success
+//	        status_code:
+//	          type: integer
+//	          description: Status code
+//	          example: 200
+//	        metadata:
+//	          type: object
+//	          description: Raw VMware VM properties
+//	  "400":
+//	    $ref: "#/responses/BadRequest"
+//	  "403":
+//	    $ref: "#/responses/Forbidden"
+//	  "500":
+//	    $ref: "#/responses/InternalServerError"
+func instanceDumpPost(d *Daemon, r *http.Request) response.Response {
+	id, err := uuid.Parse(r.PathValue("uuid"))
+	if err != nil {
+		return response.BadRequest(err)
+	}
+
+	instance, err := d.instance.GetByUUID(r.Context(), id)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get instance %q: %w", id, err))
+	}
+
+	if instance.SourceType != api.SOURCETYPE_VMWARE {
+		return response.SmartError(fmt.Errorf("Instance %q is from source type %q, only VMware sources support dump", instance.UUID, instance.SourceType))
+	}
+
+	src, err := d.source.GetByName(r.Context(), instance.Source)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	status := src.GetExternalConnectivityStatus()
+	if status != api.EXTERNALCONNECTIVITYSTATUS_OK {
+		return response.SmartError(fmt.Errorf("Cannot dump instance %q with source connectivity status %q", instance.UUID, status))
+	}
+
+	s, err := source.NewVMSource(src.ToAPI())
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), s.Timeout())
+	defer cancel()
+
+	err = s.Connect(ctx)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	dump, err := s.DumpVM(ctx, instance.UUID)
+	if err != nil {
+		return response.SmartError(err)
+	}
+
+	return response.SyncResponse(true, dump)
 }
