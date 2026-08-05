@@ -635,6 +635,35 @@ func (s *InternalVMwareSource) Dump(ctx context.Context) error {
 	return nil
 }
 
+type RawVMwareVM = mo.VirtualMachine
+
+// DumpVM returns the raw VMware properties for a single VM, identified by its UUID.
+func (s *InternalVMwareSource) DumpVM(ctx context.Context, id uuid.UUID) (vm RawVMwareVM, err error) {
+	log := slog.With(slog.String("source", s.Name), slog.String("uuid", id.String()))
+
+	obj, err := object.NewSearchIndex(s.govmomiClient.Client).FindByUuid(ctx, nil, id.String(), true, ptr.To(true))
+	if err != nil {
+		return vm, fmt.Errorf("Failed to find VM with UUID %q: %w", id, err)
+	}
+
+	vmObj, ok := obj.(*object.VirtualMachine)
+	if !ok {
+		return vm, fmt.Errorf("Object with UUID %q is not a virtual machine", id)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, s.SyncTimeout.Duration)
+	defer cancel()
+
+	err = vmObj.Properties(ctx, vmObj.Reference(), []string{}, &vm)
+	if err != nil {
+		return vm, fmt.Errorf("Failed to fetch VMware properties for VM %q: %w", id, err)
+	}
+
+	log.Debug("Dumped VM properties")
+
+	return vm, nil
+}
+
 // EnableBackgroundImport powers off the VM, deletes all snapshots, then turns on change tracking and powers back on the VM, if it was initially powered on.
 func (s *InternalVMwareSource) EnableBackgroundImport(ctx context.Context, instUUID uuid.UUID) error {
 	log := slog.With(slog.String("method", "EnableBackgroundImport"), slog.String("uuid", instUUID.String()))

@@ -80,6 +80,9 @@ type Source interface {
 	// Dump source data.
 	Dump(ctx context.Context) error
 
+	// Dump raw properties for a single VM, identified by its UUID.
+	DumpVM(ctx context.Context, id uuid.UUID) (RawVMwareVM, error)
+
 	// -----------------------------------------------
 
 	// VerifyBackgroundImport checks each supported disk for each VM to verify whether background import is supported, returning the list of UUIDs that fail the check.
