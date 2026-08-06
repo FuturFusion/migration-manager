@@ -2038,6 +2038,43 @@ paths:
             summary: Get the instance
             tags:
                 - instances
+    /1.0/instances/{uuid}/:dump:
+        post:
+            description: Dump the raw VMware properties for a single instance.
+            operationId: instance_dump
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Raw VMware VM properties
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                description: Raw VMware VM properties
+                                type: object
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Dump raw VM properties
+            tags:
+                - instances
     /1.0/instances/{uuid}/:reset-background-import:
         post:
             description: Resets background import verification for an instance whose source reports background import support, but could not be verified..

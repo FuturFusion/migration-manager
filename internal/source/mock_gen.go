@@ -39,6 +39,9 @@ var _ Source = &SourceMock{}
 //			DumpFunc: func(ctx context.Context) error {
 //				panic("mock out the Dump method")
 //			},
+//			DumpVMFunc: func(ctx context.Context, id uuid.UUID) (RawVMwareVM, error) {
+//				panic("mock out the DumpVM method")
+//			},
 //			EnableBackgroundImportFunc: func(ctx context.Context, instUUID uuid.UUID) error {
 //				panic("mock out the EnableBackgroundImport method")
 //			},
@@ -96,6 +99,9 @@ type SourceMock struct {
 
 	// DumpFunc mocks the Dump method.
 	DumpFunc func(ctx context.Context) error
+
+	// DumpVMFunc mocks the DumpVM method.
+	DumpVMFunc func(ctx context.Context, id uuid.UUID) (RawVMwareVM, error)
 
 	// EnableBackgroundImportFunc mocks the EnableBackgroundImport method.
 	EnableBackgroundImportFunc func(ctx context.Context, instUUID uuid.UUID) error
@@ -161,6 +167,13 @@ type SourceMock struct {
 		Dump []struct {
 			// Ctx is the ctx argument value.
 			Ctx context.Context
+		}
+		// DumpVM holds details about calls to the DumpVM method.
+		DumpVM []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// ID is the id argument value.
+			ID uuid.UUID
 		}
 		// EnableBackgroundImport holds details about calls to the EnableBackgroundImport method.
 		EnableBackgroundImport []struct {
@@ -244,6 +257,7 @@ type SourceMock struct {
 	lockDisconnect                    sync.RWMutex
 	lockDoBasicConnectivityCheck      sync.RWMutex
 	lockDump                          sync.RWMutex
+	lockDumpVM                        sync.RWMutex
 	lockEnableBackgroundImport        sync.RWMutex
 	lockGetAllVMs                     sync.RWMutex
 	lockGetBackgroundImport           sync.RWMutex
@@ -418,6 +432,42 @@ func (mock *SourceMock) DumpCalls() []struct {
 	mock.lockDump.RLock()
 	calls = mock.calls.Dump
 	mock.lockDump.RUnlock()
+	return calls
+}
+
+// DumpVM calls DumpVMFunc.
+func (mock *SourceMock) DumpVM(ctx context.Context, id uuid.UUID) (RawVMwareVM, error) {
+	if mock.DumpVMFunc == nil {
+		panic("SourceMock.DumpVMFunc: method is nil but Source.DumpVM was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}{
+		Ctx: ctx,
+		ID:  id,
+	}
+	mock.lockDumpVM.Lock()
+	mock.calls.DumpVM = append(mock.calls.DumpVM, callInfo)
+	mock.lockDumpVM.Unlock()
+	return mock.DumpVMFunc(ctx, id)
+}
+
+// DumpVMCalls gets all the calls that were made to DumpVM.
+// Check the length with:
+//
+//	len(mockedSource.DumpVMCalls())
+func (mock *SourceMock) DumpVMCalls() []struct {
+	Ctx context.Context
+	ID  uuid.UUID
+} {
+	var calls []struct {
+		Ctx context.Context
+		ID  uuid.UUID
+	}
+	mock.lockDumpVM.RLock()
+	calls = mock.calls.DumpVM
+	mock.lockDumpVM.RUnlock()
 	return calls
 }
 
