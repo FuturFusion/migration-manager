@@ -1,4 +1,5 @@
 GO ?= go
+HOST_ARCH := $(shell $(GO) env GOHOSTARCH)
 DETECTED_LIBNBD_VERSION = $(shell dpkg-query --showformat='$${Version}' -W libnbd-dev || echo "0.0.0-libnbd-not-found")
 SPHINXENV=doc/.sphinx/venv/bin/activate
 SPHINXPIPPATH=doc/.sphinx/venv/bin/pip
@@ -47,14 +48,18 @@ test: build-dependencies
 
 .PHONY: install
 install: build build-ui
+ifeq ($(HOST_ARCH),amd64)
 	@if ! test -e ./worker/mkosi.output/migration-manager-worker.raw ; then \
 		$(MAKE) -C worker; \
 	fi
+endif
 
 	sudo install -D -m755 ./bin/migration-managerd /usr/bin/migration-managerd
-	sudo install -D -m755 ./bin/migration-manager.linux.amd64 /usr/bin/migration-manager
+	sudo install -D -m755 ./bin/migration-manager.linux.$(HOST_ARCH) /usr/bin/migration-manager
 	sudo install -D -m755 ./bin/migration-manager-worker /usr/lib/migration-manager/migration-manager-worker
+ifeq ($(HOST_ARCH),amd64)
 	sudo install -D -m755 ./worker/mkosi.output/migration-manager-worker.raw /var/cache/migration-manager/worker-x86_64-v$(shell /usr/bin/migration-manager --version).img
+endif
 	sudo install -d -m755 /usr/share/migration-manager/ui/
 	sudo cp -r ./ui/dist/* /usr/share/migration-manager/ui/
 
