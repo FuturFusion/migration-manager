@@ -172,6 +172,75 @@ func TestLogWebhook(t *testing.T) {
 			},
 		},
 		{
+			name:    "success - lifecycle event type matches",
+			numReqs: 2,
+			cfg: api.SystemSettingsLog{
+				Name:             "webhook",
+				Type:             api.LogTypeWebhook,
+				Level:            "warn",
+				Address:          "*",
+				RetryCount:       3,
+				RetryTimeout:     api.AsDuration(10 * time.Second),
+				Scopes:           []api.LogScope{api.LogScopeLifecycle, api.LogScopeLogging},
+				LifecycleActions: []api.LifecycleAction{event.MigrationCreated},
+			},
+			instanceData: api.Instance{
+				Source: "src1",
+				InstanceProperties: api.InstanceProperties{
+					UUID:                           uuidA,
+					Location:                       "/path/to/instance1",
+					InstancePropertiesConfigurable: api.InstancePropertiesConfigurable{Name: "instance1"},
+					NICs:                           []api.InstancePropertiesNIC{{UUID: uuidB}, {UUID: uuidC}},
+				},
+			},
+			queueData: api.QueueEntry{
+				InstanceUUID:    uuidA,
+				InstanceName:    "instance1",
+				BatchName:       "batch1",
+				MigrationWindow: api.MigrationWindow{Name: "window1", Config: api.MigrationWindowConfig{Capacity: 10}},
+				Placement:       api.Placement{TargetName: "tgt1"},
+			},
+
+			wantResps: []api.Event{
+				{Type: api.LogScopeLifecycle, Metadata: []byte("lifecycle")}, // apply wantLifecycle
+				defaultLog,
+			},
+			wantLifecycle: api.EventLifecycle{
+				Action: string(event.MigrationCreated),
+				Entities: []string{
+					"/1.0/queue/" + uuidA.String(),
+					"/1.0/instances/" + uuidA.String(),
+					"/1.0/batches/batch1",
+					"/1.0/sources/src1",
+					"/1.0/targets/tgt1",
+					"/1.0/networks/" + uuidB.String(),
+					"/1.0/networks/" + uuidC.String(),
+				},
+				Metadata: []byte("*"), // apply objects
+			},
+			sendLog: func(log *slog.Logger) func(msg string, args ...any) {
+				return log.Error
+			},
+		},
+		{
+			name:    "success - lifecycle event type does not match",
+			numReqs: 1,
+			cfg: api.SystemSettingsLog{
+				Name:             "webhook",
+				Type:             api.LogTypeWebhook,
+				Level:            "warn",
+				Address:          "*",
+				RetryCount:       3,
+				RetryTimeout:     api.AsDuration(10 * time.Second),
+				Scopes:           []api.LogScope{api.LogScopeLifecycle, api.LogScopeLogging},
+				LifecycleActions: []api.LifecycleAction{event.InstanceImported},
+			},
+			wantResps: []api.Event{defaultLog},
+			sendLog: func(log *slog.Logger) func(msg string, args ...any) {
+				return log.Error
+			},
+		},
+		{
 			name:    "success - discard log level",
 			numReqs: 0,
 			cfg: api.SystemSettingsLog{

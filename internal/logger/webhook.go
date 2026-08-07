@@ -24,9 +24,10 @@ import (
 )
 
 type webhookLog struct {
-	name   string
-	level  slog.Level
-	scopes []api.LogScope
+	name    string
+	level   slog.Level
+	scopes  []api.LogScope
+	actions []api.LifecycleAction
 
 	client   *http.Client
 	address  string
@@ -139,7 +140,8 @@ func WebhookConfigChanged(oldCfgs, newCfgs []api.SystemSettingsLog) bool {
 			oldCfgs[i].CACert != newCfgs[i].CACert ||
 			oldCfgs[i].RetryCount != newCfgs[i].RetryCount ||
 			oldCfgs[i].RetryTimeout != newCfgs[i].RetryTimeout ||
-			!slices.Equal(oldCfgs[i].Scopes, newCfgs[i].Scopes) {
+			!slices.Equal(oldCfgs[i].Scopes, newCfgs[i].Scopes) ||
+			!slices.Equal(oldCfgs[i].LifecycleActions, newCfgs[i].LifecycleActions) {
 			return true
 		}
 	}
@@ -157,6 +159,7 @@ func NewWebhookLogger(cfg api.SystemSettingsLog) (slog.Handler, error) {
 		password: cfg.Password,
 		retry:    cfg.RetryCount,
 		scopes:   cfg.Scopes,
+		actions:  cfg.LifecycleActions,
 
 		client: &http.Client{},
 	}
@@ -220,8 +223,14 @@ func (w *webhookLog) Handle(ctx context.Context, r slog.Record) error {
 	} else {
 		var b []byte
 		var err error
+		var action api.LifecycleAction
 		r.Attrs(func(a slog.Attr) bool {
 			if a.Key == "event" {
+				lifecycle, ok := a.Value.Any().(api.EventLifecycle)
+				if ok {
+					action = api.LifecycleAction(lifecycle.Action)
+				}
+
 				b, err = json.Marshal(a.Value.Any())
 				if err != nil {
 					return false
@@ -232,6 +241,13 @@ func (w *webhookLog) Handle(ctx context.Context, r slog.Record) error {
 		})
 		if err != nil {
 			return err
+		}
+
+		if len(w.actions) > 0 {
+			// verify action in the list of filtered lifecycle actions
+			if !slices.Contains(w.actions, action) {
+				return nil
+			}
 		}
 
 		event.Type = api.LogScopeLifecycle

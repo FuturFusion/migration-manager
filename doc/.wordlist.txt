@@ -26,6 +26,7 @@ JSON
 keypair
 lang
 LLMs
+Lifecycle
 MacOS
 NIC
 NICs

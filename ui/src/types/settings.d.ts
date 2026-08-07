@@ -2,6 +2,7 @@ import {
   ACMEChallengeValues,
   LogTypeValues,
   LogScopeValues,
+  LifecycleActionValues,
 } from "util/settings";
 
 export interface SystemNetwork {
@@ -11,6 +12,7 @@ export interface SystemNetwork {
 
 export type LogType = (typeof LogTypeValues)[number];
 export type LogScope = (typeof LogScopeValues)[number];
+export type LifecycleAction = (typeof LifecycleActionValues)[number];
 
 export interface SystemSettingsLog {
   name: string;
@@ -22,6 +24,7 @@ export interface SystemSettingsLog {
   ca_cert: string;
   retry_count: number;
   scopes: LogScope[];
+  event_types: LifecycleAction[];
 }
 
 export interface SystemSettings {
