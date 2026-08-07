@@ -2,7 +2,12 @@ import { FC } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useFormik } from "formik";
 import { SystemSettingsLog } from "types/settings";
-import { LogLevel, LogScopeValues, LogTypeValues } from "util/settings";
+import {
+  LogLevel,
+  LogScopeValues,
+  LogTypeValues,
+  LifecycleActionValues,
+} from "util/settings";
 
 interface Props {
   logTarget?: SystemSettingsLog;
@@ -21,6 +26,7 @@ const SystemLoggingForm: FC<Props> = ({ logTarget, index, onSubmit }) => {
     ca_cert: logTarget?.ca_cert ?? "",
     retry_count: logTarget?.retry_count ?? 0,
     scopes: logTarget?.scopes ?? [],
+    event_types: logTarget?.event_types ?? [],
   };
 
   const formik = useFormik({
@@ -136,6 +142,24 @@ const SystemLoggingForm: FC<Props> = ({ logTarget, index, onSubmit }) => {
               onBlur={formik.handleBlur}
             >
               {LogScopeValues.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </Form.Select>
+          </Form.Group>
+          <Form.Group className="mb-3" controlId="event_types">
+            <Form.Label>
+              Lifecycle event types (requires lifecycle scope)
+            </Form.Label>
+            <Form.Select
+              name="event_types"
+              multiple
+              value={formik.values.event_types}
+              onChange={formik.handleChange}
+              onBlur={formik.handleBlur}
+            >
+              {LifecycleActionValues.map((option) => (
                 <option key={option} value={option}>
                   {option}
                 </option>
