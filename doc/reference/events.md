@@ -67,6 +67,10 @@ Records of particular API or migration actions, along with associated metadata.
           "scopes": [
             "lifecycle",
             "logging"
+          ],
+          "lifecycle_actions": [
+            "instance-imported",
+            "migration-created"
           ]
         }
       ]

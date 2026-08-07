@@ -27,6 +27,7 @@ See [Events](events) for more information about logging events.
 |  `retry_count`   | Number of attempts to make against the logging target.       | number                | 3                     |
 |  `retry_timeout` | How long to wait between retrying a log.                     | number(h/m/s)         | 10s                   |
 |  `scopes`        | Logging scopes to send to the logging target.                | list of strings       | `logging`,`lifecycle` |
+|  `lifecycle_actions`   | Lifecycle event actions to send. If empty, all are sent.     | list of strings       |                       |
 
 ## Network settings
 
