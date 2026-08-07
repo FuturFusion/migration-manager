@@ -726,6 +726,9 @@ definitions:
                 x-go-name: AllowUnknownOS
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    LifecycleAction:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
     LogScope:
         title: LogScope is a type of log that a logging target will receive.
         type: string
@@ -1214,6 +1217,13 @@ definitions:
                 example: WARN
                 type: string
                 x-go-name: Level
+            lifecycle_actions:
+                description: Lifecycle event actions to receive when the "lifecycle" scope is enabled. If empty, all lifecycle events are sent.
+                example: '[instance-imported, migration-created]'
+                items:
+                    $ref: '#/definitions/LifecycleAction'
+                type: array
+                x-go-name: LifecycleActions
             name:
                 description: Name identifying the logging target.
                 example: foo
