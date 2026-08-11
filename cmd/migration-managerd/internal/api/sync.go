@@ -45,6 +45,7 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 
 	importingFromSource := map[string]int{}
 	importingToTarget := map[string]int{}
+	importingByBatch := map[string]int{}
 	creatingOnTarget := map[string]int{}
 	workerUpdates := map[uuid.UUID]time.Time{}
 	now := time.Now().UTC()
@@ -66,6 +67,7 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 			case api.MIGRATIONSTATUS_BACKGROUND_IMPORT:
 				importingFromSource[state.Sources[instUUID].Name] = importingFromSource[state.Sources[instUUID].Name] + 1
 				importingToTarget[state.Targets[instUUID].Name] = importingToTarget[state.Targets[instUUID].Name] + 1
+				importingByBatch[state.Batch.Name] = importingByBatch[state.Batch.Name] + 1
 				workerUpdates[instUUID] = now
 
 			case api.MIGRATIONSTATUS_FINAL_IMPORT:
@@ -92,6 +94,11 @@ func (d *Daemon) syncActiveBatches(ctx context.Context) error {
 	err = d.target.InitCreateCache(creatingOnTarget)
 	if err != nil {
 		return fmt.Errorf("Failed to initialize target create cache: %w", err)
+	}
+
+	err = d.batch.InitImportCache(importingByBatch)
+	if err != nil {
+		return fmt.Errorf("Failed to initialize batch import cache: %w", err)
 	}
 
 	err = d.queueHandler.InitWorkerCache(workerUpdates)
