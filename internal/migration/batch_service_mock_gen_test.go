@@ -45,6 +45,18 @@ var _ migration.BatchService = &BatchServiceMock{}
 //			GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 //				panic("mock out the GetByName method")
 //			},
+//			GetCachedImportsFunc: func(batchName string) int {
+//				panic("mock out the GetCachedImports method")
+//			},
+//			InitImportCacheFunc: func(initial map[string]int) error {
+//				panic("mock out the InitImportCache method")
+//			},
+//			RecordActiveImportFunc: func(batchName string)  {
+//				panic("mock out the RecordActiveImport method")
+//			},
+//			RemoveActiveImportFunc: func(batchName string)  {
+//				panic("mock out the RemoveActiveImport method")
+//			},
 //			RenameFunc: func(ctx context.Context, oldName string, newName string) error {
 //				panic("mock out the Rename method")
 //			},
@@ -93,6 +105,18 @@ type BatchServiceMock struct {
 
 	// GetByNameFunc mocks the GetByName method.
 	GetByNameFunc func(ctx context.Context, name string) (*migration.Batch, error)
+
+	// GetCachedImportsFunc mocks the GetCachedImports method.
+	GetCachedImportsFunc func(batchName string) int
+
+	// InitImportCacheFunc mocks the InitImportCache method.
+	InitImportCacheFunc func(initial map[string]int) error
+
+	// RecordActiveImportFunc mocks the RecordActiveImport method.
+	RecordActiveImportFunc func(batchName string)
+
+	// RemoveActiveImportFunc mocks the RemoveActiveImport method.
+	RemoveActiveImportFunc func(batchName string)
 
 	// RenameFunc mocks the Rename method.
 	RenameFunc func(ctx context.Context, oldName string, newName string) error
@@ -172,6 +196,26 @@ type BatchServiceMock struct {
 			// Name is the name argument value.
 			Name string
 		}
+		// GetCachedImports holds details about calls to the GetCachedImports method.
+		GetCachedImports []struct {
+			// BatchName is the batchName argument value.
+			BatchName string
+		}
+		// InitImportCache holds details about calls to the InitImportCache method.
+		InitImportCache []struct {
+			// Initial is the initial argument value.
+			Initial map[string]int
+		}
+		// RecordActiveImport holds details about calls to the RecordActiveImport method.
+		RecordActiveImport []struct {
+			// BatchName is the batchName argument value.
+			BatchName string
+		}
+		// RemoveActiveImport holds details about calls to the RemoveActiveImport method.
+		RemoveActiveImport []struct {
+			// BatchName is the batchName argument value.
+			BatchName string
+		}
 		// Rename holds details about calls to the Rename method.
 		Rename []struct {
 			// Ctx is the ctx argument value.
@@ -247,6 +291,10 @@ type BatchServiceMock struct {
 	lockGetAllNames        sync.RWMutex
 	lockGetAllNamesByState sync.RWMutex
 	lockGetByName          sync.RWMutex
+	lockGetCachedImports   sync.RWMutex
+	lockInitImportCache    sync.RWMutex
+	lockRecordActiveImport sync.RWMutex
+	lockRemoveActiveImport sync.RWMutex
 	lockRename             sync.RWMutex
 	lockResetBatchByName   sync.RWMutex
 	lockStartBatchByName   sync.RWMutex
@@ -544,6 +592,134 @@ func (mock *BatchServiceMock) GetByNameCalls() []struct {
 	mock.lockGetByName.RLock()
 	calls = mock.calls.GetByName
 	mock.lockGetByName.RUnlock()
+	return calls
+}
+
+// GetCachedImports calls GetCachedImportsFunc.
+func (mock *BatchServiceMock) GetCachedImports(batchName string) int {
+	if mock.GetCachedImportsFunc == nil {
+		panic("BatchServiceMock.GetCachedImportsFunc: method is nil but BatchService.GetCachedImports was just called")
+	}
+	callInfo := struct {
+		BatchName string
+	}{
+		BatchName: batchName,
+	}
+	mock.lockGetCachedImports.Lock()
+	mock.calls.GetCachedImports = append(mock.calls.GetCachedImports, callInfo)
+	mock.lockGetCachedImports.Unlock()
+	return mock.GetCachedImportsFunc(batchName)
+}
+
+// GetCachedImportsCalls gets all the calls that were made to GetCachedImports.
+// Check the length with:
+//
+//	len(mockedBatchService.GetCachedImportsCalls())
+func (mock *BatchServiceMock) GetCachedImportsCalls() []struct {
+	BatchName string
+} {
+	var calls []struct {
+		BatchName string
+	}
+	mock.lockGetCachedImports.RLock()
+	calls = mock.calls.GetCachedImports
+	mock.lockGetCachedImports.RUnlock()
+	return calls
+}
+
+// InitImportCache calls InitImportCacheFunc.
+func (mock *BatchServiceMock) InitImportCache(initial map[string]int) error {
+	if mock.InitImportCacheFunc == nil {
+		panic("BatchServiceMock.InitImportCacheFunc: method is nil but BatchService.InitImportCache was just called")
+	}
+	callInfo := struct {
+		Initial map[string]int
+	}{
+		Initial: initial,
+	}
+	mock.lockInitImportCache.Lock()
+	mock.calls.InitImportCache = append(mock.calls.InitImportCache, callInfo)
+	mock.lockInitImportCache.Unlock()
+	return mock.InitImportCacheFunc(initial)
+}
+
+// InitImportCacheCalls gets all the calls that were made to InitImportCache.
+// Check the length with:
+//
+//	len(mockedBatchService.InitImportCacheCalls())
+func (mock *BatchServiceMock) InitImportCacheCalls() []struct {
+	Initial map[string]int
+} {
+	var calls []struct {
+		Initial map[string]int
+	}
+	mock.lockInitImportCache.RLock()
+	calls = mock.calls.InitImportCache
+	mock.lockInitImportCache.RUnlock()
+	return calls
+}
+
+// RecordActiveImport calls RecordActiveImportFunc.
+func (mock *BatchServiceMock) RecordActiveImport(batchName string) {
+	if mock.RecordActiveImportFunc == nil {
+		panic("BatchServiceMock.RecordActiveImportFunc: method is nil but BatchService.RecordActiveImport was just called")
+	}
+	callInfo := struct {
+		BatchName string
+	}{
+		BatchName: batchName,
+	}
+	mock.lockRecordActiveImport.Lock()
+	mock.calls.RecordActiveImport = append(mock.calls.RecordActiveImport, callInfo)
+	mock.lockRecordActiveImport.Unlock()
+	mock.RecordActiveImportFunc(batchName)
+}
+
+// RecordActiveImportCalls gets all the calls that were made to RecordActiveImport.
+// Check the length with:
+//
+//	len(mockedBatchService.RecordActiveImportCalls())
+func (mock *BatchServiceMock) RecordActiveImportCalls() []struct {
+	BatchName string
+} {
+	var calls []struct {
+		BatchName string
+	}
+	mock.lockRecordActiveImport.RLock()
+	calls = mock.calls.RecordActiveImport
+	mock.lockRecordActiveImport.RUnlock()
+	return calls
+}
+
+// RemoveActiveImport calls RemoveActiveImportFunc.
+func (mock *BatchServiceMock) RemoveActiveImport(batchName string) {
+	if mock.RemoveActiveImportFunc == nil {
+		panic("BatchServiceMock.RemoveActiveImportFunc: method is nil but BatchService.RemoveActiveImport was just called")
+	}
+	callInfo := struct {
+		BatchName string
+	}{
+		BatchName: batchName,
+	}
+	mock.lockRemoveActiveImport.Lock()
+	mock.calls.RemoveActiveImport = append(mock.calls.RemoveActiveImport, callInfo)
+	mock.lockRemoveActiveImport.Unlock()
+	mock.RemoveActiveImportFunc(batchName)
+}
+
+// RemoveActiveImportCalls gets all the calls that were made to RemoveActiveImport.
+// Check the length with:
+//
+//	len(mockedBatchService.RemoveActiveImportCalls())
+func (mock *BatchServiceMock) RemoveActiveImportCalls() []struct {
+	BatchName string
+} {
+	var calls []struct {
+		BatchName string
+	}
+	mock.lockRemoveActiveImport.RLock()
+	calls = mock.calls.RemoveActiveImport
+	mock.lockRemoveActiveImport.RUnlock()
 	return calls
 }
 

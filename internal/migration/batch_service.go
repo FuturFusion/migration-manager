@@ -22,6 +22,8 @@ type batchService struct {
 	instance InstanceService
 
 	scriptletLoader *incusScriptlet.Loader
+
+	importCache *util.Cache[string, int]
 }
 
 var _ BatchService = &batchService{}
@@ -32,7 +34,33 @@ func NewBatchService(repo BatchRepo, instance InstanceService) batchService {
 		instance: instance,
 
 		scriptletLoader: incusScriptlet.NewLoader(),
+		importCache:     util.NewCache[string, int](),
 	}
+}
+
+func (s batchService) InitImportCache(initial map[string]int) error {
+	return s.importCache.Replace(initial)
+}
+
+func (s batchService) GetCachedImports(batchName string) int {
+	val, _ := s.importCache.Read(batchName)
+	return val
+}
+
+func (s batchService) RecordActiveImport(batchName string) {
+	s.importCache.Write(batchName, 1, func(existingVal, newVal int) int {
+		return existingVal + newVal
+	})
+}
+
+func (s batchService) RemoveActiveImport(batchName string) {
+	s.importCache.Write(batchName, 1, func(existingVal, newVal int) int {
+		if existingVal > 0 {
+			return existingVal - newVal
+		}
+
+		return existingVal
+	})
 }
 
 func (s batchService) Create(ctx context.Context, batch Batch) (Batch, error) {
@@ -593,6 +621,10 @@ func (s batchService) ResetBatchByName(ctx context.Context, name string, queueSv
 			if q.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT || q.MigrationStatus == api.MIGRATIONSTATUS_FINAL_IMPORT {
 				sourceSvc.RemoveActiveImport(instMap[q.InstanceUUID].Source)
 				targetSvc.RemoveActiveImport(q.Placement.TargetName)
+			}
+
+			if q.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT {
+				s.RemoveActiveImport(name)
 			}
 		}
 
