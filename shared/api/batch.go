@@ -90,6 +90,10 @@ type BatchDefaults struct {
 
 	// Whether to forcibly use the configuration that will allow the migration to proceed, when encountering late-migration conflicts. May result in an out-of-date migration.
 	ForceConflictResolution bool `json:"force_conflict_resolution" yaml:"force_conflict_resolution"`
+
+	// Maximum number of instances in this batch that can concurrently perform a background sync. A value of 0 means unlimited.
+	// Example: 5
+	SyncLimit int `json:"sync_limit,omitempty" yaml:"sync_limit,omitempty"`
 }
 
 type MigrationNetworkPlacement struct {
