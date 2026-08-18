@@ -96,11 +96,9 @@ var batchResetCmd = APIEndpoint{
 //	          description: List of batches
 //	          items:
 //	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/batches/foo",
-//	              "/1.0/batches/bar"
-// 	            ]
+//	          example:
+//	            - /1.0/batches/foo
+//	            - /1.0/batches/bar
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -308,6 +306,12 @@ func batchesPost(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Batch name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -353,6 +357,12 @@ func batchDelete(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Batch name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: Batch
@@ -420,6 +430,11 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Batch name
+//	    required: true
+//	    type: string
 //	  - in: body
 //	    name: batch
 //	    description: Batch definition
@@ -521,6 +536,12 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Batch name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: API instances
@@ -545,11 +566,9 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 //	          description: List of instances
 //	          items:
 //	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/instances/foo",
-//	              "/1.0/instances/bar"
-// 	            ]
+//	          example:
+//	            - /1.0/instances/foo
+//	            - /1.0/instances/bar
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -564,6 +583,12 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Batch name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: API instances
@@ -646,6 +671,12 @@ func batchInstancesGet(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Batch name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -712,6 +743,12 @@ func batchStartPost(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Batch name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -763,11 +800,16 @@ func batchStopPost(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Batch name
+//	    required: true
+//	    type: string
 //	  - in: query
 //	    name: force
 //	    description: Reset all queue entries, even finished ones. Finished instances will not be cleaned up from the target.
 //	    type: string
-//	    example: "1"
+//	    x-example: "1"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

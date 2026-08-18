@@ -89,6 +89,12 @@ func warningsGet(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Warning UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: Warning
@@ -145,6 +151,11 @@ func warningGet(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Warning UUID
+//	    required: true
+//	    type: string
 //	  - in: body
 //	    name: warning
 //	    description: Warning definition

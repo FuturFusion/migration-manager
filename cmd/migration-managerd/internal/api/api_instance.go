@@ -79,11 +79,9 @@ var instanceDumpCmd = APIEndpoint{
 //	          description: List of instances
 //	          items:
 //	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/instances/26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad",
-//	              "/1.0/instances/9aad7f16-0d2e-440e-872f-4e9df2d53367"
-// 	            ]
+//	          example:
+//	            - /1.0/instances/26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad
+//	            - /1.0/instances/9aad7f16-0d2e-440e-872f-4e9df2d53367
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -103,7 +101,7 @@ var instanceDumpCmd = APIEndpoint{
 //	    name: include_expression
 //	    description: An expression used to select instances to add to the result
 //	    type: string
-//	    example: name matches 'centos'
+//	    x-example: "name matches 'centos'"
 //	responses:
 //	  "200":
 //	    description: API instances
@@ -211,6 +209,12 @@ func instancesGet(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Instance UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: Instance
@@ -273,6 +277,12 @@ func instanceGet(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Instance UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: InstanceOverride
@@ -330,6 +340,11 @@ func instanceOverrideGet(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Instance UUID
+//	    required: true
+//	    type: string
 //	  - in: body
 //	    name: instance
 //	    description: Instance override definition
@@ -414,6 +429,12 @@ func instanceOverridePut(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Instance UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -466,6 +487,12 @@ func instanceOverrideDelete(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Instance UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: Raw VMware VM properties

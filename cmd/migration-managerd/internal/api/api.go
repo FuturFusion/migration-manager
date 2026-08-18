@@ -1,3 +1,17 @@
+// Package api provides REST API endpoints for Migration Manager.
+//
+// swagger:meta
+// title: Migration Manager API
+// version: 1.0
+// host: localhost:6443
+// basePath: /
+// schemes:
+// - https
+// consumes:
+// - application/json
+// produces:
+// - application/json
+// Description: Migration Manager REST API
 package api
 
 import (

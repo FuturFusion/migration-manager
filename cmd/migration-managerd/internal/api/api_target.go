@@ -72,11 +72,9 @@ var targetCmd = APIEndpoint{
 //	          description: List of targets
 //	          items:
 //	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/targets/foo",
-//	              "/1.0/targets/bar"
-// 	            ]
+//	          example:
+//	            - /1.0/targets/foo
+//	            - /1.0/targets/bar
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -114,7 +112,7 @@ var targetCmd = APIEndpoint{
 //	          type: array
 //	          description: List of targets
 //	          items:
-//	            $ref: "#/definitions/IncusTarget"
+//	            $ref: "#/definitions/Target"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -170,7 +168,7 @@ func targetsGet(d *Daemon, r *http.Request) response.Response {
 //	    description: Target configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/IncusTarget"
+//	      $ref: "#/definitions/Target"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -277,6 +275,12 @@ func getOIDCAuthURL(d *Daemon, targetName string, endpointURL string, trustedCer
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Target name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -318,6 +322,12 @@ func targetDelete(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Target name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: Target
@@ -338,7 +348,7 @@ func targetDelete(d *Daemon, r *http.Request) response.Response {
 //	          description: Status code
 //	          example: 200
 //	        metadata:
-//	          $ref: "#/definitions/IncusTarget"
+//	          $ref: "#/definitions/Target"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -370,12 +380,17 @@ func targetGet(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Target name
+//	    required: true
+//	    type: string
 //	  - in: body
 //	    name: target
 //	    description: Target definition
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/IncusTarget"
+//	      $ref: "#/definitions/Target"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

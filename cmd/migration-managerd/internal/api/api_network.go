@@ -56,7 +56,7 @@ var networkOverrideCmd = APIEndpoint{
 //	    name: include_expression
 //	    description: An expression used to select networks to add to the result
 //	    type: string
-//	    example: name matches 'centos'
+//	    x-example: "name matches 'centos'"
 //	responses:
 //	  "200":
 //	    description: API networks
@@ -126,6 +126,12 @@ func networksGet(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Network UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -174,6 +180,12 @@ func networkDelete(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Network UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: Network
@@ -235,6 +247,11 @@ func networkGet(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Network UUID
+//	    required: true
+//	    type: string
 //	  - in: body
 //	    name: network
 //	    description: Network definition
@@ -325,6 +342,12 @@ func networkOverridePut(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Network UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: API instances

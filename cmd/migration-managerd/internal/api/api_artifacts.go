@@ -159,6 +159,12 @@ func artifactsPost(d *Daemon, r *http.Request) response.Response {
 //	Gets a specific artifact.
 //
 //	---
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Artifact UUID
+//	    required: true
+//	    type: string
 //	produces:
 //	  - application/json
 //	responses:
@@ -213,6 +219,11 @@ func artifactGet(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Artifact UUID
+//	    required: true
+//	    type: string
 //	  - in: body
 //	    name: artifact
 //	    description: Artifact definition
@@ -273,11 +284,16 @@ func artifactPut(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Artifact UUID
+//	    required: true
+//	    type: string
 //	  - in: query
 //	    name: force
 //	    description: Whether to forcibly delete all artifact files.
 //	    type: string
-//	    example: "1"
+//	    x-example: "1"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -341,9 +357,17 @@ func artifactDelete(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Artifact UUID
+//	    required: true
+//	    type: string
 //	  - in: body
 //	    name: raw_file
 //	    description: Raw file content
+//	    schema:
+//	      type: string
+//	      format: binary
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -398,6 +422,17 @@ func artifactFilesPost(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/octet-stream
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Artifact UUID
+//	    required: true
+//	    type: string
+//	  - in: path
+//	    name: name
+//	    description: File name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -445,6 +480,17 @@ func artifactFileGet(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Artifact UUID
+//	    required: true
+//	    type: string
+//	  - in: path
+//	    name: name
+//	    description: File name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

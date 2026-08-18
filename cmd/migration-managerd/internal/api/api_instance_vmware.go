@@ -46,6 +46,12 @@ var instancePowerCmd = APIEndpoint{
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Instance UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -126,6 +132,12 @@ func instanceResetBackgroundImport(d *Daemon, r *http.Request) response.Response
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Instance UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -212,11 +224,16 @@ func instanceEnableBackgroundImport(d *Daemon, r *http.Request) response.Respons
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Instance UUID
+//	    required: true
+//	    type: string
 //	  - in: query
 //	    name: state
 //	    description: The power state to put the VM in.
 //	    type: string
-//	    example: "on"
+//	    x-example: "on"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

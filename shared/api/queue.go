@@ -97,7 +97,7 @@ type Placement struct {
 	StoragePools map[string]string `json:"storage_pools" yaml:"storage_pools"`
 
 	// Network placement configuration keyed by attached network identifier.
-	// Example: {"00:00:00:00:00:01": "incusbr0"}
+	// Example: {"00:00:00:00:00:01": {"network": "incusbr0", "nictype": "bridged"}}
 	Networks map[string]NetworkPlacement `json:"networks" yaml:"networks"`
 
 	// Whether the target instance should be running after migration is complete.

@@ -26,11 +26,11 @@ type Artifact struct {
 	UUID uuid.UUID `json:"uuid" yaml:"uuid"`
 
 	// Record of the last change to an artifact's properties or resources.
-	// Example: 2025-01-01 01:00:00
+	// Example: 2025-01-01T01:00:00Z
 	LastUpdated time.Time `json:"last_updated" yaml:"last_updated"`
 
 	// List of filenames uploaded as resources.
-	// Example: vmware-sdk.tar.gz
+	// Example: ["vmware-sdk.tar.gz"]
 	Files []string `json:"files" yaml:"files"`
 }
 
@@ -58,11 +58,11 @@ type ArtifactPut struct {
 	OS OSType `json:"os,omitempty" yaml:"os,omitempty"`
 
 	// Architectures used to match VMs to an artifact.
-	// Example: x86_64
+	// Example: ["x86_64"]
 	Architectures []string `json:"architectures,omitempty" yaml:"architectures,omitempty"`
 
 	// Versions used to match VMs to an artifact.
-	// Example: 1.0
+	// Example: ["1.0"]
 	Versions []string `json:"versions,omitempty" yaml:"versions,omitempty"`
 
 	// Source type that the artifact relates to.
