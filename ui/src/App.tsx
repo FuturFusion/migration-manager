@@ -20,6 +20,7 @@ import Settings from "pages/Settings";
 import Source from "pages/Source";
 import SourceCreate from "pages/SourceCreate";
 import SourceDetail from "pages/SourceDetail";
+import Stats from "pages/Stats";
 import Target from "pages/Target";
 import TargetCreate from "pages/TargetCreate";
 import TargetDetail from "pages/TargetDetail";
@@ -55,6 +56,7 @@ function App() {
         >
           <Routes>
             <Route path="/ui" element={<Home />} />
+            <Route path="/ui/stats" element={<Stats />} />
             <Route path="/ui/settings" element={<Settings />} />
             <Route path="/ui/settings/:activeTab" element={<Settings />} />
             <Route path="/ui/settings/:activeTab/add" element={<Settings />} />
