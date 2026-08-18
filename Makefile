@@ -63,11 +63,15 @@ endif
 	sudo install -d -m755 /usr/share/migration-manager/ui/
 	sudo cp -r ./ui/dist/* /usr/share/migration-manager/ui/
 
-.PHONY: static-analysis
-static-analysis: build-dependencies
+.PHONY: license-check
+license-check: build-dependencies
 ifeq ($(shell command -v go-licenses),)
 	(cd / ; $(GO) install -v -x github.com/google/go-licenses@latest)
 endif
+	go-licenses check --disallowed_types=forbidden,unknown,restricted --ignore libguestfs.org/libnbd --ignore github.com/lxc/go-lxc --ignore github.com/rootless-containers/proto/go-proto ./...
+
+.PHONY: lint
+lint: build-dependencies
 ifeq ($(shell command -v golangci-lint),)
 	curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $$($(GO) env GOPATH)/bin
 endif
@@ -75,10 +79,16 @@ ifeq ($(shell command -v shellcheck),)
 	echo "Please install shellcheck"
 	exit 1
 endif
-	go-licenses check --disallowed_types=forbidden,unknown,restricted --ignore libguestfs.org/libnbd --ignore github.com/lxc/go-lxc --ignore github.com/rootless-containers/proto/go-proto ./...
+ifeq ($(shell command -v swagger),)
+	$(GO) install -v -x github.com/go-swagger/go-swagger/cmd/swagger@master
+endif
 	shellcheck --shell sh internal/worker/scripts/*.sh
 	golangci-lint run ./...
+	swagger validate doc/rest-api.yaml
 	run-parts $(shell run-parts -V >/dev/null 2>&1 && echo -n "--verbose --exit-on-error --regex '\.sh$$' ") scripts/lint
+
+.PHONY: static-analysis
+static-analysis: lint license-check
 
 .PHONY: vulncheck
 vulncheck:
