@@ -37,8 +37,7 @@ const (
 	CacheCleanupTask Task = "cache-cleanup"
 )
 
-// Prefixes of the messages used when blocking a queue entry for a reason that isn't a
-// migration.DisabledReason. Only the message is persisted, so these double as the category reported by the stats API.
+// Message prefixes for blocks that aren't a migration.DisabledReason, which the stats API groups on.
 const (
 	blockedReasonArtifact   = "Artifact error"
 	blockedReasonFilesystem = "Filesystem error"

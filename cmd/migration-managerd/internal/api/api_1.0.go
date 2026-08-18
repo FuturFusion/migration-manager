@@ -45,6 +45,7 @@ var api10 = []APIEndpoint{
 	sourceDumpCmd,
 	sourceSyncCmd,
 	sourcesCmd,
+	statsCmd,
 	systemBackupCmd,
 	systemCertificateCmd,
 	systemNetworkCmd,
