@@ -81,11 +81,9 @@ var queueResolveCmd = APIEndpoint{
 //	          description: List of migration items in the queue
 //	          items:
 //	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/queue/26fa4eb7-8d4f-4bf8-9a6a-dd95d166dfad",
-//	              "/1.0/queue/9aad7f16-0d2e-440e-872f-4e9df2d53367"
-// 	            ]
+//	          example:
+//	            - /1.0/queue/foo
+//	            - /1.0/queue/bar
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -212,6 +210,12 @@ func queueRootGet(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Queue entry UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: Queue entry
@@ -297,6 +301,12 @@ func queueGet(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Queue entry UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -357,11 +367,16 @@ func queueDelete(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Queue entry UUID
+//	    required: true
+//	    type: string
 //	  - in: query
 //	    name: cleanup
 //	    description: Whether to cleanup the target instance.
 //	    type: string
-//	    example: "1"
+//	    x-example: "1"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -479,6 +494,12 @@ func queueCancel(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Queue entry UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -542,6 +563,12 @@ func queueRetry(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: uuid
+//	    description: Queue entry UUID
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

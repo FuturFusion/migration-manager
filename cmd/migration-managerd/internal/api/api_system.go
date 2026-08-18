@@ -144,7 +144,8 @@ func systemBackupPost(d *Daemon, r *http.Request) response.Response {
 //	    description: Application backup to restore
 //	    required: true
 //	    schema:
-//	      type: file
+//	      type: string
+//	      format: binary
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -317,7 +318,7 @@ func systemSettingsPut(d *Daemon, r *http.Request) response.Response {
 //	          type: array
 //	          description: System network configuration
 //	          items:
-//	            $ref: "#/definitions/ConfigNetwork"
+//	            $ref: "#/definitions/SystemNetwork"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -343,7 +344,7 @@ func systemNetworkGet(d *Daemon, r *http.Request) response.Response {
 //	    description: System network configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ConfigNetwork"
+//	      $ref: "#/definitions/SystemNetwork"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -423,7 +424,7 @@ func systemNetworkPut(d *Daemon, r *http.Request) response.Response {
 //	          type: array
 //	          description: System security configuration
 //	          items:
-//	            $ref: "#/definitions/ConfigSecurity"
+//	            $ref: "#/definitions/SystemSecurity"
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -449,7 +450,7 @@ func systemSecurityGet(d *Daemon, r *http.Request) response.Response {
 //	    description: System security configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/ConfigSecurity"
+//	      $ref: "#/definitions/SystemSecurity"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -514,7 +515,7 @@ func systemSecurityPut(d *Daemon, r *http.Request) response.Response {
 //	    description: Certificate configuration
 //	    required: true
 //	    schema:
-//	      $ref: "#/definitions/CertificatePost"
+//	      $ref: "#/definitions/SystemCertificatePost"
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"

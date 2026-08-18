@@ -79,11 +79,6 @@ var sourceDumpCmd = APIEndpoint{
 //	          description: List of sources
 //	          items:
 //	            type: string
-//	          example: |-
-//	            [
-//	              "/1.0/sources/foo",
-//	              "/1.0/sources/bar"
-// 	            ]
 //	  "403":
 //	    $ref: "#/responses/Forbidden"
 //	  "500":
@@ -268,6 +263,12 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Source name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -309,6 +310,12 @@ func sourceDelete(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Source name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    description: Source
@@ -391,6 +398,11 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 //	produces:
 //	  - application/json
 //	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Source name
+//	    required: true
+//	    type: string
 //	  - in: body
 //	    name: source
 //	    description: Source definition
@@ -492,6 +504,12 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Source name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
@@ -533,6 +551,12 @@ func sourceSyncPost(d *Daemon, r *http.Request) response.Response {
 //	---
 //	produces:
 //	  - application/json
+//	parameters:
+//	  - in: path
+//	    name: name
+//	    description: Source name
+//	    required: true
+//	    type: string
 //	responses:
 //	  "200":
 //	    $ref: "#/responses/EmptySyncResponse"
