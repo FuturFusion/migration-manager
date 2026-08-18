@@ -34,7 +34,7 @@ type Instance struct {
 	DistributionVersion string `json:"distribution_version" yaml:"distribution_version"`
 
 	// Last synced update from the source.
-	// Example: 2025-01-01 01:00:00
+	// Example: 2025-01-01T01:00:00Z
 	LastUpdateFromSource time.Time `json:"last_update_from_source" yaml:"last_update_from_source"`
 
 	// Overrides, if any, for this instance

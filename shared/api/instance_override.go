@@ -14,7 +14,7 @@ type InstanceOverride struct {
 	InstancePropertiesConfigurable `yaml:",inline"`
 
 	// The last time this instance override was updated
-	// Example: 2024-11-12 16:15:00 +0000 UTC
+	// Example: 2024-11-12T16:15:00Z
 	LastUpdate time.Time `json:"last_update" yaml:"last_update"`
 
 	// An optional comment about the override

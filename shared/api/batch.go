@@ -51,7 +51,7 @@ type Batch struct {
 	StatusMessage string `json:"status_message" yaml:"status_message"`
 
 	// Time in UTC when the batch was started.
-	// Example: 2025-01-01 01:00:00
+	// Example: 2025-01-01T01:00:00Z
 	StartDate time.Time `json:"start_date" yaml:"start_date"`
 }
 

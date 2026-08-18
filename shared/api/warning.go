@@ -92,19 +92,19 @@ type Warning struct {
 	Type WarningType `json:"type" yaml:"type"`
 
 	// First time the warning was seen.
-	// Example: 2025-01-01 01:00:00
+	// Example: 2025-01-01T01:00:00Z
 	FirstSeenDate time.Time `json:"first_seen_date" yaml:"first_seen_date"`
 
 	// Most recent time the warning was seen.
-	// Example: 2025-01-01 01:00:00
+	// Example: 2025-01-01T01:00:00Z
 	LastSeenDate time.Time `json:"last_seen_date" yaml:"last_seen_date"`
 
 	// Last time the warning was changed.
-	// Example: 2025-01-01 01:00:00
+	// Example: 2025-01-01T01:00:00Z
 	UpdatedDate time.Time `json:"updated_date" yaml:"updated_date"`
 
 	// Messages associated with the warning type.
-	// Example: list of messages
+	// Example: ["message"]
 	Messages []string `json:"messages" yaml:"messages"`
 
 	// Number of times the warning has been seen.

@@ -83,11 +83,11 @@ type SystemSettingsLog struct {
 	RetryTimeout Duration `json:"retry_timeout" yaml:"retry_timeout"`
 
 	// Logging scopes to send to the logging target.
-	// Example: [logging, lifecycle]
+	// Example: ["logging", "lifecycle"]
 	Scopes []LogScope `json:"scopes" yaml:"scopes"`
 
 	// Lifecycle event actions to receive when the "lifecycle" scope is enabled. If empty, all lifecycle events are sent.
-	// Example: [instance-imported, migration-created]
+	// Example: ["instance-imported", "migration-created"]
 	LifecycleActions []LifecycleAction `json:"lifecycle_actions" yaml:"lifecycle_actions"`
 }
 
