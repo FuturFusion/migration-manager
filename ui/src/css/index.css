@@ -1,10 +1,10 @@
-@import './dataTable.css';
-@import './keyValueWidget.css';
-@import './sidebar.css';
+@import "./dataTable.css";
+@import "./keyValueWidget.css";
+@import "./sidebar.css";
 @import "./yamlEditor";
 
 body {
-  font-family: 'Inter', sans-serif !important;
+  font-family: "Inter", sans-serif !important;
 }
 
 .detail-table-header {
@@ -29,6 +29,15 @@ tr.overview-table-header th {
   overflow-y: auto;
   min-height: calc(100vh - 100px);
   max-height: calc(100vh - 100px);
+  scrollbar-color: var(--bs-secondary-color) transparent;
+}
+
+.scroll-container::-webkit-scrollbar {
+  background-color: transparent;
+}
+
+.scroll-container::-webkit-scrollbar-track {
+  background-color: transparent;
 }
 
 .fixed-footer {
