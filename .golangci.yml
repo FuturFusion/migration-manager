@@ -166,6 +166,7 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - worker/mkosi.output
 formatters:
   enable:
     - gci
@@ -192,3 +193,4 @@ formatters:
       - third_party$
       - builtin$
       - examples$
+      - worker/mkosi.output
