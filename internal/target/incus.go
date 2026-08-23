@@ -965,9 +965,10 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromBackup(ctx context.Cont
 	// remove the backup file after writing the image.
 	defer func() { _ = os.RemoveAll(backupName) }()
 
-	// If the pool is a shared pool, we only need to create the volume once.
+	// If the pool is a shared pool or the incus server is not clustered,
+	// we only need to create the volume once.
 	ops := []incus.Operation{}
-	if poolIsShared {
+	if poolIsShared || !t.incusClient.IsClustered() {
 		f, err := os.Open(backupName)
 		if err != nil {
 			return err
@@ -1034,7 +1035,7 @@ func (t *InternalIncusTarget) CreateStoragePoolVolumeFromISO(poolName string, is
 		}
 	}
 
-	if poolIsShared {
+	if poolIsShared || !t.incusClient.IsClustered() {
 		file, err := os.Open(isoFilePath)
 		if err != nil {
 			return nil, err
