@@ -4,6 +4,9 @@ DETECTED_LIBNBD_VERSION = $(shell dpkg-query --showformat='$${Version}' -W libnb
 SPHINXENV=doc/.sphinx/venv/bin/activate
 SPHINXPIPPATH=doc/.sphinx/venv/bin/pip
 
+# TODO: remove after moving to jsonv2
+export GOEXPERIMENT=nojsonv2
+
 default: build
 
 .PHONY: build
