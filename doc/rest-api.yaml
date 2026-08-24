@@ -239,6 +239,12 @@ definitions:
                 x-go-name: MigrationNetwork
             placement:
                 $ref: '#/definitions/BatchPlacement'
+            sync_limit:
+                description: Maximum number of instances in this batch that can concurrently perform a background sync. A value of 0 means unlimited.
+                example: 5
+                format: int64
+                type: integer
+                x-go-name: SyncLimit
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     BatchPlacement:

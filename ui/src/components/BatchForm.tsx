@@ -138,6 +138,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
       },
       migration_network: [],
       force_conflict_resolution: false,
+      sync_limit: 0,
     },
   };
 
@@ -183,6 +184,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
         },
         migration_network: batch.defaults.migration_network,
         force_conflict_resolution: batch.defaults.force_conflict_resolution,
+        sync_limit: batch.defaults.sync_limit,
       },
     };
   }
@@ -584,6 +586,16 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
                     type="text"
                     name="config.final_background_sync_limit"
                     value={formik.values.config.final_background_sync_limit}
+                    onChange={formik.handleChange}
+                    onBlur={formik.handleBlur}
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3" controlId="sync_limit">
+                  <Form.Label>Sync limit</Form.Label>
+                  <Form.Control
+                    type="number"
+                    name="defaults.sync_limit"
+                    value={formik.values.defaults.sync_limit}
                     onChange={formik.handleChange}
                     onBlur={formik.handleBlur}
                   />

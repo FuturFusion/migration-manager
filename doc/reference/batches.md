@@ -71,6 +71,7 @@ Some batch properties cannot be modified once the batch has started, or once any
 | `placement.storage_pool`    | Default migration target storage pool (can be overridden by placement scriptlet)                                | string          | `default`              |
 | `force_conflict_resolution` | Ignore all recoverable conflicts. May result in migration proceeding with an out-of-date instance configuration | true/false      | false                  |
 | `migration_network`         | Override the network on the target used by instances during migration                                           | list            |                        |
+| `sync_limit`                | Maximum number of instances in this batch that can concurrently perform a background sync (0 for unlimited)     | number          | 0                      |
 
 #### Migration network configuration
 

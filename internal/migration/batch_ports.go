@@ -26,6 +26,11 @@ type BatchService interface {
 	ResetBatchByName(ctx context.Context, name string, queueSvc QueueService, sourceSvc SourceService, targetSvc TargetService, force bool) (*Batch, error)
 
 	DeterminePlacement(ctx context.Context, instance Instance, usedNetworks Networks, batch Batch, windows Windows) (*api.Placement, error)
+
+	InitImportCache(initial map[string]int) error
+	GetCachedImports(batchName string) int
+	RecordActiveImport(batchName string)
+	RemoveActiveImport(batchName string)
 }
 
 //go:generate go run github.com/matryer/moq -fmt goimports -pkg mock -out repo/mock/batch_repo_mock_gen.go -rm . BatchRepo

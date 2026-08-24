@@ -30,6 +30,7 @@ export interface BatchDefaults {
   placement: BatchPlacement;
   migration_network: MigrationNetworkPlacement[];
   force_conflict_resolution: boolean;
+  sync_limit: number;
 }
 
 export interface BatchConstraint {

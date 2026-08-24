@@ -139,6 +139,12 @@ const BatchOverview = () => {
         </div>
       </div>
       <div className="row">
+        <div className="col-2 detail-table-header">Sync limit</div>
+        <div className="col-10 detail-table-cell">
+          {batch?.defaults.sync_limit || "Unlimited"}
+        </div>
+      </div>
+      <div className="row">
         <div className="col-2 detail-table-header">Migration windows</div>
         <div className="col-10 detail-table-cell">
           <Table borderless size="sm">

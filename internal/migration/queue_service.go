@@ -384,6 +384,11 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			return fmt.Errorf("Failed to get target %q properties: %w", target.Name, err)
 		}
 
+		batch, err := s.batch.GetByName(ctx, queueEntry.BatchName)
+		if err != nil {
+			return fmt.Errorf("Failed to get queue entry batch %q: %w", queueEntry.BatchName, err)
+		}
+
 		newStatusMessage := queueEntry.MigrationStatusMessage
 		newStatus := queueEntry.MigrationStatus
 		newImportStage := queueEntry.ImportStage
@@ -398,10 +403,17 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			targetLimitReached = targetProperties.ImportLimit <= s.target.GetCachedImports(target.Name)
 		}
 
+		var batchLimitReached bool
+		if batch.Defaults.SyncLimit > 0 {
+			batchLimitReached = batch.Defaults.SyncLimit <= s.batch.GetCachedImports(batch.Name)
+		}
+
 		windowName := queueEntry.GetWindowName()
-		if targetLimitReached || sourceLimitReached {
-			newStatusMessage = "Waiting for other instances to finish importing"
-		} else if queueEntry.ImportStage == IMPORTSTAGE_BACKGROUND && instance.Properties.SupportsBackgroundImport() {
+
+		shouldBackgroundSync := queueEntry.ImportStage == IMPORTSTAGE_BACKGROUND && instance.Properties.SupportsBackgroundImport()
+		if targetLimitReached || sourceLimitReached || (shouldBackgroundSync && batchLimitReached) {
+			newStatusMessage = string(api.MIGRATIONSTATUS_WAITING_IMPORT)
+		} else if shouldBackgroundSync {
 			// If we can do a background disk sync, kick it off.
 			workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
 
@@ -451,45 +463,49 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 					return nil
 				}
 
-				batch, err := s.batch.GetByName(ctx, queueEntry.BatchName)
-				if err != nil {
-					return fmt.Errorf("Failed to get queue entry batch %q: %w", queueEntry.BatchName, err)
-				}
-
-				now := time.Now().UTC()
-				var resync bool
-				// It has been more then BackgroundSyncInterval time since the last sync.
-				timeSinceLastSync := now.Sub(queueEntry.LastBackgroundSync)
-				if timeSinceLastSync >= batch.Config.BackgroundSyncInterval.Duration {
-					// Only resync if window won't have begun before the next interval is reached.
-					if window == nil || window.Start.After(now.Add(batch.Config.BackgroundSyncInterval.Duration)) {
-						resync = true
+				if batchLimitReached {
+					newStatusMessage = string(api.MIGRATIONSTATUS_WAITING_IMPORT)
+				} else {
+					now := time.Now().UTC()
+					var resync bool
+					// It has been more then BackgroundSyncInterval time since the last sync.
+					timeSinceLastSync := now.Sub(queueEntry.LastBackgroundSync)
+					if timeSinceLastSync >= batch.Config.BackgroundSyncInterval.Duration {
+						// Only resync if window won't have begun before the next interval is reached.
+						if window == nil || window.Start.After(now.Add(batch.Config.BackgroundSyncInterval.Duration)) {
+							resync = true
+						}
 					}
-				}
 
-				if !resync && window != nil {
-					// If time between the last sync and the window start time is less than the sync interval, but more then the final sync buffer, then sync anyway.
-					if window.Start.Sub(queueEntry.LastBackgroundSync) < batch.Config.BackgroundSyncInterval.Duration && window.Start.Sub(now) >= batch.Config.FinalBackgroundSyncLimit.Duration {
-						resync = true
+					if !resync && window != nil {
+						// If time between the last sync and the window start time is less than the sync interval, but more then the final sync buffer, then sync anyway.
+						if window.Start.Sub(queueEntry.LastBackgroundSync) < batch.Config.BackgroundSyncInterval.Duration && window.Start.Sub(now) >= batch.Config.FinalBackgroundSyncLimit.Duration {
+							resync = true
+						}
 					}
-				}
 
-				if !resync {
-					return nil
-				}
+					if !resync {
+						return nil
+					}
 
-				// Repeat background sync if supported and interval is reached.
-				log.Info("Issuing background sync top-up")
-				workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
-				newStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
-				newStatusMessage = string(api.MIGRATIONSTATUS_BACKGROUND_IMPORT)
-				newImportStage = IMPORTSTAGE_BACKGROUND
+					// Repeat background sync if supported and interval is reached.
+					log.Info("Issuing background sync top-up")
+					workerCommand.Command = api.WORKERCOMMAND_IMPORT_DISKS
+					newStatus = api.MIGRATIONSTATUS_BACKGROUND_IMPORT
+					newStatusMessage = string(api.MIGRATIONSTATUS_BACKGROUND_IMPORT)
+					newImportStage = IMPORTSTAGE_BACKGROUND
+				}
 			}
 		}
 
 		if newStatus != api.MIGRATIONSTATUS_IDLE && newStatus != api.MIGRATIONSTATUS_POST_IMPORT {
 			s.source.RecordActiveImport(instance.Source)
 			s.target.RecordActiveImport(queueEntry.Placement.TargetName)
+		}
+
+		// sync_limit only throttles the live background sync, not the final cutover import.
+		if newStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT {
+			s.batch.RecordActiveImport(batch.Name)
 		}
 
 		// Update queueEntry in the database, and set the worker update time.
@@ -526,6 +542,7 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 		}
 
 		// Process the response.
+		wasBackgroundImport := entry.MigrationStatus == api.MIGRATIONSTATUS_BACKGROUND_IMPORT
 		switch workerResp.Status {
 		case api.WORKERRESPONSE_RUNNING:
 			entry.MigrationStatusMessage = workerResp.StatusMessage
@@ -572,6 +589,10 @@ func (s queueService) ProcessWorkerUpdate(ctx context.Context, id uuid.UUID, wor
 
 			s.source.RemoveActiveImport(instance.Source)
 			s.target.RemoveActiveImport(entry.Placement.TargetName)
+
+			if wasBackgroundImport {
+				s.batch.RemoveActiveImport(entry.BatchName)
+			}
 		}
 
 		// Update instance in the database.

@@ -162,6 +162,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 		sourceImportLimit int
 		targetImportLimit int
+		batchSyncLimit    int
 
 		assertErr                  require.ErrorAssertionFunc
 		wantMigrationStatus        api.MigrationStatusType
@@ -309,6 +310,157 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 			},
 			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
 			wantMigrationStatusMessage: "Waiting for other instances to finish importing",
+		},
+		{
+			name:    "success - no update due to batch sync_limit",
+			uuidArg: uuidA,
+
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", ImportStage: migration.IMPORTSTAGE_BACKGROUND, MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
+
+			batchSvcGetByName: migration.Batch{Defaults: api.BatchDefaults{Placement: defaultPlacement.Placement, SyncLimit: 1}, Name: "one"},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:       uuidA,
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: api.InstanceProperties{
+					Location:         "/some/instance/A",
+					OS:               "ubuntu",
+					OSDescription:    "Ubuntu 24.04",
+					BackgroundImport: true,
+					Disks:            []api.InstancePropertiesDisk{{BackgroundImportVerified: true}},
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+
+			batchSyncLimit: 1,
+
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
+			},
+			batchSvcGetWindows: migration.Windows{{Name: "w1", Start: time.Now().Add(time.Hour)}},
+
+			assertErr: require.NoError,
+			wantWorkerCommand: migration.WorkerCommand{
+				Command:       api.WORKERCOMMAND_IDLE,
+				Location:      "/some/instance/A",
+				SourceType:    api.SOURCETYPE_VMWARE,
+				Source:        migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte("{}")},
+				Distro:        osinfo.UbuntuLinux,
+				DistroVersion: "24.04",
+				OSType:        api.OSTYPE_LINUX,
+				Architecture:  osarch.ArchitectureDefault,
+			},
+		},
+		{
+			name:    "success - batch sync_limit does not block final import in migration window",
+			uuidArg: uuidA,
+
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", ImportStage: migration.IMPORTSTAGE_FINAL, MigrationStatus: api.MIGRATIONSTATUS_IDLE, Placement: api.Placement{TargetName: "one"}},
+
+			batchSvcGetByName: migration.Batch{Defaults: api.BatchDefaults{Placement: defaultPlacement.Placement, SyncLimit: 1}, Name: "one"},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:       uuidA,
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: api.InstanceProperties{
+					Location:         "/some/instance/A",
+					OS:               "ubuntu",
+					OSDescription:    "Ubuntu 24.04",
+					BackgroundImport: true,
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+
+			batchSyncLimit: 1,
+
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
+			},
+			batchSvcGetWindows: migration.Windows{{Name: "w1", Start: time.Now().Add(-time.Minute)}},
+
+			assertErr: require.NoError,
+			wantWorkerCommand: migration.WorkerCommand{
+				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
+				Location:   "/some/instance/A",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Source: migration.Source{
+					ID:         1,
+					Name:       "one",
+					SourceType: api.SOURCETYPE_VMWARE,
+					Properties: []byte("{}"),
+				},
+				Distro:        osinfo.UbuntuLinux,
+				DistroVersion: "24.04",
+				OSType:        api.OSTYPE_LINUX,
+				Architecture:  osarch.ArchitectureDefault,
+			},
+			wantMigrationStatus:        api.MIGRATIONSTATUS_FINAL_IMPORT,
+			wantMigrationStatusMessage: string(api.MIGRATIONSTATUS_FINAL_IMPORT),
+		},
+		{
+			name:    "success - no resync due to batch sync_limit",
+			uuidArg: uuidA,
+
+			repoGetByInstanceUUID: migration.QueueEntry{InstanceUUID: uuidA, BatchName: "one", ImportStage: migration.IMPORTSTAGE_FINAL, MigrationStatus: api.MIGRATIONSTATUS_IDLE, MigrationStatusMessage: "Waiting for migration window", LastBackgroundSync: time.Now().UTC(), Placement: api.Placement{TargetName: "one"}},
+
+			batchSvcGetByName: migration.Batch{Defaults: api.BatchDefaults{Placement: defaultPlacement.Placement, SyncLimit: 1}, Name: "one"},
+			instanceSvcGetByIDInstance: migration.Instance{
+				UUID:       uuidA,
+				Source:     "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: api.InstanceProperties{
+					Location:         "/some/instance/A",
+					OS:               "ubuntu",
+					OSDescription:    "Ubuntu 24.04",
+					BackgroundImport: true,
+				},
+			},
+			sourceSvcGetByIDSource: migration.Source{
+				ID:         1,
+				Name:       "one",
+				SourceType: api.SOURCETYPE_VMWARE,
+				Properties: []byte("{}"),
+			},
+
+			batchSyncLimit: 1,
+
+			targetSvcGetByIDTarget: migration.Target{
+				ID:         1,
+				Name:       "one",
+				TargetType: api.TARGETTYPE_INCUS,
+				Properties: []byte("{}"),
+			},
+			batchSvcGetWindows: migration.Windows{{Name: "w1", Start: time.Now().Add(time.Hour)}},
+
+			assertErr: require.NoError,
+			wantWorkerCommand: migration.WorkerCommand{
+				Command:       api.WORKERCOMMAND_IDLE,
+				Location:      "/some/instance/A",
+				SourceType:    api.SOURCETYPE_VMWARE,
+				Source:        migration.Source{ID: 1, Name: "one", SourceType: api.SOURCETYPE_VMWARE, Properties: []byte("{}")},
+				Distro:        osinfo.UbuntuLinux,
+				DistroVersion: "24.04",
+				OSType:        api.OSTYPE_LINUX,
+				Architecture:  osarch.ArchitectureDefault,
+			},
+			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
+			wantMigrationStatusMessage: string(api.MIGRATIONSTATUS_WAITING_IMPORT),
 		},
 		{
 			name:    "success - update due to unmet concurrency limits",
@@ -1088,6 +1240,8 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 					return &tc.batchSvcGetByName, tc.batchSvcGetByNameErr
 				},
+				RecordActiveImportFunc: func(batchName string) {},
+				GetCachedImportsFunc:   func(batchName string) int { return tc.batchSyncLimit },
 			}
 
 			targetSvc := &TargetServiceMock{
@@ -1134,10 +1288,11 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 		batchSvcGetByNameBatch migration.Batch
 		batchSvcGetByNameErr   error
 
-		assertErr                  require.ErrorAssertionFunc
-		wantMigrationStatus        api.MigrationStatusType
-		wantMigrationStatusMessage string
-		wantImportStage            migration.ImportStage
+		assertErr                   require.ErrorAssertionFunc
+		wantMigrationStatus         api.MigrationStatusType
+		wantMigrationStatusMessage  string
+		wantImportStage             migration.ImportStage
+		wantBatchRemoveActiveImport bool
 	}{
 		{
 			name:                  "success - migration running",
@@ -1172,10 +1327,11 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 			instanceSvcGetByUUIDInstance: migration.Instance{UUID: uuidA, Source: "one"},
 			batchSvcGetByNameBatch:       migration.Batch{Name: "one", Defaults: defaultPlacement},
 
-			assertErr:                  require.NoError,
-			wantMigrationStatus:        api.MIGRATIONSTATUS_IDLE,
-			wantMigrationStatusMessage: "Waiting for migration window",
-			wantImportStage:            migration.IMPORTSTAGE_FINAL,
+			assertErr:                   require.NoError,
+			wantMigrationStatus:         api.MIGRATIONSTATUS_IDLE,
+			wantMigrationStatusMessage:  "Waiting for migration window",
+			wantImportStage:             migration.IMPORTSTAGE_FINAL,
+			wantBatchRemoveActiveImport: true,
 		},
 		{
 			name:                  "success - migration success final import (full initial import)",
@@ -1322,6 +1478,7 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 				GetByNameFunc: func(ctx context.Context, name string) (*migration.Batch, error) {
 					return &tc.batchSvcGetByNameBatch, tc.batchSvcGetByNameErr
 				},
+				RemoveActiveImportFunc: func(batchName string) {},
 			}
 
 			sourceSvc := &SourceServiceMock{
@@ -1344,6 +1501,7 @@ func TestQueueService_ProcessWorkerUpdate(t *testing.T) {
 
 			// Assert
 			tc.assertErr(t, err)
+			require.Equal(t, tc.wantBatchRemoveActiveImport, len(batchSvc.RemoveActiveImportCalls()) > 0)
 		})
 	}
 }
