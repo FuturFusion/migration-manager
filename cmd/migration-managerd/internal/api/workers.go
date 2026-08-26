@@ -37,6 +37,15 @@ const (
 	CacheCleanupTask Task = "cache-cleanup"
 )
 
+// Prefixes of the messages used when blocking a queue entry for a reason that isn't a
+// migration.DisabledReason. Only the message is persisted, so these double as the category reported by the stats API.
+const (
+	blockedReasonArtifact   = "Artifact error"
+	blockedReasonFilesystem = "Filesystem error"
+	blockedReasonPlacement  = "Cannot place instance"
+	blockedReasonUnknown    = "Unknown"
+)
+
 func (d *Daemon) runPeriodicTask(ctx context.Context, task Task, f func(context.Context) error, interval time.Duration) {
 	go func() {
 		for {
@@ -112,14 +121,14 @@ func (d *Daemon) reassessBlockedInstances(ctx context.Context) error {
 		err := d.artifact.HasRequiredArtifactsForInstance(artifacts, inst)
 		if err != nil {
 			slog.Error("Blocking queue entries due to artifact error", slog.Any("error", err))
-			blockedInstances[inst.UUID] = fmt.Sprintf("Artifact error: %v", err.Error())
+			blockedInstances[inst.UUID] = fmt.Sprintf("%s: %v", blockedReasonArtifact, err.Error())
 			continue
 		}
 
 		_, err = d.os.WorkerImageExists(inst.GetArchitecture())
 		if err != nil {
 			slog.Error("Blocking queue entries due to filesystem error", slog.Any("error", err))
-			blockedInstances[inst.UUID] = fmt.Sprintf("Filesystem error: %v", err.Error())
+			blockedInstances[inst.UUID] = fmt.Sprintf("%s: %v", blockedReasonFilesystem, err.Error())
 		}
 	}
 
@@ -369,7 +378,7 @@ func (d *Daemon) beginImports(ctx context.Context, cleanupInstances bool) error 
 				err, ok := placementErrs[instUUID]
 				if ok {
 					stateChanged = true
-					blockedMsg := fmt.Sprintf("Cannot place instance: %v", err.Error())
+					blockedMsg := fmt.Sprintf("%s: %v", blockedReasonPlacement, err.Error())
 					_, err := d.queue.UpdateStatusByUUID(ctx, q.InstanceUUID, api.MIGRATIONSTATUS_BLOCKED, blockedMsg, q.ImportStage, q.GetWindowName())
 					if err != nil {
 						return fmt.Errorf("Failed to unblock queue entry %q: %w", q.InstanceUUID, err)
