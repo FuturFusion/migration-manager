@@ -40,6 +40,20 @@ tr.overview-table-header th {
   background-color: transparent;
 }
 
+.stats-instance-list {
+  overflow-y: auto;
+  max-height: 10rem;
+  scrollbar-color: var(--bs-secondary-color) transparent;
+}
+
+.stats-instance-list::-webkit-scrollbar {
+  background-color: transparent;
+}
+
+.stats-instance-list::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
 .fixed-footer {
   z-index: 10;
 }
