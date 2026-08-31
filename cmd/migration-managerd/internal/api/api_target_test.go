@@ -400,6 +400,7 @@ func daemonSetup(t *testing.T) *Daemon {
 	daemon.window = migration.NewWindowService(sqlite.NewMigrationWindow(tx))
 	daemon.queue = migration.NewQueueService(sqlite.NewQueue(tx), daemon.batch, daemon.instance, daemon.source, daemon.target, daemon.window)
 	daemon.network = migration.NewNetworkService(sqlite.NewNetwork(tx))
+	daemon.warning = migration.NewWarningService(sqlite.NewWarning(tx))
 	daemon.queueHandler = queue.NewMigrationHandler(daemon.batch, daemon.instance, daemon.network, daemon.source, daemon.target, daemon.queue, daemon.window)
 	daemon.errgroup = &errgroup.Group{}
 

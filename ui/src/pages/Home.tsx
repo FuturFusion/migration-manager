@@ -1,8 +1,16 @@
 import { Navigate } from "react-router";
+import { useQuery } from "@tanstack/react-query";
+import { fetchSources } from "api/sources";
 import { useAuth } from "context/authContext";
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
+
+  const { data: sources = [], isLoading } = useQuery({
+    queryKey: ["sources"],
+    queryFn: fetchSources,
+    enabled: isAuthenticated,
+  });
 
   if (!isAuthenticated) {
     return (
@@ -15,7 +23,13 @@ const Home = () => {
     );
   }
 
-  return <Navigate to={`/ui/sources`} replace={true} />;
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <Navigate to={sources.length > 0 ? "/ui/stats" : "/ui/sources"} replace />
+  );
 };
 
 export default Home;

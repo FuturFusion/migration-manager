@@ -124,7 +124,7 @@ func (i Instance) Validate() error {
 // DisabledReason returns the underlying reason for why the instance is disabled.
 func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) error {
 	if i.Overrides.DisableMigration {
-		return fmt.Errorf("Migration is manually disabled")
+		return NewDisabledErrf(DISABLEDREASON_MANUALLY_DISABLED, "Migration is manually disabled")
 	}
 
 	if i.Overrides.IgnoreRestrictions {
@@ -135,7 +135,7 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 	props.Apply(i.Overrides.InstancePropertiesConfigurable)
 	err := validate.IsHostname(props.Name)
 	if err != nil {
-		return fmt.Errorf("Instance name %q is not a valid hostname: %w", props.Name, err)
+		return NewDisabledErrf(DISABLEDREASON_INVALID_HOSTNAME, "Instance name %q is not a valid hostname: %w", props.Name, err)
 	}
 
 	osType := i.GetOSType(false)
@@ -144,12 +144,12 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 	if osType == api.OSTYPE_LINUX && distro == osinfo.OtherDistro {
 		osOverridden := i.Overrides.Distribution != "" || i.Overrides.OSType != ""
 		if !overrides.AllowUnknownOS && !osOverridden {
-			return fmt.Errorf("Could not determine instance OS, check if guest agent is running")
+			return NewDisabledErrf(DISABLEDREASON_UNKNOWN_OS, "Could not determine instance OS, check if guest agent is running")
 		}
 	}
 
 	if i.GetArchitecture() == "" {
-		return fmt.Errorf("Could not determine instance architecture, check if guest agent is running")
+		return NewDisabledErrf(DISABLEDREASON_UNKNOWN_ARCHITECTURE, "Could not determine instance architecture, check if guest agent is running")
 	}
 
 	ipRestrict := len(i.Properties.NICs) > 0
@@ -161,20 +161,20 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 	}
 
 	if ipRestrict && !overrides.AllowNoIPv4 {
-		return fmt.Errorf("Could not determine instance IP, check if guest agent is running")
+		return NewDisabledErrf(DISABLEDREASON_UNKNOWN_IP_ADDRESS, "Could not determine instance IP, check if guest agent is running")
 	}
 
 	if !i.Properties.SupportsBackgroundImport() && !overrides.AllowNoBackgroundImport {
 		if i.Properties.BackgroundImport {
-			return fmt.Errorf("Verifying background import support")
+			return NewDisabledErrf(DISABLEDREASON_VERIFYING_BACKGROUND_IMPORT, "Verifying background import support")
 		}
 
-		return fmt.Errorf("Background import is not supported")
+		return NewDisabledErrf(DISABLEDREASON_UNSUPPORTED_BACKGROUND_IMPORT, "Background import is not supported")
 	}
 
 	for _, d := range i.Properties.Disks {
 		if !d.Supported {
-			return fmt.Errorf("Disk %q does not support snapshots", d.Name)
+			return NewDisabledErrf(DISABLEDREASON_UNSUPPORTED_DISK_SNAPSHOT, "Disk %q does not support snapshots", d.Name)
 		}
 	}
 

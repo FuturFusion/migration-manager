@@ -302,10 +302,110 @@ definitions:
     BatchStatusType:
         type: string
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    BatchSummary:
+        properties:
+            blocked_instances:
+                description: Number of instances in the batch whose migration is currently blocked
+                example: 2
+                format: int64
+                type: integer
+                x-go-name: BlockedInstances
+            blocked_reasons:
+                description: Breakdown of blocked instances in the batch by the reason their migration is blocked
+                items:
+                    $ref: '#/definitions/ReasonInstances'
+                type: array
+                x-go-name: BlockedReasons
+            migrated_disk_size:
+                description: Total disk size, in bytes, transferred to the target, counted once background import completes
+                example: 10737418240
+                format: int64
+                type: integer
+                x-go-name: MigratedDiskSize
+            migrated_instances:
+                description: Number of instances in the batch that have finished migrating
+                example: 5
+                format: int64
+                type: integer
+                x-go-name: MigratedInstances
+            name:
+                description: A human-friendly name for the batch
+                example: MyBatch
+                type: string
+                x-go-name: Name
+            next_window:
+                $ref: '#/definitions/MigrationWindow'
+            status:
+                $ref: '#/definitions/BatchStatusType'
+            total_disk_size:
+                description: Total disk size, in bytes, across all instances in the batch
+                example: 21474836480
+                format: int64
+                type: integer
+                x-go-name: TotalDiskSize
+            total_instances:
+                description: Number of instances assigned to the batch
+                example: 12
+                format: int64
+                type: integer
+                x-go-name: TotalInstances
+        title: BatchSummary provides a high-level summary of a single batch.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    BatchesOverview:
+        properties:
+            blocked_instances:
+                description: Number of queued instances whose migration is currently blocked
+                example: 2
+                format: int64
+                type: integer
+                x-go-name: BlockedInstances
+            blocked_reasons:
+                description: Breakdown of blocked instances by the reason their migration is blocked
+                items:
+                    $ref: '#/definitions/ReasonInstances'
+                type: array
+                x-go-name: BlockedReasons
+            items:
+                description: Per-batch statistics, one entry per defined batch
+                items:
+                    $ref: '#/definitions/BatchSummary'
+                type: array
+                x-go-name: Items
+            migrated_disk_size:
+                description: Total disk size, in bytes, that has been transferred to the target
+                example: 10737418240
+                format: int64
+                type: integer
+                x-go-name: MigratedDiskSize
+            migrated_instances:
+                description: Number of instances assigned to a batch that have finished migrating
+                example: 5
+                format: int64
+                type: integer
+                x-go-name: MigratedInstances
+            total_disk_size:
+                description: Total disk size, in bytes, across all instances assigned to a batch
+                example: 21474836480
+                format: int64
+                type: integer
+                x-go-name: TotalDiskSize
+            total_instances:
+                description: Number of instances assigned to a batch
+                example: 12
+                format: int64
+                type: integer
+                x-go-name: TotalInstances
+        title: BatchesOverview summarizes all batches, counting each instance once so totals aren't the sum across Items.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
     Distro:
         title: Distro represents an OS distribution.
         type: string
         x-go-package: github.com/lxc/incus/v7/shared/osinfo
+    ExternalConnectivityStatus:
+        type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
     IncusNICType:
         type: string
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
@@ -740,6 +840,22 @@ definitions:
         title: InstancePropertiesSnapshot are all properties supported by snapshots.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstanceRef:
+        properties:
+            location:
+                description: The inventory path of the instance on its source
+                example: /SDDC-Datacenter/vm/MyVM
+                type: string
+                x-go-name: Location
+            uuid:
+                description: The UUID of the instance
+                example: 2ed700e6-45ca-4b1a-a1c3-0b0a4dd7b5d5
+                format: uuid
+                type: string
+                x-go-name: UUID
+        title: InstanceRef identifies an instance well enough to display and link to it.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
     InstanceRestrictionOverride:
         properties:
             allow_no_background_import:
@@ -887,6 +1003,27 @@ definitions:
         title: OSType represents an OS type (windows, linux, macos, bsd).
         type: string
         x-go-package: github.com/lxc/incus/v7/shared/osinfo
+    OverriddenInstance:
+        properties:
+            batch:
+                description: The name of the batch whose overrides waive the restriction
+                example: batch1
+                type: string
+                x-go-name: Batch
+            location:
+                description: The inventory path of the instance on its source
+                example: /SDDC-Datacenter/vm/MyVM
+                type: string
+                x-go-name: Location
+            uuid:
+                description: The UUID of the instance
+                example: 2ed700e6-45ca-4b1a-a1c3-0b0a4dd7b5d5
+                format: uuid
+                type: string
+                x-go-name: UUID
+        title: OverriddenInstance is an ineligible instance whose restriction is waived by one of its batches.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
     Placement:
         properties:
             networks:
@@ -959,6 +1096,22 @@ definitions:
             placement:
                 $ref: '#/definitions/Placement'
         title: QueueEntry provides a high-level status for an instance that is in a migration stage.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    ReasonInstances:
+        properties:
+            instances:
+                description: The instances affected by this reason
+                items:
+                    $ref: '#/definitions/InstanceRef'
+                type: array
+                x-go-name: Instances
+            reason:
+                description: The reason the instances are ineligible or blocked
+                example: Unknown OS
+                type: string
+                x-go-name: Reason
+        title: ReasonInstances groups the instances that share a reason for being ineligible or blocked.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     ServerPut:
@@ -1056,8 +1209,148 @@ definitions:
         title: SourcePut defines the configurable properties of Source.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SourceSummary:
+        properties:
+            blocked_imports:
+                description: Instances from this source not fully synced because the source was unavailable
+                items:
+                    $ref: '#/definitions/InstanceRef'
+                type: array
+                x-go-name: BlockedImports
+            connectivity_status:
+                $ref: '#/definitions/ExternalConnectivityStatus'
+            failed_imports:
+                description: Instances from this source not fully synced because it reported an import failure
+                items:
+                    $ref: '#/definitions/InstanceRef'
+                type: array
+                x-go-name: FailedImports
+            imported_instances:
+                description: Number of instances from this source whose properties were fully read, plus any already migrated
+                example: 15
+                format: int64
+                type: integer
+                x-go-name: ImportedInstances
+            ineligible_instances:
+                description: Number of instances from this source that cannot be migrated as currently configured
+                example: 2
+                format: int64
+                type: integer
+                x-go-name: IneligibleInstances
+            ineligible_reasons:
+                description: Breakdown of ineligible instances from this source by the reason they cannot be migrated
+                items:
+                    $ref: '#/definitions/ReasonInstances'
+                type: array
+                x-go-name: IneligibleReasons
+            migrated_instances:
+                description: Number of instances from this source that have finished migrating
+                example: 5
+                format: int64
+                type: integer
+                x-go-name: MigratedInstances
+            name:
+                description: A human-friendly name for the source
+                example: MySource
+                type: string
+                x-go-name: Name
+            overridden_instances:
+                description: Ineligible instances from this source whose restriction is waived by a batch they are assigned to
+                items:
+                    $ref: '#/definitions/OverriddenInstance'
+                type: array
+                x-go-name: OverriddenInstances
+            partial_imports:
+                description: Instances from this source not fully synced because only some of their properties were reported
+                items:
+                    $ref: '#/definitions/InstanceRef'
+                type: array
+                x-go-name: PartialImports
+            total_instances:
+                description: Number of instances known to migration manager from this source
+                example: 20
+                format: int64
+                type: integer
+                x-go-name: TotalInstances
+        title: SourceSummary provides a high-level summary of a single source.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
     SourceType:
         type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    SourcesOverview:
+        properties:
+            blocked_imports:
+                description: Instances not fully synced because their source was unavailable
+                items:
+                    $ref: '#/definitions/InstanceRef'
+                type: array
+                x-go-name: BlockedImports
+            failed_imports:
+                description: Instances not fully synced because their source reported an import failure
+                items:
+                    $ref: '#/definitions/InstanceRef'
+                type: array
+                x-go-name: FailedImports
+            imported_instances:
+                description: Number of instances whose properties were fully read from their source, plus any already migrated
+                example: 30
+                format: int64
+                type: integer
+                x-go-name: ImportedInstances
+            ineligible_instances:
+                description: Number of instances that cannot be migrated as currently configured, excluding those already migrated
+                example: 5
+                format: int64
+                type: integer
+                x-go-name: IneligibleInstances
+            ineligible_reasons:
+                description: Breakdown of ineligible instances by the reason they cannot be migrated
+                items:
+                    $ref: '#/definitions/ReasonInstances'
+                type: array
+                x-go-name: IneligibleReasons
+            items:
+                description: Per-source statistics, one entry per defined source
+                items:
+                    $ref: '#/definitions/SourceSummary'
+                type: array
+                x-go-name: Items
+            migrated_instances:
+                description: Number of instances that have finished migrating
+                example: 10
+                format: int64
+                type: integer
+                x-go-name: MigratedInstances
+            overridden_instances:
+                description: Ineligible instances whose restriction is waived by a batch they are assigned to
+                items:
+                    $ref: '#/definitions/OverriddenInstance'
+                type: array
+                x-go-name: OverriddenInstances
+            partial_imports:
+                description: Instances not fully synced because their source only reported some of their properties
+                items:
+                    $ref: '#/definitions/InstanceRef'
+                type: array
+                x-go-name: PartialImports
+            total_instances:
+                description: Number of source instances known to migration manager
+                example: 42
+                format: int64
+                type: integer
+                x-go-name: TotalInstances
+        title: SourcesOverview provides a high-level summary of all sources.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    StatsOverview:
+        properties:
+            batches:
+                $ref: '#/definitions/BatchesOverview'
+            sources:
+                $ref: '#/definitions/SourcesOverview'
+        title: StatsOverview provides a high-level summary of the state of migration manager.
+        type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     SystemBackupPost:
         properties:
@@ -3092,6 +3385,40 @@ paths:
             summary: Get the sources
             tags:
                 - sources
+    /1.0/stats:
+        get:
+            description: Returns a summary of batches, instances, and disk usage.
+            operationId: stats_get
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Migration manager stats overview
+                    schema:
+                        description: Sync response
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/StatsOverview'
+                            status:
+                                description: Status description
+                                example: Success
+                                type: string
+                            status_code:
+                                description: Status code
+                                example: 200
+                                type: integer
+                            type:
+                                description: Response type
+                                example: sync
+                                type: string
+                        type: object
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get a high-level overview of migration manager
+            tags:
+                - stats
     /1.0/system/:backup:
         post:
             consumes:
