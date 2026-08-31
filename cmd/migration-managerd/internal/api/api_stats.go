@@ -305,7 +305,7 @@ func (s *statsSnapshot) blockedReason(queueEntry migration.QueueEntry) string {
 }
 
 // nextBatchWindow returns the batch's soonest migration window that hasn't ended, nil if it has none.
-func nextBatchWindow(windows migration.Windows) *api.BatchWindow {
+func nextBatchWindow(windows migration.Windows) *api.MigrationWindow {
 	var next *migration.Window
 	for _, window := range windows {
 		if window.Ended() {
@@ -321,11 +321,9 @@ func nextBatchWindow(windows migration.Windows) *api.BatchWindow {
 		return nil
 	}
 
-	return &api.BatchWindow{
-		Name:  next.Name,
-		Start: next.Start,
-		End:   next.End,
-	}
+	apiWindow := next.ToAPI()
+
+	return &apiWindow
 }
 
 // sourcesOverview computes the system-wide source totals and the per-source breakdown.
