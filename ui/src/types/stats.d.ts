@@ -1,8 +1,4 @@
-export interface BatchWindow {
-  name: string;
-  start: string;
-  end: string;
-}
+import { MigrationWindow } from "types/batch";
 
 export interface BatchSummary {
   name: string;
@@ -13,7 +9,7 @@ export interface BatchSummary {
   blocked_reasons: ReasonInstances[];
   total_disk_size: number;
   migrated_disk_size: number;
-  next_window?: BatchWindow;
+  next_window?: MigrationWindow;
 }
 
 export interface InstanceRef {
