@@ -1,8 +1,6 @@
 package api
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 )
 
@@ -123,22 +121,7 @@ type BatchSummary struct {
 	MigratedDiskSize int64 `json:"migrated_disk_size" yaml:"migrated_disk_size"`
 
 	// The next upcoming (or currently active) migration window for the batch, nil if none is scheduled
-	NextWindow *BatchWindow `json:"next_window,omitempty" yaml:"next_window,omitempty"`
-}
-
-// BatchWindow provides a high-level summary of a batch's upcoming migration window.
-//
-// swagger:model
-type BatchWindow struct {
-	// A human-friendly name for the migration window
-	// Example: MyWindow
-	Name string `json:"name" yaml:"name"`
-
-	// Time in UTC that the migration window starts
-	Start time.Time `json:"start" yaml:"start"`
-
-	// Time in UTC that the migration window ends
-	End time.Time `json:"end" yaml:"end"`
+	NextWindow *MigrationWindow `json:"next_window,omitempty" yaml:"next_window,omitempty"`
 }
 
 // SourceSummary provides a high-level summary of a single source.
