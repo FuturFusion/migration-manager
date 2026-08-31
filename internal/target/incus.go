@@ -344,7 +344,12 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	// Handle RHEL (and derivative) specific completion steps.
 	osType := i.GetOSType(true)
 	distro, distroVer := i.GetDistribution(true)
-	apiDef.Config["image.os"] = string(osType)
+	if osType != osinfo.Linux {
+		apiDef.Config["image.os"] = string(osType)
+	} else {
+		apiDef.Config["image.os"] = string(distro)
+	}
+
 	apiDef.Config["image.release"] = distroVer
 	supportsVioSCSI, _, _ := osinfo.GetOSQemuCompatibility(osType, distro, distroVer)
 	needsAgentDisk := (osType == api.OSTYPE_LINUX && distro.IsRHELDerivative()) || osType == api.OSTYPE_WINDOWS
