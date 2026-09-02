@@ -32,6 +32,7 @@ var api10 = []APIEndpoint{
 	instancePowerCmd,
 	instanceDumpCmd,
 	instancesCmd,
+	metricsCmd,
 	networkCmd,
 	networkInstancesCmd,
 	networkOverrideCmd,
