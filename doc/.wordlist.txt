@@ -16,6 +16,7 @@ FuturFusion
 Furo
 github
 GitHub
+goroutines
 GPG
 https
 Incus
@@ -33,6 +34,7 @@ NICs
 NSX
 OIDC
 OpenFGA
+OpenMetrics
 pre
 preseed
 PKCS
@@ -45,6 +47,7 @@ SHA
 Starlark
 TLS
 unstarted
+uptime
 UI
 vCenter
 virtio
