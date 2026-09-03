@@ -46,7 +46,7 @@ func TestInstanceDumpPost(t *testing.T) {
 		{
 			name:           "non-vmware source",
 			uuid:           uuid2.String(),
-			sourceType:     api.SOURCETYPE_NSX,
+			sourceType:     api.SOURCETYPE_NSX_T,
 			wantHTTPStatus: http.StatusInternalServerError,
 		},
 		{

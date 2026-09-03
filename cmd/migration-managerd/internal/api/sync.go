@@ -310,9 +310,9 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 	d.syncCache.Write(src.Name, struct{}{}, nil)
 	defer d.syncCache.Delete(src.Name)
 
-	nsxSources, err := d.source.GetAll(ctx, api.SOURCETYPE_NSX)
+	nsxSources, err := d.source.GetAll(ctx, api.SOURCETYPE_NSX_T)
 	if err != nil {
-		return fmt.Errorf("Failed to retrieve %q sources: %w", api.SOURCETYPE_NSX, err)
+		return fmt.Errorf("Failed to retrieve %q sources: %w", api.SOURCETYPE_NSX_T, err)
 	}
 
 	warnings := migration.Warnings{}
@@ -441,14 +441,14 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 
 			_, err = d.source.Create(ctx, migration.Source{
 				Name:       nsxURL.Hostname(),
-				SourceType: api.SOURCETYPE_NSX,
+				SourceType: api.SOURCETYPE_NSX_T,
 				Properties: b,
 				EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
 					return source.NewInternalNSXSourceFrom(s)
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("Failed to record %q source for %q source %q: %w", api.SOURCETYPE_NSX, api.SOURCETYPE_VMWARE, src.Name, err)
+				return fmt.Errorf("Failed to record %q source for %q source %q: %w", api.SOURCETYPE_NSX_T, api.SOURCETYPE_VMWARE, src.Name, err)
 			}
 		}
 

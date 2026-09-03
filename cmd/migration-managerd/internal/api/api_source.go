@@ -136,7 +136,7 @@ func sourcesGet(d *Daemon, r *http.Request) response.Response {
 
 		result := make([]api.Source, 0, len(sources))
 		for _, src := range sources {
-			if src.SourceType == api.SOURCETYPE_NSX && recursion > 1 {
+			if src.SourceType == api.SOURCETYPE_NSX_T && recursion > 1 {
 				nsxSource, err := source.NewInternalNSXSourceFrom(src.ToAPI())
 				if err != nil {
 					return response.SmartError(err)
@@ -222,7 +222,7 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 		Properties: apiSrc.Properties,
 		EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
 			switch s.SourceType {
-			case api.SOURCETYPE_NSX:
+			case api.SOURCETYPE_NSX_T:
 				return source.NewInternalNSXSourceFrom(s)
 			default:
 				return source.NewVMSource(s)
@@ -353,7 +353,7 @@ func sourceGet(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(err)
 	}
 
-	if src.SourceType == api.SOURCETYPE_NSX && recursion > 0 {
+	if src.SourceType == api.SOURCETYPE_NSX_T && recursion > 0 {
 		nsxSource, err := source.NewInternalNSXSourceFrom(src.ToAPI())
 		if err != nil {
 			return response.SmartError(err)
@@ -456,7 +456,7 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 		Properties: apiSrc.Properties,
 		EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
 			switch s.SourceType {
-			case api.SOURCETYPE_NSX:
+			case api.SOURCETYPE_NSX_T:
 				return source.NewInternalNSXSourceFrom(s)
 			default:
 				return source.NewVMSource(s)
