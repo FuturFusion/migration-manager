@@ -37,6 +37,8 @@ Migration Manager has the following extended functions:
 | `has_tag('*', 'tag1')`                                                 | Match the instances that have the tag `tag1` under any category                                                             |
 | `matches_tag('*', 'mytag')`                                            | Match the instances that have any tag under any category that contain the text `mytag`                                      |
 | `config['vmware.resource_pool'] == 'mypool'`                           | Match the instances under the resource pool `mypool`                                                                        |
+| `any(sdn_tags, .scope == 'app' and .tag == 'web')`                     | Match the instances that have the SDN tag `web` under the scope `app`                                                       |
+| `any(sdn_tags, .tag == 'web')`                                         | Match the instances that have the SDN tag `web` under any scope                                                             |
 
 ```{note}
 Expressions evaluate on instances after overrides have been applied.
