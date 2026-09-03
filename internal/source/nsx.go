@@ -47,7 +47,7 @@ type VersionResponse struct {
 }
 
 func NewInternalNSXSourceFrom(apiSource api.Source) (*InternalNSXSource, error) {
-	if apiSource.SourceType != api.SOURCETYPE_NSX {
+	if apiSource.SourceType != api.SOURCETYPE_NSX_T {
 		return nil, errors.New("Source is not of type NSX")
 	}
 
