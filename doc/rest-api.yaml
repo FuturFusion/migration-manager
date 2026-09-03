@@ -508,6 +508,12 @@ definitions:
                 example: true
                 type: boolean
                 x-go-name: Running
+            sdn_tags:
+                description: List of tags applied to the Instance by the SDN manager of its networks.
+                items:
+                    $ref: '#/definitions/InstancePropertiesSDNTag'
+                type: array
+                x-go-name: SDNTags
             secure_boot:
                 description: Whether the Instance has secure-boot enabled.
                 example: true
@@ -700,6 +706,12 @@ definitions:
                 example: true
                 type: boolean
                 x-go-name: Running
+            sdn_tags:
+                description: List of tags applied to the Instance by the SDN manager of its networks.
+                items:
+                    $ref: '#/definitions/InstancePropertiesSDNTag'
+                type: array
+                x-go-name: SDNTags
             secure_boot:
                 description: Whether the Instance has secure-boot enabled.
                 example: true
@@ -828,6 +840,21 @@ definitions:
                 type: string
                 x-go-name: UUID
         title: InstancePropertiesNIC are all properties supported by instance NICs.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstancePropertiesSDNTag:
+        properties:
+            scope:
+                description: Scope of the tag, empty if the tag has none.
+                example: app
+                type: string
+                x-go-name: Scope
+            tag:
+                description: Value of the tag.
+                example: web
+                type: string
+                x-go-name: Tag
+        title: InstancePropertiesSDNTag are all properties supported by SDN tags.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     InstancePropertiesSnapshot:
