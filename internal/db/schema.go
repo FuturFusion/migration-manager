@@ -116,5 +116,5 @@ CREATE TABLE warnings (
     UNIQUE (type, scope, entity_type, entity)
 	);
 
-INSERT INTO schema (version, updated_at) VALUES (18, strftime("%s"))
+INSERT INTO schema (version, updated_at) VALUES (19, strftime("%s"))
 `
