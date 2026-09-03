@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"net"
 	"net/http"
 	"net/url"
@@ -368,6 +369,9 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	// Set the instance's UUID copied from the source.
 	apiDef.Config["volatile.uuid"] = props.UUID.String()
 	apiDef.Config["volatile.uuid.generation"] = props.UUID.String()
+
+	// Record the SDN tags imported from the source.
+	maps.Copy(apiDef.Config, i.SDNTagConfig())
 
 	// Apply CPU and memory limits.
 	for name, info := range defs.GetAll() {
