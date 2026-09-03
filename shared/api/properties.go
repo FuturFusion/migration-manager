@@ -67,6 +67,9 @@ type InstanceProperties struct {
 
 	// List of snapshots for the Instance.
 	Snapshots []InstancePropertiesSnapshot `json:"snapshots" yaml:"snapshots" expr:"snapshots"`
+
+	// List of tags applied to the Instance by the SDN manager of its networks.
+	SDNTags []InstancePropertiesSDNTag `json:"sdn_tags" yaml:"sdn_tags" expr:"sdn_tags"`
 }
 
 // InstancePropertiesConfigurable are the configurable properties of an instance.
@@ -146,6 +149,17 @@ type InstancePropertiesSnapshot struct {
 	// Name of the snapshot.
 	// Example: snapshot1
 	Name string `json:"name" yaml:"name" expr:"name"`
+}
+
+// InstancePropertiesSDNTag are all properties supported by SDN tags.
+type InstancePropertiesSDNTag struct {
+	// Scope of the tag, empty if the tag has none.
+	// Example: app
+	Scope string `json:"scope" yaml:"scope" expr:"scope"`
+
+	// Value of the tag.
+	// Example: web
+	Tag string `json:"tag"   yaml:"tag"   expr:"tag"`
 }
 
 // SupportsBackgroundImport returns whether the instance has background import support, and all supported disks have been verified.
