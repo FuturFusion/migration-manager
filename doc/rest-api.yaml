@@ -2741,6 +2741,25 @@ paths:
             summary: Get the instances
             tags:
                 - instances
+    /1.0/metrics:
+        get:
+            description: Gets the daemon metrics in the OpenMetrics text format.
+            operationId: metrics_get
+            produces:
+                - text/plain
+            responses:
+                "200":
+                    description: Metrics
+                    schema:
+                        description: Daemon metrics
+                        type: string
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            summary: Get metrics
+            tags:
+                - metrics
     /1.0/networks:
         get:
             description: Returns a list of networks (structs).
