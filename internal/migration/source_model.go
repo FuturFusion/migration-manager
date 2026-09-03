@@ -34,7 +34,7 @@ func (s Source) Validate() error {
 		return NewValidationErrf("Invalid source, name %q: %v", s.Name, err)
 	}
 
-	if s.SourceType != api.SOURCETYPE_VMWARE && s.SourceType != api.SOURCETYPE_NSX {
+	if s.SourceType != api.SOURCETYPE_VMWARE && s.SourceType != api.SOURCETYPE_NSX_T {
 		return NewValidationErrf("Invalid source, %s is not a valid source type", s.SourceType)
 	}
 
@@ -76,8 +76,8 @@ func (s *Source) GetVMwareProperties() (*api.VMwareProperties, error) {
 
 // GetNSXProperties sets default values for missing fields, and returns the properties object for a NSX source.
 func (s *Source) GetNSXProperties() (*internalapi.NSXSourceProperties, error) {
-	if s.SourceType != api.SOURCETYPE_NSX {
-		return nil, fmt.Errorf("Source %q type is %q, not %q", s.Name, s.SourceType, api.SOURCETYPE_NSX)
+	if s.SourceType != api.SOURCETYPE_NSX_T {
+		return nil, fmt.Errorf("Source %q type is %q, not %q", s.Name, s.SourceType, api.SOURCETYPE_NSX_T)
 	}
 
 	err := s.SetDefaults()
@@ -97,7 +97,7 @@ func (s *Source) GetNSXProperties() (*internalapi.NSXSourceProperties, error) {
 // SetDefaults sets default values for source properties.
 func (s *Source) SetDefaults() error {
 	switch s.SourceType {
-	case api.SOURCETYPE_NSX:
+	case api.SOURCETYPE_NSX_T:
 		var properties internalapi.NSXSourceProperties
 
 		err := json.Unmarshal(s.Properties, &properties)
@@ -176,7 +176,7 @@ func (s Source) validateSourceTypeVMware() error {
 
 func (s Source) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
 	switch s.SourceType {
-	case api.SOURCETYPE_NSX:
+	case api.SOURCETYPE_NSX_T:
 		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
@@ -193,7 +193,7 @@ func (s Source) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
 
 func (s Source) GetServerCertificate() *x509.Certificate {
 	switch s.SourceType {
-	case api.SOURCETYPE_NSX:
+	case api.SOURCETYPE_NSX_T:
 		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
@@ -215,7 +215,7 @@ func (s Source) GetServerCertificate() *x509.Certificate {
 
 func (s Source) GetTrustedServerCertificateFingerprint() string {
 	switch s.SourceType {
-	case api.SOURCETYPE_NSX:
+	case api.SOURCETYPE_NSX_T:
 		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
@@ -232,7 +232,7 @@ func (s Source) GetTrustedServerCertificateFingerprint() string {
 
 func (s *Source) SetExternalConnectivityStatus(status api.ExternalConnectivityStatus) {
 	switch s.SourceType {
-	case api.SOURCETYPE_NSX:
+	case api.SOURCETYPE_NSX_T:
 		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
@@ -248,7 +248,7 @@ func (s *Source) SetExternalConnectivityStatus(status api.ExternalConnectivitySt
 
 func (s *Source) SetServerCertificate(cert *x509.Certificate) {
 	switch s.SourceType {
-	case api.SOURCETYPE_NSX:
+	case api.SOURCETYPE_NSX_T:
 		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		var properties api.VMwareProperties
