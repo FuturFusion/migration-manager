@@ -43,6 +43,7 @@ resync
 resynced
 scriptlet
 SDK
+SDN
 SHA
 Starlark
 TLS
