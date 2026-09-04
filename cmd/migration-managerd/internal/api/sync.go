@@ -290,6 +290,11 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 		instancesBySrc[srcName] = instancesByUUID
 	}
 
+	err = applySDNTags(instancesBySrc, networksBySrc)
+	if err != nil {
+		return err
+	}
+
 	srcWarnings, err := d.syncSourceData(ctx, instancesBySrc, networksBySrc)
 	if err != nil {
 		for srcName := range instancesBySrc {
@@ -310,9 +315,9 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 	d.syncCache.Write(src.Name, struct{}{}, nil)
 	defer d.syncCache.Delete(src.Name)
 
-	nsxSources, err := d.source.GetAll(ctx, api.SOURCETYPE_NSX)
+	nsxSources, err := d.source.GetAll(ctx, api.SOURCETYPE_NSX_T)
 	if err != nil {
-		return fmt.Errorf("Failed to retrieve %q sources: %w", api.SOURCETYPE_NSX, err)
+		return fmt.Errorf("Failed to retrieve %q sources: %w", api.SOURCETYPE_NSX_T, err)
 	}
 
 	warnings := migration.Warnings{}
@@ -425,6 +430,11 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 		}
 	}
 
+	err = applySDNTags(instancesBySrc, networksBySrc)
+	if err != nil {
+		return err
+	}
+
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		nsxURL, err := url.Parse(nsxIP)
 		if err == nil && nsxURL.String() != "" {
@@ -441,14 +451,14 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 
 			_, err = d.source.Create(ctx, migration.Source{
 				Name:       nsxURL.Hostname(),
-				SourceType: api.SOURCETYPE_NSX,
+				SourceType: api.SOURCETYPE_NSX_T,
 				Properties: b,
 				EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
 					return source.NewInternalNSXSourceFrom(s)
 				},
 			})
 			if err != nil {
-				return fmt.Errorf("Failed to record %q source for %q source %q: %w", api.SOURCETYPE_NSX, api.SOURCETYPE_VMWARE, src.Name, err)
+				return fmt.Errorf("Failed to record %q source for %q source %q: %w", api.SOURCETYPE_NSX_T, api.SOURCETYPE_VMWARE, src.Name, err)
 			}
 		}
 
@@ -803,6 +813,37 @@ func (d *Daemon) syncInstancesFromSource(ctx context.Context, sourceName string,
 	}
 
 	return warnings, nil
+}
+
+// applySDNTags records the SDN tags of each source's networks in the properties of that source's instances.
+func applySDNTags(instancesBySrc map[string]map[uuid.UUID]migration.Instance, networksBySrc map[string]map[string]migration.Network) error {
+	for srcName, instances := range instancesBySrc {
+		networks := make(migration.Networks, 0, len(networksBySrc[srcName]))
+		for _, net := range networksBySrc[srcName] {
+			networks = append(networks, net)
+		}
+
+		tagsByInstance, err := networks.SDNTags()
+		if err != nil {
+			return fmt.Errorf("Failed to determine SDN tags for source %q: %w", srcName, err)
+		}
+
+		// Leave the recorded tags alone if the source has no SDN data in this sync.
+		if tagsByInstance == nil {
+			continue
+		}
+
+		for instUUID, inst := range instances {
+			inst.Properties.SDNTags = tagsByInstance[inst.UUID]
+			if inst.Properties.SDNTags == nil {
+				inst.Properties.SDNTags = []api.InstancePropertiesSDNTag{}
+			}
+
+			instances[instUUID] = inst
+		}
+	}
+
+	return nil
 }
 
 func fetchNSXSourceData(ctx context.Context, src migration.Source, vcenterSources map[string]migration.Source, networksBySrc map[string]map[string]migration.Network) (bool, error) {

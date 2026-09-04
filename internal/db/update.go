@@ -79,6 +79,13 @@ var updates = map[int]schema.Update{
 	16: updateFromV15,
 	17: updateFromV16,
 	18: updateFromV17,
+	19: updateFromV18,
+}
+
+func updateFromV18(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, `UPDATE sources SET source_type = 'nsx-t' WHERE source_type = 'nsx';`)
+
+	return err
 }
 
 func updateFromV17(ctx context.Context, tx *sql.Tx) error {

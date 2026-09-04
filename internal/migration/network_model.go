@@ -160,6 +160,56 @@ func FilterUsedNetworks(nets Networks, instances Instances) Networks {
 
 type Networks []Network
 
+// SDNTags returns the SDN tags applied to each instance on the networks, keyed by instance UUID.
+// It returns nil if none of the networks have SDN data, to disambiguate from an unreachable SDN manager.
+func (n Networks) SDNTags() (map[uuid.UUID][]api.InstancePropertiesSDNTag, error) {
+	var hasSDNData bool
+	tagsByInstance := map[uuid.UUID][]api.InstancePropertiesSDNTag{}
+	for _, net := range n {
+		if net.Type != api.NETWORKTYPE_VMWARE_NSX && net.Type != api.NETWORKTYPE_VMWARE_DISTRIBUTED_NSX {
+			continue
+		}
+
+		if len(net.Properties) == 0 {
+			continue
+		}
+
+		var props internalAPI.NSXNetworkProperties
+		err := json.Unmarshal(net.Properties, &props)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to parse properties of network %q: %w", net.Location, err)
+		}
+
+		if props.Segment.Name == "" {
+			continue
+		}
+
+		hasSDNData = true
+		for _, nsxVM := range props.Segment.VMs {
+			if tagsByInstance[nsxVM.UUID] == nil {
+				tagsByInstance[nsxVM.UUID] = []api.InstancePropertiesSDNTag{}
+			}
+
+			for _, tag := range nsxVM.Tags {
+				if tag.Tag == "" {
+					continue
+				}
+
+				sdnTag := api.InstancePropertiesSDNTag{Scope: tag.Scope, Tag: tag.Tag}
+				if !slices.Contains(tagsByInstance[nsxVM.UUID], sdnTag) {
+					tagsByInstance[nsxVM.UUID] = append(tagsByInstance[nsxVM.UUID], sdnTag)
+				}
+			}
+		}
+	}
+
+	if !hasSDNData {
+		return nil, nil
+	}
+
+	return tagsByInstance, nil
+}
+
 // ToAPI returns the API representation of a network.
 func (n Network) ToAPI() (*api.Network, error) {
 	// Assume a managed network of the same name by default.

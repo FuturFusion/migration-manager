@@ -52,7 +52,7 @@ func TestSourceService_Create(t *testing.T) {
 			source: migration.Source{
 				ID:         1,
 				Name:       "one",
-				SourceType: api.SOURCETYPE_NSX,
+				SourceType: api.SOURCETYPE_NSX_T,
 				Properties: json.RawMessage(`{
   "endpoint": "endpoint.url",
   "username": "user",
@@ -64,7 +64,7 @@ func TestSourceService_Create(t *testing.T) {
 			repoCreateSource: migration.Source{
 				ID:         1,
 				Name:       "one",
-				SourceType: api.SOURCETYPE_NSX,
+				SourceType: api.SOURCETYPE_NSX_T,
 				Properties: json.RawMessage(`{"endpoint":"endpoint.url","username":"user","password":"pass","connectivity_status":"OK","connection_timeout":"10m0s","sync_timeout":"10s","sync_limit":1,"datacenters":["/..."],"compute_managers":null,"segments":null,"edge_nodes":null,"policies":null}`),
 			},
 

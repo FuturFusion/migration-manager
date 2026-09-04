@@ -23,6 +23,11 @@ export interface InstancePropertiesSnapshot {
   name: string;
 }
 
+export interface InstancePropertiesSDNTag {
+  scope: string;
+  tag: string;
+}
+
 export interface InstanceProperties {
   uuid: string;
   name: string;
@@ -42,6 +47,7 @@ export interface InstanceProperties {
   nics: InstancePropertiesNIC[];
   disks: InstancePropertiesDisk[];
   snapshots: InstanceSnapshotInfo[];
+  sdn_tags: InstancePropertiesSDNTag[];
 }
 
 export interface InstancePropertiesConfigurable {
@@ -92,6 +98,7 @@ export interface Instance {
   nics: InstancePropertiesNIC[];
   disks: InstancePropertiesDisk[];
   snapshots: InstanceSnapshotInfo[];
+  sdn_tags: InstancePropertiesSDNTag[];
   overrides: InstanceOverride;
 }
 

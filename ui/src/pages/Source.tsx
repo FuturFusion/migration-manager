@@ -39,7 +39,7 @@ const Source = () => {
       endpoint = props.endpoint;
       connStatus = props.connectivity_status;
       username = props.username;
-    } else if (item.source_type == SourceType.NSX) {
+    } else if (item.source_type == SourceType.NSXT) {
       const props = item.properties as NSXProperties;
       endpoint = props.endpoint;
       connStatus = props.connectivity_status;

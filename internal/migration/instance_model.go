@@ -181,6 +181,27 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 	return nil
 }
 
+// SDNTagsKeyPrefix is the instance config key prefix used for SDN tags on the target.
+const SDNTagsKeyPrefix = "user.sdn.tags"
+
+// SDNTagConfig returns the instance's SDN tags as `user.sdn.tags.{index}.{scope}={tag}` config keys.
+// The index only distinguishes tags sharing a scope, and tags without a scope use the tag itself as scope.
+func (i Instance) SDNTagConfig() map[string]string {
+	config := map[string]string{}
+	indexByScope := map[string]int{}
+	for _, tag := range i.Properties.SDNTags {
+		scope := tag.Scope
+		if scope == "" {
+			scope = tag.Tag
+		}
+
+		config[fmt.Sprintf("%s.%d.%s", SDNTagsKeyPrefix, indexByScope[scope], scope)] = tag.Tag
+		indexByScope[scope]++
+	}
+
+	return config
+}
+
 // GetName returns the name of the instance, which may not be unique among all instances for a given source.
 // If a unique, human-readable identifier is needed, use the Location property.
 func (i Instance) GetName() string {
@@ -503,6 +524,13 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 		instanceUpdated = true
 	}
 
+	// A nil set of SDN tags means the SDN manager didn't report, so keep the recorded ones.
+	if srcInst.Properties.SDNTags != nil && !slices.Equal(inst.Properties.SDNTags, srcInst.Properties.SDNTags) {
+		log.Debug("Instance SDN tags changed")
+		inst.Properties.SDNTags = srcInst.Properties.SDNTags
+		instanceUpdated = true
+	}
+
 	return inst, instanceUpdated
 }
 
@@ -594,6 +622,7 @@ func (i Instance) CompileIncludeExpression(expression string, locationAlias bool
 			NICs:      []api.InstancePropertiesNIC{},
 			Disks:     []api.InstancePropertiesDisk{},
 			Snapshots: []api.InstancePropertiesSnapshot{},
+			SDNTags:   []api.InstancePropertiesSDNTag{},
 		},
 	}
 

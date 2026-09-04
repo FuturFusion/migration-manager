@@ -52,6 +52,13 @@ type NSXVirtualMachine struct {
 	UUID        uuid.UUID `json:"external_id"  yaml:"external_id"`
 	DisplayName string    `json:"display_name" yaml:"display_name"`
 	VIFs        []NSXVIF  `json:"vifs"         yaml:"vifs"`
+	Tags        []NSXTag  `json:"tags"         yaml:"tags"`
+}
+
+// NSXTag is a security tag applied to an NSX object, with an optional scope.
+type NSXTag struct {
+	Scope string `json:"scope" yaml:"scope"`
+	Tag   string `json:"tag"   yaml:"tag"`
 }
 
 // NSXVIF is an NSX registered VIF from /api/v1/fabric/vifs.

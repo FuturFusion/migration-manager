@@ -11,7 +11,7 @@ type SourceType string
 
 const (
 	SOURCETYPE_VMWARE SourceType = "vmware"
-	SOURCETYPE_NSX    SourceType = "nsx"
+	SOURCETYPE_NSX_T  SourceType = "nsx-t"
 )
 
 // VMSourceTypes are the list of source types that manage VMs.
@@ -21,7 +21,7 @@ func VMSourceTypes() []SourceType {
 
 // NetworkSourceTypes are the list of source types that manage networks.
 func NetworkSourceTypes() []SourceType {
-	return []SourceType{SOURCETYPE_NSX}
+	return []SourceType{SOURCETYPE_NSX_T}
 }
 
 // Source defines properties common to all sources.

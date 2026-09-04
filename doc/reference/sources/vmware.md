@@ -104,7 +104,10 @@ Migration Manager requires certain permissions in order to perform migrations:
 
 ## NSX
 
-NSX Managers can be imported as sources. For any existing vCenter source, additional network properties such as segment paths, IP pools, and gateway and security policies will be imported.
+NSX Managers can be imported as sources of type `nsx-t`. For any existing vCenter source, additional network properties such as segment paths, IP pools, and gateway and security policies will be imported.
+
+Security tags applied to VMs in NSX are imported as the `sdn_tags` instance property, and can be used in [filters](../filters.md).
+They are applied to migrated instances as `user.sdn.tags.{index}.{scope}={tag}` config keys, where the index only distinguishes tags sharing a scope.
 
 ## Periodic sync
 

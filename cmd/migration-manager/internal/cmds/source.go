@@ -17,7 +17,7 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-var supportedSourceTypes = []string{string(api.SOURCETYPE_VMWARE), string(api.SOURCETYPE_NSX)}
+var supportedSourceTypes = []string{string(api.SOURCETYPE_VMWARE), string(api.SOURCETYPE_NSX_T)}
 
 type CmdSource struct {
 	Global *CmdGlobal
@@ -110,7 +110,7 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 
 	// Add the source.
 	switch api.SourceType(sourceType) {
-	case api.SOURCETYPE_NSX:
+	case api.SOURCETYPE_NSX_T:
 		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		sourceUsername, err := c.global.Asker.AskString("Please enter username for endpoint '"+sourceEndpoint+"': ", "", validate.IsNotEmpty)
@@ -260,7 +260,7 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 
 	for _, s := range sources {
 		switch s.SourceType {
-		case api.SOURCETYPE_NSX:
+		case api.SOURCETYPE_NSX_T:
 			fallthrough
 		case api.SOURCETYPE_VMWARE:
 			vmwareProperties := api.VMwareProperties{}
@@ -361,7 +361,7 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	origSourceName := ""
 	newSourceName := ""
 	switch src.SourceType {
-	case api.SOURCETYPE_NSX:
+	case api.SOURCETYPE_NSX_T:
 		fallthrough
 	case api.SOURCETYPE_VMWARE:
 		vmwareProperties := api.VMwareProperties{}

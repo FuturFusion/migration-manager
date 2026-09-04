@@ -121,8 +121,8 @@ const SourceForm: FC<Props> = ({ source, onSubmit }) => {
       value: SourceType.VMware,
     },
     {
-      name: SourceType.NSX,
-      value: SourceType.NSX,
+      name: SourceType.NSXT,
+      value: SourceType.NSXT,
     },
   ];
 
