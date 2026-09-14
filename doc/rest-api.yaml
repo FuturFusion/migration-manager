@@ -537,6 +537,12 @@ definitions:
                 x-go-name: SourceSpecificID
             source_type:
                 $ref: '#/definitions/SourceType'
+            tags:
+                description: List of tags applied to the Instance on its source.
+                items:
+                    $ref: '#/definitions/InstancePropertiesTag'
+                type: array
+                x-go-name: Tags
             tpm:
                 description: Whether the Instance has a TPM.
                 example: true
@@ -728,6 +734,12 @@ definitions:
                 example: vm-123 (vmware)
                 type: string
                 x-go-name: SourceSpecificID
+            tags:
+                description: List of tags applied to the Instance on its source.
+                items:
+                    $ref: '#/definitions/InstancePropertiesTag'
+                type: array
+                x-go-name: Tags
             tpm:
                 description: Whether the Instance has a TPM.
                 example: true
@@ -865,6 +877,21 @@ definitions:
                 type: string
                 x-go-name: Name
         title: InstancePropertiesSnapshot are all properties supported by snapshots.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstancePropertiesTag:
+        properties:
+            category:
+                description: Category of the tag, empty if the tag has none.
+                example: environment
+                type: string
+                x-go-name: Category
+            tag:
+                description: Value of the tag.
+                example: production
+                type: string
+                x-go-name: Tag
+        title: InstancePropertiesTag are all properties supported by source tags.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     InstanceRef:

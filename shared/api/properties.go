@@ -70,6 +70,9 @@ type InstanceProperties struct {
 
 	// List of tags applied to the Instance by the SDN manager of its networks.
 	SDNTags []InstancePropertiesSDNTag `json:"sdn_tags" yaml:"sdn_tags" expr:"sdn_tags"`
+
+	// List of tags applied to the Instance on its source.
+	Tags []InstancePropertiesTag `json:"tags" yaml:"tags" expr:"tags"`
 }
 
 // InstancePropertiesConfigurable are the configurable properties of an instance.
@@ -160,6 +163,17 @@ type InstancePropertiesSDNTag struct {
 	// Value of the tag.
 	// Example: web
 	Tag string `json:"tag"   yaml:"tag"   expr:"tag"`
+}
+
+// InstancePropertiesTag are all properties supported by source tags.
+type InstancePropertiesTag struct {
+	// Category of the tag, empty if the tag has none.
+	// Example: environment
+	Category string `json:"category" yaml:"category" expr:"category"`
+
+	// Value of the tag.
+	// Example: production
+	Tag string `json:"tag"      yaml:"tag"      expr:"tag"`
 }
 
 // SupportsBackgroundImport returns whether the instance has background import support, and all supported disks have been verified.

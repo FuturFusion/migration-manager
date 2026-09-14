@@ -354,6 +354,10 @@ func (p RawPropertySet[T]) ToAPI(unsupportedDisks map[string]bool) (*api.Instanc
 		detectedProperties.Config = map[string]string{}
 	}
 
+	if detectedProperties.Tags == nil {
+		detectedProperties.Tags = []api.InstancePropertiesTag{}
+	}
+
 	// NIC UUIDs are not a source property so ensure they aren't set in error.
 	for i, nic := range detectedProperties.NICs {
 		if nic.UUID != uuid.Nil {

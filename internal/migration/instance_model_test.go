@@ -87,6 +87,86 @@ func TestInstance_SDNTagConfig(t *testing.T) {
 	}
 }
 
+func TestInstance_TagConfig(t *testing.T) {
+	tests := []struct {
+		name string
+		tags []api.InstancePropertiesTag
+
+		want map[string]string
+	}{
+		{
+			name: "no tags",
+			tags: nil,
+
+			want: map[string]string{},
+		},
+		{
+			name: "tags sharing a category are indexed",
+			tags: []api.InstancePropertiesTag{
+				{Category: "app", Tag: "web"},
+				{Category: "app", Tag: "api"},
+				{Category: "dtap", Tag: "prod"},
+			},
+
+			want: map[string]string{
+				"user.tags.0.app":  "web",
+				"user.tags.1.app":  "api",
+				"user.tags.0.dtap": "prod",
+			},
+		},
+		{
+			name: "categoryless tags use the tag as category",
+			tags: []api.InstancePropertiesTag{{Tag: "foo"}},
+
+			want: map[string]string{"user.tags.0.foo": "foo"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			instance := migration.Instance{Properties: api.InstanceProperties{Tags: tc.tags}}
+
+			require.Equal(t, tc.want, instance.TagConfig())
+		})
+	}
+}
+
+func TestInstance_MatchesCriteriaTags(t *testing.T) {
+	instance := migration.Instance{
+		Properties: api.InstanceProperties{
+			Tags: []api.InstancePropertiesTag{
+				{Category: "mycategory", Tag: "tag1"},
+				{Tag: "uncategorized"},
+			},
+		},
+	}
+
+	tests := []struct {
+		expression string
+
+		want bool
+	}{
+		{expression: `has_tag('mycategory', 'tag1')`, want: true},
+		{expression: `has_tag('mycategory', 'tag')`, want: false},
+		{expression: `has_tag('othercategory', 'tag1')`, want: false},
+		{expression: `has_tag('*', 'tag1')`, want: true},
+		{expression: `matches_tag('mycategory', 'tag')`, want: true},
+		{expression: `matches_tag('*', 'categorized')`, want: true},
+		{expression: `matches_tag('*', 'nomatch')`, want: false},
+		{expression: `any(tags, .category == 'mycategory' and .tag == 'tag1')`, want: true},
+		{expression: `any(tags, .tag == 'uncategorized')`, want: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.expression, func(t *testing.T) {
+			got, err := instance.MatchesCriteria(tc.expression, false)
+
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func TestInstance_ApplyUpdatesSDNTags(t *testing.T) {
 	instance := func(tags []api.InstancePropertiesSDNTag) migration.Instance {
 		return migration.Instance{

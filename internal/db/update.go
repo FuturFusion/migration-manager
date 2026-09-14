@@ -3,9 +3,12 @@
 package db
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -80,6 +83,108 @@ var updates = map[int]schema.Update{
 	17: updateFromV16,
 	18: updateFromV17,
 	19: updateFromV18,
+	20: updateFromV19,
+}
+
+// updateFromV19 converts the legacy `tag.<category>` instance config keys into the `tags` property.
+//
+// For example, an instance whose properties are:
+//
+//	{"config": {"tag.env": "prod,staging", "vmware.resource_pool": "pool"}}
+//
+// becomes:
+//
+//	{"config": {"vmware.resource_pool": "pool"}, "tags": [{"category": "env", "tag": "prod"}, {"category": "env", "tag": "staging"}]}
+func updateFromV19(ctx context.Context, tx *sql.Tx) error {
+	rows, err := tx.QueryContext(ctx, `SELECT id, properties FROM instances;`)
+	if err != nil {
+		return err
+	}
+
+	propertiesByID := map[int]string{}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var id int
+		var props string
+		err := rows.Scan(&id, &props)
+		if err != nil {
+			return err
+		}
+
+		propertiesByID[id] = props
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return err
+	}
+
+	err = rows.Close()
+	if err != nil {
+		return err
+	}
+
+	for id, props := range propertiesByID {
+		var instProps map[string]any
+		err := json.Unmarshal([]byte(props), &instProps)
+		if err != nil {
+			return err
+		}
+
+		config, ok := instProps["config"].(map[string]any)
+		if !ok {
+			continue
+		}
+
+		legacyKeys := []string{}
+		tags := []api.InstancePropertiesTag{}
+		for key, value := range config {
+			if !strings.HasPrefix(key, "tag.") {
+				continue
+			}
+
+			legacyKeys = append(legacyKeys, key)
+
+			tagList, ok := value.(string)
+			if !ok {
+				continue
+			}
+
+			for _, tag := range strings.Split(tagList, ",") {
+				if tag == "" {
+					continue
+				}
+
+				tags = append(tags, api.InstancePropertiesTag{Category: strings.TrimPrefix(key, "tag."), Tag: tag})
+			}
+		}
+
+		if len(legacyKeys) == 0 {
+			continue
+		}
+
+		// Match the order the next sync produces, to avoid recording a spurious update.
+		slices.SortFunc(tags, func(a api.InstancePropertiesTag, b api.InstancePropertiesTag) int {
+			return cmp.Or(cmp.Compare(a.Category, b.Category), cmp.Compare(a.Tag, b.Tag))
+		})
+
+		for _, key := range legacyKeys {
+			delete(config, key)
+		}
+
+		instProps["tags"] = tags
+		b, err := json.Marshal(instProps)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.ExecContext(ctx, `UPDATE instances SET properties = ? WHERE id = ?;`, string(b), id)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func updateFromV18(ctx context.Context, tx *sql.Tx) error {

@@ -68,7 +68,7 @@ Without change tracking, migrations cannot occur with running VMs, prolonging do
 
 On top of the default properties imported from ESXi sources, Migration Manager supports tags, resource pools, and folder structure from vCenter:
 
-- Tags are available as config keys, prefixed with `tag.<category>` with tags as comma-separated values
+- Tags are available as the `tags` property, as a list of `category` and `tag` pairs
 - Resource pools are available as config keys, prefixed with `vmware.resource_pool` with the resource pool name as the value
 - Folder structure is included in the `location` path identifying the instance
 

@@ -181,25 +181,46 @@ func (i Instance) DisabledReason(overrides api.InstanceRestrictionOverride) erro
 	return nil
 }
 
-// SDNTagsKeyPrefix is the instance config key prefix used for SDN tags on the target.
-const SDNTagsKeyPrefix = "user.sdn.tags"
+const (
+	// SDNTagsKeyPrefix is the instance config key prefix used for SDN tags on the target.
+	SDNTagsKeyPrefix = "user.sdn.tags"
+	// TagsKeyPrefix is the instance config key prefix used for source tags on the target.
+	TagsKeyPrefix = "user.tags"
+)
 
-// SDNTagConfig returns the instance's SDN tags as `user.sdn.tags.{index}.{scope}={tag}` config keys.
-// The index only distinguishes tags sharing a scope, and tags without a scope use the tag itself as scope.
-func (i Instance) SDNTagConfig() map[string]string {
+// tagParser returns the group a tag is recorded under, and the tag's value.
+type tagParser[T any] func(tag T) (group string, value string)
+
+// tagConfig returns tags as `{prefix}.{index}.{group}={value}` config keys.
+// The index only distinguishes tags sharing a group, and tags without a group use the value as group.
+func tagConfig[T any](prefix string, tags []T, parse tagParser[T]) map[string]string {
 	config := map[string]string{}
-	indexByScope := map[string]int{}
-	for _, tag := range i.Properties.SDNTags {
-		scope := tag.Scope
-		if scope == "" {
-			scope = tag.Tag
+	indexByGroup := map[string]int{}
+	for _, tag := range tags {
+		group, value := parse(tag)
+		if group == "" {
+			group = value
 		}
 
-		config[fmt.Sprintf("%s.%d.%s", SDNTagsKeyPrefix, indexByScope[scope], scope)] = tag.Tag
-		indexByScope[scope]++
+		config[fmt.Sprintf("%s.%d.%s", prefix, indexByGroup[group], group)] = value
+		indexByGroup[group]++
 	}
 
 	return config
+}
+
+// SDNTagConfig returns the instance's SDN tags as `user.sdn.tags.{index}.{scope}={tag}` config keys.
+func (i Instance) SDNTagConfig() map[string]string {
+	return tagConfig(SDNTagsKeyPrefix, i.Properties.SDNTags, func(tag api.InstancePropertiesSDNTag) (string, string) {
+		return tag.Scope, tag.Tag
+	})
+}
+
+// TagConfig returns the instance's source tags as `user.tags.{index}.{category}={tag}` config keys.
+func (i Instance) TagConfig() map[string]string {
+	return tagConfig(TagsKeyPrefix, i.Properties.Tags, func(tag api.InstancePropertiesTag) (string, string) {
+		return tag.Category, tag.Tag
+	})
 }
 
 // GetName returns the name of the instance, which may not be unique among all instances for a given source.
@@ -531,6 +552,12 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 		instanceUpdated = true
 	}
 
+	if !slices.Equal(inst.Properties.Tags, srcInst.Properties.Tags) {
+		log.Debug("Instance tags changed")
+		inst.Properties.Tags = srcInst.Properties.Tags
+		instanceUpdated = true
+	}
+
 	return inst, instanceUpdated
 }
 
@@ -574,29 +601,20 @@ func (i Instance) CompileIncludeExpression(expression string, locationAlias bool
 			return s == tag
 		}
 
-		if exact {
+		if !exact {
 			containsFunc = func(s string) bool {
 				return strings.Contains(s, tag)
 			}
 		}
 
-		if category == "*" {
-			for k, v := range filterable.Config {
-				if strings.HasPrefix(k, "tag.") && containsFunc(v) {
-					return true, nil
-				}
+		for _, instTag := range filterable.Tags {
+			if category != "*" && instTag.Category != category {
+				continue
 			}
 
-			return false, nil
-		}
-
-		tagList, ok := filterable.Config["tag."+category]
-		if !ok {
-			return false, nil
-		}
-
-		if slices.ContainsFunc(strings.Split(tagList, ","), containsFunc) {
-			return true, nil
+			if containsFunc(instTag.Tag) {
+				return true, nil
+			}
 		}
 
 		return false, nil
@@ -623,6 +641,7 @@ func (i Instance) CompileIncludeExpression(expression string, locationAlias bool
 			Disks:     []api.InstancePropertiesDisk{},
 			Snapshots: []api.InstancePropertiesSnapshot{},
 			SDNTags:   []api.InstancePropertiesSDNTag{},
+			Tags:      []api.InstancePropertiesTag{},
 		},
 	}
 

@@ -30,8 +30,9 @@ Migration Manager has the following extended functions:
 | `hasPrefix(os, 'Windows')`                                             | Match the instances whose `os` starts with `Windows`                                                                        |
 | `path_base(location) == 'ubuntu2404' and source == 'esxi01'`           | Match the instances whose `location` path has the final segment `ubuntu2404`, from the source `esxi01`                      |
 | `config['key'] == 'value'`                                             | Match the instances whose `config` key-value pairs contain `value` for the key `key`                                        |
-| `len(split(config['tags.mycategory'], ',')) == 3`                      | Match the instances where that have 3 tags in category `mycategory`                                                         |
-| `any(split(config['tags.mycategory'], ','), # == 'tag1')`              | Match the instances that have the tag `tag1` under `mycategory`                                                             |
+| `len(filter(tags, .category == 'mycategory')) == 3`                    | Match the instances where that have 3 tags in category `mycategory`                                                         |
+| `any(tags, .category == 'mycategory' and .tag == 'tag1')`              | Match the instances that have the tag `tag1` under `mycategory`                                                             |
+| `any(tags, .tag == 'tag1')`                                            | Match the instances that have the tag `tag1` under any category                                                             |
 | `has_tag('mycategory', 'tag1')`                                        | Match the instances that have the tag `tag1` under `mycategory`                                                             |
 | `matches_tag('mycategory', 'mytag')`                                   | Match the instances that have any tag under `mycategory` that contain the text `mytag`                                      |
 | `has_tag('*', 'tag1')`                                                 | Match the instances that have the tag `tag1` under any category                                                             |

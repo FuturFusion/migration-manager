@@ -28,6 +28,11 @@ export interface InstancePropertiesSDNTag {
   tag: string;
 }
 
+export interface InstancePropertiesTag {
+  category: string;
+  tag: string;
+}
+
 export interface InstanceProperties {
   uuid: string;
   name: string;
@@ -48,6 +53,7 @@ export interface InstanceProperties {
   disks: InstancePropertiesDisk[];
   snapshots: InstanceSnapshotInfo[];
   sdn_tags: InstancePropertiesSDNTag[];
+  tags: InstancePropertiesTag[];
 }
 
 export interface InstancePropertiesConfigurable {
@@ -99,6 +105,7 @@ export interface Instance {
   disks: InstancePropertiesDisk[];
   snapshots: InstanceSnapshotInfo[];
   sdn_tags: InstancePropertiesSDNTag[];
+  tags: InstancePropertiesTag[];
   overrides: InstanceOverride;
 }
 

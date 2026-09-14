@@ -1,6 +1,7 @@
 package source
 
 import (
+	"cmp"
 	"context"
 	"crypto/x509"
 	"encoding/json"
@@ -404,13 +405,17 @@ func (s *InternalVMwareSource) getVM(ctx context.Context, vm *object.VirtualMach
 		}
 
 		for _, tag := range vmTags {
-			prefix := "tag." + catMap[tag.CategoryID]
-			if vmProps.Config[prefix] == "" {
-				vmProps.Config[prefix] = tag.Name
-			} else {
-				vmProps.Config[prefix] = vmProps.Config[prefix] + "," + tag.Name
+			if tag.Name == "" {
+				continue
 			}
+
+			vmProps.Tags = append(vmProps.Tags, api.InstancePropertiesTag{Category: catMap[tag.CategoryID], Tag: tag.Name})
 		}
+
+		// vCenter doesn't guarantee a tag order, so sort them to keep syncs and target config keys stable.
+		slices.SortFunc(vmProps.Tags, func(a api.InstancePropertiesTag, b api.InstancePropertiesTag) int {
+			return cmp.Or(cmp.Compare(a.Category, b.Category), cmp.Compare(a.Tag, b.Tag))
+		})
 
 		// Guarding against VMs with no resource pool.
 		if vmProperties.ResourcePool != nil {

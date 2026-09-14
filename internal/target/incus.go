@@ -370,8 +370,18 @@ func (t *InternalIncusTarget) SetPostMigrationVMConfig(ctx context.Context, i mi
 	apiDef.Config["volatile.uuid"] = props.UUID.String()
 	apiDef.Config["volatile.uuid.generation"] = props.UUID.String()
 
+	// Drop tags recorded by an earlier migration, as their indexes may no longer match the current ones.
+	for k := range apiDef.Config {
+		if strings.HasPrefix(k, migration.SDNTagsKeyPrefix+".") || strings.HasPrefix(k, migration.TagsKeyPrefix+".") {
+			delete(apiDef.Config, k)
+		}
+	}
+
 	// Record the SDN tags imported from the source.
 	maps.Copy(apiDef.Config, i.SDNTagConfig())
+
+	// Record the tags imported from the source.
+	maps.Copy(apiDef.Config, i.TagConfig())
 
 	// Apply CPU and memory limits.
 	for name, info := range defs.GetAll() {
