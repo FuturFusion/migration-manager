@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Routes, Route } from "react-router";
 import { Container } from "react-bootstrap";
 import Notification from "components/Notification";
@@ -32,14 +33,18 @@ import WarningDetail from "pages/WarningDetail";
 function App() {
   const { isAuthenticated, isAuthLoading } = useAuth();
 
-  if (isAuthLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!isAuthenticated) {
-    if (window.location.pathname !== "/ui/") {
+  useEffect(() => {
+    if (
+      !isAuthLoading &&
+      !isAuthenticated &&
+      window.location.pathname !== "/ui/"
+    ) {
       window.location.href = "/ui/";
     }
+  }, [isAuthLoading, isAuthenticated]);
+
+  if (isAuthLoading) {
+    return <div>Loading...</div>;
   }
 
   return (

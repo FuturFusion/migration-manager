@@ -18,9 +18,7 @@ export default tseslint.config(
       'react-refresh': reactRefresh,
     },
     rules: {
-      // eslint-plugin-react-hooks 7 recommends React Compiler rules we don't comply with yet.
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
+      ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },

@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC } from "react";
 import { Button, Form, Table } from "react-bootstrap";
 import DatePicker from "react-datepicker";
 import { BsPlus, BsTrash } from "react-icons/bs";
@@ -11,24 +11,17 @@ interface Props {
 }
 
 const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
-  const [entries, setEntries] = useState<MigrationWindow[]>(value || []);
+  const entries = value || [];
 
   const handleAdd = () => {
-    const newValues = [
+    onChange([
       ...entries,
       { name: "", start: "", end: "", lockout: "", config: { capacity: 0 } },
-    ];
-    setEntries(newValues);
+    ]);
   };
 
-  useEffect(() => {
-    setEntries(value || []);
-  }, [value]);
-
   const handleDelete = (index: number) => {
-    const updated = entries.filter((_, idx) => idx != index);
-    setEntries(updated);
-    onChange(updated);
+    onChange(entries.filter((_, idx) => idx != index));
   };
 
   function updateField(
@@ -71,7 +64,6 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
     const newValues = entries.map((item, idx) =>
       idx === index ? newValue : item,
     );
-    setEntries(newValues);
     onChange(newValues);
   };
 

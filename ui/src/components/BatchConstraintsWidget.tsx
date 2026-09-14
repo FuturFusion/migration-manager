@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC } from "react";
 import { Button, Form, Table } from "react-bootstrap";
 import { BsPlus, BsTrash } from "react-icons/bs";
 import { BatchConstraint } from "types/batch";
@@ -17,39 +17,20 @@ const INITIAL_CONSTRAINT = {
 };
 
 const BatchConstraintsWidget: FC<Props> = ({ value, onChange }) => {
-  const [entries, setEntries] = useState<BatchConstraint[]>(value || []);
+  const entries = value || [];
 
   const handleAdd = () => {
-    const newValues = [...entries, INITIAL_CONSTRAINT];
-    setEntries(newValues);
+    onChange([...entries, { ...INITIAL_CONSTRAINT }]);
   };
-
-  useEffect(() => {
-    setEntries(value || []);
-  }, [value]);
 
   const handleDelete = (index: number) => {
-    const updated = entries.filter((_, idx) => idx != index);
-    setEntries(updated);
-    onChange(updated);
+    onChange(entries.filter((_, idx) => idx != index));
   };
 
-  function updateConstraintField<T, K extends keyof T>(
-    obj: T,
-    key: K,
-    value: T[K],
-  ) {
-    obj[key] = value;
-  }
-
   const handleEdit = (index: number, field: string, value: string | number) => {
-    const newValue = entries[index];
-    updateConstraintField(newValue, field as keyof BatchConstraint, value);
-
     const newValues = entries.map((item, idx) =>
-      idx === index ? newValue : item,
+      idx === index ? { ...item, [field]: value } : item,
     );
-    setEntries(newValues);
     onChange(newValues);
   };
 
