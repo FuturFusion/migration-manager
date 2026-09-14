@@ -26,8 +26,8 @@ test("add new item to MigrationWindowsWidget", async () => {
   await userEvent.type(lockoutInput, "2025-06-03 09:00:00");
   await userEvent.type(capacityInput, "5");
 
-  // Check if onChange was called with correct data
-  expect(handleChange).toHaveBeenCalledTimes(5);
+  // The date pickers report intermediate values while a date is being typed.
+  expect(handleChange).toHaveBeenCalledTimes(10);
   expect(handleChange).toHaveBeenCalledWith([
     {
       name: "w",

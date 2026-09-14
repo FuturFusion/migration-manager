@@ -99,7 +99,9 @@ const SourceOverview = () => {
             <div className="col-2 detail-table-header">Datacenters</div>
             <div className="col-10 detail-table-cell">
               {(source?.properties as VMwareProperties).datacenters?.map(
-                (item, index) => <div key={index}>{item}</div>,
+                (item, index) => (
+                  <div key={index}>{item}</div>
+                ),
               )}
             </div>
           </div>

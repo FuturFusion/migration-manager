@@ -99,7 +99,7 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
                       className="form-control form-control-sm"
                       placeholderText="Start"
                       selected={item.start ? new Date(item.start) : null}
-                      onChange={(date) =>
+                      onChange={(date: Date | null) =>
                         handleEdit(
                           index,
                           "start",
@@ -118,7 +118,7 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
                       className="form-control form-control-sm"
                       placeholderText="End"
                       selected={item.end ? new Date(item.end) : null}
-                      onChange={(date) =>
+                      onChange={(date: Date | null) =>
                         handleEdit(
                           index,
                           "end",
@@ -137,7 +137,7 @@ const MigrationWindowsWidget: FC<Props> = ({ value, onChange }) => {
                       className="form-control form-control-sm"
                       placeholderText="Lockout"
                       selected={item.lockout ? new Date(item.lockout) : null}
-                      onChange={(date) =>
+                      onChange={(date: Date | null) =>
                         handleEdit(
                           index,
                           "lockout",
