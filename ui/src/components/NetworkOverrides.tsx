@@ -97,7 +97,7 @@ const NetworkOverrides: FC = () => {
             value={formik.values.nictype}
             onChange={(e) => {
               if (!canSetVLAN(e.target.value as IncusNICType)) {
-                formik.values.vlan_id = "";
+                formik.setFieldValue("vlan_id", "");
               }
 
               formik.handleChange(e);

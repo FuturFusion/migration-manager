@@ -1,14 +1,13 @@
 {
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
-      "api/*": ["src/api/*"],
-      "components/*": ["src/components/*"],
-      "context/*": ["src/context/*"],
-      "pages/*": ["src/pages/*"],
-      "types/*": ["src/types/*"],
-      "util/*": ["src/util/*"],
-      "*": ["types/*.d.ts"],
+      "api/*": ["./src/api/*"],
+      "components/*": ["./src/components/*"],
+      "context/*": ["./src/context/*"],
+      "pages/*": ["./src/pages/*"],
+      "types/*": ["./src/types/*"],
+      "util/*": ["./src/util/*"],
+      "*": ["./types/*.d.ts"],
     },
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "ES2020",

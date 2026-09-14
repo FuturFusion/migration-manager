@@ -1,12 +1,32 @@
+import { FC, useState } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 import MigrationWindowsWidget from "components/MigrationWindowsWidget";
+import { MigrationWindow } from "types/batch";
+
+// The widget derives its entries from the value passed in, so the test has to
+// feed the reported value back in, like the form it is embedded in does.
+const StatefulWidget: FC<{ onChange: (value: MigrationWindow[]) => void }> = ({
+  onChange,
+}) => {
+  const [value, setValue] = useState<MigrationWindow[]>([]);
+
+  return (
+    <MigrationWindowsWidget
+      value={value}
+      onChange={(newValue) => {
+        setValue(newValue);
+        onChange(newValue);
+      }}
+    />
+  );
+};
 
 test("add new item to MigrationWindowsWidget", async () => {
   const handleChange = vi.fn();
 
-  render(<MigrationWindowsWidget value={[]} onChange={handleChange} />);
+  render(<StatefulWidget onChange={handleChange} />);
 
   const addButton = screen.getByTitle("Add");
 
@@ -26,8 +46,8 @@ test("add new item to MigrationWindowsWidget", async () => {
   await userEvent.type(lockoutInput, "2025-06-03 09:00:00");
   await userEvent.type(capacityInput, "5");
 
-  // Check if onChange was called with correct data
-  expect(handleChange).toHaveBeenCalledTimes(5);
+  // Adding the window reports once, the date pickers report intermediate values.
+  expect(handleChange).toHaveBeenCalledTimes(11);
   expect(handleChange).toHaveBeenCalledWith([
     {
       name: "w",

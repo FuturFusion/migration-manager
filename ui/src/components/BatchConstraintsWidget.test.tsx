@@ -1,12 +1,32 @@
+import { FC, useState } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 import BatchConstraintsWidget from "components/BatchConstraintsWidget";
+import { BatchConstraint } from "types/batch";
+
+// The widget derives its entries from the value passed in, so the test has to
+// feed the reported value back in, like the form it is embedded in does.
+const StatefulWidget: FC<{ onChange: (value: BatchConstraint[]) => void }> = ({
+  onChange,
+}) => {
+  const [value, setValue] = useState<BatchConstraint[]>([]);
+
+  return (
+    <BatchConstraintsWidget
+      value={value}
+      onChange={(newValue) => {
+        setValue(newValue);
+        onChange(newValue);
+      }}
+    />
+  );
+};
 
 test("add new item to BatchConstraintsWidget", async () => {
   const handleChange = vi.fn();
 
-  render(<BatchConstraintsWidget value={[]} onChange={handleChange} />);
+  render(<StatefulWidget onChange={handleChange} />);
 
   const addButton = screen.getByTitle("Add");
 
@@ -31,7 +51,7 @@ test("add new item to BatchConstraintsWidget", async () => {
   await userEvent.type(minBootTimeInput, "10s");
 
   // Check if onChange was called with correct data
-  expect(handleChange).toHaveBeenCalledTimes(15);
+  expect(handleChange).toHaveBeenCalledTimes(16);
   expect(handleChange).toHaveBeenCalledWith([
     {
       name: "c1",

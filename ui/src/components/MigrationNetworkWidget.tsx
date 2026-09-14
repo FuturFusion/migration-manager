@@ -1,4 +1,4 @@
-import { FC, useEffect, useState } from "react";
+import { FC } from "react";
 import { Button, Form, Table } from "react-bootstrap";
 import { BsPlus, BsTrash } from "react-icons/bs";
 import { MigrationNetworkPlacement } from "types/batch";
@@ -12,12 +12,10 @@ interface Props {
 }
 
 const MigrationNetworkWidget: FC<Props> = ({ targets, value, onChange }) => {
-  const [entries, setEntries] = useState<MigrationNetworkPlacement[]>(
-    value || [],
-  );
+  const entries = value || [];
 
   const handleAdd = () => {
-    const newValues = [
+    onChange([
       ...entries,
       {
         target: "",
@@ -26,18 +24,11 @@ const MigrationNetworkWidget: FC<Props> = ({ targets, value, onChange }) => {
         nictype: "" as IncusNICType,
         vlan_id: "",
       },
-    ];
-    setEntries(newValues);
+    ]);
   };
 
-  useEffect(() => {
-    setEntries(value || []);
-  }, [value]);
-
   const handleDelete = (index: number) => {
-    const updated = entries.filter((_, idx) => idx != index);
-    setEntries(updated);
-    onChange(updated);
+    onChange(entries.filter((_, idx) => idx != index));
   };
 
   function updateField(
@@ -55,7 +46,20 @@ const MigrationNetworkWidget: FC<Props> = ({ targets, value, onChange }) => {
     const newValues = entries.map((item, idx) =>
       idx === index ? newValue : item,
     );
-    setEntries(newValues);
+    onChange(newValues);
+  };
+
+  // Clearing the VLAN ID has to happen in the same update as the NIC type.
+  const handleEditNICType = (index: number, nictype: IncusNICType) => {
+    const newValues = entries.map((item, idx) =>
+      idx === index
+        ? {
+            ...item,
+            nictype: nictype,
+            vlan_id: canSetVLAN(nictype) ? item.vlan_id : "",
+          }
+        : item,
+    );
     onChange(newValues);
   };
 
@@ -125,13 +129,9 @@ const MigrationNetworkWidget: FC<Props> = ({ targets, value, onChange }) => {
                       name="nictype"
                       size="sm"
                       value={item.nictype}
-                      onChange={(e) => {
-                        if (!canSetVLAN(e.target.value as IncusNICType)) {
-                          item.vlan_id = "";
-                        }
-
-                        handleEdit(index, "nictype", e.target.value);
-                      }}
+                      onChange={(e) =>
+                        handleEditNICType(index, e.target.value as IncusNICType)
+                      }
                     >
                       <option value="">-- NIC Type --</option>
                       {Object.values(IncusNICType).map((value) => (

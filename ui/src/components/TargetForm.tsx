@@ -25,9 +25,12 @@ const TargetForm: FC<Props> = ({ target, onSubmit }) => {
     setShowFingerprintModal(false);
   };
 
-  const handleCertFingerprintConfirm = () => {
+  const handleCertFingerprintConfirm = async () => {
     setShowFingerprintModal(false);
-    formik.values.trustedServerCertificateFingerprint = certFingerprint ?? "";
+    await formik.setFieldValue(
+      "trustedServerCertificateFingerprint",
+      certFingerprint ?? "",
+    );
     formik.handleSubmit();
   };
 
