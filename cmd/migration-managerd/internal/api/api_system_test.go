@@ -2,7 +2,9 @@ package api
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"log/slog"
 	"net"
 	"net/http"
@@ -16,6 +18,7 @@ import (
 	"github.com/FuturFusion/migration-manager/cmd/migration-managerd/internal/listener"
 	"github.com/FuturFusion/migration-manager/internal/acme"
 	"github.com/FuturFusion/migration-manager/internal/server/auth/oidc"
+	"github.com/FuturFusion/migration-manager/internal/testcert"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -86,6 +89,7 @@ func TestSecurityUpdate(t *testing.T) {
 		initConfig api.SystemConfig
 		config     api.SystemSecurity
 		wantConfig api.SystemSecurity
+		rawConfig  []byte
 
 		changedOIDC    bool
 		changedOpenFGA bool
@@ -131,6 +135,22 @@ func TestSecurityUpdate(t *testing.T) {
 			wantConfig:     api.SystemSecurity{TrustedTLSClientCertFingerprints: []string{"a"}, ACME: acme.SetACMEDefaults(api.SystemSecurityACME{})},
 			changedOpenFGA: true,
 			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name:   "success - replace fingerprints with trusted certificate",
+			config: api.SystemSecurity{TrustedTLSClientCertificates: []api.Certificate{testTrustedCertificate()}},
+			wantConfig: api.SystemSecurity{
+				TrustedTLSClientCertificates: []api.Certificate{testTrustedCertificate()},
+				ACME:                         acme.SetACMEDefaults(api.SystemSecurityACME{}),
+			},
+
+			changedOpenFGA: true,
+			wantHTTPStatus: http.StatusOK,
+		},
+		{
+			name:           "error - invalid trusted certificate",
+			rawConfig:      []byte(`{"trusted_tls_client_certificates":["not a certificate"]}`),
+			wantHTTPStatus: http.StatusBadRequest,
 		},
 		{
 			name:           "success - remove trusted fingerprint",
@@ -225,8 +245,11 @@ func TestSecurityUpdate(t *testing.T) {
 
 			client, srvURL := startTestDaemon(t, daemon, []APIEndpoint{systemSecurityCmd}, nil)
 
-			b, err := json.Marshal(tc.config)
-			require.NoError(t, err)
+			b := tc.rawConfig
+			if b == nil {
+				b, err = json.Marshal(tc.config)
+				require.NoError(t, err)
+			}
 
 			oldCfg := daemon.config
 			oldAuthorizer := daemon.authorizer
@@ -258,12 +281,21 @@ func TestSecurityUpdate(t *testing.T) {
 				}
 
 				require.Equal(t, tc.wantConfig.TrustedTLSClientCertFingerprints, daemon.config.Security.TrustedTLSClientCertFingerprints)
+				if len(tc.wantConfig.TrustedTLSClientCertificates) > 0 {
+					require.Contains(t, daemon.TrustedFingerprints(), testcert.LocalhostCertFingerprint)
+				}
 			} else {
 				require.Equal(t, oldCfg.Security, daemon.config.Security)
 				require.Equal(t, oldAuthorizer, daemon.authorizer)
 			}
 		})
 	}
+}
+
+func testTrustedCertificate() api.Certificate {
+	block, _ := pem.Decode(testcert.LocalhostCert)
+	cert, _ := x509.ParseCertificate(block.Bytes)
+	return api.Certificate{Certificate: cert}
 }
 
 func TestNetworkUpdate(t *testing.T) {
