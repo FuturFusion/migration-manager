@@ -41,6 +41,7 @@ See [Events](events) for more information about logging events.
 | Configuration                          | Description                                                              | Value(s)          | Default |
 | :---                                   | :---                                                                     | :---              | :---    |
 | `trusted_tls_client_cert_fingerprints` | List of SHA256 certificate fingerprints belonging to trusted TLS clients | list of strings   |         |
+| `trusted_tls_client_certificates`      | List of X509 PEM encoded certificates belonging to trusted TLS clients   | list of strings   |         |
 | `oidc`                                 | OIDC configuration                                                       |                   |         |
 | `openfga`                              | OpenFGA configuration                                                    |                   |         |
 | `acme`                                 | ACME certificate renewal configuration                                   |                   |         |
