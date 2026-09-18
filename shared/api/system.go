@@ -2,8 +2,10 @@ package api
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
+	incusTLS "github.com/lxc/incus/v7/shared/tls"
 )
 
 // SystemConfig is the full set of system configuration options for Migration Manager.
@@ -109,6 +111,9 @@ type SystemSecurity struct {
 	// An array of SHA256 certificate fingerprints that belong to trusted TLS clients.
 	TrustedTLSClientCertFingerprints []string `json:"trusted_tls_client_cert_fingerprints" yaml:"trusted_tls_client_cert_fingerprints"`
 
+	// An array of X509 PEM encoded certificates that belong to trusted TLS clients.
+	TrustedTLSClientCertificates []Certificate `json:"trusted_tls_client_certificates" yaml:"trusted_tls_client_certificates"`
+
 	// An array of trusted HTTPS proxy addresses.
 	TrustedHTTPSProxies []string `json:"trusted_https_proxies" yaml:"trusted_https_proxies"`
 
@@ -120,6 +125,43 @@ type SystemSecurity struct {
 
 	// ACME configuration.
 	ACME SystemSecurityACME `json:"acme" yaml:"acme"`
+}
+
+// TrustedTLSClientFingerprints returns configured and certificate-derived fingerprints.
+func (s SystemSecurity) TrustedTLSClientFingerprints() ([]string, error) {
+	fingerprints := make([]string, 0, len(s.TrustedTLSClientCertFingerprints)+len(s.TrustedTLSClientCertificates))
+	seen := make(map[string]struct{}, len(s.TrustedTLSClientCertFingerprints)+len(s.TrustedTLSClientCertificates))
+	addFingerprint := func(fingerprint string) error {
+		canonicalFingerprint := strings.ToLower(strings.ReplaceAll(fingerprint, ":", ""))
+		_, exists := seen[canonicalFingerprint]
+		if exists {
+			return fmt.Errorf("Duplicate trusted TLS client certificate fingerprint %q", fingerprint)
+		}
+
+		seen[canonicalFingerprint] = struct{}{}
+		fingerprints = append(fingerprints, canonicalFingerprint)
+		return nil
+	}
+
+	for _, fingerprint := range s.TrustedTLSClientCertFingerprints {
+		err := addFingerprint(fingerprint)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for i, certificate := range s.TrustedTLSClientCertificates {
+		if certificate.Certificate == nil {
+			return nil, fmt.Errorf("Trusted TLS client certificate at index %d is empty", i)
+		}
+
+		err := addFingerprint(incusTLS.CertFingerprint(certificate.Certificate))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return fingerprints, nil
 }
 
 // SystemSecurityOIDC is the OIDC related part of the system's security configuration.

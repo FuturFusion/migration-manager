@@ -122,8 +122,18 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 		return fmt.Errorf("Network address %q cannot be unset", oldCfg.Network.Address)
 	}
 
-	if len(oldCfg.Security.TrustedTLSClientCertFingerprints) > 0 && len(newCfg.Security.TrustedTLSClientCertFingerprints) == 0 {
-		return fmt.Errorf("Last trusted TLS client certificate fingerprint cannot be removed")
+	trustedFingerprints, err := newCfg.Security.TrustedTLSClientFingerprints()
+	if err != nil {
+		return err
+	}
+
+	oldTrustedFingerprints, err := oldCfg.Security.TrustedTLSClientFingerprints()
+	if err != nil {
+		return err
+	}
+
+	if len(oldTrustedFingerprints) > 0 && len(trustedFingerprints) == 0 {
+		return fmt.Errorf("Last trusted TLS client certificate cannot be removed")
 	}
 
 	if len(newCfg.Security.TrustedHTTPSProxies) != 0 && newCfg.Network.Address == "" {
@@ -136,7 +146,7 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 		}
 	}
 
-	err := acme.ValidateACMEConfig(newCfg.Security.ACME)
+	err = acme.ValidateACMEConfig(newCfg.Security.ACME)
 	if err != nil {
 		return err
 	}

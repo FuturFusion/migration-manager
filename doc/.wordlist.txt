@@ -33,6 +33,7 @@ NIC
 NICs
 NSX
 OIDC
+PEM
 OpenFGA
 OpenMetrics
 pre

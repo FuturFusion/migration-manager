@@ -13,6 +13,8 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
   const formikInitialValues: SystemSecurity = {
     trusted_tls_client_cert_fingerprints:
       security?.trusted_tls_client_cert_fingerprints ?? [],
+    trusted_tls_client_certificates:
+      security?.trusted_tls_client_certificates ?? [],
     trusted_https_proxies: security?.trusted_https_proxies ?? [],
     oidc: {
       issuer: security?.oidc.issuer ?? "",
@@ -51,6 +53,8 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
           values.trusted_tls_client_cert_fingerprints.filter(
             (s) => s.trim() !== "",
           ),
+        trusted_tls_client_certificates:
+          values.trusted_tls_client_certificates.filter((s) => s.trim() !== ""),
         acme: {
           ...values.acme,
           provider_environment: values.acme.provider_environment.filter(
@@ -86,6 +90,27 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
                 }}
                 onBlur={formik.handleBlur}
               />
+            </Form.Group>
+            <Form.Group className="mb-3" controlId="trusted_tls_certificates">
+              <Form.Label>Trusted TLS client certificates</Form.Label>
+              <Form.Control
+                type="text"
+                as="textarea"
+                rows={10}
+                name="trusted_tls_client_certificates"
+                value={formik.values.trusted_tls_client_certificates.join("\n")}
+                onChange={(e) => {
+                  const certificates = e.target.value.match(
+                    /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g,
+                  );
+                  formik.setFieldValue(
+                    "trusted_tls_client_certificates",
+                    certificates ?? [],
+                  );
+                }}
+                onBlur={formik.handleBlur}
+              />
+              <Form.Text>Paste one or more PEM encoded certificates.</Form.Text>
             </Form.Group>
             <Form.Group className="mb-3" controlId="trusted_https_proxies">
               <Form.Label>Trusted HTTPS proxies</Form.Label>
