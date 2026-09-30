@@ -48,13 +48,21 @@ type Authorizer interface {
 // Opts is used as part of the LoadAuthorizer function so that only the relevant configuration fields are passed into a
 // particular driver.
 type Opts struct {
-	config map[string]any
+	config                         map[string]any
+	metricsCertificateFingerprints []string
 }
 
 // WithConfig can be passed into LoadAuthorizer to pass in driver specific configuration.
 func WithConfig(c map[string]any) func(*Opts) {
 	return func(o *Opts) {
 		o.config = c
+	}
+}
+
+// WithMetricsCertificateFingerprints configures certificates restricted to metrics access.
+func WithMetricsCertificateFingerprints(fingerprints []string) func(*Opts) {
+	return func(o *Opts) {
+		o.metricsCertificateFingerprints = fingerprints
 	}
 }
 

@@ -231,6 +231,11 @@ func (f *FGA) CheckPermission(ctx context.Context, r *http.Request, object Objec
 		Object:   object.String(),
 	}
 
+	if entitlement == EntitlementCanViewMetrics {
+		// Metrics access follows the existing view relation for OpenFGA compatibility.
+		body.Relation = string(EntitlementCanView)
+	}
+
 	slog.Debug("Checking OpenFGA relation", slog.Any("object", object), slog.Any("entitlement", entitlement), slog.String("url", r.URL.String()), slog.String("method", r.Method), slog.String("username", username), slog.String("protocol", details.Protocol))
 	resp, err := f.client.Check(ctx).Body(body).Execute()
 	if err != nil {

@@ -12,11 +12,16 @@ import (
 type TLS struct {
 	commonAuthorizer
 
-	certificateFingerprints []string
+	certificateFingerprints        []string
+	metricsCertificateFingerprints []string
 }
 
 func (t *TLS) load(ctx context.Context, certificateFingerprints []string, opts Opts) error {
 	t.certificateFingerprints = certificateFingerprints
+	if len(opts.metricsCertificateFingerprints) > 0 {
+		t.metricsCertificateFingerprints = opts.metricsCertificateFingerprints
+	}
+
 	return nil
 }
 
@@ -42,6 +47,17 @@ func (t *TLS) CheckPermission(ctx context.Context, r *http.Request, object Objec
 	if details.Username == "migration-manager-worker" {
 		// If the request is from migration-manager-worker, then it was authenticated by secret token and can be let through.
 		return nil
+	}
+
+	for _, fingerprint := range t.metricsCertificateFingerprints {
+		canonicalFingerprint := strings.ToLower(strings.ReplaceAll(fingerprint, ":", ""))
+		if canonicalFingerprint == details.Username {
+			if entitlement == EntitlementCanViewMetrics {
+				return nil
+			}
+
+			return api.StatusErrorf(http.StatusForbidden, "Client certificate is restricted to metrics access")
+		}
 	}
 
 	for _, fingerprint := range t.certificateFingerprints {
