@@ -384,7 +384,13 @@ func (d *Daemon) TrustedFingerprints() []string {
 		return nil
 	}
 
-	return trustedFingerprints
+	metricsFingerprints, err := d.config.Security.TrustedTLSMetricsClientFingerprints()
+	if err != nil {
+		slog.Error("Failed to derive trusted TLS metrics client certificate fingerprints", logger.Err(err))
+		return nil
+	}
+
+	return append(trustedFingerprints, metricsFingerprints...)
 }
 
 func (d *Daemon) DBTX() transaction.DBTX {
@@ -606,7 +612,7 @@ func (d *Daemon) ReloadConfig(init bool, newCfg api.SystemConfig) (_err error) {
 	changedNetwork := init || newCfg.Network != oldCfg.Network
 	changedProxy := init || !slices.Equal(newCfg.Security.TrustedHTTPSProxies, oldCfg.Security.TrustedHTTPSProxies)
 	changedOIDC := init || newCfg.Security.OIDC != oldCfg.Security.OIDC
-	changedOpenFGA := init || newCfg.Security.OpenFGA != oldCfg.Security.OpenFGA || !slices.Equal(newCfg.Security.TrustedTLSClientCertFingerprints, oldCfg.Security.TrustedTLSClientCertFingerprints) || !slices.Equal(newCfg.Security.TrustedTLSClientCertificates, oldCfg.Security.TrustedTLSClientCertificates)
+	changedOpenFGA := init || newCfg.Security.OpenFGA != oldCfg.Security.OpenFGA || !slices.Equal(newCfg.Security.TrustedTLSClientCertFingerprints, oldCfg.Security.TrustedTLSClientCertFingerprints) || !slices.Equal(newCfg.Security.TrustedTLSClientCertificates, oldCfg.Security.TrustedTLSClientCertificates) || !slices.Equal(newCfg.Security.TrustedTLSMetricsClientCertFingerprints, oldCfg.Security.TrustedTLSMetricsClientCertFingerprints) || !slices.Equal(newCfg.Security.TrustedTLSMetricsClientCertificates, oldCfg.Security.TrustedTLSMetricsClientCertificates)
 	logTargetsChanged := init || logger.WebhookConfigChanged(oldCfg.Settings.LogTargets, newCfg.Settings.LogTargets)
 	acmeChanged := !init && acme.ACMEConfigChanged(oldCfg.Security.ACME, newCfg.Security.ACME)
 
@@ -704,6 +710,11 @@ func (d *Daemon) setupOpenFGA(cfg api.SystemSecurity) error {
 		return err
 	}
 
+	metricsFingerprints, err := cfg.TrustedTLSMetricsClientFingerprints()
+	if err != nil {
+		return err
+	}
+
 	if d.authorizer != nil {
 		err := d.authorizer.StopService(d.ShutdownCtx)
 		if err != nil {
@@ -713,7 +724,7 @@ func (d *Daemon) setupOpenFGA(cfg api.SystemSecurity) error {
 
 	if cfg.OpenFGA.APIURL == "" || cfg.OpenFGA.APIToken == "" || cfg.OpenFGA.StoreID == "" {
 		// Reset to default authorizer.
-		d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), trustedFingerprints)
+		d.authorizer, err = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), trustedFingerprints, auth.WithMetricsCertificateFingerprints(metricsFingerprints))
 		if err != nil {
 			return err
 		}
@@ -732,10 +743,10 @@ func (d *Daemon) setupOpenFGA(cfg api.SystemSecurity) error {
 
 	rvt.Add(func() {
 		// Reset to default authorizer.
-		d.authorizer, _ = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), trustedFingerprints)
+		d.authorizer, _ = auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverTLS, slog.Default(), trustedFingerprints, auth.WithMetricsCertificateFingerprints(metricsFingerprints))
 	})
 
-	openfgaAuthorizer, err := auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverOpenFGA, slog.Default(), trustedFingerprints, auth.WithConfig(cfgMap))
+	openfgaAuthorizer, err := auth.LoadAuthorizer(d.ShutdownCtx, auth.DriverOpenFGA, slog.Default(), trustedFingerprints, auth.WithMetricsCertificateFingerprints(metricsFingerprints), auth.WithConfig(cfgMap))
 	if err != nil {
 		return err
 	}
