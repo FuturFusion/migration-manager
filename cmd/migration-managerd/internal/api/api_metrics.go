@@ -32,7 +32,7 @@ var startTime = time.Now()
 var metricsCmd = APIEndpoint{
 	Path: "metrics",
 
-	Get: APIEndpointAction{Handler: metricsGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Get: APIEndpointAction{Handler: metricsGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanViewMetrics)},
 }
 
 // swagger:operation GET /1.0/metrics metrics metrics_get

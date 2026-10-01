@@ -127,12 +127,32 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 		return err
 	}
 
+	metricsFingerprints, err := newCfg.Security.TrustedTLSMetricsClientFingerprints()
+	if err != nil {
+		return err
+	}
+
+	fingerprintSet := make(map[string]struct{}, len(trustedFingerprints)+len(metricsFingerprints))
+	for _, fingerprint := range append(trustedFingerprints, metricsFingerprints...) {
+		_, ok := fingerprintSet[fingerprint]
+		if ok {
+			return fmt.Errorf("Duplicate trusted TLS client certificate fingerprint %q", fingerprint)
+		}
+
+		fingerprintSet[fingerprint] = struct{}{}
+	}
+
 	oldTrustedFingerprints, err := oldCfg.Security.TrustedTLSClientFingerprints()
 	if err != nil {
 		return err
 	}
 
-	if len(oldTrustedFingerprints) > 0 && len(trustedFingerprints) == 0 {
+	oldMetricsFingerprints, err := oldCfg.Security.TrustedTLSMetricsClientFingerprints()
+	if err != nil {
+		return err
+	}
+
+	if len(oldTrustedFingerprints)+len(oldMetricsFingerprints) > 0 && len(trustedFingerprints)+len(metricsFingerprints) == 0 {
 		return fmt.Errorf("Last trusted TLS client certificate cannot be removed")
 	}
 

@@ -59,6 +59,16 @@ func TestSystemSecurityTrustedTLSClientFingerprints(t *testing.T) {
 	}
 }
 
+func TestSystemSecurityTrustedTLSMetricsClientFingerprints(t *testing.T) {
+	security := SystemSecurity{
+		TrustedTLSMetricsClientCertFingerprints: []string{"AA:BB"},
+	}
+
+	fingerprints, err := security.TrustedTLSMetricsClientFingerprints()
+	require.NoError(t, err)
+	require.Equal(t, []string{"aabb"}, fingerprints)
+}
+
 func testCertificate(t *testing.T, value string) Certificate {
 	t.Helper()
 

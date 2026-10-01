@@ -114,6 +114,12 @@ type SystemSecurity struct {
 	// An array of X509 PEM encoded certificates that belong to trusted TLS clients.
 	TrustedTLSClientCertificates []Certificate `json:"trusted_tls_client_certificates" yaml:"trusted_tls_client_certificates"`
 
+	// An array of SHA256 certificate fingerprints that belong to trusted TLS metrics clients.
+	TrustedTLSMetricsClientCertFingerprints []string `json:"trusted_tls_metrics_client_cert_fingerprints" yaml:"trusted_tls_metrics_client_cert_fingerprints"`
+
+	// An array of X509 PEM encoded certificates that belong to trusted TLS metrics clients.
+	TrustedTLSMetricsClientCertificates []Certificate `json:"trusted_tls_metrics_client_certificates" yaml:"trusted_tls_metrics_client_certificates"`
+
 	// An array of trusted HTTPS proxy addresses.
 	TrustedHTTPSProxies []string `json:"trusted_https_proxies" yaml:"trusted_https_proxies"`
 
@@ -129,8 +135,17 @@ type SystemSecurity struct {
 
 // TrustedTLSClientFingerprints returns configured and certificate-derived fingerprints.
 func (s SystemSecurity) TrustedTLSClientFingerprints() ([]string, error) {
-	fingerprints := make([]string, 0, len(s.TrustedTLSClientCertFingerprints)+len(s.TrustedTLSClientCertificates))
-	seen := make(map[string]struct{}, len(s.TrustedTLSClientCertFingerprints)+len(s.TrustedTLSClientCertificates))
+	return trustedTLSFingerprints(s.TrustedTLSClientCertFingerprints, s.TrustedTLSClientCertificates)
+}
+
+// TrustedTLSMetricsClientFingerprints returns configured and certificate-derived metrics fingerprints.
+func (s SystemSecurity) TrustedTLSMetricsClientFingerprints() ([]string, error) {
+	return trustedTLSFingerprints(s.TrustedTLSMetricsClientCertFingerprints, s.TrustedTLSMetricsClientCertificates)
+}
+
+func trustedTLSFingerprints(configured []string, certificates []Certificate) ([]string, error) {
+	fingerprints := make([]string, 0, len(configured)+len(certificates))
+	seen := make(map[string]struct{}, len(configured)+len(certificates))
 	addFingerprint := func(fingerprint string) error {
 		canonicalFingerprint := strings.ToLower(strings.ReplaceAll(fingerprint, ":", ""))
 		_, exists := seen[canonicalFingerprint]
@@ -143,14 +158,14 @@ func (s SystemSecurity) TrustedTLSClientFingerprints() ([]string, error) {
 		return nil
 	}
 
-	for _, fingerprint := range s.TrustedTLSClientCertFingerprints {
+	for _, fingerprint := range configured {
 		err := addFingerprint(fingerprint)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	for i, certificate := range s.TrustedTLSClientCertificates {
+	for i, certificate := range certificates {
 		if certificate.Certificate == nil {
 			return nil, fmt.Errorf("Trusted TLS client certificate at index %d is empty", i)
 		}

@@ -11,6 +11,12 @@ const (
 	EntitlementCanView   Entitlement = "can_view"
 )
 
+// Server entitlements.
+const (
+	// EntitlementCanViewMetrics is the entitlement to view server metrics.
+	EntitlementCanViewMetrics Entitlement = "can_view_metrics"
+)
+
 // ObjectType is a type of resource within the migration manager.
 type ObjectType string
 

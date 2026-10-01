@@ -15,6 +15,10 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
       security?.trusted_tls_client_cert_fingerprints ?? [],
     trusted_tls_client_certificates:
       security?.trusted_tls_client_certificates ?? [],
+    trusted_tls_metrics_client_cert_fingerprints:
+      security?.trusted_tls_metrics_client_cert_fingerprints ?? [],
+    trusted_tls_metrics_client_certificates:
+      security?.trusted_tls_metrics_client_certificates ?? [],
     trusted_https_proxies: security?.trusted_https_proxies ?? [],
     oidc: {
       issuer: security?.oidc.issuer ?? "",
@@ -55,6 +59,14 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
           ),
         trusted_tls_client_certificates:
           values.trusted_tls_client_certificates.filter((s) => s.trim() !== ""),
+        trusted_tls_metrics_client_cert_fingerprints:
+          values.trusted_tls_metrics_client_cert_fingerprints.filter(
+            (s) => s.trim() !== "",
+          ),
+        trusted_tls_metrics_client_certificates:
+          values.trusted_tls_metrics_client_certificates.filter(
+            (s) => s.trim() !== "",
+          ),
         acme: {
           ...values.acme,
           provider_environment: values.acme.provider_environment.filter(
@@ -111,6 +123,58 @@ const SystemCertForm: FC<Props> = ({ security, onSubmit }) => {
                 onBlur={formik.handleBlur}
               />
               <Form.Text>Paste one or more PEM encoded certificates.</Form.Text>
+            </Form.Group>
+            <Form.Group
+              className="mb-3"
+              controlId="trusted_tls_metrics_cert_fingerprints"
+            >
+              <Form.Label>
+                Trusted TLS metrics certificate fingerprints
+              </Form.Label>
+              <Form.Control
+                type="text"
+                as="textarea"
+                rows={5}
+                name="trusted_tls_metrics_client_cert_fingerprints"
+                value={formik.values.trusted_tls_metrics_client_cert_fingerprints.join(
+                  "\n",
+                )}
+                onChange={(e) => {
+                  formik.setFieldValue(
+                    "trusted_tls_metrics_client_cert_fingerprints",
+                    e.target.value.split("\n"),
+                  );
+                }}
+                onBlur={formik.handleBlur}
+              />
+            </Form.Group>
+            <Form.Group
+              className="mb-3"
+              controlId="trusted_tls_metrics_certificates"
+            >
+              <Form.Label>Trusted TLS metrics certificates</Form.Label>
+              <Form.Control
+                type="text"
+                as="textarea"
+                rows={5}
+                name="trusted_tls_metrics_client_certificates"
+                value={formik.values.trusted_tls_metrics_client_certificates.join(
+                  "\n",
+                )}
+                onChange={(e) => {
+                  const certificates = e.target.value.match(
+                    /-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g,
+                  );
+                  formik.setFieldValue(
+                    "trusted_tls_metrics_client_certificates",
+                    certificates ?? [],
+                  );
+                }}
+                onBlur={formik.handleBlur}
+              />
+              <Form.Text>
+                These certificates can access only the metrics endpoint.
+              </Form.Text>
             </Form.Group>
             <Form.Group className="mb-3" controlId="trusted_https_proxies">
               <Form.Label>Trusted HTTPS proxies</Form.Label>
