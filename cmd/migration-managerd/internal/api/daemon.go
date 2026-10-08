@@ -491,13 +491,6 @@ func (d *Daemon) replaceServerCert(cfg api.SystemCertificatePost) (_err error) {
 		return fmt.Errorf("Key must be base64 encoded PEM key")
 	}
 
-	if cfg.CA != "" {
-		caBlock, _ := pem.Decode([]byte(cfg.CA))
-		if caBlock == nil {
-			return fmt.Errorf("CA must be base64 encoded PEM key")
-		}
-	}
-
 	oldCert := *d.serverCert
 
 	reverter := revert.New()
@@ -559,12 +552,7 @@ func (d *Daemon) replaceServerCert(cfg api.SystemCertificatePost) (_err error) {
 		}
 	})
 
-	var ca []byte
-	if cfg.CA != "" {
-		ca = []byte(cfg.CA)
-	}
-
-	err := updateCert([]byte(cfg.Cert), []byte(cfg.Key), ca)
+	err := updateCert([]byte(cfg.Cert), []byte(cfg.Key), nil)
 	if err != nil {
 		return err
 	}

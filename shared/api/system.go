@@ -272,10 +272,6 @@ type SystemCertificatePost struct {
 	// The new certificate key (X509 PEM encoded) for the system (server key).
 	// Example: X509 PEM certificate key
 	Key string `json:"key,omitempty" yaml:"key,omitempty"`
-
-	// The new certificate CA (X509 PEM encoded) for the system (server CA).
-	// Example: X509 PEM certificate CA
-	CA string `json:"ca" yaml:"ca"`
 }
 
 // SystemBackupPost represents configuration for creating a system backup.
