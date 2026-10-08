@@ -1423,11 +1423,6 @@ definitions:
             SystemCertificatePost represents the fields available for an update of the
             system certificate (server certificate), key, and CA.
         properties:
-            ca:
-                description: The new certificate CA (X509 PEM encoded) for the system (server CA).
-                example: X509 PEM certificate CA
-                type: string
-                x-go-name: CA
             certificate:
                 description: The new certificate (X509 PEM encoded) for the system (server certificate).
                 example: X509 PEM certificate
