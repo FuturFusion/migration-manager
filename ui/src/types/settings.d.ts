@@ -76,5 +76,4 @@ export interface SystemSecurityACME {
 export interface SystemCertificate {
   certificate: string;
   key: string;
-  ca: string;
 }

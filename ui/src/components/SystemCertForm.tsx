@@ -11,7 +11,6 @@ const SystemCertForm: FC<Props> = ({ onSubmit }) => {
   const formikInitialValues: SystemCertificate = {
     certificate: "",
     key: "",
-    ca: "",
   };
 
   const formik = useFormik({
@@ -45,18 +44,6 @@ const SystemCertForm: FC<Props> = ({ onSubmit }) => {
               rows={10}
               name="key"
               value={formik.values.key}
-              onChange={formik.handleChange}
-              onBlur={formik.handleBlur}
-            />
-          </Form.Group>
-          <Form.Group className="mb-3" controlId="ca">
-            <Form.Label>CA</Form.Label>
-            <Form.Control
-              type="text"
-              as="textarea"
-              rows={10}
-              name="ca"
-              value={formik.values.ca}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
             />
