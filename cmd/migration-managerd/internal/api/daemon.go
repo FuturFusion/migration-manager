@@ -503,6 +503,14 @@ func (d *Daemon) replaceServerCert(cfg api.SystemCertificatePost) (_err error) {
 	reverter := revert.New()
 	defer reverter.Fail()
 	updateCert := func(certBytes []byte, keyBytes []byte, caBytes []byte) error {
+		caFile := util.VarPath("server.ca")
+		if incusUtil.PathExists(caFile) {
+			err := os.Remove(caFile)
+			if err != nil {
+				return fmt.Errorf("Failed to remove certificate file %q: %w", caFile, err)
+			}
+		}
+
 		err := os.WriteFile(util.VarPath("server.crt"), certBytes, 0o664)
 		if err != nil {
 			return err
