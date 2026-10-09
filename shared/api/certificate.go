@@ -7,6 +7,9 @@ import (
 	"fmt"
 )
 
+// Certificate represents an x509 Certificate.
+//
+// swagger:type string
 type Certificate struct {
 	*x509.Certificate
 }
