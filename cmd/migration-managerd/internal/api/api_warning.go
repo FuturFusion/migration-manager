@@ -124,7 +124,7 @@ func warningGet(d *Daemon, r *http.Request) response.Response {
 	wUUIDStr := r.PathValue("uuid")
 	wUUID, err := uuid.Parse(wUUIDStr)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(err)
 	}
 
 	warning, err := d.warning.GetByUUID(r.Context(), wUUID)
@@ -177,7 +177,7 @@ func warningPut(d *Daemon, r *http.Request) response.Response {
 	wUUIDStr := r.PathValue("uuid")
 	wUUID, err := uuid.Parse(wUUIDStr)
 	if err != nil {
-		return response.SmartError(err)
+		return response.BadRequest(err)
 	}
 
 	var warning api.WarningPut
