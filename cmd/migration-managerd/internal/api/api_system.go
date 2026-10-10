@@ -22,40 +22,40 @@ import (
 var systemBackupCmd = APIEndpoint{
 	Path: "system/:backup",
 
-	Post: APIEndpointAction{Handler: systemBackupPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Post: APIEndpointAction{Handler: systemBackupPost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 var systemRestoreCmd = APIEndpoint{
 	Path: "system/:restore",
 
-	Post: APIEndpointAction{Handler: systemRestorePost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Post: APIEndpointAction{Handler: systemRestorePost, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 var systemNetworkCmd = APIEndpoint{
 	Path: "system/network",
 
 	Get: APIEndpointAction{Handler: systemNetworkGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
-	Put: APIEndpointAction{Handler: systemNetworkPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Put: APIEndpointAction{Handler: systemNetworkPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 var systemSecurityCmd = APIEndpoint{
 	Path: "system/security",
 
 	Get: APIEndpointAction{Handler: systemSecurityGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
-	Put: APIEndpointAction{Handler: systemSecurityPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Put: APIEndpointAction{Handler: systemSecurityPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 var systemSettingsCmd = APIEndpoint{
 	Path: "system/settings",
 
 	Get: APIEndpointAction{Handler: systemSettingsGet, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
-	Put: APIEndpointAction{Handler: systemSettingsPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Put: APIEndpointAction{Handler: systemSettingsPut, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 var systemCertificateCmd = APIEndpoint{
 	Path: "system/certificate",
 
-	Post: APIEndpointAction{Handler: systemCertificateUpdate, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanView)},
+	Post: APIEndpointAction{Handler: systemCertificateUpdate, AccessHandler: allowPermission(auth.ObjectTypeServer, auth.EntitlementCanEdit)},
 }
 
 var restoreLock sync.Mutex

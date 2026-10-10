@@ -414,7 +414,7 @@ func batchGet(d *Daemon, r *http.Request) response.Response {
 	return response.SyncResponseETag(
 		true,
 		batch.ToAPI(windows),
-		batch,
+		[]any{batch, windows},
 	)
 }
 
@@ -477,8 +477,13 @@ func batchPut(d *Daemon, r *http.Request) response.Response {
 		return response.SmartError(fmt.Errorf("Failed to get batch %q: %w", name, err))
 	}
 
+	currentWindows, err := d.window.GetAllByBatch(ctx, name)
+	if err != nil {
+		return response.SmartError(fmt.Errorf("Failed to get migration windows for batch %q: %w", name, err))
+	}
+
 	// Validate ETag
-	err = util.EtagCheck(r, currentBatch)
+	err = util.EtagCheck(r, []any{currentBatch, currentWindows})
 	if err != nil {
 		return response.PreconditionFailed(err)
 	}

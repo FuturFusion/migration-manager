@@ -128,7 +128,14 @@ func (a artifactService) Update(ctx context.Context, id uuid.UUID, artifact *Art
 			return err
 		}
 
-		err = artifact.CollidesWith(arts)
+		artsExcept := make(Artifacts, 0, len(arts)-1)
+		for _, a := range arts {
+			if a.UUID != id {
+				artsExcept = append(artsExcept, a)
+			}
+		}
+
+		err = artifact.CollidesWith(artsExcept)
 		if err != nil {
 			return err
 		}
