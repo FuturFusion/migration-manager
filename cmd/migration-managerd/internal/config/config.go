@@ -147,12 +147,7 @@ func Validate(newCfg api.SystemConfig, oldCfg api.SystemConfig) error {
 		return err
 	}
 
-	oldMetricsFingerprints, err := oldCfg.Security.TrustedTLSMetricsClientFingerprints()
-	if err != nil {
-		return err
-	}
-
-	if len(oldTrustedFingerprints)+len(oldMetricsFingerprints) > 0 && len(trustedFingerprints)+len(metricsFingerprints) == 0 {
+	if len(oldTrustedFingerprints) > 0 && len(trustedFingerprints) == 0 {
 		return fmt.Errorf("Last trusted TLS client certificate cannot be removed")
 	}
 
