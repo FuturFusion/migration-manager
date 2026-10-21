@@ -13,7 +13,7 @@ require (
 	github.com/gosimple/slug v1.15.0
 	github.com/hexdigest/gowrap v1.4.3
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
-	github.com/lxc/distrobuilder/v3 v3.3.1
+	github.com/lxc/distrobuilder/v3 v3.4.0
 	github.com/lxc/incus-os/incus-osd v0.0.0-20260926082617-02986e9c1781
 	github.com/lxc/incus/v7 v7.5.2-0.20261009231636-5335c4d72175
 	github.com/matryer/moq v0.8.0
@@ -99,7 +99,6 @@ require (
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/klauspost/pgzip v1.2.6 // indirect
 	github.com/kr/fs v0.1.0 // indirect
-	github.com/lxc/incus/v6 v6.21.0 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
 	github.com/mattn/go-runewidth v0.0.30 // indirect
@@ -174,7 +173,7 @@ require (
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/time v0.16.0 // indirect
 	gonum.org/v1/gonum v0.17.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260706201446-f0a921348800 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260810153831-ec0a7760b754 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260921155816-b14227669459 // indirect
 	google.golang.org/grpc v1.84.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
