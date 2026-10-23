@@ -1,6 +1,0 @@
-Enabled: yes
-Types: deb
-URIs: https://pkgs.zabbly.com/kernel/stable
-Suites: trixie
-Components: main zfs
-Signed-By: /etc/apt/keyrings/zabbly.asc
