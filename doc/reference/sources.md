@@ -9,4 +9,5 @@ Supported sources:
 :maxdepth: 1
 
 VMware <sources/vmware>
+vROps <sources/vrops>
 ```
