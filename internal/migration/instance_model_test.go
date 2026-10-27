@@ -2,12 +2,32 @@ package migration_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/FuturFusion/migration-manager/internal/migration"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
+
+func TestInstanceUpdateMonitoring(t *testing.T) {
+	collected := time.Now().UTC()
+	instance := migration.Instance{Properties: api.InstanceProperties{Monitoring: &api.InstanceMonitoring{
+		Source: "ops", ResourceID: "vm", CollectedAt: collected,
+		Metrics:     map[string]float64{"cpu|usage_average": 12.5},
+		SampleTimes: map[string]time.Time{"cpu|usage_average": collected},
+	}}}
+	failed := api.InstanceMonitoring{Source: "ops", ResourceID: "vm", AttemptedAt: collected.Add(time.Minute), Error: "Refresh failed"}
+	require.True(t, instance.UpdateMonitoring(failed))
+	require.Equal(t, collected, instance.Properties.Monitoring.CollectedAt)
+	require.InDelta(t, 12.5, instance.Properties.Monitoring.Metrics["cpu|usage_average"], 0.001)
+	require.Equal(t, "Refresh failed", instance.Properties.Monitoring.Error)
+	require.False(t, instance.UpdateMonitoring(failed))
+	require.False(t, instance.UpdateMonitoring(api.InstanceMonitoring{Source: "ops", ResourceID: "vm", AttemptedAt: collected}))
+	require.True(t, instance.UpdateMonitoring(api.InstanceMonitoring{Source: "ops", ResourceID: "vm", CollectedAt: collected.Add(time.Minute), AttemptedAt: collected.Add(2 * time.Minute)}))
+	require.Empty(t, instance.Properties.Monitoring.Error)
+	require.Empty(t, instance.Properties.Monitoring.Metrics)
+}
 
 func TestInstance_GetOSType(t *testing.T) {
 	tests := []struct {
