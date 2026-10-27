@@ -34,7 +34,7 @@ func (s Source) Validate() error {
 		return NewValidationErrf("Invalid source, name %q: %v", s.Name, err)
 	}
 
-	if s.SourceType != api.SOURCETYPE_VMWARE && s.SourceType != api.SOURCETYPE_NSX_T {
+	if s.SourceType != api.SOURCETYPE_VMWARE && s.SourceType != api.SOURCETYPE_NSX_T && s.SourceType != api.SOURCETYPE_VROPS {
 		return NewValidationErrf("Invalid source, %s is not a valid source type", s.SourceType)
 	}
 
@@ -45,6 +45,8 @@ func (s Source) Validate() error {
 	switch s.SourceType {
 	case api.SOURCETYPE_VMWARE:
 		err = s.validateSourceTypeVMware()
+	case api.SOURCETYPE_VROPS:
+		err = s.validateSourceTypeVROps()
 	}
 
 	if err != nil {
@@ -94,6 +96,26 @@ func (s *Source) GetNSXProperties() (*internalapi.NSXSourceProperties, error) {
 	return &props, nil
 }
 
+// GetVROpsProperties returns the properties for a vROps source.
+func (s *Source) GetVROpsProperties() (*api.VROpsProperties, error) {
+	if s.SourceType != api.SOURCETYPE_VROPS {
+		return nil, fmt.Errorf("Source %q type is %q, not %q", s.Name, s.SourceType, api.SOURCETYPE_VROPS)
+	}
+
+	err := s.SetDefaults()
+	if err != nil {
+		return nil, err
+	}
+
+	var props api.VROpsProperties
+	err = json.Unmarshal(s.Properties, &props)
+	if err != nil {
+		return nil, err
+	}
+
+	return &props, nil
+}
+
 // SetDefaults sets default values for source properties.
 func (s *Source) SetDefaults() error {
 	switch s.SourceType {
@@ -129,9 +151,52 @@ func (s *Source) SetDefaults() error {
 		}
 
 		return nil
+	case api.SOURCETYPE_VROPS:
+		var properties api.VROpsProperties
+		err := json.Unmarshal(s.Properties, &properties)
+		if err != nil {
+			return NewValidationErrf("Invalid properties for %s source type: %v", s.SourceType, err)
+		}
+
+		properties.SetDefaults()
+		s.Properties, err = json.Marshal(properties)
+		if err != nil {
+			return NewValidationErrf("%v", err)
+		}
+
+		return nil
 	default:
 		return nil
 	}
+}
+
+func (s Source) validateSourceTypeVROps() error {
+	var properties api.VROpsProperties
+	err := json.Unmarshal(s.Properties, &properties)
+	if err != nil {
+		return NewValidationErrf("Invalid properties for vROps type: %v", err)
+	}
+
+	parsed, err := url.Parse(properties.Endpoint)
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" || (parsed.Path != "" && parsed.Path != "/") {
+		return NewValidationErrf("Invalid source, vROps endpoint must be an HTTPS origin URL")
+	}
+
+	if properties.Username == "" || properties.Password == "" {
+		return NewValidationErrf("Invalid source, username and password can not be empty for source type vROps")
+	}
+
+	if properties.ConnectionTimeout.Duration <= 0 || properties.SyncTimeout.Duration <= 0 {
+		return NewValidationErrf("Invalid source, timeouts must be positive")
+	}
+
+	for i, caCertificate := range properties.TrustedServerCACertificates {
+		if !x509.NewCertPool().AppendCertsFromPEM([]byte(caCertificate)) {
+			return NewValidationErrf("Invalid source, trusted CA certificate at index %d is not valid PEM", i)
+		}
+	}
+
+	return nil
 }
 
 func (s Source) validateSourceTypeVMware() error {
@@ -185,7 +250,18 @@ func (s Source) GetExternalConnectivityStatus() api.ExternalConnectivityStatus {
 	case api.SOURCETYPE_NSX_T:
 		fallthrough
 	case api.SOURCETYPE_VMWARE:
+		fallthrough
+	case api.SOURCETYPE_VROPS:
 		var properties api.VMwareProperties
+		if s.SourceType == api.SOURCETYPE_VROPS {
+			var vrops api.VROpsProperties
+			if json.Unmarshal(s.Properties, &vrops) != nil {
+				return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
+			}
+
+			return vrops.ConnectivityStatus
+		}
+
 		err := json.Unmarshal(s.Properties, &properties)
 		if err != nil {
 			return api.EXTERNALCONNECTIVITYSTATUS_UNKNOWN
@@ -214,6 +290,18 @@ func (s Source) GetServerCertificate() *x509.Certificate {
 		}
 
 		return cert
+	case api.SOURCETYPE_VROPS:
+		var properties api.VROpsProperties
+		if json.Unmarshal(s.Properties, &properties) != nil {
+			return nil
+		}
+
+		cert, err := x509.ParseCertificate(properties.ServerCertificate)
+		if err != nil {
+			return nil
+		}
+
+		return cert
 	default:
 		return nil
 	}
@@ -227,6 +315,13 @@ func (s Source) GetTrustedServerCertificateFingerprint() string {
 		var properties api.VMwareProperties
 		err := json.Unmarshal(s.Properties, &properties)
 		if err != nil {
+			return ""
+		}
+
+		return properties.TrustedServerCertificateFingerprint
+	case api.SOURCETYPE_VROPS:
+		var properties api.VROpsProperties
+		if json.Unmarshal(s.Properties, &properties) != nil {
 			return ""
 		}
 
@@ -249,6 +344,14 @@ func (s *Source) SetExternalConnectivityStatus(status api.ExternalConnectivitySt
 
 		properties.ConnectivityStatus = status
 		s.Properties, _ = json.Marshal(properties)
+	case api.SOURCETYPE_VROPS:
+		var properties api.VROpsProperties
+		if json.Unmarshal(s.Properties, &properties) != nil {
+			return
+		}
+
+		properties.ConnectivityStatus = status
+		s.Properties, _ = json.Marshal(properties)
 	}
 }
 
@@ -260,6 +363,14 @@ func (s *Source) SetServerCertificate(cert *x509.Certificate) {
 		var properties api.VMwareProperties
 		err := json.Unmarshal(s.Properties, &properties)
 		if err != nil {
+			return
+		}
+
+		properties.ServerCertificate = cert.Raw
+		s.Properties, _ = json.Marshal(properties)
+	case api.SOURCETYPE_VROPS:
+		var properties api.VROpsProperties
+		if json.Unmarshal(s.Properties, &properties) != nil {
 			return
 		}
 
@@ -295,6 +406,15 @@ func (s *Source) AddCACertificates(caCertificates []string) error {
 		properties.TrustedServerCACertificates = append(properties.TrustedServerCACertificates, caCertificates...)
 		s.Properties, err = json.Marshal(properties)
 
+		return err
+	case api.SOURCETYPE_VROPS:
+		properties, err := s.GetVROpsProperties()
+		if err != nil {
+			return err
+		}
+
+		properties.TrustedServerCACertificates = append(properties.TrustedServerCACertificates, caCertificates...)
+		s.Properties, err = json.Marshal(properties)
 		return err
 	}
 
