@@ -4,7 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { fetchSources } from "api/sources";
 import DataTable from "components/DataTable";
 import SourceActions from "components/SourceActions";
-import { VMwareProperties, NSXProperties } from "types/source";
+import { VMwareProperties, NSXProperties, VROpsProperties } from "types/source";
 import { SourceType } from "util/source";
 
 const Source = () => {
@@ -41,6 +41,11 @@ const Source = () => {
       username = props.username;
     } else if (item.source_type == SourceType.NSXT) {
       const props = item.properties as NSXProperties;
+      endpoint = props.endpoint;
+      connStatus = props.connectivity_status;
+      username = props.username;
+    } else if (item.source_type == SourceType.VROps) {
+      const props = item.properties as VROpsProperties;
       endpoint = props.endpoint;
       connStatus = props.connectivity_status;
       username = props.username;

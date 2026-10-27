@@ -33,6 +33,26 @@ export interface InstancePropertiesTag {
   tag: string;
 }
 
+export interface InstanceMonitoring {
+  source: string;
+  resource_id: string;
+  health: string;
+  status: string;
+  collected_at: string;
+  metrics?: Record<string, number>;
+  sample_times?: Record<string, string>;
+  attempted_at: string;
+  error?: string;
+}
+
+export type InstanceMonitoringPeriod = "10m" | "1h" | "1d" | "1w";
+
+export interface InstanceMonitoringSummary {
+  begin: string;
+  end: string;
+  metrics: Record<string, number>;
+}
+
 export interface InstanceProperties {
   uuid: string;
   name: string;
@@ -54,6 +74,7 @@ export interface InstanceProperties {
   snapshots: InstanceSnapshotInfo[];
   sdn_tags: InstancePropertiesSDNTag[];
   tags: InstancePropertiesTag[];
+  monitoring?: InstanceMonitoring;
 }
 
 export interface InstancePropertiesConfigurable {
@@ -106,6 +127,7 @@ export interface Instance {
   snapshots: InstanceSnapshotInfo[];
   sdn_tags: InstancePropertiesSDNTag[];
   tags: InstancePropertiesTag[];
+  monitoring?: InstanceMonitoring;
   overrides: InstanceOverride;
 }
 
