@@ -91,20 +91,18 @@ func DetermineWindowsPartitions(code string) (mainParent string, base string, re
 	}
 
 	if base == "" || mainParent == "" {
-		// Windows 2008 and 2012 don't have partition labels, so instead we'll pick the first partition with a Windows and Users directory.
-		if strings.HasPrefix(code, "2k3") || strings.HasPrefix(code, "2k8") || strings.HasPrefix(code, "2k12") {
-			idx := slices.IndexFunc(partitions.BlockDevices, func(p internalUtil.LSBLKFields) bool { return p.Serial == "incus_root" })
-			if idx >= 0 {
-				for _, child := range partitions.BlockDevices[idx].Children {
-					if child.PartLabel != "" {
-						continue
-					}
+		// Fall back to the first unlabeled partition with Windows and Program Files directories.
+		idx := slices.IndexFunc(partitions.BlockDevices, func(p internalUtil.LSBLKFields) bool { return p.Serial == "incus_root" })
+		if idx >= 0 {
+			for _, child := range partitions.BlockDevices[idx].Children {
+				if child.PartLabel != "" {
+					continue
+				}
 
-					if isWindowsMainFilesystem(child, code) {
-						base = child.Name
-						mainParent = child.PKName
-						break
-					}
+				if isWindowsMainFilesystem(child, code) {
+					base = child.Name
+					mainParent = child.PKName
+					break
 				}
 			}
 		}
