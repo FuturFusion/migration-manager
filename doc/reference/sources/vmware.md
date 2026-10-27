@@ -109,6 +109,8 @@ NSX Managers can be imported as sources of type `nsx-t`. For any existing vCente
 Security tags applied to VMs in NSX are imported as the `sdn_tags` instance property, and can be used in [filters](../filters.md).
 They are applied to migrated instances as `user.sdn.tags.{index}.{scope}={tag}` config keys, where the index only distinguishes tags sharing a scope.
 
+See [VMware Aria Operations (vROps)](vrops.md) for optional monitoring integration.
+
 ## Periodic sync
 
 All data imported from sources will be updated every 10 minutes by default. This can be configured in [system settings](../settings.md).
