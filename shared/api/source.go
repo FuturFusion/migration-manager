@@ -12,11 +12,43 @@ type SourceType string
 const (
 	SOURCETYPE_VMWARE SourceType = "vmware"
 	SOURCETYPE_NSX_T  SourceType = "nsx-t"
+	SOURCETYPE_VROPS  SourceType = "vrops"
 )
 
 // VMSourceTypes are the list of source types that manage VMs.
 func VMSourceTypes() []SourceType {
 	return []SourceType{SOURCETYPE_VMWARE}
+}
+
+// VROpsProperties defines the connection properties for VMware Aria Operations.
+//
+// swagger:model
+type VROpsProperties struct {
+	Endpoint                            string                     `json:"endpoint" yaml:"endpoint"`
+	ServerCertificate                   []byte                     `json:"trusted_server_certificate,omitempty" yaml:"trusted_server_certificate,omitempty"`
+	TrustedServerCertificateFingerprint string                     `json:"trusted_server_certificate_fingerprint,omitempty" yaml:"trusted_server_certificate_fingerprint,omitempty"`
+	TrustedServerCACertificates         []string                   `json:"trusted_server_ca_certificates,omitempty" yaml:"trusted_server_ca_certificates,omitempty"`
+	Username                            string                     `json:"username" yaml:"username"`
+	Password                            string                     `json:"password" yaml:"password"`
+	AuthSource                          string                     `json:"auth_source,omitempty" yaml:"auth_source,omitempty"`
+	ConnectivityStatus                  ExternalConnectivityStatus `json:"connectivity_status" yaml:"connectivity_status"`
+	ConnectionTimeout                   Duration                   `json:"connection_timeout" yaml:"connection_timeout"`
+	SyncTimeout                         Duration                   `json:"sync_timeout" yaml:"sync_timeout"`
+}
+
+// SetDefaults sets default values for vROps properties.
+func (p *VROpsProperties) SetDefaults() {
+	if p.AuthSource == "" {
+		p.AuthSource = "LOCAL"
+	}
+
+	if p.ConnectionTimeout == (Duration{}) {
+		p.ConnectionTimeout = AsDuration(10 * time.Minute)
+	}
+
+	if p.SyncTimeout == (Duration{}) {
+		p.SyncTimeout = AsDuration(10 * time.Minute)
+	}
 }
 
 // NetworkSourceTypes are the list of source types that manage networks.
