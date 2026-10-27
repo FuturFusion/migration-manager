@@ -189,8 +189,8 @@ func (s sourceService) updateSourceConnectivity(ctx context.Context, src *Source
 	// Do a basic connectivity check.
 	status, untrustedCert := endpoint.DoBasicConnectivityCheck()
 
-	if untrustedCert != nil && src.GetServerCertificate() == nil {
-		// We got an untrusted certificate; if one hasn't already been set, add it to this source.
+	if untrustedCert != nil {
+		// Record the latest certificate so fingerprint confirmation also works after rotation.
 		src.SetServerCertificate(untrustedCert)
 	}
 
