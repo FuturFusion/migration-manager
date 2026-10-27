@@ -50,6 +50,9 @@ func (c *CmdSource) Command() *cobra.Command {
 	sourceUpdateCmd := cmdSourceUpdate{global: c.Global}
 	cmd.AddCommand(sourceUpdateCmd.Command())
 
+	sourceSyncCmd := cmdSourceSync{global: c.Global}
+	cmd.AddCommand(sourceSyncCmd.Command())
+
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
 	cmd.Run = func(cmd *cobra.Command, args []string) { _ = cmd.Usage() }
