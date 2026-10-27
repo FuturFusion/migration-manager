@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router";
 import { fetchSource } from "api/sources";
-import { VMwareProperties } from "types/source";
+import { VMwareProperties, VROpsProperties } from "types/source";
 import { SourceType } from "util/source";
 
 const SourceOverview = () => {
@@ -66,13 +66,14 @@ const SourceOverview = () => {
           {source?.properties.trusted_server_certificate_fingerprint}
         </div>
       </div>
-      <div className="row">
-        <div className="col-2 detail-table-header">Import limit</div>
-        <div className="col-10 detail-table-cell">
-          {" "}
-          {source?.properties.import_limit}
+      {source && "import_limit" in source.properties && (
+        <div className="row">
+          <div className="col-2 detail-table-header">Import limit</div>
+          <div className="col-10 detail-table-cell">
+            {source.properties.import_limit}
+          </div>
         </div>
-      </div>
+      )}
       {source?.source_type == SourceType.VMware && (
         <>
           <div className="row">
@@ -103,6 +104,32 @@ const SourceOverview = () => {
                   <div key={index}>{item}</div>
                 ),
               )}
+            </div>
+          </div>
+        </>
+      )}
+      {source?.source_type == SourceType.VROps && (
+        <>
+          <div className="row">
+            <div className="col-2 detail-table-header">
+              Authentication source
+            </div>
+            <div className="col-10 detail-table-cell">
+              {(source.properties as VROpsProperties).auth_source}
+            </div>
+          </div>
+          <div className="row">
+            <div className="col-2 detail-table-header">Connection timeout</div>
+            <div className="col-10 detail-table-cell">
+              {(source.properties as VROpsProperties).connection_timeout}
+            </div>
+          </div>
+          <div className="row">
+            <div className="col-2 detail-table-header">
+              Monitoring sync timeout
+            </div>
+            <div className="col-10 detail-table-cell">
+              {(source.properties as VROpsProperties).sync_timeout}
             </div>
           </div>
         </>
