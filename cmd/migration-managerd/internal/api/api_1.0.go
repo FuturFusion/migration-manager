@@ -114,6 +114,10 @@ func api10Get(d *Daemon, r *http.Request) response.Response {
 		v, ok := auth.(string)
 		if ok {
 			srv.Auth = v
+			username, ok := ctx.Value(request.CtxUsername).(string)
+			if ok {
+				srv.AuthUserName = username
+			}
 		}
 	}
 
