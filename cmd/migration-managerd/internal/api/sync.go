@@ -290,12 +290,20 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 		instancesBySrc[srcName] = instancesByUUID
 	}
 
+	vropsSources, err := d.source.GetAll(ctx, api.SOURCETYPE_VROPS)
+	if err != nil {
+		return err
+	}
+
+	vropsWarnings := applyVROpsMonitoring(ctx, vropsSources, instancesBySrc)
+	warnings = append(warnings, vropsWarnings...)
+
 	err = applySDNTags(instancesBySrc, networksBySrc)
 	if err != nil {
 		return err
 	}
 
-	srcWarnings, err := d.syncSourceData(ctx, instancesBySrc, networksBySrc)
+	srcWarnings, err := d.syncSourceData(ctx, instancesBySrc, networksBySrc, vropsSources)
 	if err != nil {
 		for srcName := range instancesBySrc {
 			warnings = append(warnings, migration.NewSyncWarning(api.InstanceImportFailed, srcName, fmt.Sprintf("Failed to update records: %v", err)))
@@ -311,6 +319,10 @@ func (d *Daemon) trySyncAllSources(ctx context.Context) (_err error) {
 
 // syncSourceData fetches instance and network data from the source and updates our database records.
 func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error {
+	if src.SourceType == api.SOURCETYPE_VROPS {
+		return d.syncVROpsSource(ctx, src)
+	}
+
 	slog.Info("Syncing source", slog.String("source", src.Name))
 	d.syncCache.Write(src.Name, struct{}{}, nil)
 	defer d.syncCache.Delete(src.Name)
@@ -430,6 +442,13 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 		}
 	}
 
+	vropsSources, vropsErr := d.source.GetAll(ctx, api.SOURCETYPE_VROPS)
+	if vropsErr != nil {
+		return vropsErr
+	}
+
+	warnings = append(warnings, applyVROpsMonitoring(ctx, vropsSources, instancesBySrc)...)
+
 	err = applySDNTags(instancesBySrc, networksBySrc)
 	if err != nil {
 		return err
@@ -462,7 +481,7 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 			}
 		}
 
-		srcWarnings, err := d.syncSourceData(ctx, instancesBySrc, networksBySrc)
+		srcWarnings, err := d.syncSourceData(ctx, instancesBySrc, networksBySrc, vropsSources)
 		if err != nil {
 			return err
 		}
@@ -474,12 +493,32 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 }
 
 // syncSourceData is a helper that opens a transaction and updates the internal record of all sources with the supplied data.
-func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]map[uuid.UUID]migration.Instance, networksBySrc map[string]map[string]migration.Network) (migration.Warnings, error) {
+func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]map[uuid.UUID]migration.Instance, networksBySrc map[string]map[string]migration.Network, monitoringSources migration.Sources) (migration.Warnings, error) {
 	syncLock.Lock()
 	defer syncLock.Unlock()
 
 	warnings := migration.Warnings{}
 	err := transaction.Do(ctx, func(ctx context.Context) error {
+		configuredSources := map[string]migration.Source{}
+		validMonitoringSources := map[string]bool{}
+		if len(monitoringSources) > 0 {
+			var err error
+			configuredSources, err = d.configuredVROpsSources(ctx)
+			if err != nil {
+				return err
+			}
+
+			for _, src := range monitoringSources {
+				err = validateVROpsSource(src, configuredSources)
+				if err != nil {
+					warnings = append(warnings, migration.NewSyncWarning(api.SourceUnavailable, src.Name, err.Error()))
+					continue
+				}
+
+				validMonitoringSources[src.Name] = true
+			}
+		}
+
 		migratingInstances, err := d.instance.GetAllInRunningBatches(ctx)
 		if err != nil {
 			return fmt.Errorf("Failed to get unassigned internal instance records: %w", err)
@@ -554,6 +593,7 @@ func (d *Daemon) syncSourceData(ctx context.Context, instancesBySrc map[string]m
 				existingInstances[inst.UUID] = inst
 			}
 
+			warnings = append(warnings, filterVROpsMonitoring(srcInstances, existingInstances, validMonitoringSources, configuredSources)...)
 			srcWarnings, err := d.syncInstancesFromSource(ctx, srcName, d.instance, existingInstances, srcInstances)
 			if err != nil {
 				return fmt.Errorf("Failed to sync instances from %q: %w", srcName, err)

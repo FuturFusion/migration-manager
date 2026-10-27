@@ -224,6 +224,8 @@ func sourcesPost(d *Daemon, r *http.Request) response.Response {
 			switch s.SourceType {
 			case api.SOURCETYPE_NSX_T:
 				return source.NewInternalNSXSourceFrom(s)
+			case api.SOURCETYPE_VROPS:
+				return source.NewInternalVROpsSourceFrom(s)
 			default:
 				return source.NewVMSource(s)
 			}
@@ -458,6 +460,8 @@ func sourcePut(d *Daemon, r *http.Request) response.Response {
 			switch s.SourceType {
 			case api.SOURCETYPE_NSX_T:
 				return source.NewInternalNSXSourceFrom(s)
+			case api.SOURCETYPE_VROPS:
+				return source.NewInternalVROpsSourceFrom(s)
 			default:
 				return source.NewVMSource(s)
 			}
