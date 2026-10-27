@@ -11,6 +11,7 @@ import {
   MdDescription,
   MdLogin,
   MdLogout,
+  MdPersonOutline,
   MdOutlineDesktopWindows,
   MdOutlineSettings,
   MdWarningAmber,
@@ -110,6 +111,19 @@ const Sidebar = () => {
         <Nav className="flex-column w-100 flex-shrink-0 border-top border-secondary pt-2">
           {isAuthenticated && (
             <>
+              {settings?.auth === "oidc" && settings.auth_user_name && (
+                <li>
+                  <Navbar.Text
+                    className="d-flex align-items-center mx-4"
+                    title={settings.auth_user_name}
+                  >
+                    <MdPersonOutline className="flex-shrink-0 me-3" />
+                    <span className="text-truncate">
+                      {settings.auth_user_name}
+                    </span>
+                  </Navbar.Text>
+                </li>
+              )}
               <li>
                 <Nav.Link
                   as={Link}
