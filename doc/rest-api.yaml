@@ -473,6 +473,8 @@ definitions:
                 format: int64
                 type: integer
                 x-go-name: Memory
+            monitoring:
+                $ref: '#/definitions/InstanceMonitoring'
             name:
                 description: Name of the Instance.
                 example: myVM
@@ -555,6 +557,98 @@ definitions:
                 type: string
                 x-go-name: UUID
         title: Instance defines a VM instance to be migrated.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstanceMonitoring:
+        properties:
+            attempted_at:
+                format: date-time
+                type: string
+                x-go-name: AttemptedAt
+            collected_at:
+                format: date-time
+                type: string
+                x-go-name: CollectedAt
+            error:
+                type: string
+                x-go-name: Error
+            health:
+                type: string
+                x-go-name: Health
+            metrics:
+                additionalProperties:
+                    format: double
+                    type: number
+                type: object
+                x-go-name: Metrics
+            resource_id:
+                type: string
+                x-go-name: ResourceID
+            sample_times:
+                additionalProperties:
+                    format: date-time
+                    type: string
+                type: object
+                x-go-name: SampleTimes
+            source:
+                type: string
+                x-go-name: Source
+            status:
+                type: string
+                x-go-name: Status
+        title: InstanceMonitoring is a bounded snapshot of vROps data for an instance.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstanceMonitoringHistory:
+        properties:
+            begin:
+                format: date-time
+                type: string
+                x-go-name: Begin
+            end:
+                format: date-time
+                type: string
+                x-go-name: End
+            metrics:
+                additionalProperties:
+                    items:
+                        $ref: '#/definitions/InstanceMonitoringSample'
+                    type: array
+                type: object
+                x-go-name: Metrics
+        title: InstanceMonitoringHistory contains on-demand monitoring samples.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstanceMonitoringSummary:
+        properties:
+            begin:
+                format: date-time
+                type: string
+                x-go-name: Begin
+            end:
+                format: date-time
+                type: string
+                x-go-name: End
+            metrics:
+                additionalProperties:
+                    format: double
+                    type: number
+                type: object
+                x-go-name: Metrics
+        title: InstanceMonitoringSummary contains period averages and the latest filesystem measurements.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    InstanceMonitoringSample:
+        properties:
+            timestamp:
+                format: date-time
+                type: string
+                x-go-name: Timestamp
+            value:
+                format: double
+                type: number
+                x-go-name: Value
+        title: InstanceMonitoringSample is a timestamped monitoring value.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     InstanceOverride:
@@ -681,6 +775,8 @@ definitions:
                 format: int64
                 type: integer
                 x-go-name: Memory
+            monitoring:
+                $ref: '#/definitions/InstanceMonitoring'
             name:
                 description: Name of the Instance.
                 example: myVM
@@ -1692,6 +1788,43 @@ definitions:
         format: int64
         type: integer
         x-go-package: time
+    VROpsProperties:
+        properties:
+            auth_source:
+                type: string
+                x-go-name: AuthSource
+            connection_timeout:
+                $ref: '#/definitions/APIDuration'
+            connectivity_status:
+                $ref: '#/definitions/ExternalConnectivityStatus'
+            endpoint:
+                type: string
+                x-go-name: Endpoint
+            password:
+                type: string
+                x-go-name: Password
+            sync_timeout:
+                $ref: '#/definitions/APIDuration'
+            trusted_server_ca_certificates:
+                items:
+                    type: string
+                type: array
+                x-go-name: TrustedServerCACertificates
+            trusted_server_certificate:
+                items:
+                    format: uint8
+                    type: integer
+                type: array
+                x-go-name: ServerCertificate
+            trusted_server_certificate_fingerprint:
+                type: string
+                x-go-name: TrustedServerCertificateFingerprint
+            username:
+                type: string
+                x-go-name: Username
+        title: VROpsProperties defines the connection properties for VMware Aria Operations.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
     Warning:
         properties:
             count:
@@ -2547,6 +2680,69 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the instance
+            tags:
+                - instances
+    /1.0/instances/{uuid}/monitoring/summary:
+        get:
+            operationId: instance_monitoring_summary_get
+            parameters:
+                - in: path
+                  name: uuid
+                  required: true
+                  type: string
+                - in: query
+                  name: period
+                  type: string
+                  default: 10m
+                  enum: [10m, 1h, 1d, 1w]
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Period averages and latest filesystem measurements
+                    schema:
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/InstanceMonitoringSummary'
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+                "503":
+                    description: vROps monitoring data is unavailable
+            summary: Get a vROps monitoring summary for the selected period
+            tags:
+                - instances
+    /1.0/instances/{uuid}/monitoring/history:
+        get:
+            operationId: instance_monitoring_history_get
+            parameters:
+                - in: path
+                  name: uuid
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Monitoring history fetched directly from vROps
+                    schema:
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/InstanceMonitoringHistory'
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+                "503":
+                    description: vROps monitoring history is unavailable
+            summary: Get the last thirty minutes of vROps monitoring data
             tags:
                 - instances
     /1.0/instances/{uuid}/:dump:

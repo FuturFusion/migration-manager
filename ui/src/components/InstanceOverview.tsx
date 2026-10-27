@@ -3,6 +3,7 @@ import { Table } from "react-bootstrap";
 import { Link, useParams } from "react-router";
 import { fetchInstance } from "api/instances";
 import ItemOverride from "components/ItemOverride";
+import InstanceVROpsPeriodOverview from "components/InstanceVROpsPeriodOverview";
 import { bytesToHumanReadable, hasOverride } from "util/instance";
 
 const InstanceOverview = () => {
@@ -201,6 +202,12 @@ const InstanceOverview = () => {
           </div>
         )}
       </div>
+      {instance.monitoring && (
+        <InstanceVROpsPeriodOverview
+          uuid={instance.uuid}
+          monitoring={instance.monitoring}
+        />
+      )}
       {instance.nics?.length > 0 && (
         <>
           <hr className="my-4" />

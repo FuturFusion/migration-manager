@@ -3,6 +3,7 @@ package api
 import (
 	"maps"
 	"slices"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -73,6 +74,22 @@ type InstanceProperties struct {
 
 	// List of tags applied to the Instance on its source.
 	Tags []InstancePropertiesTag `json:"tags" yaml:"tags" expr:"tags"`
+
+	// Monitoring contains the latest optional data collected from vROps.
+	Monitoring *InstanceMonitoring `json:"monitoring,omitempty" yaml:"monitoring,omitempty" expr:"monitoring"`
+}
+
+// InstanceMonitoring is a bounded snapshot of vROps data for an instance.
+type InstanceMonitoring struct {
+	Source      string               `json:"source" yaml:"source"`
+	ResourceID  string               `json:"resource_id" yaml:"resource_id"`
+	Health      string               `json:"health" yaml:"health"`
+	Status      string               `json:"status" yaml:"status"`
+	CollectedAt time.Time            `json:"collected_at" yaml:"collected_at"`
+	Metrics     map[string]float64   `json:"metrics,omitempty" yaml:"metrics,omitempty"`
+	SampleTimes map[string]time.Time `json:"sample_times,omitempty" yaml:"sample_times,omitempty"`
+	AttemptedAt time.Time            `json:"attempted_at" yaml:"attempted_at"`
+	Error       string               `json:"error,omitempty" yaml:"error,omitempty"`
 }
 
 // InstancePropertiesConfigurable are the configurable properties of an instance.

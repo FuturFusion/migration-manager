@@ -111,14 +111,31 @@ func (s sourceService) Update(ctx context.Context, name string, newSource *Sourc
 	}
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
+		monitoringName := newSource.Name
 		if instanceService != nil {
 			_, err := s.canBeModified(ctx, name, instanceService)
 			if err != nil {
 				return fmt.Errorf("Unable to update source %q: %w", newSource.Name, err)
 			}
+
+			if newSource.SourceType == api.SOURCETYPE_VROPS {
+				monitoringName, err = s.vropsMonitoringSourceReplacement(ctx, name, *newSource)
+				if err != nil {
+					return err
+				}
+			}
 		}
 
-		return s.repo.Update(ctx, name, *newSource)
+		err := s.repo.Update(ctx, name, *newSource)
+		if err != nil {
+			return err
+		}
+
+		if instanceService != nil && newSource.SourceType == api.SOURCETYPE_VROPS && name != monitoringName {
+			return updateVROpsMonitoringSource(ctx, instanceService, name, monitoringName)
+		}
+
+		return nil
 	})
 }
 
@@ -129,6 +146,11 @@ func (s sourceService) DeleteByName(ctx context.Context, name string, instanceSe
 
 	return transaction.Do(ctx, func(ctx context.Context) error {
 		if instanceService != nil {
+			src, err := s.repo.GetByName(ctx, name)
+			if err != nil {
+				return err
+			}
+
 			instances, err := s.canBeModified(ctx, name, instanceService)
 			if err != nil {
 				return fmt.Errorf("Unable to remove source %q: %w", name, err)
@@ -138,6 +160,13 @@ func (s sourceService) DeleteByName(ctx context.Context, name string, instanceSe
 				err = instanceService.DeleteByUUID(ctx, instanceUUID)
 				if err != nil {
 					return fmt.Errorf("Unable to remove instance %q for source %q: %w", instanceUUID.String(), name, err)
+				}
+			}
+
+			if src.SourceType == api.SOURCETYPE_VROPS {
+				err = updateVROpsMonitoringSource(ctx, instanceService, name, "")
+				if err != nil {
+					return err
 				}
 			}
 		}
@@ -186,11 +215,16 @@ func (s sourceService) updateSourceConnectivity(ctx context.Context, src *Source
 		return err
 	}
 
+	closer, ok := endpoint.(interface{ Close() })
+	if ok {
+		defer closer.Close()
+	}
+
 	// Do a basic connectivity check.
 	status, untrustedCert := endpoint.DoBasicConnectivityCheck()
 
-	if untrustedCert != nil && src.GetServerCertificate() == nil {
-		// We got an untrusted certificate; if one hasn't already been set, add it to this source.
+	if untrustedCert != nil {
+		// Record the latest certificate so fingerprint confirmation also works after rotation.
 		src.SetServerCertificate(untrustedCert)
 	}
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"maps"
+	"reflect"
 	"regexp"
 	"slices"
 	"strconv"
@@ -558,7 +559,34 @@ func (i Instance) ApplyUpdates(srcInst Instance) (Instance, bool) {
 		instanceUpdated = true
 	}
 
+	if srcInst.Properties.Monitoring != nil && inst.UpdateMonitoring(*srcInst.Properties.Monitoring) {
+		instanceUpdated = true
+	}
+
 	return inst, instanceUpdated
+}
+
+// UpdateMonitoring preserves the last successful snapshot when the same resource fails to refresh.
+func (i *Instance) UpdateMonitoring(data api.InstanceMonitoring) bool {
+	old := i.Properties.Monitoring
+	if old != nil && old.Source == data.Source && !old.AttemptedAt.IsZero() && data.AttemptedAt.Before(old.AttemptedAt) {
+		return false
+	}
+
+	if data.Error != "" && old != nil && old.Source == data.Source && old.ResourceID == data.ResourceID {
+		data.CollectedAt = old.CollectedAt
+		data.Metrics = old.Metrics
+		data.SampleTimes = old.SampleTimes
+		data.Health = old.Health
+		data.Status = old.Status
+	}
+
+	if reflect.DeepEqual(old, &data) {
+		return false
+	}
+
+	i.Properties.Monitoring = &data
+	return true
 }
 
 func (i Instance) MatchesCriteria(expression string, locationAlias bool) (bool, error) {

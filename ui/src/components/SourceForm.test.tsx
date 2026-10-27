@@ -47,3 +47,42 @@ test("renders and submit SourceForm", async () => {
     },
   });
 });
+
+test("submits only vROps connection properties and hides VMware settings", async () => {
+  const handleSubmit = vi.fn();
+  render(
+    <MemoryRouter>
+      <SourceForm onSubmit={handleSubmit} />
+    </MemoryRouter>,
+  );
+  await userEvent.selectOptions(
+    screen.getByLabelText("Source type"),
+    SourceType.VROps,
+  );
+  expect(screen.queryByLabelText("Import limit")).toBeNull();
+  expect(screen.queryByLabelText("Datacenters")).toBeNull();
+  expect(screen.queryByLabelText("VM concurrent sync limit")).toBeNull();
+  await userEvent.type(screen.getByLabelText("Name *"), "ops");
+  await userEvent.type(
+    screen.getByLabelText("Endpoint *"),
+    "https://ops.example.com",
+  );
+  await userEvent.type(screen.getByLabelText("Username *"), "admin");
+  await userEvent.type(screen.getByLabelText("Password"), "secret");
+  await userEvent.click(screen.getByText("Submit"));
+  expect(handleSubmit).toHaveBeenCalledWith({
+    name: "ops",
+    source_type: SourceType.VROps,
+    properties: {
+      endpoint: "https://ops.example.com",
+      username: "admin",
+      password: "secret",
+      auth_source: "LOCAL",
+      trusted_server_certificate_fingerprint: "",
+      trusted_server_certificate: undefined,
+      trusted_server_ca_certificates: undefined,
+      connection_timeout: "10m",
+      sync_timeout: "10m",
+    },
+  });
+});
