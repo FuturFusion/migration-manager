@@ -115,6 +115,7 @@ func (s *NbdkitServers) Start(ctx context.Context, validate func(d []*types.Virt
 		}
 	}
 
+	s.Servers = make([]*NbdkitServer, 0, len(allDisks))
 	for _, disk := range allDisks {
 		diskName, snapshotTree, err := vmware.IsSupportedDisk(disk)
 		if err != nil {
