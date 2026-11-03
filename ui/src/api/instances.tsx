@@ -1,6 +1,23 @@
-import { Instance } from "types/instance";
+import {
+  Instance,
+  InstanceMonitoringPeriod,
+  InstanceMonitoringSummary,
+} from "types/instance";
 import { APIResponse } from "types/response";
 import { handleAPIResponse } from "util/response";
+
+export const fetchInstanceMonitoringSummary = async (
+  uuid: string,
+  period: InstanceMonitoringPeriod,
+  signal?: AbortSignal,
+): Promise<InstanceMonitoringSummary> => {
+  const response = await fetch(
+    `/1.0/instances/${encodeURIComponent(uuid)}/monitoring/summary?period=${encodeURIComponent(period)}`,
+    { signal, cache: "no-store" },
+  );
+  const data = await handleAPIResponse(response);
+  return data.metadata;
+};
 
 export const fetchInstances = (filter: string): Promise<Instance[]> => {
   let url = `/1.0/instances?recursion=1`;

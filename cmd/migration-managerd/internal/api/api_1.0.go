@@ -26,6 +26,8 @@ var api10 = []APIEndpoint{
 	batchStopCmd,
 	batchesCmd,
 	instanceCmd,
+	instanceMonitoringHistoryCmd,
+	instanceMonitoringSummaryCmd,
 	instanceOverrideCmd,
 	instanceResetBackgroundImportCmd,
 	instanceEnableBackgroundImportCmd,

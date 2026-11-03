@@ -22,10 +22,23 @@ export interface NSXProperties {
   import_limit: number;
 }
 
+export interface VROpsProperties {
+  endpoint: string;
+  username: string;
+  password: string;
+  auth_source: string;
+  trusted_server_certificate_fingerprint: string;
+  connectivity_status?: ExternalConnectivityStatus;
+  trusted_server_certificate?: string;
+  trusted_server_ca_certificates?: string[];
+  connection_timeout: string;
+  sync_timeout: string;
+}
+
 export interface Source {
   name: string;
   source_type: SourceType;
-  properties: VMwareProperties | NSXProperties;
+  properties: VMwareProperties | NSXProperties | VROpsProperties;
   syncing?: boolean;
 }
 
@@ -41,4 +54,5 @@ export interface SourceFormValues {
   syncTimeout?: string;
   syncLimit?: number;
   datacenters?: string[];
+  authSource?: string;
 }

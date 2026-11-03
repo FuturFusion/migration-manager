@@ -18,7 +18,7 @@ import (
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
-var supportedSourceTypes = []string{string(api.SOURCETYPE_VMWARE), string(api.SOURCETYPE_NSX_T)}
+var supportedSourceTypes = []string{string(api.SOURCETYPE_VMWARE), string(api.SOURCETYPE_NSX_T), string(api.SOURCETYPE_VROPS)}
 
 type CmdSource struct {
 	Global *CmdGlobal
@@ -49,6 +49,9 @@ func (c *CmdSource) Command() *cobra.Command {
 	// Update
 	sourceUpdateCmd := cmdSourceUpdate{global: c.Global}
 	cmd.AddCommand(sourceUpdateCmd.Command())
+
+	sourceSyncCmd := cmdSourceSync{global: c.Global}
+	cmd.AddCommand(sourceSyncCmd.Command())
 
 	// Workaround for subcommand usage errors. See: https://github.com/spf13/cobra/issues/706
 	cmd.Args = cobra.NoArgs
@@ -121,18 +124,14 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 	case api.SOURCETYPE_NSX_T:
 		fallthrough
 	case api.SOURCETYPE_VMWARE:
+		fallthrough
+	case api.SOURCETYPE_VROPS:
 		sourceUsername, err := c.global.Asker.AskString("Please enter username for endpoint '"+sourceEndpoint+"': ", "", validate.IsNotEmpty)
 		if err != nil {
 			return err
 		}
 
 		sourcePassword, err := c.global.Asker.AskPasswordOnce("Please enter password for endpoint '" + sourceEndpoint + "': ")
-		if err != nil {
-			return err
-		}
-
-		var importLimit int64 = 50
-		importLimit, err = c.global.Asker.AskInt(fmt.Sprintf("How many instances can be concurrently imported? [default=%d]: ", importLimit), 0, 1024, strconv.Itoa(int(importLimit)), nil)
 		if err != nil {
 			return err
 		}
@@ -149,7 +148,13 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 		}
 
 		importTimeoutStr := (time.Second * 10).String()
-		importTimeoutStr, err = c.global.Asker.AskString(fmt.Sprintf("VM import timeout for the source [default=%s]: ", importTimeoutStr), importTimeoutStr, nil)
+		timeoutLabel := "VM import timeout"
+		if api.SourceType(sourceType) == api.SOURCETYPE_VROPS {
+			importTimeoutStr = (time.Minute * 10).String()
+			timeoutLabel = "Monitoring sync timeout"
+		}
+
+		importTimeoutStr, err = c.global.Asker.AskString(fmt.Sprintf("%s for the source [default=%s]: ", timeoutLabel, importTimeoutStr), importTimeoutStr, nil)
 		if err != nil {
 			return err
 		}
@@ -159,23 +164,6 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		dcPathStr, err := c.global.Asker.AskString("Comma-separated list of datacenters to import from [defaults to all datacenters]: ", "", validate.IsAny)
-		if err != nil {
-			return err
-		}
-
-		vmwareProperties := api.VMwareProperties{
-			Endpoint:                            sourceEndpoint,
-			TrustedServerCertificateFingerprint: c.flagTrustedServerCertificateFingerprint,
-			TrustedServerCACertificates:         caCertificates,
-			Username:                            sourceUsername,
-			Password:                            sourcePassword,
-			ImportLimit:                         int(importLimit),
-			ConnectionTimeout:                   connTimeout,
-			SyncTimeout:                         importTimeout,
-			Datacenters:                         strings.Split(dcPathStr, ","),
-		}
-
 		s := api.Source{
 			SourcePut: api.SourcePut{
 				Name: sourceName,
@@ -183,7 +171,39 @@ func (c *cmdSourceAdd) Run(cmd *cobra.Command, args []string) error {
 			SourceType: api.SourceType(sourceType),
 		}
 
-		s.Properties, err = json.Marshal(vmwareProperties)
+		var properties any
+		if api.SourceType(sourceType) == api.SOURCETYPE_VROPS {
+			authSource, err := c.global.Asker.AskString("Authentication source [default=LOCAL]: ", "LOCAL", validate.IsAny)
+			if err != nil {
+				return err
+			}
+
+			properties = api.VROpsProperties{
+				Endpoint: sourceEndpoint, TrustedServerCertificateFingerprint: c.flagTrustedServerCertificateFingerprint,
+				TrustedServerCACertificates: caCertificates, Username: sourceUsername, Password: sourcePassword,
+				AuthSource: authSource, ConnectionTimeout: connTimeout, SyncTimeout: importTimeout,
+			}
+		} else {
+			var importLimit int64 = 50
+			importLimit, err = c.global.Asker.AskInt(fmt.Sprintf("How many instances can be concurrently imported? [default=%d]: ", importLimit), 0, 1024, strconv.Itoa(int(importLimit)), nil)
+			if err != nil {
+				return err
+			}
+
+			dcPathStr, err := c.global.Asker.AskString("Comma-separated list of datacenters to import from [defaults to all datacenters]: ", "", validate.IsAny)
+			if err != nil {
+				return err
+			}
+
+			properties = api.VMwareProperties{
+				Endpoint: sourceEndpoint, TrustedServerCertificateFingerprint: c.flagTrustedServerCertificateFingerprint,
+				TrustedServerCACertificates: caCertificates, Username: sourceUsername, Password: sourcePassword,
+				ImportLimit: int(importLimit), ConnectionTimeout: connTimeout, SyncTimeout: importTimeout,
+				Datacenters: strings.Split(dcPathStr, ","),
+			}
+		}
+
+		s.Properties, err = json.Marshal(properties)
 		if err != nil {
 			return err
 		}
@@ -272,6 +292,8 @@ func (c *cmdSourceList) Run(cmd *cobra.Command, args []string) error {
 		case api.SOURCETYPE_NSX_T:
 			fallthrough
 		case api.SOURCETYPE_VMWARE:
+			fallthrough
+		case api.SOURCETYPE_VROPS:
 			vmwareProperties := api.VMwareProperties{}
 			err := json.Unmarshal(s.Properties, &vmwareProperties)
 			if err != nil {
@@ -373,6 +395,37 @@ func (c *cmdSourceUpdate) Run(cmd *cobra.Command, args []string) error {
 	origSourceName := ""
 	newSourceName := ""
 	switch src.SourceType {
+	case api.SOURCETYPE_VROPS:
+		origSourceName = src.Name
+		src.Name, err = c.global.Asker.AskString("Source name [default="+src.Name+"]: ", src.Name, nil)
+		if err != nil {
+			return err
+		}
+
+		var properties api.VROpsProperties
+		err = json.Unmarshal(src.Properties, &properties)
+		if err != nil {
+			return err
+		}
+
+		err = updateVROpsProperties(c.global.Asker, &properties)
+		if err != nil {
+			return err
+		}
+
+		if cmd.Flags().Changed("trusted-ca-file") {
+			properties.TrustedServerCACertificates, err = readCACertificates(c.flagTrustedCAFile)
+			if err != nil {
+				return err
+			}
+		}
+
+		src.Properties, err = json.Marshal(properties)
+		if err != nil {
+			return err
+		}
+
+		newSourceName = src.Name
 	case api.SOURCETYPE_NSX_T:
 		fallthrough
 	case api.SOURCETYPE_VMWARE:
