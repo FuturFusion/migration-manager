@@ -468,16 +468,23 @@ func (d *Daemon) syncOneSource(ctx context.Context, src migration.Source) error 
 				return fmt.Errorf("Failed to marshal source properties: %w", err)
 			}
 
-			_, err = d.source.Create(ctx, migration.Source{
-				Name:       nsxURL.Hostname(),
-				SourceType: api.SOURCETYPE_NSX_T,
-				Properties: b,
-				EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
-					return source.NewInternalNSXSourceFrom(s)
-				},
-			})
+			_, err = d.source.GetByName(ctx, nsxURL.Hostname())
+			if err != nil && !errors.Is(err, migration.ErrNotFound) {
+				return err
+			}
+
 			if err != nil {
-				return fmt.Errorf("Failed to record %q source for %q source %q: %w", api.SOURCETYPE_NSX_T, api.SOURCETYPE_VMWARE, src.Name, err)
+				_, err = d.source.Create(ctx, migration.Source{
+					Name:       nsxURL.Hostname(),
+					SourceType: api.SOURCETYPE_NSX_T,
+					Properties: b,
+					EndpointFunc: func(s api.Source) (migration.SourceEndpoint, error) {
+						return source.NewInternalNSXSourceFrom(s)
+					},
+				})
+				if err != nil {
+					return fmt.Errorf("Failed to record %q source for %q source %q: %w", api.SOURCETYPE_NSX_T, api.SOURCETYPE_VMWARE, src.Name, err)
+				}
 			}
 		}
 

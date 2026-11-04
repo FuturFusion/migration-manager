@@ -85,8 +85,8 @@ func DefaultAuthenticate(d *Daemon, w http.ResponseWriter, r *http.Request) (*au
 	}
 
 	trustedFingerprints := d.TrustedFingerprints()
-	for _, cert := range r.TLS.PeerCertificates {
-		trusted, username := tlsutil.CheckTrustState(*cert, trustedFingerprints)
+	if len(r.TLS.PeerCertificates) > 0 && r.TLS.PeerCertificates[0] != nil {
+		trusted, username := tlsutil.CheckTrustState(*r.TLS.PeerCertificates[0], trustedFingerprints)
 		if trusted {
 			return tlsAuthResponse(username), nil
 		}
