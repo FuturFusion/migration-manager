@@ -1152,10 +1152,12 @@ func (d *Daemon) finalSourceAndTargetChecks(ctx context.Context, migrationState 
 		}
 
 		if !slices.Equal(oldInst.Properties.Disks, updatedInst.Properties.Disks) {
-			log.Error("Instance identifying information changed, canceling migration")
+			b1, _ := json.Marshal(oldInst.Properties.Disks)
+			b2, _ := json.Marshal(updatedInst.Properties.Disks)
+			log.Error("Instance identifying information changed, canceling migration", slog.String("old", string(b1)), slog.String("new", string("b2")))
 			updatedInstances[oldInst.UUID] = conflictState{
 				status:     api.MIGRATIONSTATUS_ERROR,
-				message:    "Instance source disks have changed",
+				message:    fmt.Sprintf("Instance source disks have changed (old: %s) (new: %s)", string(b1), string(b2)),
 				properties: updatedInst.Properties,
 			}
 
