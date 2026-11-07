@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/Microsoft/go-winio/pkg/guid"
-	"github.com/flosch/pongo2/v4"
+	"github.com/flosch/pongo2/v6"
 	"github.com/lxc/distrobuilder/v3/shared"
 	"github.com/lxc/distrobuilder/v3/windows"
 	"github.com/lxc/incus/v7/shared/api"
