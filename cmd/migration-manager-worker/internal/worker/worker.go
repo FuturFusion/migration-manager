@@ -31,6 +31,7 @@ import (
 	"github.com/FuturFusion/migration-manager/internal/util"
 	"github.com/FuturFusion/migration-manager/internal/version"
 	"github.com/FuturFusion/migration-manager/internal/worker"
+	"github.com/FuturFusion/migration-manager/internal/workerlog"
 	"github.com/FuturFusion/migration-manager/shared/api"
 )
 
@@ -45,6 +46,7 @@ type Worker struct {
 	idleSleep           time.Duration
 	lastArtifactUpdates map[uuid.UUID]time.Time
 	logFile             string
+	logForwarder        *workerlog.Forwarder
 }
 
 type WorkerOption func(*Worker) error
@@ -384,6 +386,10 @@ func (w *Worker) connectSource(ctx context.Context, sourceType api.SourceType, s
 }
 
 func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusMessage string) {
+	if statusVal == api.WORKERRESPONSE_SUCCESS {
+		w.flushLogs()
+	}
+
 	resp := api.WorkerResponse{Status: statusVal, StatusMessage: statusMessage}
 
 	content, err := json.Marshal(resp)
@@ -401,6 +407,7 @@ func (w *Worker) sendStatusResponse(statusVal api.WorkerResponseType, statusMess
 
 func (w *Worker) sendErrorResponse(err error) {
 	slog.Error("worker error", logger.Err(err))
+	w.flushLogs()
 	b, err2 := os.ReadFile(w.logFile)
 	if err2 != nil && !os.IsNotExist(err2) {
 		slog.Error("Failed to read log file", slog.String("file", w.logFile), slog.Any("error", err2))
@@ -422,11 +429,12 @@ func (w *Worker) sendErrorResponse(err error) {
 
 func (w *Worker) makeRequest(endpoint string, method string, query string, reader io.Reader) (*http.Request, *http.Client, error) {
 	var err error
-	w.endpoint.Path = endpoint
+	requestURL := *w.endpoint
+	requestURL.Path = endpoint
 
-	w.endpoint.RawQuery = query
+	requestURL.RawQuery = query
 
-	req, err := http.NewRequest(method, w.endpoint.String(), reader)
+	req, err := http.NewRequest(method, requestURL.String(), reader)
 	if err != nil {
 		return nil, nil, err
 	}
