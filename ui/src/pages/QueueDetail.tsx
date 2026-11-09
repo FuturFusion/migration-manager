@@ -3,6 +3,7 @@ import QueueOverview from "components/QueueOverview";
 import InstanceOverview from "components/InstanceOverview";
 import InstanceOverrides from "components/InstanceOverrides";
 import TabView from "components/TabView";
+import WorkerLogs from "components/WorkerLogs";
 
 const QueueDetail = () => {
   const { uuid, activeTab } = useParams<{ uuid: string; activeTab: string }>();
@@ -23,6 +24,11 @@ const QueueDetail = () => {
       key: "overrides",
       title: "Overrides",
       content: <InstanceOverrides />,
+    },
+    {
+      key: "logs",
+      title: "Worker logs",
+      content: activeTab === "logs" ? <WorkerLogs /> : null,
     },
   ];
 
