@@ -69,6 +69,8 @@ func (c *cmdWorker) Run(cmd *cobra.Command, args []string) error {
 
 	ctx, shutdown := context.WithCancel(rootCtx)
 	defer shutdown()
+	stopLogs := w.StartLogForwarding(ctx)
+	defer stopLogs()
 
 	shutdownCompleted := make(chan struct{})
 	go func() {

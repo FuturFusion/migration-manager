@@ -30,3 +30,8 @@ For queue entries that are not yet at the stage where they would be assigned a m
 | Cancel   | Cancels the running migration and restarts the source VM if it was originally powered on | `migration-manager queue cancel <uuid>`   |
 | Retry    | Retries migration for a canceled queue entry                                             | `migration-manager queue retry <uuid>`    |
 | Resolve  | Mark a conflict as resolved, reverting the queue entry's state from `Conflict`           | `migration-manager queue resolve <uuid>`  |
+
+## Worker logs
+
+Worker logs provide diagnostic information for each migrating instance. They can
+be viewed and downloaded from the queue and instance detail views.
