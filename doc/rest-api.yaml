@@ -1915,6 +1915,37 @@ definitions:
         title: WarningType represents a warning message group.
         type: string
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    WorkerLogContent:
+        properties:
+            content:
+                type: string
+                x-go-name: Content
+            size:
+                format: int64
+                type: integer
+                x-go-name: Size
+            truncated:
+                type: boolean
+                x-go-name: Truncated
+        title: WorkerLogContent contains a bounded preview of a worker log.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    WorkerLogSession:
+        properties:
+            modified:
+                format: date-time
+                type: string
+                x-go-name: Modified
+            session:
+                type: string
+                x-go-name: Session
+            size:
+                format: int64
+                type: integer
+                x-go-name: Size
+        title: WorkerLogSession describes logs received during one VM boot.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
 host: localhost:6443
 info:
     description: 'title: Migration Manager API'
@@ -2686,6 +2717,86 @@ paths:
                 "500":
                     $ref: '#/responses/InternalServerError'
             summary: Get the instance
+            tags:
+                - instances
+    /1.0/instances/{uuid}/logs:
+        get:
+            description: List worker log sessions
+            operationId: instance_logs_get
+            parameters:
+                - in: path
+                  name: uuid
+                  required: true
+                  type: string
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: List worker log sessions
+                    schema:
+                        properties:
+                            metadata:
+                                items:
+                                    $ref: '#/definitions/WorkerLogSession'
+                                type: array
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
+            tags:
+                - instances
+    /1.0/instances/{uuid}/logs/{session}:
+        get:
+            description: Read or download a worker log
+            operationId: instance_log_get
+            parameters:
+                - in: path
+                  name: uuid
+                  required: true
+                  type: string
+                - in: path
+                  name: session
+                  required: true
+                  type: string
+                - default: 200
+                  description: Maximum lines, also limited to 1 MiB
+                  in: query
+                  maximum: 10000
+                  minimum: 1
+                  name: lines
+                  type: integer
+                - default: false
+                  description: Read the earliest lines instead of the latest lines
+                  in: query
+                  name: oldest_first
+                  type: boolean
+                - description: Set to 1 to download the complete plain text file
+                  in: query
+                  name: download
+                  type: integer
+            produces:
+                - application/json
+            responses:
+                "200":
+                    description: Read or download a worker log
+                    schema:
+                        properties:
+                            metadata:
+                                $ref: '#/definitions/WorkerLogContent'
+                        type: object
+                "400":
+                    $ref: '#/responses/BadRequest'
+                "403":
+                    $ref: '#/responses/Forbidden'
+                "404":
+                    $ref: '#/responses/NotFound'
+                "500":
+                    $ref: '#/responses/InternalServerError'
             tags:
                 - instances
     /1.0/instances/{uuid}/monitoring/summary:
