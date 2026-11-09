@@ -26,6 +26,8 @@ var api10 = []APIEndpoint{
 	batchStopCmd,
 	batchesCmd,
 	instanceCmd,
+	instanceLogsCmd,
+	instanceLogCmd,
 	instanceMonitoringHistoryCmd,
 	instanceMonitoringSummaryCmd,
 	instanceOverrideCmd,
@@ -62,6 +64,7 @@ var api10 = []APIEndpoint{
 }
 
 var apiInternal = []APIEndpoint{
+	workerLogsCmd,
 	workerUpdateCmd,
 	workerCommandCmd,
 	sqlCmd,
