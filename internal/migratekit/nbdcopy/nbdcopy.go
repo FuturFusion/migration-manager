@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/lxc/incus/v7/shared/subprocess"
+
 	"github.com/FuturFusion/migration-manager/internal/migratekit/progress"
 )
 
@@ -25,6 +27,7 @@ func Run(message string, source string, destination string, size int64, targetIs
 		return err
 	}
 	defer progressRead.Close()
+	defer progressWrite.Close()
 
 	args := []string{
 		"--progress=3",
@@ -55,8 +58,9 @@ func Run(message string, source string, destination string, size int64, targetIs
 		}
 	}()
 
-	if err := cmd.Start(); err != nil {
-		return err
+	err = cmd.Start()
+	if err != nil {
+		return subprocess.NewRunError("nbdcopy", args, err, &stdout, &stderr)
 	}
 
 	// Close the parent's copy of progressWrite
@@ -83,8 +87,9 @@ func Run(message string, source string, destination string, size int64, targetIs
 		}
 	}()
 
-	if err := cmd.Wait(); err != nil {
-		return err
+	err = cmd.Wait()
+	if err != nil {
+		return subprocess.NewRunError("nbdcopy", args, err, &stdout, &stderr)
 	}
 
 	return nil

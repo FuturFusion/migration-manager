@@ -349,7 +349,7 @@ func (s *NbdkitServer) FullCopyToTarget(t target.Target, path string, targetIsCl
 		statusCallback,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("Failed full copy of disk %q: %w", diskName, err)
 	}
 
 	log.Info("Full copy completed")
