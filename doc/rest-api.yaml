@@ -182,6 +182,8 @@ definitions:
                 $ref: '#/definitions/APIDuration'
             final_background_sync_limit:
                 $ref: '#/definitions/APIDuration'
+            incus_agent:
+                $ref: '#/definitions/IncusAgentConfig'
             instance_restriction_overrides:
                 $ref: '#/definitions/InstanceRestrictionOverride'
             placement_scriptlet:
@@ -199,6 +201,7 @@ definitions:
                 description: Whether to re-run scriptlets if a migration restarts
                 type: boolean
                 x-go-name: RerunScriptlets
+        title: BatchConfig defines migration behavior shared by instances in a batch.
         type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     BatchConstraint:
@@ -405,6 +408,39 @@ definitions:
         x-go-package: github.com/lxc/incus/v7/shared/osinfo
     ExternalConnectivityStatus:
         type: string
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    IncusAgentConfig:
+        properties:
+            features:
+                $ref: '#/definitions/IncusAgentFeatures'
+        title: IncusAgentConfig configures the agent in the migrated guest.
+        type: object
+        x-go-package: github.com/FuturFusion/migration-manager/shared/api
+    IncusAgentFeatures:
+        properties:
+            exec:
+                type: boolean
+                x-go-name: Exec
+            files:
+                type: boolean
+                x-go-name: Files
+            guestapi:
+                type: boolean
+                x-go-name: GuestAPI
+            metrics:
+                type: boolean
+                x-go-name: Metrics
+            mounts:
+                type: boolean
+                x-go-name: Mounts
+            port-forward:
+                type: boolean
+                x-go-name: PortForward
+            state:
+                type: boolean
+                x-go-name: State
+        title: IncusAgentFeatures defines the capabilities enabled in the migrated guest agent.
+        type: object
         x-go-package: github.com/FuturFusion/migration-manager/shared/api
     IncusNICType:
         type: string
@@ -687,6 +723,8 @@ definitions:
                 example: "7"
                 type: string
                 x-go-name: DistributionVersion
+            incus_agent:
+                $ref: '#/definitions/IncusAgentConfig'
             ignore_restrictions:
                 description: If true, restrictions that put the VM in a blocked state, preventing migration, will be ignored.
                 example: true
