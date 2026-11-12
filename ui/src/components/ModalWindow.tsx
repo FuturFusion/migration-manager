@@ -1,5 +1,5 @@
-import { FC, ReactNode } from "react";
-import { Modal, Button } from "react-bootstrap";
+import { FC, ReactNode, useId } from "react";
+import { Modal, Button, Alert } from "react-bootstrap";
 
 interface Props {
   show: boolean;
@@ -8,6 +8,8 @@ interface Props {
   children: ReactNode;
   footer?: ReactNode;
   scrollable?: boolean;
+  busy?: boolean;
+  error?: string;
 }
 
 const ModalWindow: FC<Props> = ({
@@ -17,18 +19,37 @@ const ModalWindow: FC<Props> = ({
   children,
   footer,
   scrollable,
+  busy = false,
+  error,
 }) => {
+  const titleId = useId();
+
   return (
-    <Modal show={show} onHide={handleClose} scrollable={scrollable ?? false}>
-      <Modal.Header closeButton>
-        <Modal.Title>{title}</Modal.Title>
+    <Modal
+      show={show}
+      aria-labelledby={titleId}
+      onHide={busy ? undefined : handleClose}
+      backdrop={busy ? "static" : true}
+      keyboard={!busy}
+      scrollable={scrollable ?? false}
+    >
+      <Modal.Header closeButton={!busy}>
+        <Modal.Title id={titleId}>{title}</Modal.Title>
       </Modal.Header>
-      <Modal.Body className="word-wrap">{children}</Modal.Body>
+      <Modal.Body className="word-wrap">
+        {error && <Alert variant="danger">{error}</Alert>}
+        {children}
+        {busy && (
+          <p role="status" className="text-body-secondary mt-3 mb-0">
+            Request in progress. Please wait before closing this dialog.
+          </p>
+        )}
+      </Modal.Body>
       <Modal.Footer>
         {footer ? (
           footer
         ) : (
-          <Button variant="secondary" onClick={handleClose}>
+          <Button variant="secondary" onClick={handleClose} disabled={busy}>
             Close
           </Button>
         )}
