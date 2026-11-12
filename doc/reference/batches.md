@@ -93,6 +93,22 @@ Some batch properties cannot be modified once the batch has started, or once any
 | `background_sync_interval`       | How often to top-up a migrating instance's data while awaiting the migration window | number(h/m/s) (empty for never)   | 10m (10 minutes) |
 | `final_background_sync_limit`    | Limit before the migration window starts that the last data top-up will occur       | number(h/m/s) (empty for never)   | 10m (10 minutes) |
 | `instance_restriction_overrides` | Limit before the migration window starts that the last data top-up will occur       |                                   |                  |
+| `incus_agent`                    | Incus agent settings to apply to migrated guests                                    | object                            | null             |
+
+#### Incus agent features
+
+`config.incus_agent` configures the agent in supported Linux and Windows guests.
+
+| Configuration | Description                                                                                | Value(s)    | Default |
+| :---          | :---                                                                                       | :---        | :---    |
+| `features`    | Feature flags: `exec`, `files`, `guestapi`, `metrics`, `mounts`, `port-forward`, and `state` | boolean map | null    |
+
+Only features set to `true` are enabled, and `{}` disables all.
+
+`overrides.incus_agent.features` on an instance replaces the entire batch feature
+map; missing or null instance features inherit the batch settings.
+
+Settings apply during migration and cannot be changed while instances are migrating.
 
 #### Instance restriction overrides
 

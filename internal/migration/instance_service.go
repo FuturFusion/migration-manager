@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"time"
 
@@ -180,6 +181,11 @@ func (s instanceService) UpdateOverride(ctx context.Context, id uuid.UUID, newOv
 		}
 
 		oldOverrides := instance.Overrides
+		agentChanged := !reflect.DeepEqual(api.ResolveIncusAgentConfig(nil, oldOverrides.IncusAgent), api.ResolveIncusAgentConfig(nil, newOverrides.IncusAgent))
+		if agentChanged && (entry.IsMigrating() || entry.IsCommitted()) {
+			return fmt.Errorf("Cannot modify Incus agent settings for instance %q during migration: %w", instance.UUID, ErrOperationNotPermitted)
+		}
+
 		if !oldOverrides.DisableMigration && newOverrides.DisableMigration {
 			return fmt.Errorf("Migration has already started for instance %q", instance.UUID)
 		}

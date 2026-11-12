@@ -1,3 +1,5 @@
+import { IncusAgentConfig } from "types/incusAgent";
+
 export interface InstanceDeviceInfo {
   type: string;
   label: string;
@@ -85,6 +87,7 @@ export interface InstancePropertiesConfigurable {
 }
 
 export interface InstanceOverride {
+  incus_agent?: IncusAgentConfig | null;
   last_update: string;
   comment: string;
   disable_migration: boolean;

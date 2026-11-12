@@ -120,7 +120,11 @@ type BatchPlacement struct {
 	StoragePool string `json:"storage_pool" yaml:"storage_pool"`
 }
 
+// BatchConfig defines migration behavior shared by instances in a batch.
 type BatchConfig struct {
+	// Incus agent settings applied to migrated guests unless overridden by an instance.
+	IncusAgent *IncusAgentConfig `json:"incus_agent" yaml:"incus_agent"`
+
 	// Whether to re-run scriptlets if a migration restarts
 	RerunScriptlets bool `json:"rerun_scriptlets" yaml:"rerun_scriptlets"`
 

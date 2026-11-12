@@ -57,6 +57,9 @@ type WorkerCommand struct {
 	// Architecture of the instance
 	// Example: x86_64
 	Architecture string `json:"architecture" yaml:"architecture"`
+
+	// Resolved Incus agent settings for the migrated guest.
+	IncusAgent *IncusAgentConfig `json:"incus_agent" yaml:"incus_agent"`
 }
 
 // WorkerResponse defines a response received from a worker.

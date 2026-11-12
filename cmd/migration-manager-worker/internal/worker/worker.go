@@ -295,12 +295,16 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand, dry
 			return err
 		}
 
-		err = worker.WindowsInjectDrivers(ctx, cmd.DistributionVersion, cmd.Architecture, file, dryRun)
+		err = worker.WindowsInjectDrivers(ctx, cmd.DistributionVersion, cmd.Architecture, file, cmd.IncusAgent, dryRun)
 		if err != nil {
 			return err
 		}
 
 	case api.OSTYPE_FORTIGATE:
+		if cmd.IncusAgent != nil && cmd.IncusAgent.Features != nil {
+			return fmt.Errorf("Cannot configure Incus agent on Fortigate")
+		}
+
 		ver, err := worker.DetermineFortigateVersion()
 		if err != nil {
 			return err
@@ -317,9 +321,14 @@ func (w *Worker) postImportTasks(ctx context.Context, cmd api.WorkerCommand, dry
 		}
 
 	case api.OSTYPE_LINUX:
-		err := worker.LinuxDoPostMigrationConfig(ctx, instance, cmd.Distribution, cmd.DistributionVersion, dryRun)
+		err := worker.LinuxDoPostMigrationConfig(ctx, instance, cmd.Distribution, cmd.DistributionVersion, cmd.IncusAgent, dryRun)
 		if err != nil {
 			return err
+		}
+
+	default:
+		if cmd.IncusAgent != nil && cmd.IncusAgent.Features != nil {
+			return fmt.Errorf("Cannot configure Incus agent for OS type %q", cmd.OSType)
 		}
 	}
 

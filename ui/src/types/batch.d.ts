@@ -1,4 +1,5 @@
 import { NetworkPlacement } from "types/network";
+import { IncusAgentConfig } from "types/incusAgent";
 
 export interface InstanceRestrictionOverride {
   allow_unknown_os: bool;
@@ -7,6 +8,7 @@ export interface InstanceRestrictionOverride {
 }
 
 export interface BatchConfig {
+  incus_agent?: IncusAgentConfig | null;
   placement_scriptlet: string;
   rerun_scriptlets: boolean;
   post_migration_retries: number;

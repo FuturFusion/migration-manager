@@ -56,7 +56,8 @@ const (
 	logDir          string = "migration-manager"
 )
 
-func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, distro osinfo.Distro, distroVersion string, dryRun bool) error {
+// LinuxDoPostMigrationConfig prepares the guest OS and agent on the imported disks.
+func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, distro osinfo.Distro, distroVersion string, agent *api.IncusAgentConfig, dryRun bool) error {
 	// Clear any existing logs from a previousr run.
 	err := os.RemoveAll(filepath.Join("/tmp", logDir))
 	if err != nil {
@@ -70,6 +71,10 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 
 	// Get the disto's major version, if possible.
 	if distro == osinfo.OtherDistro {
+		if agent != nil && agent.Features != nil {
+			return fmt.Errorf("Cannot configure Incus agent for an unknown Linux distribution")
+		}
+
 		slog.Info("Could not determine Linux distribution, not performing any post-migration actions")
 		return nil
 	}
@@ -254,6 +259,11 @@ func LinuxDoPostMigrationConfig(ctx context.Context, instance api.Instance, dist
 		if err != nil {
 			return fmt.Errorf("Failed to parse distro version %q for distro %q: %w", distroVersion, distro, err)
 		}
+	}
+
+	err = configureIncusAgent(chrootMountPath, filepath.Join("etc", "incus-agent.yml"), agent)
+	if err != nil {
+		return err
 	}
 
 	// Install incus-agent into the VM.

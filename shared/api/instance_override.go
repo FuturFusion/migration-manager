@@ -10,6 +10,9 @@ import (
 //
 // swagger:model
 type InstanceOverride struct {
+	// Incus agent settings that replace the batch feature map for this instance.
+	IncusAgent *IncusAgentConfig `json:"incus_agent" yaml:"incus_agent"`
+
 	// Overrides to properties imported from the source.
 	InstancePropertiesConfigurable `yaml:",inline"`
 
