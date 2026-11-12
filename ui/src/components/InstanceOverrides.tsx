@@ -12,6 +12,8 @@ import {
 } from "api/instances";
 import { useNotification } from "context/notificationContext";
 import KeyValueWidget from "components/KeyValueWidget";
+import IncusAgentSettings from "components/IncusAgentSettings";
+import { IncusAgentConfig } from "types/incusAgent";
 import { InstanceOverrideFormValues } from "types/instance";
 import { APIResponse } from "types/response";
 import {
@@ -43,6 +45,7 @@ const InstanceOverrides: FC = () => {
   const overrideExists = hasOverride(instance);
 
   let formikInitialValues = {
+    incus_agent: null as IncusAgentConfig | null,
     name: "",
     comment: "",
     disable_migration: "false",
@@ -60,6 +63,7 @@ const InstanceOverrides: FC = () => {
   if (instance && overrideExists) {
     const overrides = instance.overrides;
     formikInitialValues = {
+      incus_agent: overrides.incus_agent ?? null,
       name: overrides.name,
       comment: overrides.comment,
       disable_migration: overrides.disable_migration.toString(),
@@ -121,6 +125,7 @@ const InstanceOverrides: FC = () => {
       }
 
       const modifiedValues = {
+        incus_agent: values.incus_agent,
         uuid: uuid,
         disable_migration: values.disable_migration == "true",
         ignore_restrictions: values.ignore_restrictions == "true",
@@ -427,6 +432,11 @@ const InstanceOverrides: FC = () => {
             onChange={(value) => formik.setFieldValue("config", value)}
           />
         </Form.Group>
+        <IncusAgentSettings
+          instance
+          value={formik.values.incus_agent}
+          onChange={(value) => void formik.setFieldValue("incus_agent", value)}
+        />
         <Button
           className="float-end"
           variant="success"

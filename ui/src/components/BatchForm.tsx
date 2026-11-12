@@ -1,3 +1,4 @@
+import IncusAgentSettings from "components/IncusAgentSettings";
 import { FC, useEffect, useState } from "react";
 import { Button, Form, InputGroup, Spinner } from "react-bootstrap";
 import { IoChevronDownOutline, IoChevronUpOutline } from "react-icons/io5";
@@ -124,6 +125,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
         allow_no_ipv4: false,
         allow_no_background_import: false,
       },
+      incus_agent: null,
       post_migration_retries: 5,
       placement_scriptlet: "",
       rerun_scriptlets: false,
@@ -170,6 +172,7 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
             batch.config.instance_restriction_overrides
               .allow_no_background_import,
         },
+        incus_agent: batch.config.incus_agent ?? null,
         post_migration_retries: batch.config.post_migration_retries,
         placement_scriptlet: batch.config.placement_scriptlet,
         rerun_scriptlets: batch.config.rerun_scriptlets,
@@ -624,6 +627,12 @@ const BatchForm: FC<Props> = ({ batch, onSubmit }) => {
                     <option value="true">yes</option>
                   </Form.Select>
                 </Form.Group>
+                <IncusAgentSettings
+                  value={formik.values.config.incus_agent}
+                  onChange={(value) =>
+                    void formik.setFieldValue("config.incus_agent", value)
+                  }
+                />
               </div>
             )}
           </fieldset>
