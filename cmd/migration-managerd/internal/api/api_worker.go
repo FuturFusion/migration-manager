@@ -194,6 +194,7 @@ func workerCommandPost(d *Daemon, r *http.Request) response.Response {
 
 	d.queueHandler.RecordWorkerUpdate(instanceUUID)
 	return response.SyncResponseETag(true, api.WorkerCommand{
+		IncusAgent:          workerCommand.IncusAgent,
 		Command:             workerCommand.Command,
 		Location:            workerCommand.Location,
 		SourceType:          workerCommand.SourceType,
