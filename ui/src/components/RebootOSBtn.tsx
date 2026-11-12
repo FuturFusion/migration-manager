@@ -12,10 +12,16 @@ interface Props {
 
 const RebootOSBtn: FC<Props> = ({ pending = false }) => {
   const { notify } = useNotification();
+  const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [rebootInProgress, setRebootInProgress] = useState(false);
 
   const handleReboot = () => {
+    if (rebootInProgress) {
+      return;
+    }
+
+    setError("");
     setRebootInProgress(true);
     rebootOS()
       .then(() => {
@@ -24,9 +30,9 @@ const RebootOSBtn: FC<Props> = ({ pending = false }) => {
         setShowModal(false);
       })
       .catch((e) => {
+        setError(`OS reboot failed: ${e}`);
         notify.error(`OS reboot failed: ${e}`);
         setRebootInProgress(false);
-        setShowModal(false);
       });
   };
 
@@ -40,6 +46,8 @@ const RebootOSBtn: FC<Props> = ({ pending = false }) => {
       />
       <ModalWindow
         show={showModal}
+        busy={rebootInProgress}
+        error={error}
         scrollable
         handleClose={() => setShowModal(false)}
         title="Reboot server"
@@ -47,6 +55,7 @@ const RebootOSBtn: FC<Props> = ({ pending = false }) => {
           <>
             <LoadingButton
               isLoading={rebootInProgress}
+              loadingLabel="Rebooting…"
               variant="danger"
               onClick={handleReboot}
             >

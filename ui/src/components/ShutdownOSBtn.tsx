@@ -8,10 +8,17 @@ import { useNotification } from "context/notificationContext";
 
 const ShutdownOSBtn: FC = () => {
   const { notify } = useNotification();
+  const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [poweroffInProgress, setPoweroffInProgress] = useState(false);
 
   const handlePoweroff = () => {
+    if (poweroffInProgress) {
+      return;
+    }
+
+    setError("");
+    setPoweroffInProgress(true);
     poweroffOS()
       .then(() => {
         notify.success(`OS shutdown`);
@@ -19,9 +26,9 @@ const ShutdownOSBtn: FC = () => {
         setShowModal(false);
       })
       .catch((e) => {
+        setError(`OS poweroff failed: ${e}`);
         notify.error(`OS poweroff failed: ${e}`);
         setPoweroffInProgress(false);
-        setShowModal(false);
       });
   };
 
@@ -35,6 +42,8 @@ const ShutdownOSBtn: FC = () => {
       />
       <ModalWindow
         show={showModal}
+        busy={poweroffInProgress}
+        error={error}
         scrollable
         handleClose={() => setShowModal(false)}
         title="Power off server"
@@ -42,6 +51,7 @@ const ShutdownOSBtn: FC = () => {
           <>
             <LoadingButton
               isLoading={poweroffInProgress}
+              loadingLabel="Shutting down…"
               variant="danger"
               onClick={handlePoweroff}
             >

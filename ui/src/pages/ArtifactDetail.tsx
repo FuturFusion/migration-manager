@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button, Form, Modal } from "react-bootstrap";
+import { Button, Form } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router";
 import { fetchArtifact, deleteArtifact } from "api/artifacts";
 import ArtifactConfiguration from "components/ArtifactConfiguration";
 import ArtifactOverview from "components/ArtifactOverview";
 import ArtifactFiles from "components/ArtifactFiles";
+import LoadingButton from "components/LoadingButton";
+import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 
@@ -13,15 +15,24 @@ const ArtifactDetail = () => {
   const { notify } = useNotification();
   const navigate = useNavigate();
   const { uuid, activeTab } = useParams<{ uuid: string; activeTab: string }>();
+  const [deleteError, setDeleteError] = useState("");
   const [show, setShow] = useState(false);
   const [isForceDelete, setIsForceDelete] = useState(false);
   const [deleteInProgress, setDeleteInProgress] = useState(false);
 
   const handleClose = () => setShow(false);
-  const handleShow = () => setShow(true);
+  const handleShow = () => {
+    setDeleteError("");
+    setIsForceDelete(false);
+    setShow(true);
+  };
 
   const onDelete = () => {
-    handleClose();
+    if (deleteInProgress) {
+      return;
+    }
+
+    setDeleteError("");
     setDeleteInProgress(true);
     deleteArtifact(uuid ?? "", isForceDelete)
       .then((response) => {
@@ -31,10 +42,12 @@ const ArtifactDetail = () => {
           navigate("/ui/artifacts");
           return;
         }
+        setDeleteError(response.error);
         notify.error(response.error);
       })
       .catch((e) => {
         setDeleteInProgress(false);
+        setDeleteError(`Error during artifact deletion: ${e}`);
         notify.error(`Error during artifact deletion: ${e}`);
       });
   };
@@ -93,37 +106,49 @@ const ArtifactDetail = () => {
         )}
       </div>
 
-      <Modal show={show} onHide={handleClose}>
-        <Modal.Header closeButton>
-          <Modal.Title>Delete Artifact?</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <div className="mb-3">
-            Are you sure you want to delete the artifact {uuid}?<br />
-            This action cannot be undone.
-          </div>
-          <div className="my-3">
-            <Form.Group controlId="isForceDelete">
-              <Form.Check
-                type="checkbox"
-                label="Force"
-                name="isForceDelete"
-                checked={isForceDelete}
-                onChange={(e) => setIsForceDelete(e.currentTarget.checked)}
-                disabled={deleteInProgress}
-              />
-            </Form.Group>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
-            Close
-          </Button>
-          <Button variant="danger" onClick={onDelete}>
-            Delete
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ModalWindow
+        show={show}
+        handleClose={handleClose}
+        title="Delete artifact?"
+        busy={deleteInProgress}
+        error={deleteError}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              disabled={deleteInProgress}
+              onClick={handleClose}
+            >
+              Close
+            </Button>
+            <LoadingButton
+              variant="danger"
+              isLoading={deleteInProgress}
+              loadingLabel="Deleting…"
+              onClick={onDelete}
+            >
+              Delete artifact
+            </LoadingButton>
+          </>
+        }
+      >
+        <div className="mb-3">
+          Are you sure you want to delete the artifact {uuid}?<br />
+          This action cannot be undone.
+        </div>
+        <div className="my-3">
+          <Form.Group controlId="isForceDelete">
+            <Form.Check
+              type="checkbox"
+              label="Force"
+              name="isForceDelete"
+              checked={isForceDelete}
+              onChange={(e) => setIsForceDelete(e.currentTarget.checked)}
+              disabled={deleteInProgress}
+            />
+          </Form.Group>
+        </div>
+      </ModalWindow>
     </div>
   );
 };

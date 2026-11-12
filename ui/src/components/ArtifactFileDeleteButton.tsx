@@ -3,6 +3,7 @@ import { Button } from "react-bootstrap";
 import { BsTrash } from "react-icons/bs";
 import { useQueryClient } from "@tanstack/react-query";
 import { deleteArtifactFile } from "api/artifacts";
+import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
 
@@ -12,25 +13,37 @@ interface Props {
 }
 
 const ArtifactFileDeleteButton: FC<Props> = ({ artifactUUID, fileName }) => {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const { notify } = useNotification();
   const queryClient = useQueryClient();
 
   const handleDelete = () => {
+    if (busy) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
     deleteArtifactFile(artifactUUID, fileName)
       .then((response) => {
         if (response.error_code == 0) {
+          setShowModal(false);
           notify.success(`Artifact file ${fileName} deleted`);
           void queryClient.invalidateQueries({
             queryKey: ["artifacts", artifactUUID],
           });
           return;
         }
+        setError(response.error);
         notify.error(response.error);
       })
       .catch((e) => {
+        setError(`Error during artifact file deletion: ${e}`);
         notify.error(`Error during artifact file deletion: ${e}`);
-      });
+      })
+      .finally(() => setBusy(false));
   };
 
   return (
@@ -46,16 +59,27 @@ const ArtifactFileDeleteButton: FC<Props> = ({ artifactUUID, fileName }) => {
       </Button>
       <ModalWindow
         show={showModal}
+        busy={busy}
+        error={error}
         handleClose={() => setShowModal(false)}
         title="Delete file?"
         footer={
           <>
-            <Button variant="danger" onClick={() => setShowModal(false)}>
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => setShowModal(false)}
+            >
               Cancel
             </Button>
-            <Button variant="success" onClick={handleDelete}>
-              Confirm
-            </Button>
+            <LoadingButton
+              variant="danger"
+              isLoading={busy}
+              loadingLabel="Deleting…"
+              onClick={handleDelete}
+            >
+              Delete file
+            </LoadingButton>
           </>
         }
       >
