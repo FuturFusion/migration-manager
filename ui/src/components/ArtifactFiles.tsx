@@ -61,29 +61,27 @@ const ArtifactFiles = () => {
     <div>
       <Table borderless>
         <tbody>
-          {artifact.files.map((item, index) => (
-            <>
-              <tr key={index}>
-                <td style={{ gap: "8px" }} className="w-25">
-                  {item}
-                </td>
-                <td className="w-75">
-                  <DownloadButton
-                    title="Download"
-                    size="sm"
-                    variant="outline-secondary"
-                    className="bg-body border no-hover m-2"
-                    onDownload={() => handleDownload(uuid || "", item)}
-                    filename={item}
-                    children={<BsDownload />}
-                  />
-                  <ArtifactFileDeleteButton
-                    artifactUUID={uuid || ""}
-                    fileName={item}
-                  />
-                </td>
-              </tr>
-            </>
+          {artifact.files.map((item) => (
+            <tr key={item}>
+              <td style={{ gap: "8px" }} className="w-25">
+                {item}
+              </td>
+              <td className="w-75">
+                <DownloadButton
+                  title="Download"
+                  size="sm"
+                  variant="outline-secondary"
+                  className="bg-body border no-hover m-2"
+                  onDownload={() => handleDownload(uuid || "", item)}
+                  filename={item}
+                  children={<BsDownload />}
+                />
+                <ArtifactFileDeleteButton
+                  artifactUUID={uuid || ""}
+                  fileName={item}
+                />
+              </td>
+            </tr>
           ))}
         </tbody>
       </Table>

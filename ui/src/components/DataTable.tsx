@@ -1,4 +1,4 @@
-import { FC, ReactNode, useState } from "react";
+import { FC, Fragment, ReactNode, useState } from "react";
 import { Col, Form, Row, Table } from "react-bootstrap";
 import { MdArrowDropDown, MdArrowDropUp } from "react-icons/md";
 
@@ -9,6 +9,7 @@ interface DataTableCol {
 }
 
 export interface DataTableRow {
+  key?: string;
   additional_data?: ReactNode | string;
   cols: DataTableCol[];
 }
@@ -149,19 +150,16 @@ const DataTable: FC<Props> = ({ headers, rows }) => {
       });
 
       return (
-        <>
-          <tr
-            key={rowIndex}
-            className={rowItem.additional_data ? "no-bottom-border" : ""}
-          >
+        <Fragment key={rowItem.key ?? rowIndex}>
+          <tr className={rowItem.additional_data ? "no-bottom-border" : ""}>
             {row}
           </tr>
           {rowItem.additional_data && (
-            <tr key={rowIndex} className="additional-data-row">
+            <tr className="additional-data-row">
               <td colSpan={rowItem.cols.length}>{rowItem.additional_data}</td>
             </tr>
           )}
-        </>
+        </Fragment>
       );
     });
 

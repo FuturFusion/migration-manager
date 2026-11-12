@@ -27,6 +27,7 @@ const Queue = () => {
   ];
   const rows = queue.map((item) => {
     return {
+      key: item.instance_uuid,
       cols: [
         {
           content: (

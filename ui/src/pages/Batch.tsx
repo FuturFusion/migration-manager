@@ -29,6 +29,7 @@ const Batch = () => {
   ];
   const rows = batches.map((item) => {
     return {
+      key: item.name,
       cols: [
         {
           content: (
