@@ -1,10 +1,11 @@
-import { FC, useRef, useState } from "react";
+import { FC, useState } from "react";
 import Button from "react-bootstrap/Button";
 import { BsTrash } from "react-icons/bs";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useMatch, useNavigate, useParams } from "react-router";
 import { fetchSystemSettings, updateSystemSettings } from "api/settings";
 import DataTable from "components/DataTable";
+import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
 import SystemLoggingForm from "components/SystemLoggingForm";
 import { useNotification } from "context/notificationContext";
@@ -14,8 +15,13 @@ const SystemLoggingConfiguration: FC = () => {
   const navigate = useNavigate();
   const { notify } = useNotification();
   const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const deleteIndex = useRef(-1);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    index: number;
+    target: SystemSettingsLog;
+  } | null>(null);
 
   const { itemId } = useParams<{
     itemId: string;
@@ -39,11 +45,14 @@ const SystemLoggingConfiguration: FC = () => {
   }
 
   const updateSettings = (logTargets: SystemSettingsLog[]) => {
+    setBusy(true);
+    setDeleteError("");
     updateSystemSettings(
       JSON.stringify({ ...settings, log_targets: [...logTargets] }, null, 2),
     )
       .then((response) => {
         if (response.error_code == 0) {
+          setShowDeleteModal(false);
           notify.success(`System settings updated`);
           void queryClient.invalidateQueries({
             queryKey: ["system_settings"],
@@ -51,18 +60,35 @@ const SystemLoggingConfiguration: FC = () => {
           navigate("/ui/settings/logging");
           return;
         }
+        setDeleteError(response.error);
         notify.error(response.error);
       })
       .catch((e) => {
+        setDeleteError(`Error during system settings update: ${e}`);
         notify.error(`Error during system settings update: ${e}`);
-      });
+      })
+      .finally(() => setBusy(false));
   };
 
+  const deleteTargetUnchanged =
+    !!deleteTarget &&
+    JSON.stringify(settings?.log_targets[deleteTarget.index]) ===
+      JSON.stringify(deleteTarget.target);
+  const unavailableReason = !deleteTargetUnchanged
+    ? "This logging target changed or is no longer available. Close this dialog and refresh the list."
+    : undefined;
+
   const onDelete = () => {
+    if (busy) {
+      return;
+    }
+
+    if (!deleteTargetUnchanged) {
+      setDeleteError(unavailableReason || "Logging target is unavailable.");
+      return;
+    }
     const updated =
-      settings?.log_targets?.filter((_, i) => i !== deleteIndex.current) ?? [];
-    deleteIndex.current = -1;
-    setShowDeleteModal(false);
+      settings?.log_targets?.filter((_, i) => i !== deleteTarget?.index) ?? [];
     updateSettings(updated);
   };
 
@@ -117,7 +143,8 @@ const SystemLoggingConfiguration: FC = () => {
                 title="Delete"
                 style={{ cursor: "pointer" }}
                 onClick={() => {
-                  deleteIndex.current = index;
+                  setDeleteError("");
+                  setDeleteTarget({ index, target: item });
                   setShowDeleteModal(true);
                 }}
               />
@@ -166,18 +193,27 @@ const SystemLoggingConfiguration: FC = () => {
       )}
       <ModalWindow
         show={showDeleteModal}
+        busy={busy}
+        error={deleteError || unavailableReason}
         handleClose={() => setShowDeleteModal(false)}
         title="Delete logging target?"
         footer={
           <>
-            <Button variant="danger" onClick={onDelete}>
-              Delete
-            </Button>
+            <LoadingButton
+              variant="danger"
+              isLoading={busy}
+              loadingLabel="Deleting…"
+              disabled={!deleteTargetUnchanged}
+              onClick={onDelete}
+            >
+              Delete logging target
+            </LoadingButton>
           </>
         }
       >
         <p>
-          Are you sure you want to delete the logging target" "?
+          Are you sure you want to delete the logging target "
+          {deleteTarget?.target.name}"?
           <br />
           This action cannot be undone.
         </p>
