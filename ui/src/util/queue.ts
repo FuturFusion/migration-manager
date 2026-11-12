@@ -26,7 +26,10 @@ export const canDeleteQueueEntry = (queueEntry: QueueEntry) => {
 
 export const canCancelQueueEntry = (queueEntry: QueueEntry) => {
   const status = queueEntry.migration_status;
-  if (status != MigrationStatus.Canceled) {
+  if (
+    status != MigrationStatus.Canceled &&
+    status != MigrationStatus.Finished
+  ) {
     return true;
   }
 
@@ -43,5 +46,5 @@ export const canResolveQueueEntry = (queueEntry: QueueEntry) => {
 };
 
 export const canRetryQueueEntry = (queueEntry: QueueEntry) => {
-  return !canCancelQueueEntry(queueEntry);
+  return queueEntry.migration_status === MigrationStatus.Canceled;
 };

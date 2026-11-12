@@ -1,6 +1,6 @@
-import { FC } from "react";
+import { FC, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "react-bootstrap";
+import LoadingButton from "components/LoadingButton";
 import { deleteBatch } from "api/batches";
 import ModalWindow from "components/ModalWindow";
 import { useNotification } from "context/notificationContext";
@@ -18,10 +18,18 @@ const BatchDeleteModal: FC<Props> = ({
   handleClose,
   onSuccess,
 }) => {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const queryClient = useQueryClient();
   const { notify } = useNotification();
 
   const onDelete = () => {
+    if (busy) {
+      return;
+    }
+
+    setBusy(true);
+    setError("");
     deleteBatch(batchName)
       .then((response) => {
         if (response.error_code == 0) {
@@ -30,23 +38,36 @@ const BatchDeleteModal: FC<Props> = ({
           onSuccess?.();
           return;
         }
+        setError(response.error);
         notify.error(response.error);
       })
       .catch((e) => {
+        setError(`Error during batch deletion: ${e}`);
         notify.error(`Error during batch deletion: ${e}`);
-      });
+      })
+      .finally(() => setBusy(false));
   };
 
   return (
     <ModalWindow
       show={show}
-      handleClose={handleClose}
+      busy={busy}
+      error={error}
+      handleClose={() => {
+        setError("");
+        handleClose();
+      }}
       title="Delete Batch?"
       footer={
         <>
-          <Button variant="danger" onClick={onDelete}>
-            Delete
-          </Button>
+          <LoadingButton
+            variant="danger"
+            isLoading={busy}
+            loadingLabel="Deleting…"
+            onClick={onDelete}
+          >
+            Delete batch
+          </LoadingButton>
         </>
       }
     >
