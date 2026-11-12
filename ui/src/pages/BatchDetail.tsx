@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Button from "react-bootstrap/Button";
 import { useNavigate, useParams } from "react-router";
 import { fetchBatch } from "api/batches";
+import LoadingButton from "components/LoadingButton";
 import BatchConfiguration from "components/BatchConfiguration";
 import BatchDeleteModal from "components/BatchDeleteModal";
 import BatchInstances from "components/BatchInstances";
@@ -19,7 +20,9 @@ import {
 const BatchDetail = () => {
   const { name, activeTab } = useParams<{ name: string; activeTab: string }>();
   const [show, setShow] = useState(false);
-  const [opInprogress, setOpInprogress] = useState(false);
+  const [opInprogress, setOpInprogress] = useState<"start" | "stop" | null>(
+    null,
+  );
   const navigate = useNavigate();
   const { notify } = useNotification();
   const queryClient = useQueryClient();
@@ -49,17 +52,18 @@ const BatchDetail = () => {
       return;
     }
 
-    setOpInprogress(true);
+    setOpInprogress("stop");
 
     handleStopBatch(
       batch.name,
       (message) => {
-        setOpInprogress(false);
-        void queryClient.invalidateQueries({ queryKey: ["batches"] });
+        void queryClient
+          .invalidateQueries({ queryKey: ["batches"] })
+          .finally(() => setOpInprogress(null));
         notify.success(message);
       },
       (message) => {
-        setOpInprogress(false);
+        setOpInprogress(null);
         notify.error(message);
       },
     );
@@ -70,17 +74,18 @@ const BatchDetail = () => {
       return;
     }
 
-    setOpInprogress(true);
+    setOpInprogress("start");
 
     handleStartBatch(
       batch.name,
       (message) => {
-        setOpInprogress(false);
-        void queryClient.invalidateQueries({ queryKey: ["batches"] });
+        void queryClient
+          .invalidateQueries({ queryKey: ["batches"] })
+          .finally(() => setOpInprogress(null));
         notify.success(message);
       },
       (message) => {
-        setOpInprogress(false);
+        setOpInprogress(null);
         notify.error(message);
       },
     );
@@ -118,16 +123,32 @@ const BatchDetail = () => {
         {(!activeTab || activeTab == "overview") && (
           <div className="d-flex justify-content-end gap-2">
             {canStartBatch(batch) && (
-              <Button variant="success" onClick={onStart}>
+              <LoadingButton
+                variant="success"
+                isLoading={opInprogress === "start"}
+                loadingLabel="Starting…"
+                disabled={!!opInprogress}
+                onClick={onStart}
+              >
                 Start
-              </Button>
+              </LoadingButton>
             )}
             {canStopBatch(batch) && (
-              <Button variant="success" onClick={onStop}>
+              <LoadingButton
+                variant="success"
+                isLoading={opInprogress === "stop"}
+                loadingLabel="Stopping…"
+                disabled={!!opInprogress}
+                onClick={onStop}
+              >
                 Stop
-              </Button>
+              </LoadingButton>
             )}
-            <Button variant="danger" onClick={handleShow}>
+            <Button
+              variant="danger"
+              disabled={!!opInprogress}
+              onClick={handleShow}
+            >
               Delete
             </Button>
           </div>

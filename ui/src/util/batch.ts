@@ -35,7 +35,7 @@ export const canStartBatch = (batch: Batch) => {
 
 export const canStopBatch = (batch: Batch) => {
   const status = batch.status;
-  if (status != BatchStatus.Queued && status != BatchStatus.Running) {
+  if (status != BatchStatus.Running) {
     return false;
   }
 

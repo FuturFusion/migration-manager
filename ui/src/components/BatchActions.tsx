@@ -5,6 +5,7 @@ import {
   MdOutlinePlayCircle,
   MdOutlineStopCircle,
 } from "react-icons/md";
+import ActionButton from "components/ActionButton";
 import BatchDeleteModal from "components/BatchDeleteModal";
 import BatchResetBtn from "components/BatchResetBtn";
 import { useNotification } from "context/notificationContext";
@@ -22,7 +23,9 @@ interface Props {
 
 const BatchActions: FC<Props> = ({ batch }) => {
   const queryClient = useQueryClient();
-  const [opInprogress, setOpInprogress] = useState(false);
+  const [opInprogress, setOpInprogress] = useState<"start" | "stop" | null>(
+    null,
+  );
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { notify } = useNotification();
 
@@ -31,17 +34,18 @@ const BatchActions: FC<Props> = ({ batch }) => {
       return;
     }
 
-    setOpInprogress(true);
+    setOpInprogress("stop");
 
     handleStopBatch(
       batch.name,
       (message) => {
-        setOpInprogress(false);
-        void queryClient.invalidateQueries({ queryKey: ["batches"] });
+        void queryClient
+          .invalidateQueries({ queryKey: ["batches"] })
+          .finally(() => setOpInprogress(null));
         notify.success(message);
       },
       (message) => {
-        setOpInprogress(false);
+        setOpInprogress(null);
         notify.error(message);
       },
     );
@@ -52,35 +56,21 @@ const BatchActions: FC<Props> = ({ batch }) => {
       return;
     }
 
-    setOpInprogress(true);
+    setOpInprogress("start");
 
     handleStartBatch(
       batch.name,
       (message) => {
-        setOpInprogress(false);
-        void queryClient.invalidateQueries({ queryKey: ["batches"] });
+        void queryClient
+          .invalidateQueries({ queryKey: ["batches"] })
+          .finally(() => setOpInprogress(null));
         notify.success(message);
       },
       (message) => {
-        setOpInprogress(false);
+        setOpInprogress(null);
         notify.error(message);
       },
     );
-  };
-
-  const startStyle = {
-    cursor: "pointer",
-    color: canStartBatch(batch) && !opInprogress ? "grey" : "lightgrey",
-  };
-
-  const stopStyle = {
-    cursor: "pointer",
-    color: canStopBatch(batch) && !opInprogress ? "grey" : "lightgrey",
-  };
-
-  const buttonStyle = {
-    cursor: "pointer",
-    color: "grey",
   };
 
   const onDelete = () => {
@@ -88,29 +78,45 @@ const BatchActions: FC<Props> = ({ batch }) => {
   };
 
   return (
-    <div>
-      <MdOutlinePlayCircle
-        size={25}
-        style={startStyle}
-        onClick={() => {
-          onStart();
-        }}
-      />
-      <MdOutlineStopCircle
-        size={25}
-        style={stopStyle}
-        onClick={() => {
-          onStop();
-        }}
-      />
-      <BatchResetBtn batch={batch} />
-      <MdOutlineDelete
-        size={25}
-        style={buttonStyle}
-        onClick={() => {
-          onDelete();
-        }}
-      />
+    <div className="d-flex align-items-center gap-1">
+      <ActionButton
+        label="Start batch"
+        disabledReason={
+          !canStartBatch(batch)
+            ? batch.status === "Finished"
+              ? "Batch has finished. Reset it before starting again."
+              : `Cannot start a batch in state ${batch.status}.`
+            : undefined
+        }
+        disabled={!!opInprogress}
+        isLoading={opInprogress === "start"}
+        loadingLabel="Starting…"
+        onClick={onStart}
+      >
+        <MdOutlinePlayCircle size={22} />
+      </ActionButton>
+      <ActionButton
+        label="Stop batch"
+        disabledReason={
+          !canStopBatch(batch)
+            ? `Cannot stop a batch in state ${batch.status}.`
+            : undefined
+        }
+        disabled={!!opInprogress}
+        isLoading={opInprogress === "stop"}
+        loadingLabel="Stopping…"
+        onClick={onStop}
+      >
+        <MdOutlineStopCircle size={22} />
+      </ActionButton>
+      <BatchResetBtn batch={batch} disabled={!!opInprogress} />
+      <ActionButton
+        label="Delete batch"
+        disabled={!!opInprogress}
+        onClick={onDelete}
+      >
+        <MdOutlineDelete size={22} />
+      </ActionButton>
 
       <BatchDeleteModal
         batchName={batch.name}

@@ -2,6 +2,7 @@ import type { FC, ReactNode } from "react";
 import { useState } from "react";
 import { Button, Form } from "react-bootstrap";
 import { useQueryClient } from "@tanstack/react-query";
+import ActionButton from "components/ActionButton";
 import FileUploader from "components/FileUploader";
 import LoadingButton from "components/LoadingButton";
 import ModalWindow from "components/ModalWindow";
@@ -53,6 +54,7 @@ const OSAction: FC<Props> = ({
 }) => {
   const queryClient = useQueryClient();
   const { notify } = useNotification();
+  const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [inProgress, setInProgress] = useState(false);
   const [data, setData] = useState(defaultData);
@@ -76,6 +78,7 @@ const OSAction: FC<Props> = ({
   };
 
   const execute = async (input: OSActionInput): Promise<boolean> => {
+    setError("");
     setInProgress(true);
     try {
       await run(input);
@@ -83,6 +86,7 @@ const OSAction: FC<Props> = ({
       setInProgress(false);
       return true;
     } catch (e) {
+      setError(`${label} failed: ${e}`);
       notify.error(`${label} failed: ${e}`);
       setInProgress(false);
       return false;
@@ -90,6 +94,7 @@ const OSAction: FC<Props> = ({
   };
 
   const handleDownload = async (): Promise<boolean> => {
+    setError("");
     setInProgress(true);
     try {
       const url = (await run(undefined)) as string;
@@ -98,6 +103,7 @@ const OSAction: FC<Props> = ({
       setInProgress(false);
       return true;
     } catch (e) {
+      setError(`${label} failed: ${e}`);
       notify.error(`${label} failed: ${e}`);
       setInProgress(false);
       return false;
@@ -105,6 +111,9 @@ const OSAction: FC<Props> = ({
   };
 
   const handleSubmit = async () => {
+    if (inProgress) {
+      return;
+    }
     if (mode === "download") {
       const downloaded = await handleDownload();
       if (downloaded) {
@@ -120,6 +129,7 @@ const OSAction: FC<Props> = ({
       try {
         input = YAML.parse(data) ?? {};
       } catch (e) {
+        setError(`Error during YAML value parsing: ${e}`);
         notify.error(`Error during YAML value parsing: ${e}`);
         return;
       }
@@ -138,13 +148,9 @@ const OSAction: FC<Props> = ({
   };
 
   const trigger = icon ? (
-    <span
-      title={label}
-      style={{ color: "grey", cursor: "pointer" }}
-      onClick={handleClick}
-    >
+    <ActionButton label={label} disabled={inProgress} onClick={handleClick}>
       {icon}
-    </span>
+    </ActionButton>
   ) : (
     <Button
       size="sm"
@@ -161,6 +167,8 @@ const OSAction: FC<Props> = ({
       {trigger}
       <ModalWindow
         show={showModal}
+        busy={inProgress}
+        error={error}
         scrollable
         handleClose={() => setShowModal(false)}
         title={label}
@@ -176,82 +184,92 @@ const OSAction: FC<Props> = ({
           )
         }
       >
-        {(mode === "confirm" || mode === "download") && <p>{confirmMessage}</p>}
-        {confirmMessage && (mode === "data" || mode === "fields") && (
-          <p className={variant === "danger" ? "text-danger" : ""}>
-            {confirmMessage}
-          </p>
-        )}
-        {mode === "data" && (
-          <Form.Control
-            className="yaml-editor"
-            as="textarea"
-            rows={10}
-            value={data}
-            placeholder="key: value"
-            onChange={(e) => setData(e.target.value)}
-          />
-        )}
-        {mode === "fields" && (
-          <Form>
-            {fields.map((field) => (
-              <Form.Group key={field.name} className="mb-3">
-                {field.type === "checkbox" ? (
-                  <Form.Check
-                    type="checkbox"
-                    label={field.label}
-                    checked={Boolean(values[field.name])}
-                    onChange={(e) =>
-                      setValues({ ...values, [field.name]: e.target.checked })
-                    }
-                  />
-                ) : (
-                  <>
-                    <Form.Label>{field.label}</Form.Label>
-                    {field.options ? (
-                      <Form.Select
-                        value={String(values[field.name] ?? "")}
-                        onChange={(e) =>
-                          setValues({ ...values, [field.name]: e.target.value })
-                        }
-                      >
-                        {field.options.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </Form.Select>
-                    ) : (
-                      <Form.Control
-                        type={field.type ?? "text"}
-                        value={String(values[field.name] ?? "")}
-                        onChange={(e) =>
-                          setValues({ ...values, [field.name]: e.target.value })
-                        }
-                      />
-                    )}
-                  </>
-                )}
-              </Form.Group>
-            ))}
-          </Form>
-        )}
-        {mode === "upload" && (
-          <FileUploader
-            onUpload={async (file) => {
-              if (!file) {
-                return false;
-              }
+        <fieldset disabled={inProgress} className="border-0 p-0 m-0">
+          {(mode === "confirm" || mode === "download") && (
+            <p>{confirmMessage}</p>
+          )}
+          {confirmMessage && (mode === "data" || mode === "fields") && (
+            <p className={variant === "danger" ? "text-danger" : ""}>
+              {confirmMessage}
+            </p>
+          )}
+          {mode === "data" && (
+            <Form.Control
+              className="yaml-editor"
+              as="textarea"
+              rows={10}
+              value={data}
+              placeholder="key: value"
+              onChange={(e) => setData(e.target.value)}
+            />
+          )}
+          {mode === "fields" && (
+            <Form>
+              {fields.map((field) => (
+                <Form.Group key={field.name} className="mb-3">
+                  {field.type === "checkbox" ? (
+                    <Form.Check
+                      type="checkbox"
+                      label={field.label}
+                      checked={Boolean(values[field.name])}
+                      onChange={(e) =>
+                        setValues({ ...values, [field.name]: e.target.checked })
+                      }
+                    />
+                  ) : (
+                    <>
+                      <Form.Label>{field.label}</Form.Label>
+                      {field.options ? (
+                        <Form.Select
+                          value={String(values[field.name] ?? "")}
+                          onChange={(e) =>
+                            setValues({
+                              ...values,
+                              [field.name]: e.target.value,
+                            })
+                          }
+                        >
+                          {field.options.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </Form.Select>
+                      ) : (
+                        <Form.Control
+                          type={field.type ?? "text"}
+                          value={String(values[field.name] ?? "")}
+                          onChange={(e) =>
+                            setValues({
+                              ...values,
+                              [field.name]: e.target.value,
+                            })
+                          }
+                        />
+                      )}
+                    </>
+                  )}
+                </Form.Group>
+              ))}
+            </Form>
+          )}
+          {mode === "upload" && (
+            <FileUploader
+              onUpload={async (file) => {
+                if (!file) {
+                  return false;
+                }
 
-              const ok = await execute(file);
-              if (ok) {
-                setShowModal(false);
-              }
+                const ok = await execute(file);
+                if (ok) {
+                  setShowModal(false);
+                }
 
-              return ok;
-            }}
-          />
-        )}
+                return ok;
+              }}
+            />
+          )}
+        </fieldset>
       </ModalWindow>
     </>
   );

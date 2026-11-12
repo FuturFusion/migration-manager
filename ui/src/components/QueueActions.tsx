@@ -2,7 +2,8 @@ import { FC, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { MdBuildCircle, MdOutlineDelete } from "react-icons/md";
 import { RiResetLeftLine } from "react-icons/ri";
-import { Button } from "react-bootstrap";
+import ActionButton from "components/ActionButton";
+import LoadingButton from "components/LoadingButton";
 import { deleteQueue, resolveQueue, retryQueue } from "api/queue";
 import ModalWindow from "components/ModalWindow";
 import QueueCancelBtn from "components/QueueCancelBtn";
@@ -20,46 +21,37 @@ interface Props {
 
 const QueueActions: FC<Props> = ({ queueEntry }) => {
   const queryClient = useQueryClient();
-  const [opInprogress, setOpInprogress] = useState(false);
+  const [opInprogress, setOpInprogress] = useState<
+    "delete" | "retry" | "resolve" | null
+  >(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [error, setError] = useState("");
   const { notify } = useNotification();
-
-  const deleteStyle = {
-    cursor: "pointer",
-    color:
-      canDeleteQueueEntry(queueEntry) && !opInprogress ? "grey" : "lightgrey",
-  };
-
-  const retryStyle = {
-    cursor: "pointer",
-    color:
-      canRetryQueueEntry(queueEntry) && !opInprogress ? "grey" : "lightgrey",
-  };
-
-  const resolveStyle = {
-    cursor: "pointer",
-    color:
-      canResolveQueueEntry(queueEntry) && !opInprogress ? "grey" : "lightgrey",
-  };
 
   const onDelete = () => {
     if (!canDeleteQueueEntry(queueEntry) || opInprogress) {
       return;
     }
 
-    setOpInprogress(true);
+    setError("");
+    setOpInprogress("delete");
     deleteQueue(queueEntry.instance_uuid)
       .then((response) => {
-        setOpInprogress(false);
         if (response.error_code == 0) {
+          setShowDeleteModal(false);
           notify.success(`Queue entry ${queueEntry.instance_uuid} deleted`);
-          queryClient.invalidateQueries({ queryKey: ["queue"] });
+          void queryClient
+            .invalidateQueries({ queryKey: ["queue"] })
+            .finally(() => setOpInprogress(null));
           return;
         }
+        setError(response.error);
+        setOpInprogress(null);
         notify.error(response.error);
       })
       .catch((e) => {
-        setOpInprogress(false);
+        setOpInprogress(null);
+        setError(`Error during queue entry deletion: ${e}`);
         notify.error(`Error during queue entry deletion: ${e}`);
       });
   };
@@ -69,19 +61,22 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
       return;
     }
 
-    setOpInprogress(true);
+    setError("");
+    setOpInprogress("resolve");
     resolveQueue(queueEntry.instance_uuid)
       .then((response) => {
-        setOpInprogress(false);
         if (response.error_code == 0) {
           notify.success(`Queue entry ${queueEntry.instance_uuid} resolved`);
-          queryClient.invalidateQueries({ queryKey: ["queue"] });
+          void queryClient
+            .invalidateQueries({ queryKey: ["queue"] })
+            .finally(() => setOpInprogress(null));
           return;
         }
+        setOpInprogress(null);
         notify.error(response.error);
       })
       .catch((e) => {
-        setOpInprogress(false);
+        setOpInprogress(null);
         notify.error(`Error during queue entry resolve: ${e}`);
       });
   };
@@ -91,65 +86,91 @@ const QueueActions: FC<Props> = ({ queueEntry }) => {
       return;
     }
 
-    setOpInprogress(true);
+    setError("");
+    setOpInprogress("retry");
     retryQueue(queueEntry.instance_uuid)
       .then((response) => {
-        setOpInprogress(false);
         if (response.error_code == 0) {
           notify.success(`Queue entry ${queueEntry.instance_uuid} retried`);
-          queryClient.invalidateQueries({ queryKey: ["queue"] });
+          void queryClient
+            .invalidateQueries({ queryKey: ["queue"] })
+            .finally(() => setOpInprogress(null));
           return;
         }
+        setOpInprogress(null);
         notify.error(response.error);
       })
       .catch((e) => {
-        setOpInprogress(false);
+        setOpInprogress(null);
         notify.error(`Error during queue entry retry: ${e}`);
       });
   };
 
   return (
-    <div>
-      <QueueCancelBtn queueEntry={queueEntry} />
-      <RiResetLeftLine
-        title="Retry"
-        size={22}
-        style={retryStyle}
+    <div className="d-flex align-items-center gap-1">
+      <QueueCancelBtn queueEntry={queueEntry} disabled={!!opInprogress} />
+      <ActionButton
+        label="Retry migration"
+        disabledReason={
+          !canRetryQueueEntry(queueEntry)
+            ? "Only canceled migrations can be retried."
+            : undefined
+        }
+        disabled={!!opInprogress}
+        isLoading={opInprogress === "retry"}
+        loadingLabel="Retrying…"
+        onClick={onRetry}
+      >
+        <RiResetLeftLine size={22} />
+      </ActionButton>
+      <ActionButton
+        label="Delete queue entry"
+        disabledReason={
+          !canDeleteQueueEntry(queueEntry)
+            ? "Only finished or failed queue entries can be deleted."
+            : undefined
+        }
+        disabled={!!opInprogress}
         onClick={() => {
-          onRetry();
-        }}
-      />
-      <MdOutlineDelete
-        title="Delete"
-        size={25}
-        style={deleteStyle}
-        onClick={() => {
-          if (!canDeleteQueueEntry(queueEntry) || opInprogress) {
-            return;
-          }
-
+          setError("");
           setShowDeleteModal(true);
         }}
-      />
-      {queueEntry?.migration_status == "Conflict" && (
-        <MdBuildCircle
-          title="Resolve"
-          size={25}
-          style={resolveStyle}
-          onClick={() => {
-            onResolve();
-          }}
-        />
+      >
+        <MdOutlineDelete size={22} />
+      </ActionButton>
+      {queueEntry.migration_status === "Conflict" && (
+        <ActionButton
+          label="Resolve conflict"
+          disabled={!!opInprogress}
+          isLoading={opInprogress === "resolve"}
+          loadingLabel="Resolving…"
+          onClick={onResolve}
+        >
+          <MdBuildCircle size={22} />
+        </ActionButton>
       )}
       <ModalWindow
         show={showDeleteModal}
+        busy={opInprogress === "delete"}
+        error={
+          error ||
+          (!canDeleteQueueEntry(queueEntry)
+            ? "This entry can no longer be deleted. Only finished or failed queue entries can be deleted."
+            : undefined)
+        }
         handleClose={() => setShowDeleteModal(false)}
         title="Delete queue entry?"
         footer={
           <>
-            <Button variant="danger" onClick={onDelete}>
+            <LoadingButton
+              variant="danger"
+              isLoading={opInprogress === "delete"}
+              loadingLabel="Deleting…"
+              disabled={!canDeleteQueueEntry(queueEntry) || !!opInprogress}
+              onClick={onDelete}
+            >
               Delete
-            </Button>
+            </LoadingButton>
           </>
         }
       >

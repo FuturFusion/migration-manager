@@ -6,9 +6,11 @@ import { BsUnlockFill } from "react-icons/bs";
 import {
   MdOutlineComment,
   MdOutlinePlayCircle,
+  MdOutlineStopCircle,
   MdOutlineSpeed,
   MdSync,
 } from "react-icons/md";
+import ActionButton from "components/ActionButton";
 import InstanceStateModal from "components/InstanceStateModal";
 import InstanceCtkModal from "components/InstanceCtkModal";
 import { Instance } from "types/instance";
@@ -34,11 +36,6 @@ const InstanceActions: FC<Props> = ({ instance }) => {
     top: 0,
     left: 0,
   });
-
-  const resetStyle = {
-    cursor: "pointer",
-    color: !opInprogress ? "grey" : "lightgrey",
-  };
 
   const handleMouseEnter = (e: React.MouseEvent<SVGElement>) => {
     const rect = (e.target as SVGElement).getBoundingClientRect();
@@ -72,7 +69,11 @@ const InstanceActions: FC<Props> = ({ instance }) => {
           notify.success(
             `Background import verification for ${instance.uuid} was reset`,
           );
-          queryClient.invalidateQueries({ queryKey: ["instance"] });
+          void queryClient.invalidateQueries({
+            predicate: ({ queryKey }) =>
+              queryKey[0] === "instances" ||
+              (queryKey[0] === "batches" && queryKey[2] === "instances"),
+          });
           return;
         }
         notify.error(response.error);
@@ -85,48 +86,55 @@ const InstanceActions: FC<Props> = ({ instance }) => {
 
   return (
     <div className="relative inline-block">
-      <div>
-        <MdOutlinePlayCircle
-          title={instance.running ? "Running" : "Stopped"}
-          size={20}
-          onClick={() => {
-            onStateChange();
-          }}
-          style={{ color: instance.running ? "green" : "red" }}
-        />
+      <div className="d-flex align-items-center gap-1">
+        <ActionButton
+          label={`Instance is ${instance.running ? "running; power off" : "stopped; power on"}`}
+          onClick={onStateChange}
+        >
+          {instance.running ? (
+            <MdOutlinePlayCircle size={20} />
+          ) : (
+            <MdOutlineStopCircle size={20} />
+          )}{" "}
+          {instance.running ? "Running" : "Stopped"}
+        </ActionButton>
 
-        <InstanceStateModal
-          uuid={instance.uuid}
-          running={instance.running}
-          show={showStateChangeModal}
-          onSuccess={() => setShowStateChangeModal(false)}
-          handleClose={() => setShowStateChangeModal(false)}
-        />
-        <MdOutlineSpeed
-          title="Enable Background Import"
-          size={20}
-          style={{
-            color: !instance.background_import ? "red" : "lightgrey",
-          }}
-          onClick={() => {
-            onEnableCtk();
-          }}
-        />
+        {showStateChangeModal && (
+          <InstanceStateModal
+            uuid={instance.uuid}
+            running={instance.running}
+            show={showStateChangeModal}
+            onSuccess={() => setShowStateChangeModal(false)}
+            handleClose={() => setShowStateChangeModal(false)}
+          />
+        )}
+        <ActionButton
+          label="Enable background import"
+          disabledReason={
+            instance.background_import
+              ? "Background import is already enabled."
+              : undefined
+          }
+          onClick={onEnableCtk}
+        >
+          <MdOutlineSpeed size={20} />
+        </ActionButton>
 
         <InstanceCtkModal
           uuid={instance.uuid}
+          enabled={instance.background_import}
           show={showCtkModal}
           onSuccess={() => setShowCtkModal(false)}
           handleClose={() => setShowCtkModal(false)}
         />
-        <MdSync
-          title="Reset Background Import Verification"
-          size={20}
-          style={resetStyle}
-          onClick={() => {
-            onResetBackgroundImport();
-          }}
-        />
+        <ActionButton
+          label="Reset background import verification"
+          isLoading={opInprogress}
+          loadingLabel="Resetting…"
+          onClick={onResetBackgroundImport}
+        >
+          <MdSync size={20} />
+        </ActionButton>
         {instance.overrides && instance.overrides.ignore_restrictions && (
           <OverlayTrigger
             placement="top"

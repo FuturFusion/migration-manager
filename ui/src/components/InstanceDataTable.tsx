@@ -38,6 +38,7 @@ const InstanceDataTable: FC<Props> = ({ instances, isLoading, error }) => {
     const isOverrideDefined = hasOverride(item);
 
     return {
+      key: item.uuid,
       cols: [
         {
           content: (

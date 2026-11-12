@@ -32,7 +32,14 @@ const BatchOverview = () => {
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Status</div>
-        <div className="col-10 detail-table-cell"> {batch?.status_message}</div>
+        <div className="col-10 detail-table-cell">
+          <span className="badge bg-secondary-subtle text-body border">
+            {batch?.status}
+          </span>
+          {batch?.status_message !== batch?.status && (
+            <div>{batch?.status_message}</div>
+          )}
+        </div>
       </div>
       <div className="row">
         <div className="col-2 detail-table-header">Default target</div>

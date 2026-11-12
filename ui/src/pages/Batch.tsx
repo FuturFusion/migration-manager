@@ -29,6 +29,7 @@ const Batch = () => {
   ];
   const rows = batches.map((item) => {
     return {
+      key: item.name,
       cols: [
         {
           content: (
@@ -39,7 +40,16 @@ const Batch = () => {
           sortKey: item.name,
         },
         {
-          content: item.status_message,
+          content: (
+            <>
+              <span className="badge bg-secondary-subtle text-body border">
+                {item.status}
+              </span>
+              {item.status_message !== item.status && (
+                <div>{item.status_message}</div>
+              )}
+            </>
+          ),
           sortKey: item.status_message,
         },
         {

@@ -1,24 +1,32 @@
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
-import Modal from "react-bootstrap/Modal";
 import { useNavigate, useParams } from "react-router";
 import { deleteSource } from "api/sources";
 import SourceConfiguration from "pages/SourceConfiguration";
 import SourceOverview from "pages/SourceOverview";
+import LoadingButton from "components/LoadingButton";
+import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 
 const SourceDetail = () => {
   const { notify } = useNotification();
   const { name, activeTab } = useParams<{ name: string; activeTab: string }>();
+  const [deleteError, setDeleteError] = useState("");
   const [show, setShow] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
   const navigate = useNavigate();
 
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);
 
   const onDelete = () => {
-    handleClose();
+    if (deleteInProgress) {
+      return;
+    }
+
+    setDeleteError("");
+    setDeleteInProgress(true);
     deleteSource(name ?? "")
       .then((response) => {
         if (response.error_code == 0) {
@@ -26,11 +34,14 @@ const SourceDetail = () => {
           navigate("/ui/sources");
           return;
         }
+        setDeleteError(response.error);
         notify.error(response.error);
       })
       .catch((e) => {
+        setDeleteError(`Error during source deletion: ${e}`);
         notify.error(`Error during source deletion: ${e}`);
-      });
+      })
+      .finally(() => setDeleteInProgress(false));
   };
 
   const tabs = [
@@ -64,23 +75,35 @@ const SourceDetail = () => {
         )}
       </div>
 
-      <Modal show={show} onHide={handleClose}>
-        <Modal.Header closeButton>
-          <Modal.Title>Delete Source?</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete the source {name}?<br />
-          This action cannot be undone.
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
-            Close
-          </Button>
-          <Button variant="danger" onClick={onDelete}>
-            Delete
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ModalWindow
+        show={show}
+        handleClose={handleClose}
+        title="Delete source?"
+        busy={deleteInProgress}
+        error={deleteError}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              disabled={deleteInProgress}
+              onClick={handleClose}
+            >
+              Close
+            </Button>
+            <LoadingButton
+              variant="danger"
+              isLoading={deleteInProgress}
+              loadingLabel="Deleting…"
+              onClick={onDelete}
+            >
+              Delete source
+            </LoadingButton>
+          </>
+        }
+      >
+        Are you sure you want to delete the source {name}?<br />
+        This action cannot be undone.
+      </ModalWindow>
     </div>
   );
 };

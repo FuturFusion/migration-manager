@@ -1,24 +1,32 @@
 import { useState } from "react";
 import Button from "react-bootstrap/Button";
-import Modal from "react-bootstrap/Modal";
 import { useNavigate, useParams } from "react-router";
 import { deleteTarget } from "api/targets";
 import TargetConfiguration from "pages/TargetConfiguration";
 import TargetOverview from "pages/TargetOverview";
+import LoadingButton from "components/LoadingButton";
+import ModalWindow from "components/ModalWindow";
 import TabView from "components/TabView";
 import { useNotification } from "context/notificationContext";
 
 const TargetDetail = () => {
   const { notify } = useNotification();
   const { name, activeTab } = useParams<{ name: string; activeTab: string }>();
+  const [deleteError, setDeleteError] = useState("");
   const [show, setShow] = useState(false);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
   const navigate = useNavigate();
 
   const handleClose = () => setShow(false);
   const handleShow = () => setShow(true);
 
   const onDelete = () => {
-    handleClose();
+    if (deleteInProgress) {
+      return;
+    }
+
+    setDeleteError("");
+    setDeleteInProgress(true);
     deleteTarget(name ?? "")
       .then((response) => {
         if (response.error_code == 0) {
@@ -26,11 +34,14 @@ const TargetDetail = () => {
           navigate("/ui/targets");
           return;
         }
+        setDeleteError(response.error);
         notify.error(response.error);
       })
       .catch((e) => {
+        setDeleteError(`Error during target deletion: ${e}`);
         notify.error(`Error during target deletion: ${e}`);
-      });
+      })
+      .finally(() => setDeleteInProgress(false));
   };
 
   const tabs = [
@@ -64,23 +75,35 @@ const TargetDetail = () => {
         )}
       </div>
 
-      <Modal show={show} onHide={handleClose}>
-        <Modal.Header closeButton>
-          <Modal.Title>Delete Target?</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          Are you sure you want to delete the target {name}?<br />
-          This action cannot be undone.
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleClose}>
-            Close
-          </Button>
-          <Button variant="danger" onClick={onDelete}>
-            Delete
-          </Button>
-        </Modal.Footer>
-      </Modal>
+      <ModalWindow
+        show={show}
+        handleClose={handleClose}
+        title="Delete target?"
+        busy={deleteInProgress}
+        error={deleteError}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              disabled={deleteInProgress}
+              onClick={handleClose}
+            >
+              Close
+            </Button>
+            <LoadingButton
+              variant="danger"
+              isLoading={deleteInProgress}
+              loadingLabel="Deleting…"
+              onClick={onDelete}
+            >
+              Delete target
+            </LoadingButton>
+          </>
+        }
+      >
+        Are you sure you want to delete the target {name}?<br />
+        This action cannot be undone.
+      </ModalWindow>
     </div>
   );
 };
