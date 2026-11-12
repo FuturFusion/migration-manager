@@ -1199,6 +1199,32 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		},
 	}
 
+	for _, base := range tests {
+		if base.name != "success - migration window started (perform post import)" {
+			continue
+		}
+
+		for _, restart := range []bool{false, true} {
+			for _, instanceFeatures := range []*api.IncusAgentConfig{nil, {Features: &api.IncusAgentFeatures{}}, {Features: &api.IncusAgentFeatures{Exec: true}}} {
+				tc := base
+				tc.name = "agent configuration restart=" + strconv.FormatBool(restart) + " override=" + strconv.Itoa(len(tests))
+				tc.batchSvcGetByName.Config.IncusAgent = &api.IncusAgentConfig{Features: &api.IncusAgentFeatures{Exec: false, State: true}}
+				tc.instanceSvcGetByIDInstance.Overrides.IncusAgent = instanceFeatures
+				tc.wantWorkerCommand.IncusAgent = tc.batchSvcGetByName.Config.IncusAgent
+				if instanceFeatures != nil {
+					tc.wantWorkerCommand.IncusAgent = instanceFeatures
+				}
+
+				if restart {
+					tc.repoGetByInstanceUUID.MigrationStatus = api.MIGRATIONSTATUS_POST_IMPORT
+					tc.repoGetByInstanceUUID.LastWorkerStatus = api.WORKERRESPONSE_RUNNING
+				}
+
+				tests = append(tests, tc)
+			}
+		}
+	}
+
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := &mock.QueueRepoMock{

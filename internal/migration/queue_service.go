@@ -351,6 +351,13 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 			DistroVersion: distroVersion,
 		}
 
+		batch, err := s.batch.GetByName(ctx, queueEntry.BatchName)
+		if err != nil {
+			return fmt.Errorf("Failed to get queue entry batch %q: %w", queueEntry.BatchName, err)
+		}
+
+		workerCommand.IncusAgent = api.ResolveIncusAgentConfig(batch.Config.IncusAgent, instance.Overrides.IncusAgent)
+
 		// If the last worker response was RUNNING, then skip validation and just send the response it wants.
 		if restartWorker {
 			switch queueEntry.MigrationStatus {
@@ -382,11 +389,6 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		err = json.Unmarshal(target.Properties, &targetProperties)
 		if err != nil {
 			return fmt.Errorf("Failed to get target %q properties: %w", target.Name, err)
-		}
-
-		batch, err := s.batch.GetByName(ctx, queueEntry.BatchName)
-		if err != nil {
-			return fmt.Errorf("Failed to get queue entry batch %q: %w", queueEntry.BatchName, err)
 		}
 
 		newStatusMessage := queueEntry.MigrationStatusMessage

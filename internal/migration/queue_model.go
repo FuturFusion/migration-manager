@@ -29,6 +29,7 @@ type QueueEntry struct {
 
 type QueueEntries []QueueEntry
 
+// WorkerCommand describes a migration operation and its guest configuration.
 type WorkerCommand struct {
 	Command       api.WorkerCommandType
 	Location      string
@@ -38,6 +39,8 @@ type WorkerCommand struct {
 	DistroVersion string
 	OSType        api.OSType
 	Architecture  string
+
+	IncusAgent *api.IncusAgentConfig
 }
 
 func (q QueueEntry) IsMigrating() bool {

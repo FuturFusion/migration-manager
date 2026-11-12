@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"slices"
 	"time"
 
@@ -139,6 +140,12 @@ func (s batchService) canUpdateRunningBatch(ctx context.Context, queueSvc QueueS
 	queueEntries, err := queueSvc.GetAllByBatch(ctx, oldBatch.Name)
 	if err != nil {
 		return fmt.Errorf("Failed to get queue entries for batch %q: %w", oldBatch.Name, err)
+	}
+
+	// Keep the agent policy stable between worker validation and guest configuration.
+	agentChanged := !reflect.DeepEqual(api.ResolveIncusAgentConfig(nil, oldBatch.Config.IncusAgent), api.ResolveIncusAgentConfig(nil, newBatch.Config.IncusAgent))
+	if agentChanged && slices.ContainsFunc(queueEntries, func(q QueueEntry) bool { return q.IsMigrating() || q.IsCommitted() }) {
+		return fmt.Errorf("Cannot modify Incus agent settings of batch %q during migration: %w", oldBatch.Name, ErrOperationNotPermitted)
 	}
 
 	if len(constraintsToCheck) > 0 {
