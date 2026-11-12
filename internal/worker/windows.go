@@ -28,6 +28,7 @@ import (
 
 	"github.com/FuturFusion/migration-manager/internal/logger"
 	internalUtil "github.com/FuturFusion/migration-manager/internal/util"
+	migrationAPI "github.com/FuturFusion/migration-manager/shared/api"
 )
 
 type BitLockerState int
@@ -172,7 +173,8 @@ func WindowsOpenBitLockerPartition(partition string, encryptionKey string) error
 	return err
 }
 
-func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitecture, isoFile string, dryRun bool) error {
+// WindowsInjectDrivers prepares the imported Windows disks with drivers and agent settings.
+func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitecture, isoFile string, agent *migrationAPI.IncusAgentConfig, dryRun bool) error {
 	slog.Info("Preparing to inject Windows drivers into VM")
 	// Clear any existing logs from a previousr run.
 	err := os.RemoveAll(filepath.Join("/tmp", logDir))
@@ -372,6 +374,11 @@ func WindowsInjectDrivers(ctx context.Context, distroVersion string, osArchitect
 	}
 
 	if versionCode != "2k3" {
+		err = configureIncusAgent(windowsMainMountPath, filepath.Join("Program Files", "Incus-Agent", "incus-agent.yml"), agent)
+		if err != nil {
+			return err
+		}
+
 		// Disable VM tools.
 		err = injectScript("hivex-disable-vm-tools.sh", filepath.Join("/tmp", "hivex-disable-vm-tools.sh"), true)
 		if err != nil {
