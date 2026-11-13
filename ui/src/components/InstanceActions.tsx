@@ -37,6 +37,12 @@ const InstanceActions: FC<Props> = ({ instance }) => {
     left: 0,
   });
 
+  const backgroundImportVerified = !instance.disks.some(
+    (d) => d.supported && !d.background_import_verified,
+  );
+  const backgroundImportEnabled =
+    instance.background_import && backgroundImportVerified;
+
   const handleMouseEnter = (e: React.MouseEvent<SVGElement>) => {
     const rect = (e.target as SVGElement).getBoundingClientRect();
     setTooltipPosition({
@@ -109,10 +115,17 @@ const InstanceActions: FC<Props> = ({ instance }) => {
           />
         )}
         <ActionButton
-          label="Enable background import"
-          disabledReason={
+          label={
             instance.background_import
-              ? "Background import is already enabled."
+              ? "Background import is already enabled. Click to retry"
+              : "Enable background import"
+          }
+          className={
+            instance.background_import ? undefined : "action-button-warning"
+          }
+          disabledReason={
+            backgroundImportEnabled
+              ? "Background import is enabled and verified"
               : undefined
           }
           onClick={onEnableCtk}
@@ -122,7 +135,7 @@ const InstanceActions: FC<Props> = ({ instance }) => {
 
         <InstanceCtkModal
           uuid={instance.uuid}
-          enabled={instance.background_import}
+          enabled={backgroundImportEnabled}
           show={showCtkModal}
           onSuccess={() => setShowCtkModal(false)}
           handleClose={() => setShowCtkModal(false)}
