@@ -204,6 +204,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_IDLE,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -252,6 +253,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_IDLE,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -299,6 +301,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_IDLE,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -349,6 +352,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_IDLE,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -396,6 +400,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent: api.DefaultIncusAgentConfig(),
 				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
@@ -450,6 +455,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_IDLE,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -495,6 +501,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -540,6 +547,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -586,6 +594,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -629,6 +638,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent: api.DefaultIncusAgentConfig(),
 				Command:    api.WORKERCOMMAND_IMPORT_DISKS,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
@@ -678,6 +688,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent: api.DefaultIncusAgentConfig(),
 				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
@@ -727,6 +738,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent: api.DefaultIncusAgentConfig(),
 				Command:    api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
@@ -776,6 +788,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent: api.DefaultIncusAgentConfig(),
 				Command:    api.WORKERCOMMAND_POST_IMPORT,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
@@ -825,6 +838,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent: api.DefaultIncusAgentConfig(),
 				Command:    api.WORKERCOMMAND_POST_IMPORT,
 				Location:   "/some/instance/A",
 				SourceType: api.SOURCETYPE_VMWARE,
@@ -878,6 +892,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -926,6 +941,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_FINALIZE_IMPORT,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -974,6 +990,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_IDLE,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -1022,6 +1039,7 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 
 			assertErr: require.NoError,
 			wantWorkerCommand: migration.WorkerCommand{
+				IncusAgent:    api.DefaultIncusAgentConfig(),
 				Command:       api.WORKERCOMMAND_IDLE,
 				Location:      "/some/instance/A",
 				SourceType:    api.SOURCETYPE_VMWARE,
@@ -1205,13 +1223,13 @@ func TestQueueService_NewWorkerCommandByInstanceUUID(t *testing.T) {
 		}
 
 		for _, restart := range []bool{false, true} {
-			for _, instanceFeatures := range []*api.IncusAgentConfig{nil, {Features: &api.IncusAgentFeatures{}}, {Features: &api.IncusAgentFeatures{Exec: true}}} {
+			for _, instanceFeatures := range []*api.IncusAgentConfig{nil, {}, {Features: &api.IncusAgentFeatures{}}, {Features: &api.IncusAgentFeatures{Exec: true}}} {
 				tc := base
 				tc.name = "agent configuration restart=" + strconv.FormatBool(restart) + " override=" + strconv.Itoa(len(tests))
 				tc.batchSvcGetByName.Config.IncusAgent = &api.IncusAgentConfig{Features: &api.IncusAgentFeatures{Exec: false, State: true}}
 				tc.instanceSvcGetByIDInstance.Overrides.IncusAgent = instanceFeatures
 				tc.wantWorkerCommand.IncusAgent = tc.batchSvcGetByName.Config.IncusAgent
-				if instanceFeatures != nil {
+				if instanceFeatures != nil && instanceFeatures.Features != nil {
 					tc.wantWorkerCommand.IncusAgent = instanceFeatures
 				}
 
