@@ -11,6 +11,17 @@ import (
 )
 
 func TestIncusAgentConfig(t *testing.T) {
+	defaults := api.DefaultIncusAgentConfig()
+	require.Equal(t, &api.IncusAgentFeatures{
+		Exec:        false,
+		Files:       false,
+		GuestAPI:    true,
+		Metrics:     true,
+		Mounts:      true,
+		PortForward: false,
+		State:       true,
+	}, defaults.Features)
+
 	batch := &api.IncusAgentConfig{Features: &api.IncusAgentFeatures{Exec: false, Files: true}}
 	tests := []struct {
 		name     string

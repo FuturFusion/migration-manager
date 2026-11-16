@@ -4,7 +4,7 @@ package api
 //
 // swagger:model
 type IncusAgentConfig struct {
-	// Feature settings; null preserves guest settings, while an empty object disables all features.
+	// Feature settings; null inherits batch settings or defaults, while an empty object disables all features.
 	Features *IncusAgentFeatures `json:"features" yaml:"features"`
 }
 
@@ -19,6 +19,16 @@ type IncusAgentFeatures struct {
 	Mounts      bool `json:"mounts" yaml:"mounts"`
 	PortForward bool `json:"port-forward" yaml:"port-forward"`
 	State       bool `json:"state" yaml:"state"`
+}
+
+// DefaultIncusAgentConfig returns the default guest agent feature settings.
+func DefaultIncusAgentConfig() *IncusAgentConfig {
+	return &IncusAgentConfig{Features: &IncusAgentFeatures{
+		GuestAPI: true,
+		Metrics:  true,
+		Mounts:   true,
+		State:    true,
+	}}
 }
 
 // ResolveIncusAgentConfig selects the instance feature settings before the batch settings.
