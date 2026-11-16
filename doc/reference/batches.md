@@ -105,6 +105,9 @@ Some batch properties cannot be modified once the batch has started, or once any
 
 Only features set to `true` are enabled, and `{}` disables all.
 
+The default feature settings are `guestapi`, `metrics`, `mounts`, and `state` enabled,
+and `exec`, `files`, and `port-forward` disabled.
+
 `overrides.incus_agent.features` on an instance replaces the entire batch feature
 map; missing or null instance features inherit the batch settings.
 
