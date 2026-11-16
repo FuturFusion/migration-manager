@@ -5,7 +5,7 @@ import { expect, test, vi } from "vitest";
 import IncusAgentSettings from "components/IncusAgentSettings";
 import { IncusAgentConfig } from "types/incusAgent";
 
-test("configures all features explicitly and resets to inheritance", async () => {
+test("configures Incus OS defaults and resets to inheritance", async () => {
   const changed = vi.fn();
   const Editor = () => {
     const [value, setValue] = useState<IncusAgentConfig | null>(null);
@@ -23,18 +23,25 @@ test("configures all features explicitly and resets to inheritance", async () =>
   render(<Editor />);
   await userEvent.selectOptions(screen.getByRole("combobox"), "configure");
   expect(screen.getAllByRole("checkbox")).toHaveLength(7);
-  await userEvent.click(screen.getByRole("checkbox", { name: "exec" }));
   expect(changed).toHaveBeenLastCalledWith({
     features: {
       exec: false,
-      files: true,
+      files: false,
       guestapi: true,
       metrics: true,
       mounts: true,
-      "port-forward": true,
+      "port-forward": false,
       state: true,
     },
   });
+  for (const feature of ["exec", "files", "port-forward"]) {
+    expect(screen.getByRole("checkbox", { name: feature })).not.toBeChecked();
+  }
+  for (const feature of ["guestapi", "metrics", "mounts", "state"]) {
+    expect(screen.getByRole("checkbox", { name: feature })).toBeChecked();
+  }
+  await userEvent.click(screen.getByRole("checkbox", { name: "exec" }));
+  expect(changed.mock.lastCall?.[0].features.exec).toBe(true);
   await userEvent.selectOptions(screen.getByRole("combobox"), "inherit");
   expect(changed).toHaveBeenLastCalledWith(null);
   expect(screen.queryAllByRole("checkbox")).toHaveLength(0);

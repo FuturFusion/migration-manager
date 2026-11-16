@@ -8,5 +8,12 @@ export const incusAgentFeatures = [
   "state",
 ] as const;
 
-export const enabledIncusAgentFeatures = () =>
-  Object.fromEntries(incusAgentFeatures.map((feature) => [feature, true]));
+export const defaultIncusAgentFeatures = () => ({
+  exec: false,
+  files: false,
+  guestapi: true,
+  metrics: true,
+  mounts: true,
+  "port-forward": false,
+  state: true,
+});
