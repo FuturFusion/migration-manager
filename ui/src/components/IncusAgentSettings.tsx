@@ -2,7 +2,7 @@ import Form from "react-bootstrap/Form";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Tooltip from "react-bootstrap/Tooltip";
 import { IncusAgentConfig } from "types/incusAgent";
-import { enabledIncusAgentFeatures, incusAgentFeatures } from "util/incusAgent";
+import { defaultIncusAgentFeatures, incusAgentFeatures } from "util/incusAgent";
 
 interface Props {
   value?: IncusAgentConfig | null;
@@ -32,7 +32,7 @@ const IncusAgentSettings = ({ value, onChange, instance = false }: Props) => {
         onChange={(event) =>
           onChange(
             event.target.value === "configure"
-              ? { features: enabledIncusAgentFeatures() }
+              ? { features: defaultIncusAgentFeatures() }
               : null,
           )
         }

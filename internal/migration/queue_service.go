@@ -357,6 +357,9 @@ func (s queueService) NewWorkerCommandByInstanceUUID(ctx context.Context, id uui
 		}
 
 		workerCommand.IncusAgent = api.ResolveIncusAgentConfig(batch.Config.IncusAgent, instance.Overrides.IncusAgent)
+		if workerCommand.IncusAgent == nil {
+			workerCommand.IncusAgent = api.DefaultIncusAgentConfig()
+		}
 
 		// If the last worker response was RUNNING, then skip validation and just send the response it wants.
 		if restartWorker {
